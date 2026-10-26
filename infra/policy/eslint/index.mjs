@@ -3,6 +3,7 @@
 //   ipb/vendor-import    IPB-01-14  vendor SDK imports only inside packages/connectors/
 //   ipb/schema-boundary  IPB-01-09  a module never imports another module's Drizzle schema
 //   ipb/no-process-env   IPB-01-19  process.env is read only inside packages/config/
+//   ipb/no-direct-crypto IPB-12-05  cryptography only through packages/crypto (PL1-C-01)
 //
 // These are PL0 placeholders: the detection is path/pattern based and will be tightened
 // when modules, Drizzle schemas and the port catalogue land (PL1–PL2). Rules are never
@@ -180,12 +181,65 @@ const noProcessEnv = {
   },
 };
 
+const CRYPTO_MODULES = new Set(["crypto", "node:crypto"]);
+
+const noDirectCrypto = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "IPB-12-05: every signature, hash, key and random value is created through @infrabyx/crypto; no direct node:crypto or Web Crypto use elsewhere.",
+    },
+    schema: [],
+    messages: {
+      module:
+        "IPB-12-05: '{{spec}}' is imported outside packages/crypto; use @infrabyx/crypto instead.",
+      global:
+        "IPB-12-05: global '{{name}}' is used outside packages/crypto; use @infrabyx/crypto instead.",
+    },
+  },
+  create(context) {
+    const file = toPosix(context.filename ?? context.getFilename());
+    if (packageOf(file) === "crypto") return {};
+    const isGlobalCrypto = (node) => {
+      const scope = context.sourceCode.getScope(node);
+      let s = scope;
+      while (s) {
+        if (s.set && s.set.has("crypto") && s.set.get("crypto").defs.length > 0) return false;
+        s = s.upper;
+      }
+      return true;
+    };
+    return {
+      ...forEachImport(context, (node, spec) => {
+        if (CRYPTO_MODULES.has(spec)) context.report({ node, messageId: "module", data: { spec } });
+      }),
+      MemberExpression(node) {
+        const obj = node.object;
+        if (obj.type === "Identifier" && obj.name === "crypto" && isGlobalCrypto(node)) {
+          context.report({ node, messageId: "global", data: { name: "crypto" } });
+        }
+        if (
+          obj.type === "Identifier" &&
+          (obj.name === "globalThis" || obj.name === "window" || obj.name === "self") &&
+          !node.computed &&
+          node.property.type === "Identifier" &&
+          node.property.name === "crypto"
+        ) {
+          context.report({ node, messageId: "global", data: { name: `${obj.name}.crypto` } });
+        }
+      },
+    };
+  },
+};
+
 const plugin = {
   meta: { name: "@infrabyx/eslint-plugin-ipb", version: "0.0.0" },
   rules: {
     "vendor-import": vendorImport,
     "schema-boundary": schemaBoundary,
     "no-process-env": noProcessEnv,
+    "no-direct-crypto": noDirectCrypto,
   },
 };
 

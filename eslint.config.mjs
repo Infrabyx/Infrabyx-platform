@@ -24,6 +24,8 @@ export default tseslint.config(
       "ipb/schema-boundary": "error",
       // IPB-01-19: process.env only inside packages/config
       "ipb/no-process-env": "error",
+      // IPB-12-05: cryptography only through packages/crypto (PL1-C-01)
+      "ipb/no-direct-crypto": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },

@@ -127,3 +127,46 @@ describe("ipb/no-process-env (IPB-01-19)", () => {
     });
   });
 });
+
+describe("ipb/no-direct-crypto (IPB-12-05, @IPB-12-AT-03)", () => {
+  it("allows cryptography only inside packages/crypto", () => {
+    tester.run("no-direct-crypto", ipb.rules["no-direct-crypto"], {
+      valid: [
+        {
+          code: `import { createHash } from "node:crypto";`,
+          filename: `${repo}/packages/crypto/src/hash.ts`,
+        },
+        {
+          code: `import { sha256Hex } from "@infrabyx/crypto";`,
+          filename: `${repo}/packages/audit/src/ledger.ts`,
+        },
+        {
+          code: `const crypto = makeCrypto(); crypto.thing();`,
+          filename: `${repo}/packages/cms/src/x.ts`,
+        },
+      ],
+      invalid: [
+        {
+          code: `import { createSign } from "node:crypto";`,
+          filename: `${repo}/apps/api/src/modules/cases/sign.ts`,
+          errors: [{ messageId: "module" }],
+        },
+        {
+          code: `const c = require("crypto");`,
+          filename: `${repo}/packages/audit/src/x.ts`,
+          errors: [{ messageId: "module" }],
+        },
+        {
+          code: `crypto.randomUUID();`,
+          filename: `${repo}/packages/seed/src/x.ts`,
+          errors: [{ messageId: "global" }],
+        },
+        {
+          code: `globalThis.crypto.subtle.digest("SHA-256", b);`,
+          filename: `${repo}/packages/ui/src/x.ts`,
+          errors: [{ messageId: "global" }],
+        },
+      ],
+    });
+  });
+});
