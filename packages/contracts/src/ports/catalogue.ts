@@ -1,5 +1,5 @@
-// Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the five ports the
-// kernel consumes are in this folder; the rest land with their adapters (PL1-D-02, decision D-02).
+// Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports are
+// in this folder; the rest land with the phase that builds their adapters (PL1-D-02, PL2 plan §1).
 
 export type PortTier = 0 | 1 | 2 | 3;
 
@@ -15,27 +15,27 @@ export interface PortInfo {
 
 export const PORT_CATALOGUE = {
   IDENTITY: { tier: 0, configPrefix: "int.identity.", ownerFile: "IPB-01", interfaceDefined: true },
-  AUTHZ: { tier: 0, configPrefix: "int.authz.", ownerFile: "IPB-01", interfaceDefined: false },
+  AUTHZ: { tier: 0, configPrefix: "int.authz.", ownerFile: "IPB-01", interfaceDefined: true },
   STORAGE: { tier: 1, configPrefix: "int.storage.", ownerFile: "IPB-01", interfaceDefined: true },
-  QUEUE: { tier: 1, configPrefix: "int.queue.", ownerFile: "IPB-01", interfaceDefined: false },
+  QUEUE: { tier: 1, configPrefix: "int.queue.", ownerFile: "IPB-01", interfaceDefined: true },
   WORKFLOW: {
     tier: 1,
     configPrefix: "int.workflow.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   CACHE: { tier: 3, configPrefix: "int.cache.", ownerFile: "IPB-01", interfaceDefined: false },
   SEARCH: { tier: 2, configPrefix: "int.search.", ownerFile: "IPB-01", interfaceDefined: false },
   VECTOR: { tier: 2, configPrefix: "int.vector.", ownerFile: "IPB-01", interfaceDefined: false },
   SECRETS: { tier: 1, configPrefix: "int.secrets.", ownerFile: "IPB-01", interfaceDefined: true },
   KMS: { tier: 0, configPrefix: "int.kms.", ownerFile: "IPB-01", interfaceDefined: true },
-  EMAIL: { tier: 2, configPrefix: "int.email.", ownerFile: "IPB-01", interfaceDefined: false },
-  SMS: { tier: 2, configPrefix: "int.sms.", ownerFile: "IPB-01", interfaceDefined: false },
+  EMAIL: { tier: 2, configPrefix: "int.email.", ownerFile: "IPB-01", interfaceDefined: true },
+  SMS: { tier: 2, configPrefix: "int.sms.", ownerFile: "IPB-01", interfaceDefined: true },
   WHATSAPP: {
     tier: 2,
     configPrefix: "int.whatsapp.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   PUSH: { tier: 2, configPrefix: "int.push.", ownerFile: "IPB-01", interfaceDefined: false },
   VOICE: { tier: 2, configPrefix: "int.voice.", ownerFile: "IPB-01", interfaceDefined: false },
@@ -43,7 +43,7 @@ export const PORT_CATALOGUE = {
     tier: 1,
     configPrefix: "int.payments.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   PAYOUTS: { tier: 1, configPrefix: "int.payouts.", ownerFile: "IPB-01", interfaceDefined: false },
   ESIGN: { tier: 2, configPrefix: "int.esign.", ownerFile: "IPB-01", interfaceDefined: false },
@@ -118,7 +118,7 @@ export const PORT_CATALOGUE = {
     tier: 2,
     configPrefix: "eng.otel.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   ERROR_TRACKING: {
     tier: 3,

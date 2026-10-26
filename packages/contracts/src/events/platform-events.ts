@@ -30,8 +30,12 @@ export const PLATFORM_EVENTS = {
   SeedRefused: { module: "seed", name: "SeedRefused" },
   CredentialsGenerated: { module: "seed", name: "CredentialsGenerated" },
   SandboxReset: { module: "seed", name: "SandboxReset" },
-  // module boot (IPB-01 §01.6.1)
+  // module boot and provider routing (IPB-01 §01.6.1)
   ModuleManifestInvalid: { module: "platform", name: "ModuleManifestInvalid" },
+  AdapterFailedOver: { module: "platform", name: "AdapterFailedOver" },
+  AdapterRecovered: { module: "platform", name: "AdapterRecovered" },
+  ResidencyViolationBlocked: { module: "platform", name: "ResidencyViolationBlocked" },
+  RoutingConfigChanged: { module: "platform", name: "RoutingConfigChanged" },
 } as const;
 export type PlatformEventName = keyof typeof PLATFORM_EVENTS;
 
@@ -73,4 +77,30 @@ export const CredentialsGeneratedData = z.object({
   run_id: z.string(),
   count: z.number().int().nonnegative(),
   rotated: z.boolean(),
+});
+
+/** IPB-01 §01.6.1 provider-routing event payloads. */
+export const AdapterFailedOverData = z.object({
+  port: z.string(),
+  from_adapter: z.string(),
+  to_adapter: z.string(),
+  reason: z.string(),
+  data_class_max: z.string(),
+});
+
+export const AdapterRecoveredData = z.object({ port: z.string(), adapter: z.string() });
+
+export const ResidencyViolationBlockedData = z.object({
+  port: z.string(),
+  adapter: z.string(),
+  data_class: z.string(),
+  module: z.string(),
+  trace_id: z.string(),
+});
+
+export const RoutingConfigChangedData = z.object({
+  env: z.string(),
+  diff_summary: z.string(),
+  actor: z.string(),
+  approver: z.string().nullable(),
 });

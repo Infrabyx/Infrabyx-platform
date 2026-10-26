@@ -9,12 +9,20 @@ export const PortHealth = z.object({
 });
 export type PortHealth = z.infer<typeof PortHealth>;
 
+/** How an adapter provides a catalogue method (PL2-D-21, plan §3.3). */
+export const CAPABILITY_LEVELS = ["native", "emulated", "unsupported"] as const;
+export type Capability = (typeof CAPABILITY_LEVELS)[number];
+
 /** Every adapter instance declares where it processes data and the highest class it accepts (IPB-01-16). */
 export interface AdapterDescriptor {
   port: string;
   adapter: string;
   residency: Residency;
   maxDataClass: DataClass;
+  /** Methods the adapter emulates or cannot provide; unlisted methods are native. */
+  capabilities?: Readonly<Record<string, Capability>>;
+  /** Vendor Assurance Room reference of the DPA; required for GLOBAL adapters that receive recipients (IPB-DEV-05). */
+  dpaRef?: string;
 }
 
 export interface Port {
@@ -25,3 +33,59 @@ export interface Port {
 export interface Idempotent {
   idempotencyKey?: string;
 }
+
+/**
+ * Optional trailing argument of every method that sends data to a vendor (PL2-D-20).
+ * `dataClass` may only raise the port default, never lower it (PL2-D-03).
+ */
+export interface PortCall extends Idempotent {
+  dataClass?: DataClass;
+  /** Defaults to the tenancy context. */
+  tenantId?: string;
+}
+
+/** Result of looking a side-effect up at the vendor by its idempotency key (plan §3.5). */
+export type LookupResult<T> =
+  { status: "found"; result: T } | { status: "absent" } | { status: "unknown"; reason: string };
+
+/** Adapters whose side effects can be re-checked at the vendor before a retry (plan §3.5, PL2-D-08). */
+export interface IdempotencyLookup {
+  lookup(operation: string, idempotencyKey: string): Promise<LookupResult<unknown>>;
+}
+
+/** The thirteen Tier-0 ports PL2 builds (IPB-14 §14.3). */
+export const PL2_PORTS = [
+  "SECRETS",
+  "KMS",
+  "OBSERVABILITY",
+  "FEATURE_FLAG",
+  "IDENTITY",
+  "AUTHZ",
+  "STORAGE",
+  "QUEUE",
+  "WORKFLOW",
+  "EMAIL",
+  "SMS",
+  "WHATSAPP",
+  "PAYMENTS",
+] as const;
+export type Pl2Port = (typeof PL2_PORTS)[number];
+
+/** Default data class of a call when the caller states none (plan §3.1). */
+export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Object.freeze({
+  EMAIL: "INTERNAL",
+  SMS: "INTERNAL",
+  WHATSAPP: "INTERNAL",
+  QUEUE: "INTERNAL",
+  FEATURE_FLAG: "INTERNAL",
+  OBSERVABILITY: "INTERNAL",
+  PAYMENTS: "REGULATED",
+});
+
+/** Port default data class; CONFIDENTIAL for every port not listed (plan §3.1). */
+export function portDefaultDataClass(port: string): DataClass {
+  return PORT_DEFAULT_DATA_CLASS[port] ?? "CONFIDENTIAL";
+}
+
+/** Ports whose payloads carry delivery recipients (IPB-DEV-05). */
+export const MESSAGING_PORTS: readonly string[] = Object.freeze(["EMAIL", "SMS", "WHATSAPP"]);
