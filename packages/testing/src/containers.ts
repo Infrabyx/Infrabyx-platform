@@ -1,7 +1,7 @@
 // Pinned test images and a generic container starter (PL2 plan §3.11, §7). Digests are recorded in
 // infra/docker/TEST_IMAGES.md; a unit test keeps the two in step. Images come from Docker Hub
 // (the PL2 spike found ECR Public anonymous pulls capped; GHCR and quay.io unreachable from the
-// build sandbox), except Zitadel, which is published only on GHCR and so runs in CI only.
+// build sandbox), except Zitadel (GHCR) and MinIO (quay.io, PL2-D-61), which run in CI only.
 // Set IPB_TEST_<NAME>_URL to reuse a running service instead of starting one.
 import { z } from "zod";
 import type { GenericContainer } from "testcontainers";
@@ -60,6 +60,13 @@ export const TEST_IMAGES = {
       "localstack/localstack@sha256:0df3a97da57de03a588c05d9b8f390f15c7033fc7c4512f94619d344bc3cd317",
     version: "4.12.0 (last licence-free community build)",
     role: "AWS KMS with MessageType DIGEST; SNS",
+  },
+  minio: {
+    // Placeholder digest: CI resolves and prints it on the first run (PL2-D-61), then it is pinned.
+    image:
+      "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    version: "RELEASE.2025-09-07T16-13-09Z (last community release, frozen)",
+    role: "MinIO server: Object Lock, SSE-S3, presigned-URL enforcement (STORAGE; CI only, PL2-D-61)",
   },
   moto: {
     image:
@@ -125,6 +132,22 @@ export interface StartServiceOptions {
 }
 
 /** Start a pinned image, or reuse the service named by IPB_TEST_<NAME>_URL. */
+/** The service named by IPB_TEST_<NAME>_URL, if set (CI-started services such as MinIO). */
+export async function existingServiceUrl(name: TestImageName): Promise<string | undefined> {
+  const varName = `IPB_TEST_${name.toUpperCase()}_URL`;
+  const schema = z.object({
+    [varName]: envVar(z.string().url(), {
+      desc: `Existing ${name} service for tests`,
+      example: "http://127.0.0.1:1234",
+      required: "opt",
+      sens: "C",
+      port: "IPB",
+    }),
+  });
+  const r = await validateEnv(schema, { guards: [], defaultAppEnv: "test" });
+  return r.ok ? (r.values as Record<string, string | undefined>)[varName] : undefined;
+}
+
 export async function startService(
   name: TestImageName,
   opts: StartServiceOptions,
