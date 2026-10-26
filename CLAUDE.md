@@ -24,6 +24,35 @@ Node.js 24.22.1 (`.nvmrc`, `engines`, Dockerfiles, CI; no other version without 
 - Never publish from a branch other than `main`; never force-push `main`; never edit a migration that has shipped.
 - Seeds never run when `APP_ENV` is `prod`, `dr` or `pre-prod` (`SEED_REFUSED_ENVS`, PL1-D-06); `SEED_CREDENTIALS.md` is never committed.
 
+## Working mode — continuous build (owner standing instruction, 26 Oct 2026; PL2-D-41)
+
+**Goal.** Finish the shared packages so the six product repositories can build on them. Work through PL2 sessions 3 to 8 and gate A, then PL3, PL4, PL5 and PL6 in order, without waiting for the owner between steps. Work only in this repository.
+
+**Allowed without asking:**
+
+- Write each phase plan, self-review it against the IPB, commit it and start implementing (the owner reviews plans in batches and may redirect at any time).
+- Where the spec is silent, or a decision is the owner's but not blocking, take the most conservative reversible option (flag off, adapter unproven, feature disabled). Log it in `docs/DECISIONS.md` as `[ASSUMED – owner review]` and add it to `docs/OWNER-QUESTIONS.md` with the question, the default taken, the impact if the owner changes it, and how to reverse it.
+- Open PRs, fix CI, and merge under the standing authority (PL2-D-19) when every required check is green.
+- At each phase gate, once the gate checklist is green, publish the 0.x pre-releases through the version PR; then update STATUS with what products can now install and what they must change (migrations, environment variables, settings keys).
+- Update dependencies within the 7-day policy (PL2-D-32).
+
+**Stop and ask only for these.** Record the question in `docs/OWNER-QUESTIONS.md`, park only the blocked item and carry on with other unblocked work; end the session only when nothing unblocked remains.
+
+1. A locked-list item not already approved: payments or money movement, cryptography beyond the approved C-items, data deletion or retention, approval or maker-checker policy, production configuration or deployment, live credentials.
+2. Changing an approved owner decision or condition.
+3. Anything that creates an external account, costs money or adds a recurring cost (cloud resources, paid services, GitHub plan changes).
+4. Edits to `docs/ipb/` or `docs/ecosystem/` (raise them in `docs/platform-requests.md`), a Node or pnpm major, or any other ADR-only change.
+5. Publishing 1.0.0, deprecating or deleting a published version, force-pushing `main`, or changing repository settings or secrets.
+6. A security incident (exposed secret, suspicious package), or a check that cannot be made green after three honest attempts without weakening it.
+
+**CI budget.** GitHub Free: 2,000 Actions minutes a month shared by seven repositories; this repository stays under **1,000 minutes a month**. The full port-contract matrix runs weekly and before a release; nightly legs run only for ports changed that day; sandbox legs stay off until their accounts exist. STATUS shows the month's total after each merge; tell the owner before going over.
+
+**Reporting.** After each merged PR, five lines: what merged, checks, new assumptions, owner tasks, next step. `docs/OWNER-QUESTIONS.md` is the single numbered list the owner answers in one go.
+
+**Context.** When the session's context gets long, or at each phase gate, write a handover in STATUS (done, next, open questions, branch and PR state) and end with the words **HANDOVER READY**.
+
+**Threat model.** `docs/security/threat-model.md` is kept current with every PR that adds a port, adapter, package or data flow (PL2-D-43).
+
 ## Working on the Claude branch
 
 Claude Code may work on a `claude/*` or `cc/PLn-<slug>` branch; open a PR using the template, let CI pass, then merge to `main` and delete the branch.

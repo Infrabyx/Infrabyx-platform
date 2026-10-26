@@ -1,11 +1,13 @@
 name: port-contract
-# IPB-01-15 contract legs per port (PL2 plan §3.11, PL2-D-13). Pull requests run the unit and
-# hermetic legs for the ports whose files changed; the nightly run and every release run all ports.
+# IPB-01-15 contract legs per port (PL2 plan §3.11, PL2-D-13, PL2-D-44). Pull requests and the nightly
+# run cover only the ports whose files changed (nightly: on main in the last 24 hours); the weekly
+# run, a manual dispatch and every release run all ports. CI budget: PL2-D-41.
 # Sandbox legs join when the GitHub `sandbox` environment exists (PL2-D-12, docs/runbooks/README.md).
 on:
   pull_request:
   schedule:
-    - cron: "17 21 * * *" # 02:47 IST nightly
+    - cron: "17 21 * * *" # 02:47 IST nightly, changed ports only
+    - cron: "47 20 * * 6" # 02:17 IST Sunday, every port
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -29,9 +31,12 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then
             node scripts/port-matrix.mjs --base "origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = "schedule" ] && [ "$SCHEDULE" = "17 21 * * *" ]; then
+            node scripts/port-matrix.mjs --since "24 hours ago" >> "$GITHUB_OUTPUT"
           else
             node scripts/port-matrix.mjs --all >> "$GITHUB_OUTPUT"
           fi
