@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 — plan approved 26 Oct 2026 with conditions (PL2-D-05); session 1 next** (`docs/phases/PL2-plan.md` §15); PL1 complete and accepted 2026-10-26                                     |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                    |
+| Item                  | Value                                                                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL2 session 1 of 8** (D-11): spike done (`docs/phases/PL2-spike.md`); contracts, config keys, routing schema, testing harness and the port-contract CI job in review. Plan approved 26 Oct 2026 with conditions (PL2-D-05) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                       |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                     |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                      |
+| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                                                        |
 
 ## Done
 
@@ -28,7 +28,15 @@ Updated: 2026-10-26
 
 ## Next
 
-- PL2 session 1 (D-11 step 1, PL2-D-18): spike on every `[VERIFY]` item first, then the port interfaces in `contracts`, config keys, the routing schema and the testing harness, with the `port-contract` CI job (per-port path filters, PL2-D-13). One PR per session; merged under the standing authority (PL2-D-19).
+- PL2 session 2: `connectors` core (router, circuit breaker, health registry, egress client, idempotency store and migration `connectors/0001_init.sql`), OBSERVABILITY (OTel) and FEATURE_FLAG (Unleash + config-db).
+
+## PL2 session 1 (2026-10-26)
+
+- Spike on every `[VERIFY]` item: Temporal, BullMQ and Cerbos SDKs work on Node 24.22.1; Valkey works; pg-boss works through a transaction pooler (explicit job ids, PL2-D-28); moto signs KMS `DIGEST` wrongly, so KMS uses LocalStack 4.12.0, and SES needs a small stub (PL2-D-29); Zitadel v4.20.0 has ES256 web keys, token exchange and SCIM Users; AWS KMS ML-DSA in ap-south-1 is unconfirmed and stays `planned`.
+- `@infrabyx/contracts`: the thirteen PL2 port interfaces, payload data-class annotations (raise-only, PL2-D-03), delivery recipients (IPB-DEV-05), P-04 paise conversion, `checkRouting`, connector manifest schema (P-18).
+- `@infrabyx/config`: 53 new port keys (156 in total), `loadRoutingFile`, `infrabyx-routing check`, reference `local` and `ci` routing files, `sandbox-status.json`.
+- `@infrabyx/testing`: leg- and capability-aware contract suites, pinned `TEST_IMAGES`, the sandbox-leg gate, fault-injection proxy, ESLint `ipb/port-data-class`.
+- CI: `port-contract.yml` (per-port path filters, nightly, before each release) and `routing-check` in `verify`.
 
 ## CI minutes (PL2-D-13)
 
