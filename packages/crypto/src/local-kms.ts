@@ -125,9 +125,9 @@ export class LocalKms implements KmsPort {
     return aesGcmDecrypt(this.symmetric(keyId), ciphertext, aad);
   }
 
-  async generateDataKey(keyId: string): Promise<DataKey> {
+  async generateDataKey(keyId: string, aad?: Uint8Array): Promise<DataKey> {
     const plaintext = randomBytes(32);
-    return { plaintext, ciphertext: await this.encrypt(keyId, plaintext), keyId };
+    return { plaintext, ciphertext: await this.encrypt(keyId, plaintext, aad), keyId };
   }
 
   async sign(keyId: string, message: Uint8Array, alg: string): Promise<Uint8Array> {
