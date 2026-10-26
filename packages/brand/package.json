@@ -1,0 +1,32 @@
+{
+  "name": "@infrabyx/brand",
+  "version": "0.0.0",
+  "description": "Brand packs, Brand Studio, host map, display name, contrast guard",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infrabyx/infrabyx-platform.git",
+    "directory": "packages/brand"
+  },
+  "engines": {
+    "node": "24.22.1"
+  }
+}

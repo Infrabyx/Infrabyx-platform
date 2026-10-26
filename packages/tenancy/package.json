@@ -1,0 +1,32 @@
+{
+  "name": "@infrabyx/tenancy",
+  "version": "0.0.0",
+  "description": "Tenant/entity context, RLS helpers, RLS lint",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infrabyx/infrabyx-platform.git",
+    "directory": "packages/tenancy"
+  },
+  "engines": {
+    "node": "24.22.1"
+  }
+}

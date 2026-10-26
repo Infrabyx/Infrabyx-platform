@@ -1,0 +1,5 @@
+* @infrabyx/platform-owners
+/packages/crypto/ @infrabyx/platform-owners
+/packages/tenancy/ @infrabyx/platform-owners
+/packages/audit/ @infrabyx/platform-owners
+/.github/ @infrabyx/platform-owners

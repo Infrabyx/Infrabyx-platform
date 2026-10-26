@@ -1,0 +1,36 @@
+
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  packages: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@infrabyx'
+      - run: pnpm install --frozen-lockfile || pnpm install
+        env: { NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }} }
+      - name: Node version pin (IPB-D-01)
+        run: |
+          test "$(cat .nvmrc)" = "24.22.1"
+          node -v | grep -q "v24.22.1"
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+      - run: pnpm test
+      - name: IPB structural checks
+        run: pnpm ipb:check
+  # IPB-09 required checks added as packages land: contract tests, axe, RLS lint,
+  # migration lint, SBOM (CycloneDX), Semgrep, ZAP, licence, bundle budget, Lighthouse.
