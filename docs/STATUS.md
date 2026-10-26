@@ -4,7 +4,7 @@ Updated: 2026-10-26
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 — plan written, awaiting owner approval** (`docs/phases/PL2-plan.md`); PL1 complete and accepted 2026-10-26                                                                        |
+| Current phase         | **PL2 — plan revision 2 written, awaiting the owner's confirmation of the changed sections** (`docs/phases/PL2-plan.md`); PL1 complete and accepted 2026-10-26                           |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
@@ -36,7 +36,9 @@ Updated: 2026-10-26
 
 ## Blocked / waiting on owner
 
-- PL2 plan (`docs/phases/PL2-plan.md`) awaits approval, including the separate PAYMENTS and cryptography sections (locked list).
+- PL2 plan revision 2: decisions recorded (PL2-D-01 to PL2-D-04, IPB-DEV-03 to IPB-DEV-06, PL2-C-01); implementation starts when the owner confirms the changed sections.
+- Vendor test accounts that unlock PL2 sandbox legs (none blocks the PL2 publish, IPB-DEV-04): Razorpay, Cashfree, Brevo, MSG91 and Gupshup, a Meta test app, DLT registration; AWS sandbox account before the first staging deployment; optionally a Temporal Cloud Mumbai namespace confirmed in writing.
+- Later (owner, not PL2): Renovate bump of `actions/checkout` and `actions/setup-node` to their Node 24 majors (v4.4.0 runs on the deprecated Node 20 action runtime).
 - Before production: replace `NPM_PUBLISH_TOKEN` in `release.yml` with a dedicated GitHub App token (PL1-D-21, IPB-02-08).
-- Platform requests PR-002 to PR-006 open for the IPB editor (`docs/platform-requests.md`).
+- Platform requests PR-002 to PR-014 open for the IPB editor (`docs/platform-requests.md`).
 - `main` ruleset enforcement waits on the GitHub plan upgrade (PL0-D-07).

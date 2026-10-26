@@ -119,6 +119,10 @@ if (
 // Dependabot is not used: Renovate is the single updater (PL0 plan R8).
 if (existsSync(".github/dependabot.yml"))
   fail(".github/dependabot.yml must not exist (Renovate is the single updater)");
+// Decision and request rows are plain table rows; a "> " prefix renders them as quoted text (PL2-D-04).
+for (const d of ["docs/DECISIONS.md", "docs/platform-requests.md"]) {
+  if (/^>\s*\|/m.test(read(d))) fail(`${d}: table rows must not start with "> " (PL2-D-04)`);
+}
 if (existsSync("SEED_CREDENTIALS.md")) fail("SEED_CREDENTIALS.md must never be committed (IPB-11)");
 if (!read(".gitignore").includes("SEED_CREDENTIALS.md"))
   fail(".gitignore must ignore SEED_CREDENTIALS.md");
