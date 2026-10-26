@@ -559,12 +559,7 @@ export class ZitadelIdentity implements IdentityPort {
         ).slice(0, 300);
       return r;
     });
-    const call = async <T>(
-      method: string,
-      path: string,
-      body?: unknown,
-      ok404 = false,
-    ): Promise<T | null> => {
+    const call = async <T>(method: string, path: string, body?: unknown): Promise<T | null> => {
       // A fresh instance answers 503 for a short while after it reports ready.
       for (let attempt = 0; ; attempt++) {
         let r: EgressResponse;
@@ -585,7 +580,6 @@ export class ZitadelIdentity implements IdentityPort {
             detail: `${method} ${path} failed: ${(e as Error).message} ${lastError}`,
           });
         }
-        if (ok404 && (r.status === 404 || r.status === 501)) return null;
         if (r.status >= 300)
           throw new PortError("IPB-PORT-002", "IDENTITY", {
             adapter: "zitadel",
@@ -596,22 +590,12 @@ export class ZitadelIdentity implements IdentityPort {
     };
     const s = ZITADEL_IPB_SETTINGS[o.profile];
 
-    // ES256 signing (C-12): web keys on (a no-op where they are always on), then create and
-    // activate a P-256 key.
-    await call("PUT", "/v2/features/instance", { webKey: true }, true).catch(() => null);
-    let key = await call<{ id: string }>(
-      "POST",
-      "/v2/web_keys",
-      { ecdsa: { curve: "ECDSA_CURVE_P256" } },
-      true,
-    );
-    if (key) await call("POST", `/v2/web_keys/${key.id}/activate`, {});
-    else {
-      key = await call<{ id: string }>("POST", "/v2beta/web_keys", {
-        ecdsa: { curve: "ECDSA_CURVE_P256" },
-      });
-      await call("POST", `/v2beta/web_keys/${key!.id}/_activate`, {});
-    }
+    // ES256 signing (C-12): create and activate a P-256 web key (v4.19.5 serves the web key
+    // service over HTTP under v2beta).
+    const key = (await call<{ id: string }>("POST", "/v2beta/web_keys", {
+      ecdsa: { curve: "ECDSA_CURVE_P256" },
+    }))!;
+    await call("POST", `/v2beta/web_keys/${key.id}/activate`, {});
 
     await call("PUT", "/admin/v1/settings/oidc", {
       accessTokenLifetime: s.accessTokenLifetime,
@@ -619,7 +603,7 @@ export class ZitadelIdentity implements IdentityPort {
       refreshTokenIdleExpiration: s.refreshTokenIdleExpiration,
       refreshTokenExpiration: s.refreshTokenExpiration,
     });
-    await call("PUT", "/admin/v1/policies/lockout", {
+    await call("PUT", "/admin/v1/policies/password/lockout", {
       maxPasswordAttempts: Number(s.maxPasswordAttempts),
     });
     await call("PUT", "/admin/v1/policies/password/complexity", {
