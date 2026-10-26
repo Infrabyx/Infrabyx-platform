@@ -9,12 +9,18 @@
   ],
   "timezone": "Asia/Kolkata",
   "schedule": ["before 6am on monday"],
-  "lockFileMaintenance": { "enabled": true, "schedule": ["before 4am on monday"] },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 4am on monday"]
+  },
   "rangeStrategy": "pin",
+  "minimumReleaseAge": "3 days",
   "postUpdateOptions": ["pnpmDedupe"],
   "labels": ["dependencies"],
   "osvVulnerabilityAlerts": true,
-  "vulnerabilityAlerts": { "enabled": true, "labels": ["security"] },
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  },
   "packageRules": [
     {
       "description": "Node runtime: stay on 24.x security line, exact pin (IPB-01-01, IPB-D-01)",
@@ -58,12 +64,11 @@
       "enabled": false
     },
     {
-      "description": "Security patches fast-track (IPB-01-04, IPB-02 patch SLA)",
+      "description": "Patch fast-track (IPB-01 §01.4.1.2, IPB-02 patch SLA); automerges only after CI passes (IPB-02-36); excludes the runtime and package manager (owner decision 2026-10-26)",
       "matchUpdateTypes": ["patch"],
-      "vulnerabilityAlerts": { "enabled": true },
       "automerge": true,
       "automergeType": "pr",
-      "requiredStatusChecks": null
+      "matchPackageNames": ["!node", "!pnpm"]
     },
     {
       "description": "Group non-major dev tooling",
@@ -82,6 +87,18 @@
       "matchFileNames": ["packages/connectors/**"],
       "labels": ["dependencies", "connectors"],
       "automerge": false
+    },
+    {
+      "description": "Runtime and package manager (node, pnpm): never automerged, and a major is never proposed, not even by a security alert; a major moves only through a dated ADR (IPB-D-01, IPB-01-05). Keep this rule last: later rules win.",
+      "matchPackageNames": ["node", "pnpm"],
+      "automerge": false,
+      "labels": ["runtime", "security"]
+    },
+    {
+      "description": "node / pnpm majors disabled (ADR route only); applies to security alerts because vulnerabilityAlerts carries no enabled:true",
+      "matchPackageNames": ["node", "pnpm"],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
     }
   ]
 }
