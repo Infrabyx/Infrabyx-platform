@@ -35,6 +35,13 @@ Both adapters are `IN` / `INTERNAL` and plug into the PL1 `FlagService`, which k
 - **`unleash`** (reference): Unleash OSS through the Node SDK, with toggle state held in memory only. Once the SDK has gone `maxStalenessMs` without a successful poll, every evaluation throws `FlagProviderUnavailable`, so FlagService serves the snapshot instead. Non-boolean values come from strategy-variant payloads. `syncRegistry(defs)` creates every exact registry flag through the admin API (kill switches as `kill-switch`, off; default-on `fut.*` enabled), updates only the description and type afterwards, never flips an existing toggle, and is idempotent. `setValue` switches a boolean in the adapter's environment; call it through `FlagAdmin` so the change is governed and ledgered (PL1-D-11). Tokens come from SECRETS (`FLAGS_UNLEASH_API_TOKEN_REF`, `secrets/<env>/feature_flag/unleash/admin_token`).
 - **`config-db`** (alternative): the PL1 `PgFlagProvider` on `config.flag_value`; no targeting (capability `targeting: unsupported`).
 
+## SECRETS (`@infrabyx/connectors/secrets`)
+
+Both adapters are `IN` / `SECRET`; paths are `secrets/<env>/<port>/<adapter>/<key>` and an adapter with a `pathPrefix` refuses any path outside it (`IPB-PORT-003`). A missing secret is `IPB-PORT-001` with `meta.reason: not_found` (a configuration gap, never a breaker trip). Wrap either adapter in `CachedSecrets`: values stay in memory for `int.secrets.cache_seconds` (900); a failed refresh after expiry keeps serving the last value but reports `down` so the pod goes not-ready, and a value older than 24 h is never served.
+
+- **`aws-sm`** (reference): AWS Secrets Manager in ap-south-1 or ap-south-2 only; new secrets are created with the platform CMK (C-18); metadata as `ipb:*` tags; `rotate` keeps the previous version readable (overlap); `lease` emulated; `audit` reads CloudTrail `LookupEvents` for the secret's ARN. Credentials from workload identity (IRSA, OIDC); the AWS SDK is loaded only when the adapter is created.
+- **`vault`** (alternative): Vault or OpenBao KV v2 over HTTPS through the egress client; Kubernetes service-account login (or a token in dev and CI); `lease` issues dynamic database credentials for paths mapped in `dynamic`; `audit` unsupported.
+
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.

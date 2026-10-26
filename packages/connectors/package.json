@@ -20,6 +20,10 @@
     "./feature-flag": {
       "types": "./dist/feature-flag/index.d.ts",
       "default": "./dist/feature-flag/index.js"
+    },
+    "./secrets": {
+      "types": "./dist/secrets/index.d.ts",
+      "default": "./dist/secrets/index.js"
     }
   },
   "files": [
@@ -48,6 +52,9 @@
     "node": "24.22.1"
   },
   "dependencies": {
+    "@aws-sdk/client-cloudtrail": "3.1152.0",
+    "@aws-sdk/client-kms": "3.1152.0",
+    "@aws-sdk/client-secrets-manager": "3.1152.0",
     "@infrabyx/config": "workspace:*",
     "@infrabyx/contracts": "workspace:*",
     "@infrabyx/crypto": "workspace:*",
@@ -67,6 +74,8 @@
   },
   "devDependencies": {
     "@infrabyx/audit": "workspace:*",
-    "@infrabyx/testing": "workspace:*"
+    "@infrabyx/testing": "workspace:*",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1"
   }
 }
