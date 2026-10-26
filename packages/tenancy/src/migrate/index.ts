@@ -1,6 +1,7 @@
 // Migration runner (PL1-D-02 / D-04, IPB-01 §01.4.6, IPB-09-32): applies platform package
 // migrations in dependency order, then the product's own, records SHA-256 checksums in
 // meta.migration_checksums and refuses a released file that has changed.
+import { existsSync } from "node:fs";
 import { readFile, readdir } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";

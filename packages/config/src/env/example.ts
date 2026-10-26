@@ -27,15 +27,10 @@ export function generateEnvExample(schema: EnvSchema, opts: ExampleOptions = {})
     "# IPB-11 v1.0. Secrets (sens:S) MUST be secret:// references in staging/demo/pre-prod/prod/dr.",
     "############################################################",
   ];
-  let current = "";
-  for (const v of vars) {
-    const g = group(v);
-    if (g !== current) {
-      out.push("", `# ---------- ${g} ----------`);
-      current = g;
-    }
-    out.push(line(v));
-  }
+  const groups = new Map<string, EnvVarInfo[]>();
+  for (const v of vars) groups.set(group(v), [...(groups.get(group(v)) ?? []), v]);
+  for (const [g, members] of groups)
+    out.push("", `# ---------- ${g} ----------`, ...members.map(line));
   return `${out.join("\n")}\n`;
 }
 

@@ -140,7 +140,7 @@ const values = (s: Record<string, string | undefined>) =>
     .filter(([k, v]) => k !== "APP_ENV" && k !== "NODE_ENV" && !!v && v.length > 3)
     .map(([, v]) => v as string);
 
-describe("@IPB-11-AT-01 @IPB-11-14 production refuses seed profiles and unsafe values", () => {
+describe("@IPB-11-AT-01 @IPB-02-AT-07 @IPB-11-14 production refuses seed profiles and unsafe values", () => {
   it("SEED_PROFILE present in production → exit 78, names SEED_PROFILE, prints no value", async () => {
     const src = prodEnv({ SEED_PROFILE: "dev" });
     const r = await boot(src);

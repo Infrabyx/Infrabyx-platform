@@ -144,6 +144,8 @@ for (const p of readdirSync("packages")) {
   }
   if (!readdirSync(`${base}/src`, { recursive: true }).some((f) => String(f).endsWith(".test.ts")))
     fail(`${p}: no test file in src/`);
+  if (existsSync(`${base}/migrations`) && !existsSync(`${base}/migrations/checksums.json`))
+    fail(`${p}: migrations/checksums.json missing (IPB-09-32 checksum-immutable)`);
   if (!/IPB-\d\d/.test(read(`${base}/README.md`)))
     fail(`${p}: README must name the IPB file that specifies it`);
   // Vendor SDKs are dependencies of packages/connectors only (IPB-01 §01.4.2).

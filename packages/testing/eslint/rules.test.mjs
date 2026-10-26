@@ -48,7 +48,7 @@ describe("ipb/vendor-import (IPB-01-14)", () => {
   });
 });
 
-describe("ipb/schema-boundary (IPB-01-09)", () => {
+describe("@IPB-01-AT-05 ipb/schema-boundary (IPB-01-09)", () => {
   it("fails on cross-module schema imports", () => {
     tester.run("schema-boundary", ipb.rules["schema-boundary"], {
       valid: [
@@ -128,7 +128,7 @@ describe("ipb/no-process-env (IPB-01-19)", () => {
   });
 });
 
-describe("ipb/no-direct-crypto (IPB-12-05, @IPB-12-AT-03)", () => {
+describe("@IPB-12-AT-03 ipb/no-direct-crypto (IPB-12-05, @IPB-12-AT-03)", () => {
   it("allows cryptography only inside packages/crypto", () => {
     tester.run("no-direct-crypto", ipb.rules["no-direct-crypto"], {
       valid: [

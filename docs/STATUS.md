@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL1 — core kernel: implementation in progress** (`docs/phases/PL1-plan.md`, approved 2026-10-26)          |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                      |
-| Packages              | 22 scaffolded at 0.0.0, none published; 0.1.0 of the seven PL1 packages at the PL1 exit gate (PL1-D-02)     |
-| Last exit gate passed | PL0 (accepted by owner 2026-10-26)                                                                          |
-| Working branch        | `claude/funny-cori-6upyrr` (PR #7 merged; branch reused for PL1 because the session cannot delete branches) |
+| Item                  | Value                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Current phase         | **PL1 — core kernel: exit gate (PR open, awaiting CI and merge)** (`docs/phases/PL1-plan.md`, approved 2026-10-26) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                             |
+| Packages              | 22 scaffolded at 0.0.0, none published; 0.1.0 of the seven PL1 packages at the PL1 exit gate (PL1-D-02)            |
+| Last exit gate passed | PL0 (accepted by owner 2026-10-26)                                                                                 |
+| Working branch        | `claude/funny-cori-6upyrr` (PR #7 merged; branch reused for PL1 because the session cannot delete branches)        |
 
 ## Done
 
@@ -26,8 +26,11 @@ Updated: 2026-10-26
 
 - `@infrabyx/testing`: `startPostgres`, context builders, port fakes, NN suites run against the PL1 packages, port contract harness, `infrabyx-migration-lint` (every IPB-09 §09.4.6 rule, @IPB-09-AT-11/12, @IPB-01-AT-11), `infrabyx-at-report`, ESLint IPB plugin moved to `@infrabyx/testing/eslint` (PL1-D-02).
 
+- Exit gate: CI gains migration-lint, registry-check, dev-keys-check, env-example-check and an `integration` job (PostgreSQL 18 service: migrate, rls-lint, test:int, at-report). PL0 changeset narrowed to the seven PL1 packages so only they publish 0.1.0.
+
 ## Next
 
+- Merge the PL1 PR; `release.yml` updates the held "chore: version packages" PR to 0.1.0 of the seven packages; merge that to publish (PL1-D-02 / D-06). Then PL2 plan.
 - testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
 
 ## Owner decisions
