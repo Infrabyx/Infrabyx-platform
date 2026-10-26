@@ -52,9 +52,15 @@ export function platformSources(
     try {
       pkgJson = req.resolve(`${name}/package.json`);
     } catch {
-      if (name === "@infrabyx/tenancy")
-        pkgJson = join(dirname(fileURLToPath(import.meta.url)), "../../package.json");
-      else continue;
+      // Not installed from `fromDir` (e.g. the platform repository root): use the sibling package.
+      const sibling = join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../..",
+        name.split("/")[1] as string,
+        "package.json",
+      );
+      if (!existsSync(sibling)) continue;
+      pkgJson = sibling;
     }
     out.push({ name, dir: join(dirname(pkgJson), "migrations") });
   }
