@@ -26,6 +26,14 @@ export interface StoredObject {
   retainUntil?: string;
 }
 
+/** Options of `presign` (C-17, IPB-02-15). A PUT URL is bound to one bucket class and content type. */
+export interface PresignOptions {
+  /** Required for `put`; for `get` the adapter finds the object. */
+  bucketClass?: BucketClass;
+  /** Required for `put`: signed, so the upload must send exactly this content type. */
+  contentType?: string;
+}
+
 export interface StoragePort extends Port {
   put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void>;
   /** Write-once with a compliance-mode retention date (IPB-01-29). */
@@ -36,7 +44,13 @@ export interface StoragePort extends Port {
     meta: ObjectMeta,
   ): Promise<void>;
   get(key: string): Promise<StoredObject>;
-  presign(key: string, op: "get" | "put", ttlSeconds: number): Promise<string>;
+  /** SigV4 URL bound to the method (and for `put` the content type), TTL 1–300 s (IPB-02-15). */
+  presign(
+    key: string,
+    op: "get" | "put",
+    ttlSeconds: number,
+    opts?: PresignOptions,
+  ): Promise<string>;
   /** Soft delete (tombstone); refused with IPB-STOR-003 while retention applies. */
   delete(key: string): Promise<void>;
   list(prefix: string, cursor?: string): Promise<{ keys: string[]; cursor?: string }>;
