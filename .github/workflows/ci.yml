@@ -9,6 +9,8 @@ permissions:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
+  # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
+  LEFTHOOK: "0"
 jobs:
   verify:
     # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, secret-scan,
