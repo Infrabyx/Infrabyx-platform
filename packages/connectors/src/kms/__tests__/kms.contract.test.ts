@@ -108,11 +108,37 @@ const cases = (k: () => { symmetric: string; signing: string }, anchorTenant: st
     },
   },
   {
+    name: "data keys need the C-14 context; a wrong tenant or purpose fails closed (PL2-D-50)",
+    async run(p: KmsPort) {
+      await expect(p.generateDataKey(k().symmetric)).rejects.toMatchObject({
+        code: "IPB-PORT-003",
+      });
+      await expect(
+        p.generateDataKey(k().symmetric, new TextEncoder().encode('{"tenant_id":"tnt_k"}')),
+      ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+      const dk = await p.generateDataKey(
+        k().symmetric,
+        kmsContext({ tenant_id: "tnt_k", purpose: "field" }),
+      );
+      for (const bad of [
+        { tenant_id: "tnt_x", purpose: "field" },
+        { tenant_id: "tnt_k", purpose: "health" },
+      ] as const)
+        await expect(
+          p.decrypt(k().symmetric, dk.ciphertext, kmsContext(bad)),
+        ).rejects.toMatchObject({
+          code: "IPB-KMS-001",
+          meta: { reason: "integrity" },
+        });
+    },
+  },
+  {
     name: "PL1 field encryption round-trips through the adapter and binds the field location",
     async run(p: KmsPort) {
       const fc = new FieldCrypto({ kms: p, keyIdFor: () => k().symmetric });
       const at = { table: "cases.party", column: "pan", rowId: "pty_1" };
       const sealed = await fc.encryptField("tnt_k", "REGULATED", "ABCDE1234F", at);
+      expect(fc.formatVersion(sealed)).toBe(2);
       expect(await fc.decryptFieldText("tnt_k", sealed, at)).toBe("ABCDE1234F");
       await expect(
         fc.decryptFieldText("tnt_k", sealed, { ...at, rowId: "pty_2" }),

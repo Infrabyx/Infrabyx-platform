@@ -8,7 +8,14 @@ import type { AdapterDescriptor, DataKey, KmsPort, PortHealth } from "@infrabyx/
 import { toBase64Url, verifyRecord } from "@infrabyx/crypto";
 import { createEgress, type EgressResponse } from "../core/http.js";
 import type { VaultAuth } from "../secrets/vault.js";
-import { KMS_ALGORITHMS, checkSignAlg, decryptRefused, pemToDer } from "./common.js";
+import {
+  HEALTH_CONTEXT,
+  KMS_ALGORITHMS,
+  checkSignAlg,
+  decryptRefused,
+  pemToDer,
+  requireDataKeyContext,
+} from "./common.js";
 
 export interface VaultTransitOptions {
   address: string;
@@ -113,6 +120,7 @@ export class VaultTransit implements KmsPort {
   }
 
   async generateDataKey(keyId: string, aad?: Uint8Array): Promise<DataKey> {
+    requireDataKeyContext("vault-transit", aad);
     const r = await this.call<{ plaintext: string; ciphertext: string }>(
       "POST",
       `datakey/plaintext/${this.key(keyId)}`,
@@ -221,7 +229,7 @@ export class VaultTransit implements KmsPort {
     const t = Date.now();
     try {
       if (this.o.platformKeyId) {
-        const aad = new TextEncoder().encode('{"purpose":"health"}');
+        const aad = HEALTH_CONTEXT();
         const ct = await this.encrypt(
           this.o.platformKeyId,
           new TextEncoder().encode("ipb-kms-canary"),

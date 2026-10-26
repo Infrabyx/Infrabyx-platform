@@ -7,7 +7,9 @@ import { PortError } from "@infrabyx/contracts/errors";
 import type { AdapterDescriptor, DataKey, KmsPort, PortHealth } from "@infrabyx/contracts/ports";
 import { sha256 } from "@infrabyx/crypto";
 import {
+  HEALTH_CONTEXT,
   KMS_ALGORITHMS,
+  requireDataKeyContext,
   checkDeletionDays,
   checkSignAlg,
   decryptRefused,
@@ -99,6 +101,7 @@ export class AwsKms implements KmsPort {
   }
 
   async generateDataKey(keyId: string, aad?: Uint8Array): Promise<DataKey> {
+    requireDataKeyContext("aws-kms", aad);
     const ctx = toEncryptionContext(aad);
     const r = await this.client.send(
       new this.k.GenerateDataKeyCommand({
@@ -211,7 +214,7 @@ export class AwsKms implements KmsPort {
     try {
       if (this.o.platformKeyId) {
         const probe = new TextEncoder().encode("ipb-kms-canary");
-        const aad = new TextEncoder().encode('{"purpose":"health"}');
+        const aad = HEALTH_CONTEXT();
         const ct = await this.encrypt(this.o.platformKeyId, probe, aad);
         await this.decrypt(this.o.platformKeyId, ct, aad);
       } else await this.client.send(new this.k.ListKeysCommand({ Limit: 1 }));
