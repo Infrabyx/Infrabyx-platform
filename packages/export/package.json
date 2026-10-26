@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "<PRODUCT>-EXPORT-1.0 export map and golden-archive gate",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

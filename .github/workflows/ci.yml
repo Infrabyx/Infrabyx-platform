@@ -97,10 +97,11 @@ jobs:
       - name: env-example-check (IPB-11-03, @IPB-11-AT-06; seed schema fixture)
         run: pnpm env:example:check
       - name: changeset-required (IPB-09-20)
-        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
+        # The Changesets version PR consumes changesets and carries the generated body (PL1-D-21).
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset') && !(github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository)
         run: pnpm changeset status --since="origin/${{ github.base_ref }}"
       - name: pr-checklist (IPB-09-03/04)
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !(github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
           HEAD_REF: ${{ github.head_ref }}

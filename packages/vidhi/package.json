@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Vidhi AI kernel: skills, missions, schedules, autonomy L0–L4, locked list, MCP, notebooks",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

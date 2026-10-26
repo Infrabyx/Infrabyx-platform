@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Headless CMS: pages, blocks, blog, vlog, resources, redirects, SEO",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

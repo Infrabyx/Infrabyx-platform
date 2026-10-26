@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Shared React components, per-product design tokens, a11y primitives",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
