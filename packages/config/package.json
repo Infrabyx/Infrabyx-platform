@@ -28,10 +28,15 @@
       "types": "./dist/events.d.ts",
       "default": "./dist/events.js"
     },
+    "./routing": {
+      "types": "./dist/routing/index.d.ts",
+      "default": "./dist/routing/index.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
-    "infrabyx-env": "./dist/env/cli.js"
+    "infrabyx-env": "./dist/env/cli.js",
+    "infrabyx-routing": "./dist/routing/cli.js"
   },
   "files": [
     "dist",

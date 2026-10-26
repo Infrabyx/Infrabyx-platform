@@ -1,0 +1,69 @@
+# Reference app, local (IPB-01 §01.4.5; PL2 plan §5.1). Self-hosted engines in Compose; no secrets
+# beyond local container credentials, resolved from .env.local by @infrabyx/config.
+version: 1
+defaults:
+  circuit_breaker:
+    {
+      failure_threshold: 5,
+      error_rate_threshold: 0.5,
+      window_seconds: 60,
+      open_seconds: 30,
+      half_open_max_calls: 3,
+    }
+  timeout_ms: 8000
+  retries: 2
+  retry_backoff_ms: 400
+  recipient_delivery: { allow_global: false }
+ports:
+  SECRETS:
+    primary:
+      {
+        adapter: vault,
+        residency: IN,
+        max_data_class: SECRET,
+        secrets: secrets/local/secrets/vault,
+      }
+  KMS:
+    primary:
+      {
+        adapter: vault-transit,
+        residency: IN,
+        max_data_class: SECRET,
+        secrets: secrets/local/kms/vault-transit,
+      }
+  OBSERVABILITY:
+    primary: { adapter: otel, residency: IN, max_data_class: INTERNAL }
+  FEATURE_FLAG:
+    primary:
+      {
+        adapter: unleash,
+        residency: IN,
+        max_data_class: INTERNAL,
+        secrets: secrets/local/feature_flag/unleash,
+      }
+    secondary:
+      { adapter: config-db, residency: IN, max_data_class: INTERNAL, mode: active_failover }
+  IDENTITY:
+    primary:
+      {
+        adapter: keycloak,
+        residency: IN,
+        max_data_class: CONFIDENTIAL,
+        secrets: secrets/local/identity/keycloak,
+      }
+  AUTHZ:
+    primary: { adapter: cerbos, residency: IN, max_data_class: CONFIDENTIAL }
+  STORAGE:
+    primary:
+      {
+        adapter: minio,
+        residency: IN,
+        max_data_class: SECRET,
+        secrets: secrets/local/storage/minio,
+      }
+  QUEUE:
+    primary: { adapter: bullmq, residency: IN, max_data_class: INTERNAL }
+  WORKFLOW:
+    primary: { adapter: temporal, residency: IN, max_data_class: CONFIDENTIAL }
+  EMAIL:
+    primary: { adapter: smtp, residency: IN, max_data_class: INTERNAL, config: { host: mailpit } }

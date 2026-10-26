@@ -1,0 +1,17 @@
+{
+  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed.",
+  "adapters": {
+    "aws-sm": { "status": "unproven", "needs": "AWS sandbox account (D-01)" },
+    "aws-kms": { "status": "unproven", "needs": "AWS sandbox account (D-01)" },
+    "s3": { "status": "unproven", "needs": "AWS sandbox account (D-01)" },
+    "ses": { "status": "unproven", "needs": "AWS sandbox account (D-01)" },
+    "temporal-cloud": { "status": "unproven", "needs": "Temporal Cloud Mumbai namespace (D-06)" },
+    "brevo": { "status": "unproven", "needs": "Brevo account (D-08)" },
+    "msg91": { "status": "unproven", "needs": "MSG91 account and DLT registration (D-07)" },
+    "gupshup-sms": { "status": "unproven", "needs": "Gupshup Enterprise SMS account (D-07)" },
+    "gupshup": { "status": "unproven", "needs": "Gupshup WhatsApp sandbox app (D-07)" },
+    "meta-cloud": { "status": "unproven", "needs": "Meta developer app with test number (D-07)" },
+    "razorpay": { "status": "unproven", "needs": "Razorpay test mode keys (P-16)" },
+    "cashfree": { "status": "unproven", "needs": "Cashfree sandbox keys (P-16)" }
+  }
+}
