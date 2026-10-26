@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Current phase         | **PL2 session 5 of 8** (STORAGE, QUEUE, WORKFLOW) in its PR; sessions 1–4 (#13, #15, #17, #19), the working-mode PR (#16) and field-encryption v2 (#18) merged. Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                           |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)         |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                          |
-| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                         |
+| Item                  | Value                                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL2 sessions 1–5 done** (#13, #15, #17–#21); next is session 6 (EMAIL, SMS, WHATSAPP). Continuous build mode (PL2-D-41)                                                                |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
+| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                 |
 
 ## Done
 
@@ -26,40 +26,32 @@ Updated: 2026-10-26
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
 
-## Handover (2026-10-26, end of the session that built PL2 sessions 2 and 3)
+## Handover (2026-10-26, end of the session that built PL2 sessions 4 and 5)
 
-**Done.** PL2 sessions 1–3 are built:
+**Done.** PL2 sessions 1–5 are built and merged:
 
 - #13 (contracts, config, testing harness);
 - #15 (connectors core, OBSERVABILITY, FEATURE_FLAG);
 - #16 (working mode, threat model, CI budget);
-- #17 (crypto C-11/C-13/C-19, SECRETS, KMS).
+- #17 (crypto C-11/C-13/C-19, SECRETS, KMS) and #18 (field-encryption format v2, PL2-D-50);
+- #19 (IDENTITY keycloak and zitadel, AUTHZ cerbos and openfga, revocation migration `connectors/0002`);
+- #20 (STORAGE s3 and minio, QUEUE bullmq and pg-boss with migration `connectors/0003`, WORKFLOW temporal and temporal-cloud);
+- #21 (MinIO-server leg built from source at a pinned commit, PL2-D-61).
 
 Nothing from PL2 is published yet. Version PR #14 collects every changeset and is merged only at gate A (PL2-D-31).
 
-**Branch and PR state.**
+**Branch and PR state.** No PR is open. `claude/funny-cori-6upyrr` is re-cut from `main` (`2f29ec8`) for this handover; GitHub deletes it after each squash merge.
 
-- PR #17 (`claude/funny-cori-6upyrr`, head `b46ca93` before this handover commit) is open as a draft.
-- Its first CI run finished at 16:58 UTC. This session lost its GitHub tools before it could read the result and merge.
-- **First step next session:** read #17's checks on the current head. If every check is green, mark it ready and squash-merge under PL2-D-19; if any is red, fix and push.
-- A check-in is armed for 17:44 UTC (`trig_019rvFoGxK6x5H3osTVR3Bfr`).
-- After the merge: branch again from `main` as `claude/funny-cori-6upyrr`.
-
-**Next: PL2 session 4.** IDENTITY (`keycloak`, `zitadel`) and AUTHZ (`cerbos`, `openfga`); plan §6.5 and §6.6, plus C-11 and C-12.
-
-- **Verifier:** `verifyJwt` and `JwksCache` from `@infrabyx/crypto` are ready. Allow-lists per issuer: ES256 for both IdPs (C-12, spike row "Zitadel ES256").
-- **Images:** Cerbos 0.57.0 is pinned. Keycloak (quay.io), Zitadel (GHCR) and OpenFGA (Docker Hub) still need images:
-  - pin each by digest, at least 7 days old (PL2-D-32), and add it to `TEST_IMAGES` and `infra/docker/TEST_IMAGES.md`;
-  - GHCR and quay.io are unreachable from the build sandbox but work on GitHub runners (PL2-D-30). If a Keycloak or Zitadel leg cannot be run locally, run it in CI and say so in the PR.
-- **Contract cases:** plan §6.5 and §6.6, including @IPB-02-AT-02 (API half), @IPB-02-AT-11 (Cerbos policy leg), `IPB-SEC-005` no-disclosure, and PDP-down means deny.
+**Next: PL2 session 6.** EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); plan §6.10–6.12, C-13 webhook checks (already in `@infrabyx/crypto`), IPB-DEV-03/05, PR-007/008/013. No live sends: hermetic legs on stubs or moto (SES v2 send is in moto; LocalStack community lacks SES v2), sandbox legs off until the owner accounts exist. Then session 7 (PAYMENTS, locked list approved with conditions, plan §8), session 8 (exit gate and release), gate A.
 
 **Local environment notes.**
 
-- Docker Hub rate-limits anonymous pulls here. moto, LocalStack 4.12, OpenBao, Unleash and the Collector are cached locally.
-- `startPostgres` pulls `postgres:18` by tag. Locally, set `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres` (container `pgs2`).
-- Downloaded binaries (e.g. gitleaks) are blocked by the sandbox policy; CI runs the secret scan.
+- Start Docker with `nohup dockerd &`, then `docker start pgs2` (PostgreSQL 18 on 55433); use `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres`.
+- Cached images: Keycloak 26.8.1, Cerbos, OpenFGA, moto, LocalStack, OpenBao, Unleash, Collector, Redis, Valkey, Temporal, PostgreSQL. Docker Hub rate-limits anonymous pulls; GHCR (Zitadel) and quay.io are unreachable here, so the Zitadel leg runs only in CI.
+- MinIO: `scripts/ci/minio-server.sh` builds it locally too (Go 1.24.7 at `/usr/local/go`, about 2 minutes); set `RUNNER_TEMP`, `GITHUB_ENV` and `IPB_MINIO_CACHE` to scratch paths.
+- Commit subjects are at most 100 characters (commitlint); a refused commit leaves files staged, so check `git status` before the next commit. Force-pushes are refused by the session's permission policy.
 
-**Open questions.** None. OWNER-QUESTIONS #1 was answered on 26 Oct 2026: field-encryption format v2 (PL2-D-50) has its own PR before session 4.
+**Open questions.** None. OWNER-QUESTIONS #1–#4 are answered (PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61).
 
 ## Working mode (PL2-D-41)
 
@@ -67,7 +59,7 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 
 ## Next
 
-- PL2 session 6 (D-11 order): EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); no live sends.
+- PL2 session 6 (D-11 order): EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); no live sends. See the handover above.
 
 ## PL2 session 5 (2026-10-26)
 
@@ -154,6 +146,8 @@ Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repo
 | 2026-10 | main after #19 (ci 5, release 2)                            | 7                         | 318           |
 | 2026-10 | PR #20, 2 pushes (ci 6, port-contract 9 legs ~20), estimate | 52                        | 370           |
 | 2026-10 | main after #20 (ci 5, release 2)                            | 7                         | 377           |
+| 2026-10 | PR #21, 2 pushes (ci 6, port-contract 9 legs ~22), estimate | 56                        | 433           |
+| 2026-10 | main after #21 (ci 5, release 2)                            | 7                         | 440           |
 
 ## Owner decisions
 
