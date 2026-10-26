@@ -60,6 +60,12 @@ export const TEST_IMAGES = {
     version: "5.2.4",
     role: "AWS Secrets Manager, S3 lock checks, SES v2 send",
   },
+  openbao: {
+    image:
+      "openbao/openbao@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf",
+    version: "2.7.1",
+    role: "OpenBao KV v2, Transit and database engines (SECRETS, KMS)",
+  },
   otelcol: {
     image:
       "otel/opentelemetry-collector-contrib@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6",
