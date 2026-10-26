@@ -1,17 +1,17 @@
+# infrabyx-platform
 
-    # infrabyx-platform
+Shared platform packages for the Infrabyx product ecosystem (LawDocs, LawDocsComply, Equator Resolution, Finbyx, Udofin, Operations Hub), implementing the **Infrabyx Platform Baseline Standard (IPB) v1.0** as private npm packages under the `@infrabyx` scope on GitHub Packages.
 
-    Shared platform packages for the Infrabyx product ecosystem (LawDocs, LawDocsComply, Equator Resolution, Finbyx, Udofin, Operations Hub), implementing the **Infrabyx Platform Baseline Standard (IPB) v1.0** as private npm packages under the `@infrabyx` scope on GitHub Packages.
+- Spec of record: `docs/ipb/` (never edited here) and `docs/ecosystem/infrabyx-integration-spec-v1.2.md`.
+- Build plan: `docs/ipb/IPB-14_Platform_Build_Runbook.md` (phases PL0–PL6).
+- Runtime: Node.js 24.22.1 (`.nvmrc`), pnpm 9, Turborepo, Changesets, TypeScript strict.
 
-    - Spec of record: `docs/ipb/` (never edited here) and `docs/ecosystem/infrabyx-integration-spec-v1.2.md`.
-    - Build plan: `docs/ipb/IPB-14_Platform_Build_Runbook.md` (phases PL0–PL6).
-    - Runtime: Node.js 24.22.1 (`.nvmrc`), pnpm 9, Turborepo, Changesets, TypeScript strict.
+## Packages
 
-    ## Packages
+| Package               | Purpose                                             | Specified by   |
+| --------------------- | --------------------------------------------------- | -------------- |
+| `@infrabyx/contracts` | Port interfaces, Zod schemas, event-catalogue types | IPB-01, IPB-10 |
 
-    | Package | Purpose | Specified by |
-    |---|---|---|
-    | `@infrabyx/contracts` | Port interfaces, Zod schemas, event-catalogue types | IPB-01, IPB-10 |
 | `@infrabyx/config` | Settings registry, tiers, typed env schema loader (exit code 78 on failure) | IPB-07, IPB-11 |
 | `@infrabyx/tenancy` | Tenant/entity context, RLS helpers, RLS lint | IPB-02 |
 | `@infrabyx/audit` | Hash-chained audit ledger, correction entries, nightly anchor | IPB-02 |
@@ -34,21 +34,22 @@
 | `@infrabyx/seed` | Seed framework, profiles, SEED_CREDENTIALS loader, production refusal | IPB-11 |
 | `@infrabyx/testing` | Port contract tests, Testcontainers helpers, NN test harness | IPB-01, IPB-02 |
 
-    ## How products install the packages
+## How products install the packages
 
-    ```ini
-    # .npmrc in the product repository
-    @infrabyx:registry=https://npm.pkg.github.com
-    //npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
-    ```
-    `NODE_AUTH_TOKEN` comes from the product repository secret `NPM_READ_TOKEN` (read:packages). Then `pnpm add @infrabyx/tenancy@1.0.0` etc. Products pin exact versions; Renovate proposes bumps.
+```ini
+# .npmrc in the product repository
+@infrabyx:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
+```
 
-    ## How to run a build session (Claude Code)
+`NODE_AUTH_TOKEN` comes from the product repository secret `NPM_READ_TOKEN` (read:packages). Then `pnpm add @infrabyx/tenancy@1.0.0` etc. Products pin exact versions; Renovate proposes bumps.
 
-    1. Read `CLAUDE.md`, `docs/STATUS.md`, `docs/ipb/00_README.md`.
-    2. Start the next phase from IPB-14 §14.3: write `docs/phases/PLn-plan.md`, get owner approval, implement, pass the exit gate, publish.
-    3. End every session by updating `docs/STATUS.md`.
+## How to run a build session (Claude Code)
 
-    ## Layout
+1. Read `CLAUDE.md`, `docs/STATUS.md`, `docs/ipb/00_README.md`.
+2. Start the next phase from IPB-14 §14.3: write `docs/phases/PLn-plan.md`, get owner approval, implement, pass the exit gate, publish.
+3. End every session by updating `docs/STATUS.md`.
 
-    `packages/*` publishable packages · `apps/reference` integration app and product template · `infra/` Docker, Helm, Terraform (aws/azure/gcp) · `docs/` spec, status, decisions, phase plans · `.github/workflows` CI and release.
+## Layout
+
+`packages/*` publishable packages · `apps/reference` integration app and product template · `infra/` Docker, Helm, Terraform (aws/azure/gcp) · `docs/` spec, status, decisions, phase plans · `.github/workflows` CI and release.

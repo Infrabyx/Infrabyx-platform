@@ -1,7 +1,7 @@
-
 ## What and why
 
 ## IPB conformance checklist (IPB-09 PR template)
+
 - [ ] The change implements requirements by ID (list: `IPB-nn-xx`) and does not edit anything under `docs/ipb/` or `docs/ecosystem/`
 - [ ] Acceptance tests for those IDs added or updated (`@IPB-nn-AT-xx`)
 - [ ] No vendor SDK imported outside `packages/connectors/` (vendor-import lint)

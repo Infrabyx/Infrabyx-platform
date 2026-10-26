@@ -1,0 +1,86 @@
+# PL0 — Repository and toolchain
+
+**Phase:** PL0 (IPB-14 §14.3) · **Branch:** `claude/funny-cori-6upyrr` · **Date:** 2026-10-26
+**IPB files read:** 00_README, IPB-14 (§14.2–14.5), IPB-01 (§01.4.1 pins, §01.4.1.2 Renovate, §01.4.2 layout and rules, IPB-01-08/09/11/14/19), IPB-09 (§09.3.A/B/D, §09.4.1–09.4.3), IPB-02 (secrets, `no-process-env`).
+**Owner approval:** _pending_ (this file stops the session; nothing beyond "Done" is changed until approved).
+
+## 1. Scope
+
+PL0 delivers a repository whose scaffold passes CI end to end and whose toolchain is locked, so PL1 can start on package code. No runtime code is written; every package still exports only `PACKAGE_NAME`.
+
+## 2. Done in this session (first half of PL0)
+
+| Item                          | What was done                                                                                                                                                                                                                                                                                                         | IPB                                   |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Lockfile                      | `pnpm install` under Node 24.22.1 → `pnpm-lock.yaml` committed; CI uses `--frozen-lockfile` and `cache: pnpm` (kept, since the lockfile now exists)                                                                                                                                                                   | IPB-01-01, IPB-01-05                  |
+| `.npmrc`                      | added `auto-install-peers=true`, `node-linker=isolated` (table in §01.4.1.1); token stays `${NODE_AUTH_TOKEN}`                                                                                                                                                                                                        | IPB-01 §01.4.1.1                      |
+| Root `package.json`           | `engines.pnpm` `"9"`; dev dependencies pinned exactly (Renovate `:pinAllExceptPeerDependencies`); scripts `lint`, `format:check`, `typecheck`, `build`, `test`, `test:policy`, `ipb:check`                                                                                                                            | IPB-01                                |
+| Toolchain versions            | TypeScript 5.9.3, ESLint 10.13.0 + typescript-eslint 8.72, Vitest 4.1.12 + Vite 7.3.7, Prettier 3.9.10, Turborepo 2.11.10, Changesets 2.31.1, `@types/node` 24.x. ESLint 9 and Vitest 2 from the scaffold were replaced because npm marks ESLint 9 "no longer supported" (PL0-D-01)                                   | IPB-02 patch SLA                      |
+| Packages (22)                 | `tsconfig.json` (typecheck incl. tests, `types: ["node"]`) + `tsconfig.build.json` (emits `dist/`, excludes tests); `exports` map; test imports use `./index.js` (NodeNext ESM)                                                                                                                                       | IPB-14 §14.4 step 4                   |
+| ESLint flat config            | `eslint.config.mjs`: `@eslint/js` recommended + typescript-eslint recommended + IPB rules                                                                                                                                                                                                                             | IPB-09-07 `lint`                      |
+| IPB lint rules (placeholders) | `infra/policy/eslint/index.mjs`: `ipb/vendor-import` (vendor SDK list; allowed only under `packages/connectors/`), `ipb/schema-boundary` (cross-module/package `schema`/`drizzle` imports), `ipb/no-process-env` (allowed only under `packages/config/`); RuleTester tests (`pnpm test:policy`)                       | IPB-01-14, IPB-01-09/11, IPB-01-19    |
+| Prettier                      | `.prettierrc`, `.prettierignore` (spec dirs, lockfile, generated); `format:check` in CI                                                                                                                                                                                                                               | IPB-09-07 `lint`                      |
+| Vitest                        | per-package `vitest run --passWithNoTests`; policy tests at root                                                                                                                                                                                                                                                      | IPB-09-07 `unit`                      |
+| Turborepo                     | `inputs`/`outputs` per task, `globalPassThroughEnv` for `NODE_AUTH_TOKEN`                                                                                                                                                                                                                                             | IPB-01 §01.4.2                        |
+| `ipb:check`                   | pin-check (`.nvmrc`, `engines`, CI matrix, action SHA pins, Renovate node rule, Dockerfile `FROM` when present), `.npmrc` keys, required documents, per-package scaffold contract, vendor SDK dependencies outside `connectors`                                                                                       | IPB-01-01, IPB-01-14                  |
+| CI (`ci.yml`)                 | actions pinned to commit SHAs (checkout, pnpm/action-setup, setup-node v4.4.0); single-entry `matrix.node: ["24.22.1"]`; steps `pin-check`, `spec-readonly` (fails a PR that touches `docs/ipb` or `docs/ecosystem`), `lint`, Prettier, `typecheck`, `build`, `unit`, `policy-rules`, `ipb-check`, `changeset status` | IPB-01-01, IPB-09-07, CLAUDE.md       |
+| Release (`release.yml`)       | same pins; `changesets/action` v1.9.0 by SHA; `--frozen-lockfile`; publishes from `main` only                                                                                                                                                                                                                         | IPB-09, CLAUDE.md                     |
+| Renovate                      | full `renovate.json` with the binding §01.4.1.2 rules (node 24.x line, block 26, framework majors need ADR, security-patch fast-track) plus digest-pinned GitHub Actions, lockfile maintenance, grouped dev tooling                                                                                                   | IPB-01 §01.4.1.2, IPB-14 §14.4 step 7 |
+| Changesets                    | `privatePackages.version=false` (root is not a release unit); first changeset `.changeset/pl0-toolchain-baseline.md`: `patch` on all 22 packages; IPB-09 tags (audience/reg/notice class) in the body (PL0-D-02)                                                                                                      | IPB-09-20                             |
+| README                        | de-indented (the scaffold rendered as one code block)                                                                                                                                                                                                                                                                 | —                                     |
+
+Local verification (Node 24.22.1, pnpm 9.15.4): `pnpm lint`, `pnpm format:check`, `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm test:policy`, `pnpm ipb:check`, `pnpm changeset status --since=origin/main`, `pnpm install --frozen-lockfile` — all exit 0.
+
+## 3. Remaining PL0 work (needs the owner, or approval to proceed)
+
+### 3.1 Owner actions on GitHub (cannot be done from this session)
+
+| #   | Action                                                                                                                                                                                                                                                                                                                                                                                                                                                | Where                        | IPB                  |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | -------------------- |
+| O1  | Create team `infrabyx/platform-owners` and add yourself; CODEOWNERS already references it (`*`, `/packages/crypto/`, `/packages/tenancy/`, `/packages/audit/`, `/.github/`). Decide whether to also create the finer teams IPB-09 §09.4.1.4 names (`platform-reviewers`, `platform-arch`, `platform-infra`, `security`, `dpo`, `ai-core`) now or map them all to `platform-owners` until there is more than one maintainer (recommended for now).     | GitHub › org › Teams         | IPB-09-06            |
+| O2  | Ruleset on `main`: require PR; 1 CODEOWNER approval; dismiss stale approvals; signed commits; linear history (squash/rebase); block force-push and deletion; required check `ci / verify`; conversation resolution; no bypass actors. Branch-name pattern per IPB-09-02 (`feat/*`, `fix/*`, `hotfix/*`, `release/*`, `chore/*`, `docs/*`, `cc/*`); add `claude/*` only if you want Claude sessions to keep using that prefix (CLAUDE.md allows both). | Settings › Rules › Rulesets  | IPB-09-01, IPB-09-02 |
+| O3  | Secrets: `NPM_PUBLISH_TOKEN` (write:packages, read:packages, repo) in this repo; `NPM_READ_TOKEN` in product repos. CI falls back to `GITHUB_TOKEN` for reads.                                                                                                                                                                                                                                                                                        | Settings › Secrets › Actions | IPB-14 §14.4 step 2  |
+| O4  | Enable Renovate (GitHub App) on the repository; it will open a Dependency Dashboard and action-digest PRs.                                                                                                                                                                                                                                                                                                                                            | GitHub Apps                  | IPB-01-04            |
+| O5  | GitHub Environments: create `dev`, `test`, `preview`, `staging`, `pre-prod`, `demo`, `prod`, `dr` (`local` is Compose only). Protection rules: `prod`, `pre-prod`, `dr` require reviewers (you) and restrict to `main`/`release/*`; `staging` requires QA sign-off reviewer; the rest unprotected. Only the names are needed in PL0; deploy jobs arrive in PL6.                                                                                       | Settings › Environments      | IPB-09-15, §09.4.3   |
+| O6  | Package visibility: after the first publish, set each `@infrabyx/*` package's access to the organisation's repositories (so product repos can install with a read token).                                                                                                                                                                                                                                                                             | Org › Packages               | IPB-14 §14.4         |
+| O7  | Confirm whether merging the "chore: version packages" PR that `release.yml` will open after this PR merges is wanted now (publishes 22 scaffold packages at `0.0.1`) or should wait for PL1 (`0.1.0`). Recommendation: leave it open until PL1.                                                                                                                                                                                                       | —                            | IPB-14 §14.3         |
+
+### 3.2 Repository work I propose to do next (on approval)
+
+| #   | Item                                                                                                                                                                   | Why                                                              | IPB                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------- |
+| R1  | `infra/policy/github/rulesets.json`: export of O2 as the policy file; `ipb:check` compares the live ruleset export against it later                                    | ruleset drift detection                                          | IPB-09-01                       |
+| R2  | `commitlint` (conventional commits, scope = package) and `changeset-required` as CI steps; `pr-checklist` action that fails on unchecked mandatory checklist items     | three of the IPB-09-07 required checks that need no runtime code | IPB-09-03, IPB-09-19, IPB-09-20 |
+| R3  | `secret-scan` (gitleaks) and `licence` (allow-list) CI jobs                                                                                                            | required checks that run on any repo                             | IPB-09-07, IPB-02               |
+| R4  | `.github/PULL_REQUEST_TEMPLATE.md` aligned to IPB-09 §09.4.1.3 (Summary / Plan / full mandatory checklist / Tests / Rollback) — the current template is the short form | binding content                                                  | IPB-09-03                       |
+| R5  | `docs/platform-requests.md` (empty table) so the spec-change path named in CLAUDE.md exists                                                                            | CLAUDE.md                                                        | —                               |
+| R6  | `infra/docker/BASE_IMAGES.md` with the `node:24.22.1-bookworm-slim` digest, ready for the first Dockerfile in PL6                                                      | pin location 4 of 5                                              | IPB-01-01                       |
+| R7  | `docs/adr/` with `ADR-0000-template.md` and `ADR-0001-toolchain-majors.md` recording PL0-D-01                                                                          | ADR process named in IPB-01-05                                   | IPB-01-05                       |
+| R8  | `.github/dependabot.yml` is intentionally **not** added (Renovate is the single updater) — confirm                                                                     | avoid duplicate PRs                                              | —                               |
+
+### 3.3 PL0 exit gate checklist
+
+- [x] `pnpm install --frozen-lockfile` on Node 24.22.1
+- [x] `lint` (ESLint + Prettier + IPB rules), `typecheck`, `build`, `unit`, `policy-rules`, `ipb-check` green locally
+- [ ] Same checks green in GitHub Actions on the PR for this branch
+- [ ] Ruleset on `main` with `ci / verify` required (O2)
+- [ ] `infrabyx/platform-owners` team exists and CODEOWNERS resolves (O1)
+- [ ] Secrets present; `release.yml` runs on `main` without error (O3)
+- [ ] Renovate enabled and its onboarding/dashboard PR merged (O4)
+- [ ] Environments created (O5)
+- [ ] R1–R7 merged (if approved)
+- [ ] `docs/STATUS.md` updated to "PL0 complete; next PL1"
+
+## 4. Decisions logged (see `docs/DECISIONS.md`)
+
+- PL0-D-01 toolchain majors (ESLint 10, Vitest 4, Vite 7, TS 5.9; TS 7 / Changesets 3 deferred).
+- PL0-D-02 Changeset IPB tags carried in the changeset body, not the YAML front matter.
+- PL0-D-03 IPB lint rules implemented as a local ESLint plugin under `infra/policy/eslint` (placeholder detection).
+- PL0-D-04 Root workspace package excluded from Changesets versioning.
+- PL0-D-05 CI step `spec-readonly` enforces the CLAUDE.md "never edit docs/ipb or docs/ecosystem" rule.
+
+## 5. Risks / notes
+
+- The `vendor-import` SDK list and `schema-boundary` path heuristics are placeholders; PL1 (module manifests) and PL2 (port catalogue) replace them with manifest-driven detection. False negatives are possible until then; false positives would surface in CI and must be fixed in the rule, never by `eslint-disable` (IPB-09 §09.4.12).
+- `cache: pnpm` in `setup-node` requires the lockfile at the repository root — now present. If the lockfile is ever removed, CI fails at the cache step.
+- Node 24.22.1 was downloaded from nodejs.org for local verification; the container default was Node 22, so `engine-strict` would otherwise have refused the install.

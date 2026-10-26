@@ -1,0 +1,10 @@
+# Spec of record — never edited here (CLAUDE.md)
+docs/ipb/
+docs/ecosystem/
+# Generated
+pnpm-lock.yaml
+node_modules/
+dist/
+.turbo/
+coverage/
+CHANGELOG.md
