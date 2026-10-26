@@ -36,7 +36,7 @@ describe("@IPB-01-20 provider_routing schema", () => {
   });
 
   it("refuses literal secrets and secrets for another environment", () => {
-    const p = { ...payments, primary: { ...payments.primary, secrets: "rzp_test_abc123" } };
+    const p = { ...payments, primary: { ...payments.primary, secrets: "not-a-secrets-path" } };
     expect(fail({ version: 1, ports: { PAYMENTS: p } })).toMatch(/SECRETS path/);
     expect(fail({ version: 1, ports: { PAYMENTS: payments } }, "staging")).toMatch(/env "dev"/);
   });
