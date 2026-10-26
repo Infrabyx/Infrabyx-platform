@@ -70,6 +70,7 @@ beforeAll(async () => {
       ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z",
       ZITADEL_FIRSTINSTANCE_PATPATH: "/pat/admin.pat",
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false",
+      ZITADEL_DEFAULTINSTANCE_FEATURES_WEBKEY: "true",
     },
     command: ["start-from-init", "--masterkey", toHex(randomBytes(16)), "--tlsMode", "disabled"],
     // The image has no shell, so readiness is probed over HTTP from the host.

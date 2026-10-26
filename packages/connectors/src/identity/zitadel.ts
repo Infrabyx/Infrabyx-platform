@@ -546,29 +546,59 @@ export class ZitadelIdentity implements IdentityPort {
     serviceUserId: string;
   }> {
     const base = o.baseUrl.replace(/\/$/, "");
-    const egress = zitadelEgress(base, o.allowLoopbackHttp);
+    // Bootstrap only: keep the body of a 5xx so a failed setup says why (egress hides it).
+    let lastError = "";
+    const egress = zitadelEgress(base, o.allowLoopbackHttp, async (input, init) => {
+      const r = await fetch(input, init);
+      if (r.status >= 500)
+        lastError = (
+          await r
+            .clone()
+            .text()
+            .catch(() => "")
+        ).slice(0, 300);
+      return r;
+    });
     const call = async <T>(
       method: string,
       path: string,
       body?: unknown,
       ok404 = false,
     ): Promise<T | null> => {
-      const r: EgressResponse = await egress(`${base}${path}`, {
-        method,
-        headers: { authorization: `Bearer ${o.pat}`, "content-type": "application/json" },
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      });
-      if (ok404 && (r.status === 404 || r.status === 501)) return null;
-      if (r.status >= 300)
-        throw new PortError("IPB-PORT-002", "IDENTITY", {
-          adapter: "zitadel",
-          detail: `${method} ${path} answered ${r.status}: ${r.text().slice(0, 300)}`,
-        });
-      return (r.body.byteLength ? r.json<T>() : {}) as T;
+      // A fresh instance answers 503 for a short while after it reports ready.
+      for (let attempt = 0; ; attempt++) {
+        let r: EgressResponse;
+        try {
+          r = await egress(`${base}${path}`, {
+            method,
+            headers: { authorization: `Bearer ${o.pat}`, "content-type": "application/json" },
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          });
+        } catch (e) {
+          const status = (e as PortError).meta?.vendorStatus;
+          if (status === 503 && attempt < 20) {
+            await new Promise((res) => setTimeout(res, 1500));
+            continue;
+          }
+          throw new PortError("IPB-PORT-002", "IDENTITY", {
+            adapter: "zitadel",
+            detail: `${method} ${path} failed: ${(e as Error).message} ${lastError}`,
+          });
+        }
+        if (ok404 && (r.status === 404 || r.status === 501)) return null;
+        if (r.status >= 300)
+          throw new PortError("IPB-PORT-002", "IDENTITY", {
+            adapter: "zitadel",
+            detail: `${method} ${path} answered ${r.status}: ${r.text().slice(0, 300)}`,
+          });
+        return (r.body.byteLength ? r.json<T>() : {}) as T;
+      }
     };
     const s = ZITADEL_IPB_SETTINGS[o.profile];
 
-    // ES256 signing (C-12): create and activate a P-256 web key.
+    // ES256 signing (C-12): web keys on (a no-op where they are always on), then create and
+    // activate a P-256 key.
+    await call("PUT", "/v2/features/instance", { webKey: true }, true).catch(() => null);
     let key = await call<{ id: string }>(
       "POST",
       "/v2/web_keys",
@@ -683,12 +713,17 @@ export class ZitadelIdentity implements IdentityPort {
   }
 }
 
-function zitadelEgress(base: string, allowLoopbackHttp?: boolean): Egress {
+function zitadelEgress(
+  base: string,
+  allowLoopbackHttp?: boolean,
+  fetchImpl?: typeof fetch,
+): Egress {
   return createEgress({
     port: "IDENTITY",
     adapter: "zitadel",
     allow: [new URL(base).hostname],
     ...(allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
+    ...(fetchImpl ? { fetchImpl } : {}),
   });
 }
 
