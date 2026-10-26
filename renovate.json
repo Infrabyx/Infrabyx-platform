@@ -14,6 +14,7 @@
     "schedule": ["before 4am on monday"]
   },
   "rangeStrategy": "pin",
+  "minimumReleaseAge": "3 days",
   "postUpdateOptions": ["pnpmDedupe"],
   "labels": ["dependencies"],
   "osvVulnerabilityAlerts": true,
@@ -63,12 +64,11 @@
       "enabled": false
     },
     {
-      "description": "Patch fast-track (IPB-01 §01.4.1.2, IPB-02 patch SLA); excludes the runtime and package manager (owner decision 2026-10-26)",
+      "description": "Patch fast-track (IPB-01 §01.4.1.2, IPB-02 patch SLA); automerges only after CI passes (IPB-02-36); excludes the runtime and package manager (owner decision 2026-10-26)",
       "matchUpdateTypes": ["patch"],
       "automerge": true,
       "automergeType": "pr",
-      "matchPackageNames": ["!node", "!pnpm"],
-      "ignoreTests": true
+      "matchPackageNames": ["!node", "!pnpm"]
     },
     {
       "description": "Group non-major dev tooling",
