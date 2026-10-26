@@ -1,5 +1,5 @@
-
 name: release
+# Publishes @infrabyx/* to GitHub Packages from main only (IPB-09, CLAUDE.md).
 on:
   push:
     branches: [main]
@@ -8,29 +8,34 @@ permissions:
   packages: write
   pull-requests: write
 concurrency: release-${{ github.ref }}
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
           registry-url: https://npm.pkg.github.com
-          scope: '@infrabyx'
-      - run: pnpm install --frozen-lockfile || pnpm install
-        env: { NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }} }
-      - run: pnpm build
+          scope: "@infrabyx"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+      - name: Build
+        run: pnpm build
       - name: Version and publish (Changesets)
-        uses: changesets/action@v1
+        uses: changesets/action@3841a0683d3cfa6dae0f9bb335290003010fe3f0 # v1.9.0
         with:
           publish: pnpm release
-          title: 'chore: version packages'
-          commit: 'chore: version packages'
+          title: "chore: version packages"
+          commit: "chore: version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}

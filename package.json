@@ -4,27 +4,41 @@
   "version": "0.0.0",
   "description": "Infrabyx shared platform packages implementing the Infrabyx Platform Baseline Standard (IPB) v1.0",
   "license": "UNLICENSED",
+  "type": "module",
   "engines": {
     "node": "24.22.1",
-    "pnpm": ">=9"
+    "pnpm": "9"
   },
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "lint": "turbo run lint",
+    "test:policy": "vitest run --dir infra/policy",
+    "lint": "turbo run lint && eslint scripts infra/policy eslint.config.mjs",
     "typecheck": "turbo run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "ipb:check": "node scripts/ipb-check.mjs"
+    "ipb:check": "node scripts/ipb-check.mjs",
+    "commitlint": "commitlint",
+    "licence:check": "node scripts/licence-check.mjs",
+    "pr:checklist": "node scripts/pr-checklist.mjs"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.27.0",
-    "turbo": "^2.3.0",
-    "typescript": "^5.6.0",
-    "vitest": "^2.1.0",
-    "eslint": "^9.14.0",
-    "@types/node": "^24.0.0"
+    "@changesets/cli": "2.31.1",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.19.2",
+    "eslint": "10.13.0",
+    "globals": "16.5.0",
+    "prettier": "3.9.10",
+    "turbo": "2.11.10",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.0",
+    "vite": "7.3.7",
+    "vitest": "4.1.12"
   }
 }

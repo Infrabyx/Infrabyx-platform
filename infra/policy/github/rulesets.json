@@ -1,0 +1,104 @@
+{
+  "$comment": "IPB-09 §09.4.1.4 target rulesets for Infrabyx/Infrabyx-platform. Policy file of record; the live GitHub ruleset is reconciled against it (nightly job, PL6). Deferred until the organisation is on GitHub Team (PL0-D-07): rulesets with required reviews and status checks are not enforceable on private repositories under the Free plan.",
+  "rulesets": [
+    {
+      "name": "main",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [],
+      "conditions": { "ref_name": { "include": ["refs/heads/main"], "exclude": [] } },
+      "rules": [
+        { "type": "deletion" },
+        { "type": "non_fast_forward" },
+        { "type": "required_linear_history" },
+        { "type": "required_signatures" },
+        {
+          "type": "pull_request",
+          "parameters": {
+            "required_approving_review_count": 1,
+            "dismiss_stale_reviews_on_push": true,
+            "require_code_owner_review": true,
+            "require_last_push_approval": false,
+            "required_review_thread_resolution": true,
+            "allowed_merge_methods": ["squash", "rebase"]
+          }
+        },
+        {
+          "type": "required_status_checks",
+          "parameters": {
+            "strict_required_status_checks_policy": true,
+            "do_not_enforce_on_create": false,
+            "required_status_checks": [{ "context": "verify (24.22.1)" }]
+          },
+          "$comment": "IPB-09-07 names ~20 checks; each is added to this list as its job lands (PL1 rls-lint/migration-lint, PL2 contract, PL5 e2e/a11y/lighthouse, PL6 sbom/zap/export-map-gate/golden-archive-diff)."
+        },
+        {
+          "type": "merge_queue",
+          "parameters": {
+            "merge_method": "SQUASH",
+            "max_entries_to_build": 5,
+            "min_entries_to_merge": 1,
+            "max_entries_to_merge": 5,
+            "min_entries_to_merge_wait_minutes": 5,
+            "grouping_strategy": "ALLGREEN",
+            "check_response_timeout_minutes": 60
+          }
+        }
+      ]
+    },
+    {
+      "name": "release-branches",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [],
+      "conditions": { "ref_name": { "include": ["refs/heads/release/*"], "exclude": [] } },
+      "rules": [
+        {
+          "type": "creation",
+          "$comment": "creation restricted to the release job identity (bypass actor added when the release job app exists)"
+        },
+        { "type": "deletion" },
+        { "type": "non_fast_forward" },
+        { "type": "required_linear_history" },
+        { "type": "required_signatures" },
+        {
+          "type": "pull_request",
+          "parameters": {
+            "required_approving_review_count": 1,
+            "dismiss_stale_reviews_on_push": true,
+            "require_code_owner_review": true,
+            "require_last_push_approval": false,
+            "required_review_thread_resolution": true,
+            "allowed_merge_methods": ["squash", "rebase"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "release-tags",
+      "target": "tag",
+      "enforcement": "active",
+      "bypass_actors": [],
+      "conditions": { "ref_name": { "include": ["refs/tags/v*"], "exclude": [] } },
+      "rules": [{ "type": "creation" }, { "type": "update" }, { "type": "deletion" }]
+    },
+    {
+      "name": "branch-naming",
+      "target": "branch",
+      "enforcement": "active",
+      "bypass_actors": [],
+      "conditions": { "ref_name": { "include": ["~ALL"], "exclude": ["refs/heads/main"] } },
+      "rules": [
+        {
+          "type": "branch_name_pattern",
+          "parameters": {
+            "operator": "regex",
+            "pattern": "^(feat|fix|hotfix)/[A-Za-z0-9._-]+-[a-z0-9-]+$|^release/[0-9]+\\.[0-9]+$|^(chore|docs)/[a-z0-9-]+$|^cc/[a-z0-9]+-[a-z0-9-]+$|^claude/[a-z0-9-]+$|^changeset-release/main$|^renovate/[A-Za-z0-9._/-]+$",
+            "negate": false,
+            "name": "IPB-09-02 branch names (+ claude/*, changeset-release/main, renovate/* for tooling)"
+          }
+        }
+      ]
+    }
+  ]
+}

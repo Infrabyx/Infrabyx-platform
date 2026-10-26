@@ -1,21 +1,87 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "IPB-01 §01.4.1.2 binding rules plus platform conventions (IPB-14 §14.4 step 7).",
   "extends": [
-    "config:recommended"
+    "config:recommended",
+    ":pinAllExceptPeerDependencies",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
   ],
+  "timezone": "Asia/Kolkata",
+  "schedule": ["before 6am on monday"],
+  "lockFileMaintenance": { "enabled": true, "schedule": ["before 4am on monday"] },
   "rangeStrategy": "pin",
+  "postUpdateOptions": ["pnpmDedupe"],
+  "labels": ["dependencies"],
+  "osvVulnerabilityAlerts": true,
+  "vulnerabilityAlerts": { "enabled": true, "labels": ["security"] },
   "packageRules": [
     {
-      "matchPackageNames": [
-        "node"
-      ],
-      "allowedVersions": "24.22.1"
+      "description": "Node runtime: stay on 24.x security line, exact pin (IPB-01-01, IPB-D-01)",
+      "matchDatasources": ["node-version", "docker"],
+      "matchPackageNames": ["node"],
+      "allowedVersions": "/^24\\.22\\.\\d+$|^24\\.(2[3-9]|[3-9]\\d)\\.\\d+$/",
+      "rangeStrategy": "pin",
+      "pinDigests": true,
+      "labels": ["runtime", "security"],
+      "automerge": false
     },
     {
-      "matchDepTypes": [
-        "engines"
-      ],
+      "description": "Block Node 26 until a dated ADR (IPB-D-01)",
+      "matchPackageNames": ["node"],
+      "matchCurrentVersion": "/^24/",
+      "allowedVersions": "<26.0.0"
+    },
+    {
+      "description": "engines are pinned by hand through the ADR process, never by Renovate",
+      "matchDepTypes": ["engines"],
       "enabled": false
+    },
+    {
+      "description": "Framework majors need an ADR (IPB-01-05)",
+      "matchPackageNames": [
+        "next",
+        "@nestjs/core",
+        "@nestjs/common",
+        "expo",
+        "drizzle-orm",
+        "drizzle-kit",
+        "react",
+        "react-dom",
+        "typescript",
+        "pnpm",
+        "turbo",
+        "eslint",
+        "vitest"
+      ],
+      "matchUpdateTypes": ["major"],
+      "enabled": false
+    },
+    {
+      "description": "Security patches fast-track (IPB-01-04, IPB-02 patch SLA)",
+      "matchUpdateTypes": ["patch"],
+      "vulnerabilityAlerts": { "enabled": true },
+      "automerge": true,
+      "automergeType": "pr",
+      "requiredStatusChecks": null
+    },
+    {
+      "description": "Group non-major dev tooling",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "dev tooling (non-major)"
+    },
+    {
+      "description": "GitHub Actions: digest pins, weekly",
+      "matchManagers": ["github-actions"],
+      "groupName": "github actions",
+      "pinDigests": true
+    },
+    {
+      "description": "Vendor SDKs live only in packages/connectors; review each one (IPB-01-14)",
+      "matchFileNames": ["packages/connectors/**"],
+      "labels": ["dependencies", "connectors"],
+      "automerge": false
     }
   ]
 }

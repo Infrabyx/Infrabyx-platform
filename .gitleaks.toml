@@ -1,0 +1,12 @@
+# secret-scan (IPB-09-07, IPB-02). Default gitleaks rules plus repository allow-list.
+title = "infrabyx-platform"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Spec of record: example payloads in the IPB and Ecosystem spec contain placeholder tokens (e.g. tokenised PAN examples). These files are read-only here and contain no live credentials."
+paths = [
+  '''^docs/ipb/.*''',
+  '''^docs/ecosystem/.*''',
+]

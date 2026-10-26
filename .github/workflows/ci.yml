@@ -1,4 +1,3 @@
-
 name: ci
 on:
   pull_request:
@@ -7,30 +6,90 @@ on:
 permissions:
   contents: read
   packages: read
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
 jobs:
   verify:
+    # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, secret-scan,
+    # spec-readonly, lint (ESLint + Prettier + IPB rules vendor-import / schema-boundary /
+    # no-process-env), typecheck, build, unit, policy-rules, licence, ipb-check, commitlint,
+    # changeset-required, pr-checklist.
+    # Still to add: contract, e2e, a11y, rls-lint, migration-lint, sbom, semgrep, zap-baseline,
+    # bundle-budget, lighthouse, export-map-gate, golden-archive-diff, change-class.
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Single entry on purpose (IPB-01-01); a second entry only during an ADR-approved window.
+        node: ["24.22.1"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        # version comes from package.json#packageManager
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: pnpm
           registry-url: https://npm.pkg.github.com
-          scope: '@infrabyx'
-      - run: pnpm install --frozen-lockfile || pnpm install
-        env: { NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }} }
-      - name: Node version pin (IPB-D-01)
+          scope: "@infrabyx"
+      - name: pin-check (IPB-01-01, IPB-D-01)
         run: |
-          test "$(cat .nvmrc)" = "24.22.1"
-          node -v | grep -q "v24.22.1"
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm build
-      - run: pnpm test
-      - name: IPB structural checks
+          test "$(cat .nvmrc)" = "${{ matrix.node }}"
+          node -v | grep -qx "v${{ matrix.node }}"
+      - name: secret-scan (gitleaks)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          curl -sSL -o /tmp/gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tgz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          if [ -n "$BASE_REF" ]; then
+            /tmp/gitleaks git --redact --no-banner --exit-code 1 --log-opts="origin/${BASE_REF}..HEAD" .
+          else
+            /tmp/gitleaks git --redact --no-banner --exit-code 1 .
+          fi
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: spec-readonly (docs/ipb and docs/ecosystem are never edited here)
+        if: github.event_name == 'pull_request'
+        run: |
+          changed="$(git diff --name-only "origin/${{ github.base_ref }}...HEAD" -- docs/ipb docs/ecosystem)"
+          if [ -n "$changed" ]; then
+            echo "::error::Spec of record modified in this PR (write a request to docs/platform-requests.md instead):"
+            echo "$changed"
+            exit 1
+          fi
+      - name: commitlint (IPB-09-19)
+        if: github.event_name == 'pull_request'
+        run: pnpm commitlint --from "origin/${{ github.base_ref }}" --to HEAD --verbose
+      - name: lint (ESLint + IPB rules)
+        run: pnpm lint
+      - name: lint (Prettier)
+        run: pnpm format:check
+      - name: typecheck
+        run: pnpm typecheck
+      - name: build
+        run: pnpm build
+      - name: unit
+        run: pnpm test
+      - name: policy-rules (vendor-import, schema-boundary, no-process-env rule tests)
+        run: pnpm test:policy
+      - name: licence (allow-list)
+        run: pnpm licence:check
+      - name: ipb-check (structural checks)
         run: pnpm ipb:check
-  # IPB-09 required checks added as packages land: contract tests, axe, RLS lint,
-  # migration lint, SBOM (CycloneDX), Semgrep, ZAP, licence, bundle budget, Lighthouse.
+      - name: changeset-required (IPB-09-20)
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
+        run: pnpm changeset status --since="origin/${{ github.base_ref }}"
+      - name: pr-checklist (IPB-09-03/04)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: pnpm pr:checklist
