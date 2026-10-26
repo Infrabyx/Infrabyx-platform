@@ -4,7 +4,7 @@ Shared platform packages for the Infrabyx product ecosystem (LawDocs, LawDocsCom
 
 - Spec of record: `docs/ipb/` (never edited here) and `docs/ecosystem/infrabyx-integration-spec-v1.2.md`.
 - Build plan: `docs/ipb/IPB-14_Platform_Build_Runbook.md` (phases PL0–PL6).
-- Runtime: Node.js 24.22.1 (`.nvmrc`), pnpm 9, Turborepo, Changesets, TypeScript strict.
+- Runtime: Node.js 24.22.1 (`.nvmrc`), pnpm 10 (ADR-0002, IPB-DEV-02), Turborepo, Changesets, TypeScript strict.
 
 ## Packages
 
@@ -37,12 +37,11 @@ Shared platform packages for the Infrabyx product ecosystem (LawDocs, LawDocsCom
 ## How products install the packages
 
 ```ini
-# .npmrc in the product repository
+# .npmrc in the product repository (committed; no credentials)
 @infrabyx:registry=https://npm.pkg.github.com
-//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}
 ```
 
-`NODE_AUTH_TOKEN` comes from the product repository secret `NPM_READ_TOKEN` (read:packages). Then `pnpm add @infrabyx/tenancy@1.0.0` etc. Products pin exact versions; Renovate proposes bumps.
+Credentials never go in the committed `.npmrc`: pnpm 10 does not expand `${NODE_AUTH_TOKEN}` there (ADR-0002). In CI, `actions/setup-node` with `registry-url: https://npm.pkg.github.com`, `scope: '@infrabyx'` and `NODE_AUTH_TOKEN` from the product secret `NPM_READ_TOKEN` (read:packages) writes a user-level `.npmrc`. On a developer machine run `pnpm config set "//npm.pkg.github.com/:_authToken" <token>` once. Then `pnpm add @infrabyx/tenancy@1.0.0` etc. Products pin exact versions; Renovate proposes bumps.
 
 ## How to run a build session (Claude Code)
 

@@ -16,9 +16,12 @@ if (read(".nvmrc").trim() !== NODE_PIN) fail(`.nvmrc must be ${NODE_PIN} (IPB-D-
 const root = json("package.json");
 if (root.engines?.node !== NODE_PIN)
   fail(`package.json engines.node must be exactly "${NODE_PIN}"`);
-if (root.engines?.pnpm !== "9") fail(`package.json engines.pnpm must be "9" (IPB-01 §01.4.1.1)`);
-if (!/^pnpm@9\./.test(root.packageManager ?? ""))
-  fail(`package.json packageManager must be pnpm@9.x`);
+// pnpm major per ADR-0002 / IPB-DEV-02 (IPB-01-05 names pnpm 9; deviation recorded in docs/DECISIONS.md).
+const PNPM_MAJOR = "10";
+if (root.engines?.pnpm !== PNPM_MAJOR)
+  fail(`package.json engines.pnpm must be "${PNPM_MAJOR}" (ADR-0002, IPB-DEV-02)`);
+if (!new RegExp(`^pnpm@${PNPM_MAJOR}\\.\\d+\\.\\d+$`).test(root.packageManager ?? ""))
+  fail(`package.json packageManager must pin an exact pnpm@${PNPM_MAJOR}.x.y (ADR-0002)`);
 const ci = read(".github/workflows/ci.yml");
 if (!ci.includes(`node: ["${NODE_PIN}"]`) && !ci.includes(`node: ['${NODE_PIN}']`)) {
   fail(`ci.yml must have a single-entry matrix node: ["${NODE_PIN}"] (IPB-01-01)`);
@@ -66,8 +69,8 @@ const npmrc = read(".npmrc");
 for (const k of ["engine-strict=true", "auto-install-peers=true", "node-linker=isolated"]) {
   if (!npmrc.includes(k)) fail(`.npmrc must contain ${k}`);
 }
-if (/_authToken=(?!\$\{)/.test(npmrc))
-  fail(".npmrc must not contain a literal token (use ${NODE_AUTH_TOKEN})");
+if (/^[^#]*_authToken/m.test(npmrc))
+  fail(".npmrc must not contain registry credentials (pnpm 10 ignores ${...} there; PL1-D-01)");
 
 // ---- repository documents (CLAUDE.md session rules) --------------------------------------
 for (const d of [

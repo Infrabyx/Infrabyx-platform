@@ -1,3 +1,7 @@
 packages:
   - "packages/*"
   - "apps/*"
+
+# pnpm 10 blocks dependency lifecycle scripts unless listed here (ADR-0002).
+onlyBuiltDependencies:
+  - esbuild
