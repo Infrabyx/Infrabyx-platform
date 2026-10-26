@@ -7,14 +7,15 @@
   "type": "module",
   "engines": {
     "node": "24.22.1",
-    "pnpm": "9"
+    "pnpm": "10"
   },
-  "packageManager": "pnpm@9.15.4",
+  "packageManager": "pnpm@10.34.7",
   "scripts": {
+    "prepare": "lefthook install",
     "build": "turbo run build",
     "test": "turbo run test",
-    "test:policy": "vitest run --dir infra/policy",
-    "lint": "turbo run lint && eslint scripts infra/policy eslint.config.mjs",
+    "test:policy": "vitest run infra/policy packages/testing/eslint",
+    "lint": "turbo run lint && eslint scripts infra/policy packages/testing/eslint eslint.config.mjs vitest.shared.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -24,7 +25,13 @@
     "ipb:check": "node scripts/ipb-check.mjs",
     "commitlint": "commitlint",
     "licence:check": "node scripts/licence-check.mjs",
-    "pr:checklist": "node scripts/pr-checklist.mjs"
+    "pr:checklist": "node scripts/pr-checklist.mjs",
+    "test:int": "turbo run test:int",
+    "migration:lint": "node packages/testing/dist/migration-lint/cli.js packages/tenancy/migrations packages/audit/migrations packages/config/migrations packages/seed/migrations",
+    "at:report": "node packages/testing/dist/at-report/cli.js --root packages --spec docs/ipb",
+    "env:example:check": "node packages/config/dist/env/cli.js example --schema packages/seed/dist/cli.js --export seedEnvSchema --out packages/seed/.env.example --check",
+    "registry:check": "pnpm --filter @infrabyx/config check:registry",
+    "dev-keys:check": "pnpm --filter @infrabyx/crypto dev-keys --check"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
@@ -34,6 +41,7 @@
     "@types/node": "24.19.2",
     "eslint": "10.13.0",
     "globals": "16.5.0",
+    "lefthook": "2.2.2",
     "prettier": "3.9.10",
     "turbo": "2.11.10",
     "typescript": "5.9.3",

@@ -1,0 +1,16 @@
+# Git hooks (IPB-11-09, IPB-09-19). Installed by `pnpm install` (root `prepare` script).
+pre-commit:
+  parallel: true
+  commands:
+    env-and-credentials:
+      run: node infra/policy/hooks/precommit-guard.mjs {staged_files}
+    gitleaks:
+      # Skipped with a notice where gitleaks is not installed; CI secret-scan always runs it.
+      run: command -v gitleaks >/dev/null 2>&1 || { echo "gitleaks not installed; CI secret-scan still runs"; exit 0; }; gitleaks protect --staged --redact --config .gitleaks.toml
+    format:
+      glob: "*.{ts,mts,js,mjs,json,md,yml,yaml}"
+      run: pnpm exec prettier --check {staged_files}
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}

@@ -1,6 +1,6 @@
 # ADR-0002 — Move the package manager from pnpm 9 to pnpm 10
 
-- **Status:** proposed (owner decision needed)
+- **Status:** accepted (owner, 2026-10-26; deviation IPB-DEV-02 against IPB-01-05)
 - **Date:** 2026-10-26
 - **Deciders:** owner (`@infrabyx/platform-owners`)
 - **IPB sections:** IPB-01-05 (pnpm 9 locked; a major upgrade requires an ADR), IPB-01-04 / IPB-02 patch SLA (high: 7 days)
@@ -17,16 +17,20 @@ The npm advisory database (queried 2026-10-26 through `registry.npmjs.org/-/npm/
 
 Exposure today: CI installs only registry tarballs pinned with integrity hashes from a committed lockfile; no git, tarball-URL or `file:` dependencies; no `configDependencies` or patches. Most of the advisories need a malicious package or repository config to be pulled in, so the practical risk is a supply-chain path, which is exactly what IPB-02 asks us to close.
 
-## Decision (proposed)
+## Decision
 
-Move to **pnpm 10.34.9** (latest 10.x at proposal time; Renovate proposed the first clean version, 10.34.5). Keep `engines.pnpm` as the major (`"10"`), `packageManager: pnpm@10.34.9`, and update CLAUDE.md "pnpm 9" to "pnpm 10" with a pointer here. IPB-01-05 itself names pnpm 9; the ADR is the route that clause defines, and the owner may additionally record it in `docs/platform-requests.md` for the next IPB revision.
+Move to **pnpm 10.34.7**: the newest 10.x release older than the 3-day `minimumReleaseAge` (IPB-02-33) on 2026-10-26; 10.34.8 and 10.34.9 were younger. All three report no advisories. Keep `engines.pnpm` as the major (`"10"`), `packageManager: pnpm@10.34.7` (exact), and update CLAUDE.md "pnpm 9" to "pnpm 10" with a pointer here. IPB-01-05 itself names pnpm 9; the ADR is the route that clause defines, and the owner may additionally record it in `docs/platform-requests.md` for the next IPB revision.
 
 ## Verification to run before accepting
 
-1. `corepack use pnpm@10.34.9`, regenerate `pnpm-lock.yaml` (lockfile v9 format is shared by pnpm 9 and 10; expect only `libc` fields added, as in PR #5).
+1. `packageManager: pnpm@10.34.7`, regenerate `pnpm-lock.yaml` (lockfile v9 format is shared by pnpm 9 and 10; expect only `libc` fields added, as in PR #5).
 2. pnpm 10 behaviour changes to check: dependency lifecycle scripts are blocked unless listed in `onlyBuiltDependencies` (esbuild needs listing); `pnpm link` and hoisting defaults; `node-linker=isolated` unchanged.
 3. Full CI: lint, format, typecheck, build, test, policy-rules, licence, ipb-check, frozen install; release workflow dry run.
 4. `pnpm/action-setup` reads the version from `packageManager`; `ipb:check` pin rule changes from `pnpm@9.` to `pnpm@10.`.
+
+## Verification result (2026-10-26)
+
+Lockfile regenerated with pnpm 10.34.7; `onlyBuiltDependencies` lists `esbuild`; lint, format, typecheck, build, test, policy-rules, licence, ipb-check and frozen install pass on Node 24.22.1 (PL1 branch, first commit).
 
 ## Consequences
 

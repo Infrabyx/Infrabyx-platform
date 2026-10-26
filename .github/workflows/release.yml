@@ -10,6 +10,8 @@ permissions:
 concurrency: release-${{ github.ref }}
 env:
   TURBO_TELEMETRY_DISABLED: "1"
+  # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
+  LEFTHOOK: "0"
 jobs:
   release:
     runs-on: ubuntu-latest

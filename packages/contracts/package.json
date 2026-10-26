@@ -11,6 +11,46 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./data-class": {
+      "types": "./dist/data-class.d.ts",
+      "default": "./dist/data-class.js"
+    },
+    "./ids": {
+      "types": "./dist/ids.d.ts",
+      "default": "./dist/ids.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "default": "./dist/env.js"
+    },
+    "./roles": {
+      "types": "./dist/roles.d.ts",
+      "default": "./dist/roles.js"
+    },
+    "./tiers": {
+      "types": "./dist/tiers.d.ts",
+      "default": "./dist/tiers.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "default": "./dist/events/index.js"
+    },
+    "./modules": {
+      "types": "./dist/modules.d.ts",
+      "default": "./dist/modules.js"
+    },
+    "./kernel": {
+      "types": "./dist/kernel.d.ts",
+      "default": "./dist/kernel.js"
+    },
+    "./ports": {
+      "types": "./dist/ports/index.d.ts",
+      "default": "./dist/ports/index.js"
     }
   },
   "files": [
@@ -20,8 +60,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

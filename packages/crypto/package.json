@@ -11,17 +11,28 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./local-kms": {
+      "types": "./dist/local-kms.d.ts",
+      "default": "./dist/local-kms.js"
     }
   },
   "files": [
     "dist",
+    "dev-keys.json",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "cbom": "node scripts/cbom.mjs",
+    "dev-keys": "node scripts/dev-keys.mjs"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

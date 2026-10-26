@@ -11,17 +11,49 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./env": {
+      "types": "./dist/env/index.d.ts",
+      "default": "./dist/env/index.js"
+    },
+    "./settings": {
+      "types": "./dist/settings/index.d.ts",
+      "default": "./dist/settings/index.js"
+    },
+    "./flags": {
+      "types": "./dist/flags/index.d.ts",
+      "default": "./dist/flags/index.js"
+    },
+    "./events": {
+      "types": "./dist/events.d.ts",
+      "default": "./dist/events.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "infrabyx-env": "./dist/env/cli.js"
   },
   "files": [
     "dist",
+    "migrations",
+    "settings-tree.yaml",
+    "flags.defaults.json",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "gen:registry": "node scripts/gen-registry.mjs",
+    "check:registry": "node scripts/gen-registry.mjs --check"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

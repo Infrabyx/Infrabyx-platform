@@ -9,14 +9,18 @@ permissions:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
+  # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
+  LEFTHOOK: "0"
 jobs:
   verify:
     # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, secret-scan,
     # spec-readonly, lint (ESLint + Prettier + IPB rules vendor-import / schema-boundary /
     # no-process-env), typecheck, build, unit, policy-rules, licence, ipb-check, commitlint,
     # changeset-required, pr-checklist.
-    # Still to add: contract, e2e, a11y, rls-lint, migration-lint, sbom, semgrep, zap-baseline,
-    # bundle-budget, lighthouse, export-map-gate, golden-archive-diff, change-class.
+    # PL1 adds: migration-lint, registry-check, dev-keys-check, env-example-check (here) and
+    # rls-lint, integration, at-report (job `integration`, PostgreSQL 18 service).
+    # Still to add: contract, e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
+    # export-map-gate, golden-archive-diff, change-class.
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -84,6 +88,14 @@ jobs:
         run: pnpm licence:check
       - name: ipb-check (structural checks)
         run: pnpm ipb:check
+      - name: migration-lint (IPB-09-31; every rule of §09.4.6.2 and forbidden operation of §09.4.6.3)
+        run: pnpm migration:lint
+      - name: registry-check (settings-tree.yaml → registry.generated.ts, IPB-07)
+        run: pnpm registry:check
+      - name: dev-keys-check (dev-keys.json fingerprints, PL1-C-10)
+        run: pnpm dev-keys:check
+      - name: env-example-check (IPB-11-03, @IPB-11-AT-06; seed schema fixture)
+        run: pnpm env:example:check
       - name: changeset-required (IPB-09-20)
         if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
         run: pnpm changeset status --since="origin/${{ github.base_ref }}"
@@ -93,3 +105,43 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           HEAD_REF: ${{ github.head_ref }}
         run: pnpm pr:checklist
+  integration:
+    # IPB-01 §01.4.10: integration tests run against real PostgreSQL 18 (IPB-D-02).
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      IPB_TEST_PG_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@infrabyx"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: build
+        run: pnpm build
+      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed, checksums in meta.migration_checksums)
+        run: node packages/tenancy/dist/migrate/cli.js --db "$IPB_TEST_PG_URL"
+      - name: rls-lint (IPB-02-12; every tenant table enabled + forced + tenant policy, no BYPASSRLS)
+        run: node packages/tenancy/dist/rls-lint/cli.js --db "$IPB_TEST_PG_URL"
+      - name: integration (test:int; @NN-01/02/45/18 and the @IPB-..-AT-.. database scenarios)
+        run: pnpm test:int
+      - name: at-report (acceptance-test coverage; report only)
+        run: pnpm at:report

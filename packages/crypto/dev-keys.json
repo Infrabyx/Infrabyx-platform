@@ -1,0 +1,30 @@
+{
+  "description": "Fingerprints of the LocalKms well-known dev keys (PL1-C-10). Values matching these, and the `local` KMS adapter, are refused in staging, demo, pre-prod, prod and dr (IPB-11-17). No key material is stored here.",
+  "keys": [
+    {
+      "keyId": "local:platform",
+      "kind": "symmetric",
+      "fingerprint": "90c1c7f7a2b93a4e0909f52087c4483ee396194898ceeedf3835f19587c6a405"
+    },
+    {
+      "keyId": "local:sign:audit-anchor",
+      "kind": "signing",
+      "fingerprint": "a77db75d584cfb0929810c276b5a6fd6b2ae1b01ec6fe918c06a74d8996fae14"
+    },
+    {
+      "keyId": "local:hmac:audit-pseudonym",
+      "kind": "symmetric",
+      "fingerprint": "85565c44aad03ba097bd348c34c2b544557f325ab2f667ed172ba82d42479a5c"
+    },
+    {
+      "keyId": "local:hmac:blind-index",
+      "kind": "symmetric",
+      "fingerprint": "e62f4bd8cd8ec5f99ed2facf53dca0efc3924b1e8929effad56764f1d9b743b0"
+    },
+    {
+      "keyId": "local:hmac:session",
+      "kind": "symmetric",
+      "fingerprint": "28fb7e125eb76c5e12e19fb8b372ffbd2da957513ef11a45a115f5d582dd0ef2"
+    }
+  ]
+}

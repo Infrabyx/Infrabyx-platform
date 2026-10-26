@@ -16,9 +16,12 @@ if (read(".nvmrc").trim() !== NODE_PIN) fail(`.nvmrc must be ${NODE_PIN} (IPB-D-
 const root = json("package.json");
 if (root.engines?.node !== NODE_PIN)
   fail(`package.json engines.node must be exactly "${NODE_PIN}"`);
-if (root.engines?.pnpm !== "9") fail(`package.json engines.pnpm must be "9" (IPB-01 §01.4.1.1)`);
-if (!/^pnpm@9\./.test(root.packageManager ?? ""))
-  fail(`package.json packageManager must be pnpm@9.x`);
+// pnpm major per ADR-0002 / IPB-DEV-02 (IPB-01-05 names pnpm 9; deviation recorded in docs/DECISIONS.md).
+const PNPM_MAJOR = "10";
+if (root.engines?.pnpm !== PNPM_MAJOR)
+  fail(`package.json engines.pnpm must be "${PNPM_MAJOR}" (ADR-0002, IPB-DEV-02)`);
+if (!new RegExp(`^pnpm@${PNPM_MAJOR}\\.\\d+\\.\\d+$`).test(root.packageManager ?? ""))
+  fail(`package.json packageManager must pin an exact pnpm@${PNPM_MAJOR}.x.y (ADR-0002)`);
 const ci = read(".github/workflows/ci.yml");
 if (!ci.includes(`node: ["${NODE_PIN}"]`) && !ci.includes(`node: ['${NODE_PIN}']`)) {
   fail(`ci.yml must have a single-entry matrix node: ["${NODE_PIN}"] (IPB-01-01)`);
@@ -66,8 +69,8 @@ const npmrc = read(".npmrc");
 for (const k of ["engine-strict=true", "auto-install-peers=true", "node-linker=isolated"]) {
   if (!npmrc.includes(k)) fail(`.npmrc must contain ${k}`);
 }
-if (/_authToken=(?!\$\{)/.test(npmrc))
-  fail(".npmrc must not contain a literal token (use ${NODE_AUTH_TOKEN})");
+if (/^[^#]*_authToken/m.test(npmrc))
+  fail(".npmrc must not contain registry credentials (pnpm 10 ignores ${...} there; PL1-D-01)");
 
 // ---- repository documents (CLAUDE.md session rules) --------------------------------------
 for (const d of [
@@ -82,13 +85,15 @@ for (const d of [
   ".changeset/config.json",
   "renovate.json",
   "eslint.config.mjs",
-  "infra/policy/eslint/index.mjs",
+  "packages/testing/eslint/index.mjs",
   "infra/policy/github/rulesets.json",
   "infra/docker/BASE_IMAGES.md",
   "docs/platform-requests.md",
   "docs/adr/ADR-0000-template.md",
   "commitlint.config.mjs",
   ".gitleaks.toml",
+  "lefthook.yml",
+  "infra/policy/hooks/precommit-guard.mjs",
 ]) {
   if (!existsSync(d)) fail(`${d} missing`);
 }
@@ -137,8 +142,10 @@ for (const p of readdirSync("packages")) {
   for (const f of ["README.md", "src/index.ts", "tsconfig.json", "tsconfig.build.json"]) {
     if (!existsSync(`${base}/${f}`)) fail(`${p}: ${f} missing`);
   }
-  if (!readdirSync(`${base}/src`).some((f) => f.endsWith(".test.ts")))
+  if (!readdirSync(`${base}/src`, { recursive: true }).some((f) => String(f).endsWith(".test.ts")))
     fail(`${p}: no test file in src/`);
+  if (existsSync(`${base}/migrations`) && !existsSync(`${base}/migrations/checksums.json`))
+    fail(`${p}: migrations/checksums.json missing (IPB-09-32 checksum-immutable)`);
   if (!/IPB-\d\d/.test(read(`${base}/README.md`)))
     fail(`${p}: README must name the IPB file that specifies it`);
   // Vendor SDKs are dependencies of packages/connectors only (IPB-01 §01.4.2).

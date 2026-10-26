@@ -1,0 +1,22 @@
+{
+  "$comment": "Server masking rules (IPB-02 §02.4.3.3); packages/ui/mask reads the same file.",
+  "version": 1,
+  "rules": {
+    "aadhaar": { "strategy": "last", "keep": 4, "template": "XXXX XXXX {last}", "reveal": "never" },
+    "pan": { "strategy": "pan", "reveal": "ledgered" },
+    "bank_account": {
+      "strategy": "last",
+      "keep": 4,
+      "template": "XXXX{last}",
+      "reveal": "ledgered"
+    },
+    "card_pan": {
+      "strategy": "last",
+      "keep": 4,
+      "template": "XXXX XXXX XXXX {last}",
+      "reveal": "never"
+    },
+    "mobile": { "strategy": "mobile", "keep": 3, "reveal": "ledgered" },
+    "email": { "strategy": "email", "reveal": "ledgered" }
+  }
+}
