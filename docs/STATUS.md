@@ -59,11 +59,11 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 - `startPostgres` pulls `postgres:18` by tag. Locally, set `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres` (container `pgs2`).
 - Downloaded binaries (e.g. gitleaks) are blocked by the sandbox policy; CI runs the secret scan.
 
-**Open questions.** OWNER-QUESTIONS #1, the field-envelope KMS context (PL2-D-49). It blocks nothing in PL2.
+**Open questions.** None. OWNER-QUESTIONS #1 was answered on 26 Oct 2026: field-encryption format v2 (PL2-D-50) has its own PR before session 4.
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (1 open: the field-envelope KMS context, PL2-D-49). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1 answered as PL2-D-50). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
