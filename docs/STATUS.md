@@ -4,11 +4,11 @@ Updated: 2026-10-26
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 — plan revision 2 written, awaiting the owner's confirmation of the changed sections** (`docs/phases/PL2-plan.md`); PL1 complete and accepted 2026-10-26                           |
+| Current phase         | **PL2 — plan approved 26 Oct 2026 with conditions (PL2-D-05); session 1 next** (`docs/phases/PL2-plan.md` §15); PL1 complete and accepted 2026-10-26                                     |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (recreated from `main` after the owner deleted it)                                                                                                            |
+| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                    |
 
 ## Done
 
@@ -28,7 +28,16 @@ Updated: 2026-10-26
 
 ## Next
 
-- PL2 — ports and reference adapters (IPB-14 §14.3): `connectors` for the Tier-0 ports (IDENTITY Keycloak, AUTHZ Cerbos, STORAGE S3 + MinIO, QUEUE Redis/BullMQ, WORKFLOW Temporal, SECRETS AWS SM + Vault, KMS, EMAIL SES + Brevo, SMS, WHATSAPP, PAYMENTS Razorpay + one alternative, FEATURE_FLAG Unleash, OBSERVABILITY OTel), `provider_routing`, contract tests green for the reference and one alternative each. First step: `docs/phases/PL2-plan.md` for owner approval, before any code. PAYMENTS is on the locked list.
+- PL2 session 1 (D-11 step 1, PL2-D-18): spike on every `[VERIFY]` item first, then the port interfaces in `contracts`, config keys, the routing schema and the testing harness, with the `port-contract` CI job (per-port path filters, PL2-D-13). One PR per session; merged under the standing authority (PL2-D-19).
+
+## CI minutes (PL2-D-13)
+
+Allowance: 2,000 a month on Free, 3,000 on Team. The owner is warned at 70 % (1,400 on Free, 2,100 on Team). Billing rounds each job up to whole minutes.
+
+| Month   | Run                                           | Minutes (billed, approx.) | Month to date |
+| ------- | --------------------------------------------- | ------------------------- | ------------- |
+| 2026-10 | used before PL2 (owner, 26 Oct)               | 88                        | 88            |
+| 2026-10 | PR #12, 4 pushes × (verify 3 + integration 2) | 20                        | 108           |
 
 ## Owner decisions
 
@@ -36,9 +45,8 @@ Updated: 2026-10-26
 
 ## Blocked / waiting on owner
 
-- PL2 plan revision 2: decisions recorded (PL2-D-01 to PL2-D-04, IPB-DEV-03 to IPB-DEV-06, PL2-C-01); implementation starts when the owner confirms the changed sections.
-- Vendor test accounts that unlock PL2 sandbox legs (none blocks the PL2 publish, IPB-DEV-04): Razorpay, Cashfree, Brevo, MSG91 and Gupshup, a Meta test app, DLT registration; AWS sandbox account before the first staging deployment; optionally a Temporal Cloud Mumbai namespace confirmed in writing.
-- Later (owner, not PL2): Renovate bump of `actions/checkout` and `actions/setup-node` to their Node 24 majors (v4.4.0 runs on the deprecated Node 20 action runtime).
+- Owner accounts for PL2 sandbox legs: none blocks the PL2 publish (IPB-DEV-04). Latest-by dates and steps in `docs/runbooks/README.md`: GitHub Team and the `sandbox` environment, Temporal Cloud (Mumbai), messaging vendors and DLT, Razorpay and Cashfree test accounts, the AWS Organization and sandbox account.
+- After the next version PR runs CI by itself: I report whether the organisation setting "Allow GitHub Actions to create and approve pull requests" is still needed (PL2-D-07).
 - Before production: replace `NPM_PUBLISH_TOKEN` in `release.yml` with a dedicated GitHub App token (PL1-D-21, IPB-02-08).
 - Platform requests PR-002 to PR-014 open for the IPB editor (`docs/platform-requests.md`).
-- `main` ruleset enforcement waits on the GitHub plan upgrade (PL0-D-07).
+- `main` ruleset: apply after the GitHub Team upgrade with checks, signed commits and linear history only (PL2-D-12, `infra/policy/github/rulesets.json`).
