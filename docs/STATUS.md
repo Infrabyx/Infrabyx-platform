@@ -28,11 +28,26 @@ Updated: 2026-10-26
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (currently none open). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (1 open: the field-envelope KMS context, PL2-D-49). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
-- PL2 session 3 (D-11 order): SECRETS, KMS and the crypto additions (JWT/JWS verification C-11, vendor HMAC C-13, SNS signatures), with the LocalStack and moto hermetic legs (PL2-D-29).
+- PL2 session 4 (D-11 order): IDENTITY (`keycloak`, `zitadel`) and AUTHZ (`cerbos`, `openfga`), using the C-11 verifier.
+
+## PL2 session 3 (2026-10-26)
+
+- `@infrabyx/crypto`:
+  - C-11 JWT/JWS verification on `node:crypto`, tested with RFC 7515 Appendix A and RFC 7520 §4 vectors, the negative cases and a `jose` differential test (`jose` is test-only and `ipb:check` enforces that);
+  - C-13 Razorpay, Cashfree and Meta HMAC checks, plus Amazon SNS SignatureVersion 2 with pinned certificate hosts;
+  - C-19 webhook secrets;
+  - `LocalKms` honours the data-key AAD (PL2-D-48).
+- `@infrabyx/contracts`: `KmsPort.generateDataKey(keyId, aad?)` (PL2-D-47).
+- `@infrabyx/connectors`:
+  - SECRETS adapters: `aws-sm` (platform CMK, CloudTrail audit) and `vault` (KV v2, dynamic PostgreSQL leases), plus `CachedSecrets` (PL2-D-46);
+  - KMS adapters: `aws-kms` (encryption context, DIGEST signing, tenant CMKs, 30-day deletion) and `vault-transit` (PL2-D-47);
+  - contract legs on moto 5.2.4 with a CloudTrail stub (PL2-D-45), LocalStack 4.12.0 and OpenBao 2.7.1; @IPB-01-AT-19 and @IPB-02-AT-15 re-run.
+- `@infrabyx/testing`: OpenBao 2.7.1 test image.
+- Open for the owner: OWNER-QUESTIONS #1, the field-envelope context (PL2-D-49).
 
 ## PL2 session 2 (2026-10-26)
 
