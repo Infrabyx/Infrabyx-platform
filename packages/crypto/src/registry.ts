@@ -33,7 +33,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     usedFor: [
       "ip_hash/ua_hash/actor pseudonyms (C-02)",
       "blind index (C-05)",
-      "webhook signatures",
+      "vendor webhook signatures: Razorpay, Cashfree, Meta (C-13)",
       "telemetry and flag-context ID hashes, 128-bit truncation (C-21)",
     ],
   },
@@ -53,7 +53,27 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     primitive: "signature",
     parameterSet: "P-256",
     oid: "1.2.840.10045.4.3.2",
-    usedFor: ["audit anchor signatures (C-03)"],
+    usedFor: ["audit anchor signatures (C-03)", "JWT ES256 verification (C-11)"],
+  },
+  {
+    id: "rsassa-pss-sha256",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA ≥ 2048, MGF1-SHA-256, salt 32",
+    oid: "1.2.840.113549.1.1.10",
+    usedFor: ["JWT PS256 verification (C-11)"],
+  },
+  {
+    id: "rsassa-pkcs1-v1_5-sha256",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA, vendor-defined",
+    oid: "1.2.840.113549.1.1.11",
+    usedFor: [
+      "Amazon SNS SignatureVersion 2 verification only (C-13); never for our own signatures",
+    ],
   },
   {
     id: "hkdf-sha256",

@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 session 3 of 8** (D-11): SECRETS, KMS and the crypto additions. Sessions 1 (#13) and 2 (#15) merged. Continuous build mode (PL2-D-41, CLAUDE.md "Working mode")                    |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                    |
+| Item                  | Value                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Current phase         | **PL2 session 3 of 8 done in PR #17** (merge pending a green head); next is session 4. Sessions 1 (#13) and 2 (#15) and the working-mode PR (#16) merged. Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                     |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)   |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                    |
+| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                   |
 
 ## Done
 
@@ -26,13 +26,63 @@ Updated: 2026-10-26
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
 
+## Handover (2026-10-26, end of the session that built PL2 sessions 2 and 3)
+
+**Done.** PL2 sessions 1–3 are built:
+
+- #13 (contracts, config, testing harness);
+- #15 (connectors core, OBSERVABILITY, FEATURE_FLAG);
+- #16 (working mode, threat model, CI budget);
+- #17 (crypto C-11/C-13/C-19, SECRETS, KMS).
+
+Nothing from PL2 is published yet. Version PR #14 collects every changeset and is merged only at gate A (PL2-D-31).
+
+**Branch and PR state.**
+
+- PR #17 (`claude/funny-cori-6upyrr`, head `b46ca93` before this handover commit) is open as a draft.
+- Its first CI run finished at 16:58 UTC. This session lost its GitHub tools before it could read the result and merge.
+- **First step next session:** read #17's checks on the current head. If every check is green, mark it ready and squash-merge under PL2-D-19; if any is red, fix and push.
+- A check-in is armed for 17:44 UTC (`trig_019rvFoGxK6x5H3osTVR3Bfr`).
+- After the merge: branch again from `main` as `claude/funny-cori-6upyrr`.
+
+**Next: PL2 session 4.** IDENTITY (`keycloak`, `zitadel`) and AUTHZ (`cerbos`, `openfga`); plan §6.5 and §6.6, plus C-11 and C-12.
+
+- **Verifier:** `verifyJwt` and `JwksCache` from `@infrabyx/crypto` are ready. Allow-lists per issuer: ES256 for both IdPs (C-12, spike row "Zitadel ES256").
+- **Images:** Cerbos 0.57.0 is pinned. Keycloak (quay.io), Zitadel (GHCR) and OpenFGA (Docker Hub) still need images:
+  - pin each by digest, at least 7 days old (PL2-D-32), and add it to `TEST_IMAGES` and `infra/docker/TEST_IMAGES.md`;
+  - GHCR and quay.io are unreachable from the build sandbox but work on GitHub runners (PL2-D-30). If a Keycloak or Zitadel leg cannot be run locally, run it in CI and say so in the PR.
+- **Contract cases:** plan §6.5 and §6.6, including @IPB-02-AT-02 (API half), @IPB-02-AT-11 (Cerbos policy leg), `IPB-SEC-005` no-disclosure, and PDP-down means deny.
+
+**Local environment notes.**
+
+- Docker Hub rate-limits anonymous pulls here. moto, LocalStack 4.12, OpenBao, Unleash and the Collector are cached locally.
+- `startPostgres` pulls `postgres:18` by tag. Locally, set `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres` (container `pgs2`).
+- Downloaded binaries (e.g. gitleaks) are blocked by the sandbox policy; CI runs the secret scan.
+
+**Open questions.** OWNER-QUESTIONS #1, the field-envelope KMS context (PL2-D-49). It blocks nothing in PL2.
+
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (currently none open). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (1 open: the field-envelope KMS context, PL2-D-49). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
-- PL2 session 3 (D-11 order): SECRETS, KMS and the crypto additions (JWT/JWS verification C-11, vendor HMAC C-13, SNS signatures), with the LocalStack and moto hermetic legs (PL2-D-29).
+- PL2 session 4 (D-11 order): IDENTITY (`keycloak`, `zitadel`) and AUTHZ (`cerbos`, `openfga`), using the C-11 verifier.
+
+## PL2 session 3 (2026-10-26)
+
+- `@infrabyx/crypto`:
+  - C-11 JWT/JWS verification on `node:crypto`, tested with RFC 7515 Appendix A and RFC 7520 §4 vectors, the negative cases and a `jose` differential test (`jose` is test-only and `ipb:check` enforces that);
+  - C-13 Razorpay, Cashfree and Meta HMAC checks, plus Amazon SNS SignatureVersion 2 with pinned certificate hosts;
+  - C-19 webhook secrets;
+  - `LocalKms` honours the data-key AAD (PL2-D-48).
+- `@infrabyx/contracts`: `KmsPort.generateDataKey(keyId, aad?)` (PL2-D-47).
+- `@infrabyx/connectors`:
+  - SECRETS adapters: `aws-sm` (platform CMK, CloudTrail audit) and `vault` (KV v2, dynamic PostgreSQL leases), plus `CachedSecrets` (PL2-D-46);
+  - KMS adapters: `aws-kms` (encryption context, DIGEST signing, tenant CMKs, 30-day deletion) and `vault-transit` (PL2-D-47);
+  - contract legs on moto 5.2.4 with a CloudTrail stub (PL2-D-45), LocalStack 4.12.0 and OpenBao 2.7.1; @IPB-01-AT-19 and @IPB-02-AT-15 re-run.
+- `@infrabyx/testing`: OpenBao 2.7.1 test image.
+- Open for the owner: OWNER-QUESTIONS #1, the field-envelope context (PL2-D-49).
 
 ## PL2 session 2 (2026-10-26)
 
@@ -62,15 +112,18 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 
 Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repository's budget is **1,000 a month** (PL2-D-41). The owner is told before this repository passes 1,000, with a warning at 70 % (700). Billing rounds each job up to whole minutes.
 
-| Month   | Run                                           | Minutes (billed, approx.) | Month to date |
-| ------- | --------------------------------------------- | ------------------------- | ------------- |
-| 2026-10 | used before PL2 (owner, 26 Oct)               | 88                        | 88            |
-| 2026-10 | PR #12, 4 pushes × (verify 3 + integration 2) | 20                        | 108           |
-| 2026-10 | PR #13, 3 pushes × (ci 5 + port-contract 1)   | 18                        | 126           |
-| 2026-10 | main after #13 (ci 5, release 2)              | 7                         | 133           |
-| 2026-10 | version PR #14 (ci 5, port-contract 1)        | 6                         | 139           |
-| 2026-10 | PR #15 (ci 5, port-contract 2 legs 4)         | 9                         | 148           |
-| 2026-10 | main after #15 (ci 5, release 2)              | 7                         | 155           |
+| Month   | Run                                                         | Minutes (billed, approx.) | Month to date |
+| ------- | ----------------------------------------------------------- | ------------------------- | ------------- |
+| 2026-10 | used before PL2 (owner, 26 Oct)                             | 88                        | 88            |
+| 2026-10 | PR #12, 4 pushes × (verify 3 + integration 2)               | 20                        | 108           |
+| 2026-10 | PR #13, 3 pushes × (ci 5 + port-contract 1)                 | 18                        | 126           |
+| 2026-10 | main after #13 (ci 5, release 2)                            | 7                         | 133           |
+| 2026-10 | version PR #14 (ci 5, port-contract 1)                      | 6                         | 139           |
+| 2026-10 | PR #15 (ci 5, port-contract 2 legs 4)                       | 9                         | 148           |
+| 2026-10 | main after #15 (ci 5, release 2)                            | 7                         | 155           |
+| 2026-10 | PR #16 (ci 5, port-contract 2 legs 4)                       | 9                         | 164           |
+| 2026-10 | main after #16 (ci 5, release 2)                            | 7                         | 171           |
+| 2026-10 | PR #17, 2 pushes (ci 5, port-contract 4 legs ~10), estimate | 30                        | 201           |
 
 ## Owner decisions
 

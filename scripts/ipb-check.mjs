@@ -216,6 +216,11 @@ for (const p of readdirSync("packages")) {
     fail(`${p}: migrations/checksums.json missing (IPB-09-32 checksum-immutable)`);
   if (!/IPB-\d\d/.test(read(`${base}/README.md`)))
     fail(`${p}: README must name the IPB file that specifies it`);
+  // jose is a test-only devDependency of @infrabyx/crypto, never a runtime dependency (C-11, PL2-C-02).
+  if ("jose" in { ...pj.dependencies, ...pj.peerDependencies, ...pj.optionalDependencies })
+    fail(`${p}: jose must not be a runtime dependency (C-11: node:crypto only)`);
+  if (p !== "crypto" && pj.devDependencies?.jose)
+    fail(`${p}: jose is allowed only as a devDependency of @infrabyx/crypto (C-11)`);
   // Vendor SDKs are dependencies of packages/connectors only (IPB-01 §01.4.2).
   if (p !== "connectors") {
     for (const dep of Object.keys({ ...pj.dependencies, ...pj.peerDependencies })) {
