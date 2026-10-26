@@ -14,7 +14,7 @@
     "schedule": ["before 4am on monday"]
   },
   "rangeStrategy": "pin",
-  "minimumReleaseAge": "3 days",
+  "minimumReleaseAge": "7 days",
   "postUpdateOptions": ["pnpmDedupe"],
   "labels": ["dependencies"],
   "osvVulnerabilityAlerts": true,

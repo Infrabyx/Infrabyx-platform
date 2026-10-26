@@ -64,6 +64,24 @@ for (const dir of ["apps", "infra/docker"]) {
   }
 }
 
+// ---- supply chain (IPB-02-33 tightened by PL2-D-32) ------------------------------------------
+const workspace = read("pnpm-workspace.yaml");
+for (const [re, what] of [
+  [/^minimumReleaseAge:\s*10080\s*$/m, "minimumReleaseAge: 10080 (7 days)"],
+  [
+    /^minimumReleaseAgeExclude:\s*\n\s+-\s+"@infrabyx\/\*"\s*$/m,
+    'minimumReleaseAgeExclude: ["@infrabyx/*"]',
+  ],
+  [/^trustPolicy:\s*no-downgrade\s*$/m, "trustPolicy: no-downgrade"],
+  [/^blockExoticSubdeps:\s*true\s*$/m, "blockExoticSubdeps: true"],
+]) {
+  if (!re.test(workspace)) fail(`pnpm-workspace.yaml must set ${what} (PL2-D-32)`);
+}
+if (renovate.minimumReleaseAge !== "7 days")
+  fail('renovate.json minimumReleaseAge must be "7 days" (PL2-D-32)');
+if (root.devDependencies?.lefthook !== "2.2.1")
+  fail("lefthook must stay pinned to 2.2.1, the latest release with npm provenance (PL2-D-32)");
+
 // ---- .npmrc (IPB-01 §01.4.1.1) -----------------------------------------------------------
 const npmrc = read(".npmrc");
 for (const k of ["engine-strict=true", "auto-install-peers=true", "node-linker=isolated"]) {

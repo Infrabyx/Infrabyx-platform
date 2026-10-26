@@ -5,3 +5,14 @@ packages:
 # pnpm 10 blocks dependency lifecycle scripts unless listed here (ADR-0002).
 onlyBuiltDependencies:
   - esbuild
+
+# Supply chain (PL2-D-32; tightens IPB-02-33's 72 h): a new third-party version must be at least
+# 7 days old before it can be resolved; our own @infrabyx/* packages are exempt. trustPolicy
+# refuses a version whose trust evidence (provenance, trusted publishing) is weaker than an earlier
+# version's; blockExoticSubdeps refuses git, tarball and other non-registry sources in transitive
+# dependencies.
+minimumReleaseAge: 10080
+minimumReleaseAgeExclude:
+  - "@infrabyx/*"
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
