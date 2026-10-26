@@ -170,3 +170,56 @@ describe("@IPB-12-AT-03 ipb/no-direct-crypto (IPB-12-05, @IPB-12-AT-03)", () => 
     });
   });
 });
+
+describe("ipb/port-data-class (IPB-01-16, PL2-D-03)", () => {
+  it("refuses a caller-stated class below the port default and allows raising it", () => {
+    tester.run("port-data-class", ipb.rules["port-data-class"], {
+      valid: [
+        {
+          code: `ports.EMAIL.send(m, { dataClass: "INTERNAL" });`,
+          filename: `${repo}/apps/api/a.ts`,
+        },
+        {
+          code: `ports.STORAGE.put(k, b, meta, { dataClass: "REGULATED" });`,
+          filename: `${repo}/apps/api/a.ts`,
+        },
+        { code: `router["PAYMENTS"].refund(spec, key);`, filename: `${repo}/apps/api/a.ts` },
+        { code: `logger.info({ dataClass: "PUBLIC" });`, filename: `${repo}/apps/api/a.ts` },
+      ],
+      invalid: [
+        {
+          code: `ports.STORAGE.put(k, b, meta, { dataClass: "INTERNAL" });`,
+          filename: `${repo}/apps/api/a.ts`,
+          errors: [{ messageId: "lowered" }],
+        },
+        {
+          code: `ports.PAYMENTS.createOrder(spec, key, { dataClass: "CONFIDENTIAL" });`,
+          filename: `${repo}/apps/api/a.ts`,
+          errors: [{ messageId: "lowered" }],
+        },
+      ],
+    });
+  });
+
+  it("requires every field of a port payload schema to carry an annotation", () => {
+    tester.run("port-data-class", ipb.rules["port-data-class"], {
+      valid: [
+        {
+          code: `export const SmsMessage = z.object({ to: recipient(E164), vars: internal(z.array(z.string())).optional() });`,
+          filename: `${repo}/packages/contracts/src/ports/sms.ts`,
+        },
+        {
+          code: `const Other = z.object({ a: z.string() });`,
+          filename: `${repo}/packages/contracts/src/ports/sms.ts`,
+        },
+      ],
+      invalid: [
+        {
+          code: `export const SmsMessage = z.object({ to: recipient(E164), body: z.string() });`,
+          filename: `${repo}/packages/contracts/src/ports/sms.ts`,
+          errors: [{ messageId: "unannotated" }],
+        },
+      ],
+    });
+  });
+});

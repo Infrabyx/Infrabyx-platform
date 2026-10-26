@@ -4,6 +4,8 @@
 //   ipb/schema-boundary  IPB-01-09  a module never imports another module's Drizzle schema
 //   ipb/no-process-env   IPB-01-19  process.env is read only inside packages/config/
 //   ipb/no-direct-crypto IPB-12-05  cryptography only through packages/crypto (PL1-C-01)
+//   ipb/port-data-class  IPB-01-16  a port call never states a class below the port default, and
+//                                   port payload schemas annotate every field (PL2-D-03)
 //
 // These are PL0 placeholders: the detection is path/pattern based and will be tightened
 // when modules, Drizzle schemas and the port catalogue land (PL1–PL2). Rules are never
@@ -233,6 +235,132 @@ const noDirectCrypto = {
   },
 };
 
+/** Port default data classes; kept equal to PORT_DEFAULT_DATA_CLASS in @infrabyx/contracts (tested). */
+export const PORT_DEFAULTS = {
+  EMAIL: "INTERNAL",
+  SMS: "INTERNAL",
+  WHATSAPP: "INTERNAL",
+  QUEUE: "INTERNAL",
+  FEATURE_FLAG: "INTERNAL",
+  OBSERVABILITY: "INTERNAL",
+  PAYMENTS: "REGULATED",
+};
+export const DATA_CLASS_ORDER = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "REGULATED", "SECRET"];
+const PORT_NAME_RE = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
+const CLASS_WRAPPERS = new Set(["classed", "recipient", "internal", "regulated", "confidential"]);
+const PAYLOAD_NAME_RE = /(Message|Spec|Data|Payload)$/;
+
+/** The UPPER_SNAKE port named in a callee chain such as `ports.EMAIL.send`, or null. */
+function portInCallee(node) {
+  let n = node;
+  while (n && n.type === "MemberExpression") {
+    const prop = n.property;
+    if (
+      !n.computed &&
+      prop.type === "Identifier" &&
+      PORT_NAME_RE.test(prop.name) &&
+      prop.name.length > 1
+    )
+      return prop.name;
+    if (
+      n.computed &&
+      prop.type === "Literal" &&
+      typeof prop.value === "string" &&
+      PORT_NAME_RE.test(prop.value)
+    )
+      return prop.value;
+    n = n.object;
+  }
+  return null;
+}
+
+function callsWrapper(node) {
+  let found = false;
+  const walk = (n) => {
+    if (!n || typeof n !== "object" || found) return;
+    if (
+      n.type === "CallExpression" &&
+      n.callee.type === "Identifier" &&
+      CLASS_WRAPPERS.has(n.callee.name)
+    ) {
+      found = true;
+      return;
+    }
+    for (const [k, v] of Object.entries(n)) {
+      if (k === "parent") continue;
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v.type === "string") walk(v);
+    }
+  };
+  walk(node);
+  return found;
+}
+
+const portDataClass = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "IPB-01-16, PL2-D-03: a port call may raise the data class but never state one below the port default; port payload schemas annotate every field.",
+    },
+    schema: [],
+    messages: {
+      lowered:
+        "PL2-D-03: dataClass {{cls}} is below the {{port}} default {{dflt}}; lower a call only through fully annotated payload schemas.",
+      unannotated:
+        "PL2-D-03: payload field '{{field}}' of {{schema}} has no data-class annotation (classed/recipient).",
+    },
+  },
+  create(context) {
+    const file = toPosix(context.filename ?? context.getFilename());
+    const isPortContract =
+      /packages\/contracts\/src\/ports\/[^/]+\.ts$/.test(file) && !file.endsWith(".test.ts");
+    return {
+      CallExpression(node) {
+        if (node.callee.type !== "MemberExpression") return;
+        const port = portInCallee(node.callee);
+        if (!port) return;
+        const dflt = PORT_DEFAULTS[port] ?? "CONFIDENTIAL";
+        for (const arg of node.arguments) {
+          if (arg.type !== "ObjectExpression") continue;
+          for (const prop of arg.properties) {
+            if (prop.type !== "Property" || prop.computed) continue;
+            const key = prop.key.type === "Identifier" ? prop.key.name : prop.key.value;
+            if (key !== "dataClass" || prop.value.type !== "Literal") continue;
+            const cls = prop.value.value;
+            if (
+              DATA_CLASS_ORDER.indexOf(cls) >= 0 &&
+              DATA_CLASS_ORDER.indexOf(cls) < DATA_CLASS_ORDER.indexOf(dflt)
+            )
+              context.report({ node: prop, messageId: "lowered", data: { cls, port, dflt } });
+          }
+        }
+      },
+      VariableDeclarator(node) {
+        if (!isPortContract || node.id.type !== "Identifier" || !PAYLOAD_NAME_RE.test(node.id.name))
+          return;
+        const init = node.init;
+        if (!init || init.type !== "CallExpression" || init.callee.type !== "MemberExpression")
+          return;
+        if (init.callee.property.name !== "object") return;
+        const shape = init.arguments[0];
+        if (!shape || shape.type !== "ObjectExpression") return;
+        for (const prop of shape.properties) {
+          if (prop.type !== "Property") continue;
+          if (!callsWrapper(prop.value)) {
+            const field = prop.key.type === "Identifier" ? prop.key.name : String(prop.key.value);
+            context.report({
+              node: prop,
+              messageId: "unannotated",
+              data: { field, schema: node.id.name },
+            });
+          }
+        }
+      },
+    };
+  },
+};
+
 const plugin = {
   meta: { name: "@infrabyx/eslint-plugin-ipb", version: "0.0.0" },
   rules: {
@@ -240,6 +368,7 @@ const plugin = {
     "schema-boundary": schemaBoundary,
     "no-process-env": noProcessEnv,
     "no-direct-crypto": noDirectCrypto,
+    "port-data-class": portDataClass,
   },
 };
 
