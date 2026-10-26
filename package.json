@@ -13,8 +13,8 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
-    "test:policy": "vitest run --dir infra/policy",
-    "lint": "turbo run lint && eslint scripts infra/policy eslint.config.mjs vitest.shared.mjs",
+    "test:policy": "vitest run infra/policy packages/testing/eslint",
+    "lint": "turbo run lint && eslint scripts infra/policy packages/testing/eslint eslint.config.mjs vitest.shared.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

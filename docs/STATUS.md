@@ -24,6 +24,8 @@ Updated: 2026-10-26
 
 - `@infrabyx/seed`: refusal-first CLI, deterministic idempotent framework, synthetic validator, platform seed, purge, credentials, lefthook pre-commit guard. Tests @IPB-11-AT-02/03/04/05, determinism across databases, idempotency, purge precision.
 
+- `@infrabyx/testing`: `startPostgres`, context builders, port fakes, NN suites run against the PL1 packages, port contract harness, `infrabyx-migration-lint` (every IPB-09 §09.4.6 rule, @IPB-09-AT-11/12, @IPB-01-AT-11), `infrabyx-at-report`, ESLint IPB plugin moved to `@infrabyx/testing/eslint` (PL1-D-02).
+
 ## Next
 
 - testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).

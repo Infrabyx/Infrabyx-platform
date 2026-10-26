@@ -418,6 +418,6 @@ describe("infrabyx-migrate", () => {
     expect(again.applied).toEqual([]);
     expect(again.skipped).toEqual(["@infrabyx/tenancy/0001_init.sql"]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
-    expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-004");
+    expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
   });
 });

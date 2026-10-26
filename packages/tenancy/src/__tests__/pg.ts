@@ -1,5 +1,5 @@
 // Integration-test database: a fresh database per call on the server named by
-// INFRABYX_TEST_PG_URL (CI provides a postgres:18 service). @infrabyx/testing adds Testcontainers.
+// IPB_TEST_PG_URL (CI provides a postgres:18 service). @infrabyx/testing adds Testcontainers.
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";
@@ -23,8 +23,8 @@ export interface TestDb {
 export async function freshDb(
   sources: readonly MigrationSource[] = [TENANCY_SOURCE],
 ): Promise<TestDb> {
-  const base = process.env.INFRABYX_TEST_PG_URL;
-  if (!base) throw new Error("INFRABYX_TEST_PG_URL is required for integration tests");
+  const base = process.env.IPB_TEST_PG_URL;
+  if (!base) throw new Error("IPB_TEST_PG_URL is required for integration tests");
   const name = `t_${toHex(randomBytes(6))}`;
   const root = new pg.Client({ connectionString: base });
   await root.connect();

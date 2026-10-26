@@ -85,7 +85,7 @@ for (const d of [
   ".changeset/config.json",
   "renovate.json",
   "eslint.config.mjs",
-  "infra/policy/eslint/index.mjs",
+  "packages/testing/eslint/index.mjs",
   "infra/policy/github/rulesets.json",
   "infra/docker/BASE_IMAGES.md",
   "docs/platform-requests.md",

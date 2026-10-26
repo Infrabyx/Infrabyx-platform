@@ -8,8 +8,8 @@ import { migrate, platformSources } from "@infrabyx/tenancy/migrate";
 const pkgRoot = join(fileURLToPath(import.meta.url), "../../..");
 
 export async function freshDb() {
-  const base = process.env.INFRABYX_TEST_PG_URL;
-  if (!base) throw new Error("INFRABYX_TEST_PG_URL is required for integration tests");
+  const base = process.env.IPB_TEST_PG_URL;
+  if (!base) throw new Error("IPB_TEST_PG_URL is required for integration tests");
   const name = `t_${toHex(randomBytes(6))}`;
   const root = new pg.Client({ connectionString: base });
   await root.connect();

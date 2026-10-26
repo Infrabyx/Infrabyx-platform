@@ -1,9 +1,9 @@
 // ESLint flat config — infrabyx-platform
-// Custom IPB rules live in infra/policy/eslint (IPB-01 §01.4.2 puts policy under infra/policy).
+// Custom IPB rules ship as @infrabyx/testing/eslint so products install the same rules (PL1-D-02 / D-05).
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
-import ipb from "./infra/policy/eslint/index.mjs";
+import ipb from "./packages/testing/eslint/index.mjs";
 
 export default tseslint.config(
   {
@@ -46,7 +46,7 @@ export default tseslint.config(
       "eslint.config.mjs",
       "vitest.shared.mjs",
       "**/*.config.{ts,mts,js,mjs}",
-      // Integration-test infrastructure (excluded from builds) reads INFRABYX_TEST_PG_URL.
+      // Integration-test infrastructure (excluded from builds) reads IPB_TEST_PG_URL.
       "packages/*/src/__tests__/**",
     ],
     rules: { "ipb/no-process-env": "off" },

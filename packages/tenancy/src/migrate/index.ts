@@ -122,7 +122,7 @@ export async function migrate(o: MigrateOptions): Promise<MigrateResult> {
       (f) => known.has(`${f.source}/${f.file}`) && known.get(`${f.source}/${f.file}`) !== f.sha256,
     );
     if (edited.length) {
-      throw new IpbError("IPB-ENG-004", {
+      throw new IpbError("IPB-ENG-005", {
         detail: `released migrations changed: ${edited.map((f) => `${f.source}/${f.file}`).join(", ")}`,
         meta: { rule: "checksum-immutable" },
       });

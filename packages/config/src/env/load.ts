@@ -20,6 +20,8 @@ export interface ValidateOptions {
   secrets?: SecretResolver;
   hostMap?: readonly string[];
   guards?: readonly Guard[];
+  /** Used when APP_ENV is absent (test kits default to "test"); never set for application boot. */
+  defaultAppEnv?: AppEnv;
 }
 
 export type ValidateResult<S extends EnvSchema> =
@@ -51,7 +53,7 @@ export async function validateEnv<S extends EnvSchema>(
   const guards = opts.guards ?? GUARDS;
   const raw: Record<string, string | undefined> = {};
   for (const [k, v] of Object.entries(source)) raw[k] = v === "" ? undefined : v;
-  const appEnv = AppEnv.safeParse(raw.APP_ENV);
+  const appEnv = AppEnv.safeParse(raw.APP_ENV ?? opts.defaultAppEnv);
   if (!appEnv.success)
     return {
       ok: false,

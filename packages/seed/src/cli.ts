@@ -153,7 +153,7 @@ export async function main(
       data: { env: gate.values.APP_ENV, actor: SEED_PRINCIPAL.id, profile },
     });
     process.stderr.write(`${JSON.stringify({ msg: "event", event: ev })}\n`);
-    process.stderr.write(`${isIpbError(e) ? `${e.code}: ${e.message}` : String(e)}\n`);
+    process.stderr.write(`${isIpbError(e) ? e.message : String(e)}\n`);
     return 1;
   }
 
@@ -235,7 +235,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (e: unknown) => {
-      process.stderr.write(`${isIpbError(e) ? `${e.code}: ${e.message}` : (e as Error).message}\n`);
+      process.stderr.write(`${(e as Error).message}\n`);
       process.exit(1);
     },
   );

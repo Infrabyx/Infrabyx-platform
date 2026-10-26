@@ -17,7 +17,7 @@
         "src/**",
         "package.json",
         "$TURBO_ROOT$/eslint.config.mjs",
-        "$TURBO_ROOT$/infra/policy/eslint/**"
+        "$TURBO_ROOT$/packages/testing/eslint/**"
       ]
     },
     "typecheck": {
@@ -27,7 +27,7 @@
     "test:int": {
       "dependsOn": ["build"],
       "inputs": ["src/**", "migrations/**", "tsconfig*.json", "package.json", "vitest.config.*"],
-      "passThroughEnv": ["INFRABYX_TEST_PG_URL", "DOCKER_HOST", "TESTCONTAINERS_*"]
+      "passThroughEnv": ["IPB_TEST_PG_URL", "DOCKER_HOST", "TESTCONTAINERS_*"]
     }
   }
 }

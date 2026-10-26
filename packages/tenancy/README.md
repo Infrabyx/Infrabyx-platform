@@ -24,7 +24,7 @@ Tenant context, the transaction kernel, RLS tooling, outbox/inbox, the maker-che
 
 ## Tools
 
-- `infrabyx-migrate --db <url> [--dir migrations --name <product>]` (`@infrabyx/tenancy/migrate`): applies tenancy → audit → config → seed migrations, then the product's; SHA-256 checksums in `meta.migration_checksums`; an edited released file fails `IPB-ENG-004`. A file whose first line is `-- infrabyx:no-transaction` runs outside a transaction (for `CREATE INDEX CONCURRENTLY`).
+- `infrabyx-migrate --db <url> [--dir migrations --name <product>]` (`@infrabyx/tenancy/migrate`): applies tenancy → audit → config → seed migrations, then the product's; SHA-256 checksums in `meta.migration_checksums`; an edited released file fails `IPB-ENG-005`. A file whose first line is `-- infrabyx:no-transaction` runs outside a transaction (for `CREATE INDEX CONCURRENTLY`).
 - `infrabyx-rls-lint --db <url>` (`@infrabyx/tenancy/rls-lint`): RLS enabled and forced with an `app.tenant_id` policy on every tenant table, security-invoker views, no `auth.*` policies, no `BYPASSRLS`/`SUPERUSER` roles, no unlisted `SECURITY DEFINER` function executable by `app_rw`/`app_ro`. `assertManifestsRls()` is the boot check (`IPB-MOD-001`).
 - `@infrabyx/tenancy/drizzle`: `tenantIdColumn()`, `rlsPolicySql()`, `dataClassCommentsSql()` (drizzle-orm optional peer).
 - `@infrabyx/tenancy/nest`: `TenantContextInterceptor` reading `request.verifiedClaims` (`@nestjs/common` optional peer).
@@ -33,4 +33,4 @@ Tenant context, the transaction kernel, RLS tooling, outbox/inbox, the maker-che
 
 `migrations/0001_init.sql`: roles `app_rw`, `app_ro`, `app_migrate` (NOLOGIN, never BYPASSRLS), schema `tenancy` with `tenant`, `legal_entity`, `user`, `membership`, `approval_request`, `approval_decision`, `breakglass_grant`, `impersonation_session`, `outbox`, `inbox`, all with RLS enabled and forced, and the allow-listed definer function `tenancy.breakglass_active`.
 
-Integration tests (`pnpm test:int`) need `INFRABYX_TEST_PG_URL` pointing at a PostgreSQL 16+ server; each run creates and drops its own database.
+Integration tests (`pnpm test:int`) need `IPB_TEST_PG_URL` pointing at a PostgreSQL 16+ server; each run creates and drops its own database.
