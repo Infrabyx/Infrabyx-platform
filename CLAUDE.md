@@ -22,7 +22,7 @@ Node.js 24.22.1 (`.nvmrc`, `engines`, Dockerfiles, CI; no other version without 
 - End: update `docs/STATUS.md` (current phase, done, next, blocked).
 - When the spec is silent on a small point: make the assumption most consistent with the IPB, log it in `docs/DECISIONS.md` (date, ID, decision, reason, spec section) and continue. **Stop and ask** for anything on a locked list: payments and money movement, cryptography choices, data deletion or retention changes, production configuration, Vidhi locked actions, anything that weakens an IPB-02 control.
 - Never publish from a branch other than `main`; never force-push `main`; never edit a migration that has shipped.
-- Seeds never run with `APP_ENV=production`; `SEED_CREDENTIALS.md` is never committed.
+- Seeds never run when `APP_ENV` is `prod`, `dr` or `pre-prod` (`SEED_REFUSED_ENVS`, PL1-D-06); `SEED_CREDENTIALS.md` is never committed.
 
 ## Working on the Claude branch
 
