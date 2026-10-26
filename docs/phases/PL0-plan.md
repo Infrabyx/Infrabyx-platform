@@ -2,7 +2,7 @@
 
 **Phase:** PL0 (IPB-14 §14.3) · **Branch:** `claude/funny-cori-6upyrr` · **Date:** 2026-10-26
 **IPB files read:** 00_README, IPB-14 (§14.2–14.5), IPB-01 (§01.4.1 pins, §01.4.1.2 Renovate, §01.4.2 layout and rules, IPB-01-08/09/11/14/19), IPB-09 (§09.3.A/B/D, §09.4.1–09.4.3), IPB-02 (secrets, `no-process-env`).
-**Owner approval:** _pending_ (this file stops the session; nothing beyond "Done" is changed until approved).
+**Owner approval:** 2026-10-26 (owner message in the PL0 session: GitHub-side items O1, O3, O4, O5 done; O2 deferred per PL0-D-07; proceed with R1–R7, merge, run the exit gate).
 
 ## 1. Scope
 
@@ -45,7 +45,7 @@ Local verification (Node 24.22.1, pnpm 9.15.4): `pnpm lint`, `pnpm format:check`
 | O6  | Package visibility: after the first publish, set each `@infrabyx/*` package's access to the organisation's repositories (so product repos can install with a read token).                                                                                                                                                                                                                                                                             | Org › Packages               | IPB-14 §14.4         |
 | O7  | Confirm whether merging the "chore: version packages" PR that `release.yml` will open after this PR merges is wanted now (publishes 22 scaffold packages at `0.0.1`) or should wait for PL1 (`0.1.0`). Recommendation: leave it open until PL1.                                                                                                                                                                                                       | —                            | IPB-14 §14.3         |
 
-### 3.2 Repository work I propose to do next (on approval)
+### 3.2 Repository work (approved 2026-10-26; done in the second PL0 commit)
 
 | #   | Item                                                                                                                                                                   | Why                                                              | IPB                             |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------- |
@@ -62,13 +62,13 @@ Local verification (Node 24.22.1, pnpm 9.15.4): `pnpm lint`, `pnpm format:check`
 
 - [x] `pnpm install --frozen-lockfile` on Node 24.22.1
 - [x] `lint` (ESLint + Prettier + IPB rules), `typecheck`, `build`, `unit`, `policy-rules`, `ipb-check` green locally
-- [ ] Same checks green in GitHub Actions on the PR for this branch
-- [ ] Ruleset on `main` with `ci / verify` required (O2)
-- [ ] `infrabyx/platform-owners` team exists and CODEOWNERS resolves (O1)
-- [ ] Secrets present; `release.yml` runs on `main` without error (O3)
-- [ ] Renovate enabled and its onboarding/dashboard PR merged (O4)
-- [ ] Environments created (O5)
-- [ ] R1–R7 merged (if approved)
+- [x] Same checks green in GitHub Actions on the PR for this branch (PR #1 run 2)
+- [ ] Ruleset on `main` with `ci / verify` required (O2) — **deferred, PL0-D-07**: not enforceable on the organisation's current GitHub plan; policy file `infra/policy/github/rulesets.json` is ready to apply after the upgrade to GitHub Team
+- [x] `infrabyx/platform-owners` team exists and CODEOWNERS resolves (O1)
+- [x] Secrets present (O3); `release.yml` run on `main` verified at merge
+- [x] Renovate app enabled (O4); onboarding PR handled when it opens
+- [x] Environments created (O5): dev, test, preview, demo, staging, pre-prod, prod, dr
+- [x] R1–R8 done
 - [ ] `docs/STATUS.md` updated to "PL0 complete; next PL1"
 
 ## 4. Decisions logged (see `docs/DECISIONS.md`)
@@ -78,6 +78,8 @@ Local verification (Node 24.22.1, pnpm 9.15.4): `pnpm lint`, `pnpm format:check`
 - PL0-D-03 IPB lint rules implemented as a local ESLint plugin under `infra/policy/eslint` (placeholder detection).
 - PL0-D-04 Root workspace package excluded from Changesets versioning.
 - PL0-D-05 CI step `spec-readonly` enforces the CLAUDE.md "never edit docs/ipb or docs/ecosystem" rule.
+- PL0-D-06 GitHub Actions pinned to commit SHAs.
+- PL0-D-07 `main` ruleset deferred until the organisation upgrades to GitHub Team; CODEOWNERS review enforced by the PR template (`pr-checklist`) and the `spec-readonly` check meanwhile.
 
 ## 5. Risks / notes
 

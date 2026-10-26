@@ -83,9 +83,37 @@ for (const d of [
   "renovate.json",
   "eslint.config.mjs",
   "infra/policy/eslint/index.mjs",
+  "infra/policy/github/rulesets.json",
+  "infra/docker/BASE_IMAGES.md",
+  "docs/platform-requests.md",
+  "docs/adr/ADR-0000-template.md",
+  "commitlint.config.mjs",
+  ".gitleaks.toml",
 ]) {
   if (!existsSync(d)) fail(`${d} missing`);
 }
+// Rulesets policy file (IPB-09 §09.4.1.4) must parse and target main.
+try {
+  const rs = json("infra/policy/github/rulesets.json");
+  if (!(rs.rulesets ?? []).some((r) => r.name === "main"))
+    fail("rulesets.json must define a ruleset named main");
+} catch (e) {
+  fail(`infra/policy/github/rulesets.json is not valid JSON: ${e.message}`);
+}
+// BASE_IMAGES.md must carry the digest for the pinned Node tag.
+if (
+  !new RegExp(`${NODE_PIN.replace(/\./g, "\\.")}-bookworm-slim`).test(
+    read("infra/docker/BASE_IMAGES.md"),
+  ) ||
+  !/sha256:[0-9a-f]{64}/.test(read("infra/docker/BASE_IMAGES.md"))
+) {
+  fail(
+    `infra/docker/BASE_IMAGES.md must record node:${NODE_PIN}-bookworm-slim with a sha256 digest`,
+  );
+}
+// Dependabot is not used: Renovate is the single updater (PL0 plan R8).
+if (existsSync(".github/dependabot.yml"))
+  fail(".github/dependabot.yml must not exist (Renovate is the single updater)");
 if (existsSync("SEED_CREDENTIALS.md")) fail("SEED_CREDENTIALS.md must never be committed (IPB-11)");
 if (!read(".gitignore").includes("SEED_CREDENTIALS.md"))
   fail(".gitignore must ignore SEED_CREDENTIALS.md");

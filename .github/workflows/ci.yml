@@ -11,12 +11,12 @@ env:
   DO_NOT_TRACK: "1"
 jobs:
   verify:
-    # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, lint
-    # (ESLint + Prettier + IPB rules vendor-import / schema-boundary / no-process-env),
-    # typecheck, build, unit, ipb-check, spec-readonly.
+    # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, secret-scan,
+    # spec-readonly, lint (ESLint + Prettier + IPB rules vendor-import / schema-boundary /
+    # no-process-env), typecheck, build, unit, policy-rules, licence, ipb-check, commitlint,
+    # changeset-required, pr-checklist.
     # Still to add: contract, e2e, a11y, rls-lint, migration-lint, sbom, semgrep, zap-baseline,
-    # licence, bundle-budget, lighthouse, export-map-gate, golden-archive-diff, secret-scan,
-    # pr-checklist, commitlint, changeset-required.
+    # bundle-budget, lighthouse, export-map-gate, golden-archive-diff, change-class.
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -38,6 +38,20 @@ jobs:
         run: |
           test "$(cat .nvmrc)" = "${{ matrix.node }}"
           node -v | grep -qx "v${{ matrix.node }}"
+      - name: secret-scan (gitleaks)
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          curl -sSL -o /tmp/gitleaks.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  /tmp/gitleaks.tgz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+          if [ -n "$BASE_REF" ]; then
+            /tmp/gitleaks git --redact --no-banner --exit-code 1 --log-opts="origin/${BASE_REF}..HEAD" .
+          else
+            /tmp/gitleaks git --redact --no-banner --exit-code 1 .
+          fi
       - name: Install
         run: pnpm install --frozen-lockfile
         env:
@@ -51,6 +65,9 @@ jobs:
             echo "$changed"
             exit 1
           fi
+      - name: commitlint (IPB-09-19)
+        if: github.event_name == 'pull_request'
+        run: pnpm commitlint --from "origin/${{ github.base_ref }}" --to HEAD --verbose
       - name: lint (ESLint + IPB rules)
         run: pnpm lint
       - name: lint (Prettier)
@@ -63,8 +80,16 @@ jobs:
         run: pnpm test
       - name: policy-rules (vendor-import, schema-boundary, no-process-env rule tests)
         run: pnpm test:policy
+      - name: licence (allow-list)
+        run: pnpm licence:check
       - name: ipb-check (structural checks)
         run: pnpm ipb:check
-      - name: changeset status
-        if: github.event_name == 'pull_request'
+      - name: changeset-required (IPB-09-20)
+        if: github.event_name == 'pull_request' && !contains(github.event.pull_request.labels.*.name, 'no-changeset')
         run: pnpm changeset status --since="origin/${{ github.base_ref }}"
+      - name: pr-checklist (IPB-09-03/04)
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: pnpm pr:checklist

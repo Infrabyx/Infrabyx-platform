@@ -21,10 +21,15 @@
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "pnpm build && changeset publish",
-    "ipb:check": "node scripts/ipb-check.mjs"
+    "ipb:check": "node scripts/ipb-check.mjs",
+    "commitlint": "commitlint",
+    "licence:check": "node scripts/licence-check.mjs",
+    "pr:checklist": "node scripts/pr-checklist.mjs"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
+    "@commitlint/cli": "21.2.4",
+    "@commitlint/config-conventional": "21.2.4",
     "@eslint/js": "10.0.1",
     "@types/node": "24.19.2",
     "eslint": "10.13.0",
