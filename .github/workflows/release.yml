@@ -13,7 +13,29 @@ env:
   # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
   LEFTHOOK: "0"
 jobs:
+  detect:
+    # A push with no pending changesets is the merge of the version PR, i.e. a publish.
+    runs-on: ubuntu-24.04
+    outputs:
+      publishing: ${{ steps.d.outputs.publishing }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: d
+        run: |
+          if ls .changeset/*.md 2>/dev/null | grep -v README.md | grep -q .; then
+            echo "publishing=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publishing=true" >> "$GITHUB_OUTPUT"
+          fi
+  contracts:
+    # Full port-contract matrix before each release (PL2-D-13).
+    needs: detect
+    if: needs.detect.outputs.publishing == 'true'
+    uses: ./.github/workflows/port-contract.yml
+    secrets: inherit
   release:
+    needs: [detect, contracts]
+    if: ${{ always() && needs.detect.result == 'success' && (needs.contracts.result == 'success' || needs.contracts.result == 'skipped') }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

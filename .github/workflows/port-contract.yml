@@ -1,0 +1,63 @@
+name: port-contract
+# IPB-01-15 contract legs per port (PL2 plan §3.11, PL2-D-13). Pull requests run the unit and
+# hermetic legs for the ports whose files changed; the nightly run and every release run all ports.
+# Sandbox legs join when the GitHub `sandbox` environment exists (PL2-D-12, docs/runbooks/README.md).
+on:
+  pull_request:
+  schedule:
+    - cron: "17 21 * * *" # 02:47 IST nightly
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+concurrency:
+  group: port-contract-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  TURBO_TELEMETRY_DISABLED: "1"
+  LEFTHOOK: "0"
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      ports: ${{ steps.matrix.outputs.ports }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: matrix
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then
+            node scripts/port-matrix.mjs --base "origin/$BASE_REF" >> "$GITHUB_OUTPUT"
+          else
+            node scripts/port-matrix.mjs --all >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+  contract:
+    needs: plan
+    if: needs.plan.outputs.ports != '[]'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        port: ${{ fromJSON(needs.plan.outputs.ports) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@infrabyx"
+      - run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      - run: pnpm build --filter @infrabyx/connectors...
+      - name: contract legs (unit + hermetic)
+        env:
+          PORT: ${{ matrix.port }}
+        run: pnpm --filter @infrabyx/connectors test:contract -- --port "$PORT"

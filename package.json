@@ -31,6 +31,7 @@
     "at:report": "node packages/testing/dist/at-report/cli.js --root packages --spec docs/ipb",
     "env:example:check": "node packages/config/dist/env/cli.js example --schema packages/seed/dist/cli.js --export seedEnvSchema --out packages/seed/.env.example --check",
     "registry:check": "pnpm --filter @infrabyx/config check:registry",
+    "routing:check": "node packages/config/dist/routing/cli.js check infra/routing/reference/local.routing.yaml infra/routing/reference/ci.routing.yaml --sandbox-status packages/connectors/sandbox-status.json",
     "dev-keys:check": "pnpm --filter @infrabyx/crypto dev-keys --check"
   },
   "devDependencies": {
