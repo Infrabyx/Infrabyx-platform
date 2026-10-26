@@ -62,6 +62,23 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
       - run: pnpm build --filter @infrabyx/connectors...
+      # MinIO-server leg (PL2-D-61): MinIO's last community release from quay.io, pinned by digest,
+      # kept in the Actions cache; built from source if quay.io stops serving it.
+      - name: MinIO image key (STORAGE)
+        id: minio
+        if: matrix.port == 'STORAGE'
+        run: |
+          d=$(node -e 'const s=require("fs").readFileSync("packages/testing/src/containers.ts","utf8");const m=/minio:\s*\{[^}]*?image:\s*"[^"@]+@(sha256:[0-9a-f]{64})"/s.exec(s);process.stdout.write(m?m[1]:"")')
+          if [ "$d" = "sha256:0000000000000000000000000000000000000000000000000000000000000000" ]; then d=placeholder; fi
+          echo "key=$d" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.port == 'STORAGE' && steps.minio.outputs.key != 'placeholder'
+        with:
+          path: ~/.cache/ipb-minio
+          key: ipb-minio-RELEASE.2025-09-07T16-13-09Z-${{ steps.minio.outputs.key }}
+      - name: MinIO server (STORAGE)
+        if: matrix.port == 'STORAGE'
+        run: bash scripts/ci/minio-server.sh
       - name: contract legs (unit + hermetic)
         env:
           PORT: ${{ matrix.port }}

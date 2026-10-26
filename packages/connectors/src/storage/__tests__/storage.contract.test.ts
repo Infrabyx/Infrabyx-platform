@@ -6,6 +6,7 @@
 import { CreateKeyCommand, KMSClient } from "@aws-sdk/client-kms";
 import {
   CreateBucketCommand,
+  PutBucketEncryptionCommand,
   ListObjectVersionsCommand,
   PutBucketVersioningCommand,
   S3Client,
@@ -18,6 +19,7 @@ import { ulid } from "@infrabyx/crypto";
 import {
   MemoryStorage,
   defineContractSuite,
+  existingServiceUrl,
   startService,
   type StartedService,
 } from "@infrabyx/testing";
@@ -289,3 +291,96 @@ describe("STORAGE hermetic leg: minio adapter on the S3 API (moto 5.2.4)", () =>
     },
   );
 });
+
+// MinIO server (PL2-D-61): CI starts MinIO's last community release (scripts/ci/minio-server.sh)
+// and sets IPB_TEST_MINIO_URL; quay.io is unreachable from the build sandbox, so locally this
+// leg skips. It proves what moto cannot: presigned-URL expiry, method and content-type
+// enforcement, and SSE-S3 bucket encryption (C-17).
+const minioUrl = await existingServiceUrl("minio");
+const MINIO_CREDS = { accessKeyId: "ipb-minio-test", secretAccessKey: "ipb-minio-test-secret" };
+const minioBuckets = buckets("srv");
+
+describe.skipIf(!minioUrl)(
+  "STORAGE hermetic leg: minio server RELEASE.2025-09-07T16-13-09Z",
+  () => {
+    const server = () =>
+      new MinioStorage({
+        region: "us-east-1",
+        buckets: minioBuckets,
+        endpoint: minioUrl!,
+        credentials: MINIO_CREDS,
+        currentTenant: () => tenant,
+        allowLoopbackHttp: true,
+      });
+
+    beforeAll(async () => {
+      const s3 = new S3Client({
+        region: "us-east-1",
+        endpoint: minioUrl!,
+        forcePathStyle: true,
+        credentials: MINIO_CREDS,
+      });
+      for (const Bucket of Object.values(minioBuckets)) {
+        await s3.send(new CreateBucketCommand({ Bucket, ObjectLockEnabledForBucket: true }));
+        await s3.send(
+          new PutBucketEncryptionCommand({
+            Bucket,
+            ServerSideEncryptionConfiguration: {
+              Rules: [{ ApplyServerSideEncryptionByDefault: { SSEAlgorithm: "AES256" } }],
+            },
+          }),
+        );
+      }
+    });
+
+    defineContractSuite("STORAGE", server, cases, { leg: "hermetic" });
+
+    it("IPB-02-15: an expired, re-purposed or tampered presigned URL is refused", async () => {
+      const p = server();
+      const k = key();
+      await p.put(k, enc("doc"), { bucketClass: "GENERAL", contentType: "application/pdf" });
+      const short = await p.presign(k, "get", 1);
+      await new Promise((r) => setTimeout(r, 2_500));
+      expect((await fetch(short)).status).toBe(403);
+      const get = await p.presign(k, "get", 60);
+      expect((await fetch(get)).status).toBe(200);
+      expect((await fetch(get, { method: "DELETE" })).status).toBe(403);
+      expect((await fetch(get, { method: "PUT", body: "x" })).status).toBe(403);
+      const sig = /X-Amz-Signature=([0-9a-f]+)/.exec(get)![1]!;
+      const flipped = get.replace(sig, `${sig[0] === "0" ? "1" : "0"}${sig.slice(1)}`);
+      expect((await fetch(flipped)).status).toBe(403);
+      const k2 = key();
+      const put = await p.presign(k2, "put", 60, {
+        bucketClass: "GENERAL",
+        contentType: "application/pdf",
+      });
+      const wrong = await fetch(put, {
+        method: "PUT",
+        body: "x",
+        headers: { "content-type": "text/html" },
+      });
+      expect(wrong.status).toBe(403);
+      const right = await fetch(put, {
+        method: "PUT",
+        body: "ok",
+        headers: { "content-type": "application/pdf" },
+      });
+      expect(right.status).toBe(200);
+      expect(dec((await p.get(k2)).body)).toBe("ok");
+    });
+
+    it("C-17: objects are encrypted at rest with SSE-S3; health uses MinIO's probe", async () => {
+      const p = server();
+      const k = key();
+      await p.put(k, enc("secret"), { bucketClass: "REGULATED" });
+      const head = await new S3Client({
+        region: "us-east-1",
+        endpoint: minioUrl!,
+        forcePathStyle: true,
+        credentials: MINIO_CREDS,
+      }).send(new HeadObjectCommand({ Bucket: minioBuckets.REGULATED, Key: k }));
+      expect(head.ServerSideEncryption).toBe("AES256");
+      expect((await p.health()).status).toBe("up");
+    });
+  },
+);
