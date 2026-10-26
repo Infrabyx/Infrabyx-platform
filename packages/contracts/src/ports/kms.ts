@@ -17,11 +17,11 @@ export interface KmsPort extends Port {
   encrypt(keyId: string, plaintext: Uint8Array, aad?: Uint8Array): Promise<Uint8Array>;
   decrypt(keyId: string, ciphertext: Uint8Array, aad?: Uint8Array): Promise<Uint8Array>;
   generateDataKey(keyId: string): Promise<DataKey>;
-  /** Sign a digest (not the message); returns a DER-encoded signature. */
-  sign(keyId: string, digest: Uint8Array, alg: KmsSignAlgorithm): Promise<Uint8Array>;
+  /** Sign a message of at most 4096 bytes (adapters may pre-hash; PL1-D-09); returns a DER-encoded signature. */
+  sign(keyId: string, message: Uint8Array, alg: KmsSignAlgorithm): Promise<Uint8Array>;
   verify(
     keyId: string,
-    digest: Uint8Array,
+    message: Uint8Array,
     signature: Uint8Array,
     alg: KmsSignAlgorithm,
   ): Promise<boolean>;

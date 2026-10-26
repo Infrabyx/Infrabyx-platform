@@ -20,9 +20,11 @@ Updated: 2026-10-26
 
 - `@infrabyx/tenancy`: context from verified claims, PgKernel (SET LOCAL, statement guard, ledger-required commit), outbox/inbox, approvals engine, break-glass, impersonation, field encryption, masking, `infrabyx-migrate`, `infrabyx-rls-lint`, Drizzle and NestJS adapters, migration `tenancy/0001_init.sql`. Unit tests and 16 PostgreSQL integration tests (@NN-01, @NN-45, @NN-18, @IPB-02-AT-04/08/10/11/12, @IPB-01-AT-16).
 
+- `@infrabyx/audit`: trigger-computed hash chain (PL1-C-01), append-only for every role, verifier, corrections, signed anchors, migration `audit/0001_init.sql`. Tests @IPB-02-AT-15 (1,000-entry tamper), @NN-02, @NN-45 (20 concurrent writers), anchors verifiable with the public key alone.
+
 ## Next
 
-- `@infrabyx/audit`, then seed, testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
+- `@infrabyx/seed`, then testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
 
 ## Owner decisions
 

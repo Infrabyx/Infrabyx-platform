@@ -52,7 +52,27 @@ importers:
 
   packages/ai: {}
 
-  packages/audit: {}
+  packages/audit:
+    dependencies:
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+    devDependencies:
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
 
   packages/brand: {}
 

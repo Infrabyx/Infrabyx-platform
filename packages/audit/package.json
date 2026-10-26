@@ -11,17 +11,30 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/config": "workspace:*"
+  },
+  "devDependencies": {
+    "@infrabyx/tenancy": "workspace:*",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
