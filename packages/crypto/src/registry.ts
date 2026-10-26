@@ -34,6 +34,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "ip_hash/ua_hash/actor pseudonyms (C-02)",
       "blind index (C-05)",
       "webhook signatures",
+      "telemetry and flag-context ID hashes, 128-bit truncation (C-21)",
     ],
   },
   {
@@ -60,7 +61,10 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     status: "approved",
     primitive: "kdf",
     parameterSet: "256",
-    usedFor: ["LocalKms dev key derivation (C-10)"],
+    usedFor: [
+      "LocalKms dev key derivation (C-10)",
+      "telemetry ID key, label ipb/telemetry-id/v1 (C-21)",
+    ],
   },
   {
     id: "ctr-drbg-os",

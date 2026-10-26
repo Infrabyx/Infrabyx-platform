@@ -5,7 +5,15 @@ export * from "./encoding.js";
 export * from "./jcs.js";
 export { sha256, sha256Hex, hash, canonicalDigest, type HashAlgorithm } from "./hash.js";
 export { SecretKey } from "./keys.js";
-export { hmacSha256, hmacSha256Hex, pseudonymise, hashedActorId } from "./hmac.js";
+export {
+  hmacSha256,
+  hmacSha256Hex,
+  pseudonymise,
+  hashedActorId,
+  deriveSubKey,
+  telemetryIdHasher,
+  TELEMETRY_ID_LABEL,
+} from "./hmac.js";
 export { randomBytes, randomInt } from "./random.js";
 export { ulid, newId, deterministicId, ulidTime } from "./ulid.js";
 export { aesGcmEncrypt, aesGcmDecrypt, AES_GCM_NONCE_BYTES, AES_GCM_TAG_BYTES } from "./aead.js";
