@@ -5,10 +5,11 @@ import { chmodSync, mkdtempSync, readFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { randomBytes, toHex } from "@infrabyx/crypto";
 import { defineContractSuite, startService, type StartedService } from "@infrabyx/testing";
 import { OtelObservability, type OtelOptions, type OtelProfile } from "../otel.js";
 
-const TOKEN = "contract-intake-token";
+const TOKEN = toHex(randomBytes(16));
 const CONFIG = `
 extensions:
   bearertokenauth/intake:
