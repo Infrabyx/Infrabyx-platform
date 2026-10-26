@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Vendor Assurance Room mirror, Trust Centre, evidence packs",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -1,0 +1,373 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Infrabyx platform sandbox account (PL2-D-11, D-01). GitHub OIDC role for the
+  port-contract sandbox legs, USD 10/month budget alert, Object Lock test bucket
+  (1-day retention), two test KMS keys, the secrets/sandbox/ prefix with a canary
+  secret, SES sandbox sender identity and the SES event SNS topic (SignatureVersion 2).
+  Deploy once, in ap-south-1, in the sandbox member account. No IAM users, no access keys.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Default: Infrabyx
+  GitHubRepo:
+    Type: String
+    Default: Infrabyx-platform
+  GitHubEnvironment:
+    Type: String
+    Default: sandbox
+    Description: Only workflow jobs bound to this GitHub environment can assume the role.
+  CreateOidcProvider:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: Set to false if the account already has the token.actions.githubusercontent.com provider.
+  BudgetEmail:
+    Type: String
+    Description: Address that receives the budget alerts.
+  SesSenderEmail:
+    Type: String
+    Description: Sender address for SES sandbox tests; SES sends a verification link to it.
+
+Conditions:
+  MakeOidcProvider: !Equals [!Ref CreateOidcProvider, "true"]
+
+Rules:
+  MumbaiOnly:
+    Assertions:
+      - Assert: !Equals [!Ref "AWS::Region", ap-south-1]
+        AssertDescription: Deploy this stack in ap-south-1 (Mumbai) only.
+
+Resources:
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: MakeOidcProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  SandboxRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: infrabyx-platform-sandbox-ci
+      Description: Assumed by the port-contract sandbox legs through GitHub OIDC (no long-lived keys, IPB-02-08).
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${GitHubRepo}:environment:${GitHubEnvironment}
+      Policies:
+        - PolicyName: port-contract-sandbox
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: StorageObjects
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:DeleteObjectVersion
+                  - s3:GetObjectRetention
+                  - s3:PutObjectRetention
+                  - s3:GetObjectLegalHold
+                  - s3:PutObjectLegalHold
+                  - s3:GetObjectAttributes
+                Resource: !Sub ${TestBucket.Arn}/*
+              - Sid: StorageBucket
+                Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:ListBucketVersions
+                  - s3:GetBucketObjectLockConfiguration
+                  - s3:GetBucketVersioning
+                  - s3:GetReplicationConfiguration
+                  - s3:GetEncryptionConfiguration
+                Resource: !GetAtt TestBucket.Arn
+              - Sid: KmsTestKeys
+                Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                  - kms:Sign
+                  - kms:Verify
+                  - kms:GetPublicKey
+                  - kms:DescribeKey
+                Resource:
+                  - !GetAtt SymmetricTestKey.Arn
+                  - !GetAtt SigningTestKey.Arn
+              - Sid: SecretsSandboxPrefix
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                  - secretsmanager:PutSecretValue
+                  - secretsmanager:CreateSecret
+                  - secretsmanager:DeleteSecret
+                  - secretsmanager:TagResource
+                  - secretsmanager:ListSecretVersionIds
+                  - secretsmanager:UpdateSecretVersionStage
+                Resource: !Sub arn:${AWS::Partition}:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:secrets/sandbox/*
+              - Sid: SecretsList
+                Effect: Allow
+                Action: secretsmanager:ListSecrets
+                Resource: "*"
+              - Sid: SesSend
+                Effect: Allow
+                Action:
+                  - ses:SendEmail
+                  - ses:SendRawEmail
+                  - ses:GetEmailIdentity
+                  - ses:GetAccount
+                  - ses:GetSuppressedDestination
+                  - ses:PutSuppressedDestination
+                  - ses:DeleteSuppressedDestination
+                Resource: "*"
+              - Sid: SesEventTopic
+                Effect: Allow
+                Action:
+                  - sns:GetTopicAttributes
+                  - sns:Subscribe
+                  - sns:Unsubscribe
+                  - sns:ConfirmSubscription
+                  - sns:ListSubscriptionsByTopic
+                Resource: !Ref SesEventTopic
+              - Sid: AuditLookup
+                Effect: Allow
+                Action: cloudtrail:LookupEvents
+                Resource: "*"
+
+  SandboxBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: infrabyx-sandbox-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: 10, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification:
+            {
+              NotificationType: ACTUAL,
+              ComparisonOperator: GREATER_THAN,
+              Threshold: 70,
+              ThresholdType: PERCENTAGE,
+            }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref BudgetEmail }]
+        - Notification:
+            {
+              NotificationType: ACTUAL,
+              ComparisonOperator: GREATER_THAN,
+              Threshold: 100,
+              ThresholdType: PERCENTAGE,
+            }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref BudgetEmail }]
+        - Notification:
+            {
+              NotificationType: FORECASTED,
+              ComparisonOperator: GREATER_THAN,
+              Threshold: 100,
+              ThresholdType: PERCENTAGE,
+            }
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref BudgetEmail }]
+
+  SymmetricTestKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Sandbox test key for encrypt, decrypt and data keys (C-14 SYMMETRIC_DEFAULT)
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+      EnableKeyRotation: true
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdmin
+            Effect: Allow
+            Principal: { AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root" }
+            Action: kms:*
+            Resource: "*"
+          - Sid: AllowS3AndSecretsManagerInThisAccount
+            Effect: Allow
+            Principal: { AWS: "*" }
+            Action: [kms:Encrypt, kms:Decrypt, kms:GenerateDataKey*, kms:DescribeKey]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref AWS::AccountId
+              StringLike:
+                kms:ViaService:
+                  - !Sub s3.${AWS::Region}.amazonaws.com
+                  - !Sub secretsmanager.${AWS::Region}.amazonaws.com
+          - Sid: AllowSesToPublishToTheEncryptedEventTopic
+            Effect: Allow
+            Principal: { Service: ses.amazonaws.com }
+            Action: [kms:GenerateDataKey*, kms:Decrypt]
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  SymmetricTestKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/infrabyx-sandbox-symmetric
+      TargetKeyId: !Ref SymmetricTestKey
+
+  SigningTestKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: Sandbox test key for ECDSA P-256 signing (C-03, C-14)
+      KeySpec: ECC_NIST_P256
+      KeyUsage: SIGN_VERIFY
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdmin
+            Effect: Allow
+            Principal: { AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root" }
+            Action: kms:*
+            Resource: "*"
+
+  SigningTestKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/infrabyx-sandbox-signing
+      TargetKeyId: !Ref SigningTestKey
+
+  TestBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub infrabyx-sandbox-storage-${AWS::AccountId}
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        Rule:
+          DefaultRetention: { Mode: COMPLIANCE, Days: 1 }
+      VersioningConfiguration: { Status: Enabled }
+      OwnershipControls:
+        Rules: [{ ObjectOwnership: BucketOwnerEnforced }]
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - BucketKeyEnabled: true
+            ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt SymmetricTestKey.Arn
+      LifecycleConfiguration:
+        Rules:
+          - Id: expire-test-objects
+            Status: Enabled
+            ExpirationInDays: 2
+            NoncurrentVersionExpiration: { NoncurrentDays: 2 }
+            AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 }
+
+  TestBucketTlsOnly:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TestBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource: [!GetAtt TestBucket.Arn, !Sub "${TestBucket.Arn}/*"]
+            Condition: { Bool: { aws:SecureTransport: "false" } }
+
+  CanarySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: secrets/sandbox/secrets/aws-sm/canary
+      Description: SECRETS port health canary (IPB-01 catalogue). Value is generated; never read by people.
+      KmsKeyId: !Ref SymmetricTestKey
+      GenerateSecretString: { PasswordLength: 32, ExcludePunctuation: true }
+      Tags:
+        - { Key: owner, Value: platform }
+        - { Key: rotation_days, Value: "180" }
+        - { Key: data_class, Value: SECRET }
+
+  SesSenderIdentity:
+    Type: AWS::SES::EmailIdentity
+    Properties:
+      EmailIdentity: !Ref SesSenderEmail
+      ConfigurationSetAttributes:
+        ConfigurationSetName: !Ref SesConfigurationSet
+
+  SesConfigurationSet:
+    Type: AWS::SES::ConfigurationSet
+    Properties:
+      Name: infrabyx-sandbox
+
+  SesEventTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: infrabyx-sandbox-ses-events
+      SignatureVersion: "2"
+      KmsMasterKeyId: !Ref SymmetricTestKey
+
+  SesEventTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref SesEventTopic]
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowSesPublish
+            Effect: Allow
+            Principal: { Service: ses.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref SesEventTopic
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Ref AWS::AccountId
+
+  SesEventDestination:
+    Type: AWS::SES::ConfigurationSetEventDestination
+    DependsOn: SesEventTopicPolicy
+    Properties:
+      ConfigurationSetName: !Ref SesConfigurationSet
+      EventDestination:
+        Name: sns-events
+        Enabled: true
+        MatchingEventTypes:
+          [send, delivery, bounce, complaint, reject, renderingFailure, deliveryDelay]
+        SnsDestination:
+          TopicARN: !Ref SesEventTopic
+
+Outputs:
+  RoleArn:
+    Description: GitHub environment variable SANDBOX_AWS_ROLE_ARN
+    Value: !GetAtt SandboxRole.Arn
+  BucketName:
+    Description: GitHub environment variable SANDBOX_S3_BUCKET
+    Value: !Ref TestBucket
+  SymmetricKeyArn:
+    Description: GitHub environment variable SANDBOX_KMS_SYMMETRIC_KEY_ARN
+    Value: !GetAtt SymmetricTestKey.Arn
+  SigningKeyArn:
+    Description: GitHub environment variable SANDBOX_KMS_SIGNING_KEY_ARN
+    Value: !GetAtt SigningTestKey.Arn
+  SesConfigurationSetName:
+    Description: GitHub environment variable SANDBOX_SES_CONFIGURATION_SET
+    Value: !Ref SesConfigurationSet
+  SesEventTopicArn:
+    Description: GitHub environment variable SANDBOX_SES_EVENT_TOPIC_ARN
+    Value: !Ref SesEventTopic

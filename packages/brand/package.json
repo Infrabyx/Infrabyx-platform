@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Brand packs, Brand Studio, host map, display name, contrast guard",
   "license": "UNLICENSED",
-  "private": false,
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -119,11 +119,34 @@ if (
 // Dependabot is not used: Renovate is the single updater (PL0 plan R8).
 if (existsSync(".github/dependabot.yml"))
   fail(".github/dependabot.yml must not exist (Renovate is the single updater)");
+// Decision and request rows are plain table rows; a "> " prefix renders them as quoted text (PL2-D-04).
+for (const d of ["docs/DECISIONS.md", "docs/platform-requests.md"]) {
+  if (/^>\s*\|/m.test(read(d))) fail(`${d}: table rows must not start with "> " (PL2-D-04)`);
+}
 if (existsSync("SEED_CREDENTIALS.md")) fail("SEED_CREDENTIALS.md must never be committed (IPB-11)");
 if (!read(".gitignore").includes("SEED_CREDENTIALS.md"))
   fail(".gitignore must ignore SEED_CREDENTIALS.md");
 
 // ---- packages (IPB-14 §14.2 scaffold contract) -------------------------------------------
+// A scaffold is a package whose only source is the PL0 `PACKAGE_NAME` export. Changesets publishes
+// every non-private package missing from the registry, so a scaffold must stay private until the
+// phase that builds it flips the flag (PL1-D-19, PL1-D-20).
+const isScaffold = (base) => {
+  const src = readdirSync(`${base}/src`, { recursive: true })
+    .map(String)
+    .filter((f) => /\.(ts|tsx|mts)$/.test(f) && !/\.test\.tsx?$/.test(f));
+  if (src.length !== 1 || src[0] !== "index.ts") return false;
+  const exported = read(`${base}/src/index.ts`).match(/^export\b.*$/gm) ?? [];
+  return exported.every((l) => /^export const PACKAGE_NAME\b/.test(l));
+};
+const privateByName = new Map();
+for (const p of readdirSync("packages")) {
+  if (existsSync(`packages/${p}/package.json`))
+    privateByName.set(
+      json(`packages/${p}/package.json`).name,
+      json(`packages/${p}/package.json`).private,
+    );
+}
 for (const p of readdirSync("packages")) {
   const base = `packages/${p}`;
   if (!existsSync(`${base}/package.json`)) {
@@ -135,12 +158,23 @@ for (const p of readdirSync("packages")) {
   if (pj.publishConfig?.registry !== "https://npm.pkg.github.com")
     fail(`${p}: publishConfig.registry must be GitHub Packages`);
   if (pj.engines?.node !== NODE_PIN) fail(`${p}: engines.node must be ${NODE_PIN}`);
-  if (pj.private !== false) fail(`${p}: private must be false (publishable)`);
+  if (typeof pj.private !== "boolean")
+    fail(`${p}: "private" must be set explicitly (true or false)`);
   if (pj.type !== "module") fail(`${p}: type must be "module" (ESM)`);
   for (const s of ["build", "test", "lint", "typecheck"])
     if (!pj.scripts?.[s]) fail(`${p}: missing script ${s}`);
   for (const f of ["README.md", "src/index.ts", "tsconfig.json", "tsconfig.build.json"]) {
     if (!existsSync(`${base}/${f}`)) fail(`${p}: ${f} missing`);
+  }
+  if (pj.private === false && existsSync(`${base}/src/index.ts`) && isScaffold(base))
+    fail(
+      `${p}: scaffold without real code must be "private": true until its phase builds it (PL1-D-20)`,
+    );
+  if (pj.private === false) {
+    for (const dep of Object.keys({ ...pj.dependencies, ...pj.peerDependencies })) {
+      if (privateByName.get(dep) === true)
+        fail(`${p}: publishable package depends on private workspace package ${dep} (PL1-D-20)`);
+    }
   }
   if (!readdirSync(`${base}/src`, { recursive: true }).some((f) => String(f).endsWith(".test.ts")))
     fail(`${p}: no test file in src/`);
