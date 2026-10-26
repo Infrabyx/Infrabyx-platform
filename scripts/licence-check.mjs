@@ -24,6 +24,8 @@ const ALLOW = new Set([
 const EXCEPTIONS = {
   spawndamnit:
     "MIT — LICENSE file in github.com/thejameskyle/spawndamnit; package.json has no license field",
+  unionfs:
+    "Unlicense — LICENSE file in the published package (github.com/streamich/unionfs); package.json has no license field; via @temporalio/worker",
 };
 
 const raw = execFileSync("pnpm", ["licenses", "list", "--json"], {

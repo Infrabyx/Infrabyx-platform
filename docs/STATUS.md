@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 session 4 of 8** (IDENTITY and AUTHZ) in its PR; sessions 1–3 (#13, #15, #17), the working-mode PR (#16) and field-encryption v2 (#18) merged. Continuous build mode (PL2-D-41)    |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                 |
+| Item                  | Value                                                                                                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Current phase         | **PL2 session 5 of 8** (STORAGE, QUEUE, WORKFLOW) in its PR; sessions 1–4 (#13, #15, #17, #19), the working-mode PR (#16) and field-encryption v2 (#18) merged. Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                           |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)         |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                          |
+| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                         |
 
 ## Done
 
@@ -63,11 +63,21 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1 answered as PL2-D-50, #2 as PL2-D-55, #3 as PL2-D-56). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (open: #4 MinIO image source, PL2-D-61; #1–#3 answered as PL2-D-50, PL2-D-55, PL2-D-56). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
-- PL2 session 5 (D-11 order): STORAGE (`s3`, `minio`), QUEUE (`bullmq`, `pg-boss`), WORKFLOW (`temporal`, `temporal-cloud`).
+- PL2 session 6 (D-11 order): EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); no live sends.
+
+## PL2 session 5 (2026-10-26)
+
+- `@infrabyx/connectors`:
+  - STORAGE `s3` and `minio`: Object Lock COMPLIANCE, write-once retention and refused overwrite or delete while retained (@IPB-01-AT-09), soft delete, AUDIT anchors survive a version delete (@IPB-02-AT-13), SSE-KMS with the class or tenant key (C-17), presigned URLs bound to method and content type, SHA-256 verified replication, cross-tenant keys refused; parity on moto 5.2.4 (@IPB-01-AT-10, S3-API level) (PL2-D-57);
+  - QUEUE `bullmq` (Redis 7.4 and Valkey 8.1) and `pg-boss` (PostgreSQL 18, DML-only role): canary ≤ 5 s, idempotent enqueue, delay, backoff, DLQ and replay, cron, refusal of non-INTERNAL payloads (PL2-D-58, PL2-D-59);
+  - WORKFLOW `temporal` and `temporal-cloud`: C-16 codec and encrypted failures, idempotent ids, deterministic replay, 32 KB reference path, input-class rule, worker helper (PL2-D-60).
+- `@infrabyx/contracts`: `presign` options `{ bucketClass, contentType }`; KMS purpose `workflow`.
+- New for products at gate A: migration `connectors/0003_pgboss.sql`; env `STORAGE_*`, `QUEUE_REDIS_URL`, `WORKFLOW_TEMPORAL_*` (plan §6.7–6.9); settings `int.storage.*`, `int.queue.*`, `int.workflow.*`.
+- Open for the owner: OWNER-QUESTIONS #4, the MinIO-server test image (PL2-D-61). It does not block PL2: `minio` is unproven and refused by routing outside dev and test.
 
 ## PL2 session 4 (2026-10-26)
 
@@ -140,6 +150,8 @@ Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repo
 | 2026-10 | main after #17 (ci 5, release 2)                            | 7                         | 208           |
 | 2026-10 | PR #18 (ci 5, port-contract KMS ~3), estimate               | 8                         | 216           |
 | 2026-10 | main after #18 (ci 5, release 2)                            | 7                         | 223           |
+| 2026-10 | PR #19, 4 pushes (ci 6, port-contract 6 legs ~16), estimate | 88                        | 311           |
+| 2026-10 | main after #19 (ci 5, release 2)                            | 7                         | 318           |
 
 ## Owner decisions
 

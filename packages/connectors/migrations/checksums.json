@@ -1,4 +1,5 @@
 {
   "0001_init.sql": "6cf7b81787080ea232eafac68d8f74923f2a276791452953dd212f1e274c31af",
-  "0002_session_revocation.sql": "8b4f4b26122a2b5a037f8bab090300ed03907b088682e4c3d2d6fcc4ab977cd9"
+  "0002_session_revocation.sql": "8b4f4b26122a2b5a037f8bab090300ed03907b088682e4c3d2d6fcc4ab977cd9",
+  "0003_pgboss.sql": "fb84cf7ba6ea7b3c67940e4be0dfcc3ea674243fefe63eb7dfd734ad32826787"
 }

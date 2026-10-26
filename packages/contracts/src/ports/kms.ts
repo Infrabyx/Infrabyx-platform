@@ -9,7 +9,7 @@ export type KmsWrapAlgorithm = "aes-256-gcm" | (string & {});
  * Purposes a KMS encryption context may name (C-14, PL2-D-50). A fixed registry: values are
  * identifiers of a use, never data, so no personal data can enter a context. Extend only here.
  */
-export const KMS_PURPOSES = ["field", "health"] as const;
+export const KMS_PURPOSES = ["field", "health", "workflow"] as const;
 export type KmsPurpose = (typeof KMS_PURPOSES)[number];
 
 /** Tenant id used in the context of platform-scoped operations (health canaries). */
