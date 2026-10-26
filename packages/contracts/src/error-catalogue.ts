@@ -348,6 +348,11 @@ export const ERROR_CATALOGUE = {
     source: "IPB-07 §07.6.3",
   },
   "IPB-UX-010": { status: 409, title: "Draft restore conflict", source: "IPB-07 §07.6.3" },
+  "IPB-UX-011": {
+    status: 403,
+    title: "Principal may not change this setting at this tier",
+    source: "PL1-D-08 (PR-005)",
+  },
   "IPB-HLP-001": {
     status: "ci",
     title: "Missing help key or key not in registry",

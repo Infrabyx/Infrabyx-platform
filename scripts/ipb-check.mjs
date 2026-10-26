@@ -140,7 +140,7 @@ for (const p of readdirSync("packages")) {
   for (const f of ["README.md", "src/index.ts", "tsconfig.json", "tsconfig.build.json"]) {
     if (!existsSync(`${base}/${f}`)) fail(`${p}: ${f} missing`);
   }
-  if (!readdirSync(`${base}/src`).some((f) => f.endsWith(".test.ts")))
+  if (!readdirSync(`${base}/src`, { recursive: true }).some((f) => String(f).endsWith(".test.ts")))
     fail(`${p}: no test file in src/`);
   if (!/IPB-\d\d/.test(read(`${base}/README.md`)))
     fail(`${p}: README must name the IPB file that specifies it`);

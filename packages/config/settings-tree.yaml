@@ -1,0 +1,1206 @@
+# Settings tree and registry — source of truth (IPB-07-36, PL1-D-02 / D-12).
+# `pnpm --filter @infrabyx/config gen:registry` generates src/settings/registry.generated.ts;
+# CI fails when the two drift. Keys owned by later phases are registered by those phases (D-11).
+#
+# Key fields
+#   key        dotted key; {param} marks a templated segment (e.g. int.{port}.primary)
+#   tier       lowest tier at which the key may be set: PLATFORM | PLAN | BRAND | TENANT | ENTITY | USER
+#              (ORG in IPB tables = TENANT, or ENTITY with scope legal_entity; IPB-07 §07.5 note)
+#   type       bool | int | decimal | string | enum | string[] | enum[] | cidr[] | json | locale | route | time | range | date
+#   default    value used when no tier sets one
+#   min / max  hard bounds (floors and ceilings; a lower tier can never cross them)
+#   locked     true: nobody may change the value at any tier (IPB-02-86, IPB-SEC-020)
+#   tighten    a lower tier may only make the value stricter: min (higher is stricter), max (lower is
+#              stricter), superset (lists may only grow), true / false (the strict boolean value)
+#   user_override  USER may set a TENANT/ENTITY key
+#   change     roles that may change it; "self" = the user the value belongs to; "pipeline" = deploy only
+#   mc         maker-checker risk class (R2 | R4 | R5) or false
+#   help       help key (IPB-07-42)
+#   source     IPB section that defines the key
+
+version: "1.0"
+
+tree:
+  - { n: 1, name: "Profile", tier: USER, prefixes: ["usr.profile."], change: [self], mc: false }
+  - {
+      n: 2,
+      name: "Security",
+      tier: USER,
+      prefixes: ["sec.user."],
+      org_policy_prefixes: ["sec.org."],
+      change: [self],
+      mc: false,
+    }
+  - {
+      n: 3,
+      name: "Privacy & consents",
+      tier: USER,
+      prefixes: ["priv.user."],
+      change: [self],
+      mc: false,
+    }
+  - { n: 4, name: "Accessibility", tier: USER, prefixes: ["a11y."], change: [self], mc: false }
+  - {
+      n: 5,
+      name: "Appearance",
+      tier: USER,
+      prefixes: ["ux.appearance.", "ux.density", "ux.simple_mode"],
+      change: [self],
+      mc: false,
+    }
+  - {
+      n: 6,
+      name: "Notifications",
+      tier: USER,
+      prefixes: ["ntf.user.", "ntf.quiet_hours"],
+      org_policy_prefixes: ["ntf.org."],
+      change: [self, ORG_ADMIN],
+      mc: "routing",
+    }
+  - {
+      n: 7,
+      name: "Customisation",
+      tier: ORG,
+      prefixes: ["cst."],
+      change: [ORG_ADMIN],
+      mc: "custom fields with PII class",
+    }
+  - {
+      n: 8,
+      name: "Organisation & people",
+      tier: ORG,
+      prefixes: ["org.", "sec.org.", "mc."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: "roles, maker-checker policy, security policy, entity changes",
+    }
+  - {
+      n: 9,
+      name: "Billing",
+      tier: ORG,
+      prefixes: ["bil."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: "payment method change",
+    }
+  - {
+      n: 10,
+      name: "Invoices",
+      tier: ORG,
+      prefixes: ["bil.invoices."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: false,
+    }
+  - {
+      n: 11,
+      name: "Plans & subscription",
+      tier: ORG,
+      prefixes: ["pln."],
+      change: [ORG_OWNER],
+      mc: "downgrade/cancel",
+    }
+  - {
+      n: 12,
+      name: "Storage & data",
+      tier: ORG,
+      prefixes: ["dat."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: "BYO storage, retention change, legal hold, exit",
+    }
+  - { n: 13, name: "Audit trails", tier: ORG, prefixes: ["aud."], change: [], mc: false }
+  - {
+      n: 14,
+      name: "Integrations",
+      tier: ORG,
+      prefixes: ["int."],
+      change: [ORG_ADMIN],
+      mc: "API keys and webhooks above int.mc_threshold; connector install with egress",
+    }
+  - {
+      n: 15,
+      name: "AI & Vidhi",
+      tier: ORG,
+      prefixes: ["ai.", "vidhi."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: "ceilings, providers, agent enablement",
+    }
+  - { n: 16, name: "Feedback", tier: USER, prefixes: ["fb."], change: [self], mc: false }
+  - {
+      n: 17,
+      name: "Tutorials & help",
+      tier: USER,
+      prefixes: ["tut.", "hlp."],
+      change: [self, ORG_ADMIN],
+      mc: false,
+    }
+  - {
+      n: 18,
+      name: "Security & trust",
+      tier: ORG,
+      prefixes: ["trust."],
+      change: [ORG_OWNER, ORG_ADMIN],
+      mc: "grants",
+    }
+  - {
+      n: 19,
+      name: "What's new",
+      tier: USER,
+      prefixes: ["tut.whats_new."],
+      change: [self, ORG_ADMIN],
+      mc: false,
+    }
+  - { n: 20, name: "About", tier: USER, prefixes: ["ipb.about."], change: [], mc: false }
+
+console_tree:
+  - "Tenants & plans"
+  - "Brand Studio (platform layer)"
+  - "Pricing Studio"
+  - "CMS"
+  - "Compliance Documents"
+  - "Feature flags & releases"
+  - "Platform audit"
+  - "Observability"
+  - "Seed & environments"
+
+keys:
+  # ---------------------------------------------------------------- IPB-01 §01.5
+  - {
+      key: ipb.runtime.node_version,
+      tier: PLATFORM,
+      type: string,
+      default: "24.22.1",
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      note: "ADR + PR only",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: ipb.region.primary,
+      tier: PLATFORM,
+      type: string,
+      default: "ap-south-1",
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "ADR",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: ipb.region.dr,
+      tier: PLATFORM,
+      type: string,
+      default: "ap-south-2",
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "ADR",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.routing.file,
+      tier: PLATFORM,
+      type: string,
+      default: "infra/routing/<product>/<env>.routing.yaml",
+      change: [pipeline],
+      mc: false,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: "int.{port}.primary",
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "CAB for Tier-0/1 ports",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: "int.{port}.secondary",
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: "int.{port}.failover_mode",
+      tier: PLATFORM,
+      type: enum,
+      values: [read_only_failover, active_failover, none],
+      default: read_only_failover,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: "int.{port}.circuit_breaker",
+      tier: PLATFORM,
+      type: json,
+      default:
+        { failure_threshold: 5, error_rate_threshold: 0.5, window_seconds: 60, open_seconds: 30 },
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.residency.policy,
+      tier: PLATFORM,
+      type: json,
+      default:
+        {
+          PUBLIC: [IN, IN-ZR, GLOBAL],
+          INTERNAL: [IN, IN-ZR, GLOBAL],
+          CONFIDENTIAL: [IN, IN-ZR],
+          REGULATED: [IN-ZR, IN],
+          SECRET: [IN],
+        },
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "locked for REGULATED/SECRET",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: "int.storage.retention.{class}_days",
+      tier: PLATFORM,
+      type: int,
+      default: 2922,
+      min: 1,
+      change: [PLT_SECURITY_OFFICER, PLT_DPO],
+      mc: R5,
+      note: "AUDIT 2922; REGULATED product-specific",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.storage.retention.tenant_override_days,
+      tier: TENANT,
+      type: int,
+      default: null,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R5,
+      note: "≥ platform minimum",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.llm.tenant_allowed_providers,
+      tier: TENANT,
+      type: "string[]",
+      default: null,
+      change: [ORG_ADMIN],
+      mc: R4,
+      note: "subset of platform-allowed of correct residency",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.llm.tenant_residency_floor,
+      tier: TENANT,
+      type: enum,
+      values: [GLOBAL, IN, IN-ZR],
+      default: null,
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.whatsapp.brand_number,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: int.email.brand_domain,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "brand_pack.email_domain",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: eng.env.seed_profile,
+      tier: PLATFORM,
+      type: enum,
+      values: [dev, demo, test, load],
+      default: null,
+      change: [pipeline],
+      mc: false,
+      note: "prod refuses any value",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: eng.env.supabase_allowed,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      locked: true,
+      note: "true only in dev/preview, set by environment",
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: eng.exit.drill_interval_months,
+      tier: PLATFORM,
+      type: int,
+      default: 12,
+      min: 1,
+      max: 12,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: eng.bom.generate_on_release,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      source: "IPB-01 §01.5",
+    }
+  - {
+      key: eng.esm.dry_run_enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-01 §01.5",
+    }
+
+  # ---------------------------------------------------------------- IPB-02 §02.5
+  - {
+      key: trust.auth.passkeys_required,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      tighten: true,
+      change: [ORG_OWNER],
+      mc: R4,
+      help: hlp.trust.passkeys_required,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.auth.mfa_required_roles,
+      tier: TENANT,
+      type: "string[]",
+      default:
+        [
+          PLT_SUPER_ADMIN,
+          PLT_SECURITY_OFFICER,
+          PLT_RELEASE_MANAGER,
+          PLT_CONTENT_EDITOR,
+          PLT_LEGAL_REVIEWER,
+          PLT_DPO,
+          PLT_GRIEVANCE_OFFICER,
+          PLT_AUDITOR_RO,
+          PLT_ACCESSIBILITY_LEAD,
+          "OPS_*",
+          ORG_OWNER,
+          ORG_ADMIN,
+          ORG_CHECKER,
+        ],
+      tighten: superset,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "PLATFORM floor; ORG_OWNER may add roles only",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.auth.session_idle_minutes,
+      tier: TENANT,
+      type: int,
+      default: 30,
+      min: 1,
+      max: 30,
+      tighten: max,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "staff 15, locked",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.auth.session_absolute_hours,
+      tier: TENANT,
+      type: int,
+      default: 12,
+      min: 1,
+      max: 12,
+      tighten: max,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "staff 8, locked",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.auth.concurrent_sessions_max,
+      tier: TENANT,
+      type: int,
+      default: 5,
+      min: 1,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.network.ip_allow_list,
+      tier: TENANT,
+      type: "cidr[]",
+      default: [],
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.network.console_allow_list,
+      tier: PLATFORM,
+      type: "cidr[]",
+      default: [],
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "Infrabyx egress ranges",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.data.field_encryption_classes,
+      tier: PLATFORM,
+      type: "enum[]",
+      values: [CONFIDENTIAL, REGULATED, SECRET],
+      default: [REGULATED, SECRET],
+      tighten: superset,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "locked floor; may add CONFIDENTIAL",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.data.masking_default,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.data.reveal_roles,
+      tier: TENANT,
+      type: "string[]",
+      default: [ORG_OWNER, ORG_ADMIN],
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.data.retention_overrides,
+      tier: TENANT,
+      type: json,
+      default: {},
+      change: [ORG_OWNER],
+      mc: R5,
+      note: "≥ platform minimum; R5 if shortening",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.export.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      note: "no off state (IPB-02-82)",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.audit.anchor_download_enabled,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_OWNER],
+      mc: false,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.audit.siem_export_connector,
+      tier: TENANT,
+      type: string,
+      default: null,
+      change: [ORG_ADMIN],
+      mc: R2,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.approvals.r2_publish_requires_checker,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      tighten: true,
+      change: [ORG_OWNER],
+      mc: R2,
+      source: "IPB-02 §02.4.12",
+    }
+  - {
+      key: trust.approvals.r4_delay_minutes,
+      tier: TENANT,
+      type: int,
+      default: 60,
+      min: 60,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.approvals.r5_delay_hours,
+      tier: TENANT,
+      type: int,
+      default: 72,
+      min: 72,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "tenant delete 168 locked",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.ai.allowed_providers,
+      tier: TENANT,
+      type: "string[]",
+      default: null,
+      change: [ORG_ADMIN],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.ai.residency_floor,
+      tier: TENANT,
+      type: enum,
+      values: [GLOBAL, IN, IN-ZR],
+      default: null,
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.ai.confirmation_scope,
+      tier: TENANT,
+      type: enum,
+      values: [per_action, per_batch],
+      default: per_action,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "per_action locked for R3 (enforced by the AI runtime, PL4)",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.incidents.notification_contacts,
+      tier: TENANT,
+      type: json,
+      default: [],
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.incidents.contractual_window_hours,
+      tier: TENANT,
+      type: int,
+      default: 2,
+      min: 1,
+      max: 2,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.vdp.security_txt_contact,
+      tier: PLATFORM,
+      type: string,
+      default: "security@infrabyx",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      note: "[VERIFY domain]",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: trust.bounty.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.patch_sla_hours.critical,
+      tier: PLATFORM,
+      type: int,
+      default: 72,
+      min: 1,
+      max: 72,
+      tighten: max,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "locked ceiling; lower only",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.patch_sla_hours.high,
+      tier: PLATFORM,
+      type: int,
+      default: 168,
+      min: 1,
+      max: 168,
+      tighten: max,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "locked ceiling; lower only",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.patch_sla_hours.medium,
+      tier: PLATFORM,
+      type: int,
+      default: 720,
+      min: 1,
+      max: 720,
+      tighten: max,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "locked ceiling; lower only",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.log_retention_days,
+      tier: PLATFORM,
+      type: int,
+      default: 180,
+      min: 180,
+      tighten: min,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "raise only",
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.ledger_retention_years,
+      tier: PLATFORM,
+      type: int,
+      default: 8,
+      min: 8,
+      tighten: min,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.upload.allow_macros_routes,
+      tier: PLATFORM,
+      type: "string[]",
+      default: [],
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.upload.max_mb_default,
+      tier: PLAN,
+      type: int,
+      default: 100,
+      min: 1,
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.impersonation.max_minutes,
+      tier: PLATFORM,
+      type: int,
+      default: 60,
+      max: 60,
+      locked: true,
+      source: "IPB-02 §02.5",
+    }
+  - {
+      key: ipb.sec.breakglass.max_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 4,
+      max: 4,
+      locked: true,
+      source: "IPB-02 §02.5",
+    }
+
+  # ---------------------------------------------------------------- IPB-07 §07.5
+  - {
+      key: ux.density,
+      tier: USER,
+      type: enum,
+      values: [comfortable, compact],
+      default: comfortable,
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.simple_mode,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.appearance.language,
+      tier: USER,
+      type: locale,
+      default: null,
+      change: [self],
+      mc: false,
+      note: "brand default",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.appearance.date_format,
+      tier: USER,
+      type: string,
+      default: "DD MMM YYYY",
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.appearance.number_format,
+      tier: USER,
+      type: enum,
+      values: [en-IN, en-US, native],
+      default: en-IN,
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.appearance.first_day_of_week,
+      tier: USER,
+      type: enum,
+      values: [monday, sunday, saturday],
+      default: monday,
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.appearance.landing_route,
+      tier: USER,
+      type: route,
+      default: null,
+      change: [self],
+      mc: false,
+      note: "role default",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.undo.window_s,
+      tier: PLATFORM,
+      type: int,
+      default: 10,
+      min: 5,
+      max: 30,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.bulk.confirm_threshold,
+      tier: TENANT,
+      type: int,
+      default: 20,
+      min: 1,
+      change: [ORG_ADMIN],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.confirm.delay_window_h,
+      tier: TENANT,
+      type: int,
+      default: 24,
+      min: 1,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.nav.max_top_level,
+      tier: PLATFORM,
+      type: int,
+      default: 7,
+      max: 7,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      note: "ceiling; cannot be raised",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.click_budget.enforce,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.palette.enabled,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.palette.pii_refusal,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.tables.saved_views_shared,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.autosave.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.autosave.debounce_ms,
+      tier: PLATFORM,
+      type: int,
+      default: 2000,
+      min: 100,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.dashboard.mandatory_widgets,
+      tier: TENANT,
+      type: json,
+      default: {},
+      tighten: superset,
+      change: [PLT_RELEASE_MANAGER, ORG_ADMIN],
+      mc: R2,
+      note: "platform floor; ORG_ADMIN adds",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ux.nba.ai_cards_enabled,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ntf.user.channels,
+      tier: USER,
+      type: json,
+      default: {},
+      change: [self],
+      mc: false,
+      note: "catalogue defaults",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ntf.user.digest_time,
+      tier: USER,
+      type: time,
+      default: "08:30",
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ntf.quiet_hours,
+      tier: USER,
+      type: range,
+      default: "21:00-08:00",
+      change: [self],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ntf.org.routing,
+      tier: TENANT,
+      type: json,
+      default: {},
+      change: [ORG_ADMIN],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ntf.org.allow_quiet_hours_bypass,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: "cst.branding.{token}",
+      tier: TENANT,
+      type: string,
+      default: null,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "contrast guard enforces",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: cst.terminology.map,
+      tier: TENANT,
+      type: json,
+      default: {},
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: cst.nav.hidden,
+      tier: TENANT,
+      type: json,
+      default: [],
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: cst.nav.order,
+      tier: TENANT,
+      type: json,
+      default: [],
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: cst.nav.default_by_role,
+      tier: TENANT,
+      type: json,
+      default: {},
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: cst.dashboards.role_defaults,
+      tier: TENANT,
+      type: json,
+      default: {},
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: "cst.custom_fields.{record_type}",
+      tier: TENANT,
+      type: json,
+      default: [],
+      change: [ORG_ADMIN],
+      mc: R2,
+      note: "maker-checker when pii_class != none",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: hlp.registry.version,
+      tier: PLATFORM,
+      type: string,
+      default: "build",
+      change: [pipeline],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: hlp.lint.enforce,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      note: "locked on main",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: hlp.vidhi.expand_enabled,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "follows ai.enabled",
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: hlp.public_glossary.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.auto_publish,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.staleness_threshold_pct,
+      tier: PLATFORM,
+      type: decimal,
+      default: 2.0,
+      min: 0,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.tours.auto_start,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.tours.max_steps,
+      tier: PLATFORM,
+      type: int,
+      default: 7,
+      max: 7,
+      locked: true,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.whats_new.min_level,
+      tier: TENANT,
+      type: enum,
+      values: [major, minor, patch],
+      default: minor,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.progress,
+      tier: USER,
+      type: json,
+      default: {},
+      change: [system],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.review_by_months,
+      tier: PLATFORM,
+      type: json,
+      default: { default: 12, regulatory: 6 },
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: tut.social_clips.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: fb.article_feedback.flag_threshold,
+      tier: PLATFORM,
+      type: json,
+      default: { min_votes: 50, helpful_pct: 60 },
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+  - {
+      key: ipb.settings.tree_version,
+      tier: PLATFORM,
+      type: string,
+      default: "1.0",
+      change: [pipeline],
+      mc: false,
+      source: "IPB-07 §07.5",
+    }
+
+  # ---------------------------------------------------------------- IPB-11 §11.5
+  - {
+      key: eng.seed.sandbox_reset_enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      note: "true in demo/staging",
+      source: "IPB-11 §11.5",
+    }
+  - {
+      key: eng.seed.sandbox_reset_cron,
+      tier: PLATFORM,
+      type: string,
+      default: "0 2 * * *",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-11 §11.5",
+    }
+  - {
+      key: eng.seed.demo_date_anchor,
+      tier: PLATFORM,
+      type: date,
+      default: null,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      note: "run date when null",
+      source: "IPB-11 §11.5",
+    }
+  - {
+      key: eng.env.show_banner,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      note: "true in non-prod",
+      source: "IPB-11 §11.5",
+    }
+  - {
+      key: eng.env.guard_report_public,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-11 §11.5",
+    }

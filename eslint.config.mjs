@@ -7,7 +7,13 @@ import ipb from "./infra/policy/eslint/index.mjs";
 
 export default tseslint.config(
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/.turbo/**", "**/coverage/**"],
+    ignores: [
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/.turbo/**",
+      "**/coverage/**",
+      "**/*.generated.ts",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
