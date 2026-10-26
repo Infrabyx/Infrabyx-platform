@@ -107,6 +107,8 @@ for (const d of [
   "infra/policy/github/rulesets.json",
   "infra/docker/BASE_IMAGES.md",
   "docs/platform-requests.md",
+  "docs/OWNER-QUESTIONS.md",
+  "docs/security/threat-model.md",
   "docs/adr/ADR-0000-template.md",
   "commitlint.config.mjs",
   ".gitleaks.toml",
@@ -141,6 +143,20 @@ if (existsSync(".github/dependabot.yml"))
 for (const d of ["docs/DECISIONS.md", "docs/platform-requests.md"]) {
   if (/^>\s*\|/m.test(read(d))) fail(`${d}: table rows must not start with "> " (PL2-D-04)`);
 }
+// Every working-mode default taken for the owner is listed for review (PL2-D-41).
+if (existsSync("docs/OWNER-QUESTIONS.md")) {
+  const questions = read("docs/OWNER-QUESTIONS.md");
+  for (const line of read("docs/DECISIONS.md").split("\n")) {
+    if (!/\[ASSUMED – owner review\]/.test(line)) continue;
+    const id = line.split("|")[2]?.trim();
+    if (id && !questions.includes(id))
+      fail(
+        `${id} is [ASSUMED – owner review] but has no entry in docs/OWNER-QUESTIONS.md (PL2-D-41)`,
+      );
+  }
+}
+if (!/Last updated:\*\* \d{4}-\d{2}-\d{2}/.test(read("docs/security/threat-model.md")))
+  fail("docs/security/threat-model.md must carry a **Last updated:** date (PL2-D-43)");
 if (existsSync("SEED_CREDENTIALS.md")) fail("SEED_CREDENTIALS.md must never be committed (IPB-11)");
 if (!read(".gitignore").includes("SEED_CREDENTIALS.md"))
   fail(".gitignore must ignore SEED_CREDENTIALS.md");

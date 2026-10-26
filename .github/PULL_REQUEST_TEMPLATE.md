@@ -30,7 +30,7 @@ Tick every item. Write `n/a — <reason>` after an item that does not apply and 
 - [ ] Help keys added for new terms (IPB-07)
 - [ ] Acceptance tests for the IPB IDs implemented added or updated (`@IPB-nn-AT-xx`)
 - [ ] Changeset added (or label `no-changeset` with reason)
-- [ ] Threat model updated if CONFIDENTIAL+ data is touched (IPB-02 §02.4.10)
+- [ ] Threat model `docs/security/threat-model.md` updated for any new port, adapter, package or data flow, and whenever CONFIDENTIAL+ data is touched (IPB-02 §02.4.10, PL2-D-43)
 - [ ] No secrets, `.env` values or `SEED_CREDENTIALS.md` in the diff
 - [ ] `docs/STATUS.md` updated; assumptions logged in `docs/DECISIONS.md`
 

@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Current phase         | **PL2 session 2 of 8** (D-11): `connectors` core and migration, OBSERVABILITY (`otel`) and FEATURE_FLAG (`unleash`, `config-db`) in review. Session 1 merged (#13). Plan approved 26 Oct 2026 with conditions (PL2-D-05) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                   |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                 |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                                                    |
+| Item                  | Value                                                                                                                                                                                    |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL2 session 3 of 8** (D-11): SECRETS, KMS and the crypto additions. Sessions 1 (#13) and 2 (#15) merged. Continuous build mode (PL2-D-41, CLAUDE.md "Working mode")                    |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
+| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                    |
 
 ## Done
 
@@ -25,6 +25,10 @@ Updated: 2026-10-26
 - Release (PR #10, PL1-D-18): 0.1.0 of the seven packages published by `release.yml` run 10, tags `@infrabyx/<pkg>@0.1.0` pushed.
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
+
+## Working mode (PL2-D-41)
+
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (currently none open). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
@@ -56,7 +60,7 @@ Updated: 2026-10-26
 
 ## CI minutes (PL2-D-13)
 
-Allowance: 2,000 a month on Free, 3,000 on Team. The owner is warned at 70 % (1,400 on Free, 2,100 on Team). Billing rounds each job up to whole minutes.
+Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repository's budget is **1,000 a month** (PL2-D-41). The owner is told before this repository passes 1,000, with a warning at 70 % (700). Billing rounds each job up to whole minutes.
 
 | Month   | Run                                           | Minutes (billed, approx.) | Month to date |
 | ------- | --------------------------------------------- | ------------------------- | ------------- |
@@ -65,6 +69,8 @@ Allowance: 2,000 a month on Free, 3,000 on Team. The owner is warned at 70 % (1,
 | 2026-10 | PR #13, 3 pushes × (ci 5 + port-contract 1)   | 18                        | 126           |
 | 2026-10 | main after #13 (ci 5, release 2)              | 7                         | 133           |
 | 2026-10 | version PR #14 (ci 5, port-contract 1)        | 6                         | 139           |
+| 2026-10 | PR #15 (ci 5, port-contract 2 legs 4)         | 9                         | 148           |
+| 2026-10 | main after #15 (ci 5, release 2)              | 7                         | 155           |
 
 ## Owner decisions
 

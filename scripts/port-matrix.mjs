@@ -1,5 +1,5 @@
 // port-contract matrix (PL2-D-13): which ports' contract legs run for a change. Per-port path
-// filters on PRs; every port nightly and before a release (--all). Only ports with an adapter
+// filters on PRs; changed ports nightly (--since); every port weekly and before a release (--all). Only ports with an adapter
 // folder under packages/connectors/src/<port>/ have a leg to run.
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -54,17 +54,24 @@ export function selectPorts(changed, { all = false, has = () => true } = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const arg = (name) => {
+    const i = process.argv.indexOf(name);
+    return i > 0 ? process.argv[i + 1] : undefined;
+  };
   const all = process.argv.includes("--all");
-  const baseIdx = process.argv.indexOf("--base");
-  const base = baseIdx > 0 ? process.argv[baseIdx + 1] : undefined;
-  const changed =
-    all || !base
-      ? []
-      : execFileSync("git", ["diff", "--name-only", `${base}...HEAD`], { encoding: "utf8" })
-          .split("\n")
-          .filter(Boolean);
+  const base = arg("--base");
+  // Nightly (PL2-D-44): only ports whose files changed on this branch since the given time.
+  const since = arg("--since");
+  const git = (args) => execFileSync("git", args, { encoding: "utf8" }).split("\n").filter(Boolean);
+  const changed = all
+    ? []
+    : since
+      ? git(["log", `--since=${since}`, "--name-only", "--pretty=format:"])
+      : base
+        ? git(["diff", "--name-only", `${base}...HEAD`])
+        : [];
   const ports = selectPorts(changed, {
-    all: all || !base,
+    all: all || (!base && !since),
     has: (p) => existsSync(`packages/connectors/src/${portDir(p)}`),
   });
   process.stdout.write(`ports=${JSON.stringify(ports)}\n`);
