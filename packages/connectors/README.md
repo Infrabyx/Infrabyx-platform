@@ -79,7 +79,7 @@ Both adapters are `IN` / `CONFIDENTIAL` and share one verifier and one revocatio
 The adapters:
 
 - **`keycloak`** (reference): Keycloak 26.x. `KeycloakIdentity.applyRealm` applies the realm as code (`ipbRealm`): ES256 key, IPB-02-03 session lifetimes, refresh-token rotation, brute-force protection, passkeys, back-channel logout, the platform roles, admin-only user attributes and the claim mappers. A temporary password and an MFA-required role become Keycloak required actions, so the first login forces a password change and MFA enrolment. SCIM operations go to the Admin API (PL2-D-54).
-- **`zitadel`** (alternative): Zitadel v4. `ZitadelIdentity.applyInstance` applies the same settings, an ES256 web key, the platform project and roles, the API app and a service principal. Tenant, type and product scope travel in admin-set user metadata; roles are project roles. Zitadel cannot require MFA per role, so the API guard enforces it and staff organisations use `forceMfa` (PL2-D-56).
+- **`zitadel`** (alternative): Zitadel v4. `ZitadelIdentity.applyInstance` applies the same settings, an ES256 web key, the platform project and roles, the API app and a service principal. Tenant, type and product scope travel in admin-set user metadata; roles are project roles. Zitadel cannot require MFA per role, so every organisation forces MFA at login, which is stricter than IPB-02-02, and the API guard still applies (PL2-D-56).
 
 `issueToken` gives client-credentials tokens for the platform service principal. RFC 8693 tokens with an `act` claim are unsupported on both adapters, so impersonation stays off (PL2-D-55).
 

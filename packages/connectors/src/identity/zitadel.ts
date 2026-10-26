@@ -3,8 +3,8 @@
 // user's tenant, principal type, product scope and SCIM external id live in admin-set user
 // metadata and reach the token through the `urn:zitadel:iam:user:metadata` scope; roles are
 // project roles (`urn:zitadel:iam:org:project:roles`). Signing uses an ES256 web key (C-12).
-// Zitadel cannot require MFA per role, so privileged roles are enforced by the API guard
-// (IPB-SEC-001) and by `forceMfa` on staff organisations (PL2-D-56). RFC 8693 tokens with `act`
+// Zitadel cannot require MFA per role, so every organisation forces MFA at login (stricter than
+// IPB-02-02, PL2-D-56) and the API guard still refuses privileged roles without it (IPB-SEC-001). RFC 8693 tokens with `act`
 // are unsupported here as on Keycloak (PL2-D-55).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
@@ -34,7 +34,7 @@ export const ZITADEL_IPB_SETTINGS = {
     maxPasswordAttempts: "5",
     passwordMinLength: "12",
     allowRegister: false,
-    forceMfa: false,
+    forceMfa: true,
     passwordlessType: "PASSWORDLESS_TYPE_ALLOWED",
   },
   staff: {
