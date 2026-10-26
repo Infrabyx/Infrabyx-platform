@@ -313,7 +313,7 @@ The `entry_hash` is computed **in the database by trigger** (IPB-02 §02.4.7.1 r
 - [x] Acceptance tests present and passing: IPB-01-AT-05, -11, -12 (supabase-guard), -16; IPB-02-AT-04, -07 (boot), -08 (mutation refusal), -10, -11, -12, -15, -20; IPB-07-AT-04 (data level), -05, -06; IPB-09-AT-09, -10, -11, -12; IPB-11-AT-01, -02, -03 (seed part), -04 (generation + pre-commit), -05, -06, -07; IPB-12-AT-01, -03.
 - [x] The five NN pattern suites pass against the PL1 packages.
 - [x] One Changeset per package; `docs/STATUS.md` updated; assumptions in `docs/DECISIONS.md`.
-- [ ] PR merged to `main` with CI green; `release.yml` publishes pre-release **0.1.0** of the seven packages to GitHub Packages, and they appear under the organisation's Packages tab (IPB-14 §14.4 step 5). The held "chore: version packages" PR (O7) is superseded by this release.
+- [x] PR merged to `main` with CI green; `release.yml` publishes pre-release **0.1.0** of the seven packages to GitHub Packages, and they appear under the organisation's Packages tab (IPB-14 §14.4 step 5). The held "chore: version packages" PR (O7) is superseded by this release. Done 2026-10-26: PR #8 and #10 merged, release run 10 published 0.1.0 (PL1-D-18); the 0.0.0 scaffolds also published (PL1-D-19); the Packages-tab view is for the owner to confirm.
 
 Deferred ATs, named so the gap is explicit: IPB-02-AT-03 (IDOR suite, needs an API), IPB-02-AT-07 second scenario and IPB-11-AT-03 production scenario (need IDENTITY, PL2), IPB-11-AT-04 server-side ruleset (PL0-D-07), IPB-01-AT-12 Helm scenario (PL6).
 
