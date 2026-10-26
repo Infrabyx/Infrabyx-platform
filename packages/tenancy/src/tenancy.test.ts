@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { IpbError } from "@infrabyx/contracts/errors";
 import type { VerifiedClaims } from "@infrabyx/contracts/ports";
-import { LocalKms, localTenantKeyId } from "@infrabyx/crypto";
+import {
+  LOCAL_KMS_KEYS,
+  LocalKms,
+  aesGcmEncrypt,
+  concatBytes,
+  fieldAad,
+  localTenantKeyId,
+  randomBytes,
+} from "@infrabyx/crypto";
 import { contextFromClaims, currentContext, runWithContext } from "./context.js";
 import { rlsPolicySql, dataClassCommentsSql } from "./drizzle/index.js";
 import { FieldCrypto } from "./field-crypto.js";
@@ -148,6 +156,54 @@ describe("field encryption (IPB-02-20)", () => {
     await expect(fc.decryptField("tnt_b", sealed, at)).rejects.toThrow(/another tenant/);
     await expect(fc.decryptField("tnt_a", sealed, { ...at, rowId: "pty_2" })).rejects.toThrow();
     await expect(fc.encryptField("tnt_a", "INTERNAL", "x", at)).rejects.toThrow();
+  });
+
+  it("v2 binds the data key to the tenant even when tenants share the platform key (C-15, PL2-D-50)", async () => {
+    const kms = new LocalKms();
+    const shared = { kms, keyIdFor: () => LOCAL_KMS_KEYS.platform };
+    const at = { table: "kyc.party", column: "pan", rowId: "pty_1" };
+    const sealed = await new FieldCrypto(shared).encryptField(
+      "tnt_a",
+      "REGULATED",
+      "ZZZZA1234Z",
+      at,
+    );
+    expect(new FieldCrypto(shared).formatVersion(sealed)).toBe(2);
+    // Same key id, same location string, other tenant: the KMS context does not match.
+    const tnt_b_at = { ...at };
+    await expect(new FieldCrypto(shared).decryptField("tnt_b", sealed, tnt_b_at)).rejects.toThrow();
+    expect(await new FieldCrypto(shared).decryptFieldText("tnt_a", sealed, at)).toBe("ZZZZA1234Z");
+  });
+
+  it("rewrapField upgrades a v1 field to v2 and keeps its ciphertext", async () => {
+    const kms = new LocalKms();
+    const keyId = localTenantKeyId("tnt_a");
+    const at = { table: "kyc.party", column: "pan", rowId: "pty_9" };
+    const dk = randomBytes(32);
+    const wrapped = await kms.encrypt(keyId, dk);
+    const body = aesGcmEncrypt(
+      dk,
+      new TextEncoder().encode("ZZZZA1234Z"),
+      fieldAad("tnt_a", at.table, at.column, at.rowId),
+    );
+    const v1 = {
+      enc: concatBytes(
+        new Uint8Array([1, wrapped.byteLength >> 8, wrapped.byteLength & 0xff]),
+        wrapped,
+        body,
+      ),
+      keyId,
+      alg: "aes-256-gcm" as const,
+    };
+    const fc = new FieldCrypto({ kms, keyIdFor: localTenantKeyId });
+    expect(await fc.decryptFieldText("tnt_a", v1, at)).toBe("ZZZZA1234Z");
+    const v2 = await fc.rewrapField("tnt_a", v1);
+    expect(fc.formatVersion(v2)).toBe(2);
+    expect(Buffer.from(v2.enc).subarray(-body.byteLength).equals(Buffer.from(body))).toBe(true);
+    expect(
+      await new FieldCrypto({ kms, keyIdFor: localTenantKeyId }).decryptFieldText("tnt_a", v2, at),
+    ).toBe("ZZZZA1234Z");
+    await expect(fc.rewrapField("tnt_b", v1)).rejects.toThrow(/another tenant/);
   });
 });
 

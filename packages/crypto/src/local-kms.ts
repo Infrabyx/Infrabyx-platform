@@ -17,6 +17,7 @@ import { aesGcmDecrypt, aesGcmEncrypt } from "./aead.js";
 import { sha256Hex } from "./hash.js";
 import { randomBytes } from "./random.js";
 import { SecretKey } from "./keys.js";
+import { assertKmsContext } from "./kms-context.js";
 
 /** Public by design: these keys protect nothing outside a developer laptop or CI. */
 const DEV_SEED = "infrabyx-localkms-dev-only-v1 :: never use outside local/dev/test";
@@ -126,6 +127,7 @@ export class LocalKms implements KmsPort {
   }
 
   async generateDataKey(keyId: string, aad?: Uint8Array): Promise<DataKey> {
+    assertKmsContext(aad);
     const plaintext = randomBytes(32);
     return { plaintext, ciphertext: await this.encrypt(keyId, plaintext, aad), keyId };
   }

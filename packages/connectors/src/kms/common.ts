@@ -2,11 +2,28 @@
 // a JCS-encoded flat string map (`kmsContext({ tenant_id, purpose })`) is passed as that map, and any
 // other AAD under the single key `ipb:aad` (base64url), so AAD always binds the ciphertext.
 import { PortError } from "@infrabyx/contracts/errors";
-import { canonicalize, toBase64Url } from "@infrabyx/crypto";
+import { PLATFORM_KMS_TENANT, type KmsEncryptionContext } from "@infrabyx/contracts/ports";
+import { assertKmsContext, canonicalize, encodeKmsContext, toBase64Url } from "@infrabyx/crypto";
 
-/** AAD for KMS calls: the C-14 encryption context `{ tenant_id, purpose }` as canonical JSON. */
-export function kmsContext(ctx: Readonly<Record<string, string>>): Uint8Array {
-  return new TextEncoder().encode(canonicalize(ctx));
+/** AAD for KMS calls: the C-14 encryption context `{ tenant_id, purpose }` (PL2-D-50). */
+export function kmsContext(ctx: KmsEncryptionContext): Uint8Array {
+  return encodeKmsContext(ctx);
+}
+
+/** Context of the encrypt/decrypt health canary. */
+export const HEALTH_CONTEXT = (): Uint8Array =>
+  encodeKmsContext({ tenant_id: PLATFORM_KMS_TENANT, purpose: "health" });
+
+/** generateDataKey refuses a data key without a valid C-14 context (PL2-D-50). */
+export function requireDataKeyContext(adapter: string, aad?: Uint8Array): void {
+  try {
+    assertKmsContext(aad);
+  } catch (e) {
+    throw new PortError("IPB-PORT-003", "KMS", {
+      adapter,
+      detail: (e as Error).message.replace(/^IPB-PORT-003: [^—]*— /, ""),
+    });
+  }
 }
 
 /** AAD bytes → AWS EncryptionContext. */
