@@ -19,6 +19,15 @@ Vendor SDKs are imported only here (IPB-01-14). Each adapter has a unit leg, a h
 - **Egress client** (`createEgress`): HTTPS only, host allow-list (IPB-SEC-018), no redirects, timeouts, bounded retries honouring `Retry-After`, response size cap.
 - **Inbound webhooks** (`acceptWebhook`): verify the signature, de-duplicate through the inbox, enqueue, ledger `connectors.webhook.received`; 401 on a bad signature.
 
+## OBSERVABILITY (`@infrabyx/connectors/observability`)
+
+`OtelObservability`: OpenTelemetry SDK → OTLP/HTTP, `IN` / `INTERNAL`. Two exporter profiles share one code path (A-05): `collector` (in-cluster Collector, no headers) and `otlp-direct` (a vendor intake with auth headers resolved from SECRETS, `OBS_OTLP_HEADERS_REF`). The endpoint must be HTTPS unless `OBS_OTLP_INSECURE` (local and test only).
+
+- Every span attribute, metric attribute, log context and log message passes the IPB-02-23 scrubber: keys named in the PL1 mask rules are masked, PAN, Aadhaar, card, mobile and e-mail patterns in text are masked, credential keys are redacted, payload keys (`body`, `headers`, `prompt`, …) are dropped, and tenant/user/actor IDs become C-21 hashes (`telemetryIdHasher` from `@infrabyx/crypto`).
+- `aiTrace` follows the OTel GenAI conventions with content capture locked off: message, prompt and tool-argument attributes are dropped.
+- `callObserver()` plugs into the Router: span `port.<PORT>.<method>`, `port_call_duration_ms` and `port_call_total`.
+- Exporter failures never reach the caller; `health()` reports `degraded`, never `down`.
+
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.

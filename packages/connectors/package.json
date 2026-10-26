@@ -12,7 +12,11 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./observability": {
+      "types": "./dist/observability/index.d.ts",
+      "default": "./dist/observability/index.js"
+    }
   },
   "files": [
     "dist",
@@ -42,11 +46,21 @@
   "dependencies": {
     "@infrabyx/contracts": "workspace:*",
     "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/api-logs": "0.223.0",
+    "@opentelemetry/core": "2.12.0",
+    "@opentelemetry/exporter-logs-otlp-http": "0.223.0",
+    "@opentelemetry/exporter-metrics-otlp-http": "0.223.0",
+    "@opentelemetry/exporter-trace-otlp-http": "0.223.0",
+    "@opentelemetry/resources": "2.12.0",
+    "@opentelemetry/sdk-logs": "0.223.0",
+    "@opentelemetry/sdk-metrics": "2.12.0",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@infrabyx/testing": "workspace:*",
-    "@infrabyx/tenancy": "workspace:*",
-    "@infrabyx/audit": "workspace:*"
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }
