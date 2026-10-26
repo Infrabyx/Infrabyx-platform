@@ -60,6 +60,12 @@ export const TEST_IMAGES = {
     version: "5.2.4",
     role: "AWS Secrets Manager, S3 lock checks, SES v2 send",
   },
+  openfga: {
+    image:
+      "openfga/openfga@sha256:9cf9a20af32a40434cd3a788c429879439ee9ea9abf65c9c200ee17cd43f769e",
+    version: "v1.22.0",
+    role: "OpenFGA, memory store (AUTHZ)",
+  },
   openbao: {
     image:
       "openbao/openbao@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf",

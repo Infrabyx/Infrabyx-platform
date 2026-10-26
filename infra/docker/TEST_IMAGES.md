@@ -12,8 +12,9 @@ Container images used by the hermetic contract legs. The source of truth is `TES
 | `cerbos`     | `cerbos/cerbos@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300`                        | 0.57.0                                     | Cerbos PDP (AUTHZ)                                           |
 | `localstack` | `localstack/localstack@sha256:0df3a97da57de03a588c05d9b8f390f15c7033fc7c4512f94619d344bc3cd317`                | 4.12.0 (last licence-free community build) | AWS KMS with MessageType DIGEST; SNS                         |
 | `moto`       | `motoserver/moto@sha256:120b1589c6df7e35d2092935f6ff724486bb2c4189d0e36ce795baba1400ffd2`                      | 5.2.4                                      | AWS Secrets Manager, S3 lock checks, SES v2 send             |
+| `openfga`    | `openfga/openfga@sha256:9cf9a20af32a40434cd3a788c429879439ee9ea9abf65c9c200ee17cd43f769e`                      | v1.22.0                                    | OpenFGA, memory store (AUTHZ)                                |
 | `openbao`    | `openbao/openbao@sha256:6d2b93856e3fcf7b18ad855a0b51eaba474dc8b79cf554379ea32034797d2acf`                      | 2.7.1                                      | OpenBao KV v2, Transit and database engines (SECRETS, KMS)   |
 | `otelcol`    | `otel/opentelemetry-collector-contrib@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6` | 0.162.0                                    | OTel Collector with file exporters (OBSERVABILITY)           |
 | `unleash`    | `unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050`            | 8.2.0                                      | Unleash OSS (FEATURE_FLAG)                                   |
 
-Images for Keycloak, Zitadel, OpenFGA and MinIO are added with the sessions that use them (D-11).
+Images for Keycloak, Zitadel and MinIO are added with the sessions that use them (D-11).
