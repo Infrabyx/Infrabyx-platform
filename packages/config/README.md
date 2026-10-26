@@ -57,6 +57,18 @@ export const env = await loadAndValidate(envSchema, {
 - `FlagAdmin.set()` — `kill.*` by PLT_RELEASE_MANAGER or PLT_SECURITY_OFFICER only (`IPB-ENG-016`), ledgered with `KillSwitchChanged`; `fut.*` through maker-checker (PL1-D-11).
 - Providers: `MemoryFlagProvider`, `FileFlagProvider`, `PgFlagProvider` (`config.flag_value`); snapshot stores `MemorySnapshotStore`, `PgSnapshotStore` (`config.flag_snapshot`). Unleash arrives in PL2.
 
+## Provider routing (`@infrabyx/config/routing`)
+
+- `loadRoutingFile(path)` reads `infra/routing/<product>/<env>.routing.yaml` (`int.routing.file`) and validates it with `checkRouting` from `@infrabyx/contracts/routing` (IPB-01 §01.4.5, IPB-01-20). Any problem refuses boot with `IPB-PORT-005`, listing every problem:
+  - a `secrets` value that is a literal, or a path for another env;
+  - an adapter whose residency cannot carry its own maximum data class;
+  - a failover that crosses residency;
+  - a product file that loosens `residency_policy`;
+  - a GLOBAL messaging adapter without `dpa_ref`, or with `recipient_delivery.allow_global: false` (IPB-DEV-05);
+  - an `unproven` adapter in staging, pre-prod, prod or dr (IPB-DEV-04 gate B).
+- `infrabyx-routing check <file...> [--sandbox-status packages/connectors/sandbox-status.json]` runs the same checks in CI and prints problems only. Secrets are paths, never values.
+- PL2 registers the port keys of IPB-01 §01.4.4.2 for the thirteen PL2 ports (`int.<port>.*`, `eng.otel.*`, `eng.logs.*`, `eng.flags.*`). The registry now has 156 keys.
+
 ## Migrations
 
 `migrations/0001_init.sql` creates schema `config`: `setting_value`, `flag_value`, `flag_snapshot`, `outbox`, `inbox`, all with RLS enabled and forced. Applied by `infrabyx-migrate` from `@infrabyx/tenancy` after the tenancy and audit migrations.

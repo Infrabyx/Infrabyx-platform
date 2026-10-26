@@ -11,3 +11,5 @@ export * from "./events/index.js";
 export * from "./modules.js";
 export * from "./kernel.js";
 export * from "./ports/index.js";
+export * from "./routing.js";
+export * from "./connector-manifest.js";

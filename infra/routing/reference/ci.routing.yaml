@@ -1,0 +1,48 @@
+# Reference app, CI hermetic leg (PL2 plan §3.11): containers and vendor stubs only.
+version: 1
+defaults:
+  recipient_delivery: { allow_global: true }
+ports:
+  SECRETS:
+    primary: { adapter: aws-sm, residency: IN, max_data_class: SECRET, config: { endpoint: moto } }
+    secondary: { adapter: vault, residency: IN, max_data_class: SECRET, mode: none }
+  KMS:
+    primary:
+      { adapter: aws-kms, residency: IN, max_data_class: SECRET, config: { endpoint: localstack } }
+    secondary: { adapter: vault-transit, residency: IN, max_data_class: SECRET, mode: none }
+  STORAGE:
+    primary: { adapter: s3, residency: IN, max_data_class: SECRET, config: { endpoint: minio } }
+    secondary: { adapter: minio, residency: IN, max_data_class: SECRET, mode: read_only_failover }
+  QUEUE:
+    primary: { adapter: bullmq, residency: IN, max_data_class: INTERNAL }
+    secondary: { adapter: pg-boss, residency: IN, max_data_class: INTERNAL, mode: active_failover }
+  WORKFLOW:
+    primary: { adapter: temporal, residency: IN, max_data_class: CONFIDENTIAL }
+    secondary: { adapter: temporal-cloud, residency: IN, max_data_class: INTERNAL, mode: none }
+  EMAIL:
+    primary: { adapter: ses, residency: IN, max_data_class: INTERNAL }
+    secondary:
+      {
+        adapter: brevo,
+        residency: GLOBAL,
+        max_data_class: INTERNAL,
+        mode: active_failover,
+        dpa_ref: vad_dpa_brevo_pending,
+      }
+  PAYMENTS:
+    primary:
+      {
+        adapter: razorpay,
+        residency: IN,
+        max_data_class: REGULATED,
+        secrets: secrets/ci/payments/razorpay,
+      }
+    secondary:
+      {
+        adapter: cashfree,
+        residency: IN,
+        max_data_class: REGULATED,
+        secrets: secrets/ci/payments/cashfree,
+        mode: active_failover,
+      }
+    failover_rule: { success_rate_below: 0.8, over_minutes: 10, min_attempts: 20 }

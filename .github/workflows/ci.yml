@@ -19,7 +19,8 @@ jobs:
     # changeset-required, pr-checklist.
     # PL1 adds: migration-lint, registry-check, dev-keys-check, env-example-check (here) and
     # rls-lint, integration, at-report (job `integration`, PostgreSQL 18 service).
-    # Still to add: contract, e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
+    # PL2 adds routing-check here and the port-contract workflow (port-contract.yml).
+    # Still to add: e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
     # export-map-gate, golden-archive-diff, change-class.
     runs-on: ubuntu-24.04
     strategy:
@@ -92,6 +93,8 @@ jobs:
         run: pnpm migration:lint
       - name: registry-check (settings-tree.yaml → registry.generated.ts, IPB-07)
         run: pnpm registry:check
+      - name: routing-check (IPB-01-20; provider_routing files, IPB-DEV-04 gate B)
+        run: pnpm routing:check
       - name: dev-keys-check (dev-keys.json fingerprints, PL1-C-10)
         run: pnpm dev-keys:check
       - name: env-example-check (IPB-11-03, @IPB-11-AT-06; seed schema fixture)

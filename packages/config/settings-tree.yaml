@@ -318,6 +318,533 @@ keys:
       note: "brand_pack.email_domain",
       source: "IPB-01 §01.5",
     }
+  # PL2 ports (IPB-01 §01.4.4.2 config columns; PL2 plan §6)
+  - {
+      key: int.secrets.provider,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "aws-sm",
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      values: ["aws-sm", "vault", "sops-local"],
+      source: "IPB-01 §01.4.4.2 SECRETS",
+    }
+  - {
+      key: int.secrets.path_prefix,
+      tier: "PLATFORM",
+      type: "string",
+      default: "secrets",
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 SECRETS",
+    }
+  - {
+      key: int.secrets.cache_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 900,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: false,
+      min: 60,
+      max: 900,
+      tighten: "max",
+      note: "15-minute refresh; never serve a value older than 24 h",
+      source: "IPB-01 §01.4.4.2 SECRETS",
+    }
+  - {
+      key: int.kms.platform_key_id,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 KMS",
+    }
+  - {
+      key: int.kms.tenant_key_policy,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "per_tenant_regulated",
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      values: ["per_tenant_regulated", "platform_key"],
+      note: "one CMK per tenant holding REGULATED fields (C-15)",
+      source: "IPB-01 §01.4.4.2 KMS; PL2 C-15",
+    }
+  - {
+      key: int.kms.data_key_cache_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 300,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: false,
+      min: 0,
+      max: 300,
+      tighten: "max",
+      source: "IPB-01 §01.4.4.2 KMS",
+    }
+  - {
+      key: int.kms.algorithms_allowed,
+      tier: "PLATFORM",
+      type: "string[]",
+      default: ["aes-256-gcm", "ecdsa-p256-sha256"],
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 KMS; PL1-C-01",
+    }
+  - {
+      key: eng.otel.endpoint,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 OBSERVABILITY",
+    }
+  - {
+      key: eng.otel.sampling_ratio,
+      tier: "PLATFORM",
+      type: "decimal",
+      default: 1,
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      min: 0,
+      max: 1,
+      source: "IPB-01 §01.4.4.2 OBSERVABILITY",
+    }
+  - {
+      key: eng.otel.genai.capture_content,
+      tier: "PLATFORM",
+      type: "bool",
+      default: false,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      tighten: false,
+      note: "prompt and completion content never exported by default",
+      source: "IPB-01 §01.4.4.2 OBSERVABILITY",
+    }
+  - {
+      key: eng.logs.retention_days,
+      tier: "PLATFORM",
+      type: "int",
+      default: 180,
+      change: [],
+      mc: false,
+      min: 180,
+      locked: true,
+      source: "IPB-01 §01.4.4.2 OBSERVABILITY; CERT-In",
+    }
+  - {
+      key: eng.logs.region,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "IN",
+      change: [],
+      mc: false,
+      values: ["IN"],
+      locked: true,
+      source: "IPB-01 §01.4.4.2 OBSERVABILITY",
+    }
+  - {
+      key: eng.flags.provider,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "unleash",
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: "R4",
+      values: ["unleash", "config-db", "flagd"],
+      source: "IPB-01 §01.4.4.2 FEATURE_FLAG",
+    }
+  - {
+      key: eng.flags.url,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 FEATURE_FLAG",
+    }
+  - {
+      key: eng.flags.snapshot_ttl_hours,
+      tier: "PLATFORM",
+      type: "int",
+      default: 24,
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      min: 1,
+      max: 24,
+      tighten: "max",
+      source: "IPB-01 §01.4.4.2 FEATURE_FLAG",
+    }
+  - {
+      key: int.identity.issuer_url,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 IDENTITY",
+    }
+  - {
+      key: int.identity.realm,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 IDENTITY",
+    }
+  - {
+      key: int.identity.jwks_cache_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 86400,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: false,
+      min: 60,
+      max: 86400,
+      tighten: "max",
+      source: "IPB-01 §01.4.4.2 IDENTITY",
+    }
+  - {
+      key: int.identity.passkeys.enabled,
+      tier: "PLATFORM",
+      type: "bool",
+      default: true,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 IDENTITY; IPB-02-01",
+    }
+  - {
+      key: int.identity.scim.enabled,
+      tier: "PLATFORM",
+      type: "bool",
+      default: false,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 IDENTITY; IPB-02-05",
+    }
+  - {
+      key: int.identity.session.idle_minutes,
+      tier: "PLATFORM",
+      type: "int",
+      default: 30,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      min: 5,
+      max: 30,
+      tighten: "max",
+      note: "staff and admin 15",
+      source: "IPB-01 §01.4.4.2 IDENTITY; IPB-02-03",
+    }
+  - {
+      key: int.authz.pdp_url,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 AUTHZ",
+    }
+  - {
+      key: int.authz.bundle_version,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 AUTHZ",
+    }
+  - {
+      key: int.authz.decision_cache_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 5,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: false,
+      min: 0,
+      max: 5,
+      tighten: "max",
+      note: "allow decisions only; deny on PDP outage",
+      source: "IPB-01 §01.4.4.2 AUTHZ",
+    }
+  - {
+      key: "int.storage.bucket.{class}",
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 STORAGE",
+    }
+  - {
+      key: int.storage.region,
+      tier: "PLATFORM",
+      type: "string",
+      default: "ap-south-1",
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 STORAGE",
+    }
+  - {
+      key: int.storage.presign_ttl_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 300,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: false,
+      min: 1,
+      max: 300,
+      tighten: "max",
+      source: "IPB-01 §01.4.4.2 STORAGE; IPB-02-15",
+    }
+  - {
+      key: int.storage.replication.target,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 STORAGE",
+    }
+  - {
+      key: int.queue.url,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 QUEUE",
+    }
+  - {
+      key: int.queue.default_attempts,
+      tier: "PLATFORM",
+      type: "int",
+      default: 5,
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      min: 1,
+      max: 25,
+      source: "IPB-01 §01.4.4.2 QUEUE",
+    }
+  - {
+      key: int.queue.backoff,
+      tier: "PLATFORM",
+      type: "string",
+      default: "exponential:2000",
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 QUEUE",
+    }
+  - {
+      key: int.queue.dlq_retention_days,
+      tier: "PLATFORM",
+      type: "int",
+      default: 14,
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      min: 1,
+      max: 90,
+      source: "IPB-01 §01.4.4.2 QUEUE",
+    }
+  - {
+      key: int.workflow.address,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 WORKFLOW",
+    }
+  - {
+      key: int.workflow.namespace,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 WORKFLOW",
+    }
+  - {
+      key: int.workflow.task_queue_prefix,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 WORKFLOW",
+    }
+  - {
+      key: int.workflow.history_ttl_days,
+      tier: "PLATFORM",
+      type: "int",
+      default: 30,
+      change: ["PLT_RELEASE_MANAGER"],
+      mc: false,
+      min: 1,
+      max: 90,
+      source: "IPB-01 §01.4.4.2 WORKFLOW",
+    }
+  - {
+      key: int.email.provider,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "ses",
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      values: ["ses", "brevo", "smtp", "mailpit"],
+      source: "IPB-01 §01.4.4.2 EMAIL",
+    }
+  - {
+      key: "int.email.from.{brand}",
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 EMAIL",
+    }
+  - {
+      key: int.email.reply_to,
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 EMAIL",
+    }
+  - {
+      key: int.email.dkim_selector,
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 EMAIL",
+    }
+  - {
+      key: int.email.bounce_webhook_path,
+      tier: "PLATFORM",
+      type: "route",
+      default: "/webhooks/email",
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 EMAIL",
+    }
+  - {
+      key: int.sms.provider,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "msg91",
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      values: ["msg91", "gupshup-sms"],
+      source: "IPB-01 §01.4.4.2 SMS; IPB-DEV-03",
+    }
+  - {
+      key: int.sms.dlt_entity_id,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 SMS",
+    }
+  - {
+      key: "int.sms.sender_id.{brand}",
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 SMS",
+    }
+  - {
+      key: int.sms.template_map,
+      tier: "PLATFORM",
+      type: "json",
+      default: {},
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "logical template id → DLT template id per adapter",
+      source: "IPB-01 §01.4.4.2 SMS",
+    }
+  - {
+      key: int.whatsapp.provider,
+      tier: "PLATFORM",
+      type: "enum",
+      default: "gupshup",
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      values: ["gupshup", "meta-cloud"],
+      source: "IPB-01 §01.4.4.2 WHATSAPP; IPB-DEV-03",
+    }
+  - {
+      key: "int.whatsapp.waba_id.{brand}",
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: "int.whatsapp.phone_id.{brand}",
+      tier: "BRAND",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: int.whatsapp.template_namespace,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: int.whatsapp.webhook_verify_token,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      note: "secret:// reference only, never a literal",
+      source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: int.payments.webhook_path,
+      tier: "PLATFORM",
+      type: "route",
+      default: "/webhooks/payments",
+      change: ["pipeline"],
+      mc: false,
+      source: "IPB-01 §01.4.4.2 PAYMENTS",
+    }
+  - {
+      key: int.payments.settlement_account_ref,
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "tenant connectors settle only into the tenant's own account",
+      source: "IPB-01 §01.4.4.2 PAYMENTS; PL2-D-10 (P-18)",
+    }
+  - {
+      key: int.payments.methods_enabled,
+      tier: "PLATFORM",
+      type: "enum[]",
+      default: ["upi", "card", "netbanking"],
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      values: ["upi", "card", "netbanking", "wallet", "emandate"],
+      source: "IPB-01 §01.4.4.2 PAYMENTS; P-17",
+    }
   - {
       key: eng.env.seed_profile,
       tier: PLATFORM,

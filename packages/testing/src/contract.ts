@@ -1,5 +1,7 @@
 // Port contract harness (IPB-01-15): every adapter of a port passes the same suite. PL2 adapters
-// call defineContractSuite(port, factory) in their tests; PL1 runs it against the fakes.
+// call defineContractSuite(port, factory, cases, { leg }) in their tests; PL1 runs it against the
+// fakes. Cases name the method they exercise; a method the adapter declares `unsupported`
+// (PL2-D-21) must throw IPB-PORT-001 with meta.reason "unsupported" instead.
 import { describe, expect, it } from "vitest";
 import {
   PortHealth,
@@ -10,11 +12,23 @@ import {
   type SecretsPort,
   type StoragePort,
 } from "@infrabyx/contracts/ports";
-import { PORT_CATALOGUE } from "@infrabyx/contracts/ports";
+import { CAPABILITY_LEVELS, PORT_CATALOGUE } from "@infrabyx/contracts/ports";
+import { residencyAllows } from "@infrabyx/contracts/data-class";
 
 export interface ContractCase<P> {
   name: string;
   run(port: P): Promise<void>;
+  /** Port method the case exercises; checked against the adapter's capabilities. */
+  method?: string;
+  /** Minimal call of `method`, used to assert the typed error when it is unsupported. */
+  invoke?(port: P): Promise<unknown>;
+}
+
+/** Test legs (PL2 plan §3.11); the leg is part of the suite title so reports can tell them apart. */
+export type ContractLeg = "unit" | "hermetic" | "sandbox";
+
+export interface ContractSuiteOptions {
+  leg?: ContractLeg;
 }
 
 const ULID = "01JA0000000000000000000000";
@@ -88,13 +102,19 @@ export function defineContractSuite<P extends Port>(
   port: PortName,
   factory: () => P | Promise<P>,
   cases: ReadonlyArray<ContractCase<P>> = [],
+  opts: ContractSuiteOptions = {},
 ): void {
-  describe(`@IPB-01-15 ${port} port contract (tier ${PORT_CATALOGUE[port].tier})`, () => {
+  const leg = opts.leg ?? "unit";
+  describe(`@IPB-01-15 ${port} port contract (tier ${PORT_CATALOGUE[port].tier}, leg ${leg})`, () => {
     it("declares port, adapter, residency and max data class", async () => {
       const p = await factory();
       expect(p.descriptor.port).toBe(port);
       expect(p.descriptor.adapter).toMatch(/^[a-z][a-z0-9_-]*$/);
       expect(["IN", "IN-ZR", "GLOBAL"]).toContain(p.descriptor.residency);
+      // An adapter's residency must be able to carry its own maximum class (IPB-01-16).
+      expect(residencyAllows(p.descriptor.residency, p.descriptor.maxDataClass)).toBe(true);
+      for (const c of Object.values(p.descriptor.capabilities ?? {}))
+        expect(CAPABILITY_LEVELS).toContain(c);
     });
     it("health() returns a PortHealth", async () => {
       const p = await factory();
@@ -104,7 +124,18 @@ export function defineContractSuite<P extends Port>(
       ...((BUILT_IN_CASES[port] ?? []) as unknown as Array<ContractCase<P>>),
       ...cases,
     ]) {
-      it(c.name, async () => c.run(await factory()));
+      it(c.name, async () => {
+        const p = await factory();
+        if (c.method && p.descriptor.capabilities?.[c.method] === "unsupported") {
+          if (!c.invoke) return;
+          await expect(c.invoke(p)).rejects.toMatchObject({
+            code: "IPB-PORT-001",
+            meta: { reason: "unsupported" },
+          });
+          return;
+        }
+        await c.run(p);
+      });
     }
   });
 }

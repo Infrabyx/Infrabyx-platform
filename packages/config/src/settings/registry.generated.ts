@@ -529,6 +529,780 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "brand_pack.email_domain"
   },
   {
+    "key": "int.secrets.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "aws-sm",
+    "values": [
+      "aws-sm",
+      "vault",
+      "sops-local"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SECRETS"
+  },
+  {
+    "key": "int.secrets.path_prefix",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "secrets",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SECRETS"
+  },
+  {
+    "key": "int.secrets.cache_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 900,
+    "min": 60,
+    "max": 900,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 SECRETS",
+    "note": "15-minute refresh; never serve a value older than 24 h"
+  },
+  {
+    "key": "int.kms.platform_key_id",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 KMS"
+  },
+  {
+    "key": "int.kms.tenant_key_policy",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "per_tenant_regulated",
+    "values": [
+      "per_tenant_regulated",
+      "platform_key"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 KMS; PL2 C-15",
+    "note": "one CMK per tenant holding REGULATED fields (C-15)"
+  },
+  {
+    "key": "int.kms.data_key_cache_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 300,
+    "min": 0,
+    "max": 300,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 KMS"
+  },
+  {
+    "key": "int.kms.algorithms_allowed",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "aes-256-gcm",
+      "ecdsa-p256-sha256"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 KMS; PL1-C-01"
+  },
+  {
+    "key": "eng.otel.endpoint",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 OBSERVABILITY"
+  },
+  {
+    "key": "eng.otel.sampling_ratio",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 1,
+    "min": 0,
+    "max": 1,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 OBSERVABILITY"
+  },
+  {
+    "key": "eng.otel.genai.capture_content",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "tighten": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 OBSERVABILITY",
+    "note": "prompt and completion content never exported by default"
+  },
+  {
+    "key": "eng.logs.retention_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 180,
+    "min": 180,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 OBSERVABILITY; CERT-In"
+  },
+  {
+    "key": "eng.logs.region",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "IN",
+    "values": [
+      "IN"
+    ],
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 OBSERVABILITY"
+  },
+  {
+    "key": "eng.flags.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "unleash",
+    "values": [
+      "unleash",
+      "config-db",
+      "flagd"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 FEATURE_FLAG"
+  },
+  {
+    "key": "eng.flags.url",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 FEATURE_FLAG"
+  },
+  {
+    "key": "eng.flags.snapshot_ttl_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "min": 1,
+    "max": 24,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 FEATURE_FLAG"
+  },
+  {
+    "key": "int.identity.issuer_url",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 IDENTITY"
+  },
+  {
+    "key": "int.identity.realm",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 IDENTITY"
+  },
+  {
+    "key": "int.identity.jwks_cache_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 86400,
+    "min": 60,
+    "max": 86400,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 IDENTITY"
+  },
+  {
+    "key": "int.identity.passkeys.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 IDENTITY; IPB-02-01"
+  },
+  {
+    "key": "int.identity.scim.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 IDENTITY; IPB-02-05"
+  },
+  {
+    "key": "int.identity.session.idle_minutes",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 5,
+    "max": 30,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 IDENTITY; IPB-02-03",
+    "note": "staff and admin 15"
+  },
+  {
+    "key": "int.authz.pdp_url",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 AUTHZ"
+  },
+  {
+    "key": "int.authz.bundle_version",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 AUTHZ"
+  },
+  {
+    "key": "int.authz.decision_cache_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 0,
+    "max": 5,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 AUTHZ",
+    "note": "allow decisions only; deny on PDP outage"
+  },
+  {
+    "key": "int.storage.bucket.{class}",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.storage\\.bucket\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 STORAGE"
+  },
+  {
+    "key": "int.storage.region",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "ap-south-1",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 STORAGE"
+  },
+  {
+    "key": "int.storage.presign_ttl_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 300,
+    "min": 1,
+    "max": 300,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 STORAGE; IPB-02-15"
+  },
+  {
+    "key": "int.storage.replication.target",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 STORAGE"
+  },
+  {
+    "key": "int.queue.url",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 QUEUE"
+  },
+  {
+    "key": "int.queue.default_attempts",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 25,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 QUEUE"
+  },
+  {
+    "key": "int.queue.backoff",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "exponential:2000",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 QUEUE"
+  },
+  {
+    "key": "int.queue.dlq_retention_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 14,
+    "min": 1,
+    "max": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 QUEUE"
+  },
+  {
+    "key": "int.workflow.address",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 WORKFLOW"
+  },
+  {
+    "key": "int.workflow.namespace",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 WORKFLOW"
+  },
+  {
+    "key": "int.workflow.task_queue_prefix",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 WORKFLOW"
+  },
+  {
+    "key": "int.workflow.history_ttl_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 1,
+    "max": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 WORKFLOW"
+  },
+  {
+    "key": "int.email.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "ses",
+    "values": [
+      "ses",
+      "brevo",
+      "smtp",
+      "mailpit"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 EMAIL"
+  },
+  {
+    "key": "int.email.from.{brand}",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.email\\.from\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 EMAIL"
+  },
+  {
+    "key": "int.email.reply_to",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 EMAIL"
+  },
+  {
+    "key": "int.email.dkim_selector",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 EMAIL"
+  },
+  {
+    "key": "int.email.bounce_webhook_path",
+    "tier": "PLATFORM",
+    "type": "route",
+    "default": "/webhooks/email",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 EMAIL"
+  },
+  {
+    "key": "int.sms.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "msg91",
+    "values": [
+      "msg91",
+      "gupshup-sms"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SMS; IPB-DEV-03"
+  },
+  {
+    "key": "int.sms.dlt_entity_id",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SMS"
+  },
+  {
+    "key": "int.sms.sender_id.{brand}",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.sms\\.sender_id\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 SMS"
+  },
+  {
+    "key": "int.sms.template_map",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": {},
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SMS",
+    "note": "logical template id → DLT template id per adapter"
+  },
+  {
+    "key": "int.whatsapp.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "gupshup",
+    "values": [
+      "gupshup",
+      "meta-cloud"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP; IPB-DEV-03"
+  },
+  {
+    "key": "int.whatsapp.waba_id.{brand}",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.whatsapp\\.waba_id\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP"
+  },
+  {
+    "key": "int.whatsapp.phone_id.{brand}",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.whatsapp\\.phone_id\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP"
+  },
+  {
+    "key": "int.whatsapp.template_namespace",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP"
+  },
+  {
+    "key": "int.whatsapp.webhook_verify_token",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP",
+    "note": "secret:// reference only, never a literal"
+  },
+  {
+    "key": "int.payments.webhook_path",
+    "tier": "PLATFORM",
+    "type": "route",
+    "default": "/webhooks/payments",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 PAYMENTS"
+  },
+  {
+    "key": "int.payments.settlement_account_ref",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PAYMENTS; PL2-D-10 (P-18)",
+    "note": "tenant connectors settle only into the tenant's own account"
+  },
+  {
+    "key": "int.payments.methods_enabled",
+    "tier": "PLATFORM",
+    "type": "enum[]",
+    "default": [
+      "upi",
+      "card",
+      "netbanking"
+    ],
+    "values": [
+      "upi",
+      "card",
+      "netbanking",
+      "wallet",
+      "emandate"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PAYMENTS; P-17"
+  },
+  {
     "key": "eng.env.seed_profile",
     "tier": "PLATFORM",
     "type": "enum",
@@ -1810,6 +2584,54 @@ export type SettingValueMap = {
   "int.llm.tenant_residency_floor": "GLOBAL" | "IN" | "IN-ZR" | null;
   "int.whatsapp.brand_number": string | null;
   "int.email.brand_domain": string | null;
+  "int.secrets.provider": "aws-sm" | "vault" | "sops-local";
+  "int.secrets.path_prefix": string;
+  "int.secrets.cache_seconds": number;
+  "int.kms.platform_key_id": string | null;
+  "int.kms.tenant_key_policy": "per_tenant_regulated" | "platform_key";
+  "int.kms.data_key_cache_seconds": number;
+  "int.kms.algorithms_allowed": string[];
+  "eng.otel.endpoint": string | null;
+  "eng.otel.sampling_ratio": number;
+  "eng.otel.genai.capture_content": boolean;
+  "eng.logs.retention_days": number;
+  "eng.logs.region": "IN";
+  "eng.flags.provider": "unleash" | "config-db" | "flagd";
+  "eng.flags.url": string | null;
+  "eng.flags.snapshot_ttl_hours": number;
+  "int.identity.issuer_url": string | null;
+  "int.identity.realm": string | null;
+  "int.identity.jwks_cache_seconds": number;
+  "int.identity.passkeys.enabled": boolean;
+  "int.identity.scim.enabled": boolean;
+  "int.identity.session.idle_minutes": number;
+  "int.authz.pdp_url": string | null;
+  "int.authz.bundle_version": string | null;
+  "int.authz.decision_cache_seconds": number;
+  "int.storage.region": string;
+  "int.storage.presign_ttl_seconds": number;
+  "int.storage.replication.target": string | null;
+  "int.queue.url": string | null;
+  "int.queue.default_attempts": number;
+  "int.queue.backoff": string;
+  "int.queue.dlq_retention_days": number;
+  "int.workflow.address": string | null;
+  "int.workflow.namespace": string | null;
+  "int.workflow.task_queue_prefix": string | null;
+  "int.workflow.history_ttl_days": number;
+  "int.email.provider": "ses" | "brevo" | "smtp" | "mailpit";
+  "int.email.reply_to": string | null;
+  "int.email.dkim_selector": string | null;
+  "int.email.bounce_webhook_path": string;
+  "int.sms.provider": "msg91" | "gupshup-sms";
+  "int.sms.dlt_entity_id": string | null;
+  "int.sms.template_map": JsonValue;
+  "int.whatsapp.provider": "gupshup" | "meta-cloud";
+  "int.whatsapp.template_namespace": string | null;
+  "int.whatsapp.webhook_verify_token": string | null;
+  "int.payments.webhook_path": string;
+  "int.payments.settlement_account_ref": string | null;
+  "int.payments.methods_enabled": Array<"upi" | "card" | "netbanking" | "wallet" | "emandate">;
   "eng.env.seed_profile": "dev" | "demo" | "test" | "load" | null;
   "eng.env.supabase_allowed": boolean;
   "eng.exit.drill_interval_months": number;
@@ -1902,6 +2724,11 @@ export type SettingValueMap = {
   [k: `int.${string}.failover_mode`]: "read_only_failover" | "active_failover" | "none";
   [k: `int.${string}.circuit_breaker`]: JsonValue;
   [k: `int.storage.retention.${string}_days`]: number;
+  [k: `int.storage.bucket.${string}`]: string | null;
+  [k: `int.email.from.${string}`]: string | null;
+  [k: `int.sms.sender_id.${string}`]: string | null;
+  [k: `int.whatsapp.waba_id.${string}`]: string | null;
+  [k: `int.whatsapp.phone_id.${string}`]: string | null;
   [k: `cst.branding.${string}`]: string | null;
   [k: `cst.custom_fields.${string}`]: JsonValue;
 };

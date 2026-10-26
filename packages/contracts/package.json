@@ -51,6 +51,14 @@
     "./ports": {
       "types": "./dist/ports/index.d.ts",
       "default": "./dist/ports/index.js"
+    },
+    "./routing": {
+      "types": "./dist/routing.d.ts",
+      "default": "./dist/routing.js"
+    },
+    "./connector-manifest": {
+      "types": "./dist/connector-manifest.d.ts",
+      "default": "./dist/connector-manifest.js"
     }
   },
   "files": [

@@ -1,0 +1,7 @@
+# Baseline of reviewed gitleaks findings (IPB-02-30). One fingerprint per line:
+# <commit>:<file>:<rule>:<line>. Add an entry only for a reviewed false positive, never for a real
+# secret (a real leak is rotated within 24 h and handled as an incident).
+#
+# 2026-10-26: test fixture "rzp_test_abc123" in a routing test, used as an example of a literal value
+# where a SECRETS path is required. It is not a credential; the fixture was changed in the next commit.
+ded1ae21f658011d6a1afed4b355c9abd48be704:packages/contracts/src/routing.test.ts:generic-api-key:39

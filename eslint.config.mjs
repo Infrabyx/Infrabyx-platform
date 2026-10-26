@@ -32,6 +32,8 @@ export default tseslint.config(
       "ipb/no-process-env": "error",
       // IPB-12-05: cryptography only through packages/crypto (PL1-C-01)
       "ipb/no-direct-crypto": "error",
+      // IPB-01-16 / PL2-D-03: data class may only be raised; payload schemas fully annotated
+      "ipb/port-data-class": "error",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },
