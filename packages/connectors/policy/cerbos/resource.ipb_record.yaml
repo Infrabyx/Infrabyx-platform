@@ -1,0 +1,27 @@
+# Reference resource policy for the platform decision table (PL2 plan §6.6). Products copy this
+# shape for their own resource kinds. The agent DENY rule wins over every ALLOW (IPB-02-10).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: ipb_record
+  version: default
+  importDerivedRoles: ["ipb_platform"]
+  rules:
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_reader", "tenant_agent", "scoped_ops"]
+    - actions: ["update"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_writer", "tenant_agent"]
+    - actions: ["approve"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_checker"]
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_owner"]
+    - actions: ["grant"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_admin"]
+    - name: agents_never_decide
+      actions: ["approve", "sign", "disburse", "delete", "grant"]
+      effect: EFFECT_DENY
+      derivedRoles: ["ai_agent"]

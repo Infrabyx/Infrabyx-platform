@@ -49,6 +49,40 @@ Both adapters are `IN` / `SECRET`, sign only with `ecdsa-p256-sha256` (DER) and 
 - **`aws-kms`** (reference): AWS KMS in ap-south-1 or ap-south-2. `SYMMETRIC_DEFAULT` keys with the AAD as the encryption context (a canonical string map as is, any other AAD under `ipb:aad`); signing with `ECDSA_SHA_256` and `MessageType: DIGEST` over a locally computed SHA-256; tenant keys behind `alias/ipb/tenant/<id>`.
 - **`vault-transit`** (alternative): Vault or OpenBao Transit; AAD as `associated_data`; signatures verified against every key version's public key, so rotation does not break old signatures. `scheduleKeyDeletion` is unsupported, because Transit can only delete at once.
 
+## AUTHZ (`@infrabyx/connectors/authz`)
+
+Deny by default. Both adapters are `IN` / `CONFIDENTIAL` and share three rules:
+
+- an `AGT_*` principal asking to approve, sign, disburse, delete or grant is denied in the adapter, before any PDP call (IPB-02-10); the policy pack denies it as well;
+- a PDP failure is a deny carrying `IPB-AUTHZ-001` in `ref`, never an allow;
+- allow decisions are cached for at most 5 s (`int.authz.decision_cache_seconds`); denials are never cached.
+
+The platform policy pack ships in `policy/` and is loaded with `loadPolicies(await platformPolicyBundle("cerbos" | "openfga"))` (PL2-D-51). It has:
+
+- derived roles for the PL1 role floor: tenant reader, writer, checker (never the maker), admin and owner; AI agents; product-scoped `OPS_*` staff;
+- a reference resource `ipb_record` that products copy for their own kinds.
+
+The adapters:
+
+- **`cerbos`** (reference): a Cerbos PDP over HTTP. `planResources` returns Cerbos query plans; policies load through the Admin API into a dynamic store.
+- **`openfga`** (alternative): the same decision table as an OpenFGA model. Every check sends contextual tuples built from the principal's roles and attributes and the resource's attributes, so the store holds no tuples. `planResources` is unsupported (PL2-D-52).
+
+## IDENTITY (`@infrabyx/connectors/identity`)
+
+Both adapters are `IN` / `CONFIDENTIAL` and share one verifier and one revocation store:
+
+- `verifyToken` uses the C-11 verifier from `@infrabyx/crypto` with ES256 only (C-12) and a JWKS cache of `int.identity.jwks_cache_seconds` (24 h), so API calls survive an IdP outage; new logins then fail with `IPB-IDN-002`;
+- claims map to the PL1 `VerifiedClaims`: roles outside the platform role format are dropped, the principal type travels as `ptyp`, and `mfa` is true only for an MFA method in `amr` (SMS is not one);
+- `assertMfaForRoles(claims)` is the API guard for IPB-02-02: a privileged role without MFA is `IPB-SEC-001`;
+- revoked sessions and users are refused through a `RevocationStore`. `PgRevocationStore` writes `connectors.session_revocation` (hashed subjects, RLS, a ledger entry per revocation) and every replica refreshes within 15 s, inside the 60 s of IPB-02-05 (PL2-D-53). SCIM deactivation, `revokeSessions`, a role change and an OIDC back-channel logout token all revoke.
+
+The adapters:
+
+- **`keycloak`** (reference): Keycloak 26.x. `KeycloakIdentity.applyRealm` applies the realm as code (`ipbRealm`): ES256 key, IPB-02-03 session lifetimes, refresh-token rotation, brute-force protection, passkeys, back-channel logout, the platform roles, admin-only user attributes and the claim mappers. A temporary password and an MFA-required role become Keycloak required actions, so the first login forces a password change and MFA enrolment. SCIM operations go to the Admin API (PL2-D-54).
+- **`zitadel`** (alternative): Zitadel v4. `ZitadelIdentity.applyInstance` applies the same settings, an ES256 web key, the platform project and roles, the API app and a service principal. Tenant, type and product scope travel in admin-set user metadata; roles are project roles. Zitadel cannot require MFA per role, so every organisation forces MFA at login, which is stricter than IPB-02-02, and the API guard still applies (PL2-D-56).
+
+`issueToken` gives client-credentials tokens for the platform service principal. RFC 8693 tokens with an `act` claim are unsupported on both adapters, so impersonation stays off (PL2-D-55).
+
 ## Migrations
 
-`migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.
+`migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `migrations/0002_session_revocation.sql`: `session_revocation` for the IDENTITY revocation store (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.

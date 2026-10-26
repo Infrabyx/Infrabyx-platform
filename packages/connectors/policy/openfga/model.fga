@@ -1,0 +1,37 @@
+# Readable form of model.json (the adapter loads the JSON). Same decision table as the Cerbos pack
+# (PL2 plan §6.6, D-04). The store holds only the model; every check sends contextual tuples derived
+# from the principal's roles and attributes and the resource's attributes (PL2-D-52).
+model
+  schema 1.1
+
+type user
+
+type tenant
+  relations
+    define owner: [user]
+    define admin: [user] or owner
+    define maker: [user]
+    define checker: [user]
+    define member: [user]
+    define auditor: [user]
+    define agent: [user]
+    define reader: member or maker or checker or admin or auditor or agent
+    define writer: maker or admin or agent
+    define approver: checker or admin
+
+type product
+  relations
+    define ops: [user]
+
+type ipb_record
+  relations
+    define tenant: [tenant]
+    define product: [product]
+    define maker_of: [user]
+    define agent_actor: [user]
+    define excluded: maker_of or agent_actor
+    define read: reader from tenant or ops from product
+    define update: writer from tenant
+    define approve: approver from tenant but not excluded
+    define delete: owner from tenant but not agent_actor
+    define grant: admin from tenant but not agent_actor

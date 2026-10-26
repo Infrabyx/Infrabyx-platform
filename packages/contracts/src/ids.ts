@@ -25,6 +25,7 @@ export const ID_PREFIXES = {
   re: "regulated entity (Ecosystem Spec §4.1)",
   brd: "brand pack (IPB-D-10)",
   idm: "port idempotency record (PL2 plan §3.5)",
+  rvk: "revoked session or user (IDENTITY, IPB-02-05)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

@@ -67,6 +67,8 @@ export interface IdentityPort extends Port, IdentityProvisioning {
     kind: "oidc_code" | "saml";
     value: string;
     redirectUri?: string;
+    /** PKCE verifier (RFC 7636, S256); required for `oidc_code` by both platform IdPs. */
+    codeVerifier?: string;
   }): Promise<{ accessToken: string; idToken?: string; refreshToken?: string; expiresIn: number }>;
   getUser(id: string): Promise<IdentityUser>;
   linkFederation(userId: string, idp: { alias: string; subject: string }): Promise<void>;
