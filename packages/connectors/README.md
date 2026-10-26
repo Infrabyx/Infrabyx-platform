@@ -28,6 +28,13 @@ Vendor SDKs are imported only here (IPB-01-14). Each adapter has a unit leg, a h
 - `callObserver()` plugs into the Router: span `port.<PORT>.<method>`, `port_call_duration_ms` and `port_call_total`.
 - Exporter failures never reach the caller; `health()` reports `degraded`, never `down`.
 
+## FEATURE_FLAG (`@infrabyx/connectors/feature-flag`)
+
+Both adapters are `IN` / `INTERNAL` and plug into the PL1 `FlagService`, which keeps the last-known-good snapshot (≤ 24 h) and turns an unknown `kill.*` on when the provider and snapshot both fail (@IPB-02-AT-20). Evaluation contexts must carry C-21 hashes (32 hex); a raw tenant or user ID is `IPB-PORT-003`.
+
+- **`unleash`** (reference): Unleash OSS through the Node SDK, with toggle state held in memory only. Once the SDK has gone `maxStalenessMs` without a successful poll, every evaluation throws `FlagProviderUnavailable`, so FlagService serves the snapshot instead. Non-boolean values come from strategy-variant payloads. `syncRegistry(defs)` creates every exact registry flag through the admin API (kill switches as `kill-switch`, off; default-on `fut.*` enabled), updates only the description and type afterwards, never flips an existing toggle, and is idempotent. `setValue` switches a boolean in the adapter's environment; call it through `FlagAdmin` so the change is governed and ledgered (PL1-D-11). Tokens come from SECRETS (`FLAGS_UNLEASH_API_TOKEN_REF`, `secrets/<env>/feature_flag/unleash/admin_token`).
+- **`config-db`** (alternative): the PL1 `PgFlagProvider` on `config.flag_value`; no targeting (capability `targeting: unsupported`).
+
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.
