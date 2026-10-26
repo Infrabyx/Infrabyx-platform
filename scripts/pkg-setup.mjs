@@ -9,7 +9,7 @@ const pj = JSON.parse(readFileSync(file, "utf8"));
 
 const exp = { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" } };
 for (const [sub, target] of Object.entries(spec.subpaths ?? {})) {
-  exp[`./${sub}`] = target.endsWith(".mjs")
+  exp[`./${sub}`] = /\.(mjs|json)$/.test(target)
     ? target
     : { types: `./dist/${target}.d.ts`, default: `./dist/${target}.js` };
 }

@@ -46,6 +46,8 @@ export default tseslint.config(
       "eslint.config.mjs",
       "vitest.shared.mjs",
       "**/*.config.{ts,mts,js,mjs}",
+      // Integration-test infrastructure (excluded from builds) reads INFRABYX_TEST_PG_URL.
+      "packages/*/src/__tests__/**",
     ],
     rules: { "ipb/no-process-env": "off" },
   },

@@ -18,9 +18,11 @@ Updated: 2026-10-26
 - `@infrabyx/crypto`: single cryptography call-site (IPB-12-05), enforced by `ipb/no-direct-crypto`.
 - `@infrabyx/config`: env loader and guards (exit 78), settings registry from `settings-tree.yaml` (103 keys), settings service, flag registry (`kill.*`, 39 `fut.*`) with safe state, migration `config/0001_init.sql`. Unit tests tagged @IPB-11-AT-01/06/07, @IPB-01-AT-12, @IPB-07-AT-04/05/06, @IPB-02-AT-20, @IPB-09-AT-09/10, @IPB-12-AT-01.
 
+- `@infrabyx/tenancy`: context from verified claims, PgKernel (SET LOCAL, statement guard, ledger-required commit), outbox/inbox, approvals engine, break-glass, impersonation, field encryption, masking, `infrabyx-migrate`, `infrabyx-rls-lint`, Drizzle and NestJS adapters, migration `tenancy/0001_init.sql`. Unit tests and 16 PostgreSQL integration tests (@NN-01, @NN-45, @NN-18, @IPB-02-AT-04/08/10/11/12, @IPB-01-AT-16).
+
 ## Next
 
-- `@infrabyx/tenancy` (kernel, RLS, outbox, approvals, break-glass, impersonation, `infrabyx-migrate`), then audit, seed, testing (database integration tests for config run from testing), then the PL1 exit gate.
+- `@infrabyx/audit`, then seed, testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
 
 ## Owner decisions
 
