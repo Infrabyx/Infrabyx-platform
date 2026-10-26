@@ -22,9 +22,11 @@ Updated: 2026-10-26
 
 - `@infrabyx/audit`: trigger-computed hash chain (PL1-C-01), append-only for every role, verifier, corrections, signed anchors, migration `audit/0001_init.sql`. Tests @IPB-02-AT-15 (1,000-entry tamper), @NN-02, @NN-45 (20 concurrent writers), anchors verifiable with the public key alone.
 
+- `@infrabyx/seed`: refusal-first CLI, deterministic idempotent framework, synthetic validator, platform seed, purge, credentials, lefthook pre-commit guard. Tests @IPB-11-AT-02/03/04/05, determinism across databases, idempotency, purge precision.
+
 ## Next
 
-- `@infrabyx/seed`, then testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
+- testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
 
 ## Owner decisions
 

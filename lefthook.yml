@@ -1,0 +1,15 @@
+# Git hooks (IPB-11-09). Install once per clone: pnpm exec lefthook install
+pre-commit:
+  parallel: true
+  commands:
+    env-and-credentials:
+      run: node infra/policy/hooks/precommit-guard.mjs {staged_files}
+    gitleaks:
+      run: gitleaks protect --staged --redact --config .gitleaks.toml
+    format:
+      glob: "*.{ts,mts,js,mjs,json,md,yml,yaml}"
+      run: pnpm exec prettier --check {staged_files}
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}

@@ -92,6 +92,8 @@ for (const d of [
   "docs/adr/ADR-0000-template.md",
   "commitlint.config.mjs",
   ".gitleaks.toml",
+  "lefthook.yml",
+  "infra/policy/hooks/precommit-guard.mjs",
 ]) {
   if (!existsSync(d)) fail(`${d} missing`);
 }
