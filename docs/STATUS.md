@@ -4,7 +4,7 @@ Updated: 2026-10-26
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL1 complete — PL2 next** (`docs/phases/PL1-plan.md`, exit gate passed 2026-10-26)                                                                                                     |
+| Current phase         | **PL2 — plan written, awaiting owner approval** (`docs/phases/PL2-plan.md`); PL1 complete and accepted 2026-10-26                                                                        |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
