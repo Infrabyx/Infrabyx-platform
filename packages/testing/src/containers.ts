@@ -1,7 +1,8 @@
 // Pinned test images and a generic container starter (PL2 plan §3.11, §7). Digests are recorded in
 // infra/docker/TEST_IMAGES.md; a unit test keeps the two in step. Images come from Docker Hub
 // (the PL2 spike found ECR Public anonymous pulls capped; GHCR and quay.io unreachable from the
-// build sandbox). Set IPB_TEST_<NAME>_URL to reuse a running service instead of starting one.
+// build sandbox), except Zitadel, which is published only on GHCR and so runs in CI only.
+// Set IPB_TEST_<NAME>_URL to reuse a running service instead of starting one.
 import { z } from "zod";
 import type { GenericContainer } from "testcontainers";
 import { envVar, validateEnv } from "@infrabyx/config/env";
@@ -48,6 +49,12 @@ export const TEST_IMAGES = {
     version: "0.57.0",
     role: "Cerbos PDP (AUTHZ)",
   },
+  keycloak: {
+    image:
+      "keycloak/keycloak@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244",
+    version: "26.8.1",
+    role: "Keycloak, dev mode with in-memory H2 (IDENTITY)",
+  },
   localstack: {
     image:
       "localstack/localstack@sha256:0df3a97da57de03a588c05d9b8f390f15c7033fc7c4512f94619d344bc3cd317",
@@ -77,6 +84,12 @@ export const TEST_IMAGES = {
       "otel/opentelemetry-collector-contrib@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6",
     version: "0.162.0",
     role: "OTel Collector with file exporters (OBSERVABILITY)",
+  },
+  zitadel: {
+    image:
+      "ghcr.io/zitadel/zitadel@sha256:a586456a208e0db4c633db0ba43c427c24b37846138b8b13ff16ad8e003a18d3",
+    version: "v4.19.5",
+    role: "Zitadel with PostgreSQL (IDENTITY alternative; GHCR, so CI only)",
   },
   unleash: {
     image:
@@ -148,4 +161,11 @@ export async function startService(
     ports: Object.fromEntries(opts.ports.map((x) => [x, started.getMappedPort(x)])),
     stop: async () => void (await started.stop()),
   };
+}
+
+/** A user-defined Docker network for services that talk to each other (e.g. Zitadel and its database). */
+export async function startNetwork(): Promise<{ name: string; stop(): Promise<void> }> {
+  const { Network } = await import("testcontainers");
+  const n = await new Network().start();
+  return { name: n.getName(), stop: async () => void (await n.stop()) };
 }
