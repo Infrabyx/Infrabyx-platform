@@ -1,5 +1,5 @@
 {
-  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed unless that leg is parked (minio, PL2-D-61).",
+  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed unless the owner keeps them out of staging and above (minio, PL2-D-61).",
   "adapters": {
     "aws-sm": {
       "status": "unproven",
@@ -51,7 +51,7 @@
     },
     "minio": {
       "status": "unproven",
-      "needs": "MinIO-server test image source (OWNER-QUESTIONS #4)"
+      "needs": "Owner decision PL2-D-61: frozen upstream, so refused outside dev and test even when its hermetic leg is green"
     }
   }
 }

@@ -63,7 +63,7 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (open: #4 MinIO image source, PL2-D-61; #1–#3 answered as PL2-D-50, PL2-D-55, PL2-D-56). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#4 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
@@ -77,7 +77,7 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
   - WORKFLOW `temporal` and `temporal-cloud`: C-16 codec and encrypted failures, idempotent ids, deterministic replay, 32 KB reference path, input-class rule, worker helper (PL2-D-60).
 - `@infrabyx/contracts`: `presign` options `{ bucketClass, contentType }`; KMS purpose `workflow`.
 - New for products at gate A: migration `connectors/0003_pgboss.sql`; env `STORAGE_*`, `QUEUE_REDIS_URL`, `WORKFLOW_TEMPORAL_*` (plan §6.7–6.9); settings `int.storage.*`, `int.queue.*`, `int.workflow.*`.
-- Open for the owner: OWNER-QUESTIONS #4, the MinIO-server test image (PL2-D-61). It does not block PL2: `minio` is unproven and refused by routing outside dev and test.
+- Owner answer (PL2-D-61): MinIO's last community release from quay.io by digest, else built from source. quay.io refused the pull from CI, so CI builds `RELEASE.2025-09-07T16-13-09Z` from source at a pinned commit and caches the binary; the MinIO-server leg proves presigned-URL enforcement; `minio` stays refused outside dev and test. PR-015 asks to replace MinIO in the catalogue; the production self-hosted alternative is a PL6 decision (SeaweedFS leading, Ceph RGW for bank on-premise).
 
 ## PL2 session 4 (2026-10-26)
 
@@ -152,6 +152,8 @@ Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repo
 | 2026-10 | main after #18 (ci 5, release 2)                            | 7                         | 223           |
 | 2026-10 | PR #19, 4 pushes (ci 6, port-contract 6 legs ~16), estimate | 88                        | 311           |
 | 2026-10 | main after #19 (ci 5, release 2)                            | 7                         | 318           |
+| 2026-10 | PR #20, 2 pushes (ci 6, port-contract 9 legs ~20), estimate | 52                        | 370           |
+| 2026-10 | main after #20 (ci 5, release 2)                            | 7                         | 377           |
 
 ## Owner decisions
 

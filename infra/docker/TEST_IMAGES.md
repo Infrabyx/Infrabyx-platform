@@ -19,4 +19,12 @@ Container images used by the hermetic contract legs. The source of truth is `TES
 | `zitadel`    | `ghcr.io/zitadel/zitadel@sha256:a586456a208e0db4c633db0ba43c427c24b37846138b8b13ff16ad8e003a18d3`              | v4.19.5                                    | Zitadel with PostgreSQL (IDENTITY alternative; GHCR, so CI only) |
 | `unleash`    | `unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050`            | 8.2.0                                      | Unleash OSS (FEATURE_FLAG)                                       |
 
-Zitadel is the one image pulled from GHCR (it is published nowhere else), so its leg runs in CI only. Images for MinIO are added with the sessions that use them (D-11).
+Zitadel (GHCR) runs in CI only.
+
+## Built from source
+
+| Name    | Source (pinned)                                                                                                | Version                                                       | Stands in for                                                          |
+| ------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `minio` | `github.com/minio/minio` tag `RELEASE.2025-09-07T16-13-09Z`, commit `07c3a429bfed433e49018cb0f78a52145d4bedeb` | RELEASE.2025-09-07T16-13-09Z (last community release, frozen) | MinIO server: Object Lock, SSE-S3, presigned-URL enforcement (STORAGE) |
+
+MinIO publishes no pinnable image any more: the Docker Hub repository is gone and quay.io refuses anonymous pulls (CI, 26 Oct 2026). Per PL2-D-61, CI builds this release from source with Go 1.24 (`scripts/ci/minio-server.sh`), checks the commit, and keeps the binary in the Actions cache. A third-party mirror is never used. Images for MinIO are added with the sessions that use them (D-11).

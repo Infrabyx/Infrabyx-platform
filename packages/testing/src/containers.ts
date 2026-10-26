@@ -1,7 +1,8 @@
 // Pinned test images and a generic container starter (PL2 plan §3.11, §7). Digests are recorded in
 // infra/docker/TEST_IMAGES.md; a unit test keeps the two in step. Images come from Docker Hub
 // (the PL2 spike found ECR Public anonymous pulls capped; GHCR and quay.io unreachable from the
-// build sandbox), except Zitadel, which is published only on GHCR and so runs in CI only.
+// build sandbox), except Zitadel (GHCR), which runs in CI only. MinIO has no pinnable image any
+// more; CI builds its last community release from source (scripts/ci/minio-server.sh, PL2-D-61).
 // Set IPB_TEST_<NAME>_URL to reuse a running service instead of starting one.
 import { z } from "zod";
 import type { GenericContainer } from "testcontainers";
@@ -125,6 +126,24 @@ export interface StartServiceOptions {
 }
 
 /** Start a pinned image, or reuse the service named by IPB_TEST_<NAME>_URL. */
+/** The service named by IPB_TEST_<NAME>_URL, if set (services CI starts itself, such as MinIO). */
+export async function existingServiceUrl(
+  name: TestImageName | "minio",
+): Promise<string | undefined> {
+  const varName = `IPB_TEST_${name.toUpperCase()}_URL`;
+  const schema = z.object({
+    [varName]: envVar(z.string().url(), {
+      desc: `Existing ${name} service for tests`,
+      example: "http://127.0.0.1:1234",
+      required: "opt",
+      sens: "C",
+      port: "IPB",
+    }),
+  });
+  const r = await validateEnv(schema, { guards: [], defaultAppEnv: "test" });
+  return r.ok ? (r.values as Record<string, string | undefined>)[varName] : undefined;
+}
+
 export async function startService(
   name: TestImageName,
   opts: StartServiceOptions,

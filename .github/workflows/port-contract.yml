@@ -62,6 +62,22 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
       - run: pnpm build --filter @infrabyx/connectors...
+      # MinIO-server leg (PL2-D-61): MinIO's last community release, built from source at a
+      # pinned commit (no pinnable image exists any more) and kept in the Actions cache.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: minio-cache
+        if: matrix.port == 'STORAGE'
+        with:
+          path: ~/.cache/ipb-minio
+          key: ipb-minio-RELEASE.2025-09-07T16-13-09Z-07c3a429bfed433e49018cb0f78a52145d4bedeb
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: matrix.port == 'STORAGE' && steps.minio-cache.outputs.cache-hit != 'true'
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: MinIO server (STORAGE)
+        if: matrix.port == 'STORAGE'
+        run: bash scripts/ci/minio-server.sh
       - name: contract legs (unit + hermetic)
         env:
           PORT: ${{ matrix.port }}
