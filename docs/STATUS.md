@@ -2,36 +2,32 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                              |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Current phase         | **PL1 — core kernel: exit gate (PR open, awaiting CI and merge)** (`docs/phases/PL1-plan.md`, approved 2026-10-26) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                             |
-| Packages              | 22 scaffolded at 0.0.0, none published; 0.1.0 of the seven PL1 packages at the PL1 exit gate (PL1-D-02)            |
-| Last exit gate passed | PL0 (accepted by owner 2026-10-26)                                                                                 |
-| Working branch        | `claude/funny-cori-6upyrr` (PR #7 merged; branch reused for PL1 because the session cannot delete branches)        |
+| Item                  | Value                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL1 complete — PL2 next** (`docs/phases/PL1-plan.md`, exit gate passed 2026-10-26)                                                                            |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                          |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds also went out at 0.0.0 (PL1-D-19) |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                         |
+| Working branch        | `claude/funny-cori-6upyrr` (reused; the session cannot delete branches)                                                                                         |
 
 ## Done
 
-- PL0 complete (PR #1); Renovate fixes (PR #6); PL1 plan approved and merged (PR #7) with decisions PL1-D-02 to PL1-D-06 and cryptography choices PL1-C-01.
-- pnpm 10.34.7 (ADR-0002 accepted, IPB-DEV-02); `.npmrc` carries no credentials (PL1-D-01).
-- `@infrabyx/contracts`: data classes, IDs, environments, roles, tiers, 99 error codes, CloudEvents envelopes, module manifest, kernel interfaces, five port contracts.
-- `@infrabyx/crypto`: single cryptography call-site (IPB-12-05), enforced by `ipb/no-direct-crypto`.
-- `@infrabyx/config`: env loader and guards (exit 78), settings registry from `settings-tree.yaml` (103 keys), settings service, flag registry (`kill.*`, 39 `fut.*`) with safe state, migration `config/0001_init.sql`. Unit tests tagged @IPB-11-AT-01/06/07, @IPB-01-AT-12, @IPB-07-AT-04/05/06, @IPB-02-AT-20, @IPB-09-AT-09/10, @IPB-12-AT-01.
-
-- `@infrabyx/tenancy`: context from verified claims, PgKernel (SET LOCAL, statement guard, ledger-required commit), outbox/inbox, approvals engine, break-glass, impersonation, field encryption, masking, `infrabyx-migrate`, `infrabyx-rls-lint`, Drizzle and NestJS adapters, migration `tenancy/0001_init.sql`. Unit tests and 16 PostgreSQL integration tests (@NN-01, @NN-45, @NN-18, @IPB-02-AT-04/08/10/11/12, @IPB-01-AT-16).
-
-- `@infrabyx/audit`: trigger-computed hash chain (PL1-C-01), append-only for every role, verifier, corrections, signed anchors, migration `audit/0001_init.sql`. Tests @IPB-02-AT-15 (1,000-entry tamper), @NN-02, @NN-45 (20 concurrent writers), anchors verifiable with the public key alone.
-
-- `@infrabyx/seed`: refusal-first CLI, deterministic idempotent framework, synthetic validator, platform seed, purge, credentials, lefthook pre-commit guard. Tests @IPB-11-AT-02/03/04/05, determinism across databases, idempotency, purge precision.
-
-- `@infrabyx/testing`: `startPostgres`, context builders, port fakes, NN suites run against the PL1 packages, port contract harness, `infrabyx-migration-lint` (every IPB-09 §09.4.6 rule, @IPB-09-AT-11/12, @IPB-01-AT-11), `infrabyx-at-report`, ESLint IPB plugin moved to `@infrabyx/testing/eslint` (PL1-D-02).
-
-- Exit gate: CI gains migration-lint, registry-check, dev-keys-check, env-example-check and an `integration` job (PostgreSQL 18 service: migrate, rls-lint, test:int, at-report). PL0 changeset narrowed to the seven PL1 packages so only they publish 0.1.0.
+- PL0 complete (PR #1); Renovate fixes (PR #6); PL1 plan approved and merged (PR #7).
+- PL1 implemented (PR #8, merge commit e5d0a1d), one commit and one Changeset per package:
+  - `@infrabyx/contracts`: data classes, IDs, environments, roles, tiers, 99 error codes, CloudEvents envelopes, module manifest, kernel interfaces, five port contracts.
+  - `@infrabyx/crypto`: single cryptography call-site (IPB-12-05; PL1-C-01), enforced by `ipb/no-direct-crypto`.
+  - `@infrabyx/config`: env loader and guards (exit 78), settings registry (103 keys), flag registry (`kill.*`, 39 `fut.*`) with safe state; migration `config/0001_init.sql`.
+  - `@infrabyx/tenancy`: context from verified claims, PgKernel with ledger-required commit, outbox/inbox, approvals, break-glass, impersonation, field encryption, masking, `infrabyx-migrate`, `infrabyx-rls-lint`; migration `tenancy/0001_init.sql`.
+  - `@infrabyx/audit`: trigger-computed hash chain, append-only for every role, verifier, corrections, signed anchors; migration `audit/0001_init.sql`.
+  - `@infrabyx/seed`: refusal-first CLI, deterministic idempotent seeds, synthetic validator, purge, credentials; migration `seed/0001_init.sql`.
+  - `@infrabyx/testing`: `startPostgres`, fakes, the five NN suites, port contract harness, `infrabyx-migration-lint`, `infrabyx-at-report`, `@infrabyx/testing/eslint`.
+- Exit gate (PL1-plan §12): CI `verify` and `integration` (PostgreSQL 18: migrate, rls-lint, test:int, at-report) green; acceptance tests present and passing — IPB-01-AT-05/11/12/16, IPB-02-AT-04/07/08/10/11/12/15/20, IPB-07-AT-04/05/06, IPB-09-AT-09/10/11/12, IPB-11-AT-01…07, IPB-12-AT-01/03; @NN-01, @NN-02, @NN-18, @NN-45; @IPB-01-15 contract suites.
+- Release (PR #10, PL1-D-18): 0.1.0 of the seven packages published by `release.yml` run 10, tags `@infrabyx/<pkg>@0.1.0` pushed.
+- Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 
 ## Next
 
-- Merge the PL1 PR; `release.yml` updates the held "chore: version packages" PR to 0.1.0 of the seven packages; merge that to publish (PL1-D-02 / D-06). Then PL2 plan.
-- testing (database integration tests for config run from testing), then the PL1 exit gate (CI job for `test:int` with a PostgreSQL 18 service, rls-lint, migration-lint).
+- PL2 — ports and reference adapters (IPB-14 §14.3): `connectors` for the Tier-0 ports (IDENTITY Keycloak, AUTHZ Cerbos, STORAGE S3 + MinIO, QUEUE Redis/BullMQ, WORKFLOW Temporal, SECRETS AWS SM + Vault, KMS, EMAIL SES + Brevo, SMS, WHATSAPP, PAYMENTS Razorpay + one alternative, FEATURE_FLAG Unleash, OBSERVABILITY OTel), `provider_routing`, contract tests green for the reference and one alternative each. First step: `docs/phases/PL2-plan.md` for owner approval, before any code. PAYMENTS is on the locked list.
 
 ## Owner decisions
 
@@ -39,6 +35,9 @@ Updated: 2026-10-26
 
 ## Blocked / waiting on owner
 
+- Confirm the seven 0.1.0 packages under the organisation's Packages tab (the session has no access to it; the release log reports each as published).
+- PL1-D-19: decide whether to delete the fifteen 0.0.0 scaffold versions from GitHub Packages (harmless placeholders; deletion is an owner action).
+- Repository Settings → Actions → General → Workflow permissions → "Allow GitHub Actions to create and approve pull requests", and a GitHub App token for the changesets action (PL1-D-18).
+- Delete branch `claude/funny-cori-6upyrr` when convenient (the session gets 403).
 - Platform requests PR-002 to PR-006 open for the IPB editor (`docs/platform-requests.md`).
-- Branch `claude/funny-cori-6upyrr` could not be deleted from the session (GitHub returned 403); owner to delete after the PL1 PR merges.
 - `main` ruleset enforcement waits on the GitHub plan upgrade (PL0-D-07).
