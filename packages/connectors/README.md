@@ -42,6 +42,13 @@ Both adapters are `IN` / `SECRET`; paths are `secrets/<env>/<port>/<adapter>/<ke
 - **`aws-sm`** (reference): AWS Secrets Manager in ap-south-1 or ap-south-2 only; new secrets are created with the platform CMK (C-18); metadata as `ipb:*` tags; `rotate` keeps the previous version readable (overlap); `lease` emulated; `audit` reads CloudTrail `LookupEvents` for the secret's ARN. Credentials from workload identity (IRSA, OIDC); the AWS SDK is loaded only when the adapter is created.
 - **`vault`** (alternative): Vault or OpenBao KV v2 over HTTPS through the egress client; Kubernetes service-account login (or a token in dev and CI); `lease` issues dynamic database credentials for paths mapped in `dynamic`; `audit` unsupported.
 
+## KMS (`@infrabyx/connectors/kms`)
+
+Both adapters are `IN` / `SECRET`, sign only with `ecdsa-p256-sha256` (DER) and fail decryption closed with `IPB-KMS-001` (`meta.reason`: `integrity`, `unavailable`, `pending_deletion`); there is no plaintext fallback. AAD binds every ciphertext and data key: pass `kmsContext({ tenant_id, purpose })` (C-14). Tenant keys are created once per tenant with annual rotation (C-15); key deletion is accepted only exactly 30 days ahead, after the R5 maker-checker approval, the tenant's purge instruction and the legal-hold check upstream.
+
+- **`aws-kms`** (reference): AWS KMS in ap-south-1 or ap-south-2. `SYMMETRIC_DEFAULT` keys with the AAD as the encryption context (a canonical string map as is, any other AAD under `ipb:aad`); signing with `ECDSA_SHA_256` and `MessageType: DIGEST` over a locally computed SHA-256; tenant keys behind `alias/ipb/tenant/<id>`.
+- **`vault-transit`** (alternative): Vault or OpenBao Transit; AAD as `associated_data`; signatures verified against every key version's public key, so rotation does not break old signatures. `scheduleKeyDeletion` is unsupported, because Transit can only delete at once.
+
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.

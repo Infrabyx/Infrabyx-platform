@@ -24,6 +24,10 @@
     "./secrets": {
       "types": "./dist/secrets/index.d.ts",
       "default": "./dist/secrets/index.js"
+    },
+    "./kms": {
+      "types": "./dist/kms/index.d.ts",
+      "default": "./dist/kms/index.js"
     }
   },
   "files": [
