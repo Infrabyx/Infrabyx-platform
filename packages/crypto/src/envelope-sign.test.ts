@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { FieldEnvelope, fieldAad } from "./envelope.js";
+import { aesGcmEncrypt } from "./aead.js";
+import { concatBytes } from "./encoding.js";
+import { randomBytes } from "./random.js";
 import {
   LocalKms,
   LOCAL_KMS_KEYS,
@@ -22,17 +25,22 @@ const aad = fieldAad(
   "pty_01H00000000000000000000000",
 );
 
+const ctx = { tenant_id: "tnt_01H00000000000000000000000", purpose: "field" } as const;
+
 describe("field envelope (IPB-02-20, PL1-C-04)", () => {
   it("round-trips and binds the ciphertext to its location", async () => {
     const env = new FieldEnvelope(kms);
-    const sealed = await env.seal(tenantKey, "ABCDE1234F", aad);
+    const sealed = await env.seal(tenantKey, "ABCDE1234F", aad, ctx);
     expect(sealed.alg).toBe("aes-256-gcm");
     expect(Buffer.from(sealed.enc).includes(Buffer.from("ABCDE1234F"))).toBe(false);
-    expect(new TextDecoder().decode(await env.open(sealed, aad))).toBe("ABCDE1234F");
+    expect(new TextDecoder().decode(await env.open(sealed, aad, ctx))).toBe("ABCDE1234F");
     const otherRow = fieldAad("tnt_01H00000000000000000000000", "kyc.party", "pan", "pty_other");
-    await expect(env.open(sealed, otherRow)).rejects.toThrow();
-    const otherTenant = await new FieldEnvelope(kms).seal(localTenantKeyId("tnt_other"), "x", aad);
-    await expect(env.open({ ...otherTenant, keyId: tenantKey }, aad)).rejects.toThrow();
+    await expect(env.open(sealed, otherRow, ctx)).rejects.toThrow();
+    const otherTenant = await new FieldEnvelope(kms).seal(localTenantKeyId("tnt_other"), "x", aad, {
+      tenant_id: "tnt_other",
+      purpose: "field",
+    });
+    await expect(env.open({ ...otherTenant, keyId: tenantKey }, aad, ctx)).rejects.toThrow();
   });
 
   it("caches a data key and rotates it after maxUses or the 5-minute TTL", async () => {
@@ -40,14 +48,82 @@ describe("field envelope (IPB-02-20, PL1-C-04)", () => {
     const spy = vi.spyOn(kms, "generateDataKey");
     spy.mockClear();
     const env = new FieldEnvelope(kms, { maxUses: 3, now: () => now });
-    for (let i = 0; i < 3; i++) await env.seal(tenantKey, "v", aad);
+    for (let i = 0; i < 3; i++) await env.seal(tenantKey, "v", aad, ctx);
     expect(spy).toHaveBeenCalledTimes(1);
-    await env.seal(tenantKey, "v", aad);
+    await env.seal(tenantKey, "v", aad, ctx);
     expect(spy).toHaveBeenCalledTimes(2);
     now += 5 * 60 * 1000;
-    await env.seal(tenantKey, "v", aad);
+    await env.seal(tenantKey, "v", aad, ctx);
     expect(spy).toHaveBeenCalledTimes(3);
+    // A data key is never shared across tenants or purposes.
+    await env.seal(tenantKey, "v", aad, { tenant_id: "tnt_b", purpose: "field" });
+    expect(spy).toHaveBeenCalledTimes(4);
     expect(() => new FieldEnvelope(kms, { ttlMs: 60 * 60 * 1000 })).not.toThrow();
+  });
+});
+
+describe("field envelope format v2 (C-14, PL2-D-50)", () => {
+  it("wraps every data key under { tenant_id, purpose }; a wrong tenant or purpose fails closed", async () => {
+    const spy = vi.spyOn(kms, "generateDataKey");
+    spy.mockClear();
+    const env = new FieldEnvelope(kms);
+    const sealed = await env.seal(tenantKey, "ABCDE1234F", aad, ctx);
+    expect(env.formatVersion(sealed)).toBe(2);
+    expect(new TextDecoder().decode(spy.mock.calls[0]?.[1])).toBe(
+      '{"purpose":"field","tenant_id":"tnt_01H00000000000000000000000"}',
+    );
+    const fresh = () => new FieldEnvelope(kms); // no cached unwrapped keys
+    await expect(fresh().open(sealed, aad, { ...ctx, tenant_id: "tnt_other" })).rejects.toThrow();
+    await expect(fresh().open(sealed, aad, { ...ctx, purpose: "health" })).rejects.toThrow(
+      /another purpose/,
+    );
+    expect(new TextDecoder().decode(await fresh().open(sealed, aad, ctx))).toBe("ABCDE1234F");
+  });
+
+  it("refuses an unregistered purpose or a malformed context before any KMS call", async () => {
+    const env = new FieldEnvelope(kms);
+    await expect(
+      env.seal(tenantKey, "x", aad, { tenant_id: "tnt_a", purpose: "pan:ABCDE1234F" } as never),
+    ).rejects.toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    await expect(
+      env.seal(tenantKey, "x", aad, { tenant_id: "a b", purpose: "field" }),
+    ).rejects.toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    await expect(kms.generateDataKey(tenantKey)).rejects.toMatchObject({ code: "IPB-PORT-003" });
+  });
+
+  it("reads v1 and re-wraps its data key as v2 without changing the field ciphertext", async () => {
+    // A v1 field as PL1 wrote it: the data key wrapped with no KMS context.
+    const dk = randomBytes(32);
+    const wrapped = await kms.encrypt(tenantKey, dk);
+    const body = aesGcmEncrypt(dk, new TextEncoder().encode("ABCDE1234F"), aad);
+    const v1 = {
+      enc: concatBytes(
+        new Uint8Array([1, wrapped.byteLength >> 8, wrapped.byteLength & 0xff]),
+        wrapped,
+        body,
+      ),
+      keyId: tenantKey,
+      alg: "aes-256-gcm" as const,
+    };
+    const env = new FieldEnvelope(kms);
+    expect(env.formatVersion(v1)).toBe(1);
+    expect(new TextDecoder().decode(await env.open(v1, aad, ctx))).toBe("ABCDE1234F");
+    const v2 = await env.rewrapToV2(v1, ctx);
+    expect(env.formatVersion(v2)).toBe(2);
+    expect(
+      Buffer.from(v2.enc.subarray(v2.enc.byteLength - body.byteLength)).equals(Buffer.from(body)),
+    ).toBe(true);
+    expect(new TextDecoder().decode(await new FieldEnvelope(kms).open(v2, aad, ctx))).toBe(
+      "ABCDE1234F",
+    );
+    await expect(
+      new FieldEnvelope(kms).open(v2, aad, { ...ctx, tenant_id: "tnt_other" }),
+    ).rejects.toThrow();
+    expect(await env.rewrapToV2(v2, ctx)).toBe(v2);
   });
 });
 
@@ -113,7 +189,10 @@ describe("LocalKms dev keys (PL1-C-10)", () => {
     expect(committed.keys).toEqual(devKeyFingerprints());
   });
   it("recognises dev keys in hex, base64url and fingerprint form", async () => {
-    const dk = await kms.generateDataKey(LOCAL_KMS_KEYS.platform);
+    const dk = await kms.generateDataKey(
+      LOCAL_KMS_KEYS.platform,
+      new TextEncoder().encode('{"purpose":"health","tenant_id":"platform"}'),
+    );
     expect(matchesDevKey(Buffer.from(dk.plaintext).toString("hex"))).toBe(false); // random data keys are not dev keys
     const fp = devKeyFingerprints()[0]?.fingerprint as string;
     expect(matchesDevKey(fp)).toBe(true);

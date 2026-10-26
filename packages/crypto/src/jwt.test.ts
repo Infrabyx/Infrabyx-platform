@@ -286,7 +286,12 @@ describe("C-11 differential test against jose", () => {
           currentDate: new Date(NOW),
         });
         expect(a.claims).toEqual(b.payload);
-        const bad = t.slice(0, -2) + (t.endsWith("A") ? "BA" : "AA");
+        // Flip one bit of the decoded signature, so the tampered token always differs.
+        const [h0, p0, s0] = t.split(".") as [string, string, string];
+        const sig = Buffer.from(s0, "base64url");
+        sig.writeUInt8((sig.readUInt8(i % sig.byteLength) ^ 0x01) & 0xff, i % sig.byteLength);
+        const bad = `${h0}.${p0}.${sig.toString("base64url")}`;
+        expect(bad).not.toBe(t);
         const ourBad = await reason(verifyJwt(bad, ours, NOW));
         const joseBad = await jwtVerify(bad, jwks, { currentDate: new Date(NOW) }).then(
           () => "verified",

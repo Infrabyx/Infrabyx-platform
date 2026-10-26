@@ -66,3 +66,4 @@ export {
   type SnsVerifyOptions,
   type SnsFailure,
 } from "./webhook-sig.js";
+export { encodeKmsContext, decodeKmsContext, assertKmsContext } from "./kms-context.js";
