@@ -63,7 +63,7 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (open: #2 impersonation, PL2-D-55; #3 Zitadel MFA for all users, PL2-D-56; #1 answered as PL2-D-50). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1 answered as PL2-D-50, #2 as PL2-D-55, #3 as PL2-D-56). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
 
 ## Next
 
@@ -79,7 +79,8 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 - `@infrabyx/contracts`: `authenticate` takes the PKCE `codeVerifier`; id prefix `rvk`.
 - `@infrabyx/testing`: Keycloak, OpenFGA and Zitadel images; `startNetwork()`.
 - New for products at gate A: migration `connectors/0002_session_revocation.sql`; env `AUTH_ADAPTER`, `AUTH_ISSUER_URL`, `AUTH_CLIENT_ID`, `AUTH_ADMIN_CLIENT_ID` and the `AUTH_*` secrets from SECRETS (plan §6.5); settings `int.identity.*` and `int.authz.decision_cache_seconds`.
-- Open for the owner: OWNER-QUESTIONS #2 (impersonation, PL2-D-55) and #3 (Zitadel MFA for all users, PL2-D-56). Neither blocks PL2.
+- Owner answers (26 Oct): impersonation stays off; a platform-issued, read-only, 60-minute, ledgered support token is planned in the phase that first needs it (PL2-D-55). Zitadel keeps MFA for every user; the API MFA guard stays on both IdPs (PL2-D-56).
+- Field-encryption format v2 (OWNER-QUESTIONS #1, PL2-D-50) is already merged (#18, 7a36249), ahead of gate A.
 
 ## PL2 session 3 (2026-10-26)
 

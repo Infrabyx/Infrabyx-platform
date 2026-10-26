@@ -116,7 +116,7 @@ Types, schemas and error codes only; no I/O.
 - **E:** a privileged role without MFA. Control: forced enrolment at login (Keycloak required action; Zitadel `forceMfa`), and the API guard refuses a token without an MFA method in `amr` (`IPB-SEC-001`); SMS never counts as MFA.
 - **R/E:** a de-provisioned user keeps working. Control: SCIM deactivation, `revokeSessions`, a role change and back-channel logout write a revocation (hashed subject, RLS, ledgered) before the IdP call; every replica refuses within 15 s (PL2-D-53).
 - **D:** IdP outage. Control: JWKS cached 24 h so API calls continue; new logins fail with `IPB-IDN-002`.
-- **E:** impersonation without an audited `act`. Control: impersonation tokens are unsupported on both adapters (PL2-D-55); the kernel refuses mutations under `act` (`IPB-SEC-003`).
+- **E:** impersonation without an audited `act`. Control: impersonation tokens are unsupported on both adapters (PL2-D-55, owner); the kernel refuses mutations under `act` (`IPB-SEC-003`). Support access, when first needed, is a platform-issued read-only token on an approved, ticketed request, at most 60 minutes, ledgered and visible to the tenant's `ORG_OWNER`.
 - **E:** an AUTHZ allow by mistake. Control: deny by default, PDP failure denies (`IPB-AUTHZ-001`), agents denied before the PDP and in policy (X-14), allow-only cache ≤ 5 s, one decision table proven on both engines.
 - **I:** bootstrap secrets. Control: `applyRealm` and `applyInstance` return generated client secrets for the SECRETS port and never log them; they run only in deploy jobs and tests.
 
