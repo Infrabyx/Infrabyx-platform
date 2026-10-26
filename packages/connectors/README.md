@@ -49,6 +49,24 @@ Both adapters are `IN` / `SECRET`, sign only with `ecdsa-p256-sha256` (DER) and 
 - **`aws-kms`** (reference): AWS KMS in ap-south-1 or ap-south-2. `SYMMETRIC_DEFAULT` keys with the AAD as the encryption context (a canonical string map as is, any other AAD under `ipb:aad`); signing with `ECDSA_SHA_256` and `MessageType: DIGEST` over a locally computed SHA-256; tenant keys behind `alias/ipb/tenant/<id>`.
 - **`vault-transit`** (alternative): Vault or OpenBao Transit; AAD as `associated_data`; signatures verified against every key version's public key, so rotation does not break old signatures. `scheduleKeyDeletion` is unsupported, because Transit can only delete at once.
 
+## AUTHZ (`@infrabyx/connectors/authz`)
+
+Deny by default. Both adapters are `IN` / `CONFIDENTIAL` and share three rules:
+
+- an `AGT_*` principal asking to approve, sign, disburse, delete or grant is denied in the adapter, before any PDP call (IPB-02-10); the policy pack denies it as well;
+- a PDP failure is a deny carrying `IPB-AUTHZ-001` in `ref`, never an allow;
+- allow decisions are cached for at most 5 s (`int.authz.decision_cache_seconds`); denials are never cached.
+
+The platform policy pack ships in `policy/` and is loaded with `loadPolicies(await platformPolicyBundle("cerbos" | "openfga"))` (PL2-D-51). It has:
+
+- derived roles for the PL1 role floor: tenant reader, writer, checker (never the maker), admin and owner; AI agents; product-scoped `OPS_*` staff;
+- a reference resource `ipb_record` that products copy for their own kinds.
+
+The adapters:
+
+- **`cerbos`** (reference): a Cerbos PDP over HTTP. `planResources` returns Cerbos query plans; policies load through the Admin API into a dynamic store.
+- **`openfga`** (alternative): the same decision table as an OpenFGA model. Every check sends contextual tuples built from the principal's roles and attributes and the resource's attributes, so the store holds no tuples. `planResources` is unsupported (PL2-D-52).
+
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.

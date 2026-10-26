@@ -1,0 +1,59 @@
+# Platform base derived roles (PL2 plan §6.6; IPB-02-10, IPB-02-11; PL1-D-05 role floor).
+# Products import these into their own resource policies.
+apiVersion: api.cerbos.dev/v1
+derivedRoles:
+  name: ipb_platform
+  definitions:
+    - name: tenant_reader
+      parentRoles:
+        ["ORG_OWNER", "ORG_ADMIN", "ORG_MAKER", "ORG_CHECKER", "ORG_MEMBER", "ORG_AUDITOR_RO"]
+      condition:
+        match:
+          expr: R.attr.tenant_id == P.attr.tenant_id
+    - name: tenant_writer
+      parentRoles: ["ORG_OWNER", "ORG_ADMIN", "ORG_MAKER"]
+      condition:
+        match:
+          expr: R.attr.tenant_id == P.attr.tenant_id
+    # Maker-checker: the checker is never the maker (IPB-02 §02.4.6.1).
+    - name: tenant_checker
+      parentRoles: ["ORG_OWNER", "ORG_ADMIN", "ORG_CHECKER"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: R.attr.tenant_id == P.attr.tenant_id
+              - expr: R.attr.maker_id != P.id
+    - name: tenant_admin
+      parentRoles: ["ORG_OWNER", "ORG_ADMIN"]
+      condition:
+        match:
+          expr: R.attr.tenant_id == P.attr.tenant_id
+    - name: tenant_owner
+      parentRoles: ["ORG_OWNER"]
+      condition:
+        match:
+          expr: R.attr.tenant_id == P.attr.tenant_id
+    # AI agents (AGT_*) are makers in their own tenant and nothing more (IPB-02-10).
+    - name: ai_agent
+      parentRoles: ["*"]
+      condition:
+        match:
+          expr: P.roles.exists(r, r.startsWith("AGT_"))
+    - name: tenant_agent
+      parentRoles: ["*"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: P.roles.exists(r, r.startsWith("AGT_"))
+              - expr: R.attr.tenant_id == P.attr.tenant_id
+    # Group-operations staff see only the products in their product_scope (IPB-02-11).
+    - name: scoped_ops
+      parentRoles: ["*"]
+      condition:
+        match:
+          all:
+            of:
+              - expr: P.roles.exists(r, r.startsWith("OPS_"))
+              - expr: R.attr.product in P.attr.product_scope

@@ -1,0 +1,348 @@
+{
+  "schema_version": "1.1",
+  "type_definitions": [
+    {
+      "type": "user"
+    },
+    {
+      "type": "tenant",
+      "relations": {
+        "owner": {
+          "this": {}
+        },
+        "admin": {
+          "union": {
+            "child": [
+              {
+                "this": {}
+              },
+              {
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              }
+            ]
+          }
+        },
+        "maker": {
+          "this": {}
+        },
+        "checker": {
+          "this": {}
+        },
+        "member": {
+          "this": {}
+        },
+        "auditor": {
+          "this": {}
+        },
+        "agent": {
+          "this": {}
+        },
+        "reader": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "member"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "maker"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "checker"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "auditor"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "agent"
+                }
+              }
+            ]
+          }
+        },
+        "writer": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "maker"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "agent"
+                }
+              }
+            ]
+          }
+        },
+        "approver": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "checker"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "owner": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "admin": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "maker": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "checker": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "member": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "auditor": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "agent": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "product",
+      "relations": {
+        "ops": {
+          "this": {}
+        }
+      },
+      "metadata": {
+        "relations": {
+          "ops": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "type": "ipb_record",
+      "relations": {
+        "tenant": {
+          "this": {}
+        },
+        "product": {
+          "this": {}
+        },
+        "maker_of": {
+          "this": {}
+        },
+        "agent_actor": {
+          "this": {}
+        },
+        "excluded": {
+          "union": {
+            "child": [
+              {
+                "computedUserset": {
+                  "relation": "maker_of"
+                }
+              },
+              {
+                "computedUserset": {
+                  "relation": "agent_actor"
+                }
+              }
+            ]
+          }
+        },
+        "read": {
+          "union": {
+            "child": [
+              {
+                "tupleToUserset": {
+                  "tupleset": {
+                    "relation": "tenant"
+                  },
+                  "computedUserset": {
+                    "relation": "reader"
+                  }
+                }
+              },
+              {
+                "tupleToUserset": {
+                  "tupleset": {
+                    "relation": "product"
+                  },
+                  "computedUserset": {
+                    "relation": "ops"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "update": {
+          "tupleToUserset": {
+            "tupleset": {
+              "relation": "tenant"
+            },
+            "computedUserset": {
+              "relation": "writer"
+            }
+          }
+        },
+        "approve": {
+          "difference": {
+            "base": {
+              "tupleToUserset": {
+                "tupleset": {
+                  "relation": "tenant"
+                },
+                "computedUserset": {
+                  "relation": "approver"
+                }
+              }
+            },
+            "subtract": {
+              "computedUserset": {
+                "relation": "excluded"
+              }
+            }
+          }
+        },
+        "delete": {
+          "difference": {
+            "base": {
+              "tupleToUserset": {
+                "tupleset": {
+                  "relation": "tenant"
+                },
+                "computedUserset": {
+                  "relation": "owner"
+                }
+              }
+            },
+            "subtract": {
+              "computedUserset": {
+                "relation": "agent_actor"
+              }
+            }
+          }
+        },
+        "grant": {
+          "difference": {
+            "base": {
+              "tupleToUserset": {
+                "tupleset": {
+                  "relation": "tenant"
+                },
+                "computedUserset": {
+                  "relation": "admin"
+                }
+              }
+            },
+            "subtract": {
+              "computedUserset": {
+                "relation": "agent_actor"
+              }
+            }
+          }
+        }
+      },
+      "metadata": {
+        "relations": {
+          "tenant": {
+            "directly_related_user_types": [
+              {
+                "type": "tenant"
+              }
+            ]
+          },
+          "product": {
+            "directly_related_user_types": [
+              {
+                "type": "product"
+              }
+            ]
+          },
+          "maker_of": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          },
+          "agent_actor": {
+            "directly_related_user_types": [
+              {
+                "type": "user"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
