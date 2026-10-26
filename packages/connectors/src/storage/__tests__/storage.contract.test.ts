@@ -292,9 +292,9 @@ describe("STORAGE hermetic leg: minio adapter on the S3 API (moto 5.2.4)", () =>
   );
 });
 
-// MinIO server (PL2-D-61): CI starts MinIO's last community release (scripts/ci/minio-server.sh)
-// and sets IPB_TEST_MINIO_URL; quay.io is unreachable from the build sandbox, so locally this
-// leg skips. It proves what moto cannot: presigned-URL expiry, method and content-type
+// MinIO server (PL2-D-61): CI builds MinIO's last community release from source and starts it
+// (scripts/ci/minio-server.sh)
+// and sets IPB_TEST_MINIO_URL; without it (a plain local run) this leg skips. It proves what moto cannot: presigned-URL expiry, method and content-type
 // enforcement, and SSE-S3 bucket encryption (C-17).
 const minioUrl = await existingServiceUrl("minio");
 const MINIO_CREDS = { accessKeyId: "ipb-minio-test", secretAccessKey: "ipb-minio-test-secret" };

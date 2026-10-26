@@ -67,7 +67,11 @@ describe("pinned test images", () => {
       expect(md, name).toContain(img.image);
       expect(img.image, name).toMatch(/@sha256:[0-9a-f]{64}$/);
     }
-    const rows = md.split("\n").filter((l) => /^\| `[a-z]+`/.test(l));
+    // Images only: the "Built from source" table (MinIO, PL2-D-61) is not an image.
+    const rows = md
+      .split("## Built from source")[0]!
+      .split("\n")
+      .filter((l) => /^\| `[a-z]+`/.test(l));
     expect(rows.length).toBe(Object.keys(TEST_IMAGES).length);
   });
 });
