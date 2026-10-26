@@ -24,7 +24,7 @@ Tenant context, the transaction kernel, RLS tooling, outbox/inbox, the maker-che
 
 ## Tools
 
-- `infrabyx-migrate --db <url> [--dir migrations --name <product>]` (`@infrabyx/tenancy/migrate`): applies tenancy → audit → config → seed migrations, then the product's; SHA-256 checksums in `meta.migration_checksums`; an edited released file fails `IPB-ENG-005`. A file whose first line is `-- infrabyx:no-transaction` runs outside a transaction (for `CREATE INDEX CONCURRENTLY`).
+- `infrabyx-migrate --db <url> [--dir migrations --name <product>]` (`@infrabyx/tenancy/migrate`): applies tenancy → audit → config → seed → connectors migrations (each only when the package is installed), then the product's; SHA-256 checksums in `meta.migration_checksums`; an edited released file fails `IPB-ENG-005`. A file whose first line is `-- infrabyx:no-transaction` runs outside a transaction (for `CREATE INDEX CONCURRENTLY`).
 - `infrabyx-rls-lint --db <url>` (`@infrabyx/tenancy/rls-lint`): RLS enabled and forced with an `app.tenant_id` policy on every tenant table, security-invoker views, no `auth.*` policies, no `BYPASSRLS`/`SUPERUSER` roles, no unlisted `SECURITY DEFINER` function executable by `app_rw`/`app_ro`. `assertManifestsRls()` is the boot check (`IPB-MOD-001`).
 - `@infrabyx/tenancy/drizzle`: `tenantIdColumn()`, `rlsPolicySql()`, `dataClassCommentsSql()` (drizzle-orm optional peer).
 - `@infrabyx/tenancy/nest`: `TenantContextInterceptor` reading `request.verifiedClaims` (`@nestjs/common` optional peer).
