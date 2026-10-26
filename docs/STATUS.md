@@ -2,13 +2,13 @@
 
 Updated: 2026-10-26
 
-| Item                  | Value                                                                                                                                                                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 session 1 of 8** (D-11): spike done (`docs/phases/PL2-spike.md`); contracts, config keys, routing schema, testing harness and the port-contract CI job in review. Plan approved 26 Oct 2026 with conditions (PL2-D-05) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                       |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                     |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                      |
-| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                                                        |
+| Item                  | Value                                                                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Current phase         | **PL2 session 2 of 8** (D-11): `connectors` core and migration, OBSERVABILITY (`otel`) and FEATURE_FLAG (`unleash`, `config-db`) in review. Session 1 merged (#13). Plan approved 26 Oct 2026 with conditions (PL2-D-05) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                   |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                 |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                  |
+| Working branch        | `claude/funny-cori-6upyrr` (still on GitHub when PL2 started; fast-forwarded from the merged #11 head, not recreated)                                                                                                    |
 
 ## Done
 
@@ -28,7 +28,22 @@ Updated: 2026-10-26
 
 ## Next
 
-- PL2 session 2: `connectors` core (router, circuit breaker, health registry, egress client, idempotency store and migration `connectors/0001_init.sql`), OBSERVABILITY (OTel) and FEATURE_FLAG (Unleash + config-db).
+- PL2 session 3 (D-11 order): SECRETS, KMS and the crypto additions (JWT/JWS verification C-11, vendor HMAC C-13, SNS signatures), with the LocalStack and moto hermetic legs (PL2-D-29).
+
+## PL2 session 2 (2026-10-26)
+
+- `@infrabyx/connectors` (first release at gate A, 0.1.0):
+  - Router: data class raise-only, residency and recipient checks before any I/O; per-adapter circuit breaker (PL2-D-33); mode-aware failover with STORAGE writes failing fast; `AdapterFailedOver` and `AdapterRecovered` events; spans `port.<PORT>.<method>`.
+  - Idempotency store: pending record first, vendor lookup, and a money call is never re-sent blind. It writes through `kernel.mutate` with ledger entries and seals results at CONFIDENTIAL and above (PL2-D-35).
+  - Also: health registry (@IPB-01-AT-13), HTTPS egress client, inbound-webhook helpers.
+  - Migration `connectors/0001_init.sql` (`idempotency_record`, forced RLS). `infrabyx-migrate` applies it whenever the package is installed, so products keep one migrate command (PL2-D-34; tenancy minor).
+  - OBSERVABILITY `otel`: IPB-02-23 scrubber, C-21 hashed IDs, GenAI spans without content, and the `collector` and `otlp-direct` profiles proven identical against a Collector (PL2-D-38).
+  - FEATURE_FLAG `unleash`: registry sync, governed boolean writes, and staleness-bounded freshness, so FlagService falls back to the snapshot and then the safe state (@IPB-02-AT-20 against Unleash). The `config-db` alternative wraps the PL1 provider (PL2-D-39).
+  - `test:contract -- --port <PORT>` runs the port-contract legs (PL2-D-40).
+- `@infrabyx/crypto`: `telemetryIdHasher` / `deriveSubKey` (C-21 HKDF label `ipb/telemetry-id/v1`, PL2-D-36).
+- `@infrabyx/testing`: OTel Collector 0.162.0 and Unleash 8.2.0 test images; `startService` `files` and `configure`.
+- OpenTelemetry pinned to the 6 October release set because of the 7-day rule (PL2-D-37).
+- PL2-D-07 answered: version PR #14 was opened with `NPM_PUBLISH_TOKEN`, and its `ci` and `port-contract` runs started on their own and passed. The organisation setting "Allow GitHub Actions to create and approve pull requests" is therefore **not needed** for the release flow; it matters only when `GITHUB_TOKEN` opens the PR. The owner may switch it off. #14 stays open until gate A (PL2-D-31).
 
 ## PL2 session 1 (2026-10-26)
 
@@ -47,6 +62,9 @@ Allowance: 2,000 a month on Free, 3,000 on Team. The owner is warned at 70 % (1,
 | ------- | --------------------------------------------- | ------------------------- | ------------- |
 | 2026-10 | used before PL2 (owner, 26 Oct)               | 88                        | 88            |
 | 2026-10 | PR #12, 4 pushes × (verify 3 + integration 2) | 20                        | 108           |
+| 2026-10 | PR #13, 3 pushes × (ci 5 + port-contract 1)   | 18                        | 126           |
+| 2026-10 | main after #13 (ci 5, release 2)              | 7                         | 133           |
+| 2026-10 | version PR #14 (ci 5, port-contract 1)        | 6                         | 139           |
 
 ## Owner decisions
 
@@ -55,7 +73,6 @@ Allowance: 2,000 a month on Free, 3,000 on Team. The owner is warned at 70 % (1,
 ## Blocked / waiting on owner
 
 - Owner accounts for PL2 sandbox legs: none blocks the PL2 publish (IPB-DEV-04). Latest-by dates and steps in `docs/runbooks/README.md`: GitHub Team and the `sandbox` environment, Temporal Cloud (Mumbai), messaging vendors and DLT, Razorpay and Cashfree test accounts, the AWS Organization and sandbox account.
-- After the next version PR runs CI by itself: I report whether the organisation setting "Allow GitHub Actions to create and approve pull requests" is still needed (PL2-D-07).
 - Before production: replace `NPM_PUBLISH_TOKEN` in `release.yml` with a dedicated GitHub App token (PL1-D-21, IPB-02-08).
 - Platform requests PR-002 to PR-014 open for the IPB editor (`docs/platform-requests.md`).
 - `main` ruleset: apply after the GitHub Team upgrade with checks, signed commits and linear history only (PL2-D-12, `infra/policy/github/rulesets.json`).

@@ -10,12 +10,17 @@ import type pg from "pg";
 import { IpbError } from "@infrabyx/contracts/errors";
 import { sha256Hex } from "@infrabyx/crypto";
 
-/** Platform packages that ship migrations, in apply order (PL1 plan §3.1). */
+/**
+ * Platform packages that ship migrations, in apply order (PL1 plan §3.1). A package that is not
+ * installed is skipped, so a product keeps one migrate command: installing @infrabyx/connectors
+ * adds its schema to the next run (PL2-D-34).
+ */
 export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/tenancy",
   "@infrabyx/audit",
   "@infrabyx/config",
   "@infrabyx/seed",
+  "@infrabyx/connectors",
 ] as const;
 
 export interface MigrationSource {

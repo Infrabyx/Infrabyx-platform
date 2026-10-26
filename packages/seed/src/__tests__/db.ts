@@ -1,4 +1,4 @@
-// Integration-test database with every platform migration applied (tenancy, audit, config, seed).
+// Integration-test database with every platform migration applied (tenancy, audit, config, seed, connectors).
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // infrabyx-migrate --db <url> [--dir <product migrations>] [--name <product>] [--dry-run]
-// Applies platform migrations (tenancy, audit, config, seed) then the product's own.
+// Applies platform migrations (tenancy, audit, config, seed, connectors) then the product's own.
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import pg from "pg";

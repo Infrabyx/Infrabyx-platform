@@ -3,6 +3,7 @@
 // (the PL2 spike found ECR Public anonymous pulls capped; GHCR and quay.io unreachable from the
 // build sandbox). Set IPB_TEST_<NAME>_URL to reuse a running service instead of starting one.
 import { z } from "zod";
+import type { GenericContainer } from "testcontainers";
 import { envVar, validateEnv } from "@infrabyx/config/env";
 
 export interface TestImage {
@@ -59,6 +60,18 @@ export const TEST_IMAGES = {
     version: "5.2.4",
     role: "AWS Secrets Manager, S3 lock checks, SES v2 send",
   },
+  otelcol: {
+    image:
+      "otel/opentelemetry-collector-contrib@sha256:39923a8e431bd1f57be82411999d389fcfe40857492e4365456d97a4c1f74be6",
+    version: "0.162.0",
+    role: "OTel Collector with file exporters (OBSERVABILITY)",
+  },
+  unleash: {
+    image:
+      "unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050",
+    version: "8.2.0",
+    role: "Unleash OSS (FEATURE_FLAG)",
+  },
 } as const satisfies Record<string, TestImage>;
 export type TestImageName = keyof typeof TEST_IMAGES;
 
@@ -77,6 +90,10 @@ export interface StartServiceOptions {
   command?: readonly string[];
   /** Log line that marks the service ready. */
   readyLog?: RegExp;
+  /** Files written into the container before it starts (configuration). */
+  files?: ReadonlyArray<{ content: string; target: string }>;
+  /** Further container settings (bind mounts, networks, user). */
+  configure?: (c: GenericContainer) => GenericContainer;
 }
 
 /** Start a pinned image, or reuse the service named by IPB_TEST_<NAME>_URL. */
@@ -111,6 +128,8 @@ export async function startService(
   if (opts.env) c = c.withEnvironment(opts.env);
   if (opts.command) c = c.withCommand([...opts.command]);
   if (opts.readyLog) c = c.withWaitStrategy(Wait.forLogMessage(opts.readyLog));
+  if (opts.files) c = c.withCopyContentToContainer(opts.files.map((f) => ({ ...f })));
+  if (opts.configure) c = opts.configure(c);
   const started = await c.start();
   return {
     host: started.getHost(),

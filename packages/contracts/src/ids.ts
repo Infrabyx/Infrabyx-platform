@@ -24,6 +24,7 @@ export const ID_PREFIXES = {
   org: "organisation (Ecosystem Spec §4.1)",
   re: "regulated entity (Ecosystem Spec §4.1)",
   brd: "brand pack (IPB-D-10)",
+  idm: "port idempotency record (PL2 plan §3.5)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 
