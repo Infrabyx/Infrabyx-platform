@@ -35,7 +35,7 @@ Updated: 2026-10-26
 
 ## Owner decisions
 
-- 2026-10-26: owner decisions OWN-01…14 recorded in `docs/DECISIONS.md`; pending confirmations: CIN exact digits, Delhi office unit/PIN, intern stipend upper bound.
+- 2026-10-26: owner decisions OWN-01…14 recorded in `docs/DECISIONS.md`; pending confirmation: intern stipend upper bound (₹4 LPA assumed).
 
 ## Blocked / waiting on owner
 
