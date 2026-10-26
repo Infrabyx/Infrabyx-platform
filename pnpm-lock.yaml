@@ -96,7 +96,27 @@ importers:
         specifier: 4.6.7
         version: 4.6.7
 
-  packages/connectors: {}
+  packages/connectors:
+    dependencies:
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
 
   packages/consent: {}
 
