@@ -48,6 +48,7 @@ beforeAll(async () => {
     env: { POSTGRES_PASSWORD: dbPassword },
     configure: (c) => c.withNetworkMode(net.name).withNetworkAliases("zdb"),
   });
+  const logs: string[] = [];
   z = await startService("zitadel", {
     ports: [],
     env: {
@@ -71,12 +72,19 @@ beforeAll(async () => {
       ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "false",
     },
     command: ["start-from-init", "--masterkey", toHex(randomBytes(16)), "--tlsMode", "disabled"],
+    // The image has no shell, so readiness is probed over HTTP from the host.
+    readyHttp: { path: "/debug/ready", port: 8080 },
     configure: (c) =>
       c
+        .withLogConsumer((s) => s.on("data", (d: Buffer | string) => logs.push(String(d))))
         .withNetworkMode(net.name)
         .withExposedPorts({ container: 8080, host: port })
         .withBindMounts([{ source: patDir, target: "/pat", mode: "rw" }])
         .withStartupTimeout(240_000),
+  }).catch((e: unknown) => {
+    // Show why Zitadel did not come up (its log carries no secrets: the PAT goes to a file).
+    console.error(logs.slice(-40).join(""));
+    throw e;
   });
   base = `http://localhost:${port}`;
   for (let i = 0; i < 120; i++) {

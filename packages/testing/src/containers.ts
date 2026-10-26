@@ -115,6 +115,9 @@ export interface StartServiceOptions {
   command?: readonly string[];
   /** Log line that marks the service ready. */
   readyLog?: RegExp;
+  /** HTTP path answering 200 when ready, probed from the host (for images without a shell, where
+   * the default port check cannot run inside the container). */
+  readyHttp?: { path: string; port: number };
   /** Files written into the container before it starts (configuration). */
   files?: ReadonlyArray<{ content: string; target: string }>;
   /** Further container settings (bind mounts, networks, user). */
@@ -153,6 +156,10 @@ export async function startService(
   if (opts.env) c = c.withEnvironment(opts.env);
   if (opts.command) c = c.withCommand([...opts.command]);
   if (opts.readyLog) c = c.withWaitStrategy(Wait.forLogMessage(opts.readyLog));
+  if (opts.readyHttp)
+    c = c.withWaitStrategy(
+      Wait.forHttp(opts.readyHttp.path, opts.readyHttp.port).forStatusCode(200),
+    );
   if (opts.files) c = c.withCopyContentToContainer(opts.files.map((f) => ({ ...f })));
   if (opts.configure) c = opts.configure(c);
   const started = await c.start();
