@@ -24,11 +24,21 @@ export default tseslint.config(
       "ipb/schema-boundary": "error",
       // IPB-01-19: process.env only inside packages/config
       "ipb/no-process-env": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", destructuredArrayIgnorePattern: "^_" },
+      ],
     },
   },
   {
     // Repo tooling (not shipped) may read process.env.
-    files: ["scripts/**", "infra/policy/**", "eslint.config.mjs", "**/*.config.{ts,mts,js,mjs}"],
+    files: [
+      "scripts/**",
+      "infra/policy/**",
+      "eslint.config.mjs",
+      "vitest.shared.mjs",
+      "**/*.config.{ts,mts,js,mjs}",
+    ],
     rules: { "ipb/no-process-env": "off" },
   },
 );

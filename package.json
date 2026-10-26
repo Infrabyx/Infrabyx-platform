@@ -14,7 +14,7 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "test:policy": "vitest run --dir infra/policy",
-    "lint": "turbo run lint && eslint scripts infra/policy eslint.config.mjs",
+    "lint": "turbo run lint && eslint scripts infra/policy eslint.config.mjs vitest.shared.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -24,7 +24,8 @@
     "ipb:check": "node scripts/ipb-check.mjs",
     "commitlint": "commitlint",
     "licence:check": "node scripts/licence-check.mjs",
-    "pr:checklist": "node scripts/pr-checklist.mjs"
+    "pr:checklist": "node scripts/pr-checklist.mjs",
+    "test:int": "turbo run test:int"
   },
   "devDependencies": {
     "@changesets/cli": "2.31.1",
