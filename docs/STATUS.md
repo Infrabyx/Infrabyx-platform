@@ -19,6 +19,9 @@ Updated: 2026-10-26
 - PL1 (IPB-14 §14.3): read IPB-01, IPB-02, IPB-07 (settings registry), IPB-11 in full; write `docs/phases/PL1-plan.md` for `contracts`, `config`, `tenancy`, `audit`, `crypto`, `seed`, `testing`; RLS lint; NN tests NN-01/02/45 pattern. Stop for approval before code.
 - Owner: apply `infra/policy/github/rulesets.json` when the organisation moves to GitHub Team; merge Renovate's onboarding PR when it opens; leave the "chore: version packages" PR open until PL1 publishes 0.1.0 (O7).
 
+## Owner decisions
+- 2026-10-26: owner decisions OWN-01…14 recorded in `docs/DECISIONS.md`; pending confirmations: CIN exact digits, Delhi office unit/PIN, intern stipend upper bound.
+
 ## Blocked / waiting on owner
 
 - None for PL1 planning. `main` ruleset enforcement waits on the GitHub plan upgrade (PL0-D-07).
