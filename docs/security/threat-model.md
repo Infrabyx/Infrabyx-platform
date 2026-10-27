@@ -270,6 +270,15 @@ Types, schemas and error codes only; no I/O.
 - **I/T:** reserved advice given as Vidhi's own, or the brand name leaking into audit. Control: the output classifier plus a hand-off card for advice questions; the display name is presentation only, and runs, events and ledger rows say `vidhi`.
 - **Residual:** word matching can over-lock a harmless tool (#37); an under-tagged product tool with a novel verb relies on the product's manifest review.
 
+### 3.23 `@infrabyx/vidhi` schedules and missions (built, PL4 session 7a)
+
+- **E:** a schedule keeps acting for a person who lost the right to run it, or runs above its level. Control: before every run the owner must be an active member holding every role recorded at creation, pass the product's permission check, have the skill in the plan, and no kill switch may be on; otherwise the run is skipped (`IPB-VID-020`), the owner is told, and three skips pause the schedule (`IPB-VID-021`); scheduled tasks are capped at L2 (L3 only for ORG_OWNER/ORG_ADMIN owners where the tenant allows), never L4; agents cannot create or resume schedules.
+- **I/R:** the due-run poller reads across tenants. Control: it reads as `SVC_VIDHI_SCHED`, granted only id, tenant, state, kind and next run time of `vidhi.schedule` under a platform-scope policy; each read is ledgered in every tenant it touched; everything else is read in the tenant's own context.
+- **T/D:** a run executed twice, or a schedule firing too often. Control: one `schedule_run` row per occurrence or event id (unique), the schedule row locked while deciding; at most 24 runs a day, refused at save.
+- **D/E:** a mission running away with cost or acting on a locked action. Control: budgets (tokens, cost, wall-clock, tool calls) checked before every step and when a step waits, stopping with `IPB-VID-070`; the mission level is the lowest ceiling of its skills and caps every task; any action needing a human halts the mission until it is decided; a lease keeps two workers off the same mission; the planner can only choose skills in the mission's scope.
+- **I:** goals or outputs stored in mission rows. Control: missions store only skill keys, task ids and counters; the planner run is metadata-only like every AI run.
+- **Residual:** the owner-role snapshot is strict (#38); a crash between the scheduling commit and task creation leaves a visible `started` run without a task.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
