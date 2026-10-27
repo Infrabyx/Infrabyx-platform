@@ -523,6 +523,11 @@ export const ERROR_CATALOGUE = {
     title: "This role may not request or download this export",
     source: "PL3 plan §10 (PR-017)",
   },
+  "IPB-EXP-006": {
+    status: 410,
+    title: "Export archive expired and was deleted; request a new export",
+    source: "OWNER-QUESTIONS #24 (PL3-D-25, PR-017)",
+  },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {
     status: 401,

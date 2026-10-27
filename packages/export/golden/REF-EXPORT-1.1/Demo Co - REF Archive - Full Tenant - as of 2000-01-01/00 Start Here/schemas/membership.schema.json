@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:membership",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:membership",
   "title": "membership",
-  "description": "Rows of tenancy.membership exported under REF-EXPORT-1.0",
+  "description": "Rows of tenancy.membership exported under REF-EXPORT-1.1",
   "type": "object",
   "properties": {
     "user_id": {

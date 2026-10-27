@@ -47,6 +47,11 @@ export const SERVICE_READER_ROLES = {
     dbRole: "svc_notify_unsubscribe",
     tables: ["notify.unsubscribe_token"],
   },
+  /** Finds approved export jobs to run and expired archives to delete (OWNER-QUESTIONS #24). */
+  SVC_EXPORT_SWEEP: {
+    dbRole: "svc_export_sweep",
+    tables: ["export.export_job", "export.archive"],
+  },
 } as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;
 export type ServiceReaderRole = keyof typeof SERVICE_READER_ROLES;
 export const isServiceReaderRole = (r: string): r is ServiceReaderRole =>

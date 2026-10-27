@@ -114,4 +114,21 @@ The 10 later-phase scaffolds stay private until their phase (PL1-D-20). Version 
 - pushed one tag per package (`@infrabyx/<name>@<version>`);
 - printed the registry's `dist.shasum` and `dist.integrity` for each version in the job summary of its `release` job (job id 122048259420), through `scripts/registry-dist.mjs`.
 
-No package was skipped and no publish error was logged. The checksums are not copied here because this session has no registry token; compare them against the run's job summary, or with `npm view <name>@<version> dist` (PL3-D-14).
+No package was skipped and no publish error was logged.
+
+**Registry checksums** (from the job summary of run 43's `release` job, copied by the owner on 2026-10-27; PL3-D-25). Compare with `npm view <name>@<version> dist`:
+
+| Package                | Version   | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     |
+| ---------------------- | --------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@infrabyx/audit`      | 0.1.2     | `364123b412b85522cad9d9b3211675c5ca00260b` | `sha512-/VMuOREnBZ78kZBI0YuN8emafhY0W6XjrGYSUmPzWM/0xkF5aNZ/pbXB9BiR+0YVG4dnWWwgmbPM4Htaw4/O9Q==` |
+| `@infrabyx/config`     | 0.3.0     | `450b7bd8a3c1fd7e3bfcbe53c0fdfc2ebd2393ef` | `sha512-7Y6tYhslhz1SFg3Sc6MP8/4XrKyPHWGvjSc34Q2PZ6r+VBc8wZu8OF4TO2B/oHDXOvHZN2dFTT+7E7zG5NcW/Q==` |
+| `@infrabyx/connectors` | 0.2.0     | `64285ed7c9f5036d4eab31897905fec622d8b285` | `sha512-jZM2OSNeFL3fYX4QIt6NSlggpSPLjfLgVdC5OYlUXjvMgK0TFGoKu/mC8kDW+wNYtkO74srqXPr+6jAhvwTX6w==` |
+| `@infrabyx/contracts`  | 0.3.0     | `30bb7dab8be0b9db5fe019c41d7d0f1eb93c37bd` | `sha512-Rm7yAo419irBdybHmEmfXApXyvvecOZw2Tt75x/WxiTxwPLNrngz+GOuO10+9yDu8QEjuuZ4+lw3ghHkmnB34Q==` |
+| `@infrabyx/crypto`     | 0.3.0     | `01df029fa869e445f03ab632b42bc033e32fec60` | `sha512-rUoWByDScwU7gsygiR1l4kGhbnyhRaCPQ1oQPscJ7xd3rYc1KOs9Z53oKPrM7e4znoYt8tqL8JxF1tO93Bg1hA==` |
+| `@infrabyx/export`     | 0.1.0 new | `67b6299f3ef983505a7c56e5227be445b098f69f` | `sha512-fAes+bVSSYe/Fo0MR1oWjzaPHWXcOYpJUwEJBarBBd9LvDNHN+5+zk/E/Xm1XVbXdeD7HIt8+f6NISVttFIwKQ==` |
+| `@infrabyx/notify`     | 0.1.0 new | `4c94637bfcc726b7c35b4a91c039377877f2b456` | `sha512-Lt2i08iTk5OvakshrIojJnjKYFNCMJQq4s8ZUJfM1IikqnBCfT8K2YB1bAaQuB8jtfexSCYkM+dmJsV9Ul9mWg==` |
+| `@infrabyx/rules`      | 0.1.0 new | `6a0905ad30bdebb28d0ab5ea82e78d83f324dc47` | `sha512-eElPyDYZiGfxefVcR6TEIlqhSoKM/XrMnyFJAQlzVu9+hiRQ2xEQuzqZQD66yP1CR+iXMpz+MWyoiFz4w2R+Kw==` |
+| `@infrabyx/seed`       | 0.2.1     | `54e1248b0ff8fc07017ac1e77d91be44d0fc504a` | `sha512-Ru1UYpU8lgiedwhl5re0A9dbJfa1O2ACtmE99FzgcI3V2lP5UK6zC8HxroL3OBTgDXoP3YdfgH2+7JIHHMD15A==` |
+| `@infrabyx/tenancy`    | 0.3.0     | `2b7e4494fb60977baf6a71c548e3ebe58e5c480c` | `sha512-+Vn5G88rzrhj3tIetpdgkEPMzADHP7hu95F4OZ/sTAL/5IsGPsMiKDJcD9CkPDiywdcyU5Plo5anHhuATyxTuA==` |
+| `@infrabyx/testing`    | 0.3.0     | `d4cd60c9746127d3ed68144c292e7a04395097d8` | `sha512-t59wVAKPsBpsHnBTYfpKPYsM+netKaU984ar7I1yvbSywfj/3uvIA96YiYLbAAY9EkEAfRcmxRtpdLyWMylbWQ==` |
+| `@infrabyx/workflow`   | 0.1.0 new | `b414eabbd1fe9bfedf7206fefe4b8043e559a1ae` | `sha512-C54zqmfXgLThjWQgywe/9tCMXdr09SkfbiFyE9kVkLFYqenT7WxeO+KtJaWVBX6Y24Gr8cjJBUAeDlIgI+Lvxw==` |

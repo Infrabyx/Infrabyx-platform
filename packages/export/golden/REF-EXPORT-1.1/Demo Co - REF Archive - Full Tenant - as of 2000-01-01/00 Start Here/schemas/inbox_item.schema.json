@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:inbox_item",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:inbox_item",
   "title": "inbox_item",
-  "description": "Rows of workflow.inbox_item exported under REF-EXPORT-1.0",
+  "description": "Rows of workflow.inbox_item exported under REF-EXPORT-1.1",
   "type": "object",
   "properties": {
     "id": {

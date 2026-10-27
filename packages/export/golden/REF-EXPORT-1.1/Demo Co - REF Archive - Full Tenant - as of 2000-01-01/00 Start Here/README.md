@@ -2,12 +2,13 @@
 
 ## Purpose and scope
 
-- This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.0 and archive standard 1.0 (folder profile platform_reference_v1).
+- This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.1 and archive standard 1.0 (folder profile platform_reference_v1).
 - Archive id: arc_00000000000000000000000000. Predecessor: none.
 
 ## As of
 
-- Every dataset shows the records as they were at 2000-01-01T00:00:00.000Z (UTC). All times in this archive are ISO 8601 in UTC.
+- This archive was exported at 2000-01-01T00:00:00.000Z (UTC), which is 2000-01-01T05:30:00.000+05:30 in India Standard Time (IST, UTC+05:30). Every dataset shows the records as they were at that moment.
+- Every time inside the data files, manifests and audit trail is in UTC, written in ISO 8601 with its offset (`Z` means UTC). To read a time in IST, add 5 hours 30 minutes.
 
 ## Requester and approvers
 

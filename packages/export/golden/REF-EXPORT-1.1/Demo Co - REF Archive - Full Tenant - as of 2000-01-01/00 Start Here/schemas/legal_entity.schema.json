@@ -1,15 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:tenant",
-  "title": "tenant",
-  "description": "Rows of tenancy.tenant exported under REF-EXPORT-1.0",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:legal_entity",
+  "title": "legal_entity",
+  "description": "Rows of tenancy.legal_entity exported under REF-EXPORT-1.1",
   "type": "object",
   "properties": {
     "id": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "product": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
@@ -17,33 +13,37 @@
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "status": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "residency": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "residency_label": {
+    "cin": {
       "type": [
         "string",
         "null"
       ],
-      "x-dataclass": "PUBLIC"
+      "x-dataclass": "CONFIDENTIAL"
+    },
+    "gstin": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "CONFIDENTIAL"
     },
     "created_at": {
       "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "deleted_at": {
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "date-time",
       "x-dataclass": "INTERNAL"
     }
   },
   "required": [
     "id",
-    "product",
     "name",
-    "status",
-    "residency",
     "created_at"
   ],
   "additionalProperties": false

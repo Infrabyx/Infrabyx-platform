@@ -2,32 +2,32 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                       |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages. Next: PL4 (`docs/phases/PL4-plan.md`, plan first). Continuous build mode (PL2-D-41)                                                                                             |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                      |
-| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20) |
-| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                     |
-| Working branch        | `claude/festive-sagan-x3370c` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                   |
+| Item                  | Value                                                                                                                                                                                                                                                                                           |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages, checksums recorded. Owner answers #24 and #25 applied (PL3-D-25). **PL4 plan written** (`docs/phases/PL4-plan.md`, PL4-D-01); next: PL4 session 1. Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                          |
+| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)     |
+| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                         |
+| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                       |
 
 ## What products can install (PL3 gate, 2026-10-27)
 
-| Package                | Version   | Tag                          |
-| ---------------------- | --------- | ---------------------------- |
-| `@infrabyx/contracts`  | 0.3.0     | `@infrabyx/contracts@0.3.0`  |
-| `@infrabyx/crypto`     | 0.3.0     | `@infrabyx/crypto@0.3.0`     |
-| `@infrabyx/config`     | 0.3.0     | `@infrabyx/config@0.3.0`     |
-| `@infrabyx/tenancy`    | 0.3.0     | `@infrabyx/tenancy@0.3.0`    |
-| `@infrabyx/testing`    | 0.3.0     | `@infrabyx/testing@0.3.0`    |
-| `@infrabyx/connectors` | 0.2.0     | `@infrabyx/connectors@0.2.0` |
-| `@infrabyx/audit`      | 0.1.2     | `@infrabyx/audit@0.1.2`      |
-| `@infrabyx/seed`       | 0.2.1     | `@infrabyx/seed@0.2.1`       |
-| `@infrabyx/rules`      | 0.1.0 new | `@infrabyx/rules@0.1.0`      |
-| `@infrabyx/workflow`   | 0.1.0 new | `@infrabyx/workflow@0.1.0`   |
-| `@infrabyx/notify`     | 0.1.0 new | `@infrabyx/notify@0.1.0`     |
-| `@infrabyx/export`     | 0.1.0 new | `@infrabyx/export@0.1.0`     |
+| Package                | Version   | Tag                          | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     |
+| ---------------------- | --------- | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@infrabyx/audit`      | 0.1.2     | `@infrabyx/audit@0.1.2`      | `364123b412b85522cad9d9b3211675c5ca00260b` | `sha512-/VMuOREnBZ78kZBI0YuN8emafhY0W6XjrGYSUmPzWM/0xkF5aNZ/pbXB9BiR+0YVG4dnWWwgmbPM4Htaw4/O9Q==` |
+| `@infrabyx/config`     | 0.3.0     | `@infrabyx/config@0.3.0`     | `450b7bd8a3c1fd7e3bfcbe53c0fdfc2ebd2393ef` | `sha512-7Y6tYhslhz1SFg3Sc6MP8/4XrKyPHWGvjSc34Q2PZ6r+VBc8wZu8OF4TO2B/oHDXOvHZN2dFTT+7E7zG5NcW/Q==` |
+| `@infrabyx/connectors` | 0.2.0     | `@infrabyx/connectors@0.2.0` | `64285ed7c9f5036d4eab31897905fec622d8b285` | `sha512-jZM2OSNeFL3fYX4QIt6NSlggpSPLjfLgVdC5OYlUXjvMgK0TFGoKu/mC8kDW+wNYtkO74srqXPr+6jAhvwTX6w==` |
+| `@infrabyx/contracts`  | 0.3.0     | `@infrabyx/contracts@0.3.0`  | `30bb7dab8be0b9db5fe019c41d7d0f1eb93c37bd` | `sha512-Rm7yAo419irBdybHmEmfXApXyvvecOZw2Tt75x/WxiTxwPLNrngz+GOuO10+9yDu8QEjuuZ4+lw3ghHkmnB34Q==` |
+| `@infrabyx/crypto`     | 0.3.0     | `@infrabyx/crypto@0.3.0`     | `01df029fa869e445f03ab632b42bc033e32fec60` | `sha512-rUoWByDScwU7gsygiR1l4kGhbnyhRaCPQ1oQPscJ7xd3rYc1KOs9Z53oKPrM7e4znoYt8tqL8JxF1tO93Bg1hA==` |
+| `@infrabyx/export`     | 0.1.0 new | `@infrabyx/export@0.1.0`     | `67b6299f3ef983505a7c56e5227be445b098f69f` | `sha512-fAes+bVSSYe/Fo0MR1oWjzaPHWXcOYpJUwEJBarBBd9LvDNHN+5+zk/E/Xm1XVbXdeD7HIt8+f6NISVttFIwKQ==` |
+| `@infrabyx/notify`     | 0.1.0 new | `@infrabyx/notify@0.1.0`     | `4c94637bfcc726b7c35b4a91c039377877f2b456` | `sha512-Lt2i08iTk5OvakshrIojJnjKYFNCMJQq4s8ZUJfM1IikqnBCfT8K2YB1bAaQuB8jtfexSCYkM+dmJsV9Ul9mWg==` |
+| `@infrabyx/rules`      | 0.1.0 new | `@infrabyx/rules@0.1.0`      | `6a0905ad30bdebb28d0ab5ea82e78d83f324dc47` | `sha512-eElPyDYZiGfxefVcR6TEIlqhSoKM/XrMnyFJAQlzVu9+hiRQ2xEQuzqZQD66yP1CR+iXMpz+MWyoiFz4w2R+Kw==` |
+| `@infrabyx/seed`       | 0.2.1     | `@infrabyx/seed@0.2.1`       | `54e1248b0ff8fc07017ac1e77d91be44d0fc504a` | `sha512-Ru1UYpU8lgiedwhl5re0A9dbJfa1O2ACtmE99FzgcI3V2lP5UK6zC8HxroL3OBTgDXoP3YdfgH2+7JIHHMD15A==` |
+| `@infrabyx/tenancy`    | 0.3.0     | `@infrabyx/tenancy@0.3.0`    | `2b7e4494fb60977baf6a71c548e3ebe58e5c480c` | `sha512-+Vn5G88rzrhj3tIetpdgkEPMzADHP7hu95F4OZ/sTAL/5IsGPsMiKDJcD9CkPDiywdcyU5Plo5anHhuATyxTuA==` |
+| `@infrabyx/testing`    | 0.3.0     | `@infrabyx/testing@0.3.0`    | `d4cd60c9746127d3ed68144c292e7a04395097d8` | `sha512-t59wVAKPsBpsHnBTYfpKPYsM+netKaU984ar7I1yvbSywfj/3uvIA96YiYLbAAY9EkEAfRcmxRtpdLyWMylbWQ==` |
+| `@infrabyx/workflow`   | 0.1.0 new | `@infrabyx/workflow@0.1.0`   | `b414eabbd1fe9bfedf7206fefe4b8043e559a1ae` | `sha512-C54zqmfXgLThjWQgywe/9tCMXdr09SkfbiFyE9kVkLFYqenT7WxeO+KtJaWVBX6Y24Gr8cjJBUAeDlIgI+Lvxw==` |
 
-Registry checksums (`dist.shasum`, `dist.integrity`) are in the job summary of release run 43 (`release` job 122048259420). Copy them here once read with a registry token (PL3-D-14).
+Registry checksums are the values release run 43 printed in the job summary of its `release` job (122048259420), copied by the owner on 2026-10-27 (PL3-D-25).
 
 **To adopt this release**, products follow `docs/phases/PL3-gate.md` §5. In short:
 
@@ -46,6 +46,12 @@ Registry checksums (`dist.shasum`, `dist.integrity`) are in the job summary of r
   - wire `ExportService` with a product map, `kmsArchiveSigner` and an export worker, and add `map-gate` and a golden archive to CI;
   - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
   - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
+
+## Owner answers #24 and #25 (2026-10-27, PL3-D-25; ships in the next release)
+
+- **#24 export:** `ORG_OWNER` exports directly; `ORG_ADMIN` calls `submit` (R2 approval `export.job.request`, checked only by `ORG_OWNER`); no other role exports (`roles` option removed). Archives are downloadable for 30 days, then `sweep()` deletes them and ledgers each deletion (`IPB-EXP-006` after). The README shows the export time in IST; data stays in UTC. Reference map `REF-EXPORT-1.1`.
+- **#25 ESIGN:** confirmed as built; signature validation stays unsupported and is raised as PR-020.
+- **Products must, at the next release:** run `infrabyx-migrate` (`export/0002_owner_answers.sql`, which creates `svc_export_sweep`); pass the workflow `approvals` engine to `ExportService`; run `sweep()` every few minutes from one worker; drop any `roles` option.
 
 ## What products could install before (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 

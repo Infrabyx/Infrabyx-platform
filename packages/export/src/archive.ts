@@ -182,6 +182,11 @@ function normaliseRows(d: DatasetInput, rows: Array<Record<string, unknown>>) {
 
 const VERIFY_DIR = new URL("../verify/", import.meta.url);
 
+/** An instant as ISO 8601 in IST (UTC+05:30, no daylight saving), for the README only. */
+export function istTime(d: Date): string {
+  return new Date(d.getTime() + 330 * 60_000).toISOString().replace("Z", "+05:30");
+}
+
 function readme(
   i: ArchiveInput,
   root: string,
@@ -204,7 +209,8 @@ function readme(
     [
       "As of",
       [
-        `Every dataset shows the records as they were at ${asOf} (UTC). All times in this archive are ISO 8601 in UTC.`,
+        `This archive was exported at ${asOf} (UTC), which is ${istTime(i.asOf)} in India Standard Time (IST, UTC+05:30). Every dataset shows the records as they were at that moment.`,
+        "Every time inside the data files, manifests and audit trail is in UTC, written in ISO 8601 with its offset (`Z` means UTC). To read a time in IST, add 5 hours 30 minutes.",
       ],
     ],
     [
