@@ -1,0 +1,36 @@
+# API in prod: secrets through the CSI driver and workload identity, autoscaled, migrations hook.
+image:
+  {
+    repository: registry.example.test/infrabyx/api,
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  }
+app: { kind: api }
+env:
+  name: prod
+  vars:
+    APP_BASE_URL: https://app.example.test
+replicas: 2
+routing: { configMap: prod-routing }
+secrets:
+  provider: aws-secrets-manager
+  parameters:
+    objects: |
+      - objectName: "prod/db/app_rw_url"
+        objectType: "secretsmanager"
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/example-api
+autoscaling: { enabled: true, minReplicas: 2, maxReplicas: 6, targetCPUUtilizationPercentage: 70 }
+pdb: { minAvailable: 1 }
+migrations: { job: true }
+otel: { endpoint: http://otel-collector.observability:4318, samplingRatio: "0.1" }
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels: { kubernetes.io/metadata.name: ingress }
+  egressTo:
+    - to:
+        - ipBlock: { cidr: 10.0.0.0/16 }
+      ports:
+        - { port: 5432, protocol: TCP }

@@ -1,0 +1,32 @@
+# Every pod runs as non-root with the chart's locked container security context (IPB-01-31,
+# IPB-01 §01.4.8.2). Written for Pods; Kyverno applies it to Deployments and Jobs too.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-security-context
+  annotations:
+    policies.kyverno.io/title: Locked security context
+    policies.kyverno.io/description: Non-root UID, no privilege escalation, read-only root, all capabilities dropped.
+spec:
+  background: true
+  rules:
+    - name: locked-security-context
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        failureAction: Enforce
+        message: "Pods run as non-root with allowPrivilegeEscalation false, readOnlyRootFilesystem true and every capability dropped (IPB-01-31)."
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+            containers:
+              - securityContext:
+                  runAsNonRoot: true
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: true
+                  =(privileged): false
+                  capabilities:
+                    drop: ["ALL"]

@@ -1,0 +1,25 @@
+# Images are referenced by digest, never by a tag alone (IPB-01 §01.4.8.1: built once, promoted by
+# digest). Covers init containers too.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Images by digest
+spec:
+  background: true
+  rules:
+    - name: image-by-digest
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        failureAction: Enforce
+        message: "Every image is referenced by digest (repository@sha256:...), never by a tag (IPB-01 §01.4.8.1)."
+        pattern:
+          spec:
+            containers:
+              - image: "*@sha256:*"
+            =(initContainers):
+              - image: "*@sha256:*"

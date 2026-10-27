@@ -1,0 +1,43 @@
+# Images are signed with Sigstore cosign (keyless, GitHub OIDC) and carry a CycloneDX SBOM
+# attestation (IPB-01-35, IPB-02-35). Shipped as Audit: signing is off until the owner approves it
+# (OWNER-QUESTIONS #67); switch failureAction to Enforce in the same change that turns signing on.
+# Matches only the platform's own registry path; products add theirs.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-images
+  annotations:
+    policies.kyverno.io/title: Signed and attested images
+spec:
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: signed-and-attested
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences: ["ghcr.io/infrabyx/*"]
+          failureAction: Audit
+          # Audit cannot rewrite the image to its digest; the chart and disallow-latest-tag already
+          # require digests.
+          mutateDigest: false
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: "^https://github\\.com/Infrabyx/[^/]+/\\.github/workflows/release\\.yml@refs/heads/main$"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          attestations:
+            - type: https://cyclonedx.org/bom
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: https://token.actions.githubusercontent.com
+                        subjectRegExp: "^https://github\\.com/Infrabyx/[^/]+/\\.github/workflows/release\\.yml@refs/heads/main$"
+                        rekor:
+                          url: https://rekor.sigstore.dev

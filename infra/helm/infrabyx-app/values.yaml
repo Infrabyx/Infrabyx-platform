@@ -1,0 +1,87 @@
+# Defaults for the infrabyx-app chart (IPB-01 §01.4.8.2; PL6 plan §5). `values.schema.json` makes
+# required what the spec marks required; the templates refuse what the IPB forbids.
+
+image:
+  # Promoted image by digest only (IPB-09): a tag is never enough.
+  repository: ""
+  digest: ""
+  pullPolicy: IfNotPresent
+
+app:
+  # api | worker | web | public | console
+  kind: ""
+  port: 3000
+  # Extra arguments after the image entrypoint (for example the worker entrypoint).
+  args: []
+
+env:
+  # The IPB-09-15 catalogue name: local, dev, test, preview, staging, pre-prod, demo, prod, dr.
+  name: ""
+  # Plain configuration only; secrets come through `secrets` (IPB-02-28).
+  vars: {}
+
+routing:
+  # The ConfigMap holding this environment's routing.yaml (IPB-01 §01.4.5), mounted read-only.
+  configMap: ""
+
+secrets:
+  # aws-secrets-manager | vault | azure-keyvault | gcp-secret-manager, through the Secrets Store CSI
+  # driver; required from staging upwards.
+  provider: ""
+  # Provider-specific SecretProviderClass parameters (object list, role, vault address …).
+  parameters: {}
+
+serviceAccount:
+  # Workload identity annotations (IRSA role ARN, Azure client id, GCP service account).
+  annotations: {}
+
+replicas: 1
+
+resources:
+  requests: { cpu: 100m, memory: 256Mi }
+  limits: { memory: 512Mi }
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+  # Workers scale on queue depth through KEDA instead of CPU.
+  keda:
+    enabled: false
+    triggers: []
+
+pdb:
+  minAvailable: 1
+
+networkPolicy:
+  enabled: true
+  # Namespaces or pods allowed to reach the app (ingress controller, other apps).
+  ingressFrom: []
+  # Egress allow-list per port adapter endpoint (CIDR blocks and ports); DNS is always allowed.
+  egressTo: []
+
+probes:
+  live: /health/live
+  ready: /health/ready
+  startup: /health/startup
+
+migrations:
+  # Pre-install and pre-upgrade hook running `infrabyx-migrate` as app_migrate (expand-only).
+  job: false
+  command: ["node", "node_modules/@infrabyx/tenancy/dist/migrate/cli.js"]
+  # Secret key holding the app_migrate database URL in the CSI mount.
+  dbUrlFile: /mnt/secrets/db_migrate_url
+
+otel:
+  endpoint: ""
+  samplingRatio: "0.1"
+
+# Only honoured when env.name is not prod, dr or pre-prod; the chart refuses to render otherwise
+# (IPB-ENV-001, SEED_REFUSED_ENVS).
+seed:
+  profile: null
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []

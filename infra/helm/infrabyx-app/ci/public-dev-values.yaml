@@ -1,0 +1,19 @@
+# Group site in dev: one replica, fixtures, no secrets provider (dev uses its own scope).
+image:
+  {
+    repository: registry.example.test/infrabyx/public,
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  }
+app: { kind: public }
+env:
+  name: dev
+  vars:
+    APP_BASE_URL: https://group.dev.example.test
+    APP_FIXTURE_ADAPTERS: "true"
+routing: { configMap: dev-routing }
+seed: { profile: dev }
+networkPolicy:
+  enabled: true
+  ingressFrom:
+    - namespaceSelector:
+        matchLabels: { kubernetes.io/metadata.name: ingress }

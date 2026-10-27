@@ -16,3 +16,5 @@ packages/ai/prompts/
 packages/ai/evals/
 packages/vidhi/persona/
 packages/vidhi/evals/
+# Helm templates are Go templates, not YAML
+infra/helm/*/templates/

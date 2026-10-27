@@ -1,0 +1,15 @@
+# Studio console in a preview: fakes only, the preview seed, no secrets provider.
+image:
+  {
+    repository: registry.example.test/infrabyx/console,
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  }
+app: { kind: console }
+env:
+  name: preview
+  vars:
+    APP_BASE_URL: https://studio.preview.example.test
+    APP_SITE_URL: https://group.preview.example.test
+    APP_FIXTURE_ADAPTERS: "true"
+routing: { configMap: preview-routing }
+seed: { profile: demo }

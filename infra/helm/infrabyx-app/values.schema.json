@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "infrabyx-app values (IPB-01 §01.4.8.2)",
+  "type": "object",
+  "required": ["image", "app", "env", "routing"],
+  "properties": {
+    "image": {
+      "type": "object",
+      "required": ["repository", "digest"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1, "pattern": "^[a-z0-9./_-]+$" },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Promoted image by digest; a tag is refused"
+        },
+        "pullPolicy": { "enum": ["IfNotPresent", "Always"] }
+      },
+      "additionalProperties": false
+    },
+    "app": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["api", "worker", "web", "public", "console"] },
+        "port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+        "args": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "env": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "enum": ["local", "dev", "test", "preview", "staging", "pre-prod", "demo", "prod", "dr"]
+        },
+        "vars": {
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "routing": {
+      "type": "object",
+      "required": ["configMap"],
+      "properties": { "configMap": { "type": "string", "minLength": 1 } },
+      "additionalProperties": false
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "enum": ["", "aws-secrets-manager", "vault", "azure-keyvault", "gcp-secret-manager"]
+        },
+        "parameters": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "replicas": { "type": "integer", "minimum": 1 },
+    "autoscaling": { "type": "object" },
+    "pdb": {
+      "type": "object",
+      "properties": { "minAvailable": { "type": "integer", "minimum": 1 } }
+    },
+    "networkPolicy": {
+      "type": "object",
+      "properties": {
+        "enabled": { "const": true, "description": "Default-deny is locked on" },
+        "ingressFrom": { "type": "array" },
+        "egressTo": { "type": "array" }
+      }
+    },
+    "migrations": { "type": "object" },
+    "seed": {
+      "type": "object",
+      "properties": { "profile": { "type": ["null", "string"] } }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "env": { "properties": { "name": { "enum": ["staging", "pre-prod", "prod", "dr"] } } }
+        }
+      },
+      "then": {
+        "properties": {
+          "secrets": {
+            "required": ["provider"],
+            "properties": {
+              "provider": {
+                "enum": ["aws-secrets-manager", "vault", "azure-keyvault", "gcp-secret-manager"]
+              }
+            }
+          }
+        },
+        "required": ["secrets"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "env": { "properties": { "name": { "enum": ["prod", "dr"] } } } }
+      },
+      "then": { "properties": { "replicas": { "minimum": 2 } } }
+    }
+  ]
+}

@@ -439,6 +439,17 @@ One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/c
 - **T (a tampered image):** Control: every image is pinned by digest and was published at least 7 days before pinning (PL2-D-32); MinIO is built from source at the pinned commit, never from a mirror.
 - **Residual:** Keycloak and the Temporal dev server run in development mode (no TLS) on loopback; the stack must never be exposed beyond the machine. Seeds stay refused in prod, dr and pre-prod by the seed guard regardless of this stack.
 
+### 3.39 The shared Helm chart and admission policies (built, PL6 session 2; PL6-D-04)
+
+`infra/helm/infrabyx-app` deploys every product workload; `infra/policy/kyverno` is the cluster's second line. Nothing is deployed from this repository.
+
+- **E (a workload escaping its container):** Control: the chart's security context is not configurable (UID 10001, read-only root, no privilege escalation, every capability dropped, `RuntimeDefault` seccomp, no service-account token); Kyverno refuses pods without it, with host paths or host namespaces, and with tag-only images (`kyverno test`).
+- **I (secrets in manifests):** Control: secrets reach pods only through the Secrets Store CSI mount (read-only), required from staging upwards; secret-named plain variables fail rendering there (`IPB-ENV-003`); the migration hook reads its URL from the mount (`--db-file`).
+- **T (an unreviewed or unsigned image):** Control: images by digest only (schema and Kyverno); `verify-images` checks the keyless cosign signature and CycloneDX attestation, `Audit` until signing is approved (#67).
+- **S and I (lateral movement):** Control: a default-deny NetworkPolicy in and out, peers listed per deployment, DNS only by default.
+- **Tampering with the environment rules:** Control: a seed profile in prod, dr or pre-prod and a Supabase host from staging up fail rendering (`IPB-ENV-001`, `IPB-ENV-002`; `@IPB-01-AT-12`).
+- **Residual:** the chart cannot see the cluster; a product could deploy without Kyverno installed, which the IPB-01 Terraform `kubernetes` module (session 3) is to install. `helm diff` is not run.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

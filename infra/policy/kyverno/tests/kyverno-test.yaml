@@ -1,0 +1,60 @@
+# `kyverno test infra/policy/kyverno/tests` (PL6 plan §6): each policy passes the chart's pod and
+# fails the pod that breaks it. verify-images needs a registry and Rekor, so it is not tested here;
+# the `infra` job loads it with `kyverno apply` over the rendered chart.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: infrabyx-admission
+policies:
+  - ../require-security-context.yaml
+  - ../disallow-latest-tag.yaml
+  - ../require-probes.yaml
+  - ../restrict-host-access.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: require-security-context
+    rule: locked-security-context
+    kind: Pod
+    resources: [good, tagged, no-probes, migrate, host-path, host-network]
+    result: pass
+  - policy: require-security-context
+    rule: locked-security-context
+    kind: Pod
+    resources: [root]
+    result: fail
+  - policy: disallow-latest-tag
+    rule: image-by-digest
+    kind: Pod
+    resources: [good, root, no-probes, migrate, host-path, host-network]
+    result: pass
+  - policy: disallow-latest-tag
+    rule: image-by-digest
+    kind: Pod
+    resources: [tagged]
+    result: fail
+  - policy: require-probes
+    rule: liveness-and-readiness
+    kind: Pod
+    resources: [good, root, tagged, host-path, host-network]
+    result: pass
+  - policy: require-probes
+    rule: liveness-and-readiness
+    kind: Pod
+    resources: [no-probes]
+    result: fail
+  - policy: require-probes
+    rule: liveness-and-readiness
+    kind: Pod
+    resources: [migrate]
+    result: skip
+  - policy: restrict-host-access
+    rule: no-host-namespaces-or-paths
+    kind: Pod
+    resources: [good, root, tagged, no-probes, migrate]
+    result: pass
+  - policy: restrict-host-access
+    rule: no-host-namespaces-or-paths
+    kind: Pod
+    resources: [host-path, host-network]
+    result: fail
