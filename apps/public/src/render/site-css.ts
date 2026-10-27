@@ -1,8 +1,9 @@
 // The site's own layout rules, on the `@infrabyx/ui` tokens only (so every theme and the contrast
 // guard apply). Reflow at 320 px (IPB-06 SC 1.4.10): grids collapse to one column, nothing has a
-// fixed width. The honeypot field is moved off-screen, not hidden from assistive technology alone.
+// fixed width, and prose breaks long words and URLs. The honeypot field is moved off-screen, not hidden from assistive technology alone.
 export const SITE_CSS = String.raw`
 .ibx-page > * + * { margin-top: var(--space-6); }
+.ibx-prose { overflow-wrap: anywhere; }
 .ibx-prose ul, .ibx-prose ol { padding-left: var(--space-6); }
 .ibx-hero { padding: var(--space-10) 0 var(--space-6); }
 .ibx-hero__eyebrow { color: var(--color-text-muted); font-weight: 600; }
