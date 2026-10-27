@@ -17,3 +17,10 @@ condition = "AND"
 paths = ['''^packages/config/src/settings/registry\.generated\.ts$''']
 regexTarget = "line"
 regexes = ['''^\s*"key": "[a-z][a-z0-9_]*(\.([a-z0-9_]+|\{[a-z_]+\}[a-z0-9_]*))+",$''']
+
+[[allowlists]]
+description = "IPB-08 document type keys in the trust package (PL5-D-10): a line that is exactly `type_key: \"<snake_case>\",` or `typeKey: \"<snake_case>\",` names a document type (for example cert_iso27001), not a credential. Only lowercase snake-case identifiers match."
+condition = "AND"
+paths = ['''^packages/trust/src/.*\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*(type_key|typeKey): "[a-z][a-z0-9]*(_[a-z0-9]+)+",$''']
