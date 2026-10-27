@@ -221,19 +221,23 @@ export class Autonomy {
         rejected: number;
         incidents: number;
       }>(
-        `select
-           (select count(*)::int from vidhi.task t
+        // The window start is read in SQL: a JS Date would drop its microseconds and let rows
+        // written in the demotion's own transaction count again.
+        `with w as (select coalesce((select evidence_since from vidhi.skill_state where skill_key = $1),
+                                    '-infinity'::timestamptz) as since)
+         select
+           (select count(*)::int from vidhi.task t, w
              where t.skill_key = $1 and t.level = 'L2' and t.state = 'DONE'
-               and t.created_at >= greatest($2::timestamptz, now() - interval '90 days')) as runs,
-           (select count(*)::int from vidhi.task_step s join vidhi.task t on t.id = s.task_id
-             where t.skill_key = $1 and s.outcome = 'approved' and s.created_at >= $2) as approved,
-           (select count(*)::int from vidhi.task_step s join vidhi.task t on t.id = s.task_id
-             where t.skill_key = $1 and s.outcome = 'rejected' and s.created_at >= $2) as rejected,
-           (select count(*)::int from vidhi.task t
-             where t.skill_key = $1 and t.created_at >= $2
-               and (t.error_code = any($3) or exists (select 1 from vidhi.task_step s
+               and t.created_at > w.since and t.created_at >= now() - interval '90 days') as runs,
+           (select count(*)::int from vidhi.task_step s join vidhi.task t on t.id = s.task_id, w
+             where t.skill_key = $1 and s.outcome = 'approved' and s.created_at > w.since) as approved,
+           (select count(*)::int from vidhi.task_step s join vidhi.task t on t.id = s.task_id, w
+             where t.skill_key = $1 and s.outcome = 'rejected' and s.created_at > w.since) as rejected,
+           (select count(*)::int from vidhi.task t, w
+             where t.skill_key = $1 and t.created_at > w.since
+               and (t.error_code = any($2) or exists (select 1 from vidhi.task_step s
                      where s.task_id = t.id and s.outcome = 'locked_attempt'))) as incidents`,
-        [skillKey, st.evidence_since, GUARDRAIL_CODES],
+        [skillKey, GUARDRAIL_CODES],
       );
       const x = r.rows[0] ?? { runs: 0, approved: 0, rejected: 0, incidents: 0 };
       const decided = x.approved + x.rejected;

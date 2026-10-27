@@ -1,10 +1,10 @@
 # @infrabyx/vidhi
 
-The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product ceilings, the immutable locked-action list, the persona and reserved-advice routing, scheduled tasks, missions, MCP (server and client) and knowledge notebooks. Digest, feedback and QA sampling follow in PL4 session 8.
+The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product ceilings, the immutable locked-action list, the persona and reserved-advice routing, scheduled tasks, missions, MCP (server and client), knowledge notebooks, feedback, QA sampling, the daily digest and AI disclosure.
 
-**Specified by:** IPB-03 §03.3.I–K, §03.4.6–§03.4.8 and §03.4.11. Plan: `docs/phases/PL4-plan.md` §8. Migrations `vidhi/0001_init.sql` to `vidhi/0003_notebooks.sql` are applied by `infrabyx-migrate` after `ai`.
+**Specified by:** IPB-03 §03.3.I–K, §03.4.6–§03.4.8 and §03.4.11. Plan: `docs/phases/PL4-plan.md` §8. Migrations `vidhi/0001_init.sql` to `vidhi/0004_feedback_qa_digest.sql` are applied by `infrabyx-migrate` after `ai`.
 
-**Status:** PL4 session 7. First release (0.1.0) at the PL4 gate.
+**Status:** PL4 session 8. First release (0.1.0) at the PL4 gate.
 
 ## What it does
 
@@ -53,6 +53,10 @@ The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product 
   - outputs (Q&A, FAQ, briefing, timeline, Mermaid mind map, flashcards) are grounded through `vidhi.notebook@1`, with provenance, and show as stale when a source changes;
   - platform notebooks are read-only to tenants;
   - sharing with another organisation is a locked action (`IPB-VID-060` until approved), and exposes the outputs only.
+- **`Feedback`** (IPB-03-84): one thumbs up or down per person and run, with an optional reason. Corrections are sealed, and the ones marked "use this as reference" form the tenant's reference set, which the skill's owner reads. They are never used for training.
+- **`QaSampler`** (IPB-03-85) queues finished tasks for the skill owner's review: 10 % in a skill's first 30 days, otherwise `vidhi.qa.sample_rate`, chosen deterministically. Precision and recall are tracked since the last level change, and below the floor the skill drops one level.
+- **`Digest`** (IPB-03-83) builds "What Vidhi did today" per user and per tenant admin (counts only) and sends it once a day through NOTIFY `vidhi.digest`. `actionLog` searches the action log.
+- **`disclosure` / `Vidhi.disclose`** (IPB-03-53) give every artefact's label, with its run id, and the `ai_provenance` sidecar.
 - **Prompts:** `persona/vidhi.persona/1.0.0.md` and `persona/vidhi.plain_language/1.0.0.md` (110 golden cases each), `persona/vidhi.mission_plan/1.0.0.md` (41) and `persona/vidhi.notebook/1.0.0.md` (108), with golden sets in `evals/`. CI grades them with `ai-eval-gate`, and `infrabyx-ai prompts sync --set packages/vidhi/persona:packages/vidhi/evals` loads them.
 
 ## For products
@@ -65,3 +69,4 @@ The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product 
 6. Run each mission with `Missions.advance` from your QUEUE, and again after each approval of one of its steps.
 7. Mount `McpServer.handle` on `/mcp` (Streamable HTTP, OAuth 2.1 with PKCE, resource `urn:infrabyx:<product>:mcp`) after `checkMcpHeaders`; pass `authorize` and `approvalUrl`. Give `McpClient` your egress fetch.
 8. Give `Notebooks` FieldCrypto, the gateway, the approvals engine and, where you have them, `records`, `egress` and `pdfText`.
+9. Call `QaSampler.maybeSample` when a task finishes, with your Work Inbox. Send `Digest.send` at each person's `vidhi.digest.hour_local`, and attach `disclose()` to every AI artefact you store or export.

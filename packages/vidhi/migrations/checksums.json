@@ -1,5 +1,6 @@
 {
   "0001_init.sql": "5e498db7697c3a048789f8ea31d57dd1d7d704266caf3ccd4f7414b40599aa3f",
   "0002_missions_schedules.sql": "1709cdb818c9cb764743e4910e4cf307ebbe657ed4ec19bf5b222e1057af0040",
-  "0003_notebooks.sql": "9cbe2be2c639ff6b62aed445fa6ec9aafad8d9099aa5f355d9787b78cc4589d8"
+  "0003_notebooks.sql": "9cbe2be2c639ff6b62aed445fa6ec9aafad8d9099aa5f355d9787b78cc4589d8",
+  "0004_feedback_qa_digest.sql": "df52bed457792028e2b255334a3bc8a164bb44a137257ffe930900f9ca56e2fb"
 }
