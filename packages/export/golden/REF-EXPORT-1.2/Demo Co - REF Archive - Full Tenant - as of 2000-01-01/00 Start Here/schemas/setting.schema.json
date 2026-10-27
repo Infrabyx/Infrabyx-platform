@@ -1,40 +1,54 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:notification",
-  "title": "notification",
-  "description": "Rows of notify.notification exported under REF-EXPORT-1.1",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:setting",
+  "title": "setting",
+  "description": "Rows of config.setting_value exported under REF-EXPORT-1.2",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "class_id": {
+    "key": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "deep_link": {
+    "tier": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "locale": {
+    "scope_id": {
       "type": [
         "string",
         "null"
       ],
       "x-dataclass": "INTERNAL"
     },
-    "created_at": {
+    "value": {
+      "x-dataclass": "CONFIDENTIAL"
+    },
+    "version": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
+    "updated_at": {
       "type": "string",
       "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "updated_by": {
+      "type": "string",
       "x-dataclass": "INTERNAL"
     }
   },
   "required": [
     "id",
-    "class_id",
-    "deep_link",
-    "created_at"
+    "key",
+    "tier",
+    "value",
+    "version",
+    "updated_at",
+    "updated_by"
   ],
   "additionalProperties": false
 }

@@ -1,4 +1,4 @@
-// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.1` for
+// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.2` for
 // `apps/reference` and the demo seed, and a registry products add their `<PRODUCT>-EXPORT-x.y` maps
 // to. During the dual run (`eng.export.dual_run_days`, floor 90) the previous map is emitted as well.
 import { readFileSync } from "node:fs";
@@ -11,11 +11,19 @@ export function loadExportMap(path: string | URL): ExportMap {
   return ExportMap.parse(JSON.parse(readFileSync(path, "utf8")));
 }
 
-/** The current reference map. 1.1 (PL3-D-25) changes only the README: it adds the IST export time. */
+/**
+ * The current reference map. 1.2 (PL4-D-12) adds the AI run log (`ai_runs`, metadata only) and the
+ * Vidhi action log (`vidhi_actions`), IPB-03-55 and 03-83; 1.1 (PL3-D-25) added the IST export time
+ * to the README.
+ */
 export const REF_EXPORT_MAP: ExportMap = loadExportMap(
-  new URL("../maps/REF-EXPORT-1.1.json", import.meta.url),
+  new URL("../maps/REF-EXPORT-1.2.json", import.meta.url),
 );
 /** The previous reference map, still emitted during the dual run. */
+export const REF_EXPORT_MAP_1_1: ExportMap = loadExportMap(
+  new URL("../maps/REF-EXPORT-1.1.json", import.meta.url),
+);
+/** The map before that (kept for archives built under it). */
 export const REF_EXPORT_MAP_1_0: ExportMap = loadExportMap(
   new URL("../maps/REF-EXPORT-1.0.json", import.meta.url),
 );

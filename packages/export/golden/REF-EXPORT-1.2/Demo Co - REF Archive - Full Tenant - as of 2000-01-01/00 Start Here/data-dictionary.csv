@@ -1,4 +1,28 @@
 ﻿dataset,field,type,nullable,data_class,code_table,source
+ai_runs,id,text,N,INTERNAL,,ai.run.id
+ai_runs,feature_key,text,N,INTERNAL,,ai.run.feature_key
+ai_runs,skill_key,text,Y,INTERNAL,,ai.run.skill_key
+ai_runs,principal_id,text,N,INTERNAL,,ai.run.principal_id
+ai_runs,principal_type,text,N,INTERNAL,,ai.run.principal_type
+ai_runs,operation,text,N,INTERNAL,,ai.run.operation
+ai_runs,data_class,text,N,INTERNAL,,ai.run.data_class
+ai_runs,band,text,N,INTERNAL,,ai.run.band
+ai_runs,prompt_ref,text,Y,INTERNAL,,ai.run.prompt_ref
+ai_runs,prompt_sha256,text,Y,INTERNAL,,ai.run.prompt_sha256
+ai_runs,model_id,text,Y,INTERNAL,,ai.run.model_id
+ai_runs,adapter_key,text,Y,INTERNAL,,ai.run.adapter_key
+ai_runs,byok,boolean,N,INTERNAL,,ai.run.byok
+ai_runs,outcome,text,N,INTERNAL,,ai.run.outcome
+ai_runs,error_code,text,Y,INTERNAL,,ai.run.error_code
+ai_runs,route_reason,text,N,INTERNAL,,ai.run.route_reason
+ai_runs,tokens_in,integer,N,INTERNAL,,ai.run.tokens_in
+ai_runs,tokens_out,integer,N,INTERNAL,,ai.run.tokens_out
+ai_runs,cached_tokens,integer,N,INTERNAL,,ai.run.cached_tokens
+ai_runs,cost_minor_units,bigint,Y,INTERNAL,,ai.run.cost_minor_units
+ai_runs,currency,character,Y,INTERNAL,,ai.run.currency
+ai_runs,guard_flags,ARRAY,N,INTERNAL,,ai.run.guard_flags
+ai_runs,duration_ms,integer,N,INTERNAL,,ai.run.duration_ms
+ai_runs,created_at,timestamp with time zone,N,INTERNAL,,ai.run.created_at
 approval_decision,request_id,text,N,INTERNAL,,tenancy.approval_decision.request_id
 approval_decision,maker_id,text,N,INTERNAL,,tenancy.approval_decision.maker_id
 approval_decision,decision,text,N,INTERNAL,code-tables/decision.csv,tenancy.approval_decision.decision
@@ -75,3 +99,10 @@ tenant,status,text,N,INTERNAL,,tenancy.tenant.status
 tenant,residency,text,N,INTERNAL,code-tables/residency.csv,tenancy.tenant.residency
 tenant,residency_label,text,Y,PUBLIC,code-tables/residency.csv,label of the code
 tenant,created_at,timestamp with time zone,N,INTERNAL,,tenancy.tenant.created_at
+vidhi_actions,id,bigint,N,INTERNAL,,vidhi.task_step.id
+vidhi_actions,task_id,text,N,INTERNAL,,vidhi.task_step.task_id
+vidhi_actions,tool,text,N,INTERNAL,,vidhi.task_step.tool
+vidhi_actions,outcome,text,N,INTERNAL,,vidhi.task_step.outcome
+vidhi_actions,approval_id,text,Y,INTERNAL,,vidhi.task_step.approval_id
+vidhi_actions,actor_id,text,N,INTERNAL,,vidhi.task_step.actor_id
+vidhi_actions,created_at,timestamp with time zone,N,INTERNAL,,vidhi.task_step.created_at
