@@ -304,7 +304,7 @@ describe("read-only sections", () => {
     labelled(out);
   });
 
-  it("Trust documents warns when the mirror is stale", async () => {
+  it("@IPB-04-AT-72 Trust documents come from the mirror only: no field, a stale warning", async () => {
     const out = await html(
       TrustDocumentsScreen({
         ctx: CTX,
@@ -331,6 +331,7 @@ describe("read-only sections", () => {
     );
     expect(out).toContain("The copy is out of date");
     expect(out).toContain("Security overview (POLICY)");
+    expect(out).not.toMatch(/<(?:input|textarea|select)\b/);
   });
 
   it("Pricing formats catalogue amounts and degrades to a notice when billing is down", async () => {

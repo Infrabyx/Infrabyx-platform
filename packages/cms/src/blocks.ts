@@ -20,6 +20,36 @@ const common = {
 /** Embed providers allowed in `embed` (fetched server-side only, through EGRESS). */
 export const EMBED_PROVIDERS = ["youtube", "vimeo"] as const;
 
+/**
+ * The hosts each provider's URLs may name (https only; `@IPB-04-AT-94`). Anything else, an IP
+ * literal, a private name or another site, is refused when the block is saved, so it is never
+ * fetched; pages render the player from the provider's fixed embed host and the video id.
+ */
+export const EMBED_HOSTS: Readonly<Record<(typeof EMBED_PROVIDERS)[number], readonly string[]>> = {
+  youtube: [
+    "www.youtube.com",
+    "youtube.com",
+    "m.youtube.com",
+    "youtu.be",
+    "www.youtube-nocookie.com",
+  ],
+  vimeo: ["vimeo.com", "www.vimeo.com", "player.vimeo.com"],
+};
+
+function embedUrlAllowed(provider: (typeof EMBED_PROVIDERS)[number], raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return (
+      u.protocol === "https:" &&
+      !u.port &&
+      !u.username &&
+      EMBED_HOSTS[provider].includes(u.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 export const BLOCK_SCHEMAS = {
   hero: z
     .object({
@@ -284,11 +314,16 @@ export function parseBlocks(
         issues.push({ path: `${path}.${e.path.join(".")}`, message: e.message });
       return;
     }
-    if (
-      type === "embed" &&
-      !(EMBED_PROVIDERS as readonly string[]).includes((r.data as { provider: string }).provider)
-    )
-      issues.push({ path: `${path}.provider`, message: "provider not on the embed allow-list" });
+    if (type === "embed") {
+      const e = r.data as { provider: string; url: string };
+      if (!(EMBED_PROVIDERS as readonly string[]).includes(e.provider))
+        issues.push({ path: `${path}.provider`, message: "provider not on the embed allow-list" });
+      else if (!embedUrlAllowed(e.provider as (typeof EMBED_PROVIDERS)[number], e.url))
+        issues.push({
+          path: `${path}.url`,
+          message: `url is not an https address on ${e.provider}'s own hosts`,
+        });
+    }
     blocks.push(r.data as Block);
   });
   if (blocks.filter((b) => b.type === "hero").length > 1)

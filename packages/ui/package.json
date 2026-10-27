@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Shared server-rendered React components, design tokens per product and theme, i18n formatters and accessibility primitives (IPB-06, IPB-07)",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

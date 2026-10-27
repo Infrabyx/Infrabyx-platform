@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Brand packs, Brand Studio with maker-checker publish and rollback, contrast guard, SVG sanitiser, favicon set, host map and terminology (IPB-04 §04.3.2)",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

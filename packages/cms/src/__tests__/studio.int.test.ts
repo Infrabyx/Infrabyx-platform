@@ -332,7 +332,7 @@ describe("@IPB-04-AT-08 redirects and slug changes", () => {
   });
 });
 
-describe("@IPB-04-AT-09 media alt text and photo consent", () => {
+describe("@IPB-04-AT-09 @IPB-06-AT-03 media alt text and photo consent", () => {
   it("refuses an image without alt text (IPB-CMS-007) and a team photo without consent (IPB-CMS-014)", async () => {
     const png = Uint8Array.from([
       0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0x49, 0x45, 0x4e, 0x44, 0, 0, 0,

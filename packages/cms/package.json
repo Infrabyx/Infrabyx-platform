@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Headless CMS: content items with immutable revisions, the publish state machine and approvals, the Claims Register, sanitiser, slugs and redirects, SEO and generated files, preview, scheduler, public read API and footer validator (IPB-04 \u00a704.3.1)",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

@@ -75,7 +75,7 @@ describe.skipIf(!exe)(`group site gate at ${BASE}`, () => {
   });
 
   for (const theme of ["light", "dark"] as const)
-    it(`@IPB-06-AT-01 @IPB-04-AT-70 every route passes axe, HTML_CodeSniffer, reflow, text scale and the skip link (${theme})`, async () => {
+    it(`@IPB-06-AT-01 @IPB-04-AT-70 @IPB-04-AT-24 every route passes axe, HTML_CodeSniffer, reflow, text scale and the skip link (${theme})`, async () => {
       const findings: GateFinding[] = [];
       const ctx = await fresh({ dark: theme === "dark" });
       for (const route of ROUTES) {
