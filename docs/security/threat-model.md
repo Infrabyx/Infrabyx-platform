@@ -289,6 +289,14 @@ Types, schemas and error codes only; no I/O.
 - **T:** an instruction planted in a notebook source (URL, upload) steers Vidhi. Control: sources are data blocks only; notebook outputs use no tools; a REGULATED notebook takes a lower-class web source only with confirmation; URLs come only through the product's egress fetcher.
 - **Residual:** MCP rate limits are per process; outputs regenerate only on request (stale is shown, not fixed).
 
+### 3.25 `@infrabyx/vidhi` feedback, QA sampling, digest and disclosure (built, PL4 session 8a)
+
+- **I:** corrections hold output text and could leak or train a model. Control: sealed with FieldCrypto at REGULATED; read only by the skill's owner role or an admin as the tenant's reference set; events and ledger rows carry no text; no code path sends corrections to a provider or a training set.
+- **T:** feedback or reviews gamed to change a skill's level. Control: one rating per person and run; agents cannot rate or review; only the skill's owner role reviews samples; demotion only lowers a level (raising stays the R4 promotion flow); samples are drawn deterministically, so a retry cannot pick or drop a task.
+- **I:** the digest reveals other people's work. Control: a person's digest and action log cover their own tasks; the tenant digest and full log are for ORG_ADMIN or ORG_OWNER; digests hold counts and ids only; usage comes from `ai` without content.
+- **R:** an artefact loses its AI label. Control: `disclosure` builds the label (with run id) and the `ai_provenance` sidecar from the run; tenants cannot remove them (docgen placement is deferred).
+- **Residual:** the QA floor is a default (#40).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
