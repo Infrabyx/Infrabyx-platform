@@ -305,6 +305,17 @@ Types, schemas and error codes only; no I/O.
 - **T/D:** an unwanted delete of chunks or versions. Control: restrictive PostgreSQL policies admit a chunk delete only for an erased resource or a version retired more than 30 days ago, and a version delete only for the latter; `retired_at` is written by a trigger, never by a caller. `RetrievalRetention.sweep` ledgers each chunk batch and each version it deletes, and finds due versions across tenants only through `SVC_AI_INDEX_SWEEP` (id, tenant, state, retirement time; ledgered per tenant).
 - **Residual:** the erasure record keeps the resource reference (an id, not content) so that later copies can be refused; a version retired before migration `ai/0005` has no retirement time and is kept until it is retired again.
 
+### 3.27 `@infrabyx/ui` and `@infrabyx/a11y` (built, PL5 session 2)
+
+The shared components render on the server with no client script. The accessibility kit runs at build and CI time. Its only runtime piece is the client hooks, which read preferences and write to live regions.
+
+- **T/I (XSS):** a component or the accessibility statement renders text supplied by an editor or product. Control: components use React's escaping and never `dangerouslySetInnerHTML`. `renderStatementHtml` escapes every value, and the conformance table comes only from computed status. Components set no inline styles, so the CSP needs no `unsafe-inline`. Click-to-load embeds stay inert inside `<template>` until the person asks, and their URLs are rebuilt for youtube-nocookie or Vimeo with `dnt=1`.
+- **T (claims):** someone types "Conforms" into the accessibility statement. Control: the release record schema is strict and has no status field. Status is computed from CI results, AT runs, open defects and the signed checklist, and an open P1 or P2 is reported as `IPB-A11Y-010` (IPB-06-57).
+- **T (overlays):** an accessibility overlay is added to a page or the build. Control: `overlay-scan` fails the build and `scanText` blocks a page-config save (`IPB-A11Y-003`). The signature list is stored in parts, so the package does not flag itself.
+- **E (gate tooling):** the gate injects axe-core and HTML_CodeSniffer into pages through `page.evaluate`. Control: this happens only in the CI test browser against the site under test, never in a served page. The site's CSP is not relaxed for tests.
+- **Supply chain:** `axe-core` 4.14.0 (MPL-2.0) and `html_codesniffer` 2.5.1 (BSD-3-Clause, last released 2020) are used only by the gate, never shipped to visitors. `playwright-core` is an optional peer. `lighthouse` was refused by the trust policy (`puppeteer-core@25.14.0` has no trust evidence; OWNER-QUESTIONS #51) and is not installed.
+- **Residual:** `html_codesniffer` is unmaintained; a rule gap there is covered by axe on the same routes. The Lighthouse score is not measured live until #51 is resolved.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
