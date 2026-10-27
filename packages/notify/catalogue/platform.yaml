@@ -154,3 +154,12 @@ classes:
     templates:
       email: { key: vidhi.schedule.paused, locales: [en, hi] }
       inapp: { title_key: ntf.vidhi.schedule.paused.title }
+  - id: vidhi.digest
+    category: transactional
+    resend: safe
+    default_channels: [inapp]
+    help_key: ntf.vidhi.digest
+    deep_link: /vidhi/activity
+    templates:
+      email: { key: vidhi.digest, locales: [en, hi] }
+      inapp: { title_key: ntf.vidhi.digest.title }
