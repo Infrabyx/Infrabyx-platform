@@ -183,18 +183,31 @@ After migrating, run `infrabyx-rls-lint` as before.
 
 No package was skipped, and no error was logged.
 
-| Package                | Version | Tag                          | shasum (SHA-1, reproduced)                 | integrity (SHA-512, reproduced)                                                                   |
+| Package                | Version | Tag                          | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     |
 | ---------------------- | ------- | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | `@infrabyx/contracts`  | 0.2.0   | `@infrabyx/contracts@0.2.0`  | `812119f57992b4a96a9a06ff5cc25235c6f9b6d1` | `sha512-v8vJbeQH4j38mkKMKlWGyAsvocSFcybwLXUIrq0/Yl7YaANeXp87oGtmlrHX0+9ulyxphezhlD4I0v7fxTM60Q==` |
 | `@infrabyx/crypto`     | 0.2.0   | `@infrabyx/crypto@0.2.0`     | `d999360aa85318cf5835f9bc68cded9817b69d91` | `sha512-1SLcsvQXbnjVdAsELwp0WDN2qzP878Q9TEMuZ3etctK4BlMarBYSZUvXhFiTgjvpOk7imAqoqzZ9T4fA6JGUeg==` |
 | `@infrabyx/config`     | 0.2.0   | `@infrabyx/config@0.2.0`     | `4e3ecaa978abc82d6133270d4ff23c6d280f9b6c` | `sha512-aGtVD6s6mpPsA8XlSfrXzA/U7eZbiNY+e+9B+lEcQoKBtg/NI+stFfUQzFXcUzmNVQI9sM3m1BRZ/Vv6mIptlg==` |
-| `@infrabyx/tenancy`    | 0.2.0   | `@infrabyx/tenancy@0.2.0`    | `740d4167d6b6b96dde549c5447b0fc29e2f6b194` | `sha512-qvqyQy/GHs9uyOJbT1ZtZScMpcp6YkuHT1d5/uAgFY8T99PcTqKBquxlywy6prZrFFMu8acS41T7hF0vbOyuGA==` |
+| `@infrabyx/tenancy`    | 0.2.0   | `@infrabyx/tenancy@0.2.0`    | `74125a19c1b64ee8d7d12c802affc590d2f7dea9` | `sha512-ApUgJBqE7k4ljocV5EgqQunmGahdYW1UzAh8X34lLJhf5QGctJfMETr7yIHMYVR7wZR5abTRtZdlBHVHp8J9zg==` |
 | `@infrabyx/audit`      | 0.1.1   | `@infrabyx/audit@0.1.1`      | `333771decdbab2ce0e5410efb3c4270d58c24b65` | `sha512-I046pxwyQ1KAabRUh2Sr2g0p0xohJYI3oYM9dX1cCVSxLlG/H8ll2v/LhQkNrwa8e5kxvdJek3HECA6BaOoE7w==` |
-| `@infrabyx/seed`       | 0.2.0   | `@infrabyx/seed@0.2.0`       | `378f258996e5c7d3c1941e786efd786e8afc276d` | `sha512-RQrqn9aPVbPuo+NOF0SyUNsoAgXn0lbpnTfd5R21LqdpeDuuKo7/OtIIhvuKrT2YtmZPY9A7pPPAYBmLHWkhAQ==` |
-| `@infrabyx/testing`    | 0.2.0   | `@infrabyx/testing@0.2.0`    | `25f5f0b4ddb12b243e8715173394a99acbb5fc27` | `sha512-+YSxx8LsloA997CLGAz3cMNHM2twhcrfzMigBrqw6vd/tTFkyKhne8KaS9hgxQB7N5oCUi+QjbOKPlqN9tBMwA==` |
+| `@infrabyx/seed`       | 0.2.0   | `@infrabyx/seed@0.2.0`       | `abe263d2da43e54456456408b98777f6884255ea` | `sha512-mMbqsi09E9AA3IT8Ua4sAqwlFFURYrxuoItm1zsE20tf81kXI+aw+d7/cpRYhtbqXy3aQvun73eflaQ3x9B93w==` |
+| `@infrabyx/testing`    | 0.2.0   | `@infrabyx/testing@0.2.0`    | `ec39fd2e6f61c1329567898faa6e915df5c6f6e2` | `sha512-EMic5/naolc4/EtdEHIqwVr5I5G8phnUYMnRxyO0Nfm4HVfYuQ+OdZcOfb8P9dn2XW0Z2qF4bEcAUn+5F8SYcA==` |
 | `@infrabyx/connectors` | 0.1.0   | `@infrabyx/connectors@0.1.0` | `5e97dd5c6a6ed8a53a6f057fc8bf07388d5ad6d7` | `sha512-lU5AxPsbhZ2/Py81ZJ3At1YDqfpwtOHQwSTVwtC1dhbbq/c/MRfrWt1lR4tORM4kJ3zf7KJplmWknWpm3GS1yw==` |
 
-**Where the checksums come from.** The registry could not be read from the build session:
+**Where the checksums come from (corrected 27 Oct 2026, PL3-D-14).** The table now carries the **registry's own values**, read by `registry-dist.yml` run 1 with the repository's registry token (`npm view <name>@<version> dist`). Five packages matched the reproduced values first published here. Three did not: `tenancy`, `seed` and `testing` 0.2.0. The values first reported for those three were:
+
+- `tenancy` `740d4167d6b6b96dde549c5447b0fc29e2f6b194`;
+- `seed` `378f258996e5c7d3c1941e786efd786e8afc276d`;
+- `testing` `25f5f0b4ddb12b243e8715173394a99acbb5fc27`.
+
+So the CI build was not byte-reproducible locally for those three packages. There were two causes, and the file contents are otherwise identical (PL3-D-14):
+
+- the bin files of these three packages were packed 0644 locally but 0755 in CI;
+- `pnpm pack` writes the rewritten `workspace:*` dependencies in a non-deterministic key order.
+
+The original note follows.
+
+The registry could not be read from the build session:
 
 - GitHub Packages answered 401 to its token, and the packages API answered 403, because the session token is bound to the repository.
 - `changeset publish` prints no tarball details.
@@ -203,5 +216,5 @@ So the values above were **reproduced**: `pnpm pack` of each package at the rele
 
 **Registry confirmation.**
 
-- **Owner task** (OWNER-QUESTIONS #17): compare the table with `npm view @infrabyx/<name>@<version> dist --registry=https://npm.pkg.github.com`, or with each package page.
+- Done (OWNER-QUESTIONS #17 closed, PL3-D-14): `registry-dist.yml` read the registry; the table above carries its values.
 - From the next release, `release.yml` writes the registry's own `dist.shasum` and `dist.integrity` to the job summary (`scripts/registry-dist.mjs`), so later gate reports quote the registry directly.

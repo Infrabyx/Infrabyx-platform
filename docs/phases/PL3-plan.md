@@ -2,7 +2,7 @@
 
 **Phase:** PL3 (IPB-14 §14.3) · **Packages:** `rules`, `workflow`, `notify`, `export` (first releases). Also ESIGN in `connectors` (owner decision D-09) and additions to `contracts`, `config`, `testing` and `connectors`.
 **Date:** 2026-10-27 · **Branch:** `claude/sweet-maxwell-mv0qk2`
-**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). The owner reviews plans in batches and may redirect at any time. Defaults taken for the owner are in section 13 and in `docs/OWNER-QUESTIONS.md` #7 to #15.
+**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). **Owner answers to #7–#16 applied on 27 Oct 2026** (PL3-D-04 to PL3-D-13; sections marked _(owner, PL3-D-nn)_). Spike results: `docs/phases/PL3-spike.md` (PL3-D-15). Open questions #18–#20 are in `docs/OWNER-QUESTIONS.md`.
 **Read for this plan:**
 
 - IPB-01 §01.4.4 (RULES, NOTIFY, PUSH, ESIGN, WORKFLOW, EMAIL, SMS, WHATSAPP rows), §01.4.10;
@@ -89,7 +89,7 @@ Every write goes through `kernel.mutate` with a ledger entry in the same transac
 - risk-class minimum delays;
 - two checkers for tenant delete.
 
-`workflow` adds timers, the inbox, SLAs and diffs **around** the engine and does not change those rules. Any change to approval policy (expiry, escalation that auto-decides, the `mc.*` rules) is a locked-list item and is parked (section 13, #10 and #11).
+`workflow` adds timers, the inbox, SLAs and diffs **around** the engine and does not change those rules. The owner approved two policy additions _(owner, PL3-D-07, PL3-D-08)_: request **expiry** with reminder and escalation (section 5.2, 5.4) and the tighten-only tenant keys `mc.*` (section 11). Escalation notifies and never decides.
 
 ### 3.4 Data in payloads
 
@@ -105,7 +105,11 @@ These limits follow Ecosystem §13.3 and IPB-01:
 
 - When a switch is on, a send for that channel is refused before any I/O with `IPB-NTF-004`, and the delivery is recorded as `killed`.
 - The PL1 FlagService rules apply: if the flag provider is unreachable, the snapshot and then the safe state decide.
-- **Safe state.** The PL1 safe state is "kill on" for every class (A-03). This means a flag-provider outage with no snapshot also stops security alerts on that channel. Exempting mandatory classes would weaken an IPB-02-83 control, so it is owner question #16 and is not built.
+- **Safe state.** The PL1 safe state is "kill on" for every class, with no bypass for mandatory classes _(owner, PL3-D-13)_. To make "no snapshot" impossible after the first boot:
+  - `FlagService.boot()` fetches a snapshot and persists it in `config.flag_snapshot` before the service reports ready, and every scheduled refresh persists it again;
+  - a process that starts during a provider outage loads the persisted snapshot;
+  - every evaluation served from the snapshot or the safe state raises the operations alert `ops.flags.provider_unreachable` (`onAlert` hook, throttled to one per key per 5 minutes).
+  - The IPB-01 24-hour snapshot limit is kept (#20).
 
 ## 4. RULES (`@infrabyx/rules`)
 
@@ -202,7 +206,10 @@ Engine adapters compile this format:
   - an `approval_request.diff` jsonb column (CONFIDENTIAL; a sealed variant when the payload is sealed);
   - an index on `(tenant_id, state, delay_until)`.
 - The engine's `request` takes an optional `diff` (`{ before, after }`), which is redacted to field names above INTERNAL. It produces the checker diff (IPB-07-15, 07-39).
-- No new states. No `expired` state is added (owner question #10).
+- **Expiry** _(owner, PL3-D-07)_: a new terminal state `expired` (CHECK constraint widened, expand-only) and `expires_at` set at request time:
+  - 7 days for every request;
+  - 72 hours for R3 requests on actions registered `financial: true`, and for every R4 and R5 request.
+  - A timer (`workflow`, both engines) moves an overdue `pending` request to `expired` through `kernel.mutate` with the ledger entry `approvals.request.expire` and the event `ApprovalExpired`. `decide` and `execute` refuse an expired request (`IPB-UX-012`, proposed with PR-017's batch), and the maker must raise it again.
 
 ### 5.3 Work Inbox (IPB-07-15, §07.4.9, `@IPB-07-AT-10` backend)
 
@@ -228,8 +235,9 @@ Engine adapters compile this format:
 ### 5.4 SLA reminders, bulk and Vidhi signals
 
 - **Reminders.**
-  - Each pending approval older than `workflow.approvals.remind_after_h` (default 24, assumption A-05) gets a NOTIFY class `approval.reminder` (mandatory) and a `due` inbox item.
-  - Reminders never decide, expire or escalate a request. Those are policy (#10).
+  - Each pending approval older than 24 hours (or the tenant's shorter `mc.reminder_hours`) gets a NOTIFY class `approval.reminder` (mandatory) to its checkers and a `due` inbox item _(owner, PL3-D-07)_.
+  - At 48 hours the request **escalates**: NOTIFY class `approval.escalated` (mandatory) and an inbox item for the tenant's `ORG_ADMIN` role. Escalation never decides.
+  - At `expires_at` the request expires (section 5.2).
 - **Bulk approve.** `decideMany(ids)` applies `decide` per id, each with its own audit entry. Above `ux.bulk.confirm_threshold` it requires a typed confirmation token, or returns `IPB-UX-006` (IPB-07-14).
 - **Temporal helper** `awaitApproval(approvalId)` for PL4 Vidhi missions: a workflow waits for a signal raised by the `ApprovalDecided` consumer. A late signal after cancellation is ignored (prepares `IPB-VID-022`).
 
@@ -344,12 +352,12 @@ Every class declares `resend`, and an unclassified class is treated as `hold`. W
 - **Vendor-side lists are not a source.** Brevo is send-only: no contact records and no manual blocks (OWN-15, PL2-D-65). `EmailPort.suppress` is called only where an adapter supports it, and only to mirror this list, never to read back from it.
 - **What a hit blocks.** A platform-scope `hard_bounce` or `complaint` blocks every class on that channel and address except `security` classes on another channel. A marketing opt-out blocks only `marketing` classes.
 - **Lifting.** An entry can be lifted only by an R2 maker-checker request. Lifting re-enables sending to a person who complained, so it gets a checker (A-08).
-- **Address key.** `address_hash` is the **Ecosystem `principal_hash`**: SHA-256 of the normalised address (lower-cased email; E.164 phone). The Ecosystem spec prescribes it for `MarketingConsentUpdated`, which keeps group-wide withdrawal joinable across products. An unkeyed hash of a phone number can be brute-forced, so the table is CONFIDENTIAL with RLS, never exported or logged, and owner question #8 asks whether to move to a keyed HMAC. Moving would be a re-hash migration, reversible while the list is small.
+- **Address key** _(owner, PL3-D-05)_: `address_hash` is **HMAC-SHA-256 (C-23)** of the normalised address (lower-cased email; E.164 phone) with the platform **group consent key**: one key per environment, held through KMS/SECRETS and shared with the products so a withdrawal is joinable group-wide. It is used from the first migration, while the lists are empty. The table stays CONFIDENTIAL with RLS, never exported or logged. The Ecosystem `principal_hash` is still unkeyed SHA-256 on the wire; NOTIFY computes it only at the event boundary and never stores it, and platform request PR-018 asks for the keyed form.
 - **Retention.** Entries are kept while active, plus the audit retention after `lifted_at`. Changing that is locked (#13).
 
 ### 6.6 Marketing consent before the CONSENT port (Ecosystem §6.39, IPB-02-26)
 
-- **Table `notify.marketing_consent`.** `(tenant_id, principal_hash, purpose, brand_pack_id)` → `state` (GRANTED or WITHDRAWN), `consentref`, `notice_version`, `updated_at`.
+- **Table `notify.marketing_consent`.** `(tenant_id, principal_hash` (keyed, C-23)`, purpose, brand_pack_id)` → `state` (GRANTED or WITHDRAWN), `consentref`, `notice_version`, `updated_at`.
 - **Consuming.** NOTIFY consumes `MarketingConsentUpdated` and must stop marketing within 60 s. A test asserts the withdrawal is applied before the next send.
 - **Emitting.** NOTIFY emits `MarketingConsentUpdated` with `state = WITHDRAWN` on unsubscribe, SMS STOP and WhatsApp STOP (`channel`: EMAIL_LINK, SMS_STOP or WHATSAPP_STOP).
 - **Default.** A marketing class with no GRANTED record is not sent (default deny).
@@ -361,7 +369,7 @@ Every class declares `resend`, and an unclassified class is treated as `hold`. W
 | Channel  | Port                                | Notes                                                                                                                                                                                                                       |
 | -------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | in-app   | none (table `notify.inapp_message`) | Read by the PL5 shell via API. Title INTERNAL, body fetched by deep link                                                                                                                                                    |
-| email    | EMAIL (`ses`, `brevo`)              | Marketing gets `List-Unsubscribe` and a one-click POST link (random one-time token stored server-side, see #9). Accessible HTML with a text part (IPB-06-27)                                                                |
+| email    | EMAIL (`ses`, `brevo`)              | Marketing gets `List-Unsubscribe` and a one-click POST link (random one-time token stored server-side and revocable, _owner, PL3-D-06_). Accessible HTML with a text part (IPB-06-27)                                       |
 | SMS      | SMS (`msg91`, `gupshup-sms`)        | DLT template from the catalogue; live SMS only after DLT registration (PL2-D-17)                                                                                                                                            |
 | WhatsApp | WHATSAPP (`gupshup`, `meta-cloud`)  | Utility and authentication only while `mkt.meta.enabled` is false; never for collections or legal notices                                                                                                                   |
 | push     | **PUSH (new port)**                 | Interface per IPB-01: `register`, `send`, `sendTopic`, `unregister`. Reference `expo`, alternative `fcm`, both on stubs and `unproven` (they need Expo and Firebase accounts, #14). A memory fake is the second alternative |
@@ -404,7 +412,7 @@ Inbound delivery reports reuse the PL2 `acceptWebhook` (verify, inbox dedupe, as
   - amounts as fixed 2-decimal strings with a `currency` column;
   - code plus label columns.
   - Each dataset also has `.schema.json` and optional `.jsonl`.
-  - XLSX is generated with a pinned library [VERIFY licence; spike]. If none passes the licence allow-list, XLSX waits for docgen and CSV ships alone (#15).
+  - **No XLSX in PL3** _(owner, PL3-D-12)_: `exceljs` fails the licence allow-list (`buffers@0.1.1` has no licence), so XLSX waits for `docgen`.
 - **Original documents** keep their bytes. The SHA-256 must equal the producer's hash.
 - **Audit trail.** `audit-events.jsonl` per month, verifiable offline with the PL1 chain verifier logic, which is copied into `verify/`.
 - **Naming.** Windows-safe and NFC, path ≤ 240 characters, and **no personal data in any file or folder name** (`ids_only`).
@@ -413,8 +421,8 @@ Inbound delivery reports reuse the PL2 `acceptWebhook` (verify, inbox dedupe, as
   - `control_totals`, reconciled to the live system at the snapshot instant (a difference fails the job);
   - `predecessor_archive_id`;
   - a pack-level SHA-256 over the sorted file list.
-- **Signing (parked).** The detached JWS `manifest.json.jws` with the tenant's export-signing key is **not produced in PL3** until the owner approves the signing choice (cryptography locked list, #9). The writer has a `signer` hook, unset by default. Without it, `manifest.json` records `"signature": "none (pending C-22)"` and the README says how to verify the hashes. Turning signing on later adds a file and changes nothing else.
-- **Restricted folders** (HR, privileged legal, collections and recovery: encrypted ZIPs with a second approver) are **refused** in PL3 with `IPB-RES-001`. That is cryptography plus an approval policy (#9). Aadhaar and card data are never exported.
+- **Signing (C-22)** _(owner, PL3-D-06)_: the writer produces the detached JWS `manifest.json.jws` (RFC 7515 Appendix F, ES256) over `manifest.json`, signed through KMS `sign` with the platform export-signing key (`kid` = KMS key id). The README says how to verify it offline, and `verify/` checks it as well as the hashes.
+- **Restricted folders** (HR, privileged legal, collections and recovery: encrypted ZIPs with a second approver) stay **refused** with `IPB-RES-001` until a product needs them _(owner, PL3-D-06)_. Aadhaar and card data are never exported.
 
 ### 7.3 Jobs and API
 
@@ -423,7 +431,7 @@ Inbound delivery reports reuse the PL2 `acceptWebhook` (verify, inbox dedupe, as
 - **Lifecycle.**
   - Jobs run on QUEUE and write to STORAGE in the `EXPORT` bucket class; downloads use a presigned URL.
   - Each download records its SHA-256 in the ledger, and re-downloading the same version gives the same hash (IPB-09-37).
-  - `ExportRequested` and `ExportCompleted` are emitted. Payloads describe the job, never its content. `ExportCompleted` is "signed" in the Ecosystem spec, which waits on #9 like the manifest.
+  - `ExportRequested` and `ExportCompleted` are emitted. Payloads describe the job, never its content. `ExportCompleted` is signed as the Ecosystem spec requires: a detached JWS (C-22) over the JCS (RFC 8785) form of the CloudEvent without its signature attribute (Ecosystem §3 regulated messages; RFC 9421 in transit arrives with outbound delivery) _(owner, PL3-D-06)_.
 - **Policy.**
   - Tenant export is always available to `ORG_OWNER` (R0; IPB-02-18, 02-82). The `trust.export.enabled` setting is locked true.
   - Rate limit `api.export`: 5 concurrent and 20 a day per principal, counted in PostgreSQL until a CACHE port exists. Exports are rate-limited, never blocked.
@@ -455,10 +463,12 @@ Both checks join `ci.yml` `verify` and the required-check list. Both run only wh
 - **Port interface** per IPB-01 ESIGN, in `contracts/ports/esign.ts`:
   - create a signing request, get its status, download the signed document, cancel, verify a webhook;
   - signature types Aadhaar eSign, DSC and electronic, never silently downgraded (a downgrade needs signer consent and a RULES legal-sufficiency rule).
-- **Adapters.** `leegality` (interim reference) and `digio` (alternative), both on vendor stubs, test mode only and `unproven`. Their sandbox legs need vendor test accounts, so they get `port-contract` issues at the PL3 gate.
+- **Adapters** _(owner, PL3-D-04)_: `leegality` (interim reference) and `digio` (alternative), both on vendor stubs, test mode only and `unproven`. Their sandbox legs need vendor test accounts, so they get `port-contract` issues at the PL3 gate.
+- **Interface** as IPB-01 names it: `createEnvelope`, `sendForSignature`, `getStatus`, `downloadSigned`, `aadhaarEsign`, `dscSign`, `verifySignature`, `handleWebhook`.
+- **Webhooks are untrusted triggers** (PL3-D-15, #19): Leegality's `mac` is HMAC-SHA1, which is not an approved C-item, and no Digio signature scheme was found, so the adapter acts only on the status it reads back from the vendor API.
 - **Risk class.** "sign" is R3: an agent may be the maker only, with per-action human confirmation (IPB-02 §02.4.6.1).
 - **Documents** travel by reference (`document_id`, `sha256`) and are never inline. Inbound webhook signatures use the vendor scheme inside the adapter. If a vendor's scheme needs a new primitive, the adapter waits for the owner (C-items).
-- **Sequencing.** ESIGN is the last build session. The owner may move it out of PL3 (#7).
+- **Sequencing.** ESIGN is the last build session _(owner, PL3-D-04)_.
 
 ## 9. Owner decisions already given for PL3
 
@@ -497,6 +507,15 @@ NOTIFY marks a Gupshup delivery `delivered` only from a confirmed event.
 
 PL3 only makes that later work cheap: `workflow` gives it the approval request and inbox item it will use. Token signing goes through that phase's cryptography review.
 
+### 9.5 Cryptography items approved for PL3
+
+| Item     | Use                                       | Choice                                                                                                                                                                                                                                                                               |
+| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **C-22** | Export manifest and `ExportCompleted`     | Detached JWS (RFC 7515 Appendix F), ES256 through KMS `sign` (C-14 `ECC_NIST_P256`, `ECDSA_SHA_256`, DIGEST); one platform export-signing key per environment; `kid` = KMS key id; payload = the manifest bytes, or JCS (RFC 8785) of the CloudEvent without its signature attribute |
+| **C-23** | Suppression and marketing-consent address | HMAC-SHA-256 of the normalised address (lower-cased email; E.164 phone) with the group consent key, one per environment, read through SECRETS (wrapped by KMS) and shared with the products; full 64-hex output; computed only in `@infrabyx/crypto`                                 |
+
+Both are owner-approved (PL3-D-05, PL3-D-06). Anything else (RS256 for FCM, HMAC-SHA1 for Leegality) is not, and is #18 and #19.
+
 ## 10. Contracts additions
 
 - **Ports:** RULES, NOTIFY, PUSH, ESIGN. The catalogue gets `interfaceDefined: true` for each.
@@ -520,7 +539,6 @@ PL3 only makes that later work cheap: `workflow` gives it the approval request a
 - `rules.cel.max_cost` (default 10 000, A-11);
 - `rules.eval.timeout_ms` (50);
 - `rules.publish.requires_checker` (true, locked);
-- `workflow.approvals.remind_after_h` (24);
 - `workflow.timers.engine` (`temporal` | `pg`);
 - `int.push.provider`, `int.push.fcm_project_id`, `int.push.apns_topic`;
 - `int.notify.dedupe_window_h` (24);
@@ -529,7 +547,15 @@ PL3 only makes that later work cheap: `workflow` gives it the approval request a
 
 **Flags:** `kill.msg.email`, `kill.msg.sms`, `kill.msg.whatsapp`, `kill.msg.push`, `kill.msg.inapp`.
 
-**Not registered.** The `mc.*` policy keys stay unregistered (#11).
+**Maker-checker tenant keys** _(owner, PL3-D-08)_: ORG tier, governed (each change is itself maker-checker), tighten-only. The validator refuses any value that loosens the platform floor:
+
+- `mc.extra_actions` adds actions to maker-checker and can never remove one from the platform floor (`RISK_POLICY`);
+- `mc.amount_threshold.<action>` (minor units) can only be lowered;
+- `mc.dual_checker_above.<action>` (minor units): above it, two distinct checkers;
+- `mc.checker_roles.<action>` is a subset of the action's allowed checker roles;
+- `mc.reminder_hours` (1–24) can only shorten the 24 h reminder.
+
+`workflow.approvals.remind_after_h` is dropped: the 24 h reminder is platform policy, and tenants shorten it through `mc.reminder_hours`.
 
 ## 12. Acceptance tests and exit gate
 
@@ -606,7 +632,7 @@ PL3 only makes that later work cheap: `workflow` gives it the approval request a
 | 15  | XLSX in archives before docgen exists                                                                                                                                               | Only if a pinned library passes the licence allow-list; else CSV only                                                                    | No                                 |
 | 16  | Should mandatory classes (security alerts, maker-checker requests) bypass `kill.msg.<channel>` when the flag provider is unreachable and no snapshot exists?                        | No: PL1 safe state "kill on" for every class; in-app stays the fallback only if `kill.msg.inapp` is off                                  | **Yes**: weakens an IPB-02 control |
 
-None of these blocks sessions 1 to 4. Items #9 and #13 park only the signing and retention parts of sessions 4 and 5.
+**All answered on 27 Oct 2026** (PL3-D-04 to PL3-D-14): #7 ESIGN stays; #8 keyed HMAC (C-23); #9 manifest and event signing (C-22), restricted refused, random unsubscribe token; #10 expiry with reminder and escalation; #11 tighten-only `mc.*`; #12 R4; #13 defaults; #14 owner task; #15 no XLSX (licence); #16 no bypass, persisted snapshot and alert. New: #18 FCM token minting, #19 Leegality HMAC-SHA1, #20 snapshot age (defaults in use, nothing blocked).
 
 ## 14. Risks
 
@@ -616,5 +642,5 @@ None of these blocks sessions 1 to 4. Items #9 and #13 park only the signing and
 | R3-02 | Quiet hours and digests across time zones and DST                       | Time computed with `Intl` and an injected clock; tests at DST edges for non-Indian time zones                    |
 | R3-03 | A hold-for-review class sent twice through a path outside NOTIFY        | Adapters stay at-least-once only for direct calls; the threat model notes that products must send through NOTIFY |
 | R3-04 | Golden-archive drift from library updates (CSV quoting, JSON key order) | Canonical writers with sorted keys; Renovate PRs touching export run the diff                                    |
-| R3-05 | Unkeyed address hashes in the suppression list                          | CONFIDENTIAL with RLS, never exported or logged; owner question #8                                               |
-| R3-06 | Unsigned manifests until #9                                             | README states it plainly; per-file and pack SHA-256 still verifiable offline                                     |
+| R3-05 | Address hashes in the suppression list                                  | Keyed HMAC (C-23, PL3-D-05); CONFIDENTIAL with RLS, never exported or logged                                     |
+| R3-06 | Export-signing key misuse                                               | KMS `sign` only, one purpose-bound key (C-22); verification offline from the README                              |

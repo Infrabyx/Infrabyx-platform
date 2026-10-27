@@ -2,28 +2,31 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 closed at gate A (2026-10-27); PL3 started.** PL3 plan `docs/phases/PL3-plan.md` written and self-reviewed (PL3-D-01); next is PL3 session 1 (spike, contracts, config). Continuous build mode (PL2-D-41)             |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                      |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.0 (release run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                        |
-| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                   |
+| Item                  | Value                                                                                                                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 session 1** (2026-10-27). Patch 0.1.1 published; owner answers #7–#17 applied (PL3-D-04 to PL3-D-14); spike done (PL3-D-15); contracts and config in progress. Continuous build mode (PL2-D-41)                                                           |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
+| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                       |
 
-## What products can install (PL2 gate A, 2026-10-27)
+## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
-| Package                | Version | shasum (SHA-1, reproduced; owner confirms against the registry, #17) |
-| ---------------------- | ------- | -------------------------------------------------------------------- |
-| `@infrabyx/contracts`  | 0.2.0   | `812119f57992b4a96a9a06ff5cc25235c6f9b6d1`                           |
-| `@infrabyx/crypto`     | 0.2.0   | `d999360aa85318cf5835f9bc68cded9817b69d91`                           |
-| `@infrabyx/config`     | 0.2.0   | `4e3ecaa978abc82d6133270d4ff23c6d280f9b6c`                           |
-| `@infrabyx/tenancy`    | 0.2.0   | `740d4167d6b6b96dde549c5447b0fc29e2f6b194`                           |
-| `@infrabyx/audit`      | 0.1.1   | `333771decdbab2ce0e5410efb3c4270d58c24b65`                           |
-| `@infrabyx/seed`       | 0.2.0   | `378f258996e5c7d3c1941e786efd786e8afc276d`                           |
-| `@infrabyx/testing`    | 0.2.0   | `25f5f0b4ddb12b243e8715173394a99acbb5fc27`                           |
-| `@infrabyx/connectors` | 0.1.0   | `5e97dd5c6a6ed8a53a6f057fc8bf07388d5ad6d7`                           |
+| Package                | Version | shasum (SHA-1, from the registry, PL3-D-14) |
+| ---------------------- | ------- | ------------------------------------------- |
+| `@infrabyx/contracts`  | 0.2.0   | `812119f57992b4a96a9a06ff5cc25235c6f9b6d1`  |
+| `@infrabyx/crypto`     | 0.2.0   | `d999360aa85318cf5835f9bc68cded9817b69d91`  |
+| `@infrabyx/config`     | 0.2.0   | `4e3ecaa978abc82d6133270d4ff23c6d280f9b6c`  |
+| `@infrabyx/tenancy`    | 0.2.0   | `74125a19c1b64ee8d7d12c802affc590d2f7dea9`  |
+| `@infrabyx/audit`      | 0.1.1   | `333771decdbab2ce0e5410efb3c4270d58c24b65`  |
+| `@infrabyx/seed`       | 0.2.0   | `abe263d2da43e54456456408b98777f6884255ea`  |
+| `@infrabyx/testing`    | 0.2.0   | `ec39fd2e6f61c1329567898faa6e915df5c6f6e2`  |
+| `@infrabyx/connectors` | 0.1.0   | `5e97dd5c6a6ed8a53a6f057fc8bf07388d5ad6d7`  |
+| `@infrabyx/connectors` | 0.1.1   | `8b41faac6d43444d4fd82ebef4235967748c640d`  |
 
-SHA-512 integrity values are in `docs/phases/PL2-gate-A.md` §6. To adopt this release, products must change the following (full list in §5 of that report):
+**Patch 0.1.1 (`@infrabyx/connectors`, PL3-D-02).** Use 0.1.1 instead of 0.1.0. In 0.1.0, `@infrabyx/connectors/workflow` and `./workflow/worker` fail to load in plain Node ESM ("`@temporalio/proto` does not provide an export named `temporal`"). 0.1.1 fixes this and has no API, migration, environment or settings change: bump the version only. Every release now passes `consumer-smoke`, which packs, installs and imports every export with plain Node.
+
+SHA-512 integrity values are in `docs/phases/PL2-gate-A.md` §6 (registry values; three corrected, PL3-D-14). To adopt this release, products must change the following (full list in §5 of that report):
 
 - **Versions:** move all `@infrabyx/*` packages together and add `@infrabyx/connectors`.
 - **Migrations:** `connectors/0001_init`, `0002_session_revocation` and `0003_pgboss` run through the existing `infrabyx-migrate` (tenancy 0.2.0), with no new command; run `infrabyx-rls-lint` afterwards.
@@ -59,6 +62,21 @@ SHA-512 integrity values are in `docs/phases/PL2-gate-A.md` §6. To adopt this r
 - Release (PR #10, PL1-D-18): 0.1.0 of the seven packages published by `release.yml` run 10, tags `@infrabyx/<pkg>@0.1.0` pushed.
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
+
+## Patch 0.1.1 and owner answers (2026-10-27)
+
+- **#42**, the connectors ESM fix and `consumer-smoke` (PL3-D-02, PL3-D-03), and **#43**, the version PR. Release run 32 published `@infrabyx/connectors@0.1.1`. `consumer-smoke` runs in `ci.yml` and before every publish.
+- **OWNER-QUESTIONS #17 closed** (PL3-D-14). `registry-dist.yml` read the registry:
+  - five of the eight versions matched the gate-A report;
+  - `tenancy`, `seed` and `testing` 0.2.0 differed, because of bin file modes and the order of `workspace:*` keys in `package.json`;
+  - the report now carries the registry values.
+- **Owner answers #7–#16 recorded and applied to the PL3 plan** (PL3-D-04 to PL3-D-13):
+  - new cryptography items C-22 (JWS manifests and the signed `ExportCompleted`) and C-23 (keyed address hash);
+  - approval expiry, reminder and escalation;
+  - tighten-only `mc.*` keys;
+  - the persisted flag snapshot with an operations alert.
+- **Platform requests:** PR-018 (keyed `principal_hash`) and PR-019 (`IPB-UX-012`, `ApprovalExpired`, `ApprovalEscalated`, `FlagProviderUnreachable`).
+- **Session 1 spike** in `docs/phases/PL3-spike.md` (PL3-D-15). New questions #18 (FCM token minting), #19 (Leegality HMAC-SHA1) and #20 (snapshot age); defaults are in use and nothing is blocked.
 
 ## Handover (2026-10-27, end of the session that closed PL2 gate A)
 
@@ -128,7 +146,6 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- Patch release `@infrabyx/connectors` 0.1.1 (plain-Node ESM import of `@temporalio/proto`, PL3-D-02) with the new `consumer-smoke` check; registry checksums from `registry-dist.yml` (#17, PL3-D-03).
 - PL3 session 1: spike, then contracts and config (PL3 plan §12).
 
 ## PL2 session 7 (2026-10-27)
