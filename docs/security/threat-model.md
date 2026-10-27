@@ -295,6 +295,7 @@ Types, schemas and error codes only; no I/O.
 - **T:** feedback or reviews gamed to change a skill's level. Control: one rating per person and run; agents cannot rate or review; only the skill's owner role reviews samples; demotion only lowers a level (raising stays the R4 promotion flow); samples are drawn deterministically, so a retry cannot pick or drop a task.
 - **I:** the digest reveals other people's work. Control: a person's digest and action log cover their own tasks; the tenant digest and full log are for ORG_ADMIN or ORG_OWNER; digests hold counts and ids only; usage comes from `ai` without content.
 - **R:** an artefact loses its AI label. Control: `disclosure` builds the label (with run id) and the `ai_provenance` sidecar from the run; tenants cannot remove them (docgen placement is deferred).
+- **I:** the tenant export carries the AI run log and the Vidhi action log (`REF-EXPORT-1.2`). Control: both are metadata only (no prompt, output, argument or correction text; sealed columns are refused by the map gate's `IPB-EXP-004` check); exports stay ORG_OWNER-only or approved.
 - **Residual:** the QA floor is a default (#40).
 
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:legal_entity",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:legal_entity",
   "title": "legal_entity",
-  "description": "Rows of tenancy.legal_entity exported under REF-EXPORT-1.1",
+  "description": "Rows of tenancy.legal_entity exported under REF-EXPORT-1.2",
   "type": "object",
   "properties": {
     "id": {

@@ -1,7 +1,7 @@
 Demo Co - REF Archive - Full Tenant - as of 2000-01-01
 
 PURPOSE AND SCOPE
-  This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.1 and archive standard 1.0 (folder profile platform_reference_v1).
+  This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.2 and archive standard 1.0 (folder profile platform_reference_v1).
   Archive id: arc_00000000000000000000000000. Predecessor: none.
 
 AS OF
@@ -13,7 +13,7 @@ REQUESTER AND APPROVERS
 
 FOLDER GUIDE
   00 Start Here: this README, the manifests and signature, the data dictionary, relationships, code tables, JSON Schemas and the offline verifier.
-  01 Data: one CSV (and one JSONL) per dataset: approval_decision, approval_request, inbox_item, legal_entity, membership, notification, setting, tenant.
+  01 Data: one CSV (and one JSONL) per dataset: ai_runs, approval_decision, approval_request, inbox_item, legal_entity, membership, notification, setting, tenant, vidhi_actions.
   02 Audit Trail: the audit trail, one JSONL file per month, hash-chained.
 
 OPENING CSV FILES
