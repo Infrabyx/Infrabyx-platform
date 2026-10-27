@@ -1,5 +1,36 @@
 # @infrabyx/tenancy
 
+## 0.2.0
+
+### Minor Changes
+
+- 7a36249: `FieldCrypto` seals with envelope format v2 under `{ tenant_id, purpose: "field" }` (PL2-D-50), adds `rewrapField` and `formatVersion`; v1 fields stay readable.
+- 858a76a: `infrabyx-migrate` applies `@infrabyx/connectors` migrations after seed whenever the package is
+  installed, so products keep a single migrate command (PL2-D-34).
+
+### Patch Changes
+
+- Updated dependencies [5482043]
+- Updated dependencies [efd00ab]
+- Updated dependencies [2969424]
+- Updated dependencies [858a76a]
+- Updated dependencies [9ac878e]
+- Updated dependencies [ded1ae2]
+- Updated dependencies [9c774b9]
+- Updated dependencies [9ac878e]
+- Updated dependencies [9ac878e]
+- Updated dependencies [858a76a]
+- Updated dependencies [7a36249]
+- Updated dependencies [7a36249]
+- Updated dependencies [13c7379]
+- Updated dependencies [13c7379]
+- Updated dependencies [13c7379]
+- Updated dependencies [0c4535d]
+- Updated dependencies [0c4535d]
+  - @infrabyx/crypto@0.2.0
+  - @infrabyx/config@0.2.0
+  - @infrabyx/contracts@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes
