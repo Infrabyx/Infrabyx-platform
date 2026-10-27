@@ -23,7 +23,7 @@ import {
   type ApprovalRecord,
   type ApprovalsEngine,
 } from "@infrabyx/tenancy";
-import type { InboxService } from "./inbox.js";
+import type { InboxItem, InboxService } from "./inbox.js";
 import type { DueTimer, TimerKind, WorkflowTimers } from "./timers.js";
 
 const HOUR = 3_600_000;
@@ -33,10 +33,19 @@ const PENDING_TIMERS: readonly TimerKind[] = [
   "approval.expire",
 ];
 
-/** Sends the mandatory NOTIFY classes `approval.reminder` and `approval.escalated` (session 4). */
+/**
+ * Sends the mandatory NOTIFY classes `approval.reminder` and `approval.escalated` (session 4), and
+ * `inbox.escalated` for escalated inbox items (UNDETERMINED rule decisions, PL3-D-21).
+ */
 export interface ApprovalNotifier {
   reminder(tx: Tx, r: ApprovalRecord, checkerRoles: readonly string[]): Promise<void>;
   escalated(tx: Tx, r: ApprovalRecord, role: string): Promise<void>;
+  itemEscalated?(
+    tx: Tx,
+    item: InboxItem,
+    role: string,
+    excludePrincipal: string | null,
+  ): Promise<void>;
 }
 
 export interface ApprovalWorkflowOptions {

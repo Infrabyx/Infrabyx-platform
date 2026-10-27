@@ -5,7 +5,13 @@ import { IpbError } from "@infrabyx/contracts/errors";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import { VerifiedClaims } from "@infrabyx/contracts/ports";
-import { isAgentRole, isPlatformRole } from "@infrabyx/contracts/roles";
+import {
+  SERVICE_READER_ROLES,
+  isAgentRole,
+  isPlatformRole,
+  isServiceReaderRole,
+  type ServiceReaderRole,
+} from "@infrabyx/contracts/roles";
 
 export type TenantContext = KernelContext;
 
@@ -25,6 +31,10 @@ export function contextFromClaims(
   extras: ContextExtras = {},
 ): TenantContext {
   const c = VerifiedClaims.parse(claims);
+  if (c.roles.some(isServiceReaderRole))
+    throw new IpbError("IPB-SEC-005", {
+      detail: "service reader roles are in-process identities and never come from a token",
+    });
   const ctx: TenantContext = {
     tenantId: c.tid,
     principal: {
@@ -48,15 +58,49 @@ export function contextFromClaims(
 export const isAgentPrincipal = (ctx: KernelContext): boolean =>
   ctx.principal.type === "agent" || ctx.principal.roles.some(isAgentRole);
 
-/** Platform scope only for non-agent principals holding a PLT_* role (IPB-02-11). */
+/** The service reader role a context carries (OWNER-QUESTIONS #22), if any. */
+export function serviceReaderRole(ctx: KernelContext): ServiceReaderRole | undefined {
+  return ctx.principal.roles.find(isServiceReaderRole);
+}
+
+/**
+ * Platform scope only for non-agent principals holding a PLT_* role (IPB-02-11), or for a service
+ * principal holding exactly one service reader role and nothing that widens it (PL3-D-21). A
+ * service reader never impersonates and never uses break-glass, in any scope.
+ */
 export function assertValidContext(ctx: KernelContext): void {
   if (!ctx.tenantId) throw new Error("context has no tenant");
+  const reader = serviceReaderRole(ctx);
+  if (reader) {
+    const readers = ctx.principal.roles.filter(isServiceReaderRole);
+    if (
+      ctx.principal.type !== "service" ||
+      readers.length !== 1 ||
+      ctx.principal.roles.some(isPlatformRole) ||
+      ctx.act ||
+      ctx.breakGlassGrantId
+    )
+      throw new IpbError("IPB-SEC-005", {
+        detail: `${reader} is a single-purpose service reader: no other platform role, impersonation or break-glass`,
+      });
+    return;
+  }
   if (
     ctx.scope === "platform" &&
     (isAgentPrincipal(ctx) || !ctx.principal.roles.some(isPlatformRole))
   ) {
     throw new IpbError("IPB-SEC-005", { detail: "a platform context needs a PLT_* role" });
   }
+}
+
+/** The read-only platform context of a service reader (PL3-D-21). */
+export function serviceReaderContext(role: ServiceReaderRole, principalId: string): KernelContext {
+  if (!(role in SERVICE_READER_ROLES)) throw new Error(`unknown service reader role ${role}`);
+  return {
+    tenantId: PLATFORM_TENANT_ID,
+    scope: "platform",
+    principal: { id: principalId, type: "service", roles: [role] },
+  };
 }
 
 export { PLATFORM_TENANT_ID };
@@ -75,4 +119,16 @@ export function requireContext(): TenantContext {
   if (!c)
     throw new Error("no tenant context: build it from verified claims with contextFromClaims()");
   return c;
+}
+
+/** Whether any member of the transaction's tenant holds `role` (tenancy.membership, RLS-scoped). */
+export async function tenantHasRoleHolder(
+  tx: { query<R>(text: string, params?: readonly unknown[]): Promise<{ rows: R[] }> },
+  role: string,
+): Promise<boolean> {
+  const r = await tx.query<{ ok: boolean }>(
+    "select exists (select 1 from tenancy.membership where $1 = any(roles)) as ok",
+    [role],
+  );
+  return r.rows[0]?.ok === true;
 }

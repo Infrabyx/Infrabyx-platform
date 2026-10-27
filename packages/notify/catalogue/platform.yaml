@@ -64,6 +64,18 @@ classes:
     templates:
       email: { key: approval.escalated, locales: [en, hi] }
       inapp: { title_key: ntf.approval.escalated.title }
+  - id: inbox.escalated
+    category: maker_checker
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.inbox.escalated
+    deep_link: /inbox/{id}
+    templates:
+      email: { key: inbox.escalated, locales: [en, hi] }
+      inapp: { title_key: ntf.inbox.escalated.title }
   - id: inbox.mention
     category: transactional
     resend: safe

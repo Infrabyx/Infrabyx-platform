@@ -1,34 +1,34 @@
 // Durable timers (PL3 plan §5.1, PL3-D-19). Every timer is a `workflow.timer` row written in the
 // transaction that needs it, so a timer can never be lost. The PostgreSQL poller (`tick`) reads due
-// rows across tenants in a read-only platform context and fires each in its own tenant's context;
+// rows across tenants as the service reader SVC_SCHEDULER (timer columns only, every read ledgered
+// per tenant; PL3-D-21) and fires each in its own tenant's context;
 // it is the reference engine and always runs as the catch-up reconciler. A Temporal engine
 // (`TemporalTimers` in `@infrabyx/connectors/workflow`) may fire them on time as well; firing is
 // idempotent because every handler re-checks the state it acts on.
 import type { KernelContext, MutationKernel, AuditSink, Tx } from "@infrabyx/contracts/kernel";
 import type { TimerEngine } from "@infrabyx/contracts/ports";
+import { ServiceReader, type ServiceReadRecord } from "@infrabyx/tenancy";
 
 export const TIMER_KINDS = [
   "approval.execute",
   "approval.remind",
   "approval.escalate",
   "approval.expire",
+  "inbox.escalate",
 ] as const;
 export type TimerKind = (typeof TIMER_KINDS)[number];
 
 /** Attempts before a failing timer is given up and reported (`job_failed`). */
 export const MAX_TIMER_ATTEMPTS = 5;
 
-/** The service identity timers run as: tenant context for firing, read-only platform for polling. */
+/** The service identity timers fire as, in the timer's own tenant context. */
 export const TIMER_PRINCIPAL_ID = "svc_workflow_timers";
 export const timerContext = (tenantId: string): KernelContext => ({
   tenantId,
   principal: { id: TIMER_PRINCIPAL_ID, type: "service", roles: ["SVC_WORKFLOW"] },
 });
-const pollerContext: KernelContext = {
-  tenantId: "tnt_platform",
-  scope: "platform",
-  principal: { id: TIMER_PRINCIPAL_ID, type: "service", roles: ["SVC_WORKFLOW", "PLT_AUDITOR_RO"] },
-};
+/** The poller's identity: the cross-tenant service reader SVC_SCHEDULER (OWNER-QUESTIONS #22). */
+export const TIMER_POLLER_PRINCIPAL_ID = "svc_scheduler";
 
 export interface DueTimer {
   tenantId: string;
@@ -47,7 +47,7 @@ export const timerId = (tenantId: string, kind: TimerKind, ref: string): string 
 /** Parse a `timerId` back into its parts (for the Temporal activity). */
 export function parseTimerId(id: string): { tenantId: string; kind: TimerKind; ref: string } {
   const m =
-    /^ipb-timer\.(tnt_[a-z0-9_]+|tnt_[0-9A-HJKMNP-TV-Z]{26})\.(approval\.[a-z]+)\.((apr|sca)_[0-9A-HJKMNP-TV-Z]{26})$/.exec(
+    /^ipb-timer\.(tnt_[a-z0-9_]+|tnt_[0-9A-HJKMNP-TV-Z]{26})\.((?:approval|inbox)\.[a-z]+)\.((apr|sca|ibx)_[0-9A-HJKMNP-TV-Z]{26})$/.exec(
       id,
     );
   if (!m || !(TIMER_KINDS as readonly string[]).includes(m[2] as string))
@@ -71,11 +71,22 @@ export interface WorkflowTimersOptions {
   onGiveUp?: (tx: Tx, t: DueTimer, error: string) => Promise<void>;
   /** Engine errors are never thrown to the caller's transaction; they arrive here. */
   onEngineError?: (e: unknown) => void;
+  /** Operational log of each cross-tenant poll that found timers (the ledger has it as well). */
+  onServiceRead?: (r: ServiceReadRecord) => void;
 }
 
 export class WorkflowTimers {
   private readonly handlers = new Map<TimerKind, TimerHandler>();
-  constructor(private readonly o: WorkflowTimersOptions) {}
+  private readonly poller: ServiceReader;
+  constructor(private readonly o: WorkflowTimersOptions) {
+    this.poller = new ServiceReader({
+      kernel: o.kernel,
+      audit: o.audit,
+      role: "SVC_SCHEDULER",
+      principalId: TIMER_POLLER_PRINCIPAL_ID,
+      ...(o.onServiceRead ? { onRead: o.onServiceRead } : {}),
+    });
+  }
 
   on(kind: TimerKind, handler: TimerHandler): this {
     this.handlers.set(kind, handler);
@@ -110,20 +121,18 @@ export class WorkflowTimers {
 
   /** Poll once: fire every due timer (at most `limit`). Returns how many fired. */
   async tick(limit = 100): Promise<number> {
-    const due = await this.o.kernel.read(pollerContext, async (tx) => {
-      const r = await tx.query<{
-        tenant_id: string;
-        kind: TimerKind;
-        ref: string;
-        fire_at: Date;
-        attempts: number;
-      }>(
-        `select tenant_id, kind, ref, fire_at, attempts from workflow.timer
-          where state = 'scheduled' and fire_at <= now() order by fire_at limit $1`,
-        [limit],
-      );
-      return r.rows;
-    });
+    const due = await this.poller.read<{
+      tenant_id: string;
+      kind: TimerKind;
+      ref: string;
+      fire_at: Date;
+      attempts: number;
+    }>(
+      "workflow.timer",
+      `select tenant_id, kind, ref, fire_at, attempts from workflow.timer
+        where state = 'scheduled' and fire_at <= now() order by fire_at limit $1`,
+      [limit],
+    );
     let fired = 0;
     for (const t of due) if (await this.fire(t.tenant_id, t.kind, t.ref)) fired += 1;
     return fired;

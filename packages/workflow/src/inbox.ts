@@ -1,7 +1,10 @@
 // Work Inbox (IPB-07-15, §07.4.9; PL3 plan §5.3). `InboxService` implements the `HumanQueue` that
 // rules, notify and connectors raise items through, so none of them imports this package. An item
 // is visible to its user, or to every holder of its role, except the principal it excludes (the
-// maker of an approval request). Items resolve when the underlying record changes.
+// maker of an approval request, or of the request behind an UNDETERMINED rule decision). Items
+// resolve when the underlying record changes. An item raised with `escalateAfterHours` that is
+// still open then is escalated once to ORG_ADMIN by an `inbox.escalate` timer, as approval
+// requests are (OWNER-QUESTIONS #21, PL3-D-21); escalation notifies and never resolves.
 import type {
   AuditSink,
   HumanQueue,
@@ -15,7 +18,10 @@ import type {
 import { INBOX_ITEM_TYPES } from "@infrabyx/contracts/kernel";
 import { internalEvent } from "@infrabyx/config/events";
 import { newId, type SecretKey } from "@infrabyx/crypto";
-import { NotFoundError } from "@infrabyx/tenancy";
+import { APPROVAL_ESCALATION_ROLE, NotFoundError } from "@infrabyx/tenancy";
+import type { WorkflowTimers } from "./timers.js";
+
+const HOUR = 3_600_000;
 
 export interface InboxItem {
   id: string;
@@ -42,6 +48,13 @@ export interface InboxServiceOptions {
   product: string;
   outbox?: OutboxWriter;
   pseudonymKey?: SecretKey;
+  /** Sends the mandatory `inbox.escalated` class when an item is escalated (NOTIFY). */
+  onEscalated?: (
+    tx: Tx,
+    item: InboxItem,
+    role: string,
+    excludePrincipal: string | null,
+  ) => Promise<void>;
 }
 
 export interface RaiseOptions {
@@ -68,6 +81,8 @@ interface Row {
   created_at: Date;
   read_at: Date | null;
   resolved_at: Date | null;
+  exclude_principal: string | null;
+  escalated_at: Date | null;
 }
 
 const toItem = (r: Row): InboxItem => ({
@@ -93,7 +108,15 @@ const VISIBLE = `((assignee_kind = 'user' and assignee_id = $1) or (assignee_kin
   and (exclude_principal is null or exclude_principal <> $1)`;
 
 export class InboxService implements HumanQueue {
+  private timers: WorkflowTimers | null = null;
   constructor(private readonly o: InboxServiceOptions) {}
+
+  /** Connect the timers that escalate items raised with `escalateAfterHours` (`createWorkflow`). */
+  useTimers(timers: WorkflowTimers): this {
+    this.timers = timers;
+    timers.on("inbox.escalate", (ctx, t) => this.escalate(ctx, t.ref));
+    return this;
+  }
 
   /** Raise an item inside the caller's transaction (HumanQueue). */
   async raise(tx: Tx, item: InboxItemInput, opts: RaiseOptions = {}): Promise<{ id: string }> {
@@ -114,7 +137,7 @@ export class InboxService implements HumanQueue {
         item.title,
         item.assignee.kind,
         item.assignee.id,
-        opts.excludePrincipal ?? null,
+        item.excludePrincipal ?? opts.excludePrincipal ?? null,
         item.severity ?? "info",
         item.actionHint ?? null,
         item.deepLink,
@@ -144,7 +167,68 @@ export class InboxService implements HumanQueue {
       assignee_kind: item.assignee.kind,
       assignee: item.assignee.id,
     });
+    if (item.escalateAfterHours !== undefined) {
+      if (!this.timers)
+        throw new Error("InboxService.useTimers was not called (escalateAfterHours)");
+      if (!(item.escalateAfterHours > 0)) throw new Error("escalateAfterHours must be positive");
+      await this.timers.schedule(
+        tx,
+        "inbox.escalate",
+        id,
+        new Date(Date.now() + item.escalateAfterHours * HOUR),
+      );
+    }
     return { id };
+  }
+
+  /**
+   * Escalate an item still open at its deadline (timer): one `due` item for ORG_ADMIN, never shown
+   * to the excluded principal, and the `inbox.escalated` notification. Stale once resolved.
+   */
+  async escalate(ctx: KernelContext, id: string): Promise<"done" | "stale"> {
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const r = await tx.query<Row>(
+          `update workflow.inbox_item set escalated_at = now()
+            where id = $1 and resolved_at is null and escalated_at is null returning *`,
+          [id],
+        );
+        const row = r.rows[0];
+        if (!row) {
+          await this.o.audit.record(tx, {
+            action: "inbox.item.escalate",
+            resourceType: "inbox_item",
+            resourceId: id,
+            after: { stale: true },
+          });
+          return "stale" as const;
+        }
+        const role = APPROVAL_ESCALATION_ROLE;
+        const hours = Math.round((Date.now() - row.created_at.getTime()) / HOUR);
+        await this.o.audit.record(tx, {
+          action: "inbox.item.escalate",
+          resourceType: "inbox_item",
+          resourceId: id,
+          after: { role, hours, product_module: row.product_module, record_ref: row.record_ref },
+        });
+        await this.raise(tx, {
+          type: "due",
+          productModule: row.product_module,
+          recordRef: row.record_ref,
+          title: `Escalated: ${row.title}`.slice(0, 200),
+          assignee: { kind: "role", id: role },
+          severity: "warning",
+          actionHint: "follow_up",
+          deepLink: row.deep_link,
+          helpKey: "hlp.inbox.escalated",
+          ...(row.exclude_principal ? { excludePrincipal: row.exclude_principal } : {}),
+        });
+        await this.o.onEscalated?.(tx, toItem(row), role, row.exclude_principal);
+        return "done" as const;
+      },
+      { action: "inbox.item.escalate" },
+    );
   }
 
   /** Open items visible to the caller, newest first. */
@@ -213,6 +297,7 @@ export class InboxService implements HumanQueue {
         const row = r.rows[0];
         if (!row) throw new NotFoundError("inbox item");
         await this.resolved(tx, row, resolution);
+        await this.timers?.cancel(tx, row.id, ["inbox.escalate"]);
       },
       { action: "inbox.item.resolve" },
     );
@@ -234,6 +319,8 @@ export class InboxService implements HumanQueue {
       [productModule, recordRef, resolution, types ? [...types] : null],
     );
     for (const row of r.rows) await this.resolved(tx, row, resolution);
+    if (r.rows.length && this.timers)
+      for (const row of r.rows) await this.timers.cancel(tx, row.id, ["inbox.escalate"]);
     return r.rows.length;
   }
 

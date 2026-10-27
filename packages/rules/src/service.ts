@@ -32,7 +32,13 @@ import type {
 import { RuleSetKey } from "@infrabyx/contracts/ports";
 import { internalEvent } from "@infrabyx/config/events";
 import { canonicalDigest, newId, type SecretKey } from "@infrabyx/crypto";
-import { NotFoundError, type ApprovalsEngine, type FieldCrypto } from "@infrabyx/tenancy";
+import {
+  APPROVAL_ESCALATION_HOURS,
+  NotFoundError,
+  tenantHasRoleHolder,
+  type ApprovalsEngine,
+  type FieldCrypto,
+} from "@infrabyx/tenancy";
 import {
   evaluateCel,
   ruleEngine,
@@ -75,8 +81,13 @@ export interface RulesServiceOptions {
   fieldCrypto?: FieldCrypto;
   /** Work Inbox for UNDETERMINED decisions (implemented by `@infrabyx/workflow`). */
   humanQueue?: HumanQueue;
-  /** Who reviews an UNDETERMINED decision (default the tenant's `ORG_ADMIN` role, PL3-D-18). */
+  /**
+   * Who reviews an UNDETERMINED decision. Default (OWNER-QUESTIONS #21, PL3-D-21): the tenant's
+   * ORG_CHECKER role, or ORG_ADMIN when no member holds ORG_CHECKER (`hasRoleHolder`).
+   */
   undeterminedAssignee?: InboxItemInput["assignee"];
+  /** Whether a member of the tenant holds the role (default: `tenancy.membership`). */
+  hasRoleHolder?: (tx: Tx, role: string) => Promise<boolean>;
   pseudonymKey?: SecretKey;
 }
 
@@ -399,7 +410,10 @@ export class RulesService implements RulesPort {
               productModule: "rules",
               recordRef: id,
               title: `Rule decision undetermined (${set.key}, ${result.reason})`,
-              assignee: this.o.undeterminedAssignee ?? { kind: "role", id: "ORG_ADMIN" },
+              assignee: await this.undeterminedAssignee(tx),
+              // The principal whose request produced the decision never reviews it (#21).
+              excludePrincipal: ctx.principal.id,
+              escalateAfterHours: APPROVAL_ESCALATION_HOURS,
               severity: "warning",
               actionHint: "review_undetermined",
               deepLink: `/rules/decisions/${id}`,
@@ -454,6 +468,13 @@ export class RulesService implements RulesPort {
       },
       { action: "rules.decision.record" },
     );
+  }
+
+  /** ORG_CHECKER first; ORG_ADMIN only if the tenant has no checker (OWNER-QUESTIONS #21). */
+  private async undeterminedAssignee(tx: Tx): Promise<InboxItemInput["assignee"]> {
+    if (this.o.undeterminedAssignee) return this.o.undeterminedAssignee;
+    const has = this.o.hasRoleHolder ?? tenantHasRoleHolder;
+    return { kind: "role", id: (await has(tx, "ORG_CHECKER")) ? "ORG_CHECKER" : "ORG_ADMIN" };
   }
 
   async evaluateCel(

@@ -13,6 +13,17 @@ import {
 export const DEFAULT_TIMEZONE = "Asia/Kolkata";
 export const DEFAULT_QUIET_HOURS = "21:00-08:00";
 export const DEFAULT_DIGEST_TIME = "08:30";
+/**
+ * Collection and recovery messages go out only inside the contact window: the platform window is
+ * the complement of the 21:00–08:00 quiet hours in the recipient's zone, never bypassed. A product
+ * may narrow it, never widen it (OWNER-QUESTIONS #23, PL3-D-21).
+ */
+export const PLATFORM_CONTACT_WINDOW = "08:00-21:00";
+
+const COLLECTION = /(^|[._])(collection|collections|recovery)([._]|$)/;
+/** Collection and recovery classes, by id (the same names that never use WhatsApp). */
+export const isCollectionClass = (cls: Pick<NotificationClass, "id">): boolean =>
+  COLLECTION.test(cls.id);
 
 const isChannel = (c: unknown): c is NotifyChannel =>
   (NOTIFY_CHANNELS as readonly unknown[]).includes(c);
@@ -128,12 +139,42 @@ export function inQuietHours(at: Date, tz: string, range = DEFAULT_QUIET_HOURS):
   return a <= b ? now >= a && now < b : now >= a || now < b;
 }
 
+/** A product's contact window must lie inside the platform window (`"HH:MM-HH:MM"`, no wrap). */
+export function assertContactWindow(range: string): void {
+  const m = /^(\d{2}:\d{2})-(\d{2}:\d{2})$/.exec(range);
+  const [pa, pb] = PLATFORM_CONTACT_WINDOW.split("-") as [string, string];
+  if (
+    !m ||
+    minutes(m[1] as string) >= minutes(m[2] as string) ||
+    minutes(m[1] as string) < minutes(pa) ||
+    minutes(m[2] as string) > minutes(pb)
+  )
+    throw new Error(
+      `contact window ${range} is not inside the platform window ${PLATFORM_CONTACT_WINDOW} (it may be narrowed, never widened)`,
+    );
+}
+
+/** First instant at or after `at` inside `window` and outside `quiet`, in `tz`. */
+export function nextContactTime(at: Date, tz: string, window: string, quiet: string): Date {
+  const [from] = window.split("-") as [string, string];
+  const quietEnd = quiet.split("-")[1] as string;
+  let t = at;
+  for (let i = 0; i < 8; i++) {
+    const inWindow = !inQuietHours(t, tz, `${window.split("-")[1]}-${from}`);
+    const quietNow = inQuietHours(t, tz, quiet);
+    if (inWindow && !quietNow) return t;
+    t = inWindow ? nextWallTime(t, tz, quietEnd) : nextWallTime(t, tz, from);
+  }
+  throw new Error(`no contact time: window ${window} lies inside quiet hours ${quiet}`);
+}
+
 export type Timing =
   { mode: "now" } | { mode: "after_quiet"; at: Date } | { mode: "digest"; at: Date };
 
 /**
  * When a delivery goes out (IPB-07-25, @IPB-07-AT-22): non-urgent classes are digest-first; inside
  * quiet hours an urgent class goes now only if it may bypass (class and tenant), else at the end.
+ * A collection class goes only inside its contact window and outside quiet hours, never bypassed.
  */
 export function timing(
   cls: NotificationClass,
@@ -143,9 +184,19 @@ export function timing(
     quietHours?: string | undefined;
     digestTime?: string | undefined;
     orgAllowsBypass?: boolean;
+    /** A product's narrower contact window for collection classes (`"HH:MM-HH:MM"`). */
+    contactWindow?: string | undefined;
   },
 ): Timing {
   const tz = o.tz ?? DEFAULT_TIMEZONE;
+  if (isCollectionClass(cls)) {
+    const window = o.contactWindow ?? PLATFORM_CONTACT_WINDOW;
+    assertContactWindow(window);
+    const base = cls.urgent ? at : nextWallTime(at, tz, o.digestTime ?? DEFAULT_DIGEST_TIME);
+    const t = nextContactTime(base, tz, window, o.quietHours ?? DEFAULT_QUIET_HOURS);
+    if (!cls.urgent) return { mode: "digest", at: t };
+    return t.getTime() === at.getTime() ? { mode: "now" } : { mode: "after_quiet", at: t };
+  }
   if (!cls.urgent)
     return { mode: "digest", at: nextWallTime(at, tz, o.digestTime ?? DEFAULT_DIGEST_TIME) };
   const range = o.quietHours ?? DEFAULT_QUIET_HOURS;

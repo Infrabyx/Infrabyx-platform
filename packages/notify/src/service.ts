@@ -55,9 +55,9 @@ import {
   type AddressKind,
   type SecretKey,
 } from "@infrabyx/crypto";
-import { NotFoundError } from "@infrabyx/tenancy";
+import { NotFoundError, ServiceReader, type ServiceReadRecord } from "@infrabyx/tenancy";
 import type { Catalogue } from "./catalogue.js";
-import { assertPreferences, effectiveChannels, timing } from "./routing.js";
+import { assertPreferences, effectiveChannels, isCollectionClass, timing } from "./routing.js";
 
 /** The context a push token store runs in while NOTIFY delivers (see `PgPushTokenStore`). */
 export const notifyContext = new AsyncLocalStorage<KernelContext>();
@@ -67,11 +67,8 @@ const serviceContext = (tenantId: string): KernelContext => ({
   tenantId,
   principal: { id: NOTIFY_PRINCIPAL_ID, type: "service", roles: ["SVC_NOTIFY"] },
 });
-const dispatcherContext: KernelContext = {
-  tenantId: "tnt_platform",
-  scope: "platform",
-  principal: { id: NOTIFY_PRINCIPAL_ID, type: "service", roles: ["SVC_NOTIFY", "PLT_AUDITOR_RO"] },
-};
+/** The dispatcher's identity: the cross-tenant service reader SVC_NOTIFY_DISPATCH (PL3-D-21). */
+export const NOTIFY_DISPATCH_PRINCIPAL_ID = "svc_notify_dispatch";
 
 const KIND: Record<"email" | "sms" | "whatsapp", AddressKind> = {
   email: "email",
@@ -117,14 +114,25 @@ export interface NotifyServiceOptions {
   humanQueue?: HumanQueue;
   /** Who confirms a held resend (default the tenant's ORG_ADMIN role). */
   holdAssignee?: InboxItemInput["assignee"];
-  /** The recipient's time zone (default Asia/Kolkata, A-07). */
+  /** The recipient's time zone (default Asia/Kolkata, A-07; OWNER-QUESTIONS #23). */
   timezone?: (ctx: KernelContext, recipientRef: string) => Promise<string | undefined>;
+  /**
+   * A narrower contact window for collection and recovery classes (`"HH:MM-HH:MM"` inside
+   * 08:00–21:00 in the recipient's zone); a wider one is refused (OWNER-QUESTIONS #23).
+   */
+  contactWindow?: (
+    ctx: KernelContext,
+    cls: NotificationClass,
+    recipientRef: string,
+  ) => Promise<string | undefined>;
   /** Title texts by `title_key`, then locale; `{var}` placeholders are filled from `vars`. */
   messages?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** Called with the Ecosystem `MarketingConsentUpdated` data the product publishes. */
   onConsentChanged?: (tx: Tx, data: Record<string, unknown>) => Promise<void>;
   /** Leave due deliveries for `dispatchDue` (a worker) instead of delivering after `send`. */
   deferDelivery?: boolean;
+  /** Operational log of the dispatcher's cross-tenant reads (the ledger has them as well). */
+  onServiceRead?: (r: ServiceReadRecord) => void;
   pseudonymKey?: SecretKey;
   now?: () => Date;
 }
@@ -181,7 +189,20 @@ export class NotifyService implements NotifyPort {
     maxDataClass: "CONFIDENTIAL",
   };
 
-  constructor(private readonly o: NotifyServiceOptions) {}
+  private readonly dispatcher: ServiceReader;
+  private readonly unsubscribeReader: ServiceReader;
+  constructor(private readonly o: NotifyServiceOptions) {
+    const reader = (role: "SVC_NOTIFY_DISPATCH" | "SVC_NOTIFY_UNSUBSCRIBE", principalId: string) =>
+      new ServiceReader({
+        kernel: o.kernel,
+        audit: o.audit,
+        role,
+        principalId,
+        ...(o.onServiceRead ? { onRead: o.onServiceRead } : {}),
+      });
+    this.dispatcher = reader("SVC_NOTIFY_DISPATCH", NOTIFY_DISPATCH_PRINCIPAL_ID);
+    this.unsubscribeReader = reader("SVC_NOTIFY_UNSUBSCRIBE", "svc_notify_unsubscribe");
+  }
 
   private now(): Date {
     return this.o.now?.() ?? new Date();
@@ -233,8 +254,12 @@ export class NotifyService implements NotifyPort {
         : {};
       const channels = effectiveChannels(cls, (org as Record<string, unknown>) ?? {}, prefs ?? {});
       const tz = await this.o.timezone?.(ctx, ref);
+      const window = isCollectionClass(cls)
+        ? await this.o.contactWindow?.(ctx, cls, ref)
+        : undefined;
       const t = timing(cls, at, {
         ...(tz ? { tz } : {}),
+        ...(window ? { contactWindow: window } : {}),
         ...(user ? { quietHours: str(await this.setting(ctx, "ntf.quiet_hours", user)) } : {}),
         ...(user ? { digestTime: str(await this.setting(ctx, "ntf.user.digest_time", user)) } : {}),
         orgAllowsBypass: bypass !== false,
@@ -620,26 +645,22 @@ export class NotifyService implements NotifyPort {
   }
 
   /**
-   * Dispatcher (worker): deliver due queued rows and send due digests, across tenants. Reads ids in
-   * a read-only platform context; each delivery runs in its own tenant's context.
+   * Dispatcher (worker): deliver due queued rows and send due digests, across tenants. Reads ids as
+   * the service reader SVC_NOTIFY_DISPATCH (queue columns only, each read ledgered per tenant,
+   * PL3-D-21); each delivery runs in its own tenant's context.
    */
   async dispatchDue(limit = 200): Promise<{ delivered: number; digests: number }> {
-    const due = await this.o.kernel.read(
-      dispatcherContext,
-      async (tx) =>
-        (
-          await tx.query<{
-            id: string;
-            tenant_id: string;
-            state: DeliveryState;
-            recipient_ref: string;
-            channel: NotifyChannel;
-          }>(
-            `select id, tenant_id, state, recipient_ref, channel from notify.delivery
-            where state in ('queued', 'digested') and send_after <= now() order by send_after limit $1`,
-            [limit],
-          )
-        ).rows,
+    const due = await this.dispatcher.read<{
+      id: string;
+      tenant_id: string;
+      state: DeliveryState;
+      recipient_ref: string;
+      channel: NotifyChannel;
+    }>(
+      "notify.delivery",
+      `select id, tenant_id, state, recipient_ref, channel from notify.delivery
+        where state in ('queued', 'digested') and send_after <= now() order by send_after limit $1`,
+      [limit],
     );
     let delivered = 0;
     const digests = new Map<
@@ -956,23 +977,20 @@ export class NotifyService implements NotifyPort {
   /** One-click unsubscribe (RFC 8058): withdraws marketing consent; the token works once. */
   async unsubscribe(token: string): Promise<void> {
     const h = sha256Hex(token);
-    const row = await this.o.kernel.read(
-      dispatcherContext,
-      async (tx) =>
-        (
-          await tx.query<{
-            tenant_id: string;
-            recipient_ref: string;
-            channel: "email" | "sms" | "whatsapp";
-            purpose: string;
-            brand_pack_id: string;
-          }>(
-            `select tenant_id, recipient_ref, channel, purpose, brand_pack_id from notify.unsubscribe_token
-            where token_hash = $1 and used_at is null and revoked_at is null and expires_at > now()`,
-            [h],
-          )
-        ).rows[0],
-    );
+    const row = (
+      await this.unsubscribeReader.read<{
+        tenant_id: string;
+        recipient_ref: string;
+        channel: "email" | "sms" | "whatsapp";
+        purpose: string;
+        brand_pack_id: string;
+      }>(
+        "notify.unsubscribe_token",
+        `select tenant_id, recipient_ref, channel, purpose, brand_pack_id from notify.unsubscribe_token
+          where token_hash = $1 and used_at is null and revoked_at is null and expires_at > now()`,
+        [h],
+      )
+    )[0];
     if (!row) throw new NotFoundError("unsubscribe token");
     const ctx = serviceContext(row.tenant_id);
     const c = await this.o.contacts.resolve({ ref: row.recipient_ref }, row.channel);

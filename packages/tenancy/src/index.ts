@@ -5,6 +5,7 @@ export const PACKAGE_NAME = "@infrabyx/tenancy" as const;
 export * from "./context.js";
 export * from "./errors.js";
 export * from "./kernel.js";
+export * from "./service-reader.js";
 export * from "./outbox.js";
 export * from "./approvals/index.js";
 export * from "./breakglass.js";

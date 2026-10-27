@@ -2,7 +2,7 @@
 // context applied through SET LOCAL (IPB-01 §01.4.6, IPB-02-13), and the commit fails unless the
 // audit ledger was written in that transaction (IPB-02-51, IPB-MOD-003).
 import type pg from "pg";
-import { AGENT_FORBIDDEN_VERBS } from "@infrabyx/contracts/roles";
+import { AGENT_FORBIDDEN_VERBS, SERVICE_READER_ROLES } from "@infrabyx/contracts/roles";
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
   KernelContext,
@@ -11,7 +11,7 @@ import type {
   QueryResult,
   Tx,
 } from "@infrabyx/contracts/kernel";
-import { assertValidContext, isAgentPrincipal } from "./context.js";
+import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
 import { KernelGuardError } from "./errors.js";
 
 /** Minimal pool surface (pg.Pool satisfies it). */
@@ -71,12 +71,24 @@ class PgTx implements Tx {
   }
 }
 
+/** The only action a service reader may commit: the ledger entry for its cross-tenant read. */
+export const SERVICE_READ_ACTION = "platform.service_read";
+
 /** Mutation guard (IPB-02-09, IPB-02-10): no writes while impersonating; agents never approve, sign, disburse, delete or grant. */
 export function assertMayMutate(ctx: KernelContext, opts: MutateOptions = {}): void {
   if (ctx.act) {
     throw new IpbError("IPB-SEC-003", { detail: "impersonation sessions are read-only" });
   }
   const verb = opts.action?.split(".").at(-1);
+  const reader = serviceReaderRole(ctx);
+  // A service reader writes only the ledger entry that records its own read, in a tenant context;
+  // it never mutates in platform scope and never approves, signs, disburses, deletes or grants.
+  if (reader && (ctx.scope === "platform" || opts.action !== SERVICE_READ_ACTION)) {
+    throw new IpbError("IPB-SEC-005", {
+      detail: `${reader} is read-only`,
+      meta: { action: opts.action ?? null },
+    });
+  }
   if (
     verb &&
     isAgentPrincipal(ctx) &&
@@ -120,7 +132,10 @@ export class PgKernel implements MutationKernel {
 
   async read<T>(ctx: KernelContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
     assertValidContext(ctx);
-    return this.run(ctx, this.readRole, true, fn);
+    // A service reader in platform scope runs as its own database role, which is granted only the
+    // columns it needs (PL3-D-21); RLS still applies.
+    const reader = ctx.scope === "platform" ? serviceReaderRole(ctx) : undefined;
+    return this.run(ctx, reader ? SERVICE_READER_ROLES[reader].dbRole : this.readRole, true, fn);
   }
 
   private async run<T>(

@@ -31,6 +31,27 @@ export const OPS_ROLE_REGEX = /^OPS_[A-Z][A-Z0-9_]*$/;
 export const AGENT_ROLE_REGEX = /^AGT_[A-Z][A-Z0-9_]*$/;
 /** Service accounts (IPB-11 §11.4.6, e.g. SVC_BILLING). */
 export const SERVICE_ROLE_REGEX = /^SVC_[A-Z][A-Z0-9_]*$/;
+/**
+ * Cross-tenant background readers (OWNER-QUESTIONS #22, PL3-D-21). A worker that must find due
+ * work across tenants reads in a platform context as one of these roles, never as `PLT_AUDITOR_RO`
+ * (a role for people). Each reads only the columns its database role is granted (`dbRole`, created
+ * by the owning package's migration), may not write, impersonate or approve, and every read is
+ * ledgered per tenant (`ServiceReader` in `@infrabyx/tenancy`). Contexts carrying them are built
+ * in-process only; a token that claims one is refused.
+ */
+export const SERVICE_READER_ROLES = {
+  SVC_SCHEDULER: { dbRole: "svc_scheduler", tables: ["workflow.timer"] },
+  SVC_NOTIFY_DISPATCH: { dbRole: "svc_notify_dispatch", tables: ["notify.delivery"] },
+  /** The unauthenticated one-click unsubscribe link finds its token by hash (RFC 8058). */
+  SVC_NOTIFY_UNSUBSCRIBE: {
+    dbRole: "svc_notify_unsubscribe",
+    tables: ["notify.unsubscribe_token"],
+  },
+} as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;
+export type ServiceReaderRole = keyof typeof SERVICE_READER_ROLES;
+export const isServiceReaderRole = (r: string): r is ServiceReaderRole =>
+  Object.prototype.hasOwnProperty.call(SERVICE_READER_ROLES, r);
+
 /** Product-defined roles extend the floor with their own upper-case prefix (e.g. FBX_CREDIT_HEAD). */
 export const PRODUCT_ROLE_REGEX = /^[A-Z]{2,4}_[A-Z][A-Z0-9_]*$/;
 

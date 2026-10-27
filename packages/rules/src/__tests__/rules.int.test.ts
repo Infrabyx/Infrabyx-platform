@@ -442,3 +442,45 @@ describe("tenancy: RLS, platform rule sets and the ledger (@NN-01 @NN-45)", () =
     expect(ledger).not.toContain("underwriting");
   });
 });
+
+describe("@PL3-RULES-REVIEW UNDETERMINED review (OWNER-QUESTIONS #21)", () => {
+  const nbaSet = async () =>
+    (await db.admin.query("select id from rules.rule_set where key = 'fbx.los.nba'")).rows[0]
+      .id as string;
+  const undetermined = (ruleSetId: string) =>
+    svc.evaluate(
+      maker,
+      { ruleSetId },
+      { stage: "underwriting", docsComplete: "x", bureauScore: 1 },
+    );
+
+  it("goes to ORG_ADMIN only while the tenant has no checker, never to the maker, escalating at 48 h", async () => {
+    const ruleSetId = await nbaSet();
+    raised.length = 0;
+    await undetermined(ruleSetId);
+    expect(raised[0]).toMatchObject({
+      assignee: { kind: "role", id: "ORG_ADMIN" },
+      excludePrincipal: "usr_maker",
+      escalateAfterHours: 48,
+    });
+    await db.admin.query(
+      `insert into tenancy.user (id, idp_subject) values ('usr_01M5XQT0PRXMKBEGFFSHNHTA61', 'chk-1')
+         on conflict do nothing`,
+    );
+    await db.admin.query(
+      `insert into tenancy.membership (tenant_id, user_id, roles)
+         values ('tnt_a', 'usr_01M5XQT0PRXMKBEGFFSHNHTA61', '{ORG_CHECKER}') on conflict do nothing`,
+    );
+    const d = await undetermined(ruleSetId);
+    expect(raised[1]).toMatchObject({
+      assignee: { kind: "role", id: "ORG_CHECKER" },
+      excludePrincipal: "usr_maker",
+    });
+    // One ledger entry per decision: the audit trail for statutory outputs.
+    const n = await db.admin.query(
+      "select count(*)::int as n from audit.ledger where action = 'rules.decision.record' and resource_id = $1",
+      [d.id],
+    );
+    expect(n.rows[0]).toEqual({ n: 1 });
+  });
+});
