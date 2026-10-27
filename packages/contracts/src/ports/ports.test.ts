@@ -3,7 +3,7 @@ import { isValidStorageKey, storageKey } from "./storage.js";
 import { parseSecretRef, isSecretRef } from "./secrets.js";
 import { PORT_CATALOGUE, PORT_NAMES } from "./catalogue.js";
 import { VerifiedClaims } from "./identity.js";
-import { PL2_PORTS, PL3_PORTS } from "./common.js";
+import { PL2_PORTS, PL3_PORTS, PL4_PORTS } from "./common.js";
 
 describe("ports", () => {
   it("formats storage keys as tenant/<tid>/<module>/<ulid> (IPB-01-27)", () => {
@@ -26,10 +26,10 @@ describe("ports", () => {
     expect(isSecretRef("app")).toBe(false);
     expect(parseSecretRef("secret://aws-sm/no-key")).toBeNull();
   });
-  it("catalogues the 42 primary ports plus supplementary ports, with interfaces for the PL2 and PL3 ports", () => {
+  it("catalogues the 42 primary ports plus supplementary ports, with interfaces for the PL2, PL3 and PL4 ports", () => {
     expect(PORT_NAMES.length).toBeGreaterThanOrEqual(55);
     const defined = PORT_NAMES.filter((p) => PORT_CATALOGUE[p].interfaceDefined).sort();
-    expect(defined).toEqual([...PL2_PORTS, ...PL3_PORTS].sort());
+    expect(defined).toEqual([...PL2_PORTS, ...PL3_PORTS, ...PL4_PORTS].sort());
   });
   it("parses verified claims with act and bg", () => {
     const c = VerifiedClaims.parse({

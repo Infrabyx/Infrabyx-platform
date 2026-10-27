@@ -294,7 +294,15 @@ export const ERROR_CATALOGUE = {
     title: "Erasure refused: statutory retention applies",
     source: "IPB-02 §02.6.3",
   },
-  "IPB-AI-001": { status: 422, title: "Model not approved in registry", source: "IPB-02 §02.6.3" },
+  // The AI area is owned by IPB-03 §03.6.3 (IPB-01 §01.6.3 note on IPB-AI-021). IPB-AI-001 takes
+  // the IPB-03 meaning; IPB-02's 002–005 stay registered, and the gateway emits the IPB-03 codes
+  // for the same failures (040, VID-011, 041, 022). Reconciliation asked in PR-024 (PL4-D-02).
+  "IPB-AI-001": {
+    status: 503,
+    title: "AI features paused: gateway disabled for the tenant or a kill switch is on",
+    helpKey: "hlp.ai.paused",
+    source: "IPB-03 §03.6.3 (PR-024)",
+  },
   "IPB-AI-002": { status: 403, title: "Tool not in skill allow-list", source: "IPB-02 §02.6.3" },
   "IPB-AI-003": {
     status: 202,
@@ -527,6 +535,163 @@ export const ERROR_CATALOGUE = {
     status: 410,
     title: "Export archive expired and was deleted; request a new export",
     source: "OWNER-QUESTIONS #24 (PL3-D-25, PR-017)",
+  },
+  // AI gateway and Vidhi (IPB-03 §03.6.3; PL4 plan §11).
+  "IPB-AI-010": {
+    status: 400,
+    title: "Capability not supported by the selected model",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-011": {
+    status: 500,
+    title: "Embedding dimension mismatch",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-012": {
+    status: 409,
+    title: "Model not in a servable state, or the pin is not eligible for this data",
+    helpKey: "hlp.ai.model_unavailable",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-013": {
+    status: 422,
+    title: "Promotion blocked: missing evidence or evals",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-020": {
+    status: 400,
+    title: "Attempt to lower the data class of an AI request",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-022": {
+    status: 429,
+    title: "AI usage cap reached",
+    helpKey: "hlp.ai.cost_cap",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-023": {
+    status: 429,
+    title: "Provider rate limit; all candidates exhausted",
+    helpKey: "hlp.ai.busy",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-030": {
+    status: 400,
+    title: "Forbidden image use case",
+    helpKey: "hlp.ai.image_forbidden",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-031": {
+    status: 422,
+    title: "SGI label missing on publish",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-040": {
+    status: 500,
+    title: "Disallowed tool call by the model; run halted",
+    helpKey: "hlp.ai.stopped_for_safety",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-041": {
+    status: 502,
+    title: "Output failed schema validation after repair",
+    helpKey: "hlp.ai.invalid_result",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-042": {
+    status: 200,
+    title: "Output blocked by classifier",
+    helpKey: "hlp.ai.withheld",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-050": {
+    status: 500,
+    title: "Prompt key or version not found or inactive",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-060": {
+    status: 401,
+    title: "BYOK credential invalid",
+    helpKey: "hlp.ai.byok_rejected",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-001": {
+    status: "boot",
+    title: "Invalid skill manifest",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-010": {
+    status: 403,
+    title: "Autonomy level exceeds ceiling",
+    helpKey: "hlp.vidhi.level",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-011": {
+    status: 403,
+    title: "Locked action needs a human to approve",
+    helpKey: "hlp.vidhi.locked",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-012": {
+    status: 403,
+    title: "Approver lacks the role or is an agent token",
+    helpKey: "hlp.vidhi.approver",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-020": {
+    status: "warning",
+    title: "Scheduled run skipped: permission, plan or kill switch",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-021": {
+    status: "warning",
+    title: "Schedule paused after the maximum number of skips",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-022": {
+    status: 409,
+    title: "Task is not awaiting approval: already decided, cancelled or expired",
+    helpKey: "hlp.vidhi.already_decided",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-030": {
+    status: 403,
+    title: "Agent delegation disabled",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-040": {
+    status: 403,
+    title: "MCP write tool called without confirmation",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-041": {
+    status: 403,
+    title: "External MCP server not allow-listed",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-050": {
+    status: 403,
+    title: "Consent missing for meeting notes or transcription",
+    helpKey: "hlp.vidhi.consent",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-060": {
+    status: 403,
+    title: "Cross-tenant notebook share without approval",
+    helpKey: "hlp.vidhi.share",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-VID-070": {
+    status: 200,
+    title: "Mission budget exhausted; stopped",
+    helpKey: "hlp.vidhi.budget",
+    source: "IPB-03 §03.6.3",
+  },
+  "IPB-AI-032": {
+    status: 422,
+    title: "Generated image not approved for publishing",
+    helpKey: "hlp.ai.image_unapproved",
+    source: "OWN-10; PL4 plan §6 (PR-022)",
   },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {

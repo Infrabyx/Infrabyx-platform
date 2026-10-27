@@ -85,6 +85,10 @@ export type Pl2Port = (typeof PL2_PORTS)[number];
 export const PL3_PORTS = ["RULES", "NOTIFY", "PUSH", "ESIGN"] as const;
 export type Pl3Port = (typeof PL3_PORTS)[number];
 
+/** The AI ports PL4 defines (PL4 plan §4.1); SPEECH and RERANK have interfaces and fakes only. */
+export const PL4_PORTS = ["LLM", "EMBEDDING", "IMAGE_GEN", "SPEECH", "RERANK"] as const;
+export type Pl4Port = (typeof PL4_PORTS)[number];
+
 /** Default data class of a call when the caller states none (plan §3.1). */
 export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Object.freeze({
   EMAIL: "INTERNAL",
@@ -95,6 +99,8 @@ export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Obje
   OBSERVABILITY: "INTERNAL",
   PAYMENTS: "REGULATED",
   PUSH: "INTERNAL",
+  /** Image prompts are INTERNAL (marketing and CMS use, IPB-01 IMAGE_GEN). */
+  IMAGE_GEN: "INTERNAL",
 });
 
 /** Port default data class; CONFIDENTIAL for every port not listed (plan §3.1). */
