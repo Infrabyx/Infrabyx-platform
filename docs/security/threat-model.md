@@ -460,6 +460,16 @@ One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/c
 - **Residency:** Control: any region other than ap-south-1 and ap-south-2 fails the plan without an ADR (IPB-01-36).
 - **Residual:** provider lock files are not committed yet (exact version pins only); compliance-mode retention cannot be shortened once applied, so the defaults must be confirmed before a product applies them (#71).
 
+### 3.41 OpenTofu platform modules on Azure and GCP (built, PL6 session 3b; PL6-D-06)
+
+`infra/terraform/modules/azure` and `infra/terraform/modules/gcp` provision a product environment with the same contract as AWS when a product applies them; nothing is applied from this repository.
+
+- **I (data at rest or in state):** Control: the platform key (HSM-backed, rotated) encrypts storage, PostgreSQL, the registry and, on GCP, Redis, the GKE secrets and the node disks; Azure nodes use encryption at host. No secret value is in state: Azure creates no secret, GCP creates secrets without versions. Residual: the Memorystore AUTH string is in state (state is SECRET class), and AKS etcd uses Azure's platform-managed key.
+- **T and repudiation (evidence altered or deleted):** Control: the AUDIT, REGULATED and CONFIDENTIAL classes sit in their own geo-redundant accounts (Azure) or dual-region buckets (GCP) with locked retention; telemetry is retained 180 days. Residual: Azure policies are created unlocked and stay so until the product's next apply sets `immutability_locked`; `lock_mode` reports `unlocked` meanwhile.
+- **S and E (reaching or escalating in the environment):** Control: PostgreSQL and Redis on private addresses only with TLS required; Entra ID or IAM authentication (AUTH on Memorystore); vault and storage firewalls deny by default; private Kubernetes control planes by default, local accounts off on AKS, Workload Identity with one identity per service account scoped to its own subject and to this environment's secrets only; break-glass off, and time-bound on GCP when on.
+- **Residency:** Control: regions other than centralindia/southindia (Azure) and asia-south1/asia-south2 (GCP) fail the plan without an ADR (IPB-01-36).
+- **Residual:** as on AWS, lock files are not committed yet and the retention defaults must be confirmed before a product applies them (#71, #72).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

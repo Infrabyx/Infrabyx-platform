@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); sessions 1 and 2 merged (#96, #97); session 3a (OpenTofu, AWS and the output contract) in review; next 3b (Azure and GCP). 1.0.0 is published only on the owner's word (#67)                                                                  |
+| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); sessions 1, 2 and 3a merged (#96, #97, #99); session 3b (OpenTofu on Azure and GCP) in review; next 3c (tflint), then 4 (`apps/reference`). 1.0.0 is published only on the owner's word (#67)                                                 |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages (PL5 gate, release run 74, `dc51032`): ui, a11y, hlp, brand, cms, consent, feedback and trust 0.1.0 (new); contracts, config, testing and tenancy 0.5.0; connectors 0.4.0; notify and seed 0.3.0; ai and vidhi 0.2.0; crypto 0.4.1; export 0.2.1; audit 0.1.4; rules and workflow 0.1.2. Checksums in `docs/phases/PL5-gate.md` §6 |
 | Last exit gate passed | PL5 gate (2026-10-27): report `docs/phases/PL5-gate.md`; PR #94 (report) and PR #79 (version), every required check green; release run 74. Before it: PL4 gate (`docs/phases/PL4-gate.md`)                                                                                                                                                                      |
@@ -21,6 +21,13 @@ Updated: 2026-10-27
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
 
+## PL6 session 3b (2026-10-27, PL6-D-06)
+
+- **Azure and GCP:** the twelve modules and `platform` per cloud with the same inputs and the same contract outputs as AWS, each with `tests/contract.tftest.hcl` on a mock provider (`@IPB-01-AT-14`); the contract file check now covers the three clouds.
+- **Differences products must know:** secret names are `secrets-<env>-…` (no slash on Key Vault or Secret Manager); on Azure, set `immutability_locked = true` in the apply after the storage accounts exist (`lock_mode` reads `unlocked` until then); Azure Redis is version 6.
+- **New owner question:** #72 (nothing blocked).
+- **Next:** session 3c, tflint with the three rulesets (Go 1.26 in the `infra` job), then session 4.
+
 ## PL6 session 3a (2026-10-27, PL6-D-05)
 
 - **Contract:** `infra/terraform/contract/outputs.schema.json` (IPB-01 §01.4.9.3) and a file check that every cloud's `platform` declares exactly those outputs.
@@ -28,7 +35,7 @@ Updated: 2026-10-27
 - **Example stack:** `infra/terraform/envs/example/preview`.
 - **CI:** the `infra` job builds OpenTofu 1.13.1 from its checked tag and runs fmt, init and validate for every module, `tofu test` and `trivy config`.
 - **New owner question:** #71 (retention defaults, lock files, secrets placeholders; nothing blocked).
-- **Next:** session 3b, the Azure and GCP modules with the same contract, and tflint.
+- **Next:** session 3b, the Azure and GCP modules with the same contract.
 
 ## PL6 session 2 (2026-10-27, PL6-D-04)
 
