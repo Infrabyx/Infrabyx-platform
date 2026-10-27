@@ -35,6 +35,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "blind index (C-05)",
       "vendor webhook signatures: Razorpay, Cashfree, Meta (C-13)",
       "telemetry and flag-context ID hashes, 128-bit truncation (C-21)",
+      "suppression and marketing-consent address hash (C-23)",
     ],
   },
   {
@@ -72,7 +73,8 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     parameterSet: "RSA, vendor-defined",
     oid: "1.2.840.113549.1.1.11",
     usedFor: [
-      "Amazon SNS SignatureVersion 2 verification only (C-13); never for our own signatures",
+      "Amazon SNS SignatureVersion 2 verification only (C-13)",
+      "Google service-account assertion for FCM OAuth only (C-24); never for platform tokens",
     ],
   },
   {
