@@ -117,17 +117,19 @@ beforeAll(async () => {
     fieldCrypto: new FieldCrypto({ kms: fakeKms(), keyIdFor: localTenantKeyId }),
   });
   const skills = new SkillRegistry().load([
-    manifest("oh.ticket_digest", "L3", [{ name: "tickets.list", kind: "service", write: false }]),
+    manifest("oh.ticket_digest", "L3", [
+      { name: "tickets.list", kind: "service", write: false, locked: false },
+    ]),
     manifest(
       "oh.ticket_triage",
       "L3",
-      [{ name: "tickets.set_priority", kind: "service", write: true }],
+      [{ name: "tickets.set_priority", kind: "service", write: true, locked: false }],
       false,
     ),
     manifest(
       "oh.reply_draft",
       "L2",
-      [{ name: "replies.preview", kind: "service", write: false }],
+      [{ name: "replies.preview", kind: "service", write: false, locked: false }],
       false,
     ),
   ]);

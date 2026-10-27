@@ -338,3 +338,21 @@ describe("kill switches: activate at once, deactivate through a checker (IPB-03-
     ]);
   });
 });
+
+describe("Vidhi QA floor keys are tighten-only (OWNER-QUESTIONS #40, PL4-D-13)", () => {
+  const def = (key: string) => defaultRegistry.require(key);
+  const keys = ["vidhi.qa.min_reviews", "vidhi.qa.precision_floor", "vidhi.qa.recall_floor"];
+  it("registers them at TENANT tier, governed, with the platform floor as the minimum", () => {
+    for (const k of keys)
+      expect(def(k)).toMatchObject({ tier: "TENANT", mc: "R2", tighten: "min" });
+    expect(def("vidhi.qa.min_reviews")).toMatchObject({ default: 20, min: 20 });
+    expect(def("vidhi.qa.precision_floor")).toMatchObject({ default: 0.8, min: 0.8, max: 1 });
+    expect(def("vidhi.qa.recall_floor")).toMatchObject({ default: 0.8, min: 0.8, max: 1 });
+  });
+  it("a tenant may ask for more evidence or a higher floor, never less", () => {
+    expect(tightenError(def("vidhi.qa.min_reviews"), 20, 40)).toBeNull();
+    expect(tightenError(def("vidhi.qa.min_reviews"), 40, 20)).toMatch(/raised/);
+    expect(tightenError(def("vidhi.qa.precision_floor"), 0.8, 0.9)).toBeNull();
+    expect(tightenError(def("vidhi.qa.recall_floor"), 0.9, 0.85)).toMatch(/raised/);
+  });
+});

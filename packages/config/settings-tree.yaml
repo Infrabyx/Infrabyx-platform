@@ -2527,6 +2527,45 @@ keys:
       source: "IPB-03 \u00a703.5",
     }
   - {
+      key: vidhi.qa.min_reviews,
+      tier: TENANT,
+      type: int,
+      default: 20,
+      min: 20,
+      max: 1000,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R2,
+      note: "reviews since the last level change before QA figures can demote a skill; a tenant may only ask for more (OWNER-QUESTIONS #40)",
+      source: "PL4-D-13; IPB-03-85",
+    }
+  - {
+      key: vidhi.qa.precision_floor,
+      tier: TENANT,
+      type: decimal,
+      default: 0.8,
+      min: 0.8,
+      max: 1,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R2,
+      note: "a skill below this precision is demoted one level; a tenant may only raise it (OWNER-QUESTIONS #40)",
+      source: "PL4-D-13; IPB-03-85",
+    }
+  - {
+      key: vidhi.qa.recall_floor,
+      tier: TENANT,
+      type: decimal,
+      default: 0.8,
+      min: 0.8,
+      max: 1,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: R2,
+      note: "a skill below this recall is demoted one level; a tenant may only raise it (OWNER-QUESTIONS #40)",
+      source: "PL4-D-13; IPB-03-85",
+    }
+  - {
       key: vidhi.a11y.plain_language,
       tier: "USER",
       type: bool,

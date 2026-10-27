@@ -2,38 +2,52 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                     |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL4 closed** (2026-10-27): gate passed (`docs/phases/PL4-gate.md`), release run 56 published 14 packages (`ai` and `vidhi` 0.1.0 new). Next: the PL5 plan (`docs/phases/PL5-plan.md`). Continuous build mode (PL2-D-41)                                                                                                 |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                    |
-| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): `ai` and `vidhi` 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The later-phase scaffolds stay private until their phase (PL1-D-20) |
-| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (map and report) and version PR #61, CI green; release run 56 published 14 packages. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                      |
-| Working branch        | `claude/pl4-session-4-770lm8` (GitHub deletes it after each squash merge; recreate it from `main` and push normally, since force-push is refused)                                                                                                                                                                         |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL4 closed** (2026-10-27): gate passed (`docs/phases/PL4-gate.md`), version PR #61 merged, release run 56 published 14 packages, registry checksums recorded. Owner answers #34–#40 applied (PL4-D-13; ships in the next release). Next: the PL5 plan (`docs/phases/PL5-plan.md`). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                |
+| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20)      |
+| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                         |
+| Working branch        | `claude/vibrant-babbage-udtz4j` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                            |
 
 ## What products can install (PL4 gate, 2026-10-27)
 
-Published by `release.yml` run 56 (id 40489202908) from `main` at `25771c8`, after the full port-contract matrix (19 ports) went green; one tag per package. The registry `dist.shasum` and `dist.integrity` of each version are in the job summary of that run's `release` job (job id 122139655138); the owner copies them here and into `docs/phases/PL4-gate.md` §6, as at the PL3 gate (this session cannot read job summaries or the registry). Compare with `npm view <name>@<version> dist`.
+| Package                | Version   | Tag                          | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     |
+| ---------------------- | --------- | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@infrabyx/ai`         | 0.1.0 new | `@infrabyx/ai@0.1.0`         | `ded684f27b5945bcb49e30817e63e8a5dd0d3fd9` | `sha512-Ezzew+kKvAJbY5mJfydLoLO7BzPtZ5wgiTKvq43qLFDdW2A8Vm7whAx3d3XxyVTAYGs8rZ3ct2Yy7IRuJQh3gA==` |
+| `@infrabyx/audit`      | 0.1.3     | `@infrabyx/audit@0.1.3`      | `a4ba9ad2b35503b8b4b9d083acd04f3bc6c15dd3` | `sha512-zTgbO6C3w+XfVSKvDlr4LMCoB65kCUQ6O+Z1xxn8b6lIcwmU07NFV4LxoFUW24cx6ks42nhFVjS/TZy8IOtxCg==` |
+| `@infrabyx/config`     | 0.4.0     | `@infrabyx/config@0.4.0`     | `afd61fbc2db470ebd3ae23a11c50144007c289d6` | `sha512-noL5XxD5f5dIDkR0qZmf64POTR+8PRPlFARjOOkT7pCFYN+EY0t9vmu4w/biQyATSPz9ZI/ZhmmiGad8nOyj2A==` |
+| `@infrabyx/connectors` | 0.3.0     | `@infrabyx/connectors@0.3.0` | `20e80230cb06d6d103637d06b38383128e4ea923` | `sha512-GWZVlxLfDyWTBB1ybmrKWKmyLRAWJd/0+yjRGau2AudTlPhoLyhUeY48ftx6y5kmeE2czRT37R5cb3Z4LIS/CQ==` |
+| `@infrabyx/contracts`  | 0.4.0     | `@infrabyx/contracts@0.4.0`  | `81b67306eee66eb656f4834229e34c89cbbb71d7` | `sha512-KHvla+kdbEQGId/4aFnr04Mac4z01Pwu2fcxLa2ejnDbuobNBHzy9wC8+tqr64XR1IlPWb9erNLQhg7Zaaj9kw==` |
+| `@infrabyx/crypto`     | 0.4.0     | `@infrabyx/crypto@0.4.0`     | `a489acc131351119c0d7867401df4202a55d1f9e` | `sha512-/X5xrhIhSFWs4cMYephVmEbQzwb91Z0C+meN+aNnTljFX4C9KbaXjvoZuF+Zxbgg3mxNL+gv8+UdYSmBAlh0bg==` |
+| `@infrabyx/export`     | 0.2.0     | `@infrabyx/export@0.2.0`     | `0196ba2edd7546edd8f7fb85f3889be7e4761002` | `sha512-YFiFs8hOeSY+QNdj0bwd3NuFSf+F5sAiB6hUKZSENFAghzaUwpVBbIjRkngSYe6ylwdo8bJUIt2iFziqz4bo0A==` |
+| `@infrabyx/notify`     | 0.2.0     | `@infrabyx/notify@0.2.0`     | `a75f2516a438b2167530b7e7c9efea1fadf9ab1e` | `sha512-WrmeU9WhRnrriRkPqkV/ngRJ1l7JqJna/hJUhzs3xNaMNACTKBtAuZHOibpHV+wlfTftxFR2S2P0Dby4akMWiA==` |
+| `@infrabyx/rules`      | 0.1.1     | `@infrabyx/rules@0.1.1`      | `9a70c9801ea1e6ee11016a2af41ec790ac316f91` | `sha512-iKaHiHX5qsKUL2aqgovdvNUqUjyH2Bo3CsGiVzz2bOQhowpEH6c6JdoHr1icyjVvLmuI9BG4IGJ3i/3hZ51LVA==` |
+| `@infrabyx/seed`       | 0.2.2     | `@infrabyx/seed@0.2.2`       | `5b83060b98cb072f5fd1e8a0faac1642080e318a` | `sha512-P3UkJap/ABu4EDBiRjP1Z9/diehHTAPUk8p/dmcQ6grAahKwBy+eNdVz/TUnyXKIECwwNRST8Dw5o7JcbC9akA==` |
+| `@infrabyx/tenancy`    | 0.4.0     | `@infrabyx/tenancy@0.4.0`    | `f268cc043d2b8c11a795155efc6841e4deae978b` | `sha512-GRJdp84FHQHpkb40lE5pa42NBzs36wRVnVC8ajpH+zTGB6ODPfUjbdqXfYFsoThr9nqFcVmqgCW2M7BzdciR9w==` |
+| `@infrabyx/testing`    | 0.4.0     | `@infrabyx/testing@0.4.0`    | `c312ec3635d24e0b07cbcb591a6f722319d06bcb` | `sha512-YX+d1i+7ZV4imPnfFNxGoubeUupknL8uPDmVZcVHPdoPQoSUoYAEUq/CgG4vdZZrEOBtnS9LeGCJUyjZindlMg==` |
+| `@infrabyx/vidhi`      | 0.1.0 new | `@infrabyx/vidhi@0.1.0`      | `661a222e6cb2760ff1119b0de43253ceb4c092be` | `sha512-GFIQycyjD4nq69qlXpu3HCvTe0LOWDruUl4JhgX84K4+YehlTBVqDeUu3WzyYW8RXOeBNqMJ+JHDpRR0iINx/w==` |
+| `@infrabyx/workflow`   | 0.1.1     | `@infrabyx/workflow@0.1.1`   | `3fef852df2d9d1d839f5b26e9cc13744ab962d8e` | `sha512-u7RyvN8cD++uih9tZMaOr80xSlyp6CnVcCSf9rsgiNI5CrWtiAzoPYfQjXio/s+mNPqyBAhPqUu3SBLi982Q0A==` |
 
-| Package                | Version   | Tag                          |
-| ---------------------- | --------- | ---------------------------- |
-| `@infrabyx/ai`         | 0.1.0 new | `@infrabyx/ai@0.1.0`         |
-| `@infrabyx/vidhi`      | 0.1.0 new | `@infrabyx/vidhi@0.1.0`      |
-| `@infrabyx/contracts`  | 0.4.0     | `@infrabyx/contracts@0.4.0`  |
-| `@infrabyx/crypto`     | 0.4.0     | `@infrabyx/crypto@0.4.0`     |
-| `@infrabyx/config`     | 0.4.0     | `@infrabyx/config@0.4.0`     |
-| `@infrabyx/tenancy`    | 0.4.0     | `@infrabyx/tenancy@0.4.0`    |
-| `@infrabyx/testing`    | 0.4.0     | `@infrabyx/testing@0.4.0`    |
-| `@infrabyx/connectors` | 0.3.0     | `@infrabyx/connectors@0.3.0` |
-| `@infrabyx/notify`     | 0.2.0     | `@infrabyx/notify@0.2.0`     |
-| `@infrabyx/export`     | 0.2.0     | `@infrabyx/export@0.2.0`     |
-| `@infrabyx/audit`      | 0.1.3     | `@infrabyx/audit@0.1.3`      |
-| `@infrabyx/seed`       | 0.2.2     | `@infrabyx/seed@0.2.2`       |
-| `@infrabyx/rules`      | 0.1.1     | `@infrabyx/rules@0.1.1`      |
-| `@infrabyx/workflow`   | 0.1.1     | `@infrabyx/workflow@0.1.1`   |
+Registry values from `scripts/registry-dist.mjs` (the script the `release` job writes to its job summary), run read-only in `registry-dist` run 4 against GitHub Packages after release run 56.
 
-**What products must change** (full list in `docs/phases/PL4-gate.md` §5): move every `@infrabyx/*` dependency together to these versions; run `infrabyx-migrate` on PostgreSQL 18 **with pgvector 0.8.1** (new: `ai/0001`–`0004`, `vidhi/0001`–`0004`, after `export`); the 232-key settings registry now includes every `ai.*` and `vidhi.*` key (kill switches on at once, off through an R2 checker; `ai.obs.capture_content` locked off; `ai.mcp.server_enabled` off); secrets through SECRETS (Bedrock by role identity, the Vertex service-account key under C-24 or workload identity); wire the AI gateway and the Vidhi kernel as §5 lists; export maps add `ai_runs` and `vidhi_actions` when a product adopts `ai` and `vidhi`. No adapter is proven yet: staging and above refuse the AI adapters until their sandbox legs pass with an owner-approved paid run.
+**To adopt this release**, products follow `docs/phases/PL4-gate.md` §5. In short:
 
-**Owner task:** copy the 14 registry checksums from run 56's `release` job summary into the table above and the gate report.
+- **Versions:** move every `@infrabyx/*` package together; add `ai` and `vidhi` if the product uses AI.
+- **Database:** PostgreSQL 18 with pgvector 0.8.1 available (`ai/0003` creates the `vector` extension).
+- **Migrations:** `infrabyx-migrate` applies `ai/0001`–`0004` and `vidhi/0001`–`0004` after `export`, with the `svc_ai_run_sweep` and `svc_vidhi_sched` readers; run `infrabyx-rls-lint` afterwards.
+- **Settings:** 232 keys, including every `ai.*` and `vidhi.*` key; kill switches need an R2 checker to turn off; `ai.obs.capture_content` is locked off.
+- **Secrets:** Bedrock through the role's identity; the Vertex service-account key (C-24) or workload identity; vLLM and FLUX tokens once a host exists.
+- **Code:** build the gateway, registries and kill switches; run `infrabyx-ai prompts sync` after each release; schedule `RunRetention.sweep`; ship skill manifests; wire `Autonomy`, `TaskRuntime`, `Scheduler.tick`, `Missions.advance`, `McpServer`, `Notebooks`, `QaSampler`, `Digest` and `disclose()`; call `ImageService.assertPublishable` before publishing an image; add `ai_runs` and `vidhi_actions` to the product export map.
+
+## Owner answers #34–#40 (2026-10-27, PL4-D-13; ships in the next release)
+
+- **#34:** `RetrievalService.deleteResource` deletes a deleted resource's chunks in every index version, ledgered (DPDP erasure); `RetrievalRetention.sweep()` deletes retired versions 30 days after retirement, ledgered; PostgreSQL refuses any other delete (migration `ai/0005`, reader `SVC_AI_INDEX_SWEEP`).
+- **#35:** `prompts sync` accepts the scripted CI eval result in staging; pre-prod, prod and DR still need a live, owner-approved paid run.
+- **#36, #38, #39:** defaults kept.
+- **#37:** every skill tool must declare `locked: true` or `false` (`IPB-VID-001` otherwise); new `infrabyx-vidhi manifest-lint`; word matching stays the safety net.
+- **#40:** `vidhi.qa.min_reviews` (20), `vidhi.qa.precision_floor` and `vidhi.qa.recall_floor` (0.8) are governed, tighten-only TENANT settings (235 keys).
+- **Products must, at the next release:** run `infrabyx-migrate` (`ai/0005`); call `deleteResource` whenever they delete an indexed resource; schedule `RetrievalRetention.sweep()` daily; add `locked` to every tool in their manifests and run `infrabyx-vidhi manifest-lint` in CI; drop any `floor` option passed to `QaSampler`.
 
 ## What products could install before (PL3 gate, 2026-10-27)
 
@@ -81,7 +95,7 @@ Registry checksums are the values release run 43 printed in the job summary of i
 ## Handover (2026-10-27, end of the session that built PL4 sessions 6–8)
 
 - **Done:** PL4 sessions 6, 7a, 7b, 8a and 8b merged (#72–#76); the PL4 gate report is written. Owner answers #26–#33 and #65 applied earlier in this session (#67, #68).
-- **Next:** write the PL5 plan (`docs/phases/PL5-plan.md`) per IPB-14 §14.3. Done since: version PR #61 merged and release run 56 published 14 packages (see "What products can install"); the owner copies the registry checksums from the run's job summary.
+- **Next:** merge version PR #61 when green (0.x only; under PL2-D-19), record the registry checksums from the `release.yml` job summary in `docs/phases/PL4-gate.md` §6, update "What products can install" above, then write the PL5 plan (`docs/phases/PL5-plan.md`) per IPB-14 §14.3.
 - **Open owner questions:** #34 (retrieval chunk deletion), #35 (live evals in staging), #36 (image subject guard), #37 (locked-tool word matching), #38 (schedule re-check strictness, 24 runs a day), #39 (notebook shares and PDF extraction), #40 (QA floor). Defaults in use; nothing blocked.
 - **Owner tasks before staging:** AWS Bedrock ap-south-1 model access; a Vertex AI asia-south1 project with zero retention (#27); approval of each paid sandbox run and the first live eval (#35).
 - **Branch and PR state:** work on `claude/pl4-session-4-770lm8`, recreated from `main` after each merge. Version PR #61 (`changeset-release/main`) is open and is updated by `release.yml` on every merge to `main`.

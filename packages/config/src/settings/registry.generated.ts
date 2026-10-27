@@ -3685,6 +3685,57 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-03 §03.5"
   },
   {
+    "key": "vidhi.qa.min_reviews",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 20,
+    "min": 20,
+    "max": 1000,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R2",
+    "source": "PL4-D-13; IPB-03-85",
+    "note": "reviews since the last level change before QA figures can demote a skill; a tenant may only ask for more (OWNER-QUESTIONS #40)"
+  },
+  {
+    "key": "vidhi.qa.precision_floor",
+    "tier": "TENANT",
+    "type": "decimal",
+    "default": 0.8,
+    "min": 0.8,
+    "max": 1,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R2",
+    "source": "PL4-D-13; IPB-03-85",
+    "note": "a skill below this precision is demoted one level; a tenant may only raise it (OWNER-QUESTIONS #40)"
+  },
+  {
+    "key": "vidhi.qa.recall_floor",
+    "tier": "TENANT",
+    "type": "decimal",
+    "default": 0.8,
+    "min": 0.8,
+    "max": 1,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R2",
+    "source": "PL4-D-13; IPB-03-85",
+    "note": "a skill below this recall is demoted one level; a tenant may only raise it (OWNER-QUESTIONS #40)"
+  },
+  {
     "key": "vidhi.a11y.plain_language",
     "tier": "USER",
     "type": "bool",
@@ -3917,6 +3968,9 @@ export type SettingValueMap = {
   "vidhi.notebooks.pptx": boolean;
   "vidhi.digest.hour_local": number;
   "vidhi.qa.sample_rate": number;
+  "vidhi.qa.min_reviews": number;
+  "vidhi.qa.precision_floor": number;
+  "vidhi.qa.recall_floor": number;
   "vidhi.a11y.plain_language": boolean;
   "vidhi.feedback.enabled": boolean;
 } & {

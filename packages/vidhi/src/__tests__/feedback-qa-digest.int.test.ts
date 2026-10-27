@@ -15,7 +15,7 @@ import {
 import { Autonomy } from "../autonomy.js";
 import { Digest, dayWindow } from "../digest.js";
 import { Feedback } from "../feedback.js";
-import { QaSampler, sampleDraw } from "../qa.js";
+import { QA_PLATFORM_FLOOR, QaSampler, sampleDraw, type QaVerdict } from "../qa.js";
 import type { ScheduleNotify } from "../schedules.js";
 import { SkillRegistry } from "../skills.js";
 import { TaskRuntime } from "../tasks.js";
@@ -89,8 +89,8 @@ beforeAll(async () => {
       inputs: { type: "object" },
       outputs: { type: "object" },
       tools: [
-        { name: "replies.preview", kind: "service", write: false },
-        { name: "replies.send", kind: "service", write: true },
+        { name: "replies.preview", kind: "service", write: false, locked: false },
+        { name: "replies.send", kind: "service", write: true, locked: false },
       ],
       data_class_max: "INTERNAL",
       autonomy_ceiling: "L3",
@@ -139,7 +139,6 @@ beforeAll(async () => {
     skills,
     autonomy,
     settings,
-    floor: { precision: 0.8, recall: 0.8, minReviews: 4 },
   });
   digest = new Digest({
     kernel: db.kernel,
@@ -229,7 +228,7 @@ describe("QA sampling (IPB-03-85)", () => {
       [TENANT],
     );
     const tasks: string[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 20; i++) {
       const t = await doneTask();
       // Queue it directly (the draw decides sampling; here the review flow is under test).
       await db.admin.query(
@@ -240,12 +239,17 @@ describe("QA sampling (IPB-03-85)", () => {
     }
     expect(await code(qa.review(owner, tasks[0]!, "correct"))).toBe("IPB-VID-012");
     expect(await code(qa.review(agent, tasks[0]!, "correct"))).toBe("IPB-VID-012");
-    await qa.review(lead, tasks[0]!, "correct");
-    await qa.review(lead, tasks[1]!, "correct");
-    await qa.review(lead, tasks[2]!, "incorrect");
-    const last = await qa.review(lead, tasks[3]!, "missed");
-    expect(last.metrics).toMatchObject({ reviewed: 4, correct: 2, incorrect: 1, missed: 1 });
-    expect(last.metrics.precision).toBeCloseTo(2 / 3);
+    // 19 reviews below the floor do not demote: the platform asks for 20 (PL4-D-13).
+    const verdicts: QaVerdict[] = [
+      ...Array<QaVerdict>(12).fill("correct"),
+      ...Array<QaVerdict>(4).fill("incorrect"),
+      ...Array<QaVerdict>(3).fill("missed"),
+    ];
+    for (const [i, v] of verdicts.entries())
+      expect((await qa.review(lead, tasks[i]!, v)).demoted).toBe(false);
+    const last = await qa.review(lead, tasks[19]!, "correct");
+    expect(last.metrics).toMatchObject({ reviewed: 20, correct: 13, incorrect: 4, missed: 3 });
+    expect(last.metrics.precision).toBeCloseTo(13 / 17);
     expect(last.demoted).toBe(true);
     const level = await db.admin.query<{ operating_level: string }>(
       "select operating_level from vidhi.skill_state where tenant_id = $1 and skill_key = 'oh.reply_draft'",
@@ -254,7 +258,20 @@ describe("QA sampling (IPB-03-85)", () => {
     expect(level.rows[0]!.operating_level).toBe("L2");
     // The window restarts after the demotion.
     expect((await qa.metrics(lead, "oh.reply_draft")).reviewed).toBe(0);
-    expect(await code(qa.review(lead, tasks[3]!, "correct"))).toBe("IPB-VID-022");
+    expect(await code(qa.review(lead, tasks[19]!, "correct"))).toBe("IPB-VID-022");
+  });
+
+  it("a tenant may demand more evidence or a higher floor, never less (OWNER-QUESTIONS #40)", async () => {
+    expect(await qa.floor(lead)).toEqual(QA_PLATFORM_FLOOR);
+    values.set("vidhi.qa.min_reviews", 40);
+    values.set("vidhi.qa.precision_floor", 0.9);
+    values.set("vidhi.qa.recall_floor", 0.95);
+    expect(await qa.floor(lead)).toEqual({ minReviews: 40, precision: 0.9, recall: 0.95 });
+    // A value below the platform floor (a stale row, a misconfigured reader) reads as the floor.
+    values.set("vidhi.qa.min_reviews", 5);
+    values.set("vidhi.qa.precision_floor", 0.5);
+    values.set("vidhi.qa.recall_floor", "high");
+    expect(await qa.floor(lead)).toEqual(QA_PLATFORM_FLOOR);
   });
 });
 

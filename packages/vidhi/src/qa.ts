@@ -3,7 +3,10 @@
 // 30 days in the tenant. Sampling is deterministic per task (a hash of its id), so retries never
 // add a second sample. Reviews give precision (correct among acted-on outputs) and recall (correct
 // among those that should have been acted on); once a skill has enough reviews since its last level
-// change and either figure falls below the floor, the skill is demoted one level.
+// change and either figure falls below the floor, the skill is demoted one level. The review count
+// and both floors are governed, tighten-only settings (`vidhi.qa.min_reviews`,
+// `vidhi.qa.precision_floor`, `vidhi.qa.recall_floor`; OWNER-QUESTIONS #40, PL4-D-13): a tenant may
+// ask for more evidence or a higher floor, never less, and nothing reads below the platform floor.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
 import { sha256Hex } from "@infrabyx/crypto";
@@ -13,8 +16,9 @@ import type { SkillRegistry } from "./skills.js";
 
 export const QA_NEW_SKILL_RATE = 0.1;
 export const QA_NEW_SKILL_DAYS = 30;
-/** Defaults (PL4-D-11): a skill needs 20 reviews before its figures can demote it. */
-export const QA_DEFAULT_FLOOR = { precision: 0.8, recall: 0.8, minReviews: 20 } as const;
+/** The platform floor (PL4-D-11, PL4-D-13): 20 reviews; 0.8 precision and recall. */
+export const QA_PLATFORM_FLOOR = { precision: 0.8, recall: 0.8, minReviews: 20 } as const;
+export type QaFloor = { precision: number; recall: number; minReviews: number };
 
 export type QaVerdict = "correct" | "incorrect" | "missed";
 
@@ -43,7 +47,6 @@ export interface QaSamplerOptions {
   autonomy: Autonomy;
   settings?: SettingsReader;
   inbox?: QaInbox;
-  floor?: { precision: number; recall: number; minReviews: number };
 }
 
 const isAgent = (ctx: KernelContext) =>
@@ -55,6 +58,25 @@ export const sampleDraw = (taskId: string): number =>
 
 export class QaSampler {
   constructor(private readonly o: QaSamplerOptions) {}
+
+  /** The tenant's floor: its settings, never below the platform floor (unreadable: the floor). */
+  async floor(ctx: KernelContext): Promise<QaFloor> {
+    const read = async (key: string, floor: number, int: boolean): Promise<number> => {
+      try {
+        const v = Number(await this.o.settings?.get(ctx, key));
+        if (Number.isFinite(v) && (!int || Number.isInteger(v))) return Math.max(v, floor);
+      } catch {
+        // The platform floor stays.
+      }
+      return floor;
+    };
+    const p = QA_PLATFORM_FLOOR;
+    return {
+      minReviews: await read("vidhi.qa.min_reviews", p.minReviews, true),
+      precision: Math.min(await read("vidhi.qa.precision_floor", p.precision, false), 1),
+      recall: Math.min(await read("vidhi.qa.recall_floor", p.recall, false), 1),
+    };
+  }
 
   private async rate(ctx: KernelContext, tx: Tx, skillKey: string, now: Date): Promise<number> {
     const first = await tx.query<{ first: Date | null }>(
@@ -162,7 +184,7 @@ export class QaSampler {
     if (isAgent(ctx)) throw new IpbError("IPB-VID-012", { detail: "an agent cannot review" });
     if (!["correct", "incorrect", "missed"].includes(verdict))
       throw new IpbError("IPB-VID-022", { detail: `unknown verdict ${verdict}` });
-    const floor = this.o.floor ?? QA_DEFAULT_FLOOR;
+    const floor = await this.floor(ctx);
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {

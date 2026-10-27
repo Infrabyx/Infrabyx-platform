@@ -64,7 +64,11 @@ export const SkillTool = z
     name: z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/),
     kind: z.enum(["service", "mcp"]),
     write: z.boolean(),
-    locked: z.boolean().optional(),
+    /**
+     * Required on every tool (OWNER-QUESTIONS #37, PL4-D-13): the product states whether the tool
+     * is a locked action. `false` never unlocks a tool the kernel list matches by name.
+     */
+    locked: z.boolean(),
     /** Risk class of the action when it needs approval (IPB-02 §02.4.6.1). */
     risk_class: z.enum(["R0", "R1", "R2", "R3", "R4", "R5"]).optional(),
     /** Role that must approve it (IPB-03-72). */

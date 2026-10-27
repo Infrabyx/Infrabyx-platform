@@ -10,6 +10,11 @@
 //   FieldCrypto and opened only for the caller's tenant.
 // - Re-embedding (IPB-03-32): a new index version is built in resumable batches while searches keep
 //   reading the active version, then `activate` switches (the QUEUE drives the batches; A-10).
+// - Erasure (OWNER-QUESTIONS #34, PL4-D-13): `deleteResource` deletes every chunk of a resource the
+//   product deleted, in every version, ledgered. Writes of a resource's chunks and its erasure take
+//   the same transaction lock, and a re-embedding copy read before an erasure is dropped, so an
+//   erased resource cannot come back through a batch in flight. Retired versions are deleted after
+//   30 days by `RetrievalRetention` (retrieval-retention.ts).
 import type { DataClass } from "@infrabyx/contracts/data-class";
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
@@ -121,6 +126,21 @@ const toIndex = (r: IndexRow): RetrievalIndex => ({
   chunker: r.chunker,
   state: r.state,
 });
+/** Serialises chunk writes and the erasure of one resource (transaction-scoped). */
+export const lockResources = async (
+  tx: Tx,
+  tenantId: string,
+  refs: Iterable<string>,
+): Promise<void> => {
+  for (const ref of [...new Set(refs)].sort())
+    await tx.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [
+      `ai.chunk:${tenantId}:${ref}`,
+    ]);
+};
+
+const isAgent = (ctx: KernelContext) =>
+  ctx.principal.type === "agent" || ctx.principal.roles.some((r) => r.startsWith("AGT_"));
+
 const vectorLiteral = (v: readonly number[]) => `[${v.map((x) => Number(x).toString()).join(",")}]`;
 const at = (id: string) => ({ table: "ai.chunk", column: "text_enc", rowId: id });
 const sealClass = (c: DataClass): DataClass => maxClass(c, "CONFIDENTIAL");
@@ -239,6 +259,8 @@ export class RetrievalService {
     indexId: string,
     chunks: readonly (Omit<ChunkInput, "acl"> & { aclHash: string })[],
     featureKey: string,
+    /** Re-embedding copies: the time their source was read; erasures since then drop them. */
+    copiedAt?: Date,
   ): Promise<string[]> {
     const idx = await this.o.kernel.read(ctx, (tx) => this.indexById(tx, indexId));
     const ids: string[] = [];
@@ -267,10 +289,25 @@ export class RetrievalService {
           return { id, c, sealed, scrubbed: e.scrubbed[j] as string, vector: e.vectors[j]! };
         }),
       );
-      await this.o.kernel.mutate(
+      const stored = await this.o.kernel.mutate(
         ctx,
         async (tx) => {
-          for (const r of rows)
+          await lockResources(
+            tx,
+            ctx.tenantId,
+            rows.map((r) => r.c.resourceRef),
+          );
+          let keep = rows;
+          if (copiedAt) {
+            const erased = await tx.query<{ resource_ref: string }>(
+              `select distinct resource_ref from ai.resource_erasure
+                where resource_ref = any($1::text[]) and erased_at >= $2`,
+              [[...new Set(rows.map((r) => r.c.resourceRef))], copiedAt],
+            );
+            const gone = new Set(erased.rows.map((x) => x.resource_ref));
+            keep = rows.filter((r) => !gone.has(r.c.resourceRef));
+          }
+          for (const r of keep)
             await tx.query(
               `insert into ai.chunk
                  (id, tenant_id, index_id, entity_id, resource_ref, locator, acl_hash, data_class,
@@ -298,12 +335,17 @@ export class RetrievalService {
             action: "ai.index.add_chunks",
             resourceType: "retrieval_index",
             resourceId: indexId,
-            after: { count: rows.length, embed_run: e.runId },
+            after: {
+              count: keep.length,
+              embed_run: e.runId,
+              ...(keep.length < rows.length ? { dropped_erased: rows.length - keep.length } : {}),
+            },
           });
+          return keep;
         },
         { action: "ai.index.add_chunks" },
       );
-      ids.push(...rows.map((r) => r.id));
+      ids.push(...stored.map((r) => r.id));
     }
     return ids;
   }
@@ -400,6 +442,51 @@ export class RetrievalService {
   }
 
   /**
+   * The product deleted a resource: delete every chunk of it in every index version (OWNER-QUESTIONS
+   * #34). One transaction records the erasure, deletes the chunks and ledgers it; a resource with no
+   * chunks is still recorded, so a re-embedding batch in flight cannot copy it back. Agents may not
+   * erase (`IPB-SEC-004`).
+   */
+  async deleteResource(
+    ctx: KernelContext,
+    resourceRef: string,
+  ): Promise<{ chunks: number; indexIds: string[] }> {
+    if (isAgent(ctx))
+      throw new IpbError("IPB-SEC-004", { detail: "an agent cannot erase retrieval content" });
+    if (!resourceRef || resourceRef.length > 300)
+      throw new IpbError("IPB-AI-011", { detail: "a resource ref has 1 to 300 characters" });
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        await lockResources(tx, ctx.tenantId, [resourceRef]);
+        const n = await tx.query<{ index_id: string; n: number }>(
+          `select index_id, count(*)::int as n from ai.chunk where resource_ref = $1
+            group by index_id order by index_id`,
+          [resourceRef],
+        );
+        const chunks = n.rows.reduce((a, r) => a + r.n, 0);
+        await tx.query(
+          `insert into ai.resource_erasure (tenant_id, resource_ref, chunks, erased_by)
+           values ($1, $2, $3, $4)`,
+          [ctx.tenantId, resourceRef, chunks, ctx.principal.id],
+        );
+        const d = await tx.query("delete from ai.chunk where resource_ref = $1", [resourceRef]);
+        if ((d.rowCount ?? 0) !== chunks)
+          throw new Error(`erasure of ${resourceRef} deleted ${d.rowCount} of ${chunks} chunks`);
+        const indexIds = n.rows.map((r) => r.index_id);
+        await this.o.audit.record(tx, {
+          action: "ai.retrieval.erase",
+          resourceType: "retrieval_resource",
+          resourceId: resourceRef,
+          after: { chunks, index_ids: indexIds },
+        });
+        return { chunks, indexIds };
+      },
+      { action: "ai.retrieval.erase" },
+    );
+  }
+
+  /**
    * Re-embed `name` with another model (IPB-03-32), one resumable batch per call: the first call
    * creates the `building` version; each call copies up to `batch` chunks of the active version
    * not yet copied (matched by resource, locator and content hash); searches keep reading the
@@ -421,7 +508,8 @@ export class RetrievalService {
     const target = building ?? (await this.createIndex(ctx, i));
     if (target.embeddingModel !== i.embeddingModel || target.dims !== i.dims)
       throw new IpbError("IPB-AI-011", { detail: "a building version with another model exists" });
-    const todo = await this.o.kernel.read(ctx, async (tx) => {
+    const { todo, readAt } = await this.o.kernel.read(ctx, async (tx) => {
+      const now = await tx.query<{ now: Date }>("select now() as now");
       const r = await tx.query<{
         id: string;
         resource_ref: string;
@@ -444,7 +532,7 @@ export class RetrievalService {
           order by a.id limit $3`,
         [active.id, target.id, i.batch ?? 200],
       );
-      return r.rows;
+      return { todo: r.rows, readAt: now.rows[0]!.now };
     });
     if (!todo.length) return { indexId: target.id, copied: 0, remaining: 0 };
     const inputs = await Promise.all(
@@ -464,10 +552,10 @@ export class RetrievalService {
       })),
     );
     // The ACL hash is carried over as is: the descriptor itself was never stored.
-    await this.ingest(ctx, target.id, inputs, "ai.retrieval.reembed");
+    const copied = await this.ingest(ctx, target.id, inputs, "ai.retrieval.reembed", readAt);
     return {
       indexId: target.id,
-      copied: todo.length,
+      copied: copied.length,
       remaining: (todo[0]?.total ?? todo.length) - todo.length,
     };
   }
