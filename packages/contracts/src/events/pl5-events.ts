@@ -120,6 +120,24 @@ export const BrandPackPublishedData = z
   })
   .strict();
 
+/** IPB-04 §04.6.1 `brand.ContrastGuardFailed` (IPB-06 §06.6.1 names it ContrastGuardRejected). */
+export const ContrastGuardFailedData = z
+  .object({
+    brd_id: Id("brd"),
+    pairs: z.array(
+      z
+        .object({
+          pair: z.string(),
+          scheme: z.string(),
+          ratio: z.number(),
+          min: z.number(),
+          suggestion: z.string().nullable(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
 export const ConsentRecordedData = z
   .object({
     receipt_id: Id("cns"),

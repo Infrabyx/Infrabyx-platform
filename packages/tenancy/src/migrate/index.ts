@@ -27,6 +27,7 @@ export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/export",
   "@infrabyx/ai",
   "@infrabyx/vidhi",
+  "@infrabyx/brand",
 ] as const;
 
 export interface MigrationSource {

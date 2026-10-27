@@ -316,6 +316,17 @@ The shared components render on the server with no client script. The accessibil
 - **Supply chain:** `axe-core` 4.14.0 (MPL-2.0) and `html_codesniffer` 2.5.1 (BSD-3-Clause, last released 2020) are used only by the gate, never shipped to visitors. `playwright-core` is an optional peer. `lighthouse` was refused by the trust policy (`puppeteer-core@25.14.0` has no trust evidence; OWNER-QUESTIONS #51) and is not installed.
 - **Residual:** `html_codesniffer` is unmaintained; a rule gap there is covered by axe on the same routes. The Lighthouse score is not measured live until #51 is resolved.
 
+### 3.28 `@infrabyx/hlp` and `@infrabyx/brand` (built, PL5 session 3)
+
+`hlp` is build-time tooling plus pure lookups. `brand` adds the `brand` schema (packs, immutable revisions, the host map), logo storage through STORAGE, and the hooks to NOTIFY (email identity) and to the policy set.
+
+- **T (logo upload):** a hostile SVG (script, event attributes, `foreignObject`, external `use`, CSS `@import` or `url()`, entity expansion). Control: an allow-list sanitiser rejects DOCTYPE and malformed XML (`IPB-BRD-001`), removes everything else not listed and reports it, and re-serialises the cleaned tree. Only the sanitised file is stored, tagged and hashed. A revision counts as sanitised only when the stored object carries the tag and its hash matches.
+- **S (host spoofing):** a request with a forged `Host` or `X-Forwarded-Host` selects a partner's brand. Control: only published, verified hosts in `brand.host` select a pack. `X-Forwarded-Host` never does, and a mismatch is reported as a security event. Unknown hosts get the default pack with `noindex` (`IPB-BRD-007`). A host belongs to one pack group-wide (primary key; `IPB-BRD-002` at save).
+- **E/T (publish):** one person publishing a brand, or changing the legal entity without legal review. Control: the checker and the legal reviewer are each recorded once and never equal the maker (service checks and database constraints). The approver differs from the legal reviewer, the body of a revision never changes (trigger), and a rollback is a new revision under the same rule. Every step writes the audit ledger.
+- **T (claims and contrast):** an unreadable brand is published. Control: the contrast guard refuses it (`IPB-BRD-003`), the refusal is ledgered with `ContrastGuardFailed`, and the database refuses a published revision without the guard and sanitiser flags.
+- **I:** drafts carry the legal entity and email identity before publication. Control: revisions are INTERNAL and readable through RLS, written only in a platform context. Published values are public by nature (footer, manifest).
+- **Residual:** email-domain verification and policy-set publication are hooks; until NOTIFY and `cms` wire them, a deployment must supply them, and the defaults refuse publish. The help registry lint is not yet in `verify` (session 7).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

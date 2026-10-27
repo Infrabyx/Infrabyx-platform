@@ -1,17 +1,21 @@
 {
   "name": "@infrabyx/hlp",
   "version": "0.0.0",
-  "description": "\"i\" glossary registry, help keys, CI lint, tours, tutorials",
+  "description": "Glossary registry and \"i\" popover content, public glossary, hlp-lint and onboarding tours (IPB-07)",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
+  "bin": {
+    "infrabyx-hlp": "./dist/cli.js"
+  },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -34,5 +38,9 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "dependencies": {
+    "yaml": "2.9.1",
+    "zod": "4.6.7"
   }
 }

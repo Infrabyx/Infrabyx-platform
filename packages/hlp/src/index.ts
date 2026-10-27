@@ -1,2 +1,8 @@
-// @infrabyx/hlp — see README.md and the IPB file(s) that specify this package.
+// @infrabyx/hlp (IPB-07 §07.3.4–§07.3.5): the glossary registry and "i" popover content, the
+// public glossary, hlp-lint and onboarding tours.
 export const PACKAGE_NAME = "@infrabyx/hlp" as const;
+
+export * from "./entry.js";
+export * from "./registry.js";
+export * from "./lint.js";
+export * from "./tours.js";
