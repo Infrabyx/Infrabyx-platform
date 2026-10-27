@@ -1,0 +1,35 @@
+name: registry-dist
+# Prints the registry's own `dist` (shasum, integrity, tarball) for published versions, so a gate
+# report can be checked against GitHub Packages (OWNER-QUESTIONS #17, PL3-D-03). Manual only; reads,
+# never publishes.
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: "Space-separated name@version list"
+        required: false
+        default: "@infrabyx/contracts@0.2.0 @infrabyx/crypto@0.2.0 @infrabyx/config@0.2.0 @infrabyx/tenancy@0.2.0 @infrabyx/audit@0.1.1 @infrabyx/seed@0.2.0 @infrabyx/testing@0.2.0 @infrabyx/connectors@0.1.0"
+permissions:
+  contents: read
+  packages: read
+jobs:
+  dist:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          registry-url: https://npm.pkg.github.com
+          scope: "@infrabyx"
+      - name: npm view <name>@<version> dist
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.NPM_PUBLISH_TOKEN || secrets.GITHUB_TOKEN }}
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          for p in $PACKAGES; do
+            echo "== $p"
+            npm view "$p" dist --registry https://npm.pkg.github.com
+          done
+          node -e 'console.log(JSON.stringify(process.env.PACKAGES.trim().split(/\s+/).map((s) => { const i = s.lastIndexOf("@"); return { name: s.slice(0, i), version: s.slice(i + 1) }; })))' > /tmp/published.json
+          PUBLISHED="$(cat /tmp/published.json)" node scripts/registry-dist.mjs | tee -a "$GITHUB_STEP_SUMMARY"

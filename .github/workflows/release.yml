@@ -58,6 +58,9 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
       - name: Build
         run: pnpm build
+      # Never publish a package a product cannot import (PL3-D-02).
+      - name: Consumer smoke (pack, clean install, import every export)
+        run: node scripts/consumer-smoke.mjs
       - name: Version and publish (Changesets)
         id: changesets
         uses: changesets/action@3841a0683d3cfa6dae0f9bb335290003010fe3f0 # v1.9.0
