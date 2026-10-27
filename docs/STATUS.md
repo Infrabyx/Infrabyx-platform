@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 5 done** (2026-10-27): `export` and C-22 (PL3-D-22); owner answers #21–#23 applied (PL3-D-21). Next: PL3 session 6 (ESIGN). Continuous build mode (PL2-D-41)                                                                                      |
+| Current phase         | **PL3 session 6 done** (2026-10-27): ESIGN `leegality` and `digio`, C-25 (PL3-D-23); sessions 5 (`export`, PL3-D-22) and the owner answers #21–#23 (PL3-D-21) merged. Next: PL3 session 7 (gate and release). Continuous build mode (PL2-D-41)                  |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
 | Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
@@ -177,6 +177,22 @@ Then PL3 (plan first). The owner's PL3 items so far:
 
 Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#7–#17 open with defaults in use; #1–#6 answered). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
+## PL3 session 6 (2026-10-27, PL3-D-23)
+
+- `@infrabyx/crypto` (minor): C-25 `verifyLeegalityMac` (HMAC-SHA1, verification only, PL3-C-02).
+- `@infrabyx/connectors` (minor, subpath `./esign`): `leegality` (interim reference) and `digio` (alternative), on stubs, test mode, `unproven` with port-contract issues #55 and #56. Both:
+  - read the document by reference and check its SHA-256;
+  - never downgrade a signature type;
+  - treat webhooks as triggers and read the status back;
+  - write signed PDFs to STORAGE `REGULATED`.
+- `ESIGN` joins the port-contract matrix. `@infrabyx/contracts` (minor): `EsignEnvelopeStore`. `@infrabyx/testing` (minor): the Leegality and Digio stubs and `MemoryEsignEnvelopeStore`. `@infrabyx/config` (minor): `int.esign.provider` and `int.esign.expire_in_days`.
+- New owner question #25 (ESIGN defaults); defaults in use, nothing blocked.
+- Products at the PL3 gate:
+  - wire `LeegalityEsign` or `DigioEsign` with STORAGE, credentials from SECRETS and a persisted `EsignEnvelopeStore`;
+  - configure one Leegality workflow per signing method;
+  - put `ipb_token` on the Digio callback URL;
+  - pass webhooks to `handleWebhook` and act only on the status it returns.
+
 ## PL3 session 5 (2026-10-27, PL3-D-22)
 
 - `@infrabyx/crypto` (minor): C-22 `signDetachedJws` and `verifyDetachedJws` (ES256 through KMS `sign`), `spkiToEs256Jwk` and `cloudEventSigningPayload`.
@@ -203,7 +219,7 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- Session 6 (ESIGN `leegality` with C-25 and `digio`) and session 7 (gate and release).
+- Session 7: the PL3 gate report, consumer-smoke, the version PR and the release.
 
 ## Handover (2026-10-27, end of the session that built PL3 sessions 2–4)
 

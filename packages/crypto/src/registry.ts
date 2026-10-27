@@ -39,6 +39,15 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     ],
   },
   {
+    id: "hmac-sha1",
+    purpose: "mac",
+    status: "approved",
+    primitive: "mac",
+    parameterSet: "160",
+    oid: "1.2.840.113549.2.7",
+    usedFor: ["Leegality webhook verification only (C-25); never for signing anything of ours"],
+  },
+  {
     id: "aes-256-gcm",
     purpose: "aead",
     status: "approved",

@@ -21,6 +21,7 @@ export const PORTS = [
   "PAYMENTS",
   "RULES",
   "PUSH",
+  "ESIGN",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

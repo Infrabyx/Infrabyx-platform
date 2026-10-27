@@ -116,3 +116,22 @@ export interface EsignPort extends Port {
     meta?: WebhookRequestMeta,
   ): Promise<EnvelopeStatus>;
 }
+
+/** What an ESIGN adapter remembers about an envelope (the product persists it). */
+export interface EsignEnvelopeRecord {
+  envelopeId: string;
+  adapter: string;
+  vendorRef: string;
+  doc: DocumentRef;
+  order: "sequential" | "parallel";
+  /** Per signer: the method it was created with (never downgraded) and the vendor's handle. */
+  signers: { ref: string; method: SigningMethod; vendorKey: string }[];
+  createdAt: string;
+}
+
+/** Envelope ids ↔ vendor references, kept by the product (e.g. beside its signing workflow). */
+export interface EsignEnvelopeStore {
+  save(r: EsignEnvelopeRecord): Promise<void>;
+  get(envelopeId: string): Promise<EsignEnvelopeRecord | null>;
+  byVendorRef(adapter: string, vendorRef: string): Promise<EsignEnvelopeRecord | null>;
+}

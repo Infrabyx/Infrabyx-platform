@@ -3,6 +3,8 @@ import { IpbError } from "@infrabyx/contracts/errors";
 import type {
   PushPlatform,
   PushTokenStore,
+  EsignEnvelopeRecord,
+  EsignEnvelopeStore,
   IdentityProvisioning,
   ObjectMeta,
   PortHealth,
@@ -209,5 +211,22 @@ export class MemoryPushTokenStore implements PushTokenStore {
   }
   get size(): number {
     return this.rows.size;
+  }
+}
+
+/** In-memory `EsignEnvelopeStore` for the ESIGN contract legs (products persist theirs). */
+export class MemoryEsignEnvelopeStore implements EsignEnvelopeStore {
+  readonly rows = new Map<string, EsignEnvelopeRecord>();
+  async save(r: EsignEnvelopeRecord): Promise<void> {
+    this.rows.set(r.envelopeId, structuredClone(r));
+  }
+  async get(envelopeId: string): Promise<EsignEnvelopeRecord | null> {
+    return this.rows.get(envelopeId) ?? null;
+  }
+  async byVendorRef(adapter: string, vendorRef: string): Promise<EsignEnvelopeRecord | null> {
+    return (
+      [...this.rows.values()].find((r) => r.adapter === adapter && r.vendorRef === vendorRef) ??
+      null
+    );
   }
 }
