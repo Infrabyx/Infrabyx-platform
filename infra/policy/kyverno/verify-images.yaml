@@ -20,6 +20,9 @@ spec:
       verifyImages:
         - imageReferences: ["ghcr.io/infrabyx/*"]
           failureAction: Audit
+          # Audit cannot rewrite the image to its digest; the chart and disallow-latest-tag already
+          # require digests.
+          mutateDigest: false
           verifyDigest: true
           required: true
           attestors:
