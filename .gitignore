@@ -28,3 +28,7 @@ next-env.d.ts
 
 # Chart and policy tools built by scripts/ci/infra-tools.sh in CI
 .infra-tools/
+
+# OpenTofu working directories and lock files written by tofu init (pinned versions in versions.tf)
+.terraform/
+.terraform.lock.hcl

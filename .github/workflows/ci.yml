@@ -259,7 +259,7 @@ jobs:
         id: tools-cache
         with:
           path: .infra-tools
-          key: infra-tools-${{ hashFiles('scripts/ci/infra-tools.sh') }}
+          key: infra-tools-${{ hashFiles('scripts/ci/infra-tools.sh', 'infra/terraform/**/versions.tf') }}
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: steps.tools-cache.outputs.cache-hit != 'true'
         with:
@@ -287,6 +287,30 @@ jobs:
           /src/infra/helm/infrabyx-app
       - name: kyverno test
         run: kyverno test infra/policy/kyverno/tests
+      - name: tofu fmt, init and validate (every module and the example stack)
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.infra-tools/tofu-plugins
+        run: |
+          mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          tofu fmt -check -recursive -diff infra/terraform
+          for dir in infra/terraform/modules/*/* infra/terraform/envs/example/*; do
+            [ -n "$(ls "$dir"/*.tf 2>/dev/null)" ] || continue
+            echo "== $dir"
+            tofu -chdir="$dir" init -backend=false -input=false -no-color > /dev/null
+            tofu -chdir="$dir" validate -no-color
+          done
+      - name: tofu test (@IPB-01-AT-14, output contract with mock providers)
+        env:
+          TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.infra-tools/tofu-plugins
+        run: |
+          for dir in infra/terraform/modules/*/platform; do
+            echo "== $dir"
+            tofu -chdir="$dir" test -no-color
+          done
+      - name: trivy config (OpenTofu)
+        run: >-
+          docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" config --exit-code 1
+          --severity HIGH,CRITICAL /src/infra/terraform
       - name: kyverno apply over the pods the rendered chart creates
         # Every policy over every pod; the step fails unless rules ran, all passed and none failed.
         run: |
