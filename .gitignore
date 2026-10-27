@@ -18,3 +18,7 @@ __MACOSX/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Next.js build output and generated types (apps/public)
+.next/
+next-env.d.ts
