@@ -68,3 +68,10 @@ export {
   type SnsFailure,
 } from "./webhook-sig.js";
 export { encodeKmsContext, decodeKmsContext, assertKmsContext } from "./kms-context.js";
+export { addressHash, normaliseAddress, type AddressKind } from "./address-hash.js";
+export {
+  signServiceAccountAssertion,
+  GOOGLE_TOKEN_URL,
+  FCM_SCOPE,
+  type ServiceAccountAssertionInput,
+} from "./google-assertion.js";

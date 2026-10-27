@@ -1,6 +1,8 @@
 // Fakes for the ports PL1 consumes (PL1 plan §10): SECRETS, KMS, STORAGE, FEATURE_FLAG, IDENTITY.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
+  PushPlatform,
+  PushTokenStore,
   IdentityProvisioning,
   ObjectMeta,
   PortHealth,
@@ -179,5 +181,33 @@ export class MemoryIdentity implements IdentityProvisioning {
     const u = this.users.get(email);
     if (!u) throw new Error(`no user ${email}`);
     u.password = { value: password, temporary };
+  }
+}
+
+/** In-memory PUSH token store for adapter tests (NOTIFY seals tokens in production). */
+export class MemoryPushTokenStore implements PushTokenStore {
+  private readonly rows = new Map<
+    string,
+    { tokenRef: string; userId: string; platform: PushPlatform; provider: string; token: string }
+  >();
+  async save(t: { userId: string; platform: PushPlatform; provider: string; token: string }) {
+    const existing = [...this.rows.values()].find(
+      (r) => r.token === t.token && r.provider === t.provider,
+    );
+    if (existing) return { tokenRef: existing.tokenRef };
+    const tokenRef = `ptk_${this.rows.size + 1}`;
+    this.rows.set(tokenRef, { tokenRef, ...t });
+    return { tokenRef };
+  }
+  async forUsers(userIds: readonly string[], provider: string) {
+    return [...this.rows.values()].filter(
+      (r) => userIds.includes(r.userId) && r.provider === provider,
+    );
+  }
+  async remove(tokenRef: string) {
+    this.rows.delete(tokenRef);
+  }
+  get size(): number {
+    return this.rows.size;
   }
 }

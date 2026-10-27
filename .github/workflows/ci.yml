@@ -120,6 +120,8 @@ jobs:
         run: pnpm registry:check
       - name: routing-check (IPB-01-20; provider_routing files, IPB-DEV-04 gate B)
         run: pnpm routing:check
+      - name: notify-lint (PL3 plan §6.2; notification catalogue)
+        run: pnpm notify:lint
       - name: dev-keys-check (dev-keys.json fingerprints, PL1-C-10)
         run: pnpm dev-keys:check
       - name: env-example-check (IPB-11-03, @IPB-11-AT-06; seed schema fixture)
@@ -192,7 +194,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
       - name: build
         run: pnpm build
-      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules → workflow, checksums in meta.migration_checksums)
+      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules → workflow → notify, checksums in meta.migration_checksums)
         run: node packages/tenancy/dist/migrate/cli.js --db "$IPB_TEST_PG_URL"
       - name: rls-lint (IPB-02-12; every tenant table enabled + forced + tenant policy, no BYPASSRLS)
         run: node packages/tenancy/dist/rls-lint/cli.js --db "$IPB_TEST_PG_URL"

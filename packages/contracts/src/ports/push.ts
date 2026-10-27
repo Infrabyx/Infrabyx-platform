@@ -60,3 +60,23 @@ export interface PushPort extends Port {
     meta?: WebhookRequestMeta,
   ): Promise<PushReceipt[]>;
 }
+
+/**
+ * Device tokens behind the PUSH adapters (PL3 plan §6.7). `@infrabyx/notify` implements it on
+ * `notify.device_token` with the token sealed by FieldCrypto and a lookup digest; adapters hold no
+ * tokens themselves.
+ */
+export interface PushTokenStore {
+  /** Idempotent per token: the same device token returns the same reference. */
+  save(t: {
+    userId: string;
+    platform: PushPlatform;
+    provider: string;
+    token: string;
+  }): Promise<{ tokenRef: string }>;
+  forUsers(
+    userIds: readonly string[],
+    provider: string,
+  ): Promise<{ tokenRef: string; userId: string; platform: PushPlatform; token: string }[]>;
+  remove(tokenRef: string): Promise<void>;
+}

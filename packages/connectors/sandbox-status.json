@@ -61,6 +61,16 @@
       "needs": "Cashfree sandbox keys (P-16)",
       "issue": 39
     },
+    "expo": {
+      "status": "unproven",
+      "needs": "Expo account and push access token (PL3-D-11)",
+      "issue": 50
+    },
+    "fcm": {
+      "status": "unproven",
+      "needs": "Firebase project and service account (PL3-D-11, PL3-C-01)",
+      "issue": 51
+    },
     "minio": {
       "status": "unproven",
       "needs": "Owner decision PL2-D-61: frozen upstream, so refused outside dev and test even when its hermetic leg is green"

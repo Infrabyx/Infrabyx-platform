@@ -20,6 +20,7 @@ export const PORTS = [
   "WHATSAPP",
   "PAYMENTS",
   "RULES",
+  "PUSH",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

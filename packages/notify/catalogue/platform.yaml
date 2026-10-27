@@ -1,0 +1,126 @@
+# Platform notification classes (PL3 plan §6.2, PL3-D-20). Products add their own files under
+# their notify/catalogue/ folder; `infrabyx-notify-lint` checks every file in CI.
+catalogue: platform
+version: 1
+classes:
+  - id: security.login_alert
+    category: security
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email, push]
+    help_key: ntf.security.login_alert
+    deep_link: /security/sessions
+    templates:
+      email: { key: security.login_alert, locales: [en, hi] }
+      push: { title_key: ntf.security.login_alert.title }
+      inapp: { title_key: ntf.security.login_alert.title }
+  - id: security.mfa_changed
+    category: security
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.security.mfa_changed
+    deep_link: /security/mfa
+    templates:
+      email: { key: security.mfa_changed, locales: [en, hi] }
+      inapp: { title_key: ntf.security.mfa_changed.title }
+  - id: approval.requested
+    category: maker_checker
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.approval.requested
+    deep_link: /approvals/{id}
+    templates:
+      email: { key: approval.requested, locales: [en, hi] }
+      inapp: { title_key: ntf.approval.requested.title }
+  - id: approval.reminder
+    category: maker_checker
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.approval.reminder
+    deep_link: /approvals/{id}
+    templates:
+      email: { key: approval.reminder, locales: [en, hi] }
+      inapp: { title_key: ntf.approval.reminder.title }
+  - id: approval.escalated
+    category: maker_checker
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.approval.escalated
+    deep_link: /approvals/{id}
+    templates:
+      email: { key: approval.escalated, locales: [en, hi] }
+      inapp: { title_key: ntf.approval.escalated.title }
+  - id: inbox.mention
+    category: transactional
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.inbox.mention
+    deep_link: /inbox/{id}
+    templates:
+      email: { key: inbox.mention, locales: [en, hi] }
+      inapp: { title_key: ntf.inbox.mention.title }
+  - id: export.ready
+    category: transactional
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.export.ready
+    deep_link: /exports/{id}
+    templates:
+      email: { key: export.ready, locales: [en, hi] }
+      inapp: { title_key: ntf.export.ready.title }
+  - id: notice.policy_change
+    category: regulatory
+    mandatory: true
+    resend: hold
+    default_channels: [inapp, email]
+    never_channels: [whatsapp]
+    help_key: ntf.notice.policy_change
+    deep_link: /legal/notices/{id}
+    templates:
+      email: { key: notice.policy_change, locales: [en, hi] }
+      inapp: { title_key: ntf.notice.policy_change.title }
+  - id: breach.notice
+    category: regulatory
+    mandatory: true
+    urgent: true
+    bypass_quiet_hours: true
+    resend: hold
+    default_channels: [inapp, email]
+    never_channels: [whatsapp]
+    help_key: ntf.breach.notice
+    deep_link: /legal/breach/{id}
+    templates:
+      email: { key: breach.notice, locales: [en, hi] }
+      inapp: { title_key: ntf.breach.notice.title }
+  - id: webhook.endpoint_disabled
+    category: transactional
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.webhook.endpoint_disabled
+    deep_link: /settings/webhooks/{id}
+    templates:
+      email: { key: webhook.endpoint_disabled, locales: [en, hi] }
+      inapp: { title_key: ntf.webhook.endpoint_disabled.title }
+  - id: digest.daily
+    category: transactional
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.digest.daily
+    deep_link: /inbox
+    templates:
+      email: { key: digest.daily, locales: [en, hi] }
+      inapp: { title_key: ntf.digest.daily.title }

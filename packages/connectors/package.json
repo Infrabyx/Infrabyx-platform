@@ -70,6 +70,10 @@
       "types": "./dist/payments/index.d.ts",
       "default": "./dist/payments/index.js"
     },
+    "./push": {
+      "types": "./dist/push/index.d.ts",
+      "default": "./dist/push/index.js"
+    },
     "./rules": {
       "types": "./dist/rules/index.d.ts",
       "default": "./dist/rules/index.js"
