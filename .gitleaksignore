@@ -5,3 +5,7 @@
 # 2026-10-26: test fixture "rzp_test_abc123" in a routing test, used as an example of a literal value
 # where a SECRETS path is required. It is not a credential; the fixture was changed in the next commit.
 ded1ae21f658011d6a1afed4b355c9abd48be704:packages/contracts/src/routing.test.ts:generic-api-key:39
+#
+# 2026-10-27: test stub default "stub-msg91-key" (MSG91 stub's accepted key in a local HTTP stub). It
+# is not a credential; the next commit makes every stub credential random per run (stubCredential).
+a784e5f61c0537441c3aaa11484fa51ae3e62040:packages/testing/src/stubs/sms.ts:generic-api-key:24
