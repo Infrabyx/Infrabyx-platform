@@ -1,9 +1,0 @@
-{
-  "kty": "EC",
-  "crv": "P-256",
-  "x": "8p_nYM7GzAossJSXDx8SoFkkLNVOnJOmoS3DXanvx4Q",
-  "y": "MQWI8a79lxvxIkeLq_5EO6Q1v7TFwcCmLKivx3opam4",
-  "alg": "ES256",
-  "use": "sig",
-  "kid": "local:sign:export"
-}
