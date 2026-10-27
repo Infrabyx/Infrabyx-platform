@@ -9,3 +9,7 @@ ded1ae21f658011d6a1afed4b355c9abd48be704:packages/contracts/src/routing.test.ts:
 # 2026-10-27: test stub default "stub-msg91-key" (MSG91 stub's accepted key in a local HTTP stub). It
 # is not a credential; the next commit makes every stub credential random per run (stubCredential).
 a784e5f61c0537441c3aaa11484fa51ae3e62040:packages/testing/src/stubs/sms.ts:generic-api-key:24
+#
+# 2026-10-27: the settings key name "vidhi.sched.allow_l4" in the generated settings registry, read
+# by generic-api-key because it follows a "key" field. It is a setting name, not a credential.
+a621e1eaeb34464a830c39db17bcf53e26f0fe40:packages/config/src/settings/registry.generated.ts:generic-api-key:3551
