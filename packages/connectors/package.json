@@ -13,6 +13,7 @@
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json",
+    "./sandbox-status.json": "./sandbox-status.json",
     "./observability": {
       "types": "./dist/observability/index.d.ts",
       "default": "./dist/observability/index.js"
@@ -77,6 +78,7 @@
     "migrations",
     "marketplace",
     "policy",
+    "sandbox-status.json",
     "README.md"
   ],
   "scripts": {

@@ -57,7 +57,7 @@ const base: OtelOptions = {
 
 defineContractSuite("OBSERVABILITY", () => new OtelObservability(base), [], { leg: "unit" });
 
-describe("OBSERVABILITY hermetic leg (otel → Collector 0.162.0)", () => {
+describe("@IPB-01-15 OBSERVABILITY hermetic leg (otel → Collector 0.162.0)", () => {
   let svc: StartedService;
   let out: string;
   beforeAll(async () => {

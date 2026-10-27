@@ -182,7 +182,7 @@ const cases = (prefix: string) => [
   },
 ];
 
-describe("SECRETS hermetic leg: aws-sm on moto 5.2.4", () => {
+describe("@IPB-01-15 SECRETS hermetic leg: aws-sm on moto 5.2.4", () => {
   defineContractSuite("SECRETS", aws, cases("secrets/test/aws"), { leg: "hermetic" });
 
   it("audit looks up CloudTrail events by the secret ARN (CloudTrail stub)", async () => {
@@ -225,7 +225,7 @@ describe("SECRETS hermetic leg: aws-sm on moto 5.2.4", () => {
   });
 });
 
-describe("SECRETS hermetic leg: vault on OpenBao 2.7.1", () => {
+describe("@IPB-01-15 SECRETS hermetic leg: vault on OpenBao 2.7.1", () => {
   defineContractSuite("SECRETS", vault, cases("secrets/test/vault"), { leg: "hermetic" });
 
   it("lease issues dynamic PostgreSQL credentials that can log in", async () => {

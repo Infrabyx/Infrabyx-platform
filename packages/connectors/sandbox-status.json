@@ -1,53 +1,65 @@
 {
-  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed unless the owner keeps them out of staging and above (minio, PL2-D-61).",
+  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg, each with its open port-contract issue. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed unless the owner keeps them out of staging and above (minio, PL2-D-61).",
   "adapters": {
     "aws-sm": {
       "status": "unproven",
-      "needs": "AWS sandbox account (D-01)"
+      "needs": "AWS sandbox account (D-01)",
+      "issue": 29
     },
     "aws-kms": {
       "status": "unproven",
-      "needs": "AWS sandbox account (D-01)"
+      "needs": "AWS sandbox account (D-01)",
+      "issue": 30
     },
     "s3": {
       "status": "unproven",
-      "needs": "AWS sandbox account (D-01)"
+      "needs": "AWS sandbox account (D-01)",
+      "issue": 28
     },
     "ses": {
       "status": "unproven",
-      "needs": "AWS sandbox account (D-01)"
+      "needs": "AWS sandbox account (D-01)",
+      "issue": 31
     },
     "temporal-cloud": {
       "status": "unproven",
-      "needs": "Temporal Cloud Mumbai namespace (D-06)"
+      "needs": "Temporal Cloud Mumbai namespace (D-06)",
+      "issue": 32
     },
     "brevo": {
       "status": "unproven",
-      "needs": "Brevo account (D-08)"
+      "needs": "Brevo account (D-08)",
+      "issue": 33
     },
     "msg91": {
       "status": "unproven",
-      "needs": "MSG91 account and DLT registration (D-07)"
+      "needs": "MSG91 account and DLT registration (D-07)",
+      "issue": 34
     },
     "gupshup-sms": {
       "status": "unproven",
-      "needs": "Gupshup Enterprise SMS account (D-07)"
+      "needs": "Gupshup Enterprise SMS account (D-07)",
+      "issue": 35
     },
     "gupshup": {
       "status": "unproven",
-      "needs": "Gupshup WhatsApp sandbox app (D-07)"
+      "needs": "Gupshup WhatsApp sandbox app (D-07)",
+      "issue": 36
     },
     "meta-cloud": {
       "status": "unproven",
-      "needs": "Meta developer app with test number (D-07)"
+      "needs": "Meta developer app with test number (D-07)",
+      "issue": 37
     },
     "razorpay": {
       "status": "unproven",
-      "needs": "Razorpay test mode keys (P-16)"
+      "needs": "Razorpay test mode keys (P-16)",
+      "issue": 38
     },
     "cashfree": {
       "status": "unproven",
-      "needs": "Cashfree sandbox keys (P-16)"
+      "needs": "Cashfree sandbox keys (P-16)",
+      "issue": 39
     },
     "minio": {
       "status": "unproven",

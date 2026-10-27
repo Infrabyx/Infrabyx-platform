@@ -291,7 +291,7 @@ afterAll(async () => {
   await Promise.all([gup?.close(), meta?.close()]);
 });
 
-describe("WHATSAPP hermetic leg: gupshup (stub)", () => {
+describe("@IPB-01-15 WHATSAPP hermetic leg: gupshup (stub)", () => {
   defineContractSuite(
     "WHATSAPP",
     gupshupAdapter,
@@ -326,7 +326,7 @@ describe("WHATSAPP hermetic leg: gupshup (stub)", () => {
   });
 });
 
-describe("WHATSAPP hermetic leg: meta-cloud (Graph stub)", () => {
+describe("@IPB-01-15 WHATSAPP hermetic leg: meta-cloud (Graph stub)", () => {
   defineContractSuite(
     "WHATSAPP",
     () => metaAdapter(),

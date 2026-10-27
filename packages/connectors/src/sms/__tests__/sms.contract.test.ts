@@ -237,7 +237,7 @@ afterAll(async () => {
   await Promise.all([msg91?.close(), gup?.close()]);
 });
 
-describe("SMS hermetic leg: msg91 (stub)", () => {
+describe("@IPB-01-15 SMS hermetic leg: msg91 (stub)", () => {
   defineContractSuite(
     "SMS",
     msg91Adapter,
@@ -279,7 +279,7 @@ describe("SMS hermetic leg: msg91 (stub)", () => {
   });
 });
 
-describe("SMS hermetic leg: gupshup-sms (stub)", () => {
+describe("@IPB-01-15 SMS hermetic leg: gupshup-sms (stub)", () => {
   defineContractSuite(
     "SMS",
     gupshupAdapter,

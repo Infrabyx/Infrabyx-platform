@@ -209,7 +209,7 @@ const cases = [
   },
 ];
 
-describe("STORAGE hermetic leg: s3 on moto 5.2.4", () => {
+describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
   defineContractSuite("STORAGE", s3Adapter, cases, { leg: "hermetic" });
 
   it("@IPB-02-AT-13 an AUDIT anchor survives a delete of its locked version", async () => {
@@ -281,7 +281,7 @@ describe("STORAGE hermetic leg: s3 on moto 5.2.4", () => {
   });
 });
 
-describe("STORAGE hermetic leg: minio adapter on the S3 API (moto 5.2.4)", () => {
+describe("@IPB-01-15 STORAGE hermetic leg: minio adapter on the S3 API (moto 5.2.4)", () => {
   defineContractSuite(
     "STORAGE",
     minioAdapter,
@@ -301,7 +301,7 @@ const MINIO_CREDS = { accessKeyId: "ipb-minio-test", secretAccessKey: "ipb-minio
 const minioBuckets = buckets("srv");
 
 describe.skipIf(!minioUrl)(
-  "STORAGE hermetic leg: minio server RELEASE.2025-09-07T16-13-09Z",
+  "@IPB-01-15 STORAGE hermetic leg: minio server RELEASE.2025-09-07T16-13-09Z",
   () => {
     const server = () =>
       new MinioStorage({
