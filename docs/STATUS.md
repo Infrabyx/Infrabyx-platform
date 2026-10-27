@@ -128,6 +128,7 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
+- Patch release `@infrabyx/connectors` 0.1.1 (plain-Node ESM import of `@temporalio/proto`, PL3-D-02) with the new `consumer-smoke` check; registry checksums from `registry-dist.yml` (#17, PL3-D-03).
 - PL3 session 1: spike, then contracts and config (PL3 plan §12).
 
 ## PL2 session 7 (2026-10-27)

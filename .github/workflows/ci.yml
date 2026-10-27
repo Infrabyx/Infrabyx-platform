@@ -134,6 +134,30 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           HEAD_REF: ${{ github.head_ref }}
         run: pnpm pr:checklist
+  consumer-smoke:
+    # Installs the packed tarballs in a clean directory with plain npm and imports every JavaScript
+    # export with plain Node 24.22.1, as a product does (PL3-D-02). Catches CommonJS named-import
+    # mismatches and missing files that the workspace and vitest hide.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@infrabyx"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: build
+        run: pnpm build
+      - name: consumer-smoke (pack, clean install, import every export)
+        run: node scripts/consumer-smoke.mjs
   integration:
     # IPB-01 §01.4.10: integration tests run against real PostgreSQL 18 (IPB-D-02).
     needs: changes

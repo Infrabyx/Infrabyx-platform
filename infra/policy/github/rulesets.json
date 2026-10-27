@@ -45,6 +45,9 @@
             "required_status_checks": [
               {
                 "context": "verify (24.22.1)"
+              },
+              {
+                "context": "consumer-smoke"
               }
             ]
           },

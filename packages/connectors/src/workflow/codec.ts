@@ -9,7 +9,11 @@ import { PLATFORM_KMS_TENANT, type KmsEncryptionContext } from "@infrabyx/contra
 import { PortError } from "@infrabyx/contracts/errors";
 import { FIELD_ALG, type FieldEnvelope } from "@infrabyx/crypto";
 import { type Payload, type PayloadCodec } from "@temporalio/common";
-import { temporal } from "@temporalio/proto";
+// @temporalio/proto is CommonJS whose exports Node's ESM loader cannot detect, so a named import
+// fails in plain Node (it passes under vitest's interop). The default import is module.exports.
+import proto from "@temporalio/proto";
+
+const { temporal } = proto;
 
 export const ENCRYPTED_ENCODING = "binary/encrypted";
 const KEY_ID = "encryption-key-id";
