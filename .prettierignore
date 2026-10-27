@@ -14,3 +14,5 @@ packages/export/golden/
 # Prompt versions are content-hashed and eval results are written by `infrabyx-ai eval --write`
 packages/ai/prompts/
 packages/ai/evals/
+packages/vidhi/persona/
+packages/vidhi/evals/

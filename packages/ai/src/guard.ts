@@ -87,8 +87,8 @@ export function classifyInput(texts: readonly string[]): InputVerdict {
 
 /** Sentences that recommend a course of action for the user's own matter (IPB-03-57). */
 const RESERVED_ADVICE: readonly RegExp[] = [
-  /\byou\b[^.!?\n]{0,20}\b(should|must|ought to|need to|have to|had better)\b[^.!?\n]{0,25}\b(sign|invest|buy|sell|file|sue|plead|settle|borrow|withdraw|transfer|accept|reject|claim|deduct|default|prepay|refinance|foreclose|surrender|switch|stop paying|stop taking|start taking|take out|appeal)\b/i,
-  /\bI\b[^.!?\n]{0,15}\b(recommend|advise|suggest|urge)\b[^.!?\n]{0,15}\byou\b[^.!?\n]{0,25}\b(sign|invest|buy|sell|file|sue|plead|settle|borrow|withdraw|accept|reject|claim|appeal|prepay|refinance|foreclose|surrender|switch)\b/i,
+  /\byou\b[^.!?\n]{0,20}\b(should|must|ought to|need to|have to|had better)\b[^.!?\n]{0,25}\b(sign|invest|buy|sell|file|sue|plead|settle|borrow|withdraw|transfer|accept|reject|claim|deduct|default|prepay|refinance|foreclose|surrender|switch|cancel|terminate|exit|decline|opt out|close|take|stop paying|stop taking|start taking|take out|appeal)\b/i,
+  /\bI\b[^.!?\n]{0,15}\b(recommend|advise|suggest|urge)\b[^.!?\n]{0,15}\byou\b[^.!?\n]{0,25}\b(sign|invest|buy|sell|file|sue|plead|settle|borrow|withdraw|accept|reject|claim|appeal|prepay|refinance|foreclose|surrender|switch|cancel|terminate|exit|decline)\b/i,
   /\bmy (legal|financial|tax|investment|medical) advice\b/i,
   /\b(best|right) (option|choice|move) for you is to\b/i,
   /\baapko\b[^.!?\n]{0,25}\b(sign|invest|case|loan|claim)\b[^.!?\n]{0,20}\b(karna|kar|lena|le)\s+(chahiye|lena chahiye)\b/i,
@@ -147,7 +147,8 @@ export function checkOutput(raw: string, o: OutputCheckOptions): OutputCheck {
     DATA_INSTRUCTION,
     ...o.systemPrompt
       .split(/(?<=[.!?])\s+|\n+/)
-      .map((x) => x.trim())
+      // A model echoes a bulleted rule without its bullet.
+      .map((x) => x.trim().replace(/^(?:[-*•]|\d+[.)])\s+/, ""))
       .filter((x) => x.length >= 40),
   ];
   for (const sentence of secrets) {

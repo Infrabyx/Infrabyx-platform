@@ -104,3 +104,67 @@ export const CostCapReachedData = z
     level: z.enum(["warning", "blocked"]),
   })
   .strict();
+
+const Level = z.enum(["L0", "L1", "L2", "L3", "L4"]);
+
+/** `in.<p>.vidhi.TaskStateChanged.v1` (IPB-03 §03.6.1). */
+export const TaskStateChangedData = z
+  .object({
+    task_id: z.string().regex(/^tsk_/),
+    tenant_id: z.string(),
+    skill_key: z.string(),
+    from: z.string(),
+    to: z.string(),
+  })
+  .strict();
+
+/** `in.<p>.vidhi.ApprovalRequested.v1`: a task waits for a human. No tool arguments. */
+export const VidhiApprovalRequestedData = z
+  .object({
+    task_id: z.string().regex(/^tsk_/),
+    approval_id: z.string(),
+    tool: z.string(),
+    required_role: z.string(),
+    risk_class: z.enum(["R2", "R3", "R4", "R5"]),
+    locked_category: z.string().nullable(),
+  })
+  .strict();
+
+/** `in.<p>.vidhi.ActionExecuted.v1`. */
+export const ActionExecutedData = z
+  .object({
+    task_id: z.string().regex(/^tsk_/),
+    tool: z.string(),
+    level: Level,
+    approval_id: z.string().nullable(),
+  })
+  .strict();
+
+/** `in.<p>.vidhi.LockedActionAttempted.v1`: an agent tried a locked action without approval. */
+export const LockedActionAttemptedData = z
+  .object({
+    task_id: z.string().regex(/^tsk_/),
+    tenant_id: z.string(),
+    skill_key: z.string(),
+    tool: z.string(),
+    category: z.string(),
+    agent_id: z.string(),
+  })
+  .strict();
+
+/** `in.<p>.vidhi.AutonomyChanged.v1`. */
+export const AutonomyChangedData = z
+  .object({
+    tenant_id: z.string(),
+    skill_key: z.string(),
+    from: Level,
+    to: Level,
+    reason: z.enum([
+      "promotion",
+      "demotion_locked",
+      "demotion_guardrail",
+      "demotion_rate",
+      "grant_revoked",
+    ]),
+  })
+  .strict();

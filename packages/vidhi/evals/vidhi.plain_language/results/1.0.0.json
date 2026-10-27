@@ -1,0 +1,12 @@
+{
+  "prompt_key": "vidhi.plain_language",
+  "version": "1.0.0",
+  "content_sha256": "4c02c9c24f709b6d3a5f36391c1aec9bcb2c8886edde86f8ea2664168f596ecf",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 110,
+  "passed": 110,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}

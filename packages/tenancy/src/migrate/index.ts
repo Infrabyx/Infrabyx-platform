@@ -26,6 +26,7 @@ export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/notify",
   "@infrabyx/export",
   "@infrabyx/ai",
+  "@infrabyx/vidhi",
 ] as const;
 
 export interface MigrationSource {
