@@ -136,3 +136,21 @@ classes:
     templates:
       email: { key: digest.daily, locales: [en, hi] }
       inapp: { title_key: ntf.digest.daily.title }
+  - id: vidhi.schedule.skipped
+    category: transactional
+    resend: safe
+    default_channels: [inapp]
+    help_key: ntf.vidhi.schedule.skipped
+    deep_link: /settings/ai/schedules/{id}
+    templates:
+      inapp: { title_key: ntf.vidhi.schedule.skipped.title }
+  - id: vidhi.schedule.paused
+    category: transactional
+    mandatory: true
+    resend: safe
+    default_channels: [inapp, email]
+    help_key: ntf.vidhi.schedule.paused
+    deep_link: /settings/ai/schedules/{id}
+    templates:
+      email: { key: vidhi.schedule.paused, locales: [en, hi] }
+      inapp: { title_key: ntf.vidhi.schedule.paused.title }
