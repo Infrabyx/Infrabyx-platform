@@ -42,7 +42,7 @@ describe("shell", () => {
     expect(out).not.toMatch(/style="/);
   });
 
-  it("refuses more than seven top-level nav items (IPB-07-05, IPB-UX-002)", () => {
+  it("@IPB-07-AT-12 refuses more than seven top-level nav items (IPB-07-05, IPB-UX-002)", () => {
     expect(() => html(<Header brand={{ name: "x", href: "/" }} nav={nav(8)} />)).toThrow(
       /IPB-UX-002/,
     );
@@ -152,7 +152,7 @@ describe("forms (IPB-07-26, 07-42)", () => {
     expect(out).not.toContain("checked");
   });
 
-  it("shows the four parts of an error and its code (IPB-07-AT-23)", () => {
+  it("@IPB-07-AT-23 shows the four parts of an error and its code", () => {
     const out = html(
       <ErrorMessage
         code="IPB-WEB-002"
@@ -176,7 +176,7 @@ describe("forms (IPB-07-26, 07-42)", () => {
 });
 
 describe("help popover (IPB-07-44)", () => {
-  it("names the button after the label and uses the native popover", () => {
+  it("@IPB-07-AT-14 names the button after the label and uses the native popover", () => {
     const out = html(
       <HelpButton
         label="CIN"

@@ -18,4 +18,15 @@ describe("ipb:at-report", () => {
       ),
     ).toContain("| IPB-02-AT-15 | found |");
   });
+
+  it("reads .tsx and e2e test files, three-digit ATs, and skips build output", async () => {
+    const tags = await collectTags(repo);
+    expect(tags.get("IPB-04-AT-83")?.files).toContain("packages/consent/src/cmp.test.tsx");
+    expect(tags.get("IPB-04-AT-101")?.files).toContain(
+      "packages/cms/src/__tests__/studio.int.test.ts",
+    );
+    expect(tags.get("IPB-04-AT-74")?.files).toContain("apps/public/src/__tests__/site.e2e.test.ts");
+    expect([...tags.values()].some((u) => u.files.some((f) => f.includes(".next/")))).toBe(false);
+    expect(await specAts(join(repo, "docs/ipb"))).toContain("IPB-04-AT-101");
+  });
 });

@@ -144,7 +144,7 @@ describe("mirror state machine (Ecosystem §6.34, IPB-08-27…29)", () => {
     ).rejects.toThrow(/retained/);
   });
 
-  it("hides a withdrawn version at once and shows it again when OH re-publishes it", async () => {
+  it("@IPB-08-AT-15 hides a withdrawn version at once and shows it again when OH re-publishes it", async () => {
     const changed = (state: string, n: number) => ({
       eventId: `evt_state_${n}`,
       data: {
@@ -162,7 +162,7 @@ describe("mirror state machine (Ecosystem §6.34, IPB-08-27…29)", () => {
     expect(await mirror.onStateChanged(changed("PUBLISHED", 2))).toBe("VISIBLE");
   });
 
-  it("serves the last verified mirror when OH is unreachable, labelled after the stale window", async () => {
+  it("@IPB-08-AT-14 serves the last verified mirror when OH is unreachable, labelled after the stale window", async () => {
     feed.reachable = false;
     expect((await mirror.reconcile()).reachable).toBe(false);
     feed.reachable = true;

@@ -3,9 +3,9 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
 
-const TAG = /@(IPB-\d{2}-AT-\d{2}|NN-\d{2}|IPB-\d{2}-\d{2})\b/g;
-const TEST_FILE = /\.(?:int\.)?test\.(?:ts|mts|mjs|js)$/;
-const SKIP = new Set(["node_modules", "dist", ".git", ".turbo", "coverage"]);
+const TAG = /@(IPB-\d{2}-AT-\d{2,3}|NN-\d{2}|IPB-\d{2}-\d{2,3})\b/g;
+const TEST_FILE = /\.(?:int\.|e2e\.)?test\.(?:ts|tsx|mts|mjs|js|jsx)$/;
+const SKIP = new Set(["node_modules", "dist", ".git", ".turbo", "coverage", ".next"]);
 
 async function walk(dir: string, out: string[] = []): Promise<string[]> {
   for (const e of await readdir(dir, { withFileTypes: true })) {
@@ -84,7 +84,7 @@ export async function specAts(specDir: string): Promise<string[]> {
   const ats = new Set<string>();
   for (const f of (await readdir(specDir)).filter((x) => x.endsWith(".md"))) {
     for (const m of (await readFile(join(specDir, f), "utf8")).matchAll(
-      /^@(IPB-\d{2}-AT-\d{2})\b/gm,
+      /^@(IPB-\d{2}-AT-\d{2,3})\b/gm,
     ))
       ats.add(m[1] as string);
   }

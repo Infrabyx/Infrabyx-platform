@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–6 merged (#80–#82, #84–#88); owner answers #41–#52 (#83, PL5-D-05) and #53–#59 (PL5-D-11) applied; session 7 (`apps/public`, its seed, the platform help registry, the `a11y` job; PL5-D-13) merged (#90); session 8a merged (#91, PL5-D-14); session 8b merged (#92, PL5-D-15); session 9 (`apps/console`, PL5-D-16) in the PR after #92; next: the PL5 gate (session 10) and the 0.x release. Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20)                                                                                                                                                                                                         |
-| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                                                                                                                                                                                            |
-| Working branch        | `claude/wonderful-franklin-goo59b` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                                                                                                                                                                                            |
+| Item                  | Value                                                                                                                                                                                                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL5 gate** (2026-10-27): plan `docs/phases/PL5-plan.md`; sessions 1–9 merged (#80–#93); gate report `docs/phases/PL5-gate.md` in the gate PR after #93 (PL5-D-17); next: merge it, then the version PR and the release of the eight website packages at 0.1.0. Then PL6 (plan to be written)                   |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
+| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
+| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
+| Working branch        | `claude/wonderful-franklin-goo59b` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                    |
 
 ## Owner answers #53–#59 (2026-10-27, PL5-D-11)
 
@@ -20,6 +20,25 @@ Updated: 2026-10-27
 - **#54, #56, #58, #59:** defaults kept. The owner sets `trust.gating.nda_version` once legal approves the NDA.
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
+
+## Handover (2026-10-27, end of the session that built PL5 sessions 7–9 and the gate)
+
+- **Done:**
+  - Owner answers #53–#59 recorded and applied (#89, PL5-D-11, PL5-D-12).
+  - Session 7: the group site `apps/public`, its seed, the platform help registry, the `a11y` job (#90).
+  - Session 8: `@infrabyx/ui/studio`, every Studio screen (#91, #92).
+  - Session 9: the reference console `apps/console` and its gate in the `a11y` job (#93).
+  - The gate: `docs/phases/PL5-gate.md`; the eight website packages made publishable; `at-report` covers the apps; the embed host allow-list (`@IPB-04-AT-94`).
+- **Next:**
+  1. Merge the gate PR when every required check is green (PL2-D-19).
+  2. Merge the version PR (`changeset-release/main`) when green; `release.yml` publishes from `main`. Record the versions and checksums here and in the gate report §6, then say what products can install (gate report §5).
+  3. PL6: write `docs/phases/PL6-plan.md` from IPB-14 §14.3 and stop for the owner's review of the plan batch as the working mode allows.
+- **Owner tasks:** apply `infra/policy/github/rulesets.json` (`a11y` required, #49); answer #60–#65 (defaults in use, nothing blocked); set `trust.gating.nda_version` when legal approves the NDA; counsel replaces the `[COUNSEL]` clauses before any policy leaves placeholder status.
+- **Open questions:** #60–#65, all with defaults taken; nothing blocked. Lighthouse (#51) is re-checked at each session.
+- **Branch and PR state:** `claude/wonderful-franklin-goo59b` carries the gate PR. Recreate it from `main` after each squash merge.
+- **Local tooling:** Node 24.22.1 unpacked in the session scratchpad; PostgreSQL 16 with an older pgvector (the `ai` retrieval tests pass only in CI); the seeded `ipb_site` database serves both apps locally (ports 3123 and 3124); gitleaks is not installed locally (CI runs it). The container's PostgreSQL stops on restarts; `service postgresql start` brings it back.
+
+HANDOVER READY
 
 ## PL5 session 9 (2026-10-27, PL5-D-16)
 

@@ -168,6 +168,35 @@ describe("@IPB-04-AT-02 the named state machine", () => {
   });
 });
 
+describe("@IPB-04-AT-94 SSRF via embed (adversarial)", () => {
+  it("refuses metadata, private and look-alike addresses on save, so nothing is ever fetched", () => {
+    const urls = [
+      "http://169.254.169.254/latest/meta-data",
+      "http://10.0.0.5/admin",
+      "https://intranet.internal/watch?v=abc",
+      "https://www.youtube.com.evil.example/watch?v=abc",
+      "https://www.youtube.com:8443/watch?v=abc",
+      "https://user@www.youtube.com/watch?v=abc",
+      "http://www.youtube.com/watch?v=abc",
+    ];
+    const r = parseBlocks(
+      urls.map((url) => ({ type: "embed", provider: "youtube", url, title: "Video" })),
+    );
+    expect(r.issues.map((i) => i.path)).toEqual(urls.map((_, i) => `blocks[${i}].url`));
+    expect(
+      parseBlocks([
+        {
+          type: "embed",
+          provider: "youtube",
+          url: "https://www.youtube.com/watch?v=abc123",
+          title: "V",
+        },
+        { type: "embed", provider: "vimeo", url: "https://vimeo.com/123456", title: "V" },
+      ]).issues,
+    ).toEqual([]);
+  });
+});
+
 describe("blocks and templates (IPB-04-13)", () => {
   it("validates blocks against their schemas, with field paths", () => {
     const r = parseBlocks([

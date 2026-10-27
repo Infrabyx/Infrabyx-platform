@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "description": "Glossary registry and \"i\" popover content, public glossary, hlp-lint and onboarding tours (IPB-07)",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "bin": {
     "infrabyx-hlp": "./dist/cli.js"
