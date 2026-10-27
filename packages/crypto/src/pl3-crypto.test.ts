@@ -2,7 +2,12 @@ import { generateKeyPairSync, verify } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { addressHash, normaliseAddress } from "./address-hash.js";
 import { fromBase64Url } from "./encoding.js";
-import { FCM_SCOPE, GOOGLE_TOKEN_URL, signServiceAccountAssertion } from "./google-assertion.js";
+import {
+  FCM_SCOPE,
+  GOOGLE_TOKEN_URL,
+  signServiceAccountAssertion,
+  VERTEX_SCOPE,
+} from "./google-assertion.js";
 import { hmacSha256Hex } from "./hmac.js";
 import { SecretKey } from "./keys.js";
 import { assertApproved } from "./registry.js";
@@ -49,6 +54,32 @@ describe("C-24 service-account assertion (PL3-C-01)", () => {
       exp: 1_800_003_600,
     });
     expect(verify("RSA-SHA256", Buffer.from(`${h}.${c}`), publicKey, fromBase64Url(s))).toBe(true);
+  });
+  it("signs for Vertex AI's cloud-platform scope, and for no other scope or audience (PL4-C-01)", () => {
+    const jwt = signServiceAccountAssertion({
+      clientEmail: "ai@project.iam.example",
+      privateKeyPem: pem,
+      scope: VERTEX_SCOPE,
+      now: 1_800_000_000,
+    });
+    const claims = JSON.parse(
+      new TextDecoder().decode(fromBase64Url(jwt.split(".")[1] as string)),
+    ) as { scope: string; aud: string };
+    expect(claims).toMatchObject({ scope: VERTEX_SCOPE, aud: GOOGLE_TOKEN_URL });
+    expect(() =>
+      signServiceAccountAssertion({
+        clientEmail: "x",
+        privateKeyPem: pem,
+        scope: "https://www.googleapis.com/auth/devstorage.full_control",
+      }),
+    ).toThrow(/approved Google scopes/);
+    expect(() =>
+      signServiceAccountAssertion({
+        clientEmail: "x",
+        privateKeyPem: pem,
+        audience: "https://api.example.org/token",
+      }),
+    ).toThrow(/token endpoint/);
   });
   it("refuses a non-RSA or short key", () => {
     const ec = generateKeyPairSync("ec", { namedCurve: "P-256" }).privateKey.export({

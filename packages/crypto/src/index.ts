@@ -74,6 +74,8 @@ export {
   signServiceAccountAssertion,
   GOOGLE_TOKEN_URL,
   FCM_SCOPE,
+  VERTEX_SCOPE,
+  GOOGLE_ASSERTION_SCOPES,
   type ServiceAccountAssertionInput,
 } from "./google-assertion.js";
 export {

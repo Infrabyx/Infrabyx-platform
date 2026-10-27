@@ -87,7 +87,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     oid: "1.2.840.113549.1.1.11",
     usedFor: [
       "Amazon SNS SignatureVersion 2 verification only (C-13)",
-      "Google service-account assertion for FCM OAuth only (C-24); never for platform tokens",
+      "Google service-account assertion for FCM and Vertex AI OAuth only (C-24, PL4-C-01); never for platform tokens",
     ],
   },
   {
