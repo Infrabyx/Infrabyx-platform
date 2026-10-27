@@ -14,3 +14,5 @@ export * from "./guard.js";
 export * from "./prompt-files.js";
 export * from "./evals.js";
 export * from "./prompt-sync.js";
+export * from "./embedding.js";
+export * from "./retrieval.js";

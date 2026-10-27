@@ -384,7 +384,7 @@ export function lintPrompts(o: {
   for (const p of o.prompts) {
     if (p.evalSetRef !== `evals/${p.promptKey}`)
       f.push({ file: rel(p.path), message: `eval_set_ref must be evals/${p.promptKey}` });
-    let set: EvalSetFiles | null = null;
+    let set: EvalSetFiles | null;
     try {
       set = loadEvalSet(p.promptKey, o.evalsDir);
     } catch (e) {
