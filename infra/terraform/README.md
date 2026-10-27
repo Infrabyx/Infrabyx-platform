@@ -46,13 +46,15 @@ OpenTofu modules per cloud with one output contract (IPB-01-34, §01.4.9; PL6 pl
 
 ## Tests (`infra` CI job)
 
-`tofu fmt -check`, `tofu init -backend=false` and `tofu validate` for every module and the example stack; `tofu test` in each `platform` (mock providers: no credentials, no resources; `@IPB-01-AT-14`); `trivy config`; and `pnpm infra:test` for the contract file check.
+`tofu fmt -check`, `tofu init -backend=false` and `tofu validate` for every module and the example stack; `tofu test` in each `platform` (mock providers: no credentials, no resources; `@IPB-01-AT-14`); `tflint --recursive` with `.tflint.hcl` (the Terraform recommended preset and the three cloud rulesets); `trivy config`; and `pnpm infra:test` for the contract file check.
 
-| Tool     | Version | Source                                                                                                          |
-| -------- | ------- | --------------------------------------------------------------------------------------------------------------- |
-| OpenTofu | 1.13.1  | built from the `v1.13.1` tag at commit `233700b795b6d2372f1c56ed57a4abaec9d36475` (`scripts/ci/infra-tools.sh`) |
-| AWS      | 6.69.1  | `hashicorp/aws` from the OpenTofu registry, exact pin in every `versions.tf`                                    |
-| AzureRM  | 5.10.0  | `hashicorp/azurerm`, as above                                                                                   |
-| Google   | 8.7.0   | `hashicorp/google`, as above                                                                                    |
+| Tool     | Version                                   | Source                                                                                                          |
+| -------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| OpenTofu | 1.13.1                                    | built from the `v1.13.1` tag at commit `233700b795b6d2372f1c56ed57a4abaec9d36475` (`scripts/ci/infra-tools.sh`) |
+| AWS      | 6.69.1                                    | `hashicorp/aws` from the OpenTofu registry, exact pin in every `versions.tf`                                    |
+| AzureRM  | 5.10.0                                    | `hashicorp/azurerm`, as above                                                                                   |
+| Google   | 8.7.0                                     | `hashicorp/google`, as above                                                                                    |
+| tflint   | 0.64.0                                    | `go install github.com/terraform-linters/tflint@v0.64.0`                                                        |
+| Rulesets | AWS 0.49.0, AzureRM 0.32.0, Google 0.40.0 | `go install github.com/terraform-linters/tflint-ruleset-<name>@<version>` into `TFLINT_PLUGIN_DIR`              |
 
-Each was published at least 7 days before it was pinned (PL2-D-32). Lock files are written by `tofu init` and not committed until a session with registry access can generate and review them (PL6-D-05). tflint with the AWS, Azure and Google rulesets is added in session 3c (PL6-D-06).
+Each was published at least 7 days before it was pinned (PL2-D-32). Lock files are written by `tofu init` and not committed until a session with registry access can generate and review them (PL6-D-05).

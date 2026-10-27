@@ -265,7 +265,7 @@ jobs:
         with:
           go-version: "1.24"
           cache: false
-      - name: tools (Helm, kubeconform, Kyverno CLI)
+      - name: tools (Helm, kubeconform, Kyverno CLI, OpenTofu, tflint)
         run: |
           scripts/ci/infra-tools.sh
           echo "$INFRA_TOOLS" >> "$GITHUB_PATH"
@@ -307,6 +307,11 @@ jobs:
             echo "== $dir"
             tofu -chdir="$dir" test -no-color
           done
+      - name: tflint (the Terraform recommended preset and the AWS, Azure and Google rulesets)
+        working-directory: infra/terraform
+        env:
+          TFLINT_PLUGIN_DIR: ${{ github.workspace }}/.infra-tools/tflint-plugins
+        run: tflint --recursive --config "$PWD/.tflint.hcl" --format compact
       - name: trivy config (OpenTofu)
         run: >-
           docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" config --exit-code 1
