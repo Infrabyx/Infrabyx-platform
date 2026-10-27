@@ -4,6 +4,7 @@
 // decision never defaults to allow or approve.
 import { z } from "zod";
 import { DataClass } from "../data-class.js";
+import type { KernelContext } from "../kernel.js";
 import type { Port, PortCall } from "./common.js";
 
 /** Dotted rule-set key, e.g. `fbx.los.nba.sanction_ready`. */
@@ -132,15 +133,23 @@ export interface Explanation {
   source: "rules";
 }
 
+/**
+ * The RULES service runs inside tenancy, so every method takes the verified `KernelContext` first
+ * (PL3-D-18). Evaluation writes the decision log through the kernel; reads are RLS-scoped.
+ */
 export interface RulesPort extends Port {
-  evaluate(ref: RuleSetRef, input: unknown, call?: PortCall): Promise<Decision>;
+  evaluate(ctx: KernelContext, ref: RuleSetRef, input: unknown, call?: PortCall): Promise<Decision>;
   evaluateCel(expr: string, input: unknown, opts?: { maxAstNodes?: number }): Promise<CelResult>;
-  /** RLS-scoped to the call's tenant. */
-  listRuleSets(): Promise<RuleSetSummary[]>;
+  /** The tenant's rule sets and the platform's (`tnt_platform`), RLS-scoped. */
+  listRuleSets(ctx: KernelContext): Promise<RuleSetSummary[]>;
   /** Creates the R4 approval request `rules.ruleset.publish`; the version is published on execute. */
-  publish(ruleSetId: string, version: number, call?: PortCall): Promise<{ approvalId: string }>;
-  simulate(ref: Required<RuleSetRef>, inputs: unknown[]): Promise<SimulationReport>;
-  explain(decisionId: string): Promise<Explanation>;
+  publish(ctx: KernelContext, ruleSetId: string, version: number): Promise<{ approvalId: string }>;
+  simulate(
+    ctx: KernelContext,
+    ref: Required<RuleSetRef>,
+    inputs: unknown[],
+  ): Promise<SimulationReport>;
+  explain(ctx: KernelContext, decisionId: string): Promise<Explanation>;
 }
 
 /**

@@ -480,6 +480,23 @@ export const ERROR_CATALOGUE = {
     title: "Preview secrets scope violation",
     source: "IPB-09 §09.6.3",
   },
+  // RULES runtime errors (PL3-D-18). The Ecosystem §3.12 area list has no RULE area yet; PR-017
+  // asks the IPB editor to add it, as IPB-UX-011 was registered under PR-005.
+  "IPB-RULE-001": {
+    status: 422,
+    title: "Rule set invalid: a row is outside the CEL subset or the body fails its schema",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-RULE-002": {
+    status: 404,
+    title: "Rule set has no effective version",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-RULE-003": {
+    status: 409,
+    title: "Rule set version is not in the state this action needs",
+    source: "PL3 plan §10 (PR-017)",
+  },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {
     status: 401,

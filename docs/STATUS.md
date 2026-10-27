@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 1 done** (2026-10-27): patch 0.1.1 published; owner answers #7–#17 applied (PL3-D-04 to PL3-D-14); spike (PL3-D-15); contracts and config (PL3-D-16). Next: PL3 session 2 (`rules` and the `zen` and `json-rules` adapters). Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                      |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)             |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                        |
-| Working branch        | `claude/optimistic-heisenberg-w0jdgf` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                           |
+| Item                  | Value                                                                                                                                                                                                                                                                                                 |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 session 2 done** (2026-10-27): owner answers #18–#20 applied (PL3-C-01 C-24, PL3-C-02 C-25, PL3-D-17); `rules` package and the RULES engine adapters `zen`, `json-rules` and the CEL row walk (PL3-D-18). Next: PL3 session 3 (`workflow` and `tenancy/0002`). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)                                       |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                                                  |
+| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                               |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -179,8 +179,17 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- PL3 session 2: the `rules` package (store, publish through approvals at R4, decision log, simulation, `explain`), and the `connectors/rules` adapters `zen` (`@gorules/zen-engine` 2.1.7) and `json-rules` (`json-rules-engine` 7.3.1) with CEL from `@marcbachmann/cel-js` 8.0.0 (PL3 plan §4, PL3-D-15).
-- Then sessions 3–7 as in plan §12.
+- PL3 session 3: `workflow` (scheduled actions and delay windows, timers on Temporal and PostgreSQL, the Work Inbox and `HumanQueue`, approval expiry, reminders and escalation per PL3-D-07, `mc.*` per PL3-D-08, bulk decide, `RefundApprovals`) and migration `tenancy/0002`.
+- Then sessions 4–7 as in plan §12.
+
+## PL3 session 2 (2026-10-27)
+
+- **Owner answers #18–#20** recorded and closed: C-24 RS256 only for the FCM service-account assertion (PL3-C-01, built in session 4); C-25 HMAC-SHA1 verification of Leegality webhooks only (PL3-C-02, built in session 6); IPB-01's 24-hour snapshot limit kept, with the provider-unreachable alert escalating at 1 h and 12 h (PL3-D-17, built in `FlagService`).
+- `@infrabyx/connectors/rules` (minor): `zen` (reference), `json-rules` (alternative) and the memory CEL row walk compile one CEL subset (`@marcbachmann/cel-js` 8.0.0) through a shared IR; strict input checks; `UNDETERMINED` on any fault or timeout; canary health; a differential test across the three engines. `RULES` joins the port-contract matrix.
+- `@infrabyx/rules` 0.1.0 (first release at the PL3 gate): `RulesService` with drafts validated on every engine, R4 publish through `rules.ruleset.publish`, evaluation with a decision log (inputs above INTERNAL sealed), `UNDETERMINED` to the Work Inbox, `simulate`, `explain`, platform rule sets in `tnt_platform`; migration `rules/0001_init.sql`; `@IPB-07-AT-11` on PostgreSQL 18.
+- `@infrabyx/contracts` (minor): context-first `RulesPort`; `IPB-RULE-001` to `-003` (PR-017). `@infrabyx/tenancy` (minor): `infrabyx-migrate` applies the rules migration. `@infrabyx/testing` (minor): RULES engine contract cases. `@infrabyx/config` (minor): alert escalation.
+- New owner question #21 (UNDETERMINED review assignee and the per-decision ledger entry); defaults in use, nothing blocked.
+- Products at the PL3 gate: install `@infrabyx/rules`; `infrabyx-migrate` then applies `rules/0001`; settings `rules.engine`, `rules.cel.max_cost`, `rules.eval.timeout_ms` are already registered; wire `HumanQueue` (from `@infrabyx/workflow`, session 3) and FieldCrypto into `RulesService`.
 
 ## PL3 session 1 (2026-10-27)
 

@@ -312,6 +312,64 @@ describe("persisted snapshot and provider alert (PL3-D-13)", () => {
     await svc.evaluate("kill.msg.push");
     expect(alerts).toHaveLength(3);
   });
+  it("escalates at 1 h and 12 h of outage, once each, and re-arms after the provider returns (PL3-D-17)", async () => {
+    // The memory provider stamps snapshots with the wall clock, so the test clock starts there.
+    let now = Date.now();
+    const store = new MemorySnapshotStore();
+    const provider = new MemoryFlagProvider({ "kill.msg.sms": false });
+    const alerts: FlagAlert[] = [];
+    const svc = new FlagService({
+      provider,
+      snapshots: store,
+      now: () => now,
+      onAlert: (a) => alerts.push(a),
+    });
+    await svc.boot();
+    provider.down = true;
+    const escalations = () => alerts.filter((a) => a.escalation).map((a) => a.escalation);
+    now += 59 * 60 * 1000;
+    await svc.evaluate("kill.msg.sms");
+    expect(escalations()).toEqual([]);
+    now += 2 * 60 * 1000;
+    await svc.evaluate("kill.msg.sms");
+    await svc.evaluate("kill.msg.sms");
+    expect(escalations()).toEqual(["1h"]);
+    now += 11 * HOUR;
+    await svc.evaluate("kill.msg.sms");
+    expect(escalations()).toEqual(["1h", "12h"]);
+    const twelve = alerts.find((a) => a.escalation === "12h");
+    expect(twelve).toMatchObject({ key: "*", servedFrom: "snapshot" });
+    expect(twelve?.outageS).toBeGreaterThanOrEqual(12 * 3600);
+    // Past 24 h the snapshot is no longer used: the kill switch is on (IPB-01 limit kept, #20).
+    now += 13 * HOUR;
+    expect(await svc.evaluate("kill.msg.sms")).toMatchObject({ value: true, source: "safe-state" });
+    expect(escalations()).toEqual(["1h", "12h"]);
+    provider.down = false;
+    await svc.evaluate("kill.msg.sms");
+    provider.down = true;
+    now += 2 * HOUR;
+    await svc.evaluate("kill.msg.sms");
+    expect(escalations()).toEqual(["1h", "12h", "1h"]);
+  });
+  it("dates the outage from the persisted snapshot after a restart", async () => {
+    // The memory provider stamps snapshots with the wall clock, so the test clock starts there.
+    let now = Date.now();
+    const store = new MemorySnapshotStore();
+    const provider = new MemoryFlagProvider();
+    await new FlagService({ provider, snapshots: store, now: () => now }).boot();
+    provider.down = true;
+    now += 13 * HOUR;
+    const alerts: FlagAlert[] = [];
+    const restarted = new FlagService({
+      provider,
+      snapshots: store,
+      now: () => now,
+      onAlert: (a) => alerts.push(a),
+    });
+    expect(await restarted.boot()).toBe("snapshot");
+    await restarted.evaluate("kill.msg.push");
+    expect(alerts.filter((a) => a.escalation).map((a) => a.escalation)).toEqual(["1h", "12h"]);
+  });
   it("registers the five NOTIFY kill switches as exact keys", () => {
     for (const c of ["email", "sms", "whatsapp", "push", "inapp"])
       expect(defaultFlagRegistry.defaults()).toHaveProperty(`kill.msg.${c}`, false);

@@ -2,4 +2,5 @@
 // port's adapters (D-11 order); this folder holds the shared pieces.
 export * from "./sandbox.js";
 export * from "./fault-proxy.js";
+export * from "./rules.js";
 export * from "../stubs/index.js";
