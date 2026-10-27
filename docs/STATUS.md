@@ -8,7 +8,7 @@ Updated: 2026-10-27
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)                                                                                                                                                                                    |
 | Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                                                                                                                                                                                                        |
-| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                                                                                                                                                                                                      |
+| Working branch        | `claude/lucid-davinci-fqtf6b` (deleted by GitHub after each squash merge; recreate it from `main` and push normally, since force-push is refused) (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                                                                                  |
 
 ## What products can install (PL3 gate, 2026-10-27)
 
@@ -46,6 +46,46 @@ Registry checksums are the values release run 43 printed in the job summary of i
   - wire `ExportService` with a product map, `kmsArchiveSigner` and an export worker, and add `map-gate` and a golden archive to CI;
   - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
   - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
+
+## Handover (2026-10-27, end of the session that started PL4)
+
+**Done (merged).**
+
+- #60:
+  - release run 43 checksums recorded (STATUS, PL3 gate report §6);
+  - owner answers #24 and #25 applied (PL3-D-25): ORG_ADMIN exports through ORG_OWNER approval, 30-day archive expiry with ledgered deletion, the IST export time in the README, `REF-EXPORT-1.1`, and PR-020 for signature validation;
+  - the PL4 plan (PL4-D-01, IPB-DEV-08, questions #26–#33, PR-021 to PR-023).
+- #62:
+  - PL4 session 1: AI contracts, Vidhi manifest schema, `ai.*`/`vidhi.*` settings, `mc_deactivate` for kill switches, the spike, and PR-024;
+  - PL4 session 2: the `@infrabyx/ai` gateway core;
+  - CI fixes: a gitleaks false positive on a settings key name, and a 57P01 race in the test kit's teardown.
+
+**Open PR.** #66 is PL4 session 3: the LLM/EMBEDDING adapters on stubs, with issues #63–#65. Merge it under PL2-D-19 once green.
+
+**Next: PL4 session 4** (plan §4.4–§4.7, §4.9):
+
+- prompt files under `packages/ai/prompts/` and `infrabyx-ai prompts sync`;
+- the scrubber (Aadhaar with Verhoeff, PAN, card with Luhn, GSTIN, IFSC, mobile, e-mail, JWT, PEM; reversible tokens);
+- guardrails: the input classifier, the output classifier (PII leak, reserved advice, hallucinated citation), structured output with one repair (`IPB-AI-041`), and limits;
+- the eval harness with `FakeLlm`, the `ai-eval-gate` and `ai-prompt-lint` CI checks, and `--live` refusing to run without an approval reference;
+- retrieval: migration `ai/0002` with the `vector` extension, a hybrid pgvector + FTS search with RRF, and citations, which means moving the CI integration job to `pgvector/pgvector:0.8.1-pg18` pinned by digest;
+- `@IPB-03-AT-01` and `@IPB-03-AT-05`.
+
+Then sessions 5–8 as in plan §14: IMAGE_GEN; the `vidhi` core; missions, schedules, MCP and notebooks; then digest, feedback, provenance, the export map, and the gate.
+
+**Open owner questions.** #26–#33 (PL4 defaults in use; only live Vertex runs wait on #27). Platform requests PR-020 to PR-024.
+
+**Owner tasks.**
+
+- PL4: an AWS Bedrock account (ap-south-1) and a Vertex AI project (asia-south1); approval of each paid run (#63, #64); a decision on a self-hosted inference host (#65).
+- Earlier tasks: the Expo and Firebase accounts, the Leegality and Digio accounts, the PL2 vendor accounts and the GitHub `sandbox` environment.
+
+**Local environment.**
+
+- Node 24.22.1 from nodejs.org, checked against `SHASUMS256.txt`.
+- Docker: `docker run -d --name pgs2 -e POSTGRES_PASSWORD=pw -p 55433:5432 mirror.gcr.io/library/postgres:18`. Session 4 needs the pgvector image instead.
+- gitleaks 8.30.1 from GitHub releases, checked against the SHA in `ci.yml`.
+- Commit subjects must start in lower case (commitlint `subject-case`) and stay within 100 characters.
 
 ## PL4 session 3 (2026-10-27, PL4-D-04)
 
