@@ -44,6 +44,9 @@ const gupshupAdapter = () =>
     source: "+919999900099",
     dpaRef: "VAR-DPA-GUPSHUP-001",
     webhook: { secret: () => secret },
+    // Stands in for Gupshup's status lookup until the sandbox leg finds one (PL2-D-65).
+    confirmStatus: async (e) =>
+      gup.sent.some((m) => m.id === e.messageId) || e.messageId === "gs-x",
     baseUrl: gup.url,
     allowLoopbackHttp: true,
   });
@@ -295,6 +298,27 @@ describe("WHATSAPP hermetic leg: gupshup (stub)", () => {
     cases(() => gupshupHarness),
     { leg: "hermetic" },
   );
+
+  it("events are withheld until their status is confirmed (PL2-D-65)", async () => {
+    const withheld: number[] = [];
+    const bare = new GupshupWhatsapp({
+      ...policy,
+      apiKey: () => gup.credential,
+      appId: "app-1",
+      appName: "ldapp",
+      source: "+919999900099",
+      dpaRef: "VAR-DPA-GUPSHUP-001",
+      webhook: { secret: () => secret },
+      onWithheld: (n) => withheld.push(n),
+      baseUrl: gup.url,
+      allowLoopbackHttp: true,
+    });
+    expect(await verify(bare, gupshupHarness.status("gs-x", "delivered"))).toEqual([]);
+    expect(withheld).toEqual([1]);
+    expect(await verify(gupshupAdapter(), gupshupHarness.status("spoofed", "delivered"))).toEqual(
+      [],
+    );
+  });
 
   it("a failed event with code 470 means the window had closed", async () => {
     const [e] = await verify(gupshupAdapter(), gupshupHarness.status("gs-x", "failed", 470));
