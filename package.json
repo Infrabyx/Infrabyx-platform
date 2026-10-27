@@ -16,7 +16,7 @@
     "test": "turbo run test",
     "test:policy": "vitest run infra/policy packages/testing/eslint",
     "images:test": "vitest run infra/docker",
-    "infra:test": "vitest run infra/helm",
+    "infra:test": "vitest run infra/helm infra/terraform",
     "dev:up": "node scripts/dev-up.mjs up",
     "dev:down": "node scripts/dev-up.mjs down",
     "lint": "turbo run lint && eslint scripts infra/policy packages/testing/eslint eslint.config.mjs vitest.shared.mjs",

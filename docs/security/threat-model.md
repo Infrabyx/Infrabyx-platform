@@ -450,6 +450,16 @@ One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/c
 - **Tampering with the environment rules:** Control: a seed profile in prod, dr or pre-prod and a Supabase host from staging up fail rendering (`IPB-ENV-001`, `IPB-ENV-002`; `@IPB-01-AT-12`).
 - **Residual:** the chart cannot see the cluster; a product could deploy without Kyverno installed, which the IPB-01 Terraform `kubernetes` module (session 3) is to install. `helm diff` is not run.
 
+### 3.40 OpenTofu platform modules (built, PL6 session 3a, AWS; PL6-D-05)
+
+`infra/terraform/modules/aws` provisions a product environment when a product applies it; nothing is applied from this repository.
+
+- **I (data at rest or in state):** Control: one rotated multi-region CMK encrypts buckets, database, cache, logs, secrets, node volumes and images; secrets are created without values (the bootstrap writes them), so state holds no secret; the example stack documents a locked, encrypted remote backend (state is SECRET class).
+- **T and repudiation (evidence altered or deleted):** Control: the AUDIT, REGULATED and CONFIDENTIAL buckets use Object Lock in compliance mode and replicate with their lock to the DR region; delete markers are not replicated; telemetry is locked for 180 days.
+- **S and E (reaching or escalating in the environment):** Control: private subnets, a closed default security group, PostgreSQL and Redis reachable only from the VPC, TLS forced on both, IAM authentication, a private Kubernetes API by default, IMDSv2-only nodes, one IRSA role per service account scoped to its own subject, and break-glass off (MFA, SSM only) unless enabled.
+- **Residency:** Control: any region other than ap-south-1 and ap-south-2 fails the plan without an ADR (IPB-01-36).
+- **Residual:** provider lock files are not committed yet (exact version pins only); compliance-mode retention cannot be shortened once applied, so the defaults must be confirmed before a product applies them (#71).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

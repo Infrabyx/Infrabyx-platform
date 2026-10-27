@@ -1,0 +1,23 @@
+{
+  "$comment": "The output contract every cloud's platform module returns (IPB-01 §01.4.9.3, IPB-01-34; PL6 plan §7). infra/terraform/contract/contract.test.mjs checks each cloud's outputs.tf against it; each cloud's tofu test checks the values and their types.",
+  "outputs": {
+    "kubeconfig_ref": "string",
+    "postgres": {
+      "host": "string",
+      "port": "string",
+      "db": "string",
+      "ssl_mode": "string",
+      "credentials_secret_path": "string"
+    },
+    "redis": { "url_secret_path": "string" },
+    "storage": { "buckets": "map", "lock_mode": "string" },
+    "kms": { "platform_key_id": "string" },
+    "secrets": { "provider": "string", "path_prefix": "string" },
+    "edge": { "zone_id": "string", "origin_hostname": "string" },
+    "observability": { "otlp_endpoint": "string" },
+    "registry": { "url": "string" },
+    "region": { "primary": "string", "dr": "string" }
+  },
+  "bucket_classes": ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"],
+  "locked_classes": ["AUDIT", "REGULATED", "CONFIDENTIAL"]
+}
