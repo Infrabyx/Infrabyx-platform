@@ -28,7 +28,8 @@ export const CMP_CONTROLLER_JS = String.raw`(() => {
   const post = async (form, action) => {
     const body = new URLSearchParams(new FormData(form));
     body.set("action", action);
-    const r = await fetch(form.action, { method: "POST", body, credentials: "same-origin", headers: { accept: "application/json" } });
+    // getAttribute: the form's own button is named "action", which shadows form.action.
+    const r = await fetch(form.getAttribute("action"), { method: "POST", body, credentials: "same-origin", headers: { accept: "application/json" } });
     return r.ok;
   };
   const banner = document.querySelector('[data-cmp="banner"]');

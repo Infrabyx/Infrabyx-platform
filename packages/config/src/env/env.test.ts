@@ -388,3 +388,43 @@ describe("@IPB-11-AT-06 schema and example stay in sync", () => {
     expect(exampleDrift(committed, committed)).toEqual([]);
   });
 });
+
+describe("schema defaults (IPB-11-04)", () => {
+  it("an absent optional variable takes its schema default; a present one is parsed", async () => {
+    const schema = z.object({
+      APP_ENV: envVar(z.string(), {
+        desc: "env",
+        example: "local",
+        required: "all",
+        sens: "C",
+        port: "APP",
+      }),
+      APP_MODE: envVar(z.enum(["a", "b"]).default("a"), {
+        desc: "mode",
+        example: "a",
+        required: "opt",
+        sens: "C",
+        port: "APP",
+      }),
+      APP_FLAG: envVar(envBool().default(false), {
+        desc: "flag",
+        example: "false",
+        required: "opt",
+        sens: "C",
+        port: "APP",
+      }),
+      APP_NOTE: envVar(z.string().optional(), {
+        desc: "note",
+        example: "",
+        required: "opt",
+        sens: "C",
+        port: "APP",
+      }),
+    });
+    const r = await validateEnv(schema, {
+      source: { APP_ENV: "local", APP_FLAG: "true" },
+      guards: [],
+    });
+    expect(r.ok && r.values).toEqual({ APP_ENV: "local", APP_MODE: "a", APP_FLAG: true });
+  });
+});

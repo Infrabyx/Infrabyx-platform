@@ -77,6 +77,11 @@ export async function validateEnv<S extends EnvSchema>(
     if (s === undefined) {
       if (requiredIn(v.meta.required, env))
         failures.push({ name: v.name, code: "IPB-ENV-011", reason: "required" });
+      else {
+        // An absent optional variable takes its schema default, as its type promises.
+        const d = v.schema.safeParse(undefined);
+        if (d.success && d.data !== undefined) values[v.name] = d.data;
+      }
       continue;
     }
     if (v.meta.sens === "S" && isSecretRef(s)) {
