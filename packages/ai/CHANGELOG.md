@@ -1,5 +1,43 @@
 # @infrabyx/ai
 
+## 0.2.0
+
+### Minor Changes
+
+- de53086: Owner answers #34 and #35 (PL4-D-13).
+
+  - Migration `ai/0005_retrieval_erasure.sql` (run `infrabyx-migrate`; it creates the `svc_ai_index_sweep` reader role).
+  - `RetrievalService.deleteResource(ctx, resourceRef)`: call it when the product deletes a resource. It deletes every chunk of the resource in every index version and ledgers `ai.retrieval.erase` in the same transaction. A re-embedding batch read before the erasure cannot copy the resource back. Agents may not erase (`IPB-SEC-004`).
+  - `RetrievalRetention.sweep()`: run it daily from one worker. It deletes retired index versions 30 days after retirement, chunks first, each step ledgered. PostgreSQL refuses any other delete of chunks or versions.
+  - `infrabyx-ai prompts sync` now accepts the scripted CI eval result in staging (synthetic data). Pre-production, production and DR still need a live result from an owner-approved paid run.
+
+### Patch Changes
+
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/tenancy@0.5.0
+  - @infrabyx/audit@0.1.4
+  - @infrabyx/crypto@0.4.1
+
 ## 0.1.0
 
 ### Minor Changes

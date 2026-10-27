@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/public-site",
   "version": "0.0.0",
-  "description": "Reference Infrabyx group website on Next.js 16 (PL5 plan \u00a79): the template products copy for their own public sites",
+  "description": "Reference Infrabyx group website on Next.js 16 (PL5 plan §9): the template products copy for their own public sites",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",

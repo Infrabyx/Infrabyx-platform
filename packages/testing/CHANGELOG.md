@@ -1,5 +1,42 @@
 # @infrabyx/testing
 
+## 0.5.0
+
+### Minor Changes
+
+- 1fecf45: Owner answer #53 (PL5-D-11): `mediaContractCases()` for the MEDIA port, the `testPng` and `oversizedPngHeader` fixtures, and the `FakeMedia` fixture. The `vendor-import` lint treats `sharp` as a vendor SDK (connectors only).
+- 934355c: Fakes and fixtures for the PL5 website ports (PL5-D-02): `FakeConsentLedger`, `FakeCrm`, `FakeHr`, `FakeOhDesk` (SUPPORT and BACKLOG with a status loop), `FakeTrustFeed` with `fixtureTrustDocuments` (no certification claimed), `FakeCatalogue` with `fixtureCatalogue` (placeholder amounts, no real prices), `NoneTagManager`, `NoneAnalytics`, `FakeEgress`, `FakeClaimsGate` and `FakeLawRegister`.
+
+### Patch Changes
+
+- 1e2fe19: PL5 gate: `infrabyx-at-report` reads `.tsx` and `.e2e.test.*` files, three-digit AT ids (`@IPB-04-AT-101`) and skips `.next` build output; the repository's `at:report` now scans the whole repository, apps included.
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/tenancy@0.5.0
+  - @infrabyx/seed@0.3.0
+  - @infrabyx/audit@0.1.4
+  - @infrabyx/crypto@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes

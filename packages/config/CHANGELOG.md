@@ -1,5 +1,30 @@
 # @infrabyx/config
 
+## 0.5.0
+
+### Minor Changes
+
+- de53086: Owner answer #40 (PL4-D-13): governed, tighten-only TENANT keys `vidhi.qa.min_reviews` (20), `vidhi.qa.precision_floor` (0.8) and `vidhi.qa.recall_floor` (0.8), changed by `ORG_OWNER` through R2 maker-checker. A tenant may only raise them; the registry minimum is the platform floor (235 keys in the registry).
+- 1fecf45: Owner answer #53 (PL5-D-11): `cms.media.reencode_enabled` now defaults to `true` (AVIF and WebP renditions and PNG favicons through the MEDIA port).
+- 275d4ba: Settings `trust.request.ack_hours` (24, may only be lowered) and `trust.request.fulfil_days` (`{ default: 10, regulator_deadline: 3 }`) from IPB-08 §08.5, read by the trust request SLA.
+- 934355c: PL5 session 1 (PL5-D-02): 165 website keys (400 in the registry) from IPB-04 (`web.*`, `cms.*`, `brand.*`, the launch `mkt.*` keys, `fb.*`), IPB-05 (`pol.*`), IPB-06 (`a11y.*`), IPB-08 (`trust.*` for the mirror and the Trust Centre) and IPB-13 (`res.*` and the off-by-default blocks), plus `eco.v12.emit_enabled` (false). Launch defaults: no tag manager and no analytics adapter (OWN-09), form payloads never stored, Investors off; GPC, self-hosted fonts and the Claims Register are locked on; the contrast minimums, the Lighthouse floor (95) and the consent-cookie lifetime are tighten-only.
+
+### Patch Changes
+
+- b0dc390: Setting notes for `cms.soft_delete.restore_days` (content is purged 90 days after soft delete, OWNER-QUESTIONS #48) and `cms.media.reencode_enabled` (off: `sharp` failed the licence check, #43 and #53).
+- b7de3c6: PL5 session 7: `validateEnv` and `loadAndValidate` give an absent optional variable its schema default (`envVar(z.enum([...]).default("a"), …)`), as its type already promised; before, the value was left out.
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/crypto@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
