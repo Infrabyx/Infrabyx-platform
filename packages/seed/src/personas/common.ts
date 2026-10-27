@@ -1,7 +1,11 @@
 // Common personas of IPB-11 §11.4.5, with the emails of the §11.4.6 template.
 import type { Persona, ServiceAccount } from "./types.js";
 
-export const SUPER_ADMIN_EMAIL = "rjnprajapati@gmail.com";
+/**
+ * Placeholder super-admin address (OWNER-QUESTIONS #5). The real address is configuration:
+ * `AUTH_SUPER_ADMIN_EMAIL` in each product repository's local environment, never in this repository.
+ */
+export const SUPER_ADMIN_EMAIL = "super.admin@example.test";
 
 export const COMMON_PERSONAS: readonly Persona[] = [
   {

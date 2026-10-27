@@ -61,6 +61,17 @@ describe("@IPB-11-AT-05 synthetic identifiers only", () => {
     }).map((v) => v.kind);
     expect(kinds.sort()).toEqual(["aadhaar", "cin", "email", "gstin", "ifsc", "mobile", "pan"]);
   });
+  it("only the configured super-admin address (AUTH_SUPER_ADMIN_EMAIL) may be a real address", () => {
+    const configured = "owner@example.com";
+    expect(SUPER_ADMIN_EMAIL).toMatch(/@example\.test$/);
+    expect(findRealIdentifiers({ e: configured }).map((v) => v.kind)).toEqual(["email"]);
+    expect(findRealIdentifiers({ e: configured }, "$", new Set([configured]))).toEqual([]);
+    expect(
+      findRealIdentifiers({ e: "other@example.com" }, "$", new Set([configured])).map(
+        (v) => v.kind,
+      ),
+    ).toEqual(["email"]);
+  });
   it("faker is deterministic per seed and module (IPB-11-23)", () => {
     expect(seededFaker(7, "cases").person.fullName()).toBe(
       seededFaker(7, "cases").person.fullName(),
@@ -105,6 +116,13 @@ describe("@IPB-11-AT-02 @IPB-11-14 seeds refuse production", () => {
 });
 
 describe("personas (IPB-11 §11.4.5, IPB-11-33)", () => {
+  it("the super admin takes AUTH_SUPER_ADMIN_EMAIL when given and the placeholder otherwise", () => {
+    const admin = (email?: string) =>
+      personasFor("LDC", email).find((x) => x.key === "super_admin")!;
+    expect(personaEmail(admin(), "LDC")).toBe(SUPER_ADMIN_EMAIL);
+    expect(personaEmail(admin("owner@example.com"), "LDC")).toBe("owner@example.com");
+    expect(COMMON_PERSONAS.find((x) => x.key === "super_admin")?.email).toBe(SUPER_ADMIN_EMAIL);
+  });
   it("every product has the common personas plus its own; emails follow test.<persona>@<product>.test", () => {
     for (const p of PRODUCTS) {
       const list = personasFor(p);

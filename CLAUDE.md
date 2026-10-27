@@ -45,7 +45,9 @@ Node.js 24.22.1 (`.nvmrc`, `engines`, Dockerfiles, CI; no other version without 
 5. Publishing 1.0.0, deprecating or deleting a published version, force-pushing `main`, or changing repository settings or secrets.
 6. A security incident (exposed secret, suspicious package), or a check that cannot be made green after three honest attempts without weakening it.
 
-**CI budget.** GitHub Free: 2,000 Actions minutes a month shared by seven repositories; this repository stays under **1,000 minutes a month**. The full port-contract matrix runs weekly and before a release; nightly legs run only for ports changed that day; sandbox legs stay off until their accounts exist. STATUS shows the month's total after each merge; tell the owner before going over.
+**CI budget.** This repository is public (owner, 27 Oct 2026; PL2-D-62), so its Actions minutes are free. The budget rules (GitHub Free: 2,000 minutes a month shared by the private repositories; full port-contract matrix weekly and before a release; nightly legs only for ports changed that day; sandbox legs off until their accounts exist) now bind the six private product repositories. Here, PR workflows still cancel superseded runs and keep heavy legs off docs-only changes, for speed.
+
+**Public repository.** Everything written here is public: no customer, pilot-lender or prospect names; no prices or commercial terms; no credentials or internal URLs; no exploitable security detail beyond what the threat model needs. Anything already committed that looks confidential goes to `docs/OWNER-QUESTIONS.md`; history is not rewritten.
 
 **Reporting.** After each merged PR, five lines: what merged, checks, new assumptions, owner tasks, next step. `docs/OWNER-QUESTIONS.md` is the single numbered list the owner answers in one go.
 

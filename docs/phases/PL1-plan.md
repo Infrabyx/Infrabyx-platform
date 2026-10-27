@@ -252,7 +252,7 @@ The `entry_hash` is computed **in the database by trigger** (IPB-02 §02.4.7.1 r
 - Platform seed: tenants `tnt_platform`, `tnt_demo`, `tnt_sandbox` (IPB-11-26), the common personas of IPB-11 §11.4.5 and a slot for product personas (IPB-11-27), settings defaults from the registry, all `fut.*` flags OFF (IPB-11-29). IPB-11-30's model-registry rows are a hook for PL4.
 - `seed:purge --profile` removes exactly what a profile created and refuses in prod (IPB-11-31). Seeded rows are tracked in `seed.seed_row` rather than by adding columns to every product table, which IPB-11-31 allows ("or a tag in metadata"; decision D-16).
 - CLI `infrabyx-seed credentials [--rotate] [--no-file]` (IPB-11-35 to IPB-11-39, §11.4.7): generates passwords with `crypto.generateSeedPassword()`, writes them to the seed vault through `SECRETS`, sets them on the IdP through the `IDENTITY` port, writes `SEED_CREDENTIALS.md` with mode `0600`, adds it to `.git/info/exclude`, prints exactly one line, and never logs a password. It refuses in `prod`, `dr` and `pre-prod` (the stricter IPB-11-14 set, not only prod/dr from §11.4.7 step 1; decision D-17). Agents get client credentials only.
-- The super admin `rjnprajapati@gmail.com` is seeded as `PLT_SUPER_ADMIN` in `tnt_platform` with MFA always required (IPB-11-32, IPB-11-37). In production it is created by the identity bootstrap, never by seed.
+- The super admin (address from `AUTH_SUPER_ADMIN_EMAIL`, placeholder `super.admin@example.test`; PL2-D-63) is seeded as `PLT_SUPER_ADMIN` in `tnt_platform` with MFA always required (IPB-11-32, IPB-11-37). In production it is created by the identity bootstrap, never by seed.
 
 ### 9.2 Data model (schema `seed`)
 

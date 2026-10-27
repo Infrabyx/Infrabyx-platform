@@ -70,7 +70,9 @@ afterAll(async () => {
   await temporal?.stop();
 });
 
-const id = (p: string) => `${p}-${toHex(randomBytes(6))}`;
+// Letters only, so a random suffix can never read as a phone number token.
+const id = (p: string) =>
+  `${p}-${toHex(randomBytes(6)).replace(/\d/g, (d) => "ghijklmnop"[Number(d)] as string)}`;
 const raw = async () =>
   new Client({ connection: await Connection.connect({ address }), namespace: NS });
 
@@ -156,9 +158,17 @@ const cases = [
       await expect(
         p.startWorkflow("approval", {}, { id: "user@example.com", taskQueue: TQ }),
       ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+      for (const bad of ["kyc-9812345678", "pan:ABCDE1234F", "user.abcde1234f"])
+        await expect(
+          p.startWorkflow("approval", {}, { id: bad, taskQueue: TQ }),
+        ).rejects.toMatchObject({ code: "IPB-PORT-003" });
       await expect(
         p.startWorkflow("approval", {}, { id: id("ok"), taskQueue: "other-queue" }),
       ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+      // A ULID that happens to contain a PAN-shaped or long digit run is an identifier, not data.
+      const ulidLike = `approval-01JABCDE1234F${Date.now()}9`;
+      await p.startWorkflow("approval", {}, { id: ulidLike, taskQueue: TQ });
+      await p.cancel(ulidLike, "test");
       await expect(p.describe(id("missing"))).rejects.toMatchObject({ code: "IPB-PORT-001" });
     },
   },

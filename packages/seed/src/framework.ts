@@ -58,6 +58,8 @@ export interface SeedModuleContext {
   /** Run date for narrative-relative data (IPB-11-28 demo); never used for IDs. */
   runDate: Date;
   tenantIds: Readonly<Record<SeedTenant, string>>;
+  /** `AUTH_SUPER_ADMIN_EMAIL`, when set; the persona otherwise uses the placeholder. */
+  superAdminEmail?: string;
   /** One kernel transaction (and one ledger entry) in the given seed tenant. */
   write(tenant: SeedTenant, fn: (w: SeedWriter) => Promise<void>): Promise<void>;
 }
@@ -94,6 +96,8 @@ export interface RunSeedOptions {
   modules: readonly SeedModule[];
   /** SEED_RANDOM_SEED (IPB-11-23). */
   randomSeed: number;
+  /** AUTH_SUPER_ADMIN_EMAIL: the one real address a seed may write (IPB-11-32). */
+  superAdminEmail?: string;
   runDate?: Date;
   onRefused?: (envelope: Record<string, unknown>) => void;
 }
@@ -129,11 +133,16 @@ class Writer implements SeedWriter {
     readonly tx: Tx,
     private readonly run: { runId: string; profile: SeedProfile },
     private readonly counts: Counts,
+    private readonly allowEmails: ReadonlySet<string> = new Set(),
   ) {}
 
   async upsert(spec: UpsertSpec): Promise<{ outcome: UpsertOutcome; id?: string }> {
     const t = table(spec.table);
-    const violations = findRealIdentifiers({ ...spec.key, ...spec.values }, spec.table);
+    const violations = findRealIdentifiers(
+      { ...spec.key, ...spec.values },
+      spec.table,
+      this.allowEmails,
+    );
     if (violations.length) {
       throw new IpbError("IPB-SEED-004", {
         detail: violations.map((v) => `${v.path}: ${v.reason}`).join("; "),
@@ -266,6 +275,7 @@ export async function runSeed(o: RunSeedOptions): Promise<SeedReport> {
     { action: "seed.run.start" },
   );
 
+  const allowEmails = new Set(o.superAdminEmail ? [o.superAdminEmail.toLowerCase()] : []);
   for (const m of ordered(o.modules)) {
     if (!m.profiles.includes(o.profile)) continue;
     const counts = zero();
@@ -277,12 +287,13 @@ export async function runSeed(o: RunSeedOptions): Promise<SeedReport> {
       faker: seededFaker(o.randomSeed, m.module),
       runDate: o.runDate ?? new Date(),
       tenantIds: SEED_TENANT_IDS,
+      ...(o.superAdminEmail ? { superAdminEmail: o.superAdminEmail } : {}),
       write: async (tenant, fn) => {
         await o.kernel.mutate(
           ctxFor(tenant),
           async (tx) => {
             const before = { ...counts };
-            await fn(new Writer(tx, { runId, profile: o.profile }, counts));
+            await fn(new Writer(tx, { runId, profile: o.profile }, counts, allowEmails));
             await o.audit.record(tx, {
               action: "seed.module.apply",
               resourceType: "seed_module",

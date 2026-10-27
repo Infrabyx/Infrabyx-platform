@@ -96,6 +96,13 @@ export const seedEnvSchema = gateSchema.extend({
     sens: "C",
     port: "SEED",
   }),
+  AUTH_SUPER_ADMIN_EMAIL: envVar(z.email(), {
+    desc: "Super-admin address (IPB-11-32); set in the product repository's local environment only",
+    example: "super.admin@example.test",
+    required: "opt",
+    sens: "C",
+    port: "AUTH",
+  }),
   SEED_VAULT_PREFIX: envVar(z.string().min(1), {
     desc: "Seed vault path",
     example: "secret://env/infrabyx/ldc/local/seed",
@@ -192,6 +199,7 @@ export async function main(
     await generateCredentials({
       env,
       product,
+      ...(env.AUTH_SUPER_ADMIN_EMAIL ? { superAdminEmail: env.AUTH_SUPER_ADMIN_EMAIL } : {}),
       secrets: adapters.secrets,
       identity: adapters.identity,
       vaultPrefix: env.SEED_VAULT_PREFIX ?? "",
@@ -220,6 +228,7 @@ export async function main(
       profile,
       modules,
       randomSeed: env.SEED_RANDOM_SEED ?? 0,
+      ...(env.AUTH_SUPER_ADMIN_EMAIL ? { superAdminEmail: env.AUTH_SUPER_ADMIN_EMAIL } : {}),
     });
     const t = report.totals;
     process.stdout.write(

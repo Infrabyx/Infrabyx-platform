@@ -276,12 +276,19 @@ describe("IDENTITY hermetic leg: zitadel v4.19.5", () => {
             mfaRequired: false,
           });
           await p.linkFederation(id, { alias: idp, subject: "partner-123" });
-          const links = await fetch(`${base}/v2/users/${id}/links/_search`, {
-            method: "POST",
-            headers: { authorization: `Bearer ${pat}`, "content-type": "application/json" },
-            body: "{}",
-          });
-          expect(JSON.stringify(await links.json())).toContain("partner-123");
+          // Zitadel's search endpoints read an eventually consistent projection: the link is
+          // written at once but may take a moment to appear in `_search`.
+          let found = "";
+          for (let i = 0; i < 40 && !found.includes("partner-123"); i++) {
+            if (i) await new Promise((r) => setTimeout(r, 250));
+            const links = await fetch(`${base}/v2/users/${id}/links/_search`, {
+              method: "POST",
+              headers: { authorization: `Bearer ${pat}`, "content-type": "application/json" },
+              body: "{}",
+            });
+            found = JSON.stringify(await links.json());
+          }
+          expect(found).toContain("partner-123");
         },
       },
       {
