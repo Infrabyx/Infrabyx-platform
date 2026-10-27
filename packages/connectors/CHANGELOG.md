@@ -1,5 +1,40 @@
 # @infrabyx/connectors
 
+## 0.3.0
+
+### Minor Changes
+
+- ca72d67: `@infrabyx/connectors/ai` (PL4 session 3, PL4-D-04): LLM and EMBEDDING adapters on stubs, all `unproven`:
+
+  - `bedrock_claude_in` (reference; Bedrock Converse and InvokeModel in ap-south-1 through `@aws-sdk/client-bedrock-runtime`; #63);
+  - `gemini_vertex_asia_south1` (alternative; Vertex REST with an injected access token, no Google SDK; #64);
+  - `self_hosted_vllm` (the SELF route for SECRET data; #65).
+
+  Each adapter checks its region at boot, refuses cross-region inference profiles, maps 429/5xx/timeouts to retryable errors for the gateway, never logs bodies, and emulates streaming.
+
+- f6e9a88: `googleServiceAccountToken` (C-24, PL4-C-01): exchanges a service-account assertion at Google's token endpoint and caches the access token until 5 minutes before expiry, with one shared exchange for concurrent callers. `fcm` uses it, and `vertexServiceAccountToken` gives `gemini_vertex_asia_south1` a cloud-platform token from a service-account key read through SECRETS. An injected workload-identity token provider still works for both.
+- bfa324d: IMAGE_GEN adapters in `@infrabyx/connectors/ai` (PL4 session 5, PL4-D-07): `GeminiImagen` (`gemini_imagen`, Vertex AI asia-south1, PNG only, no people; #69) and `FluxSelfHosted` (`flux_self_hosted`, OpenAI-compatible images endpoint on our own host; #70), both `unproven`. `VertexBase` is shared with the Gemini adapters.
+
+### Patch Changes
+
+- Updated dependencies [2b07109]
+- Updated dependencies [200b25a]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [200b25a]
+- Updated dependencies [9af583a]
+- Updated dependencies [288ae44]
+- Updated dependencies [b205b1d]
+- Updated dependencies [183c532]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [183c532]
+- Updated dependencies [200b25a]
+- Updated dependencies [b205b1d]
+  - @infrabyx/contracts@0.4.0
+  - @infrabyx/config@0.4.0
+  - @infrabyx/crypto@0.4.0
+  - @infrabyx/tenancy@0.4.0
+
 ## 0.2.0
 
 ### Minor Changes

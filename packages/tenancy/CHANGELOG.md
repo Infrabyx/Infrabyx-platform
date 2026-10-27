@@ -1,5 +1,29 @@
 # @infrabyx/tenancy
 
+## 0.4.0
+
+### Minor Changes
+
+- 183c532: `memberStatus(tx, userId)`: whether a member of the transaction's tenant is active and the roles they hold now, for background re-checks such as scheduled Vidhi runs (PL4-D-09).
+
+### Patch Changes
+
+- 200b25a: `infrabyx-migrate` applies `@infrabyx/ai` migrations after `export` (PL4-D-03).
+- b205b1d: `infrabyx-migrate` applies `@infrabyx/vidhi` migrations after `ai` (PL4 session 6).
+- Updated dependencies [2b07109]
+- Updated dependencies [200b25a]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [200b25a]
+- Updated dependencies [9af583a]
+- Updated dependencies [288ae44]
+- Updated dependencies [b205b1d]
+- Updated dependencies [183c532]
+- Updated dependencies [f6e9a88]
+  - @infrabyx/contracts@0.4.0
+  - @infrabyx/config@0.4.0
+  - @infrabyx/crypto@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
