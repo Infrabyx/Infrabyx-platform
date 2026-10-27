@@ -38,11 +38,17 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     && rm -rf "apps/$APP/.next/cache" \
     && cp -r "apps/$APP/.next" /out/.next
 
-FROM base AS runtime
+# The runtime starts again from the pinned Node image: no corepack shims, and the package managers
+# the image bundles (npm, npx, corepack, yarn) are removed, since the app never installs anything.
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS runtime
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
-RUN groupadd --gid 10001 app \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn \
+      /usr/local/bin/yarnpkg /opt/yarn-* \
+    && groupadd --gid 10001 app \
     && useradd --uid 10001 --gid app --no-create-home --home-dir /app --shell /usr/sbin/nologin app
 WORKDIR /app
 # The code stays owned by root: the app user can read it, never change it.
