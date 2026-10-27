@@ -17,7 +17,7 @@ export const config = {
 
 /** The site's own routes: everything else is a CMS path. */
 const SITE_ROUTES =
-  /^\/(?:_next\/|api\/|assets\/|\.well-known\/|feedback(?:\/|$)|(?:accessibility|grievance|sitemap|glossary|security|cookie-settings|__gallery|__not-found|legal|sitemap\.xml|robots\.txt|llms\.txt|icon\.svg|site\.webmanifest|consent\.js|feedback\.js)$)/;
+  /^\/(?:_next\/|api\/|assets\/|\.well-known\/|feedback(?:\/|$)|(?:accessibility|grievance|sitemap|glossary|security|cookie-settings|__gallery|__not-found|legal|legal\/index\.json|sitemap\.xml|robots\.txt|llms\.txt|icon\.svg|site\.webmanifest|consent\.js|feedback\.js)$)/;
 const LEGAL = /^\/legal\/([a-z0-9-]{1,60})(?:\/v\/(\d+\.\d+))?$/;
 
 function securityHeaders(res: NextResponse, csp: string): NextResponse {

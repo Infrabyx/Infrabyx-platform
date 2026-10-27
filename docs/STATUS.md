@@ -26,6 +26,7 @@ Updated: 2026-10-27
 - **Compose:** `infra/compose/docker-compose.yml` with the `core` (PostgreSQL 18 with pgvector, Redis, MinIO built from source, Mailpit, Keycloak, Temporal and its UI, Gotenberg, Unleash, Cerbos with the platform policies), `apps`, `search`, `ai` and `observability` profiles; every image pinned by digest, every port on 127.0.0.1.
 - **`pnpm dev:up` / `pnpm dev:down`:** generated local secrets in `infra/compose/.env.local` (never committed), the stack up with health checks, then `infrabyx-migrate` and the `dev` seed.
 - **CI:** the `compose` job runs `dev:up` with the apps, checks the seeded site and console through their images and tears down.
+- **Fix found by the `compose` job:** `apps/public` answered 404 for `/legal/index.json` (IPB-05-09): the proxy sent it to the CMS lookup. It is now a site route, with a `@IPB-05-09` end-to-end test.
 - **New owner question:** #69 (generated secrets instead of SOPS, the `dev` profile, what comes with `apps/reference`; nothing blocked).
 - **Next:** session 2, the Helm chart `infra/helm/infrabyx-app` and the Kyverno policies.
 
