@@ -37,7 +37,10 @@ export const FAILURE_CONVERTER_PATH = ((js) => (existsSync(js) ? js : js.replace
 );
 
 const IDENT = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,199}$/;
-const LOOKS_PERSONAL = /@|\+?\d{10,}|[A-Z]{5}\d{4}[A-Z]/;
+// Checked per token (split on . _ : -), so a phone number or PAN used as an id part is refused
+// while a ULID or hex id that merely contains such a run of characters is not.
+const PERSONAL_TOKEN = /^(?:\d{10,}|[A-Z]{5}\d{4}[A-Z])$/i;
+const looksPersonal = (v: string): boolean => v.split(/[._:-]/).some((t) => PERSONAL_TOKEN.test(t));
 
 export type TemporalAuth =
   | { kind: "none" }
@@ -139,7 +142,7 @@ export class TemporalWorkflow implements WorkflowPort {
   }
 
   private ident(what: string, v: string): void {
-    if (!IDENT.test(v) || LOOKS_PERSONAL.test(v))
+    if (!IDENT.test(v) || looksPersonal(v))
       throw new PortError("IPB-PORT-003", "WORKFLOW", {
         adapter: this.adapter,
         detail: `${what} must be an identifier without personal data (C-16)`,
