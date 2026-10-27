@@ -7,15 +7,22 @@ const BASE62 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const SYMBOLS = "-_.!@#";
 export const SEED_PASSWORD_LENGTH = 26;
 
-/** Unbiased draws from a stream of randomBytes(32) blocks. */
-class Draws {
-  private buf = randomBytes(32);
+/**
+ * Unbiased draws in [0, max) by rejection sampling from a stream of 32-byte blocks. The byte
+ * source is randomBytes in production; tests inject a seeded source to check the draw itself.
+ * Exported for tests only (not part of the package index).
+ */
+export class Draws {
+  private buf: Uint8Array;
   private i = 0;
+  constructor(private readonly source: (n: number) => Uint8Array = randomBytes) {
+    this.buf = source(32);
+  }
   next(max: number): number {
     const limit = 256 - (256 % max);
     for (;;) {
       if (this.i >= this.buf.byteLength) {
-        this.buf = randomBytes(32);
+        this.buf = this.source(32);
         this.i = 0;
       }
       const b = this.buf[this.i++] as number;

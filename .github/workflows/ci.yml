@@ -6,12 +6,37 @@ on:
 permissions:
   contents: read
   packages: read
+# A newer push to a PR cancels its older run; runs on main are never cancelled.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
   # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
   LEFTHOOK: "0"
 jobs:
+  changes:
+    # Docs-only PRs (docs/** and Markdown files) skip the heavy legs; `verify` always runs.
+    runs-on: ubuntu-24.04
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          code=true
+          if [ "$EVENT" = "pull_request" ] &&
+            ! git diff --name-only "origin/$BASE_REF...HEAD" | grep -qvE '^docs/|\.md$'; then
+            code=false
+          fi
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "code changes: $code"
   verify:
     # IPB-09-07 required checks land here as packages do. PL0 provides: pin-check, secret-scan,
     # spec-readonly, lint (ESLint + Prettier + IPB rules vendor-import / schema-boundary /
@@ -111,6 +136,8 @@ jobs:
         run: pnpm pr:checklist
   integration:
     # IPB-01 §01.4.10: integration tests run against real PostgreSQL 18 (IPB-D-02).
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     services:
       postgres:

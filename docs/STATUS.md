@@ -55,7 +55,7 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#4 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI budget: under 1,000 minutes a month for this repository; the full port-contract matrix runs weekly and before releases, nightly only for changed ports (PL2-D-44).
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#4 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
 ## Next
 
@@ -125,7 +125,7 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 
 ## CI minutes (PL2-D-13)
 
-Allowance: 2,000 a month on GitHub Free, shared by seven repositories; this repository's budget is **1,000 a month** (PL2-D-41). The owner is told before this repository passes 1,000, with a warning at 70 % (700). Billing rounds each job up to whole minutes.
+Since 27 Oct 2026 this repository is public and its Actions minutes are free (PL2-D-62); the budget rules now bind the six private product repositories. The table below is kept as history and is no longer updated. Before that: 2,000 a month on GitHub Free, shared by seven repositories, with a 1,000-minute budget here (PL2-D-41).
 
 | Month   | Run                                                         | Minutes (billed, approx.) | Month to date |
 | ------- | ----------------------------------------------------------- | ------------------------- | ------------- |
