@@ -130,6 +130,13 @@ export interface InboxItemInput {
   dueAt?: string;
   /** Set for Vidhi suggestions, so the item is labelled AI (PL4). */
   fromAgent?: boolean;
+  /** A principal who may not see or resolve the item (the maker whose request produced it). */
+  excludePrincipal?: string;
+  /**
+   * Escalate to the tenant's ORG_ADMIN role if still open after this many hours, as approval
+   * requests are (48 h for UNDETERMINED rule decisions, OWNER-QUESTIONS #21).
+   */
+  escalateAfterHours?: number;
 }
 
 /**

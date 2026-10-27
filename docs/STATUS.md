@@ -177,6 +177,13 @@ Then PL3 (plan first). The owner's PL3 items so far:
 
 Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#7–#17 open with defaults in use; #1–#6 answered). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
+## Owner answers #21–#23 (2026-10-27, PL3-D-21)
+
+- **#21:** UNDETERMINED review tasks go to `ORG_CHECKER` (or `ORG_ADMIN` when the tenant has no checker), exclude the requesting principal and escalate once to `ORG_ADMIN` after 48 hours (`inbox.escalate` timer, class `inbox.escalated`); one ledger entry per decision stays.
+- **#22:** the timer poller, the NOTIFY dispatcher and the unsubscribe link read across tenants as `SVC_SCHEDULER`, `SVC_NOTIFY_DISPATCH` and `SVC_NOTIFY_UNSUBSCRIBE` (`ServiceReader`), each as its own database role with column grants; reads are ledgered per tenant; threat model §3.16.
+- **#23:** NOTIFY defaults confirmed; collection and recovery classes go only inside 08:00–21:00 in the recipient's zone, narrowed by a product's `contactWindow` hook, never widened.
+- Products at the PL3 gate: run `infrabyx-migrate` (`workflow/0002`, `notify/0002` create the reader roles and grant them to `app_rw` and `app_ro`); pass `itemEscalated` (from `notifyApprovalNotifier`) to `createWorkflow`; optionally `contactWindow` to `NotifyService`.
+
 ## Next
 
 - PL3 session 5: `export` (maps, the archive writer to the Ecosystem §12.1 profile with C-22 signed manifests, jobs, `export-map-gate` and `golden-archive-diff` CI checks, the golden fixture; `@IPB-09-AT-14`, `@IPB-09-AT-15`).

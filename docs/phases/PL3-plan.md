@@ -2,7 +2,7 @@
 
 **Phase:** PL3 (IPB-14 §14.3) · **Packages:** `rules`, `workflow`, `notify`, `export` (first releases). Also ESIGN in `connectors` (owner decision D-09) and additions to `contracts`, `config`, `testing` and `connectors`.
 **Date:** 2026-10-27 · **Branch:** `claude/sweet-maxwell-mv0qk2`
-**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). **Owner answers to #7–#16 applied on 27 Oct 2026** (PL3-D-04 to PL3-D-13; sections marked _(owner, PL3-D-nn)_). Spike results: `docs/phases/PL3-spike.md` (PL3-D-15). Owner answers to #18–#20 applied on 27 Oct 2026 (PL3-C-01, PL3-C-02, PL3-D-17); no question is open.
+**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). **Owner answers to #7–#16 applied on 27 Oct 2026** (PL3-D-04 to PL3-D-13; sections marked _(owner, PL3-D-nn)_). Spike results: `docs/phases/PL3-spike.md` (PL3-D-15). Owner answers to #18–#20 applied on 27 Oct 2026 (PL3-C-01, PL3-C-02, PL3-D-17), and to #21–#23 (PL3-D-21: rules review assignee and 48-hour escalation, `SVC_` service readers instead of `PLT_AUDITOR_RO`, NOTIFY contact windows); no question is open.
 **Read for this plan:**
 
 - IPB-01 §01.4.4 (RULES, NOTIFY, PUSH, ESIGN, WORKFLOW, EMAIL, SMS, WHATSAPP rows), §01.4.10;

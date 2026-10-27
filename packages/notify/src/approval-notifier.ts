@@ -1,5 +1,6 @@
 // The NOTIFY side of `@infrabyx/workflow`'s `ApprovalNotifier` (PL3-D-07): reminders and escalations
-// go out as the mandatory classes `approval.reminder` and `approval.escalated`, recorded inside the
+// go out as the mandatory classes `approval.reminder` and `approval.escalated` (and escalated inbox
+// items, such as UNDETERMINED rule decisions, as `inbox.escalated`, PL3-D-21), recorded inside the
 // timer's transaction (`enqueue`) and delivered by the dispatcher, so a rolled-back timer sends
 // nothing. Role members come from the product (the identity directory).
 import type { KernelContext, Tx } from "@infrabyx/contracts/kernel";
@@ -17,6 +18,12 @@ export function notifyApprovalNotifier(
 ): {
   reminder(tx: Tx, r: ApprovalLike, roles: readonly string[]): Promise<void>;
   escalated(tx: Tx, r: ApprovalLike, role: string): Promise<void>;
+  itemEscalated(
+    tx: Tx,
+    item: { id: string; productModule: string },
+    role: string,
+    excludePrincipal: string | null,
+  ): Promise<void>;
 } {
   const to = async (tx: Tx, roles: readonly string[], maker: string) => {
     const refs = new Set<string>();
@@ -45,6 +52,17 @@ export function notifyApprovalNotifier(
         vars: { action: r.action, id: r.id },
         deepLink: `/approvals/${r.id}`,
         idempotencyKey: `approval.escalated:${r.id}`,
+      });
+    },
+    async itemEscalated(tx, item, role, excludePrincipal) {
+      const recipients = await to(tx, [role], excludePrincipal ?? "");
+      if (!recipients.length) return;
+      await notify.enqueue(tx, {
+        class: "inbox.escalated",
+        to: recipients,
+        vars: { module: item.productModule, id: item.id },
+        deepLink: `/inbox/${item.id}`,
+        idempotencyKey: `inbox.escalated:${item.id}`,
       });
     },
   };

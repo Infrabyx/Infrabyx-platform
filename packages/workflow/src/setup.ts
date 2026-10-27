@@ -3,7 +3,7 @@
 import type { AuditSink, MutationKernel, OutboxWriter } from "@infrabyx/contracts/kernel";
 import type { TimerEngine } from "@infrabyx/contracts/ports";
 import type { SecretKey } from "@infrabyx/crypto";
-import { ApprovalsEngine, type FieldCrypto } from "@infrabyx/tenancy";
+import { ApprovalsEngine, type FieldCrypto, type ServiceReadRecord } from "@infrabyx/tenancy";
 import { ApprovalWorkflow, type ApprovalNotifier } from "./approvals.js";
 import { InboxService } from "./inbox.js";
 import { settingsApprovalPolicy, type SettingsReader } from "./policy.js";
@@ -22,6 +22,8 @@ export interface CreateWorkflowOptions {
   timerEngine?: TimerEngine;
   notifier?: ApprovalNotifier;
   onEngineError?: (e: unknown) => void;
+  /** Operational log of the timer poller's cross-tenant reads (SVC_SCHEDULER, PL3-D-21). */
+  onServiceRead?: (r: ServiceReadRecord) => void;
 }
 
 export function createWorkflow(o: CreateWorkflowOptions): {
@@ -38,7 +40,10 @@ export function createWorkflow(o: CreateWorkflowOptions): {
     ...(o.pseudonymKey ? { pseudonymKey: o.pseudonymKey } : {}),
   };
   const policy = o.settings ? settingsApprovalPolicy(o.settings) : undefined;
-  const inbox = new InboxService(shared);
+  const inbox = new InboxService({
+    ...shared,
+    ...(o.notifier?.itemEscalated ? { onEscalated: o.notifier.itemEscalated } : {}),
+  });
   // The timers need the workflow's give-up handler, and the workflow needs the timers.
   const late: { wf?: ApprovalWorkflow } = {};
   const timers = new WorkflowTimers({
@@ -46,6 +51,7 @@ export function createWorkflow(o: CreateWorkflowOptions): {
     audit: o.audit,
     ...(o.timerEngine ? { engine: o.timerEngine } : {}),
     ...(o.onEngineError ? { onEngineError: o.onEngineError } : {}),
+    ...(o.onServiceRead ? { onServiceRead: o.onServiceRead } : {}),
     onGiveUp: (tx, t, error) => late.wf?.onTimerGiveUp(tx, t, error) ?? Promise.resolve(),
   });
   const wf = new ApprovalWorkflow({
@@ -62,6 +68,7 @@ export function createWorkflow(o: CreateWorkflowOptions): {
     observers: [wf],
   });
   wf.attach(approvals);
+  inbox.useTimers(timers);
   late.wf = wf;
   return { approvals, inbox, timers, workflow: wf };
 }
