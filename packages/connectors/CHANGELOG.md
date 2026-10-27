@@ -1,5 +1,13 @@
 # @infrabyx/connectors
 
+## 0.1.1
+
+### Patch Changes
+
+- 995639f: Fix `@infrabyx/connectors/workflow` and `./workflow/worker` failing to load in plain Node ESM
+  ("The requested module '@temporalio/proto' does not provide an export named 'temporal'"). The
+  CommonJS package is now imported through its default export. No API change.
+
 ## 0.1.0
 
 ### Minor Changes
