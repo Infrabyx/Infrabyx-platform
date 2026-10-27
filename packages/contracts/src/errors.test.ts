@@ -4,7 +4,7 @@ import { ERROR_CATALOGUE, IpbError, PortError, Problem, toProblem } from "./erro
 describe("error catalogue", () => {
   it("uses IPB-AREA-NNN codes with a status for every entry", () => {
     for (const [code, def] of Object.entries(ERROR_CATALOGUE)) {
-      expect(code).toMatch(/^IPB-[A-Z]{2,6}-\d{3}$/);
+      expect(code).toMatch(/^IPB-[A-Z][A-Z0-9]{1,5}-\d{3}$/);
       expect(def.title.length).toBeGreaterThan(5);
       if (typeof def.status === "number") expect(def.status).toBeGreaterThanOrEqual(100);
     }

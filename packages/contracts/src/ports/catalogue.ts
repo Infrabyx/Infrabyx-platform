@@ -1,6 +1,6 @@
 // Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports and
 // the four PL3 ports (RULES, NOTIFY, PUSH, ESIGN) and the five PL4 AI ports (LLM, EMBEDDING, IMAGE_GEN,
-// SPEECH, RERANK, in `ai.ts`) are in this folder; the rest land with the phase
+// SPEECH, RERANK, in `ai.ts`) and the twelve PL5 website ports (`web.ts`) are in this folder; the rest land with the phase
 // that builds their adapters (PL1-D-02, PL2 plan §1, PL3 plan §10).
 
 export type PortTier = 0 | 1 | 2 | 3;
@@ -107,9 +107,14 @@ export const PORT_CATALOGUE = {
     tier: 3,
     configPrefix: "mkt.analytics.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
-  TAG_MANAGER: { tier: 3, configPrefix: "mkt.tags.", ownerFile: "IPB-01", interfaceDefined: false },
+  TAG_MANAGER: {
+    tier: 3,
+    configPrefix: "mkt.tag_manager.",
+    ownerFile: "IPB-01",
+    interfaceDefined: true,
+  },
   FEATURE_FLAG: {
     tier: 3,
     configPrefix: "eng.flags.",
@@ -131,8 +136,8 @@ export const PORT_CATALOGUE = {
   DNS_CDN: { tier: 1, configPrefix: "int.dns_cdn.", ownerFile: "IPB-01", interfaceDefined: false },
   GEO_MAPS: { tier: 3, configPrefix: "int.geo.", ownerFile: "IPB-01", interfaceDefined: false },
   RULES: { tier: 2, configPrefix: "rules.", ownerFile: "IPB-01", interfaceDefined: true },
-  BILLING: { tier: 1, configPrefix: "int.billing.", ownerFile: "IPB-01", interfaceDefined: false },
-  CRM: { tier: 2, configPrefix: "int.crm.", ownerFile: "IPB-01", interfaceDefined: false },
+  BILLING: { tier: 1, configPrefix: "int.billing.", ownerFile: "IPB-01", interfaceDefined: true },
+  CRM: { tier: 2, configPrefix: "int.crm.", ownerFile: "IPB-01", interfaceDefined: true },
   // Supplementary ports (IPB-01 §01.4.4.3)
   RERANK: { tier: 2, configPrefix: "ai.rerank.", ownerFile: "IPB-03", interfaceDefined: true },
   INTERPRETER: {
@@ -142,14 +147,14 @@ export const PORT_CATALOGUE = {
     interfaceDefined: false,
   },
   NOTIFY: { tier: 2, configPrefix: "int.notify.", ownerFile: "IPB-07", interfaceDefined: true },
-  TRUST: { tier: 2, configPrefix: "int.trust.", ownerFile: "IPB-08", interfaceDefined: false },
-  SUPPORT: { tier: 3, configPrefix: "int.support.", ownerFile: "IPB-04", interfaceDefined: false },
-  BACKLOG: { tier: 3, configPrefix: "int.backlog.", ownerFile: "IPB-04", interfaceDefined: false },
+  TRUST: { tier: 2, configPrefix: "int.trust.", ownerFile: "IPB-08", interfaceDefined: true },
+  SUPPORT: { tier: 3, configPrefix: "int.support.", ownerFile: "IPB-04", interfaceDefined: true },
+  BACKLOG: { tier: 3, configPrefix: "int.backlog.", ownerFile: "IPB-04", interfaceDefined: true },
   CONSENT: {
     tier: 1,
     configPrefix: "int.consent.",
     ownerFile: "IPB-04, IPB-05",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   MEDIA: { tier: 2, configPrefix: "int.media.", ownerFile: "IPB-04", interfaceDefined: false },
   AV: { tier: 2, configPrefix: "int.av.", ownerFile: "IPB-02, IPB-04", interfaceDefined: false },
@@ -163,15 +168,22 @@ export const PORT_CATALOGUE = {
     tier: 1,
     configPrefix: "int.egress.",
     ownerFile: "IPB-02, IPB-04",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   LAW_REGISTER: {
     tier: 3,
     configPrefix: "int.law_register.",
     ownerFile: "IPB-05, IPB-07",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
-  HR: { tier: 3, configPrefix: "int.hr.", ownerFile: "IPB-04", interfaceDefined: false },
+  HR: { tier: 3, configPrefix: "int.hr.", ownerFile: "IPB-04", interfaceDefined: true },
+  /** OH14 claims gate (Ecosystem §6.29); the local Claims Register answers until it exists. */
+  CLAIMS: {
+    tier: 3,
+    configPrefix: "int.claims.",
+    ownerFile: "IPB-04, IPB-08",
+    interfaceDefined: true,
+  },
   SOCIAL_PUBLISHER: {
     tier: 3,
     configPrefix: "int.social.",
