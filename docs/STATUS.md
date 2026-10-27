@@ -4,11 +4,22 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4 and 5a merged (#80–#82, #84, #85); owner answers #41–#52 applied (#83, PL5-D-05); session 5b built (resources, forms, pricing; PL5-D-08); next: 5c (`consent`). Continuous build mode (PL2-D-41)                       |
+| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4, 5a and 5b merged (#80–#82, #84–#86); owner answers #41–#52 applied (#83, PL5-D-05); session 5c built (`consent`, PL5-D-09); next: session 6 (`feedback` and `trust`). Continuous build mode (PL2-D-41)                |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
 | Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
 | Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
 | Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                             |
+
+## PL5 session 5c (2026-10-27, PL5-D-09)
+
+- `@infrabyx/consent`, migration `consent/0001_init.sql`:
+  - consent texts (IPB-05 template 18 and the region banners as drafts; DPO maker, legal reviewer checker);
+  - the append-only consent ledger (`pg_local`) with the exact text shown, and the OH HTTP adapter (unproven);
+  - the CMP: equal Accept all, Reject all and Manage, Escape as Reject, GPC, region wording, re-prompt, no marketing on app routes, the preference centre, the first-party controller and the consent endpoint (`@IPB-04-AT-80`…`-82`, `-84`, `-85`);
+  - inert script gating with the locked sensitive routes and `IPB-WEB-005` (`@IPB-04-AT-83`, `-86`), and the `none` tag manager and analytics adapters;
+  - the acceptance ledger with `IPB-POL-010`, and the consent purge (life of consent + 3 years, #48).
+- `contracts`: service reader `SVC_CONSENT_SWEEP`. `tenancy`: `infrabyx-migrate` applies `consent` after `cms`.
+- New owner question #57 (end of life for form consents).
 
 ## PL5 session 5b (2026-10-27, PL5-D-08)
 

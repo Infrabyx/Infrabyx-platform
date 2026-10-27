@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL5 session 4: `@infrabyx/cms` core — content and revisions, approvals, the Claims Register, the sanitiser, redirects, media uploads, preview tokens, the public read API, the scheduler and the 90-day purge).
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL5 session 5c: `@infrabyx/consent` — the CMP, consent texts, the consent and acceptance ledgers, script gating and the consent purge).
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -344,6 +344,16 @@ The shared components render on the server with no client script. The accessibil
 - **E/T (policies, session 5a):** a legal document published by one person, changed after approval, or published with unreviewed text. Control: legal reviewer maker, super admin checker and DPO for privacy-class templates, never the maker (service checks and table constraints); approval snapshots parameters and the rendered hash and a trigger refuses any later edit (`IPB-POL-008`); counsel markers, unresolved parameters, banned wording, stale citations and the notice period block submission and approval (`@IPB-05-AT-03`…`-09`).
 - **I/T (resources, forms, pricing; session 5b):** a gated file leaked by URL, form data kept in the CMS, or a typed price. Control: gated files sit in a private bucket and are served by a 300-second presigned URL; downloads keep the CRM lead reference, never field values; form submissions keep only ids, the consent receipt and state, also on failure (`@IPB-04-AT-47`); a honeypot and a rate-limit hook stop scripted submissions; the pricing copy has no price field and figures come only from the catalogue (`@IPB-04-AT-30`).
 - **Residual:** the scheduler and the purge run as service principals carrying `PLT_CONTENT_EDITOR`, because IPB-02-11 opens the platform scope only to PLT roles (PL5-D-06); they call only the scheduled publish, unpublish and purge paths. Rate limiting of the public API and of forms is a hook the site must supply. Downloads and form submissions also run as such service principals (PL5-D-08) and only insert their own rows.
+
+### 3.30 `@infrabyx/consent` (built, PL5 session 5c)
+
+`consent` adds the `consent` schema (texts, the append-only consent ledger, acceptances), the CMP components and the first-party controller, the consent endpoint, script gating and the purge with the `svc_consent_sweep` reader.
+
+- **I (tracking before consent, O-2):** a third-party tag or pixel loads before or without consent, or on a sensitive or authenticated route. Control: the server never renders an active third-party tag (inert `text/plain` declarations activated by the first-party controller for consented categories only); marketing tags on the locked sensitive routes or on app routes are dropped and reported (`IPB-WEB-005`); only `none` adapters exist at launch; GPC keeps analytics and marketing off (`@IPB-04-AT-81`, `-83`, `-85`, `-86`).
+- **T/R (consent evidence):** a choice rewritten or the wording shown later disputed. Control: records and acceptances are append-only for every role (trigger); each record keeps the exact text and its version and is ledgered; texts are DPO-drafted, legal-approved and immutable once approved.
+- **S (cookie forgery):** a forged `ibx_consent` cookie activates scripts. Control: the cookie only reflects the visitor's own choice in their own browser; it is parsed strictly, names a ledger receipt, and a forged value can at most enable scripts for that same visitor; nothing server-side trusts it beyond rendering.
+- **I (deletion, #48):** consent evidence kept forever or deleted early. Control: a restrictive delete policy allows deletion only 3 years after a record's replacement or cookie expiry; the sweep's reader sees ids, tenants and times only, and every batch is ledgered.
+- **Residual:** form consents without a later record have no fixed end of life (#57). The controller is hand-written JavaScript without a build step; it is reviewed with the site in session 7 under the nonce CSP.
 
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 

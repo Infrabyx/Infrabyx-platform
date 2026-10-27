@@ -369,7 +369,42 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
-  packages/consent: {}
+  packages/consent:
+    dependencies:
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@infrabyx/ui':
+        specifier: workspace:*
+        version: link:../ui
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
 
   packages/contracts:
     dependencies:
