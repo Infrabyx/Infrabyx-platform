@@ -1,0 +1,504 @@
+{
+  "$comment": "WCAG 2.2 Level A and AA success criteria (IPB-06 §06.3.2) mapped to EN 301 549 V3.2.1 clause 9 (web) and IS 17802 Part 1 (IPB-06-03). IS 17802 clauses stay [VERIFY] until the standard text is bought (OI-06-02). The six criteria new in WCAG 2.2 have no clause in EN 301 549 V3.2.1 and stay [VERIFY]. 4.1.1 Parsing is obsolete in WCAG 2.2 and is not listed.",
+  "wcag": "2.2",
+  "en_301_549": "V3.2.1 (2021-03)",
+  "is_17802": "[VERIFY]",
+  "criteria": [
+    {
+      "sc": "1.1.1",
+      "level": "A",
+      "name": "Non-text Content",
+      "en_301_549": "9.1.1.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "SCRIPT", "COMPONENT"],
+      "axe_rules": ["image-alt", "button-name"]
+    },
+    {
+      "sc": "1.2.1",
+      "level": "A",
+      "name": "Audio-only and Video-only (Prerecorded)",
+      "en_301_549": "9.1.2.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL", "COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.2.2",
+      "level": "A",
+      "name": "Captions (Prerecorded)",
+      "en_301_549": "9.1.2.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT", "COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.2.3",
+      "level": "A",
+      "name": "Audio Description or Media Alternative (Prerecorded)",
+      "en_301_549": "9.1.2.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.2.4",
+      "level": "AA",
+      "name": "Captions (Live)",
+      "en_301_549": "9.1.2.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT", "MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.2.5",
+      "level": "AA",
+      "name": "Audio Description (Prerecorded)",
+      "en_301_549": "9.1.2.5",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.3.1",
+      "level": "A",
+      "name": "Info and Relationships",
+      "en_301_549": "9.1.3.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "SCRIPT"],
+      "axe_rules": ["label", "th-has-data-cells", "heading-order"]
+    },
+    {
+      "sc": "1.3.2",
+      "level": "A",
+      "name": "Meaningful Sequence",
+      "en_301_549": "9.1.3.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.3.3",
+      "level": "A",
+      "name": "Sensory Characteristics",
+      "en_301_549": "9.1.3.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL", "LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.3.4",
+      "level": "AA",
+      "name": "Orientation",
+      "en_301_549": "9.1.3.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.3.5",
+      "level": "AA",
+      "name": "Identify Input Purpose",
+      "en_301_549": "9.1.3.5",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "LINT"],
+      "axe_rules": ["autocomplete-valid"]
+    },
+    {
+      "sc": "1.4.1",
+      "level": "A",
+      "name": "Use of Color",
+      "en_301_549": "9.1.4.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "MANUAL"],
+      "axe_rules": ["link-in-text-block"]
+    },
+    {
+      "sc": "1.4.2",
+      "level": "A",
+      "name": "Audio Control",
+      "en_301_549": "9.1.4.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.3",
+      "level": "AA",
+      "name": "Contrast (Minimum)",
+      "en_301_549": "9.1.4.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "TOKEN"],
+      "axe_rules": ["color-contrast"]
+    },
+    {
+      "sc": "1.4.4",
+      "level": "AA",
+      "name": "Resize Text",
+      "en_301_549": "9.1.4.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.5",
+      "level": "AA",
+      "name": "Images of Text",
+      "en_301_549": "9.1.4.5",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL", "COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.10",
+      "level": "AA",
+      "name": "Reflow",
+      "en_301_549": "9.1.4.10",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.11",
+      "level": "AA",
+      "name": "Non-text Contrast",
+      "en_301_549": "9.1.4.11",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "MANUAL", "TOKEN"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.12",
+      "level": "AA",
+      "name": "Text Spacing",
+      "en_301_549": "9.1.4.12",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "1.4.13",
+      "level": "AA",
+      "name": "Content on Hover or Focus",
+      "en_301_549": "9.1.4.13",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.1.1",
+      "level": "A",
+      "name": "Keyboard",
+      "en_301_549": "9.2.1.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.1.2",
+      "level": "A",
+      "name": "No Keyboard Trap",
+      "en_301_549": "9.2.1.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.1.4",
+      "level": "A",
+      "name": "Character Key Shortcuts",
+      "en_301_549": "9.2.1.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.2.1",
+      "level": "A",
+      "name": "Timing Adjustable",
+      "en_301_549": "9.2.2.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.2.2",
+      "level": "A",
+      "name": "Pause, Stop, Hide",
+      "en_301_549": "9.2.2.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.3.1",
+      "level": "A",
+      "name": "Three Flashes or Below Threshold",
+      "en_301_549": "9.2.3.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.1",
+      "level": "A",
+      "name": "Bypass Blocks",
+      "en_301_549": "9.2.4.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO"],
+      "axe_rules": ["bypass", "landmark-one-main", "region"]
+    },
+    {
+      "sc": "2.4.2",
+      "level": "A",
+      "name": "Page Titled",
+      "en_301_549": "9.2.4.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.3",
+      "level": "A",
+      "name": "Focus Order",
+      "en_301_549": "9.2.4.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.4",
+      "level": "A",
+      "name": "Link Purpose (In Context)",
+      "en_301_549": "9.2.4.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "LINT"],
+      "axe_rules": ["link-name"]
+    },
+    {
+      "sc": "2.4.5",
+      "level": "AA",
+      "name": "Multiple Ways",
+      "en_301_549": "9.2.4.5",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.6",
+      "level": "AA",
+      "name": "Headings and Labels",
+      "en_301_549": "9.2.4.6",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL", "LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.7",
+      "level": "AA",
+      "name": "Focus Visible",
+      "en_301_549": "9.2.4.7",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT", "TOKEN", "COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.4.11",
+      "level": "AA",
+      "name": "Focus Not Obscured (Minimum)",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.5.1",
+      "level": "A",
+      "name": "Pointer Gestures",
+      "en_301_549": "9.2.5.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.5.2",
+      "level": "A",
+      "name": "Pointer Cancellation",
+      "en_301_549": "9.2.5.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.5.3",
+      "level": "A",
+      "name": "Label in Name",
+      "en_301_549": "9.2.5.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO"],
+      "axe_rules": ["label-content-name-mismatch"]
+    },
+    {
+      "sc": "2.5.4",
+      "level": "A",
+      "name": "Motion Actuation",
+      "en_301_549": "9.2.5.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.5.7",
+      "level": "AA",
+      "name": "Dragging Movements",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT", "COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "2.5.8",
+      "level": "AA",
+      "name": "Target Size (Minimum)",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "COMPONENT"],
+      "axe_rules": ["target-size"]
+    },
+    {
+      "sc": "3.1.1",
+      "level": "A",
+      "name": "Language of Page",
+      "en_301_549": "9.3.1.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO"],
+      "axe_rules": ["html-has-lang", "html-lang-valid"]
+    },
+    {
+      "sc": "3.1.2",
+      "level": "AA",
+      "name": "Language of Parts",
+      "en_301_549": "9.3.1.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["MANUAL", "LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.2.1",
+      "level": "A",
+      "name": "On Focus",
+      "en_301_549": "9.3.2.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.2.2",
+      "level": "A",
+      "name": "On Input",
+      "en_301_549": "9.3.2.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.2.3",
+      "level": "AA",
+      "name": "Consistent Navigation",
+      "en_301_549": "9.3.2.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.2.4",
+      "level": "AA",
+      "name": "Consistent Identification",
+      "en_301_549": "9.3.2.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.2.6",
+      "level": "A",
+      "name": "Consistent Help",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["COMPONENT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.3.1",
+      "level": "A",
+      "name": "Error Identification",
+      "en_301_549": "9.3.3.1",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.3.2",
+      "level": "A",
+      "name": "Labels or Instructions",
+      "en_301_549": "9.3.3.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "LINT"],
+      "axe_rules": ["label"]
+    },
+    {
+      "sc": "3.3.3",
+      "level": "AA",
+      "name": "Error Suggestion",
+      "en_301_549": "9.3.3.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["LINT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.3.4",
+      "level": "AA",
+      "name": "Error Prevention (Legal, Financial, Data)",
+      "en_301_549": "9.3.3.4",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.3.7",
+      "level": "A",
+      "name": "Redundant Entry",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "3.3.8",
+      "level": "AA",
+      "name": "Accessible Authentication (Minimum)",
+      "en_301_549": "[VERIFY]",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    },
+    {
+      "sc": "4.1.2",
+      "level": "A",
+      "name": "Name, Role, Value",
+      "en_301_549": "9.4.1.2",
+      "is_17802": "[VERIFY]",
+      "methods": ["AUTO", "SCRIPT"],
+      "axe_rules": [],
+      "axe_rule_prefix": "aria-"
+    },
+    {
+      "sc": "4.1.3",
+      "level": "AA",
+      "name": "Status Messages",
+      "en_301_549": "9.4.1.3",
+      "is_17802": "[VERIFY]",
+      "methods": ["SCRIPT"],
+      "axe_rules": []
+    }
+  ]
+}

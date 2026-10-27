@@ -1,0 +1,211 @@
+{
+  "product": "GRP",
+  "product_name": "Example group website",
+  "release": "0.1.0",
+  "released_at": "2026-10-27",
+  "scope": "This statement covers the example group website.",
+  "journeys": [
+    {
+      "id": "grp.visitor.contact",
+      "title": "Contact us",
+      "routes": ["/contact"]
+    }
+  ],
+  "ci": [
+    {
+      "route": "/contact",
+      "theme": "light",
+      "axe_violations": 0,
+      "htmlcs_errors": 0
+    },
+    {
+      "route": "/contact",
+      "theme": "dark",
+      "axe_violations": 0,
+      "htmlcs_errors": 0
+    }
+  ],
+  "checklist": {
+    "signed_by": "Accessibility Lead (example)",
+    "signed_at": "2026-10-27",
+    "items": [
+      {
+        "id": "C01",
+        "result": "pass"
+      },
+      {
+        "id": "C02",
+        "result": "pass"
+      },
+      {
+        "id": "C03",
+        "result": "pass"
+      },
+      {
+        "id": "C04",
+        "result": "pass"
+      },
+      {
+        "id": "C05",
+        "result": "pass"
+      },
+      {
+        "id": "C06",
+        "result": "pass"
+      },
+      {
+        "id": "C07",
+        "result": "pass"
+      },
+      {
+        "id": "C08",
+        "result": "pass"
+      },
+      {
+        "id": "C09",
+        "result": "pass"
+      },
+      {
+        "id": "C10",
+        "result": "pass"
+      },
+      {
+        "id": "C11",
+        "result": "pass"
+      },
+      {
+        "id": "C12",
+        "result": "pass"
+      },
+      {
+        "id": "C13",
+        "result": "pass"
+      },
+      {
+        "id": "C14",
+        "result": "pass"
+      },
+      {
+        "id": "C15",
+        "result": "pass"
+      },
+      {
+        "id": "C16",
+        "result": "pass"
+      },
+      {
+        "id": "C17",
+        "result": "pass"
+      },
+      {
+        "id": "C18",
+        "result": "pass"
+      },
+      {
+        "id": "C19",
+        "result": "pass"
+      },
+      {
+        "id": "C20",
+        "result": "pass"
+      },
+      {
+        "id": "C21",
+        "result": "pass"
+      },
+      {
+        "id": "C22",
+        "result": "pass"
+      },
+      {
+        "id": "C23",
+        "result": "pass"
+      },
+      {
+        "id": "C24",
+        "result": "pass"
+      },
+      {
+        "id": "C25",
+        "result": "pass"
+      },
+      {
+        "id": "C26",
+        "result": "pass"
+      },
+      {
+        "id": "C27",
+        "result": "pass"
+      },
+      {
+        "id": "C28",
+        "result": "pass"
+      },
+      {
+        "id": "C29",
+        "result": "pass"
+      },
+      {
+        "id": "C30",
+        "result": "pass"
+      },
+      {
+        "id": "C31",
+        "result": "pass"
+      },
+      {
+        "id": "C32",
+        "result": "pass"
+      },
+      {
+        "id": "C33",
+        "result": "pass"
+      },
+      {
+        "id": "C34",
+        "result": "pass"
+      },
+      {
+        "id": "C35",
+        "result": "pass"
+      },
+      {
+        "id": "C36",
+        "result": "pass"
+      },
+      {
+        "id": "C37",
+        "result": "pass"
+      },
+      {
+        "id": "C38",
+        "result": "pass"
+      },
+      {
+        "id": "C39",
+        "result": "pass"
+      },
+      {
+        "id": "C40",
+        "result": "pass"
+      }
+    ]
+  },
+  "at_runs": [],
+  "defects": [],
+  "reviewer_of_record": "Office of the Company Secretary",
+  "feedback": {
+    "email": "accessibility@example.test",
+    "form_path": "/accessibility"
+  },
+  "sla": {
+    "ack_hours": 24,
+    "workaround_days": 5,
+    "fix_days_blocking": 30,
+    "fix_days_other": 90
+  },
+  "grievance": {
+    "name": "Grievance Officer",
+    "email": "grievance@example.test"
+  }
+}
