@@ -52,6 +52,8 @@ export const SERVICE_READER_ROLES = {
     dbRole: "svc_export_sweep",
     tables: ["export.export_job", "export.archive"],
   },
+  /** Finds tenants with AI runs past the retention floor (OWNER-QUESTIONS #30). */
+  SVC_AI_RUN_SWEEP: { dbRole: "svc_ai_run_sweep", tables: ["ai.run"] },
 } as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;
 export type ServiceReaderRole = keyof typeof SERVICE_READER_ROLES;
 export const isServiceReaderRole = (r: string): r is ServiceReaderRole =>

@@ -39,6 +39,7 @@ import { newId } from "@infrabyx/crypto";
 import { KillSwitches, type SettingsReader } from "./kill.js";
 import { assertUnderCaps, capUse, costOf, crossings, type CapUse } from "./meter.js";
 import { aiTrace } from "./obs.js";
+import { insertRunHold, type RunHold } from "./retention.js";
 import { renderTemplate, type PromptRegistry, type PromptVersion } from "./prompts.js";
 import { CLASS_RANK, maxClass, type ModelRegistry } from "./registry.js";
 import { Breaker, Router, type RouteCandidate } from "./routing.js";
@@ -62,6 +63,11 @@ export interface LlmRequest {
   stop?: readonly string[];
   budget?: { timeoutMs?: number; costMinorUnits?: number };
   idempotencyKey?: string;
+  /**
+   * The approval, statutory output or maker-checker request this run belongs to: the run row is
+   * then kept as long as that record is kept, never by the 180-day sweep (PL4-D-05).
+   */
+  hold?: RunHold;
 }
 
 export interface LlmToolsRequest extends LlmRequest {
@@ -140,6 +146,7 @@ interface RunRecord {
   caps?: CapUse[];
   guardEvent?: { kind: string; action: string };
   failedClosed?: boolean;
+  hold?: RunHold;
 }
 
 export class LlmGateway {
@@ -280,6 +287,7 @@ export class LlmGateway {
       id: newId("run"),
       featureKey: req.featureKey,
       ...(req.skillKey ? { skillKey: req.skillKey } : {}),
+      ...(req.hold ? { hold: req.hold } : {}),
       operation: op,
       dataClass: req.dataClass,
       band: bandOf(req.dataClass),
@@ -498,6 +506,7 @@ export class LlmGateway {
             route: run.routeReason,
           },
         });
+        if (run.hold) await insertRunHold(tx, this.o.audit, ctx, run.id, run.hold);
         const outbox = this.o.outbox;
         if (!outbox) return;
         const emit = (event: { module: string; name: string }, data: Record<string, unknown>) =>

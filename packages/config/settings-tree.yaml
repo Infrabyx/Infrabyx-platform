@@ -2219,7 +2219,7 @@ keys:
       tighten: min,
       change: [PLT_DPO],
       mc: R5,
-      note: "no purge job until the owner approves one (OWNER-QUESTIONS #30)",
+      note: "the 180-day floor is the owner's (OWNER-QUESTIONS #30, PL4-D-05); `RunRetention.sweep` deletes routine runs older than this, ledgered; held runs are kept",
       source: "IPB-03 \u00a703.5",
     }
   - {

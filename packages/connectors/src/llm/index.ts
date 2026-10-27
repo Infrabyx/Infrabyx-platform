@@ -10,6 +10,7 @@ export {
 export {
   VertexGeminiLlm,
   vertexObservedRegion,
+  vertexServiceAccountToken,
   VERTEX_ADAPTER_KEY,
   VERTEX_LOCATION,
   type GoogleAccessToken,

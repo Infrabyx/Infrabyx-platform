@@ -47,6 +47,15 @@ Registry checksums are the values release run 43 printed in the job summary of i
   - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
   - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
 
+## Owner answers #26–#33 (2026-10-27, PL4-D-05, PL4-C-01; ships at the PL4 gate)
+
+- **#26:** IPB-DEV-08 approved: only Bedrock, Vertex and self-hosted vLLM are built; the other six LLM adapters stay registry rows.
+- **#27:** C-24 widened to Vertex AI. `@infrabyx/crypto` signs only for the FCM and cloud-platform scopes; `vertexServiceAccountToken` in `@infrabyx/connectors` gives Vertex a cached token from a service-account key held through SECRETS.
+- **#30:** AI run retention built: migration `ai/0002_run_retention.sql`, `RunRetention.sweep()` (daily, one worker) deletes routine runs after 180 days with one ledger entry per run; runs held for an approval, a statutory output or a maker-checker request are kept. PostgreSQL refuses any other delete.
+- **#28, #29, #31–#33:** defaults confirmed. **Self-hosted inference host (#65): not now**; vLLM and FLUX stay unproven.
+- **Export 0.1.0 role change** accepted as breaking; the export changeset says so.
+- **Products must, at the PL4 gate:** run `infrabyx-migrate` (`ai/0002`); schedule `RunRetention.sweep()`; pass `hold` on runs linked to approvals, statutory outputs or maker-checker requests, and call `release` when such a record is deleted; for Vertex, put the service-account key in SECRETS (`secrets/<env>/ai/vertex/service_account_key`) or supply a workload-identity token.
+
 ## Handover (2026-10-27, end of the session that started PL4)
 
 **Done (merged).**
