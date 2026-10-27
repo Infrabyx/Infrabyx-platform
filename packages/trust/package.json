@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/trust",
   "version": "0.0.0",
-  "description": "Vendor Assurance Room mirror, Trust Centre, evidence packs",
+  "description": "The vendor-assurance mirror (Operations Hub is the system of record), the tenant Vendor Assurance Room (list, NDA, acknowledgements, requests, subscriptions), the public Trust Centre data, security.txt and the acknowledgement purge (IPB-08; Ecosystem §6.34)",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -11,17 +11,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +37,16 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/ai": "workspace:*",
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }

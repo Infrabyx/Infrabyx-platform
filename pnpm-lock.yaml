@@ -444,7 +444,48 @@ importers:
         specifier: workspace:*
         version: link:../testing
 
-  packages/feedback: {}
+  packages/feedback:
+    dependencies:
+      '@infrabyx/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      '@infrabyx/ui':
+        specifier: workspace:*
+        version: link:../ui
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
 
   packages/hlp:
     dependencies:
@@ -619,7 +660,30 @@ importers:
         specifier: 4.1.12
         version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@7.3.7(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
-  packages/trust: {}
+  packages/trust:
+    dependencies:
+      '@infrabyx/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
 
   packages/ui:
     dependencies:

@@ -2,13 +2,53 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4, 5a and 5b merged (#80–#82, #84–#86); owner answers #41–#52 applied (#83, PL5-D-05); session 5c built (`consent`, PL5-D-09); next: session 6 (`feedback` and `trust`). Continuous build mode (PL2-D-41)                |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
-| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
-| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
-| Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                             |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                        |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4 and 5a–5c merged (#80–#82, #84–#87); owner answers #41–#52 applied (#83, PL5-D-05); session 6 built (`feedback` and `trust`, PL5-D-10); next: session 7 (`apps/public`, seeds, help registry, the `a11y` CI job). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                       |
+| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20)                             |
+| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                |
+| Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                         |
+
+## Handover (2026-10-27, end of the session that built PL5 sessions 4–6)
+
+- **Done:**
+  - Owner answers #41–#52 recorded and applied (#83, PL5-D-05).
+  - Session 4, `cms` core (#84).
+  - Session 5a, policies (#85); 5b, resources, forms and pricing (#86); 5c, `consent` (#87).
+  - Session 6, `feedback` and `trust`, is in PR #88.
+- **Next:**
+  1. Merge #88 when every required check is green (PL2-D-19).
+  2. Session 7 (plan §9.1–§9.5, §11):
+     - `apps/public` on Next 16 with the nonce CSP, the §9.2 routes and the consent, feedback and trust wiring;
+     - `publicSiteSeedModule`: policy placeholders through `PolicyStudio.seedPlaceholder`, consent texts through `ConsentTexts.seedDefaults` plus their approval, and the trust fixture mirror;
+     - the platform help registry, including the `hlp.feedback.*` keys, and renaming notify's `ntf.*` help keys;
+     - `hlp-lint` and `journeys-lint` in `verify`;
+     - the `a11y` CI job, and `a11y` added to the required checks in `infra/policy/github/rulesets.json` (the owner applies the ruleset, #49);
+     - re-check whether Lighthouse resolves under the trust policy (#51).
+  3. Sessions 8 and 9: the Studio screens (`@infrabyx/ui/studio`) and the reference `apps/console` (#41). Session 10: the gate.
+- **Open questions:** #53–#59, all with defaults taken; nothing blocked.
+- **Branch and PR state:** `claude/cool-bohr-klglyy` carries #88. Recreate it from `main` after the squash merge.
+- **Local tooling:** Node 24.22.1 is unpacked in the session scratchpad (put it first on `PATH`). PostgreSQL 16 at `IPB_TEST_PG_URL` has an older pgvector without `hnsw.iterative_scan`, so the `ai` retrieval integration tests only pass in CI. gitleaks is not installed locally; the CI secret scan runs it.
+
+HANDOVER READY
+
+## PL5 session 6 (2026-10-27, PL5-D-10)
+
+- `@infrabyx/feedback`, migration `feedback/0001_init.sql`:
+  - the widget: footer trigger, floating button, dialog with its controller, the no-JavaScript `/feedback` form, the accessibility report form and the status view (`@IPB-04-AT-90`);
+  - payload minimisation with `IPB-FB-001`, route patterns, OS and browser families and the PII scan of the text (`@IPB-04-AT-91`); honeypot and rate limits with `IPB-FB-002`; the NPS rules;
+  - the hand-off to SUPPORT or BACKLOG, the status loop from OH events or polls, and the status link (`@IPB-04-AT-92`);
+  - the accessibility SLA timers with `AccessibilityIssueSlaBreached` once per missed timer (`@IPB-06-AT-20`), and the purge 3 years after closure (#48).
+- `@infrabyx/trust`, migration `trust/0001_init.sql`:
+  - the read-only mirror: only the mirror consumer can write it (`@IPB-08-AT-01`); ANNOUNCED → FETCHED → VERIFIED → VISIBLE, SUPERSEDED and HIDDEN; digest mismatch `IPB-TRUST-009`; replay rebuilds the same mirror; daily reconciliation and the "as of" label (`@IPB-08-AT-14`, digest scenario);
+  - the tenant room: list, NDA acceptance (`@IPB-08-AT-06`), acknowledgements and public downloads with the delivered digest, tenant isolation (`@IPB-08-AT-10`), requests with the SLA and OH ticket (`@IPB-08-AT-09`), and subscriptions. Gated downloads answer `IPB-TRUST-012` (#44);
+  - the Trust Centre data (`@IPB-08-AT-04`, `-17`) and `security.txt` (RFC 9116);
+  - the sweep: request SLA breaches (`IPB-TRUST-014`), hand-off retries, and the acknowledgement purge 10 years after the version ended, with legal holds (#48).
+- `contracts`: service readers `SVC_FEEDBACK_SLA` and `SVC_TRUST_SWEEP`, id prefixes `fbs_` and `vads_`, six payload schemas. `config`: `trust.request.ack_hours` and `trust.request.fulfil_days` (IPB-08 §08.5). `tenancy`: `infrabyx-migrate` applies `feedback` then `trust` after `consent`.
+- New owner questions #58 (feedback defaults) and #59 (trust defaults).
+- For session 7: register the `hlp.feedback.*` help keys in the platform help registry; serve `FEEDBACK_CONTROLLER_JS` under the nonce CSP.
+- Locally the `ai` retrieval integration tests need pgvector 0.8 (`hnsw.iterative_scan`); CI's pgvector image has it. Every other integration suite passes locally.
 
 ## PL5 session 5c (2026-10-27, PL5-D-09)
 

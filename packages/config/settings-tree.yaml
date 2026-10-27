@@ -4085,6 +4085,26 @@ keys:
       source: "IPB-08 §08.5",
     }
   - {
+      key: trust.request.ack_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      max: 24,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.request.fulfil_days,
+      tier: PLATFORM,
+      type: json,
+      default: { default: 10, regulator_deadline: 3 },
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-08 §08.5",
+    }
+  - {
       key: trust.mirror.stale_minutes,
       tier: PLATFORM,
       type: int,

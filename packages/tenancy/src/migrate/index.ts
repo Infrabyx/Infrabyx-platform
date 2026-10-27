@@ -30,6 +30,8 @@ export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/brand",
   "@infrabyx/cms",
   "@infrabyx/consent",
+  "@infrabyx/feedback",
+  "@infrabyx/trust",
 ] as const;
 
 export interface MigrationSource {

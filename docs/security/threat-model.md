@@ -355,6 +355,29 @@ The shared components render on the server with no client script. The accessibil
 - **I (deletion, #48):** consent evidence kept forever or deleted early. Control: a restrictive delete policy allows deletion only 3 years after a record's replacement or cookie expiry; the sweep's reader sees ids, tenants and times only, and every batch is ledgered.
 - **Residual:** form consents without a later record have no fixed end of life (#57). The controller is hand-written JavaScript without a build step; it is reviewed with the site in session 7 under the nonce CSP.
 
+### 3.31 `@infrabyx/feedback` (built, PL5 session 6)
+
+`feedback` adds the `feedback` schema (items, their status history), the widget and its first-party controller, the feedback endpoint, the hand-off to OH (SUPPORT, BACKLOG), the OH status consumer and the sweep with the `svc_feedback_sla` reader.
+
+- **I (over-collection, `@IPB-04-AT-91`):** the widget or a crafted request sends page content, form values, screenshots, URLs or personal numbers. Control: a strict allow-list of fields; forbidden or unknown fields, a URL or query string, and any personal number or secret the AI scrubber detects refuse the whole request (`IPB-FB-001`) before anything is stored; there is no column for page content or screenshots; routes are reduced to patterns and user agents to families.
+- **D/S (spam):** floods of feedback or scripted submissions. Control: honeypot, the app's per-client limit and 10 items an hour per person (`IPB-FB-002`); no CAPTCHA puzzle (IPB-06-40).
+- **I (status link):** guessing another person's status page. Control: the link needs the item id and a 192-bit view key whose hash alone is stored, in the right tenant; signed-in users see only their own items; RLS keeps tenants apart.
+- **T/R (SLA evidence):** a missed accessibility timer hidden or reported twice. Control: `sla_breaches` is append-only (trigger), each breach is ledgered and emitted once; the submission itself never changes after it is stored.
+- **I (deletion, #48):** items kept forever or deleted early. Control: a restrictive policy allows deletion only 3 years after closure; the history goes with its item only; the sweep's reader sees ids, tenants, states and timers, never a summary or a person.
+- **Residual:** OH receives the scanned summary (up to 500 characters) and route pattern. The status consumer trusts the event's tenant; the Ecosystem envelope's signature check belongs to the product's event intake.
+
+### 3.32 `@infrabyx/trust` (built, PL5 session 6)
+
+`trust` adds the `trust` schema (the vendor-assurance mirror, acknowledgements, NDA acceptances, requests, subscriptions), the mirror consumer, the tenant room, the Trust Centre data, `security.txt` and the sweep with the `svc_trust_sweep` reader.
+
+- **T/E (system of record, `@IPB-08-AT-01`):** a product principal, staff included, creates or edits an assurance document. Control: RLS lets only the mirror consumer's principal (`svc_trust_mirror`) write the mirror tables; announced metadata and digests are immutable (trigger), validity can never be extended and versions are never deleted.
+- **T (tampered file):** OH's storage serves a file that is not the announced one. Control: a version becomes visible only after its digest matches; a mismatch keeps the previous verified version visible and raises `IPB-TRUST-009`; the daily reconciliation compares the whole publication digest.
+- **I (gated documents, `@IPB-08-AT-10`):** a tenant obtains a gated or another tenant's document, or an unwatermarked original. Control: only VISIBLE PUBLIC, TENANT and GATED_NDA versions are listed; NDA-gated ones need an accepted NDA (`IPB-TRUST-002`); every gated download is refused with `IPB-TRUST-012` until watermarking exists (#44), so no unwatermarked gated original is served; AUDITOR documents and per-tenant publications are not exposed in PL5. Tenant rows are under RLS.
+- **I (acknowledgement data, IPB-08-38):** names or e-mails in acknowledgements, or personal details in purposes and requests. Control: acknowledgements keep the user id, role and IP and UA classes only; purposes and request descriptions are PII-scanned and refused if they carry personal numbers.
+- **R (evidence):** an acknowledgement rewritten. Control: everything except the sync stamp and the legal hold is immutable (trigger); NDA acceptances are append-only; every action is ledgered.
+- **I (deletion, #48):** acknowledgements deleted before 10 years after their version ended, or under legal hold. Control: a restrictive delete policy enforces both; only a PLT_LEGAL_REVIEWER sets holds, ledgered in the tenant's chain; the sweep's reader sees ids, tenants, versions and timers only.
+- **Residual:** public documents are served through OH's signed URL (up to 15 minutes, Ecosystem §6.34), not a single-use 5-minute link (#59); the TRUST port and the event envelopes are trusted as delivered by the product's event intake.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
