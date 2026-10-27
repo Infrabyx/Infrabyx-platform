@@ -55,6 +55,17 @@ export interface Revision {
   legalReviewerId: string | null;
 }
 
+/** One row of the Brand list. */
+export interface PackSummary {
+  id: string;
+  product: BrandProduct;
+  label: string;
+  isDefault: boolean;
+  status: "draft" | "published";
+  publishedRevisionId: string | null;
+  updatedAt: Date;
+}
+
 export interface BrandStudioHooks {
   /** NOTIFY: SPF, DKIM and DMARC verified for the sending domain (IPB-04-28). */
   emailIdentityVerified(ctx: KernelContext, domain: string): Promise<boolean>;
@@ -514,6 +525,56 @@ export class BrandStudio {
     return this.o.kernel.read(ctx, async (tx) =>
       toRevision(await this.loadRow(tx, revisionId, false)),
     );
+  }
+
+  /** Every pack (Studio's Brand list, IPB-04-100 section 1), default packs first. */
+  async packs(ctx: KernelContext, f: { product?: BrandProduct } = {}): Promise<PackSummary[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        id: string;
+        product: BrandProduct;
+        label: string;
+        is_default: boolean;
+        status: "draft" | "published";
+        published_revision_id: string | null;
+        updated_at: Date;
+      }>(
+        `select id, product, label, is_default, status, published_revision_id, updated_at
+           from brand.pack where ($1::text is null or product = $1)
+          order by product, is_default desc, label`,
+        [f.product ?? null],
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        product: x.product,
+        label: x.label,
+        isDefault: x.is_default,
+        status: x.status,
+        publishedRevisionId: x.published_revision_id,
+        updatedAt: x.updated_at,
+      }));
+    });
+  }
+
+  /** A pack's revisions, newest first (the history and the rollback targets). */
+  async revisions(ctx: KernelContext, packId: string): Promise<Revision[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<RevisionRow>(
+        "select * from brand.pack_revision where pack_id = $1 order by created_at desc, id desc limit 100",
+        [packId],
+      );
+      return r.rows.map(toRevision);
+    });
+  }
+
+  /** Revisions waiting for a checker or the legal reviewer (Studio's approvals queue). */
+  async pending(ctx: KernelContext): Promise<Revision[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<RevisionRow>(
+        "select * from brand.pack_revision where status = 'pending_approval' order by submitted_at, id",
+      );
+      return r.rows.map(toRevision);
+    });
   }
 
   /** The published revision of a pack, or null. */

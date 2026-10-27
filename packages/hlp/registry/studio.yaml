@@ -1,0 +1,235 @@
+# Platform help entries, module `studio` (IPB-07 §07.4.3; PL5 session 8). The fields of the Studio
+# screens (`@infrabyx/ui/studio`). Plain text of at most 40 words; no legal citations.
+module: studio
+entries:
+  - key: hlp.studio.alt_text
+    term: "Alt text"
+    plain: "A short description of what an image shows, read out by screen readers to people who cannot see it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.body_json
+    term: "Body"
+    plain: "The item's content as JSON in the shape its type expects: blocks for a page, items for a menu. The service checks it when you save."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_body
+    term: "Brand pack"
+    plain: "The pack's names, colours, typography, legal entity and settings as JSON. The contrast guard checks the colours when you save."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_default
+    term: "Default pack"
+    plain: "The pack served on any host of the product that is not mapped to another pack. Each product has one."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_hosts
+    term: "Hosts"
+    plain: "The web addresses that serve this pack, as a JSON list. A host can belong to one pack only."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_label
+    term: "Pack name"
+    plain: "A name for the pack inside Studio. Visitors do not see it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_logo
+    term: "Logo"
+    plain: "The brand's logo as an SVG file. Scripts, links and other unsafe parts are removed before it is stored."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_pack
+    term: "Brand pack"
+    plain: "The brand and site this list belongs to. Each pack has its own pages, menus and redirects."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.brand_product
+    term: "Product"
+    plain: "The product the pack brands. It decides the default colours and which hosts it can serve."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_as_of
+    term: "True as of"
+    plain: "The date on which the claim was checked as true. Pages show it next to the claim."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_evidence
+    term: "Evidence class"
+    plain: "How strong the evidence is, from E0 (none yet) to E4 (an independent audit or certificate)."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_evidence_doc
+    term: "Evidence document"
+    plain: "The trust document that proves the claim, by its reference starting with vad_."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_kind
+    term: "Claim kind"
+    plain: "What the claim is: a figure, a certification, an audit, a permission or a category."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_review_due
+    term: "Review by"
+    plain: "The date by which someone checks the claim again. Overdue claims are flagged and stop new pages from using them."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_source
+    term: "Source"
+    plain: "A public https address where a reader can check the claim."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_text
+    term: "Claim"
+    plain: "The exact words a page may use. Pages can only make claims that are in the register and active."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_unit
+    term: "Unit"
+    plain: "The unit of the value, such as per cent or customers."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.claim_value
+    term: "Value"
+    plain: "The number or fact the claim states, if it has one."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.content_type
+    term: "Content type"
+    plain: "The kind of item: a page, a menu, a footer, an office and so on. It decides the fields the body needs."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.decorative_reason
+    term: "Decorative image"
+    plain: "An image that adds nothing a screen reader user needs. Say why, and it is hidden from screen readers."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.media_file
+    term: "File"
+    plain: "An image, video, PDF or other file to add to the library. Image metadata such as location is removed."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.publish_at
+    term: "Publish at"
+    plain: "When the approved item goes live, in UTC."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.reason
+    term: "Reason"
+    plain: "A short note that the other people in the review can see. It is kept with the item's history."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.redirect_csv
+    term: "Redirect import"
+    plain: "One redirect per line: the old path, the new path or an https address, and 301, 302 or 410. Check the rows before importing."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.redirect_from
+    term: "Redirect from"
+    plain: "The old path on this site, such as /old-page."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.redirect_status
+    term: "Redirect kind"
+    plain: "301 for a permanent move, 302 for a temporary one, 410 for a page that is gone with no replacement."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.redirect_to
+    term: "Redirect to"
+    plain: "Where visitors go instead: a path on this site or an https address."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.seo_json
+    term: "Search and sharing"
+    plain: "The title, description and sharing image search engines and social posts use, as JSON."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.slug
+    term: "Slug"
+    plain: "The last part of the page's address, in lower-case words joined by hyphens."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.summary
+    term: "Summary of changes"
+    plain: "A short note on what this revision changes, for the reviewer and the history."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.title
+    term: "Title"
+    plain: "The item's name. For a page it is also the main heading."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.unpublish_at
+    term: "Unpublish at"
+    plain: "When the item comes down again, in UTC. Leave empty to keep it up."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.unpublish_behaviour
+    term: "After unpublishing"
+    plain: "Whether the old address says the page is gone, or sends visitors to another page."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal

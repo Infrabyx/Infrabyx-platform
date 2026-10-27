@@ -20,6 +20,10 @@
       "types": "./dist/i18n/index.d.ts",
       "default": "./dist/i18n/index.js"
     },
+    "./studio": {
+      "types": "./dist/studio/index.d.ts",
+      "default": "./dist/studio/index.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json",
     "./tokens/*.css": "./dist/tokens/*.css"
