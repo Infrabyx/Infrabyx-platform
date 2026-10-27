@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 3 done** (2026-10-27): `workflow` (Work Inbox, scheduled actions, timers, reminders, escalation, expiry, bulk decide, `RefundApprovals`) and `tenancy/0002` (PL3-D-19). Next: PL3 session 4 (`notify` and the PUSH adapters). Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                       |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)              |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                         |
-| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                      |
+| Item                  | Value                                                                                                                                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 session 4 done** (2026-10-27): `notify` and the PUSH adapters `expo` and `fcm`; C-23 and C-24 in `crypto` (PL3-D-20). Next: PL3 session 5 (`export`). Continuous build mode (PL2-D-41)                                                                    |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
+| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                         |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -179,8 +179,17 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- PL3 session 4: `notify` (catalogue and lint, routing, preferences, quiet hours and digest, resend classes, suppression with C-23, marketing consent, in-app, `kill.msg.*`, the `approval.reminder` and `approval.escalated` classes behind `ApprovalNotifier`) and the PUSH adapters `expo` and `fcm` (C-24 token minting in `@infrabyx/crypto`).
-- Then sessions 5–7 as in plan §12.
+- PL3 session 5: `export` (maps, the archive writer to the Ecosystem §12.1 profile with C-22 signed manifests, jobs, `export-map-gate` and `golden-archive-diff` CI checks, the golden fixture; `@IPB-09-AT-14`, `@IPB-09-AT-15`).
+- Then session 6 (ESIGN `leegality` with C-25 and `digio`) and session 7 (gate and release).
+
+## PL3 session 4 (2026-10-27)
+
+- `@infrabyx/crypto` (minor): C-23 `addressHash` and C-24 `signServiceAccountAssertion` (PL3-C-01).
+- `@infrabyx/connectors` (minor, subpath `./push`): `expo` and `fcm`, payload guard `IPB-NTF-006`, tokens in a `PushTokenStore`; hermetic legs green on the Expo and FCM stubs (the FCM stub checks the C-24 assertion); `unproven` with issues #50 and #51; `PUSH` in the port matrix.
+- `@infrabyx/notify` 0.1.0 (first release at the PL3 gate), migration `notify/0001_init.sql`: catalogue and `infrabyx-notify-lint` (CI step), routing and preferences (`IPB-NTF-001`), quiet hours and digest (`@IPB-07-AT-22`), `kill.msg.*`, resend classes with held deliveries, the platform suppression list with an R2 lift, marketing consent and one-click unsubscribe, sealed push tokens, delivery reports, `notifyApprovalNotifier` for workflow reminders.
+- `@infrabyx/contracts` (minor): `PushTokenStore`, context-first `NotifyPort`, id prefixes `ptk` and `inm`. `@infrabyx/testing` (minor): Expo and FCM stubs, `MemoryPushTokenStore`.
+- New owner question #23 (fallback, inbound consent before PR-018, time-zone keys); defaults in use, nothing blocked.
+- Products at the PL3 gate: install `@infrabyx/notify`, ship their catalogue files and lint them, supply a `ContactResolver` and the C-23 group consent key (SECRETS), run `dispatchDue` in a worker, pass `notifyApprovalNotifier` to `createWorkflow`, wire PUSH adapters with `PgPushTokenStore`, verify delivery webhooks with the adapters and hand the events to `handle*`.
 
 ## PL3 session 3 (2026-10-27)
 

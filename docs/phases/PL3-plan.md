@@ -382,7 +382,7 @@ Every class declares `resend`, and an unclassified class is treated as `hold`. W
 
 - `notification` (`ntf_…`: class, tenant, idempotency key unique, dedupe window 24 h, deep link, created_by);
 - `delivery` (`dlv_…`: notification, recipient ref, channel, state `queued|sent|delivered|failed|held|suppressed|killed|digested`, attempt, vendor ref, adapter, last error code, resend class);
-- `digest_entry`;
+- `digest_entry` _(as built, PL3-D-20: the `delivery` rows with state `digested` serve as the digest entries)_;
 - `inapp_message`;
 - `suppression`;
 - `marketing_consent`;
