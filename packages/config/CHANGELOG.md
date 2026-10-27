@@ -1,5 +1,39 @@
 # @infrabyx/config
 
+## 0.3.0
+
+### Minor Changes
+
+- 50093e9: Settings `int.esign.provider` (`leegality` | `digio` | `memory`) and `int.esign.expire_in_days`
+  (1–90, default 10), both PLATFORM tier and R4 (PL3-D-23).
+- 2725b6c: PL3 session 1: settings for RULES (`rules.*`), PUSH (`int.push.*`), NOTIFY dedupe, workflow timers,
+  export (`eng.export.*`) and the tighten-only maker-checker tenant keys `mc.*` (new tighten mode
+  `subset`); exact `kill.msg.email|sms|whatsapp|push|inapp` switches; `FlagService.boot()` persists or
+  loads the flag snapshot at startup, and `onAlert` raises `ops.flags.provider_unreachable`
+  (throttled) whenever flags are served without the provider (PL3-D-13).
+- dd7a98b: A maker-checker setting change carries the checker diff (`{ before, after }` at the target scope)
+  in its approval request (IPB-07-15, @IPB-07-AT-06).
+- 53697f5: `FlagService`: the `ops.flags.provider_unreachable` alert escalates when a provider outage passes
+  1 hour and again at 12 hours (`ALERT_ESCALATIONS`; alert fields `outageS` and `escalation`), once
+  each per outage, dated from the last provider contact so a restart does not reset it. The IPB-01
+  24-hour snapshot limit is unchanged (OWNER-QUESTIONS #20, PL3-D-17).
+
+### Patch Changes
+
+- Updated dependencies [50093e9]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [2725b6c]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [50093e9]
+- Updated dependencies [3951517]
+  - @infrabyx/contracts@0.3.0
+  - @infrabyx/crypto@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

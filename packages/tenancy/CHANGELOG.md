@@ -1,5 +1,49 @@
 # @infrabyx/tenancy
 
+## 0.3.0
+
+### Minor Changes
+
+- 3951517: Cross-tenant service readers (owner answer #22, PL3-D-21): `ServiceReader`, `serviceReaderContext`
+  and `serviceReaderRole`. The kernel runs a reader's platform-scope read as its own database role,
+  refuses every reader mutation except the `platform.service_read` ledger entry for its own read,
+  and `contextFromClaims` refuses a token that claims a reader role. Each read that returns rows is
+  ledgered in every tenant it touched. Also `tenantHasRoleHolder` for the rules review assignee.
+- dd7a98b: Maker-checker additions (PL3-D-07, PL3-D-08, PL3-D-19), migration `tenancy/0002_approvals_pl3.sql`
+  (expand-only): requests expire after 7 days, or 72 hours for R4, R5 and financial R3
+  (`expire`, terminal, `IPB-UX-012`, `ApprovalExpired`); `remind` and `escalate` (to `ORG_ADMIN`,
+  `ApprovalEscalated`, never decides); the checker `diff` (field names only above INTERNAL); the
+  tighten-only tenant policy hook for `mc.checker_roles` and `mc.dual_checker_above`;
+  `PLT_SECURITY_OFFICER` may cancel (IPB-02-80); `observers` called inside each transition's
+  transaction. Products run `infrabyx-migrate` to apply 0002.
+- e268b60: `PgKernel.read(ctx, fn, { snapshot: true })` runs a REPEATABLE READ read-only transaction, and
+  `infrabyx-migrate` applies `@infrabyx/export` migrations when the package is installed (PL3-D-22).
+- 1ed0659: `infrabyx-migrate` applies `@infrabyx/notify` migrations (after `@infrabyx/workflow`).
+- 53697f5: `infrabyx-migrate` applies `@infrabyx/rules` migrations (after `@infrabyx/connectors`) when the
+  package is installed.
+- dd7a98b: `infrabyx-migrate` applies `@infrabyx/workflow` migrations (after `@infrabyx/rules`).
+
+### Patch Changes
+
+- Updated dependencies [50093e9]
+- Updated dependencies [2725b6c]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [50093e9]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [2725b6c]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [50093e9]
+- Updated dependencies [53697f5]
+- Updated dependencies [3951517]
+  - @infrabyx/config@0.3.0
+  - @infrabyx/contracts@0.3.0
+  - @infrabyx/crypto@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

@@ -1,5 +1,57 @@
 # @infrabyx/connectors
 
+## 0.2.0
+
+### Minor Changes
+
+- 50093e9: ESIGN adapters (new subpath `@infrabyx/connectors/esign`): `leegality` (interim reference; the
+  webhook `mac` checked with C-25) and `digio` (alternative; callbacks carry the C-19 URL token).
+  Both read the PDF by reference with its SHA-256 checked, refuse any method they cannot provide as
+  asked (no downgrade), return only the status read back from the vendor after a webhook, write the
+  signed PDF to STORAGE, and stay `unproven` until their sandbox legs (#55, #56). `ESIGN` joins the
+  port-contract matrix.
+- 1ed0659: PUSH adapters (new subpath `@infrabyx/connectors/push`): `expo` (reference, Expo push API v2,
+  `sendTopic` unsupported) and `fcm` (alternative, FCM HTTP v1, C-24 service-account assertion or a
+  workload-identity access token, cached until 5 minutes before expiry; `receipts` unsupported).
+  Both refuse anything beyond title, deep link and INTERNAL data (`IPB-NTF-006`), remove tokens the
+  vendor reports unregistered, and stay `unproven` until their sandbox legs (#50, #51).
+- 53697f5: RULES engine adapters (new subpath `@infrabyx/connectors/rules`): `zen` (reference,
+  `@gorules/zen-engine` 2.1.7), `json-rules` (alternative, `json-rules-engine` 7.3.1) and the memory
+  CEL row walk, all compiling the platform decision table through one CEL subset parsed and checked
+  by `@marcbachmann/cel-js` 8.0.0; strict input checks, `UNDETERMINED` on any engine error or timeout,
+  canary health, and `evaluateCel` (PL3-D-18).
+- dd7a98b: `@infrabyx/connectors/workflow`: `TemporalTimers` (a `TimerEngine` over the WORKFLOW port), the
+  `ipbTimer` workflow (`TIMER_WORKFLOWS_PATH`) and `timerActivities` for `@infrabyx/workflow` timers
+  (PL3-D-19).
+
+### Patch Changes
+
+- Updated dependencies [50093e9]
+- Updated dependencies [2725b6c]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [50093e9]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [2725b6c]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [50093e9]
+- Updated dependencies [53697f5]
+- Updated dependencies [3951517]
+- Updated dependencies [3951517]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+  - @infrabyx/config@0.3.0
+  - @infrabyx/contracts@0.3.0
+  - @infrabyx/crypto@0.3.0
+  - @infrabyx/tenancy@0.3.0
+
 ## 0.1.1
 
 ### Patch Changes
