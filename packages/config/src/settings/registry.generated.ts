@@ -5963,6 +5963,37 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-08 §08.5"
   },
   {
+    "key": "trust.request.ack_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "max": 24,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.request.fulfil_days",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": {
+      "default": 10,
+      "regulator_deadline": 3
+    },
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
     "key": "trust.mirror.stale_minutes",
     "tier": "PLATFORM",
     "type": "int",
@@ -6531,6 +6562,8 @@ export type SettingValueMap = {
   "trust.sor.product": string;
   "trust.gating.nda_version": string | null;
   "trust.download.url_ttl_s": number;
+  "trust.request.ack_hours": number;
+  "trust.request.fulfil_days": JsonValue;
   "trust.mirror.stale_minutes": number;
   "trust.mirror.fallback_enabled": boolean;
   "trust.retention.years": number;

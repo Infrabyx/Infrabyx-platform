@@ -205,6 +205,59 @@ export const MirrorDigestMismatchData = z
   .object({ product: z.string(), expected: z.string(), actual: z.string() })
   .strict();
 
+export const FeedbackStatusChangedInternalData = z
+  .object({
+    fbk_id: Id("fbk"),
+    status: z.enum(FEEDBACK_STATUSES),
+    previous: z.enum(FEEDBACK_STATUSES),
+    changed_at: Iso,
+  })
+  .strict();
+
+export const AccessibilityIssueReportedData = z
+  .object({
+    fbk_id: Id("fbk"),
+    route_pattern: z.string().nullable(),
+    ack_due_at: Iso,
+    fix_due_at: Iso,
+  })
+  .strict();
+
+/** IPB-06-62: one event per timer missed (`@IPB-06-AT-20`). */
+export const AccessibilityIssueSlaBreachedData = z
+  .object({
+    fbk_id: Id("fbk"),
+    timer: z.enum(["ack", "interim", "workaround", "fix"]),
+    due_at: Iso,
+    priority: z.enum(["P1", "P2", "P3"]).nullable(),
+    regulated_step: z.boolean(),
+  })
+  .strict();
+
+/** IPB-08-15: ids and versions only; never the user's name or e-mail. */
+export const VendorAssuranceDocumentAcknowledgedData = z
+  .object({
+    acknowledgement_id: Id("vada"),
+    vad_id: Id("vad"),
+    version: z.number().int().positive(),
+    action: z.enum(["VIEWED", "ACKNOWLEDGED", "PACK_EXPORTED", "NDA_ACCEPTED"]),
+    acknowledged_by_role: z.string(),
+  })
+  .strict();
+
+export const NdaAcceptedData = z
+  .object({ nda_id: Id("nda"), nda_version: z.string(), accepted_by_role: z.string() })
+  .strict();
+
+export const VendorDocumentRequestedData = z
+  .object({
+    request_id: Id("vadr"),
+    type_key: z.string().nullable(),
+    regulator_deadline: z.iso.date().nullable(),
+    ack_due_at: Iso,
+  })
+  .strict();
+
 /* ---------------------------------------------------- Ecosystem v1.2 payloads (emitters off) */
 
 /** §6.35 `in.infrabyx.tenancy.BrandPackPublished.v1` (PUBLIC). */
