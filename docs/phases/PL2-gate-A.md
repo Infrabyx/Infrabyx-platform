@@ -6,7 +6,7 @@ Gate A closes PL2 and publishes the 0.x pre-releases. Gate B is per adapter: it 
 
 ## 1. Result
 
-The first check found **one item failing**: item 5, acceptance tests by tag. Item 4 (the `port-contract` issues) was **not yet done**. One adoption gap was also found: `sandbox-status.json` was not in the published package, so products could not run the gate-B routing check. All three were fixed in the gate-A PR, so every item now passes or does not apply. The release goes ahead under the standing authority (PL2-D-19, PL2-D-41).
+The first check found **one item failing**: item 5, acceptance tests by tag. Item 4 (the `port-contract` issues) was **not yet done**. One adoption gap was also found: `sandbox-status.json` was not in the published package, so products could not run the gate-B routing check. All three were fixed in the gate-A PR, so every item now passes or does not apply. The release went ahead under the standing authority (PL2-D-19, PL2-D-41) and is published (§6).
 
 | #   | Gate-A item (plan §11)                                                                                 | Result                                   | Evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,7 +19,7 @@ The first check found **one item failing**: item 5, acceptance tests by tag. Ite
 | 7   | `@NN-01/02/45` green with the new schema; migration-lint and rls-lint clean on `connectors`            | **pass**                                 | PR #14 `integration` job (PostgreSQL 18.6): `infrabyx-migrate` applies tenancy → audit → config → seed → connectors; `rls-lint` clean; `test:int` 30 of 30 turbo tasks; connectors 8 tests (`idempotency.int` 5 with `@NN-01`/`@NN-45`, `revocation.int` 3), tenancy 16, audit 7 (`@NN-02`, `@NN-45`), seed 8, testing 26. `migration:lint` in `verify` green                                                                                                                                               |
 | 8   | Changesets: `connectors` 0.1.0 (publishable), `contracts`/`crypto`/`config`/`testing` 0.2.0            | **pass**                                 | PR #14 body: `@infrabyx/connectors@0.1.0` (`"private": false`), `contracts`, `crypto`, `config`, `testing` 0.2.0; also `tenancy` 0.2.0, `seed` 0.2.0 (both minor) and `audit` 0.1.1 (dependency patch). The 15 scaffolds stay private (PL1-D-20)                                                                                                                                                                                                                                                            |
 | 9   | `docs/STATUS.md`, `docs/DECISIONS.md` and `docs/platform-requests.md` updated                          | **pass**                                 | Updated in the gate-A PR (STATUS handover, PL2-D-67). `platform-requests.md` already carries PR-002 to PR-016 and gate A adds none                                                                                                                                                                                                                                                                                                                                                                          |
-| 10  | Published through `release.yml`                                                                        | see §6                                   | Version PR #14 is merged after the gate-A PR, once its own CI is green on the new head                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 10  | Published through `release.yml`                                                                        | **pass**                                 | Version PR #14 merged as `a09d13c` (17/17 green on `5b5be77`). `release.yml` run 29: full matrix green, 8 packages published, 8 tags pushed (§6)                                                                                                                                                                                                                                                                                                                                                            |
 
 Also checked:
 
@@ -28,23 +28,23 @@ Also checked:
 
 ## 2. Hermetic legs per port
 
-Every port runs its reference and its alternative on Testcontainers or vendor stubs. The counts are for each port's job: `pnpm --filter @infrabyx/connectors test:contract -- --port <PORT>`.
+Every port runs its reference and its alternative on Testcontainers or vendor stubs. The counts are for each port's job, `pnpm --filter @infrabyx/connectors test:contract -- --port <PORT>`, in the gate-A PR's `port-contract` run 40435490177 (head `d322807`). Across the 13 ports, 329 tests passed and 1 was skipped. The skipped test is the Brevo sandbox leg, which waits for its account (#33). The release run 29 re-ran all 13 ports green before publishing.
 
-| Port          | Reference → alternative          | Hermetic leg runs on                                                    | Tests       |
-| ------------- | -------------------------------- | ----------------------------------------------------------------------- | ----------- |
-| SECRETS       | `aws-sm` → `vault`               | moto 5.2.4 with a CloudTrail stub; OpenBao 2.7.1                        | see §6 note |
-| KMS           | `aws-kms` → `vault-transit`      | LocalStack 4.12.0; OpenBao 2.7.1                                        | see §6 note |
-| OBSERVABILITY | `otel` (collector → otlp-direct) | OTel Collector contrib 0.162.0                                          | see §6 note |
-| FEATURE_FLAG  | `unleash` → `config-db`          | Unleash 8.2.0; PostgreSQL 18                                            | see §6 note |
-| IDENTITY      | `keycloak` → `zitadel`           | Keycloak 26.8.1; Zitadel v4.19.5 (CI only, GHCR)                        | see §6 note |
-| AUTHZ         | `cerbos` → `openfga`             | Cerbos 0.57.0; OpenFGA v1.22.0                                          | see §6 note |
-| STORAGE       | `s3` → `minio`                   | moto 5.2.4; MinIO server RELEASE.2025-09-07T16-13-09Z built from source | see §6 note |
-| QUEUE         | `bullmq` → `pg-boss`             | Redis 7.4, Valkey 8.1; PostgreSQL 18                                    | see §6 note |
-| WORKFLOW      | `temporal` → `temporal-cloud`    | Temporal dev server (CLI 1.9.1, server 1.32.0)                          | see §6 note |
-| EMAIL         | `ses` → `brevo`                  | SES v2 stub and moto 5.2.4; Brevo stub                                  | see §6 note |
-| SMS           | `msg91` → `gupshup-sms`          | MSG91 and Gupshup Enterprise SMS stubs                                  | 24          |
-| WHATSAPP      | `gupshup` → `meta-cloud`         | Gupshup WhatsApp and Meta Graph stubs                                   | see §6 note |
-| PAYMENTS      | `razorpay` → `cashfree`          | Razorpay and Cashfree stubs, test mode only                             | see §6 note |
+| Port          | Reference → alternative          | Hermetic leg runs on                                                    | Tests                                  |
+| ------------- | -------------------------------- | ----------------------------------------------------------------------- | -------------------------------------- |
+| SECRETS       | `aws-sm` → `vault`               | moto 5.2.4 with a CloudTrail stub; OpenBao 2.7.1                        | 23                                     |
+| KMS           | `aws-kms` → `vault-transit`      | LocalStack 4.12.0; OpenBao 2.7.1                                        | 25                                     |
+| OBSERVABILITY | `otel` (collector → otlp-direct) | OTel Collector contrib 0.162.0                                          | 5                                      |
+| FEATURE_FLAG  | `unleash` → `config-db`          | Unleash 8.2.0; PostgreSQL 18                                            | 15                                     |
+| IDENTITY      | `keycloak` → `zitadel`           | Keycloak 26.8.1; Zitadel v4.19.5 (CI only, GHCR)                        | 21 (keycloak 11, zitadel 10)           |
+| AUTHZ         | `cerbos` → `openfga`             | Cerbos 0.57.0; OpenFGA v1.22.0                                          | 18                                     |
+| STORAGE       | `s3` → `minio`                   | moto 5.2.4; MinIO server RELEASE.2025-09-07T16-13-09Z built from source | 38                                     |
+| QUEUE         | `bullmq` → `pg-boss`             | Redis 7.4, Valkey 8.1; PostgreSQL 18                                    | 29                                     |
+| WORKFLOW      | `temporal` → `temporal-cloud`    | Temporal dev server (CLI 1.9.1, server 1.32.0)                          | 12                                     |
+| EMAIL         | `ses` → `brevo`                  | SES v2 stub and moto 5.2.4; Brevo stub                                  | 32 (+1 skipped: the Brevo sandbox leg) |
+| SMS           | `msg91` → `gupshup-sms`          | MSG91 and Gupshup Enterprise SMS stubs                                  | 24                                     |
+| WHATSAPP      | `gupshup` → `meta-cloud`         | Gupshup WhatsApp and Meta Graph stubs                                   | 28                                     |
+| PAYMENTS      | `razorpay` → `cashfree`          | Razorpay and Cashfree stubs, test mode only                             | 29                                     |
 
 ## 3. Proven and unproven adapters
 
@@ -175,7 +175,33 @@ After migrating, run `infrabyx-rls-lint` as before.
 
 ## 6. Release
 
-To be completed after version PR #14 merges and `release.yml` publishes. The follow-up PR records:
+**Published.** Version PR #14 was merged as `a09d13c` after its CI went green on the new `main`: 17 of 17 checks on head `5b5be77`. `release.yml` run 29 (id 40436757203) then:
 
-- the published versions, with the `dist.integrity` (SHA-512) and `dist.shasum` (SHA-1) of each tarball, as GitHub Packages reports them;
-- the per-port test counts from the gate-A PR's `port-contract` run.
+- re-ran the full `port-contract` matrix, 13 of 13 green;
+- published the 8 packages below to GitHub Packages ("packages published successfully");
+- pushed one git tag per package.
+
+No package was skipped, and no error was logged.
+
+| Package                | Version | Tag                          | shasum (SHA-1, reproduced)                 | integrity (SHA-512, reproduced)                                                                   |
+| ---------------------- | ------- | ---------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `@infrabyx/contracts`  | 0.2.0   | `@infrabyx/contracts@0.2.0`  | `812119f57992b4a96a9a06ff5cc25235c6f9b6d1` | `sha512-v8vJbeQH4j38mkKMKlWGyAsvocSFcybwLXUIrq0/Yl7YaANeXp87oGtmlrHX0+9ulyxphezhlD4I0v7fxTM60Q==` |
+| `@infrabyx/crypto`     | 0.2.0   | `@infrabyx/crypto@0.2.0`     | `d999360aa85318cf5835f9bc68cded9817b69d91` | `sha512-1SLcsvQXbnjVdAsELwp0WDN2qzP878Q9TEMuZ3etctK4BlMarBYSZUvXhFiTgjvpOk7imAqoqzZ9T4fA6JGUeg==` |
+| `@infrabyx/config`     | 0.2.0   | `@infrabyx/config@0.2.0`     | `4e3ecaa978abc82d6133270d4ff23c6d280f9b6c` | `sha512-aGtVD6s6mpPsA8XlSfrXzA/U7eZbiNY+e+9B+lEcQoKBtg/NI+stFfUQzFXcUzmNVQI9sM3m1BRZ/Vv6mIptlg==` |
+| `@infrabyx/tenancy`    | 0.2.0   | `@infrabyx/tenancy@0.2.0`    | `740d4167d6b6b96dde549c5447b0fc29e2f6b194` | `sha512-qvqyQy/GHs9uyOJbT1ZtZScMpcp6YkuHT1d5/uAgFY8T99PcTqKBquxlywy6prZrFFMu8acS41T7hF0vbOyuGA==` |
+| `@infrabyx/audit`      | 0.1.1   | `@infrabyx/audit@0.1.1`      | `333771decdbab2ce0e5410efb3c4270d58c24b65` | `sha512-I046pxwyQ1KAabRUh2Sr2g0p0xohJYI3oYM9dX1cCVSxLlG/H8ll2v/LhQkNrwa8e5kxvdJek3HECA6BaOoE7w==` |
+| `@infrabyx/seed`       | 0.2.0   | `@infrabyx/seed@0.2.0`       | `378f258996e5c7d3c1941e786efd786e8afc276d` | `sha512-RQrqn9aPVbPuo+NOF0SyUNsoAgXn0lbpnTfd5R21LqdpeDuuKo7/OtIIhvuKrT2YtmZPY9A7pPPAYBmLHWkhAQ==` |
+| `@infrabyx/testing`    | 0.2.0   | `@infrabyx/testing@0.2.0`    | `25f5f0b4ddb12b243e8715173394a99acbb5fc27` | `sha512-+YSxx8LsloA997CLGAz3cMNHM2twhcrfzMigBrqw6vd/tTFkyKhne8KaS9hgxQB7N5oCUi+QjbOKPlqN9tBMwA==` |
+| `@infrabyx/connectors` | 0.1.0   | `@infrabyx/connectors@0.1.0` | `5e97dd5c6a6ed8a53a6f057fc8bf07388d5ad6d7` | `sha512-lU5AxPsbhZ2/Py81ZJ3At1YDqfpwtOHQwSTVwtC1dhbbq/c/MRfrWt1lR4tORM4kJ3zf7KJplmWknWpm3GS1yw==` |
+
+**Where the checksums come from.** The registry could not be read from the build session:
+
+- GitHub Packages answered 401 to its token, and the packages API answered 403, because the session token is bound to the repository.
+- `changeset publish` prints no tarball details.
+
+So the values above were **reproduced**: `pnpm pack` of each package at the release commit `a09d13c`, on Node 24.22.1 with the frozen lockfile. A rebuild packed byte-for-byte identically. The connectors tarball contains `sandbox-status.json`. If the CI runner's tarballs are identical, these are the registry values.
+
+**Registry confirmation.**
+
+- **Owner task** (OWNER-QUESTIONS #17): compare the table with `npm view @infrabyx/<name>@<version> dist --registry=https://npm.pkg.github.com`, or with each package page.
+- From the next release, `release.yml` writes the registry's own `dist.shasum` and `dist.integrity` to the job summary (`scripts/registry-dist.mjs`), so later gate reports quote the registry directly.
