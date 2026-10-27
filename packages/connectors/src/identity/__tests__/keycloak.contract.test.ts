@@ -119,7 +119,7 @@ const tamper = (jwt: string) => {
   return `${h}.${p}.${sig.toString("base64url")}`;
 };
 
-describe("IDENTITY hermetic leg: keycloak 26.8.1", () => {
+describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
   defineContractSuite<IdentityPort>(
     "IDENTITY",
     adapter,

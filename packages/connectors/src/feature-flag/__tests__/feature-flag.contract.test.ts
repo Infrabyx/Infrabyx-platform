@@ -98,7 +98,7 @@ async function eventually(check: () => Promise<boolean>) {
   throw new Error("condition not reached");
 }
 
-describe("FEATURE_FLAG hermetic leg: unleash", () => {
+describe("@IPB-01-15 FEATURE_FLAG hermetic leg: unleash", () => {
   defineContractSuite("FEATURE_FLAG", () => adapter(), [], { leg: "hermetic" });
 
   it("@IPB-09-24 registry sync creates every exact flag once and is idempotent", async () => {
@@ -219,7 +219,7 @@ describe("FEATURE_FLAG hermetic leg: unleash", () => {
   });
 });
 
-describe("FEATURE_FLAG hermetic leg: config-db", () => {
+describe("@IPB-01-15 FEATURE_FLAG hermetic leg: config-db", () => {
   defineContractSuite(
     "FEATURE_FLAG",
     () => new ConfigDbFlags(db.pool),

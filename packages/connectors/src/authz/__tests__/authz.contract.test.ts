@@ -149,7 +149,7 @@ const tableCases = (name: string) => [
   },
 ];
 
-describe("AUTHZ hermetic leg: cerbos 0.57.0", () => {
+describe("@IPB-01-15 AUTHZ hermetic leg: cerbos 0.57.0", () => {
   defineContractSuite("AUTHZ", cerbosAdapter, tableCases("cerbos"), { leg: "hermetic" });
 
   it("planResources: a tenant member gets a conditional plan, an agent asking to approve gets always_denied", async () => {
@@ -189,7 +189,7 @@ describe("AUTHZ hermetic leg: cerbos 0.57.0", () => {
   });
 });
 
-describe("AUTHZ hermetic leg: openfga v1.22.0", () => {
+describe("@IPB-01-15 AUTHZ hermetic leg: openfga v1.22.0", () => {
   defineContractSuite(
     "AUTHZ",
     fgaAdapter,

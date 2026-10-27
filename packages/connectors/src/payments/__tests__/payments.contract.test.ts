@@ -356,7 +356,7 @@ afterAll(async () => {
   await Promise.all([rzp?.close(), cf?.close()]);
 });
 
-describe("PAYMENTS hermetic leg: razorpay (stub, test mode)", () => {
+describe("@IPB-01-15 PAYMENTS hermetic leg: razorpay (stub, test mode)", () => {
   defineContractSuite(
     "PAYMENTS",
     () => razorpay(),
@@ -385,7 +385,7 @@ describe("PAYMENTS hermetic leg: razorpay (stub, test mode)", () => {
   });
 });
 
-describe("PAYMENTS hermetic leg: cashfree (stub, sandbox)", () => {
+describe("@IPB-01-15 PAYMENTS hermetic leg: cashfree (stub, sandbox)", () => {
   defineContractSuite(
     "PAYMENTS",
     () => cashfree(),

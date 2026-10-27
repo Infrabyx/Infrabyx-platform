@@ -75,7 +75,7 @@ async function build(
   return { router, events };
 }
 
-describe("circuit breaker (IPB-01-18)", () => {
+describe("@IPB-01-18 circuit breaker", () => {
   it("opens after 5 consecutive failures, half-opens after 30 s, closes on a trial success", () => {
     let t = 0;
     const b = new CircuitBreaker({}, () => t);
@@ -284,7 +284,7 @@ describe("router: data class and residency (IPB-01-16, PL2-D-03, IPB-DEV-05)", (
   });
 });
 
-describe("router: failover (IPB-01-18)", () => {
+describe("@IPB-01-18 router: failover (chaos)", () => {
   const pay = (adapter: string) =>
     new Fake({ port: "PAYMENTS", adapter, residency: "IN", maxDataClass: "REGULATED" });
   const doc = {
@@ -326,6 +326,21 @@ describe("router: failover (IPB-01-18)", () => {
       reason: "circuit_open",
       data_class_max: "REGULATED",
     });
+  });
+
+  it("a GLOBAL secondary for a REGULATED primary is refused before the router starts (IPB-PORT-005)", async () => {
+    const global = {
+      version: 1,
+      ports: {
+        PAYMENTS: {
+          ...doc.ports.PAYMENTS,
+          secondary: { ...doc.ports.PAYMENTS.secondary, residency: "GLOBAL" },
+        },
+      },
+    };
+    await expect(
+      build(global, { razorpay: pay("razorpay"), cashfree: pay("cashfree") }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-005" });
   });
 
   it("P-08: refunds and mandates never fail over; portFor pins a call to the PA that owns it", async () => {
@@ -522,7 +537,7 @@ describe("idempotency: pending first, vendor lookup, no blind money retries (pla
   });
 });
 
-describe("@IPB-01-AT-13 health aggregation", () => {
+describe("@IPB-01-AT-13 @IPB-01-17 health aggregation", () => {
   const port = (p: string, status: PortHealth["status"]) =>
     new Fake(
       { port: p, adapter: p.toLowerCase(), residency: "IN", maxDataClass: "SECRET" },
@@ -602,7 +617,7 @@ describe("egress client (IPB-02-43)", () => {
   });
 });
 
-describe("@IPB-02-AT-05 inbound webhooks: verify, de-duplicate, queue", () => {
+describe("@IPB-02-AT-05 @IPB-10-27 inbound webhooks: verify, de-duplicate, queue", () => {
   const ctx: KernelContext = {
     tenantId: "tnt_1",
     principal: { id: "svc_webhooks", type: "service", roles: [] },

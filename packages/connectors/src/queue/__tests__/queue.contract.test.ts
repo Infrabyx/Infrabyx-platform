@@ -165,7 +165,7 @@ const cases = [
   },
 ];
 
-describe("QUEUE hermetic leg: bullmq on redis 7.4", () => {
+describe("@IPB-01-15 QUEUE hermetic leg: bullmq on redis 7.4", () => {
   defineContractSuite(
     "QUEUE",
     bull(() => redis),
@@ -174,7 +174,7 @@ describe("QUEUE hermetic leg: bullmq on redis 7.4", () => {
   );
 });
 
-describe("QUEUE hermetic leg: bullmq on valkey 8.1", () => {
+describe("@IPB-01-15 QUEUE hermetic leg: bullmq on valkey 8.1", () => {
   defineContractSuite(
     "QUEUE",
     bull(() => valkey),
@@ -183,7 +183,7 @@ describe("QUEUE hermetic leg: bullmq on valkey 8.1", () => {
   );
 });
 
-describe("QUEUE hermetic leg: pg-boss on PostgreSQL 18 (no DDL at runtime)", () => {
+describe("@IPB-01-15 QUEUE hermetic leg: pg-boss on PostgreSQL 18 (no DDL at runtime)", () => {
   defineContractSuite("QUEUE", boss, cases, { leg: "hermetic" });
 
   it("the runtime role cannot create tables in the pg-boss schema", async () => {

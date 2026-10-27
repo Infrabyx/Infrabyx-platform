@@ -8,7 +8,7 @@ const tester = new RuleTester({
 
 const repo = "/repo";
 
-describe("ipb/vendor-import (IPB-01-14)", () => {
+describe("@IPB-01-AT-04 ipb/vendor-import (IPB-01-14)", () => {
   it("allows vendor SDKs only inside packages/connectors", () => {
     tester.run("vendor-import", ipb.rules["vendor-import"], {
       valid: [
@@ -23,6 +23,11 @@ describe("ipb/vendor-import (IPB-01-14)", () => {
         },
       ],
       invalid: [
+        {
+          code: `import { S3 } from "@aws-sdk/client-s3";`,
+          filename: `${repo}/apps/api/src/modules/cases/service.ts`,
+          errors: [{ messageId: "vendor", data: { spec: "@aws-sdk/client-s3" } }],
+        },
         {
           code: `import { S3 } from "@aws-sdk/client-s3";`,
           filename: `${repo}/packages/cms/src/index.ts`,

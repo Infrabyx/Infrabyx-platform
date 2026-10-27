@@ -137,7 +137,7 @@ const tamper = (jwt: string) => {
   return `${h}.${p}.${sig.toString("base64url")}`;
 };
 
-describe("IDENTITY hermetic leg: zitadel v4.19.5", () => {
+describe("@IPB-01-15 IDENTITY hermetic leg: zitadel v4.19.5", () => {
   defineContractSuite<IdentityPort>(
     "IDENTITY",
     adapter,

@@ -321,7 +321,7 @@ afterAll(async () => {
   await Promise.all([ses?.close(), brevo?.close(), moto?.stop()]);
 });
 
-describe("EMAIL hermetic leg: ses (SES v2 stub)", () => {
+describe("@IPB-01-15 EMAIL hermetic leg: ses (SES v2 stub)", () => {
   defineContractSuite(
     "EMAIL",
     sesAdapter,
@@ -403,7 +403,7 @@ describe("EMAIL hermetic leg: ses (SES v2 stub)", () => {
   });
 });
 
-describe("EMAIL hermetic leg: ses raw send and identities on moto 5.2.4", () => {
+describe("@IPB-01-15 EMAIL hermetic leg: ses raw send and identities on moto 5.2.4", () => {
   it("sendRaw and verifyDomain work against an independent SES v2 implementation", async () => {
     const p = new SesEmail({
       region: "ap-south-1",
@@ -422,7 +422,7 @@ describe("EMAIL hermetic leg: ses raw send and identities on moto 5.2.4", () => 
   });
 });
 
-describe("EMAIL hermetic leg: brevo (stub)", () => {
+describe("@IPB-01-15 EMAIL hermetic leg: brevo (stub)", () => {
   defineContractSuite(
     "EMAIL",
     () => brevoAdapter(),

@@ -180,7 +180,7 @@ const cases = [
   },
 ];
 
-describe("WORKFLOW hermetic leg: temporal dev server (CLI 1.9.1, server 1.32.0)", () => {
+describe("@IPB-01-15 WORKFLOW hermetic leg: temporal dev server (CLI 1.9.1, server 1.32.0)", () => {
   defineContractSuite("WORKFLOW", adapter, cases, { leg: "hermetic" });
 
   it("temporal-cloud takes INTERNAL inputs only; CONFIDENTIAL must be a STORAGE reference (PL2-D-16)", async () => {

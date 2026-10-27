@@ -234,7 +234,7 @@ const cases = (k: () => { symmetric: string; signing: string }, anchorTenant: st
   },
 ];
 
-describe("KMS hermetic leg: aws-kms on LocalStack 4.12.0", () => {
+describe("@IPB-01-15 KMS hermetic leg: aws-kms on LocalStack 4.12.0", () => {
   defineContractSuite(
     "KMS",
     aws,
@@ -262,7 +262,7 @@ describe("KMS hermetic leg: aws-kms on LocalStack 4.12.0", () => {
   });
 });
 
-describe("KMS hermetic leg: vault-transit on OpenBao 2.7.1", () => {
+describe("@IPB-01-15 KMS hermetic leg: vault-transit on OpenBao 2.7.1", () => {
   defineContractSuite(
     "KMS",
     vault,

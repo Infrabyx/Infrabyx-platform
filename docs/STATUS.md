@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 sessions 1–7 done** (#13, #15–#21, #23–#26); next is session 8 (exit gate and release) and gate A. Continuous build mode (PL2-D-41)                                                |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
-| Working branch        | `claude/funny-cori-6upyrr` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                 |
+| Item                  | Value                                                                                                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL2 session 8 and gate A** (2026-10-27): gate-A checklist walked, report `docs/phases/PL2-gate-A.md`; two gaps fixed in the gate-A PR (AT tags, `port-contract` issues #28–#39) and `sandbox-status.json` now ships; next is the release through version PR #14, then PL3. Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                        |
+| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                                                                                                      |
+| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                                                                                                       |
+| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                                                                                                                                   |
 
 ## Done
 
@@ -69,7 +69,8 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 
 ## Next
 
-- PL2 session 8: exit gate (plan §11) and the gate-A release through version PR #14; then gate A.
+- Merge version PR #14 once its CI is green on the new `main`; confirm `release.yml` published; record versions and checksums in `docs/phases/PL2-gate-A.md` §6 and here.
+- PL3 (rules, workflow, notify, export): plan first, in continuous mode.
 
 ## PL2 session 7 (2026-10-27)
 
