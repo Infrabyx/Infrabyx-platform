@@ -232,7 +232,8 @@ jobs:
     # site on PostgreSQL 18, check the footer of every published pack and the served routes against
     # the journey registry, scan the build for overlay widgets, then run the end-to-end suite in
     # Chromium (axe and HTML_CodeSniffer in light and dark themes, reflow, text scale, skip link,
-    # no third-party request before or after consent, content without JavaScript, CSP).
+    # no third-party request before or after consent, content without JavaScript, CSP); then the
+    # same gate over every Studio route of `apps/console` (PL5 plan §9.6).
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -296,7 +297,9 @@ jobs:
           node packages/a11y/dist/cli.js journeys-lint apps/public/journeys/GRP.yaml
           --routes "$RUNNER_TEMP/gate/routes.json" --at-scripts apps/public/at-scripts
       - name: overlay-scan (IPB-06-17; no accessibility overlay in the build)
-        run: node packages/a11y/dist/cli.js overlay-scan apps/public/.next/static apps/public/src
+        run: >-
+          node packages/a11y/dist/cli.js overlay-scan apps/public/.next/static apps/public/src
+          apps/console/.next/static apps/console/src
       - name: start the site
         working-directory: apps/public
         run: |
@@ -309,6 +312,23 @@ jobs:
           exit 1
       - name: e2e and accessibility gate (@IPB-06-AT-01 @IPB-04-AT-70/74/80/81/85 @IPB-04-AT-12/40)
         run: pnpm --filter @infrabyx/public-site test:e2e
-      - name: site log
+      - name: start the Studio console
+        working-directory: apps/console
+        env:
+          APP_BASE_URL: https://studio.example.org
+          APP_SITE_URL: https://group.example.org
+        run: |
+          PORT=3124 nohup pnpm start > "$RUNNER_TEMP/console.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:3124/sign-in && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/console.log"
+          exit 1
+      - name: Studio console gate (every Studio route; the AUTHZ gate; maker-checker through the forms)
+        env:
+          IPB_TEST_CONSOLE_URL: http://127.0.0.1:3124
+        run: pnpm --filter @infrabyx/console test:e2e
+      - name: site and console logs
         if: failure()
-        run: cat "$RUNNER_TEMP/site.log" || true
+        run: cat "$RUNNER_TEMP/site.log" "$RUNNER_TEMP/console.log" || true

@@ -42,6 +42,7 @@ export async function ConsentTextsScreen<C>(
   const err = (id: string) => errorFor(p.errors, id);
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="consent"
       title="Consent texts"

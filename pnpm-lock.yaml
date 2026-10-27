@@ -51,6 +51,76 @@ importers:
         specifier: 4.1.12
         version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@7.3.7(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
+  apps/console:
+    dependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../../packages/audit
+      '@infrabyx/brand':
+        specifier: workspace:*
+        version: link:../../packages/brand
+      '@infrabyx/cms':
+        specifier: workspace:*
+        version: link:../../packages/cms
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@infrabyx/consent':
+        specifier: workspace:*
+        version: link:../../packages/consent
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      '@infrabyx/feedback':
+        specifier: workspace:*
+        version: link:../../packages/feedback
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../../packages/tenancy
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      '@infrabyx/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
+      '@infrabyx/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: 16.4.2
+        version: 16.4.2(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@infrabyx/a11y':
+        specifier: workspace:*
+        version: link:../../packages/a11y
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      playwright-core:
+        specifier: 1.64.1
+        version: 1.64.1
+
   apps/public:
     dependencies:
       '@infrabyx/audit':

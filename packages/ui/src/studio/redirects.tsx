@@ -64,6 +64,7 @@ export async function RedirectsScreen<C>(
   const err = (id: string) => errorFor(p.errors, id);
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="redirects"
       title="Redirects"

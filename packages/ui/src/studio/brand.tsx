@@ -55,7 +55,14 @@ export async function BrandListScreen<C>(
 ) {
   const packs = await p.brand.packs(p.ctx);
   return (
-    <StudioPage base={p.base} section="brand" title="Brand" flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section="brand"
+      title="Brand"
+      flash={p.flash}
+      errors={p.errors}
+    >
       <DataTable
         caption={`Brand packs: ${packs.length}`}
         columns={[
@@ -125,6 +132,7 @@ export async function BrandEditScreen<C>(
   const pending = latest?.status === "pending_approval";
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="brand"
       title={pack ? `${pack.label} (${pack.product})` : "Brand pack"}

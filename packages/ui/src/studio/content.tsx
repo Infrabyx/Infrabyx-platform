@@ -112,7 +112,14 @@ export async function ContentListScreen<C>(
     await Promise.all(p.types.map((type) => p.cms.list(p.ctx, { packId: p.packId, type })))
   ).flat();
   return (
-    <StudioPage base={p.base} section={p.section} title={p.title} flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section={p.section}
+      title={p.title}
+      flash={p.flash}
+      errors={p.errors}
+    >
       <PackPicker packs={p.packs} packId={p.packId} action={studioPath(p.base, p.section)} />
       <DataTable
         caption={`${p.title}: ${items.length} item${items.length === 1 ? "" : "s"}`}
@@ -206,6 +213,7 @@ export async function ContentEditScreen<C>(
   const hidden = { itemId: item.id };
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section={p.section}
       title={item.title}

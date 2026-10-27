@@ -49,7 +49,14 @@ export async function FeedbackScreen<C>(
     ...(p.open ? { open: true } : {}),
   });
   return (
-    <StudioPage base={p.base} section="feedback" title="Feedback" flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section="feedback"
+      title="Feedback"
+      flash={p.flash}
+      errors={p.errors}
+    >
       <p>Triage and replies happen in Operations Hub; this list follows its status.</p>
       <form method="get" action={studioPath(p.base, "feedback")} className="ibx-studio__filter">
         <SelectField
@@ -132,6 +139,7 @@ export async function TrustDocumentsScreen<C>(p: ScreenProps<C> & { trust: Trust
   const [rows, s] = await Promise.all([p.trust.rows(), p.trust.staleness()]);
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="trust"
       title="Trust documents"
@@ -195,7 +203,14 @@ export async function PricingScreen<C>(
   }
   const copy = await p.cms.list(p.ctx, { packId: p.packId, type: "pricing_copy" });
   return (
-    <StudioPage base={p.base} section="pricing" title="Pricing" flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section="pricing"
+      title="Pricing"
+      flash={p.flash}
+      errors={p.errors}
+    >
       <PackPicker packs={p.packs} packId={p.packId} action={studioPath(p.base, "pricing")} />
       <p>Prices come from billing and cannot be typed here. Edit the words around them below.</p>
       {unavailable ? (

@@ -118,7 +118,14 @@ export async function PoliciesScreen<C>(
   const versions = set ? await p.policies.instances(p.ctx, set.id) : [];
   const err = (id: string) => errorFor(p.errors, id);
   return (
-    <StudioPage base={p.base} section="policies" title="Policies" flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section="policies"
+      title="Policies"
+      flash={p.flash}
+      errors={p.errors}
+    >
       <PackPicker packs={p.packs} packId={p.packId} action={studioPath(p.base, "policies")} />
       {!set ? (
         <form method="post" action={p.actions.createSet}>
@@ -247,6 +254,7 @@ export async function PolicyEditScreen<C>(
   );
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="policies"
       title={`${v.title} ${v.versionLabel}`}
