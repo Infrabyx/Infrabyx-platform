@@ -12,6 +12,7 @@
 // Vendor facts are [VERIFY] until the sandbox leg runs with the owner's approval (PL4 plan §10).
 import type {
   AiAdapterDescriptor,
+  DataClass,
   EmbeddingPort,
   EmbeddingPortRequest,
   LlmChunk,
@@ -109,18 +110,23 @@ interface GenerateResponse {
   responseId?: string;
 }
 
-abstract class VertexBase {
+/** Shared by the Gemini, embedding and Imagen adapters on Vertex AI in asia-south1. */
+export abstract class VertexBase {
   readonly descriptor: AiAdapterDescriptor;
   protected readonly base: string;
   protected readonly location: string;
 
   constructor(
     protected readonly o: VertexOptions,
-    port: "LLM" | "EMBEDDING",
+    port: "LLM" | "EMBEDDING" | "IMAGE_GEN",
     capabilities?: Record<string, "native" | "emulated" | "unsupported">,
+    as: { adapterKey: string; maxDataClass: DataClass } = {
+      adapterKey: VERTEX_ADAPTER_KEY,
+      maxDataClass: "REGULATED",
+    },
   ) {
     if (!/^[a-z][a-z0-9-]{4,61}[a-z0-9]$/.test(o.project))
-      throw refuse(VERTEX_ADAPTER_KEY, "invalid Google Cloud project id");
+      throw refuse(as.adapterKey, "invalid Google Cloud project id");
     this.location = o.location ?? VERTEX_LOCATION;
     this.base = (o.baseUrl ?? `https://${this.location}-aiplatform.googleapis.com`).replace(
       /\/$/,
@@ -128,14 +134,14 @@ abstract class VertexBase {
     );
     this.descriptor = aiDescriptor({
       port,
-      adapterKey: VERTEX_ADAPTER_KEY,
+      adapterKey: as.adapterKey,
       aiResidency: "IN",
       region: VERTEX_LOCATION,
       observedRegion:
         this.location === VERTEX_LOCATION
           ? vertexObservedRegion(this.location, o.baseUrl, o.allowLoopbackHttp === true)
           : this.location,
-      maxDataClass: "REGULATED",
+      maxDataClass: as.maxDataClass,
       ...(capabilities ? { capabilities } : {}),
     });
   }
@@ -157,7 +163,7 @@ abstract class VertexBase {
   ): Promise<{ json: T; requestId: string | null }> {
     const egress = createEgress({
       port: this.descriptor.port,
-      adapter: VERTEX_ADAPTER_KEY,
+      adapter: this.descriptor.adapterKey,
       allow: [`${this.location}-aiplatform.googleapis.com`],
       retries: 0,
       timeoutMs,
@@ -167,7 +173,7 @@ abstract class VertexBase {
     try {
       token = await this.o.accessToken();
     } catch {
-      throw refuse(VERTEX_ADAPTER_KEY, "no access token");
+      throw refuse(this.descriptor.adapterKey, "no access token");
     }
     let res;
     try {
@@ -177,12 +183,12 @@ abstract class VertexBase {
         body: JSON.stringify(body),
       });
     } catch (e) {
-      throw toProviderError(e, VERTEX_ADAPTER_KEY);
+      throw toProviderError(e, this.descriptor.adapterKey);
     }
     if (res.status >= 400)
       throw toProviderError(
         { name: "VertexError", $metadata: { httpStatusCode: res.status } },
-        VERTEX_ADAPTER_KEY,
+        this.descriptor.adapterKey,
       );
     return { json: res.json<T>(), requestId: res.headers.get("x-goog-request-id") };
   }
