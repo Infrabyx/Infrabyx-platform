@@ -252,6 +252,18 @@ export class ConsentTexts {
     });
   }
 
+  /** Texts waiting for the legal reviewer (the Studio queue, IPB-04 §04.3.12 section 12). */
+  async drafts(ctx: KernelContext): Promise<ConsentText[]> {
+    this.platform(ctx, TEXT_CHECKER);
+    return this.o.kernel.read(ctx, async (tx) =>
+      (
+        await tx.query<TextRow>(
+          "select * from consent.text where state = 'draft' order by key, region, locale",
+        )
+      ).rows.map(toText),
+    );
+  }
+
   /** Seed the template 18 defaults as drafts (any key and region without a text yet). */
   async seedDefaults(ctx: KernelContext): Promise<number> {
     let n = 0;

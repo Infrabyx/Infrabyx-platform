@@ -50,6 +50,8 @@ export default tseslint.config(
       "**/*.config.{ts,mts,js,mjs}",
       // Integration-test infrastructure (excluded from builds) reads IPB_TEST_PG_URL.
       "packages/*/src/__tests__/**",
+      // The site's end-to-end gate reads IPB_TEST_SITE_URL and IPB_CHROMIUM.
+      "apps/*/src/__tests__/**",
     ],
     rules: { "ipb/no-process-env": "off" },
   },

@@ -1,0 +1,32 @@
+# Platform help entries, module `eng` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: eng
+entries:
+  - key: hlp.eng.manifest_invalid
+    term: "Invalid connector manifest"
+    plain: "A connector's manifest is missing a required field or has a value the platform does not accept. Fix the manifest and deploy again."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.eng.module_boundary
+    term: "Module boundary"
+    plain: "Code in one module tried to read another module's tables directly. Use that module's published service instead."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.eng.ledger_required
+    term: "Audit entry required"
+    plain: "Every change must write an audit ledger entry in the same transaction. This change had none, so it was rolled back."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.eng.seed_refused
+    term: "Sample data refused"
+    plain: "Sample data is never loaded in production, disaster recovery or pre-production, or when seeding is switched off."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal

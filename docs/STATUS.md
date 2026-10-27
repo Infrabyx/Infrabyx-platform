@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–6 merged (#80–#82, #84–#88); owner answers #41–#52 (#83, PL5-D-05) and #53–#59 (PL5-D-11) applied; next: session 7 (`apps/public`, seeds, help registry, the `a11y` CI job). Continuous build mode (PL2-D-41)            |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
-| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
-| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
-| Working branch        | `claude/wonderful-franklin-goo59b` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                    |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–6 merged (#80–#82, #84–#88); owner answers #41–#52 (#83, PL5-D-05) and #53–#59 (PL5-D-11) applied; session 7 (`apps/public`, its seed, the platform help registry, the `a11y` job; PL5-D-13) in the PR after #89; next: sessions 8–9 (Studio screens, `apps/console`), then the gate. Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                         |
+| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20)                                                                                               |
+| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                                                                                  |
+| Working branch        | `claude/wonderful-franklin-goo59b` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                                                                                  |
 
 ## Owner answers #53–#59 (2026-10-27, PL5-D-11)
 
@@ -20,6 +20,29 @@ Updated: 2026-10-27
 - **#54, #56, #58, #59:** defaults kept. The owner sets `trust.gating.nda_version` once legal approves the NDA.
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
+
+## PL5 session 7 (2026-10-27, PL5-D-13)
+
+- **`apps/public`** (`@infrabyx/public-site`, private): the group site on Next.js 16.4.2 and React 19.3.1, built with webpack.
+  - `proxy.ts`: a per-request nonce CSP and the security headers; CMS redirects, and 404 or 410 pages that work without JavaScript.
+  - The §9.2 routes: Home, About, Group companies, Careers, Trust, Contact, the policies (`/legal`, versions, `index.json`), Accessibility, Grievances, Glossary, Feedback, Security, Cookie settings, Sitemap with search, and the `/__gallery` of `ui` components.
+  - Generated files: `sitemap.xml`, `robots.txt`, `llms.txt`, `security.txt` and the web manifest.
+  - Consent, form and feedback endpoints with origin checks, each through its package's service.
+  - Fixture adapters only in local, dev, test and preview; elsewhere the site refuses them.
+- **Seed:** `apps/public/src/seed/public-site.ts` (profiles dev, demo, test), with reserved example values. It seeds through the Studio maker-checker flows:
+  - the GRP brand pack, the policy set with `[COUNSEL]` skeletons and the officers;
+  - the pages, menus, footer, offices and group companies;
+  - the consent texts and their approval;
+  - the trust mirror.
+- **Help registry:** `@infrabyx/hlp` ships `registry/*.yaml`, with an entry for every help key in use. `hlp-lint` runs in `verify` over the packages and the site. notify's help keys are now `hlp.notify.*`.
+- **Gate:** the journey registry `apps/public/journeys/GRP.yaml`, with an NVDA script per journey (`at-scripts/grp/`); `journeys-lint` runs in `verify`. The new `a11y` job:
+  - migrates and seeds PostgreSQL 18;
+  - runs `validate-footer` over every published pack, `journeys-lint` against the served routes, and `overlay-scan`;
+  - starts the site and runs the e2e suite in Chromium: axe and HTML_CodeSniffer in light and dark themes, reflow, 200 % text, skip link, no third-party requests on any consent path, no-JavaScript content and the CSP headers.
+- **Required check:** `a11y` is in `infra/policy/github/rulesets.json`. **Owner task:** apply the ruleset once this PR is merged (#49).
+- **Package fixes found by the gate:** `ui` hides `[hidden]` elements. `consent`: the banner controller, the cookie-table region and fieldset reflow. `cms`: `PublicPolicies.officers`. `config`: defaults for absent optional variables. `seed`: `SeedModuleContext.services`.
+- **Still blocked:** Lighthouse (#51) still fails the trust policy, through `chromium-bidi` under `puppeteer-core`.
+- **New owner question:** #61 (session-7 defaults, PL5-D-13; nothing blocked).
 
 ## Handover (2026-10-27, end of the session that built PL5 sessions 4–6)
 

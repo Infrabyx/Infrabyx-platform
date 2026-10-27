@@ -1,0 +1,53 @@
+# Platform help entries, module `int` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: int
+entries:
+  - key: hlp.int.port_not_configured
+    term: "Service not set up"
+    plain: "This feature needs an outside service that is not set up in this environment yet. Ask your administrator; nothing was sent or changed."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.adapter_unavailable
+    term: "Service temporarily unavailable"
+    plain: "An outside service we rely on is not answering, so we paused this step to protect your data. Try again in a few minutes."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.residency_blocked
+    term: "Data kept in India"
+    plain: "We stopped this request because it would have sent data to a service that may not keep it in India or at the right protection level."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.idempotency_conflict
+    term: "Request already used"
+    plain: "This request reused a reference that belongs to a different request. Start again so we do not process anything twice."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.routing_invalid
+    term: "Service routing error"
+    plain: "The settings that choose which outside service handles this request are not valid. Your administrator needs to correct them."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.storage_deferred
+    term: "File storage not available yet"
+    plain: "Saving files of this kind is not switched on in this environment yet. Nothing was stored."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.int.immutable
+    term: "Record cannot be changed"
+    plain: "This record is kept exactly as it was saved, so it cannot be edited or deleted. Add a new record instead."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

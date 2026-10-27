@@ -406,7 +406,7 @@ The `a11y.*`, `fb.*` and IPB-06 flags (`flg_i18n_locales_extended`, `flg_isl_boo
 - Content is read in-process from `@infrabyx/cms` through the public reader, the pack is resolved by host (`brand.resolveHost`), and the consent state is read from the cookie.
 - `proxy.ts` (Next 16 middleware) sets a per-request CSP nonce: `script-src 'nonce-…' 'strict-dynamic'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, `img-src 'self' data:`, `connect-src 'self'`, no `unsafe-inline`.
 - Security headers: `X-Content-Type-Options`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` denying camera, microphone and geolocation, and `Strict-Transport-Security` (preload is a production configuration step for the owner).
-- Fonts are self-hosted WOFF2 from the package, with no font CDN (IPB-04-25, `@IPB-04-AT-24`), using OFL-licensed families only.
+- Fonts are self-hosted WOFF2 from the package, with no font CDN (IPB-04-25, `@IPB-04-AT-24`), using OFL-licensed families only. _As built (PL5-D-13): the `ui` system font stack, with no font files, until the brand typography is chosen._
 
 ### 9.2 Pages at launch (O-1)
 
@@ -480,7 +480,7 @@ The owner decided that every product needs the same super-admin Studio, so it is
 
 ## 11. CI gates
 
-A new `a11y` job runs on every PR that touches `packages/ui`, `packages/a11y`, `packages/cms`, `packages/brand`, `packages/consent`, `packages/feedback`, `packages/trust` or `apps/public`, and on `main`. It uses the PostgreSQL service like `integration` and runs these steps:
+A new `a11y` job runs on every PR that touches `packages/ui`, `packages/a11y`, `packages/cms`, `packages/brand`, `packages/consent`, `packages/feedback`, `packages/trust` or `apps/public`, and on `main`. _As built (PL5-D-13): on every PR with code changes, so the required check always reports._ It uses the PostgreSQL service like `integration` and runs these steps:
 
 1. `infrabyx-migrate`, then the public-site seed in `test`.
 2. Build and start `apps/public`.
@@ -495,8 +495,8 @@ A new `a11y` job runs on every PR that touches `packages/ui`, `packages/a11y`, `
 5. The `/__gallery` route, scanned the same way, covers every `ui` component in place of Storybook (#45).
 6. `overlay-scan` over the build output.
 7. `hlp-lint` over the registries and the site.
-8. `journeys-lint` over `apps/public/journeys.yaml`.
-9. `validate-footer`.
+8. `journeys-lint` over `apps/public/journeys/GRP.yaml`, against the routes the seeded site serves (`scripts/gate-inputs.ts`).
+9. `validate-footer` over every published pack (`scripts/gate-inputs.ts`).
 
 The job is named `a11y`; the PR that adds it also adds `a11y` to the `main` ruleset's required checks in `infra/policy/github/rulesets.json`, and the owner applies the ruleset after it merges (#49; IPB-06-54).
 
@@ -560,7 +560,7 @@ PL5-D-01 records the defaults below as `[ASSUMED – owner review]`; each open p
 | 4       | `cms` core: content and revisions, state machine and approvals, Claims Register and lint, sanitiser, slugs and redirects, SEO and generated files, preview, scheduler, public API, footer validator, the 90-day soft-delete sweep (#48)                                 |
 | 5       | `cms` policies, resources, forms and pricing; `consent` ledger, texts, CMP, gating, ports                                                                                                                                                                               |
 | 6       | `feedback` and `trust`                                                                                                                                                                                                                                                  |
-| 7       | `apps/public`, the public-site seed, the `a11y` CI job (and its required check in the ruleset file) and the end-to-end acceptance tests                                                                                                                                 |
+| 7       | `apps/public`, the public-site seed, the `a11y` CI job (and its required check in the ruleset file) and the end-to-end acceptance tests. **Built (PL5-D-13)**                                                                                                           |
 | 8       | Studio screens (#41, §9.6): `@infrabyx/ui/studio` screen components for Brand, Pricing, CMS pages and sections, menus, footer and contact, policies, redirects, media, claims, consent texts, feedback queue and trust documents, on the service layers                 |
 | 9       | Reference `apps/console` (#41, §9.6): mounts the Studio screens behind the AUTHZ check, with the gallery and a11y scans of every Studio route                                                                                                                           |
 | 10      | Gate: report `docs/phases/PL5-gate.md`, threat model, at-report, changesets (first releases of the eight packages, minors elsewhere), version PR and release                                                                                                            |

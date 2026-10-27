@@ -10,7 +10,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email, push]
-    help_key: ntf.security.login_alert
+    help_key: hlp.notify.security.login_alert
     deep_link: /security/sessions
     templates:
       email: { key: security.login_alert, locales: [en, hi] }
@@ -23,7 +23,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.security.mfa_changed
+    help_key: hlp.notify.security.mfa_changed
     deep_link: /security/mfa
     templates:
       email: { key: security.mfa_changed, locales: [en, hi] }
@@ -35,7 +35,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.approval.requested
+    help_key: hlp.notify.approval.requested
     deep_link: /approvals/{id}
     templates:
       email: { key: approval.requested, locales: [en, hi] }
@@ -47,7 +47,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.approval.reminder
+    help_key: hlp.notify.approval.reminder
     deep_link: /approvals/{id}
     templates:
       email: { key: approval.reminder, locales: [en, hi] }
@@ -59,7 +59,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.approval.escalated
+    help_key: hlp.notify.approval.escalated
     deep_link: /approvals/{id}
     templates:
       email: { key: approval.escalated, locales: [en, hi] }
@@ -71,7 +71,7 @@ classes:
     bypass_quiet_hours: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.inbox.escalated
+    help_key: hlp.notify.inbox.escalated
     deep_link: /inbox/{id}
     templates:
       email: { key: inbox.escalated, locales: [en, hi] }
@@ -80,7 +80,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.inbox.mention
+    help_key: hlp.notify.inbox.mention
     deep_link: /inbox/{id}
     templates:
       email: { key: inbox.mention, locales: [en, hi] }
@@ -89,7 +89,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.export.ready
+    help_key: hlp.notify.export.ready
     deep_link: /exports/{id}
     templates:
       email: { key: export.ready, locales: [en, hi] }
@@ -100,7 +100,7 @@ classes:
     resend: hold
     default_channels: [inapp, email]
     never_channels: [whatsapp]
-    help_key: ntf.notice.policy_change
+    help_key: hlp.notify.notice.policy_change
     deep_link: /legal/notices/{id}
     templates:
       email: { key: notice.policy_change, locales: [en, hi] }
@@ -113,7 +113,7 @@ classes:
     resend: hold
     default_channels: [inapp, email]
     never_channels: [whatsapp]
-    help_key: ntf.breach.notice
+    help_key: hlp.notify.breach.notice
     deep_link: /legal/breach/{id}
     templates:
       email: { key: breach.notice, locales: [en, hi] }
@@ -122,7 +122,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.webhook.endpoint_disabled
+    help_key: hlp.notify.webhook.endpoint_disabled
     deep_link: /settings/webhooks/{id}
     templates:
       email: { key: webhook.endpoint_disabled, locales: [en, hi] }
@@ -131,7 +131,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.digest.daily
+    help_key: hlp.notify.digest.daily
     deep_link: /inbox
     templates:
       email: { key: digest.daily, locales: [en, hi] }
@@ -140,7 +140,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp]
-    help_key: ntf.vidhi.schedule.skipped
+    help_key: hlp.notify.vidhi.schedule.skipped
     deep_link: /settings/ai/schedules/{id}
     templates:
       inapp: { title_key: ntf.vidhi.schedule.skipped.title }
@@ -149,7 +149,7 @@ classes:
     mandatory: true
     resend: safe
     default_channels: [inapp, email]
-    help_key: ntf.vidhi.schedule.paused
+    help_key: hlp.notify.vidhi.schedule.paused
     deep_link: /settings/ai/schedules/{id}
     templates:
       email: { key: vidhi.schedule.paused, locales: [en, hi] }
@@ -158,7 +158,7 @@ classes:
     category: transactional
     resend: safe
     default_channels: [inapp]
-    help_key: ntf.vidhi.digest
+    help_key: hlp.notify.vidhi.digest
     deep_link: /vidhi/activity
     templates:
       email: { key: vidhi.digest, locales: [en, hi] }

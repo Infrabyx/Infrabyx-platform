@@ -1,0 +1,116 @@
+# Platform help entries, module `notify` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: notify
+entries:
+  - key: hlp.notify.held_resend
+    term: "Notice held for review"
+    plain: "This notice was not sent again automatically because it may have legal effect. A person must confirm before it is resent."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.security.login_alert
+    term: "New sign-in alert"
+    plain: "We tell you when your account is signed in to from a new device or place, so you can act if it was not you."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.security.mfa_changed
+    term: "Sign-in protection changed"
+    plain: "We tell you when your second sign-in step, such as an authenticator app, is added, changed or removed."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.approval.requested
+    term: "Approval requested"
+    plain: "Someone has asked you to approve a request. Open it to review the details and approve or reject it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.approval.reminder
+    term: "Approval reminder"
+    plain: "A request is still waiting for your approval. It expires if no one decides in time."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.approval.escalated
+    term: "Approval escalated"
+    plain: "A request waited too long for approval, so it was passed to an administrator to decide."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.inbox.escalated
+    term: "Task escalated"
+    plain: "A task in the work inbox waited too long and was passed to a more senior person."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.inbox.mention
+    term: "You were mentioned"
+    plain: "Someone mentioned you in a comment on a task or record."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.export.ready
+    term: "Export ready"
+    plain: "The data export you asked for is ready to download for a limited time."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.notice.policy_change
+    term: "Policy change notice"
+    plain: "We are changing a policy that applies to you. The notice explains what changes and when it takes effect."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.breach.notice
+    term: "Security incident notice"
+    plain: "We are telling you about a security incident that may affect your data, what we are doing and what you can do."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.webhook.endpoint_disabled
+    term: "Webhook switched off"
+    plain: "Your webhook address failed too many times, so we stopped sending to it. Fix the address and switch it back on."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.digest.daily
+    term: "Daily summary"
+    plain: "A once-a-day summary of activity you chose to receive instead of separate messages."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.vidhi.schedule.skipped
+    term: "Scheduled task skipped"
+    plain: "A scheduled Vidhi task did not run this time, for example because its conditions were not met."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.vidhi.schedule.paused
+    term: "Scheduled task paused"
+    plain: "A scheduled Vidhi task was paused, for example after repeated failures or a change of permissions."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.notify.vidhi.digest
+    term: "Vidhi summary"
+    plain: "A summary of what Vidhi did for you and what is waiting for your review."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

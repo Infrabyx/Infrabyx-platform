@@ -75,6 +75,12 @@ export function CookieBanner(p: {
   );
 }
 
+/** Help keys of the switchable categories (literals, so `hlp-lint` sees each one). */
+const CATEGORY_HELP = {
+  functional: "hlp.consent.functional",
+  analytics: "hlp.consent.analytics",
+  marketing: "hlp.consent.marketing",
+} as const;
 const CATEGORY_LABEL = {
   necessary: "Necessary",
   functional: "Functional",
@@ -103,42 +109,50 @@ export function PreferenceCentre(p: {
             id={`ibx-cmp-${c}`}
             name={c}
             label={`Allow ${CATEGORY_LABEL[c].toLowerCase()} cookies`}
-            helpKey={`hlp.consent.${c}`}
+            helpKey={CATEGORY_HELP[c]}
             checked={(p.state.choice as ConsentChoice)[c]}
           />
         )}
         {cookies.length || vendors.length ? (
-          <table className="ibx-table">
-            <caption>{CATEGORY_LABEL[c]} cookies and vendors</caption>
-            <thead>
-              <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Provider</th>
-                <th scope="col">Purpose</th>
-                <th scope="col">Duration</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cookies.map((x) => (
-                <tr key={x.name}>
-                  <td>{x.name}</td>
-                  <td>{x.provider}</td>
-                  <td>{x.purpose}</td>
-                  <td>{x.duration}</td>
+          // A labelled scroll region, so the page reflows at 320 px (IPB-06 SC 1.4.10).
+          <div
+            className="ibx-table-wrap"
+            role="region"
+            aria-label={`${CATEGORY_LABEL[c]} cookies and vendors`}
+            tabIndex={0}
+          >
+            <table className="ibx-table">
+              <caption>{CATEGORY_LABEL[c]} cookies and vendors</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Name</th>
+                  <th scope="col">Provider</th>
+                  <th scope="col">Purpose</th>
+                  <th scope="col">Duration</th>
                 </tr>
-              ))}
-              {vendors.map((v) => (
-                <tr key={v.name}>
-                  <td>{v.name}</td>
-                  <td>
-                    <a href={v.policyUrl}>{v.name}</a>
-                  </td>
-                  <td>{v.purpose}</td>
-                  <td>See the vendor</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {cookies.map((x) => (
+                  <tr key={x.name}>
+                    <td>{x.name}</td>
+                    <td>{x.provider}</td>
+                    <td>{x.purpose}</td>
+                    <td>{x.duration}</td>
+                  </tr>
+                ))}
+                {vendors.map((v) => (
+                  <tr key={v.name}>
+                    <td>{v.name}</td>
+                    <td>
+                      <a href={v.policyUrl}>{v.name}</a>
+                    </td>
+                    <td>{v.purpose}</td>
+                    <td>See the vendor</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p>No cookies in this category at present.</p>
         )}
@@ -178,6 +192,7 @@ export function PreferenceCentre(p: {
 
 /** CMP layout: a bottom sheet that never blocks content, text at least 16 px, no motion when reduced. */
 export const CMP_CSS = String.raw`
+.ibx-cmp__category { min-width: 0; }
 .ibx-cmp { position: fixed; inset: auto 0 0 0; z-index: 50; background: var(--color-surface); color: var(--color-text); border-top: 2px solid var(--color-border-strong); padding: var(--space-4); font-size: max(1rem, 16px); box-shadow: var(--shadow-2); }
 .ibx-cmp__title { font-size: var(--text-lg); margin: 0 0 var(--space-2); }
 .ibx-cmp__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }

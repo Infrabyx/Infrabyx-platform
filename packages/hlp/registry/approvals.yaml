@@ -1,0 +1,39 @@
+# Platform help entries, module `approvals` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: approvals
+entries:
+  - key: hlp.approvals.request
+    term: "Approval request"
+    plain: "A change that needs a second person to approve it before it takes effect."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.approvals.scheduled_action
+    term: "Scheduled approved action"
+    plain: "An approved change set to happen at a later time."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.approvals.reminder
+    term: "Approval reminder"
+    plain: "A reminder that a request is still waiting for a decision."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.approvals.escalated
+    term: "Escalated approval"
+    plain: "A request that waited too long and was passed to an administrator."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.approvals.scheduled_failed
+    term: "Scheduled action failed"
+    plain: "An approved change could not be carried out at its scheduled time. Review it and try again."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

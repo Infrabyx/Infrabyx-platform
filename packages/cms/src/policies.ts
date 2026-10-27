@@ -1108,6 +1108,36 @@ export class PublicPolicies {
   }
 
   /**
+   * The officers named in a pack's policy set (`grievance_officer`, `grievance_email`,
+   * `grievance_address`, `dpo_name`, `dpo_email`), for the footer and the grievance page (O-4).
+   */
+  async officers(packId: string): Promise<{
+    grievance: { name?: string; email?: string; address?: string };
+    dpo: { name?: string; email?: string };
+  }> {
+    return this.o.kernel.read(this.ctx, async (tx) => {
+      const r = await tx.query<{ params: Record<string, unknown> }>(
+        "select params from cms.policy_set where brand_pack_id = $1",
+        [packId],
+      );
+      const p = r.rows[0]?.params ?? {};
+      const s = (k: string) => (typeof p[k] === "string" && p[k] ? (p[k] as string) : undefined);
+      const pick = <T extends Record<string, string | undefined>>(o: T) =>
+        Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as {
+          [K in keyof T]?: string;
+        };
+      return {
+        grievance: pick({
+          name: s("grievance_officer"),
+          email: s("grievance_email"),
+          address: s("grievance_address"),
+        }),
+        dpo: pick({ name: s("dpo_name"), email: s("dpo_email") }),
+      };
+    });
+  }
+
+  /**
    * The published notice of an approved MAJOR change (#55): what changes and, once the notice has
    * also been sent, the earliest date it takes effect. Null when no notice is published.
    */

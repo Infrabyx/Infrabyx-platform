@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"],
+    "jsx": "react-jsx",
+    "isolatedModules": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowImportingTsExtensions": true,
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["src", "scripts", "next-env.d.ts", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next", "dist"]
+}

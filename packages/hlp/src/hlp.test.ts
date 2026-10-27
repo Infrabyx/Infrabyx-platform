@@ -6,6 +6,7 @@ import { main } from "./cli.js";
 import { HelpEntrySchema, wordCount, type HelpEntryInput } from "./entry.js";
 import { collectKeys, keysInText, lintHelp, lintRemovals } from "./lint.js";
 import { HelpRegistry, loadRegistry, parseRegistryFile, publicGlossary } from "./registry.js";
+import { PLATFORM_REGISTRY_DIR } from "./index.js";
 import { lintTours, mayAutoStart, tourActions, tourState, TourSchema } from "./tours.js";
 
 const entry = (over: Partial<HelpEntryInput> = {}) =>
@@ -56,24 +57,35 @@ describe("@IPB-07-AT-02 a missing help key fails CI", () => {
   });
 
   it("collects keys from components, catalogues and the settings tree, and rejects keys of another form", () => {
-    const uses = keysInText(
+    const code = keysInText(
       [
         `<Field helpKey="hlp.web.cin" />`,
         `    helpKey: "hlp.int.port_not_configured",`,
-        `      help: hlp.trust.passkeys_required,`,
-        `    help_key: ntf.security.login_alert`,
         `<Field helpKey={"hlp.web.work_email"} />`,
+        `const KEYS = { functional: "hlp.consent.functional" };`,
+        `// helpKey="hlp.x.y" in a comment is not a use`,
+        `const h = v.help; schema: z.string(); help: err.def.help`,
+        `if (key.startsWith("hlp.web.field.")) skip();`,
       ].join("\n"),
-      "x",
+      "a.tsx",
     );
-    expect(uses.map((u) => u.key)).toEqual([
+    expect(code.map((u) => u.key)).toEqual([
       "hlp.web.cin",
       "hlp.int.port_not_configured",
+      "hlp.web.work_email",
+      "hlp.consent.functional",
+    ]);
+    const data = keysInText(
+      [`      help: hlp.trust.passkeys_required,`, `    help_key: ntf.security.login_alert`].join(
+        "\n",
+      ),
+      "catalogue.yaml",
+    );
+    expect(data.map((u) => u.key)).toEqual([
       "hlp.trust.passkeys_required",
       "ntf.security.login_alert",
-      "hlp.web.work_email",
     ]);
-    const f = lintHelp([], [uses[3]!]);
+    const f = lintHelp([], [data[1]!]);
     expect(f[0]!.message).toBe("ntf.security.login_alert is not a help key (hlp.<module>.<term>)");
   });
 
@@ -310,5 +322,15 @@ describe("infrabyx-hlp lint", () => {
     ).toBe(0);
     expect(main(["lint", "--registry", join(dir, "registry"), "--keys", join(dir, "src")])).toBe(1);
     expect(main(["lint"])).toBe(2);
+  });
+});
+
+describe("the platform registry (PL5 session 7)", () => {
+  it("loads every shipped entry without issues and passes the entry lint", () => {
+    const r = loadRegistry([PLATFORM_REGISTRY_DIR]);
+    expect(r.issues).toEqual([]);
+    expect(r.entries.length).toBeGreaterThan(60);
+    expect(lintHelp(r.entries, []).filter((f) => f.severity === "error")).toEqual([]);
+    expect(r.entries.map((e) => e.key)).toContain("hlp.notify.security.login_alert");
   });
 });

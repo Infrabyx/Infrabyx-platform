@@ -35,7 +35,7 @@ const klass = {
   bypass_quiet_hours: true,
   resend: "safe",
   default_channels: ["inapp", "email"],
-  help_key: "ntf.approval.requested",
+  help_key: "hlp.notify.approval.requested",
   deep_link: "/approvals/{id}",
 };
 

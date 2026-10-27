@@ -62,6 +62,17 @@ export interface SeedModuleContext {
   superAdminEmail?: string;
   /** One kernel transaction (and one ledger entry) in the given seed tenant. */
   write(tenant: SeedTenant, fn: (w: SeedWriter) => Promise<void>): Promise<void>;
+  /**
+   * The run's kernel, audit sink and outbox, for modules that seed through a package's own
+   * services (Studio maker-checker, consent texts, the trust mirror) instead of table rows. The run
+   * has already passed the seed guard (`assertSeedAllowed`), so `seedAllowed` is always true here.
+   */
+  services: {
+    kernel: MutationKernel;
+    audit: AuditSink;
+    outbox?: OutboxWriter;
+    seedAllowed: true;
+  };
 }
 
 export interface SeedModule {
@@ -288,6 +299,12 @@ export async function runSeed(o: RunSeedOptions): Promise<SeedReport> {
       runDate: o.runDate ?? new Date(),
       tenantIds: SEED_TENANT_IDS,
       ...(o.superAdminEmail ? { superAdminEmail: o.superAdminEmail } : {}),
+      services: {
+        kernel: o.kernel,
+        audit: o.audit,
+        ...(o.outbox ? { outbox: o.outbox } : {}),
+        seedAllowed: true,
+      },
       write: async (tenant, fn) => {
         await o.kernel.mutate(
           ctxFor(tenant),

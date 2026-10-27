@@ -387,6 +387,18 @@ The MEDIA port (`@infrabyx/contracts` `media.ts`) with the `sharp` reference ada
 - **T (supply chain, licence):** a modified or statically linked LGPL build enters the product. Control: the licence check accepts only `@img/sharp-libvips-*` with exactly `LGPL-3.0-or-later` and refuses any `AND` expression with a disallowed part (the wasm32 builds); `sharp` is pinned, 7 days old, with provenance, and is an optional peer, loaded only by the adapter; `vendor-import` keeps it inside `packages/connectors`.
 - **Residual:** libvips runs in the web process, not a separate worker (IPB-01 says "in worker"); a product that re-encodes at volume should run uploads in its worker. Tracked in §6.
 
+### 3.34 `apps/public`, the group site (built, PL5 session 7; PL5-D-13)
+
+The reference group website on Next.js 16 (`@infrabyx/public-site`, private, never published). It reads published content, policies, brand packs, consent texts and the trust mirror in-process through the kernel, and writes only through three endpoints: consent choices, CMS forms and feedback.
+
+- **S/T (script injection):** a CMS body or a crafted path runs script in the visitor's browser. Control: a per-request nonce CSP from `proxy.ts` (`script-src 'nonce-…' 'strict-dynamic'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, `form-action 'self'`, no `unsafe-inline`); rich text is the CMS sanitiser's output only; the three first-party controllers are served from the site's own origin under the nonce; the e2e gate asserts the headers.
+- **T (forged writes):** a third-party page posts consent, a form or feedback as the visitor. Control: every POST checks `Origin` (or `Referer`) against the site's own origin; forms carry a honeypot; the CMS form and feedback services apply their own limits and minimisation (PL5-D-08, PL5-D-10); consent is written to the ledger with the exact text version.
+- **I (tracking before consent):** a page loads anything from another origin before or after a choice. Control: no font CDN, no analytics, no third-party scripts; images and styles are `'self'` only; the gate records every request in Chromium for each consent path and fails on any other origin (`@IPB-04-AT-80`, `@IPB-04-AT-85`).
+- **D (database lookups per request):** each request resolves the pack, and each unknown path makes the proxy look up a redirect or tombstone. Control: lookups are indexed reads through the kernel on a bounded pool (10 connections); rate limiting belongs to the edge in front of the site (PL6 deployment).
+- **E (fixtures in production):** fixture adapters (fake CRM, HR, OH desk, trust feed) or directory storage accept data in a real environment. Control: `siteEnv()` refuses `APP_FIXTURE_ADAPTERS` and `STORAGE_DIR` outside local, dev, test and preview, so the process exits with code 78; without real adapters each port answers `IPB-PORT-001`. Seeds refuse prod, dr and pre-prod (`SEED_REFUSED_ENVS`).
+- **I (unmapped hosts):** a host not mapped to a pack serves the product's default pack under another name. Control: such responses carry `noindex` and the generated files (sitemaps) are empty for them.
+- **Residual:** the site has no edge rate limit or WAF of its own yet (PL6 deployment); the fixture CRM and HR keep form data in memory only, so local and test submissions are lost on restart, by design.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
