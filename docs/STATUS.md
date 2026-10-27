@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages, checksums recorded. Owner answers #24 and #25 applied (PL3-D-25). **PL4 plan written** (`docs/phases/PL4-plan.md`, PL4-D-01); session 1 built (spike, contracts, config; PL4-D-02); next: session 2 (`ai` core). Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                        |
-| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)                                                                   |
-| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                                                                                       |
-| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                                                                                     |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages, checksums recorded. Owner answers #24 and #25 applied (PL3-D-25). **PL4 plan written** (`docs/phases/PL4-plan.md`, PL4-D-01); sessions 1–2 built (spike, contracts, config; the `ai` gateway core; PL4-D-02, PL4-D-03); next: session 3 (`connectors/ai` adapters on stubs). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                    |
+| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)                                                                                                                               |
+| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                                                                                                                                                   |
+| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                                                                                                                                                 |
 
 ## What products can install (PL3 gate, 2026-10-27)
 
@@ -46,6 +46,17 @@ Registry checksums are the values release run 43 printed in the job summary of i
   - wire `ExportService` with a product map, `kmsArchiveSigner` and an export worker, and add `map-gate` and a golden archive to CI;
   - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
   - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
+
+## PL4 session 2 (2026-10-27, PL4-D-03)
+
+- `@infrabyx/ai` (first release at the PL4 gate), with migration `ai/0001_init.sql`:
+  - the model registry: R4 promotion and default changes checked by `PLT_SECURITY_OFFICER`, evidence enforced, BLOCKED at once;
+  - the prompt registry;
+  - `LlmGateway` `chat` and `tools`: data-class routing that fails closed, failover in the band, breaker, caps, kill switches, the tool allow-list, data-block separation, and one run row per call with events;
+  - `aiTrace`, with no content.
+- `@infrabyx/testing`: `FakeLlm`, `FakeEmbedding`, and a teardown fix for an intermittent 57P01 after tests.
+- `@infrabyx/tenancy`: `infrabyx-migrate` applies `ai` after `export`.
+- Tests: `@IPB-03-AT-02` (routing table, fail-closed chaos, pin refusal), `@IPB-03-AT-07` and `@IPB-03-AT-08` (gateway side) all pass on stubs. No provider was called.
 
 ## PL4 session 1 (2026-10-27, PL4-D-02)
 
