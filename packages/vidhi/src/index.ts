@@ -11,3 +11,6 @@ export * from "./schedules.js";
 export * from "./missions.js";
 export * from "./mcp.js";
 export * from "./notebooks.js";
+export * from "./feedback.js";
+export * from "./qa.js";
+export * from "./digest.js";

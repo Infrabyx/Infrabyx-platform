@@ -9,7 +9,7 @@
 // - The display name is a brand setting (`vidhi.brand.display_name`): the disclosure says
 //   "<name>, an AI assistant", while logs, events, runs and ledger rows keep the kernel id `vidhi`.
 import type { KernelContext } from "@infrabyx/contracts/kernel";
-import type { DataBlock } from "@infrabyx/contracts";
+import { AiProvenance, type DataBlock } from "@infrabyx/contracts";
 import type { LlmGateway, LlmResult, SettingsReader } from "@infrabyx/ai";
 
 export const KERNEL_ID = "vidhi";
@@ -99,6 +99,34 @@ export function modelFamily(modelId: string): string {
   return adapter || "an AI model";
 }
 
+/** The disclosure attached to every artefact (IPB-03-53, AT-06 platform side). */
+export interface Disclosure {
+  /** The visible label, with the run id: "Drafted by Vidhi AI on … (run run_…)". */
+  label: string;
+  run_id: string;
+  /** The machine-readable sidecar products store as `ai_provenance jsonb`. */
+  ai_provenance: AiProvenance;
+}
+
+/**
+ * Build the label and the `ai_provenance` sidecar for a gateway result. Tenants cannot remove
+ * either; a brand display name changes only the wording (IPB-03-58).
+ */
+export function disclosure(
+  r: { runId: string; modelId: string; provenance: AiProvenance },
+  o: { displayName?: string | null; reviewer?: string | null; date?: Date } = {},
+): Disclosure {
+  const sidecar = AiProvenance.parse(r.provenance);
+  if (sidecar.run_id !== r.runId) throw new Error("provenance belongs to another run");
+  const label = `${aiLabel({
+    date: o.date ?? new Date(sidecar.created_at),
+    modelFamily: modelFamily(r.modelId),
+    ...(o.displayName !== undefined ? { displayName: o.displayName } : {}),
+    ...(o.reviewer !== undefined ? { reviewer: o.reviewer } : {}),
+  })} (run ${r.runId})`;
+  return { label, run_id: r.runId, ai_provenance: sidecar };
+}
+
 export interface VidhiOptions {
   gateway: LlmGateway;
   settings: SettingsReader;
@@ -162,6 +190,18 @@ export class Vidhi {
         }
       : null;
     return { ...r, handoff, assistant: assistantName(display) };
+  }
+
+  /** The disclosure for an answer, with the brand's display name (IPB-03-53, 03-58). */
+  async disclose(
+    ctx: KernelContext,
+    r: Pick<LlmResult, "runId" | "modelId" | "provenance">,
+    reviewer?: string,
+  ): Promise<Disclosure> {
+    return disclosure(r, {
+      displayName: await this.displayName(ctx),
+      ...(reviewer ? { reviewer } : {}),
+    });
   }
 
   /** The label for an answer (IPB-03-53). */

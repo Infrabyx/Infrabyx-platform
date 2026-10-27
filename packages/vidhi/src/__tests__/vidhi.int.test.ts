@@ -24,7 +24,7 @@ import {
   type TestDatabase,
 } from "@infrabyx/testing";
 import { Autonomy } from "../autonomy.js";
-import { Vidhi } from "../persona.js";
+import { disclosure, Vidhi } from "../persona.js";
 import { SkillRegistry } from "../skills.js";
 import { TaskRuntime } from "../tasks.js";
 
@@ -524,5 +524,44 @@ describe("@IPB-03-AT-11 a display-name override keeps the kernel identity", () =
     const runs = await db.admin.query("select * from ai.run where tenant_id = 'tnt_udf'");
     expect(JSON.stringify(runs.rows)).not.toMatch(/astra/i);
     expect(r.handoff).toBeNull();
+  });
+});
+
+describe("@IPB-03-AT-06 AI disclosure and provenance (platform side)", () => {
+  it("every output carries the visible label with its run id and the ai_provenance sidecar", async () => {
+    llm.script({ text: "The notice period is 30 days [source:tpl_notice]." });
+    const lawyer = withTenant("tnt_ld", ["ORG_MEMBER"], { principal: { id: "usr_lawyer" } });
+    const r = await vidhi.answer(lawyer, {
+      featureKey: "ld.draft_from_template",
+      question: "Draft the notice clause.",
+      dataClass: "CONFIDENTIAL",
+      audience: "staff",
+      dataBlocks: [
+        {
+          kind: "document",
+          sourceId: "tpl_notice",
+          dataClass: "CONFIDENTIAL",
+          text: "Either party may end this agreement with 30 days' notice.",
+        },
+      ],
+    });
+    const d = await vidhi.disclose(lawyer, r);
+    // Docgen (DOCX and PDF placement) is deferred; the label and sidecar it embeds are these.
+    expect(d.label).toMatch(
+      new RegExp(
+        `^Drafted by Vidhi AI on \\d{1,2} [A-Z][a-z]{2} \\d{4} using .+; reviewed by: not yet reviewed \\(run ${r.runId}\\)$`,
+      ),
+    );
+    expect(d.ai_provenance).toMatchObject({
+      generated_by: "vidhi",
+      model_id: r.modelId,
+      prompt_ref: "vidhi.persona@1.0.0",
+      run_id: r.runId,
+    });
+    expect(d.ai_provenance.prompt_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect((await vidhi.disclose(lawyer, r, "A. Rao")).label).toMatch(/reviewed by: A\. Rao/);
+    expect(() => disclosure({ ...r, runId: "run_01HZZZZZZZZZZZZZZZZZZZZZZZ" }, {})).toThrow(
+      /another run/,
+    );
   });
 });

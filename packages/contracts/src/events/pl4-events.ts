@@ -207,3 +207,15 @@ export const NotebookOutputCreatedData = z
     sources: z.number().int().min(1),
   })
   .strict();
+
+/** `in.<p>.vidhi.FeedbackReceived.v1`: thumbs or a correction on an output (IPB-03-84). */
+export const FeedbackReceivedData = z
+  .object({
+    feedback_id: z.string().regex(/^fbk_/),
+    run_id: z.string().regex(/^run_/),
+    tenant_id: z.string(),
+    rating: z.enum(["up", "down"]),
+    has_correction: z.boolean(),
+    use_as_reference: z.boolean(),
+  })
+  .strict();
