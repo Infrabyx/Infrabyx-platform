@@ -105,3 +105,15 @@ The adapters:
 ## Migrations
 
 `migrations/0001_init.sql`: schema `connectors` with `idempotency_record` (RLS forced, tenant policy). `migrations/0002_session_revocation.sql`: `session_revocation` for the IDENTITY revocation store (RLS forced, tenant policy). `migrations/0003_pgboss.sql`: the pg-boss schema `pgboss` (no tenant data; DML and EXECUTE for `app_rw`). `infrabyx-migrate` applies it after seed whenever this package is installed (PL2-D-34), so a product keeps one migrate command.
+
+## RULES (`@infrabyx/connectors/rules`)
+
+In-process engine adapters for the platform decision table `ipb.decision_table.v1` (PL3 plan §4.2, PL3-D-18); the store, publish flow and decision log are in `@infrabyx/rules`. All three are `IN` / `REGULATED` (data never leaves the process) and have no sandbox leg, so none is listed in `sandbox-status.json`.
+
+- **CEL subset.** Each row's `when` is parsed and type-checked by `@marcbachmann/cel-js` 8.0.0 against the declared inputs, under `rules.cel.max_cost` as `maxAstNodes`, then lowered to a small IR: and, or, not; a declared input compared with a literal (either side; strings and booleans only `==`/`!=`); an input `in` a literal list; a literal `in` a list input; a bare boolean input; a constant. Anything else is refused when the draft is compiled (`RuleCompileError`, reasons `schema`, `reserved_name`, `cel_parse`, `cel_type`, `cel_limit`, `cel_unsupported`).
+- **Inputs** are checked before any engine runs: every declared input present with its type (dates `YYYY-MM-DD`), nothing undeclared, at most 64 KiB. An invalid input, an engine error or a timeout (`rules.eval.timeout_ms`) is `UNDETERMINED`, never a match.
+- **`zen`** (reference): `@gorules/zen-engine` 2.1.7, one JDM decision table whose cells are expressions generated from the IR (dates as epoch days).
+- **`json-rules`** (alternative): `json-rules-engine` 7.3.1, one rule per row.
+- **`memory`**: a direct CEL row walk over the original `when`, used by tests and for draft validation.
+- Engines only decide which rows match; outputs are assembled from the table (`first`: the lowest matching row; `collect`: each output is the list of the matched rows' values). A differential test proves the three engines agree on 600 generated inputs; `health()` evaluates a canary table.
+- `evaluateCel(expr, input, { maxAstNodes })` serves RULES `evaluateCel`.

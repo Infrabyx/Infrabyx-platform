@@ -119,6 +119,9 @@ importers:
       '@cerbos/http':
         specifier: 0.30.1
         version: 0.30.1(@bufbuild/protobuf@2.16.0)(@cerbos/api@0.11.1)
+      '@gorules/zen-engine':
+        specifier: 2.1.7
+        version: 2.1.7
       '@infrabyx/config':
         specifier: workspace:*
         version: link:../config
@@ -131,6 +134,9 @@ importers:
       '@infrabyx/tenancy':
         specifier: workspace:*
         version: link:../tenancy
+      '@marcbachmann/cel-js':
+        specifier: 8.0.0
+        version: 8.0.0
       '@openfga/sdk':
         specifier: 0.9.7
         version: 0.9.7
@@ -188,6 +194,9 @@ importers:
       ioredis:
         specifier: 6.0.0
         version: 6.0.0
+      json-rules-engine:
+        specifier: 7.3.1
+        version: 7.3.1
       pg-boss:
         specifier: 12.38.0
         version: 12.38.0(@opentelemetry/api@1.9.1)
@@ -643,6 +652,15 @@ packages:
     resolution: {integrity: sha512-aalGyl7dbB5PArRebDIX43ZvBlXrYm9uWzGJ26t+4SzJVPsOuvfILGGbw5X4yX7i50YEmJ8zvbiWnqH/AAnZqg==}
     engines: {node: '>=22'}
 
+  '@emnapi/core@2.0.0-alpha.6':
+    resolution: {integrity: sha512-MNVvMV7WtEJMgqaWJMvCyupK7Oi8sZctUIgPRZTsiS3cVvefk8DXPflOU3MSBddtj/rrYHygpYgpHDgwXnI3+w==}
+
+  '@emnapi/runtime@2.0.0-alpha.6':
+    resolution: {integrity: sha512-5ZR49ZsZ3cLvu5lkrVj6CMpHRgZjYz7XSlqK23GYYpyEqp749RVuIH0bEUKaGNghMh2pXRhIC3cnVrH28Y1j1Q==}
+
+  '@emnapi/wasi-threads@2.2.0':
+    resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
+
   '@esbuild/aix-ppc64@0.28.2':
     resolution: {integrity: sha512-XExcO+dvLKvVtNTibSTBej1NCAbaGhWn9Ww1ZPx80qsahhPFe/8jgWP0IchNe0F3HwkU7n8ejhH8bjonqht8mQ==}
     engines: {node: '>=18'}
@@ -846,6 +864,60 @@ packages:
     resolution: {integrity: sha512-GmzA9ckNokPypTg10pgpeHNQe7ph+iIKKmhKu3Ob9ANkswreCx7R3cKmY781K8QK3AqVL3xVh9A42JvIAbkkSA==}
     engines: {node: ^20.17.0 || >=22.9.0}
 
+  '@gorules/zen-engine-darwin-arm64@2.1.7':
+    resolution: {integrity: sha512-QZI8qOeBDCFj38+Vl4DHnzGg2eshMQrk0E7OwWo+QLdkQlNMGZFj2Ebr005ZZv52tOr2tr1yaOQsk/cZc7AEpw==}
+    engines: {node: '>= 14'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@gorules/zen-engine-darwin-x64@2.1.7':
+    resolution: {integrity: sha512-Hkmm0wcUzwE39B79xqdYLJv8g4vxcvp1LmMJXYse4/i03xt+gNh/aprKWnV1S9U1tNKLUrhD1uSHtuJ3wXS8fQ==}
+    engines: {node: '>= 14'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@gorules/zen-engine-linux-arm64-gnu@2.1.7':
+    resolution: {integrity: sha512-34gtUJYH89nVDdRsn5VY9fpSW4pkO44HgStS/gnWqPkw6H6T70Kf0IEwwJ2k1+/SB9SomivFa/SAzB6eYiJXiw==}
+    engines: {node: '>= 14'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@gorules/zen-engine-linux-arm64-musl@2.1.7':
+    resolution: {integrity: sha512-JpRdffzgVB/AHH4klcr73KcGRkd9P8wz5X7gn6C1Dbm4X0Z3I1XQ2s0MiaSPhriHjuL07HL7IGYZXLzjC3JVGQ==}
+    engines: {node: '>= 14'}
+    cpu: [arm64]
+    os: [linux]
+    libc: [musl]
+
+  '@gorules/zen-engine-linux-x64-gnu@2.1.7':
+    resolution: {integrity: sha512-Qh5BSnNP4vCZ8v3/hbNZqtuc6icPk67L4Czq5L+I07KsjvFRLFTRKEMrHAfbjIduLUOSHgVqAaiagrf6QNN5UA==}
+    engines: {node: '>= 14'}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
+  '@gorules/zen-engine-linux-x64-musl@2.1.7':
+    resolution: {integrity: sha512-mWCGMqDNN5UC8Fpfhd49fCgNRYIyZE1MZlW/cCsxhDasGna7sk7wbJ4LUg2QOS5lN9PeXpoTp+l0pYsknk2nFA==}
+    engines: {node: '>= 14'}
+    cpu: [x64]
+    os: [linux]
+    libc: [musl]
+
+  '@gorules/zen-engine-wasm32-wasip1@2.1.7':
+    resolution: {integrity: sha512-vtEEmsi31O68+TV6rcj3InLbrZTC6aDzPVW33wx9OUImqEj+V/Pt/opn+lmmk2c/0fKH62Sixry2rUJ1Q3VddA==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+
+  '@gorules/zen-engine-win32-x64-msvc@2.1.7':
+    resolution: {integrity: sha512-wBWpiSxPBVRmFZwWU5AAL8z1I2fK4BfzziyeqdhHo4kRNZMdNKIfxP6gz4/DEb7FL7jLArlYv1kCnWpGh5znng==}
+    engines: {node: '>= 14'}
+    cpu: [x64]
+    os: [win32]
+
+  '@gorules/zen-engine@2.1.7':
+    resolution: {integrity: sha512-yO5tdHjRNRbFpKJ1jLnGJmSO17OAH8nP17I4VhfG+jQmP0M+iGd8XuFxu9m9sTEe3httF+QMkY0sVQw2B+TGvQ==}
+    engines: {node: '>= 14'}
+
   '@grpc/grpc-js@1.14.6':
     resolution: {integrity: sha512-SgC/B3/VZ8lTyOZ4Cwk6f1skWhmkNAaVfiX90qd5u1rRXGKk1//8FTUEN9GvOUq7rfWIqAYkA3CoyumYVpOS6g==}
     engines: {node: '>=12.10.0'}
@@ -914,6 +986,18 @@ packages:
 
   '@js-sdsl/ordered-map@4.4.2':
     resolution: {integrity: sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==}
+
+  '@jsep-plugin/assignment@1.4.0':
+    resolution: {integrity: sha512-nw2Px23Eirx0PFTVoPrb3FEq9Wkmg6vxcDtt38MtBCf1G0tjLCB9cK+3seOXyiw+6+aalgYhvJabQbWwMVKlEQ==}
+    engines: {node: '>= 10.16.0'}
+    peerDependencies:
+      jsep: ^0.4.0||^1.0.0
+
+  '@jsep-plugin/regex@1.1.0':
+    resolution: {integrity: sha512-2Vkbda+XRjK6VTI6Lrh0sNBuMT8mZ51EhqMvO+V2rSdmqjs7NAGssxPZfkL23EFzYfSrvxyd1ZjOdqPQMM50og==}
+    engines: {node: '>= 10.16.0'}
+    peerDependencies:
+      jsep: ^0.4.0||^1.0.0
 
   '@jsonjoy.com/base64@1.1.2':
     resolution: {integrity: sha512-q6XAnWQDIMA3+FTiOYajoYqySkO+JSat0ytXGSuRdq9uXE7o92gzuQwQM14xaCRlBLGq3v5miDGC4vkVTn54xA==}
@@ -1057,6 +1141,11 @@ packages:
   '@manypkg/get-packages@1.1.3':
     resolution: {integrity: sha512-fo+QhuU3qE/2TQMQmbVMqaQ6EWbMhi4ABWP+O4AM1NqPBuy0OrApV5LO6BrrgnhtAHS2NH6RrVk9OL181tTi8A==}
 
+  '@marcbachmann/cel-js@8.0.0':
+    resolution: {integrity: sha512-oaTrAziGr3zDLFiMt/yLU3nZuRMawyWQB5X1a0I7s9eGy3JYzX9l8ZXXHyMd64nzbeVFZTewuUShwsZQdK6UCA==}
+    engines: {node: '>=20.19.0'}
+    hasBin: true
+
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
     cpu: [arm64]
@@ -1087,12 +1176,23 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@napi-rs/async-runtime@0.2.0':
+    resolution: {integrity: sha512-b5uPvNCtpAD79XEbv/XVyetjgMP9LRNrGmDGCQdl1bK9NehemrJMwnUKbk3l1+u2EG9NCfttW2SE/2JdJoPgIw==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
+
+  '@napi-rs/wasm-runtime@1.2.5':
+    resolution: {integrity: sha512-HshSvXzmBxNzqejd3k/KemgQ3hdREUYFRRrgxOZ+gPljDIsO2SDZrVZMd4Z/HsxudQbE62OVyVFE8z9BCurfjA==}
+    engines: {node: ^20.19.0 || ^22.13.0 || >=23.5.0}
+    peerDependencies:
+      '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
+      '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
   '@nestjs/common@11.2.7':
     resolution: {integrity: sha512-CGOa0I/5Ac43ydfpjztozOrvgDWYBdY9ktkO0OrRqRo1d8n5cphtrTGYHOwKLMIel0BpSYZoQymJ9Dywv/BzLw==}
@@ -1586,6 +1686,9 @@ packages:
     cpu: [arm64]
     os: [win32]
 
+  '@tybys/wasm-util@0.10.4':
+    resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
+
   '@types/chai@5.2.3':
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
 
@@ -2037,6 +2140,10 @@ packages:
     resolution: {integrity: sha512-k7ndgKhwoQveBL+/1tqGJYNz097I7WOvwbmmU2AR5+magtbjPWQTS1C5vzGkBC8Ym8UWRzfKUzUUqFLypY4Q+w==}
     engines: {node: '>=20'}
 
+  clone@2.1.2:
+    resolution: {integrity: sha512-3Pe/CF1Nn94hyhIYpjtiLhdCoEoz0DqQ+988E9gmeEdQZlojxnOb74wctFyuwWQHzqyf9X7C7MG8juUpqBJT8w==}
+    engines: {node: '>=0.8'}
+
   cluster-key-slot@1.1.1:
     resolution: {integrity: sha512-rwHwUfXL40Chm1r08yrhU3qpUvdVlgkKNeyeGPOxnW8/SyVDvgRaed/Uz54AqWNaTCAThlj6QAs3TZcKI0xDEw==}
     engines: {node: '>=0.10.0'}
@@ -2377,6 +2484,9 @@ packages:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
     engines: {node: '>=6'}
 
+  eventemitter2@6.4.9:
+    resolution: {integrity: sha512-JEPTiaOt9f04oa6NOkc4aH+nVp5I3wEjpHbIPqfgCdD5v5bUzy7xQqwcVO2aDQgOWhI28da57HksMrzK9HlRxg==}
+
   events-universal@1.0.1:
     resolution: {integrity: sha512-LUd5euvbMLpwOF8m6ivPCbhQeSiYVNb8Vs0fQ8QjXo0JTkEHpz8pxdQf0gStltaPpw0Cca8b39KxvK9cfKRiAw==}
 
@@ -2564,6 +2674,9 @@ packages:
     resolution: {integrity: sha512-NqADB8VjPFLM2V0VvHUewwwsw0ZWBaIdgo+ieHtK3hasLz4qeCRjYcqfB6AQrBggRKppKF8L52/VqdVsO47Dlw==}
     engines: {node: '>= 0.4'}
 
+  hash-it@6.0.1:
+    resolution: {integrity: sha512-qhl8+l4Zwi1eLlL3lja5ywmDQnBzLEJxd0QJoAVIgZpgQbdtVZrN5ypB0y3VHwBlvAalpcbM2/A6x7oUks5zNg==}
+
   hashery@1.5.1:
     resolution: {integrity: sha512-iZyKG96/JwPz1N55vj2Ie2vXbhu440zfUfJvSwEqEbeLluk7NnapfGqa7LH0mOsnDxTF85Mx8/dyR6HfqcbmbQ==}
     engines: {node: '>=20'}
@@ -2720,8 +2833,16 @@ packages:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
     hasBin: true
 
+  jsep@1.6.0:
+    resolution: {integrity: sha512-Y8Tr54CX7B5YGAwo7/n8eumidEX3Opx98RyyQVnlHqUaZcPA8uUzL2v1rshr9ypW9Q6hNjfJtg3sL+8kaNE7TA==}
+    engines: {node: '>= 20.16.0'}
+
   json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
+
+  json-rules-engine@7.3.1:
+    resolution: {integrity: sha512-NyRTQZllvAt7AQ3g9P7/t4nIwlEB+EyZV7y8/WgXfZWSlpcDryt1UH9CsoU+Z+MDvj8umN9qqEcbE6qnk9JAHw==}
+    engines: {node: '>=18.0.0'}
 
   json-schema-traverse@0.4.1:
     resolution: {integrity: sha512-xbbCH5dCYU5T8LcEhhuh7HJ88HXuW3qsI3Y0zOZFKfZEHcpWiHU/Jxzk629Brsab/mMiHQti9wMP+845RPe3Vg==}
@@ -2734,6 +2855,11 @@ packages:
 
   jsonfile@4.0.0:
     resolution: {integrity: sha512-m6F1R3z8jjlf2imQHS2Qez5sjKWQzbuuhuJ/FKYFRZvPE3PuHcSMVZzfsLhGVOkfd20obL5SWEBew5ShlquNxg==}
+
+  jsonpath-plus@10.4.0:
+    resolution: {integrity: sha512-T92WWatJXmhBbKsgH/0hl+jxjdXrifi5IKeMY02DWggRxX0UElcbVzPlmgLTbvsPeW1PasQ6xE2Q75stkhGbsA==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   keyv@5.6.0:
     resolution: {integrity: sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw==}
@@ -4387,6 +4513,22 @@ snapshots:
 
   '@conventional-changelog/template@1.4.0': {}
 
+  '@emnapi/core@2.0.0-alpha.6':
+    dependencies:
+      '@emnapi/wasi-threads': 2.2.0
+      tslib: 2.8.1
+    optional: true
+
+  '@emnapi/runtime@2.0.0-alpha.6':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
+  '@emnapi/wasi-threads@2.2.0':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
+
   '@esbuild/aix-ppc64@0.28.2':
     optional: true
 
@@ -4503,6 +4645,46 @@ snapshots:
 
   '@gar/promise-retry@1.0.3': {}
 
+  '@gorules/zen-engine-darwin-arm64@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-darwin-x64@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-linux-arm64-gnu@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-linux-arm64-musl@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-linux-x64-gnu@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-linux-x64-musl@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine-wasm32-wasip1@2.1.7':
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.6
+      '@emnapi/runtime': 2.0.0-alpha.6
+      '@napi-rs/async-runtime': 0.2.0
+      '@napi-rs/wasm-runtime': 1.2.5(@emnapi/core@2.0.0-alpha.6)(@emnapi/runtime@2.0.0-alpha.6)
+    optional: true
+
+  '@gorules/zen-engine-win32-x64-msvc@2.1.7':
+    optional: true
+
+  '@gorules/zen-engine@2.1.7':
+    optionalDependencies:
+      '@gorules/zen-engine-darwin-arm64': 2.1.7
+      '@gorules/zen-engine-darwin-x64': 2.1.7
+      '@gorules/zen-engine-linux-arm64-gnu': 2.1.7
+      '@gorules/zen-engine-linux-arm64-musl': 2.1.7
+      '@gorules/zen-engine-linux-x64-gnu': 2.1.7
+      '@gorules/zen-engine-linux-x64-musl': 2.1.7
+      '@gorules/zen-engine-wasm32-wasip1': 2.1.7
+      '@gorules/zen-engine-win32-x64-msvc': 2.1.7
+
   '@grpc/grpc-js@1.14.6':
     dependencies:
       '@grpc/proto-loader': 0.8.1
@@ -4576,6 +4758,14 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.6.0
 
   '@js-sdsl/ordered-map@4.4.2': {}
+
+  '@jsep-plugin/assignment@1.4.0(jsep@1.6.0)':
+    dependencies:
+      jsep: 1.6.0
+
+  '@jsep-plugin/regex@1.1.0(jsep@1.6.0)':
+    dependencies:
+      jsep: 1.6.0
 
   '@jsonjoy.com/base64@1.1.2(tslib@2.8.1)':
     dependencies:
@@ -4737,6 +4927,8 @@ snapshots:
       globby: 11.1.0
       read-yaml-file: 1.1.0
 
+  '@marcbachmann/cel-js@8.0.0': {}
+
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     optional: true
 
@@ -4755,7 +4947,17 @@ snapshots:
   '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
     optional: true
 
+  '@napi-rs/async-runtime@0.2.0':
+    optional: true
+
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
+    optional: true
+
+  '@napi-rs/wasm-runtime@1.2.5(@emnapi/core@2.0.0-alpha.6)(@emnapi/runtime@2.0.0-alpha.6)':
+    dependencies:
+      '@emnapi/core': 2.0.0-alpha.6
+      '@emnapi/runtime': 2.0.0-alpha.6
+      '@tybys/wasm-util': 0.10.4
     optional: true
 
   '@nestjs/common@11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)':
@@ -5218,6 +5420,11 @@ snapshots:
     optional: true
 
   '@turbo/windows-arm64@2.11.9':
+    optional: true
+
+  '@tybys/wasm-util@0.10.4':
+    dependencies:
+      tslib: 2.8.1
     optional: true
 
   '@types/chai@5.2.3':
@@ -5749,6 +5956,8 @@ snapshots:
       strip-ansi: 7.2.0
       wrap-ansi: 9.0.2
 
+  clone@2.1.2: {}
+
   cluster-key-slot@1.1.1: {}
 
   color-convert@2.0.1:
@@ -6033,6 +6242,8 @@ snapshots:
 
   event-target-shim@5.0.1: {}
 
+  eventemitter2@6.4.9: {}
+
   events-universal@1.0.1:
     dependencies:
       bare-events: 2.9.2
@@ -6224,6 +6435,8 @@ snapshots:
     dependencies:
       has-symbols: 1.1.0
 
+  hash-it@6.0.1: {}
+
   hashery@1.5.1:
     dependencies:
       hookified: 1.15.1
@@ -6360,7 +6573,16 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
+  jsep@1.6.0: {}
+
   json-parse-even-better-errors@2.3.1: {}
+
+  json-rules-engine@7.3.1:
+    dependencies:
+      clone: 2.1.2
+      eventemitter2: 6.4.9
+      hash-it: 6.0.1
+      jsonpath-plus: 10.4.0
 
   json-schema-traverse@0.4.1: {}
 
@@ -6371,6 +6593,12 @@ snapshots:
   jsonfile@4.0.0:
     optionalDependencies:
       graceful-fs: 4.2.11
+
+  jsonpath-plus@10.4.0:
+    dependencies:
+      '@jsep-plugin/assignment': 1.4.0(jsep@1.6.0)
+      '@jsep-plugin/regex': 1.1.0(jsep@1.6.0)
+      jsep: 1.6.0
 
   keyv@5.6.0:
     dependencies:

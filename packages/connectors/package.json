@@ -70,6 +70,10 @@
       "types": "./dist/payments/index.d.ts",
       "default": "./dist/payments/index.js"
     },
+    "./rules": {
+      "types": "./dist/rules/index.d.ts",
+      "default": "./dist/rules/index.js"
+    },
     "./marketplace/*": "./marketplace/*",
     "./policy/*": "./policy/*"
   },
@@ -109,10 +113,12 @@
     "@aws-sdk/client-sesv2": "3.1152.0",
     "@aws-sdk/s3-request-presigner": "3.1152.0",
     "@cerbos/http": "0.30.1",
+    "@gorules/zen-engine": "2.1.7",
     "@infrabyx/config": "workspace:*",
     "@infrabyx/contracts": "workspace:*",
     "@infrabyx/crypto": "workspace:*",
     "@infrabyx/tenancy": "workspace:*",
+    "@marcbachmann/cel-js": "8.0.0",
     "@openfga/sdk": "0.9.7",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/api-logs": "0.223.0",
@@ -132,6 +138,7 @@
     "@temporalio/workflow": "1.24.0",
     "bullmq": "6.3.17",
     "ioredis": "6.0.0",
+    "json-rules-engine": "7.3.1",
     "pg-boss": "12.38.0",
     "unleash-client": "6.12.2",
     "yaml": "2.9.1",

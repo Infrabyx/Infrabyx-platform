@@ -4,7 +4,8 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
-export const PL2_PORTS = [
+/** Ports with adapters under packages/connectors/src/ (PL2's thirteen, then PL3's as they land). */
+export const PORTS = [
   "SECRETS",
   "KMS",
   "OBSERVABILITY",
@@ -18,6 +19,7 @@ export const PL2_PORTS = [
   "SMS",
   "WHATSAPP",
   "PAYMENTS",
+  "RULES",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -49,7 +51,7 @@ export const portPaths = (port) => [
 /** Ports to run for `changed` files; `all` selects every port; `has` says whether a port has adapters. */
 export function selectPorts(changed, { all = false, has = () => true } = {}) {
   const shared = changed.some((f) => SHARED_PATHS.some((p) => f === p || f.startsWith(p)));
-  const picked = PL2_PORTS.filter(
+  const picked = PORTS.filter(
     (port) => all || shared || changed.some((f) => portPaths(port).some((p) => f.startsWith(p))),
   );
   return picked.filter(has);
