@@ -36,9 +36,9 @@ mock_provider "google" {
   }
   mock_resource "google_service_account" {
     defaults = {
-      email  = "mock@infrabyx-mock.iam.gserviceaccount.com"
-      name   = "projects/infrabyx-mock/serviceAccounts/mock@infrabyx-mock.iam.gserviceaccount.com"
-      member = "serviceAccount:mock@infrabyx-mock.iam.gserviceaccount.com"
+      email  = "workload-mock@infrabyx-mock.iam.gserviceaccount.com"
+      name   = "projects/infrabyx-mock/serviceAccounts/workload-mock@infrabyx-mock.iam.gserviceaccount.com"
+      member = "serviceAccount:workload-mock@infrabyx-mock.iam.gserviceaccount.com"
     }
   }
   mock_resource "google_container_cluster" {
