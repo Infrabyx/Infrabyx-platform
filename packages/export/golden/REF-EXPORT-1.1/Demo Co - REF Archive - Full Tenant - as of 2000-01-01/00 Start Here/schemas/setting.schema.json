@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:setting",
+  "title": "setting",
+  "description": "Rows of config.setting_value exported under REF-EXPORT-1.1",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "key": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "tier": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "scope_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "value": {
+      "x-dataclass": "CONFIDENTIAL"
+    },
+    "version": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "updated_by": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "key",
+    "tier",
+    "value",
+    "version",
+    "updated_at",
+    "updated_by"
+  ],
+  "additionalProperties": false
+}

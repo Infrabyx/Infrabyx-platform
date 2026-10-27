@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:membership",
+  "title": "membership",
+  "description": "Rows of tenancy.membership exported under REF-EXPORT-1.1",
+  "type": "object",
+  "properties": {
+    "user_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-dataclass": "INTERNAL"
+    },
+    "entity_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-dataclass": "INTERNAL"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "user_id",
+    "roles",
+    "entity_ids",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

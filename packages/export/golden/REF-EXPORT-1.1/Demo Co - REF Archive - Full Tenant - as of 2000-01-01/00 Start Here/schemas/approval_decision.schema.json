@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.1:approval_decision",
+  "title": "approval_decision",
+  "description": "Rows of tenancy.approval_decision exported under REF-EXPORT-1.1",
+  "type": "object",
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "maker_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "decision": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "decision_label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "PUBLIC"
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "request_id",
+    "maker_id",
+    "decision",
+    "decided_at"
+  ],
+  "additionalProperties": false
+}

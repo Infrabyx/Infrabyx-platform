@@ -6,11 +6,11 @@ import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import { LocalKms, SecretKey, sha256Hex, verifyDetachedJws } from "@infrabyx/crypto";
-import { PgOutbox } from "@infrabyx/tenancy";
+import { ApprovalsEngine, PgOutbox } from "@infrabyx/tenancy";
 import { platformSeedModule, runSeed } from "@infrabyx/seed";
 import { MemoryStorage, startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
 import { REF_EXPORT_MAP } from "../maps.js";
-import { ExportService, kmsArchiveSigner } from "../service.js";
+import { ARCHIVE_AVAILABLE_DAYS, ExportService, kmsArchiveSigner } from "../service.js";
 import { readZip } from "../zip.js";
 
 const kms = new LocalKms();
@@ -19,6 +19,8 @@ let db: TestDatabase;
 let svc: ExportService;
 const storage = new MemoryStorage();
 const events: Array<Record<string, unknown>> = [];
+const enqueued: string[] = [];
+let approvals: ApprovalsEngine;
 const tmp = mkdtempSync(join(tmpdir(), "ipb-export-int-"));
 
 const ctx = (id: string, roles: string[], tenantId = "tnt_demo"): KernelContext =>
@@ -42,7 +44,12 @@ beforeAll(async () => {
     randomSeed: 20261025,
     runDate: new Date("2026-10-01T00:00:00Z"),
   } as never);
+  approvals = new ApprovalsEngine({ kernel: db.kernel, audit: db.audit, product: "REF" });
   svc = new ExportService({
+    approvals,
+    enqueue: async (_tenantId, jobId) => {
+      enqueued.push(jobId);
+    },
     kernel: db.kernel,
     audit: db.audit,
     storage,
@@ -69,7 +76,7 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
     const job = await svc.request(owner, { scope: { type: "FULL_TENANT" } });
     expect(job.state).toBe("requested");
     const done = await svc.run("tnt_demo", job.id);
-    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.0" });
+    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.1" });
     const arc = (
       await db.admin.query<{
         id: string;
@@ -193,5 +200,102 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
       .rows[0]!;
     const other = ctx("usr_01M5XQT0PRXMKBEGFFSHNHTA65", ["ORG_OWNER"], "tnt_sandbox");
     expect(await code(svc.download(other, arc.id))).toMatch(/NotFound|not found|IPB-/i);
+  });
+
+  it("@PL3-EXPORT-ADMIN an ORG_ADMIN export runs only after an ORG_OWNER approves it (OWNER-QUESTIONS #24)", async () => {
+    const admin = ctx("usr_01M5XQT0PRXMKBEGFFSHNHTA66", ["ORG_ADMIN"]);
+    const otherAdmin = ctx("usr_01M5XQT0PRXMKBEGFFSHNHTA67", ["ORG_ADMIN"]);
+    expect(await code(svc.request(admin, { scope: { type: "FULL_TENANT" } }))).toBe("IPB-EXP-005");
+    const { approvalId } = await svc.submit(admin, { scope: { type: "DATASET", ref: "tenant" } });
+    expect(
+      (await db.admin.query("select 1 from export.export_job where approval_id = $1", [approvalId]))
+        .rowCount,
+    ).toBe(0);
+    // Only an ORG_OWNER checks it; another ORG_ADMIN may not.
+    expect(await code(approvals.decide(otherAdmin, approvalId, "approve"))).not.toBeNull();
+    await approvals.decide(owner, approvalId, "approve");
+    const job = (
+      await db.admin.query<{ id: string; requester_id: string; requester_role: string }>(
+        "select id, requester_id, requester_role from export.export_job where approval_id = $1",
+        [approvalId],
+      )
+    ).rows[0]!;
+    expect(job).toMatchObject({ requester_id: admin.principal.id, requester_role: "ORG_ADMIN" });
+    // The sweep enqueues approved jobs that have not started (after a grace minute).
+    await db.admin.query(
+      "update export.export_job set created_at = now() - interval '2 minutes' where id = $1",
+      [job.id],
+    );
+    enqueued.length = 0;
+    expect((await svc.sweep()).enqueued).toBeGreaterThanOrEqual(1);
+    expect(enqueued).toContain(job.id);
+    const done = await svc.run("tnt_demo", job.id);
+    expect(done).toMatchObject({ state: "completed", approvalId });
+    const arc = (
+      await db.admin.query<{ id: string; storage_key: string }>(
+        "select id, storage_key from export.archive where job_id = $1",
+        [job.id],
+      )
+    ).rows[0]!;
+    const files = readZip((await storage.get(arc.storage_key)).body);
+    const manifest = JSON.parse(
+      files
+        .get([...files.keys()].find((p) => p.endsWith("00 Start Here/manifest.json"))!)!
+        .toString("utf8"),
+    );
+    expect(manifest.approvers).toHaveLength(1);
+    expect(manifest.approvers[0]).toMatch(/^sha256:/);
+    // The requesting ORG_ADMIN downloads it; another ORG_ADMIN may not, nor may they download an
+    // ORG_OWNER's own export; ORG_MEMBER never submits.
+    expect((await svc.download(admin, arc.id)).url).toMatch(/^memory:/);
+    expect(await code(svc.download(otherAdmin, arc.id))).toBe("IPB-EXP-005");
+    const ownArc = (
+      await db.admin.query<{ id: string }>(
+        "select a.id from export.archive a join export.export_job j on j.id = a.job_id where j.approval_id is null limit 1",
+      )
+    ).rows[0]!;
+    expect(await code(svc.download(admin, ownArc.id))).toBe("IPB-EXP-005");
+    const member = ctx("usr_01M5XQT0PRXMKBEGFFSHNHTA62", ["ORG_MEMBER"]);
+    expect(await code(svc.submit(member, { scope: { type: "FULL_TENANT" } }))).toBe("IPB-EXP-005");
+  });
+
+  it("@PL3-EXPORT-EXPIRY an archive is downloadable for 30 days, then deleted and the deletion ledgered", async () => {
+    const arc = (
+      await db.admin.query<{ id: string; sha256: string; storage_key: string; days: number }>(
+        `select id, sha256, storage_key,
+                round(extract(epoch from expires_at - created_at) / 86400)::int as days
+           from export.archive order by created_at limit 1`,
+      )
+    ).rows[0]!;
+    expect(arc.days).toBe(ARCHIVE_AVAILABLE_DAYS);
+    expect((await svc.sweep()).deleted).toBe(0);
+    await db.admin.query(
+      "update export.archive set expires_at = now() - interval '1 second' where id = $1",
+      [arc.id],
+    );
+    // Past its time it is refused at once, even before the sweep runs.
+    expect(await code(svc.download(owner, arc.id))).toBe("IPB-EXP-006");
+    const r = await svc.sweep();
+    expect(r.deleted).toBe(1);
+    expect(await code(storage.get(arc.storage_key))).not.toBeNull();
+    const del = await db.admin.query<{ reason: string }>(
+      "select reason from export.archive_deletion where archive_id = $1",
+      [arc.id],
+    );
+    expect(del.rows).toEqual([{ reason: "expired" }]);
+    const ledger = await db.admin.query<{ resource_id: string }>(
+      "select resource_id from audit.ledger where action = 'export.archive.delete'",
+    );
+    expect(ledger.rows.map((x) => x.resource_id)).toEqual([`${arc.id}:${arc.sha256}`]);
+    // The sweep's cross-tenant reads are ledgered in the tenant they touched.
+    const reads = await db.admin.query<{ n: number }>(
+      `select count(*)::int as n from audit.ledger
+        where tenant_id = 'tnt_demo' and action = 'platform.service_read'
+          and resource_id in ('export.export_job', 'export.archive')`,
+    );
+    expect(reads.rows[0]!.n).toBeGreaterThan(0);
+    // A second sweep finds nothing; downloads stay refused.
+    expect((await svc.sweep()).deleted).toBe(0);
+    expect(await code(svc.download(owner, arc.id))).toBe("IPB-EXP-006");
   });
 });

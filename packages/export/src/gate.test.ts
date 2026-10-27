@@ -158,7 +158,7 @@ describe("@IPB-09-AT-14 export map gate", () => {
 });
 
 describe("export maps", () => {
-  it("REF-EXPORT-1.0 matches the platform migrations", async () => {
+  it("REF-EXPORT-1.1 matches the platform migrations", async () => {
     const { readdirSync, readFileSync, existsSync } = await import("node:fs");
     const root = new URL("../../", import.meta.url);
     const all = readdirSync(root)

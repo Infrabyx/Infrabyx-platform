@@ -1,4 +1,4 @@
-// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.0` for
+// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.1` for
 // `apps/reference` and the demo seed, and a registry products add their `<PRODUCT>-EXPORT-x.y` maps
 // to. During the dual run (`eng.export.dual_run_days`, floor 90) the previous map is emitted as well.
 import { readFileSync } from "node:fs";
@@ -11,7 +11,12 @@ export function loadExportMap(path: string | URL): ExportMap {
   return ExportMap.parse(JSON.parse(readFileSync(path, "utf8")));
 }
 
+/** The current reference map. 1.1 (PL3-D-25) changes only the README: it adds the IST export time. */
 export const REF_EXPORT_MAP: ExportMap = loadExportMap(
+  new URL("../maps/REF-EXPORT-1.1.json", import.meta.url),
+);
+/** The previous reference map, still emitted during the dual run. */
+export const REF_EXPORT_MAP_1_0: ExportMap = loadExportMap(
   new URL("../maps/REF-EXPORT-1.0.json", import.meta.url),
 );
 
