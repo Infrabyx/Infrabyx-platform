@@ -90,7 +90,7 @@ export const BrandPackBody = z
     logo: z
       .object({
         svg: MediaRef,
-        /** PNG sizes from an uploaded PNG master until a raster library is approved (#43). */
+        /** PNG sizes rasterised from the SVG through the MEDIA port (#53), or an uploaded PNG master. */
         png: z.partialRecord(z.enum(["32", "64", "180", "192", "512"]), MediaRef).default({}),
         dark_variant: MediaRef.optional(),
       })
