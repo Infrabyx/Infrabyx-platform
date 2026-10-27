@@ -4,7 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-None (27 Oct 2026). New questions are added here with the default taken.
+| #   | Decision | Question                                                                                                 | Default taken                                                                                                                                                                | Impact if changed                                                                                                                                                                                    | How to reverse                                                                                              | Blocks  |
+| --- | -------- | -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------- |
+| 21  | PL3-D-18 | RULES defaults: who reviews an UNDETERMINED decision, and is one ledger entry per evaluation acceptable? | One Work Inbox task per UNDETERMINED decision, assigned to the tenant's `ORG_ADMIN` role; one `rules.decision.record` ledger entry per evaluation (besides the decision log) | A different role or a per-rule-set owner changes only the inbox assignee; dropping the per-decision ledger entry would need the decision log itself to count as the audit record (an IPB-02 reading) | `undeterminedAssignee` option or a per-set setting; the ledger entry is one call in `RulesService.evaluate` | Nothing |
 
 ## Answered
 

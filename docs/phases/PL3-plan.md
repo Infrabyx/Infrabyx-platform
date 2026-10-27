@@ -147,11 +147,11 @@ Engine-neutral JSON, schema in `contracts`:
 
 Engine adapters compile this format:
 
-| Adapter                    | Role               | Engine                                                      | Notes                                                                                        |
-| -------------------------- | ------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `zen` (reference)          | GoRules ZEN        | `@gorules/zen-engine`, JDM compiled from the table          | Native NAPI binary: spike checks Node 24.22.1 prebuilds, licence and the 7-day rule [VERIFY] |
-| `json-rules` (alternative) | json-rules-engine  | `json-rules-engine` with CEL conditions as custom operators | Pure JavaScript; kept green in CI                                                            |
-| memory fake                | second alternative | direct CEL row walk                                         | `@infrabyx/testing`, allowed by IPB-01 §01.4.4.0                                             |
+| Adapter                    | Role               | Engine                                                      | Notes                                                                                           |
+| -------------------------- | ------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `zen` (reference)          | GoRules ZEN        | `@gorules/zen-engine`, JDM compiled from the table          | Native NAPI binary: spike checks Node 24.22.1 prebuilds, licence and the 7-day rule [VERIFY]    |
+| `json-rules` (alternative) | json-rules-engine  | `json-rules-engine` with CEL conditions as custom operators | Pure JavaScript; kept green in CI                                                               |
+| memory fake                | second alternative | direct CEL row walk                                         | `connectors/rules` (CEL is a vendor import), allowed by IPB-01 §01.4.4.0 _(as built, PL3-D-18)_ |
 
 - **CEL:** a single pinned library chosen in the session-1 spike: `@marcbachmann/cel-js` or `cel-js` [VERIFY licence, maintenance, cost limits]. It runs under `rules.cel.max_cost`.
 - **Placement** (assumption A-01): the engine adapters live in `packages/connectors/src/rules/`, so `vendor-import` stays unchanged. The `rules` package holds the store, publish flow, decision log and service. IPB-01 says the reference is "in `packages/rules`": the service is, and the engine binding sits behind the port in `connectors`.
