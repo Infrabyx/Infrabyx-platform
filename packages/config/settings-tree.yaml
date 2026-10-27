@@ -2583,3 +2583,1639 @@ keys:
       mc: false,
       source: "IPB-03 \u00a703.5",
     }
+
+  # ---------------------------------------------------------------- PL5: website kit (PL5 plan §8)
+  - {
+      key: web.site.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.site.default_locale,
+      tier: BRAND,
+      type: locale,
+      default: "en-IN",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.site.locales,
+      tier: BRAND,
+      type: "string[]",
+      default: ["en-IN", "hi-IN"],
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      note: "hi-IN later for the group site (OWN-11)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.site.timezone,
+      tier: PLATFORM,
+      type: string,
+      default: "Asia/Kolkata",
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.indexnow.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      note: "the IndexNow adapter stays none until the owner approves the external call (PL5 #49)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.llms_txt.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.health.schedule_cron,
+      tier: PLATFORM,
+      type: string,
+      default: "0 2 * * *",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.budget.lcp_ms,
+      tier: PLATFORM,
+      type: int,
+      default: 2500,
+      tighten: "max",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.budget.cls,
+      tier: PLATFORM,
+      type: decimal,
+      default: 0.1,
+      tighten: "max",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.seo.budget.inp_ms,
+      tier: PLATFORM,
+      type: int,
+      default: 200,
+      tighten: "max",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.pricing.public,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      note: "false for the group pack (PL5 plan §5.8)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.pricing.gst_display,
+      tier: BRAND,
+      type: enum,
+      values: [exclusive_labelled, inclusive],
+      default: "exclusive_labelled",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      note: "UDF inclusive",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.pricing.contact_sales_threshold,
+      tier: BRAND,
+      type: json,
+      default: null,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.pricing.catalogue_cache_seconds,
+      tier: PLATFORM,
+      type: int,
+      default: 300,
+      max: 300,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      note: "false for the group pack and OH (OWN-11)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.user_posts.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.user_posts.eligible_roles,
+      tier: BRAND,
+      type: "string[]",
+      default: ["ORG_OWNER", "ORG_ADMIN", "ORG_MEMBER"],
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.user_posts.min_account_age_days,
+      tier: BRAND,
+      type: int,
+      default: 30,
+      min: 30,
+      tighten: "min",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.user_posts.daily_limit,
+      tier: BRAND,
+      type: int,
+      default: 3,
+      max: 3,
+      tighten: "max",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.comments.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.blog.feed.full_text,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.vlog.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.vlog.require_captions,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.resources.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.resources.review_due_months,
+      tier: BRAND,
+      type: int,
+      default: 12,
+      max: 12,
+      tighten: "max",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.resources.expired_behaviour,
+      tier: BRAND,
+      type: enum,
+      values: [banner, withdraw],
+      default: "banner",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.investors.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "false for the group site (OWN-11)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.docs.url,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.status_page.url,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.footer.group_url,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.consent.geo_detect,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_DPO],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.consent.region_default,
+      tier: BRAND,
+      type: enum,
+      values: [IN, EU, US-CA, OTHER],
+      default: "IN",
+      change: [PLT_DPO],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.consent.reprompt_on_change,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.consent.cookie_ttl_days,
+      tier: PLATFORM,
+      type: int,
+      default: 365,
+      max: 365,
+      tighten: "max",
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: web.consent.honour_gpc,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.review.stale_days,
+      tier: PLATFORM,
+      type: int,
+      default: 365,
+      max: 365,
+      tighten: "max",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.preview.ttl_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      max: 24,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.publish.legal_review_types,
+      tier: PLATFORM,
+      type: "string[]",
+      default:
+        ["legal_page", "pricing_copy", "footer", "redirect", "brand_pack", "investors", "trust"],
+      tighten: "superset",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      note: "may only add",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.import.max_files,
+      tier: PLATFORM,
+      type: int,
+      default: 200,
+      max: 200,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.import.max_bytes,
+      tier: PLATFORM,
+      type: int,
+      default: 524288000,
+      max: 524288000,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.import.zip_ratio_max,
+      tier: PLATFORM,
+      type: int,
+      default: 10,
+      max: 10,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.import.plagiarism_adapter,
+      tier: PLATFORM,
+      type: string,
+      default: "none",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.media.formats,
+      tier: PLATFORM,
+      type: "string[]",
+      default: ["avif", "webp", "jpeg"],
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.media.widths,
+      tier: PLATFORM,
+      type: json,
+      default: [320, 640, 960, 1280, 1920],
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.media.max_upload_mb,
+      tier: PLATFORM,
+      type: int,
+      default: 200,
+      max: 200,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.media.reencode_enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      note: "off until a native image library is approved (PL5 #43)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.soft_delete.restore_days,
+      tier: PLATFORM,
+      type: int,
+      default: 30,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "no purge job in PL5 (PL5 #48)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: cms.blocks.mermaid.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: cms.blocks.mermaid.max_nodes,
+      tier: PLATFORM,
+      type: int,
+      default: 200,
+      max: 200,
+      tighten: "max",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: cms.blocks.mermaid.require_long_description,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: brand.app_name,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.terminology,
+      tier: BRAND,
+      type: json,
+      default: {},
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.contrast.min_text,
+      tier: PLATFORM,
+      type: decimal,
+      default: 4.5,
+      min: 4.5,
+      tighten: "min",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.contrast.min_ui,
+      tier: PLATFORM,
+      type: decimal,
+      default: 3.0,
+      min: 3.0,
+      tighten: "min",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.fonts.self_hosted_only,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.email.require_dmarc,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: brand.hosts.unknown_behaviour,
+      tier: PLATFORM,
+      type: enum,
+      values: [default_pack_noindex, reject],
+      default: "default_pack_noindex",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.tag_manager.adapter,
+      tier: BRAND,
+      type: enum,
+      values: [none, gtm_web, gtm_server],
+      default: "none",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "none at launch (OWN-09); DPO veto",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.tag_manager.container_id,
+      tier: BRAND,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.analytics.adapter,
+      tier: BRAND,
+      type: enum,
+      values: [none, posthog_selfhosted, matomo, plausible, ga4],
+      default: "none",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "none at launch; self-hosted PostHog later (OWN-09)",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.pixels.enabled,
+      tier: BRAND,
+      type: "string[]",
+      default: [],
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "DPO veto",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.sensitive_routes,
+      tier: PLATFORM,
+      type: "string[]",
+      default:
+        [
+          "/contact",
+          "/careers/*/apply",
+          "/grievance",
+          "/dpa-request",
+          "/resources/*/download",
+          "/trust/request",
+        ],
+      tighten: "superset",
+      change: [PLT_DPO],
+      mc: R2,
+      note: "locked list plus additions; may only add",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.attribution.window_days,
+      tier: BRAND,
+      type: int,
+      default: 90,
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.forms.retain_payload_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 0,
+      max: 72,
+      change: [PLT_DPO],
+      mc: R2,
+      note: "0: field values are never stored (PL5 #47); IPB-04 allows up to 72",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.webhooks,
+      tier: BRAND,
+      type: json,
+      default: [],
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: mkt.ab.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: fb.widget.floating,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [OPS_PRODUCT],
+      mc: false,
+      note: "false on public sites, true in apps",
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: fb.nps.interval_days,
+      tier: PLATFORM,
+      type: int,
+      default: 90,
+      min: 90,
+      tighten: "min",
+      change: [OPS_PRODUCT],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: fb.screenshot.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: fb.idea_board.enabled,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [OPS_PRODUCT],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: tut.public_route_enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-04 §04.5",
+    }
+  - {
+      key: hlp.motion.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: hlp.motion.max_seconds,
+      tier: PLATFORM,
+      type: int,
+      default: 90,
+      max: 90,
+      tighten: "max",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: hlp.motion.autoplay,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: pol.notice_days,
+      tier: BRAND,
+      type: int,
+      default: 30,
+      min: 30,
+      tighten: "min",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.reconsent.terms_class_keys,
+      tier: PLATFORM,
+      type: "string[]",
+      default: ["terms", "payment_terms", "ugc_terms"],
+      tighten: "superset",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.reconsent.notice_class_keys,
+      tier: PLATFORM,
+      type: "string[]",
+      default: ["privacy", "ai_policy"],
+      tighten: "superset",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.refusal_mode,
+      tier: PLATFORM,
+      type: enum,
+      values: [read_only_with_export],
+      default: "read_only_with_export",
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.full_hindi,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: false,
+      note: "UDF true; Hindi later for the group site (OWN-11)",
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.gdpr_annex,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.ccpa_annex,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.dpa_clickwrap,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: "pol.review_cadence_months.{policy_key}",
+      tier: PLATFORM,
+      type: int,
+      default: 12,
+      max: 12,
+      tighten: "max",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: false,
+      note: "6 for privacy, cookie, retention and ai_policy",
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.refund.rule,
+      tier: PLAN,
+      type: enum,
+      values: [prorated, none_after_window, full_within_window],
+      default: "full_within_window",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.refund.window_days,
+      tier: PLAN,
+      type: int,
+      default: 7,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.refund.timeline_days_min,
+      tier: BRAND,
+      type: int,
+      default: 5,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.refund.timeline_days_max,
+      tier: BRAND,
+      type: int,
+      default: 7,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.trial.auto_convert,
+      tier: PLAN,
+      type: bool,
+      default: false,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.billing.renewal_notice_days,
+      tier: BRAND,
+      type: int,
+      default: 7,
+      min: 7,
+      tighten: "min",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.billing.dunning_days,
+      tier: BRAND,
+      type: json,
+      default: [3, 7, 14],
+      change: [OPS_BILLING_ADMIN],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.billing.grace_days,
+      tier: BRAND,
+      type: int,
+      default: 14,
+      change: [OPS_BILLING_ADMIN],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.grievance.ack_hours,
+      tier: BRAND,
+      type: int,
+      default: 48,
+      max: 48,
+      tighten: "max",
+      change: [PLT_GRIEVANCE_OFFICER],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.grievance.resolve_days,
+      tier: BRAND,
+      type: int,
+      default: 30,
+      max: 30,
+      tighten: "max",
+      change: [PLT_GRIEVANCE_OFFICER],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.grievance.intermediary_ack_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.grievance.intermediary_resolve_days,
+      tier: PLATFORM,
+      type: int,
+      default: 15,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.dpa.exit_assistance_days,
+      tier: PLAN,
+      type: int,
+      default: 90,
+      min: 90,
+      tighten: "min",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.dpa.subprocessor_notice_days,
+      tier: PLATFORM,
+      type: int,
+      default: 30,
+      min: 30,
+      tighten: "min",
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.vdp.bounty,
+      tier: BRAND,
+      type: enum,
+      values: [none, discretionary, programme_url],
+      default: "none",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.vdp.disclosure_days,
+      tier: PLATFORM,
+      type: int,
+      default: 90,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.ugc.licence,
+      tier: BRAND,
+      type: enum,
+      values: [non_exclusive_perpetual, non_exclusive_term],
+      default: "non_exclusive_perpetual",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.resources.default_licence,
+      tier: BRAND,
+      type: enum,
+      values: [personal_internal, cc_by_nd, custom],
+      default: "personal_internal",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: false,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.dispute.odr_mandatory,
+      tier: BRAND,
+      type: bool,
+      default: false,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.dispute.arbitration,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      note: "B2B true; consumer packs false",
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: pol.liability_cap_formula,
+      tier: PLAN,
+      type: string,
+      default: "fees_12_months",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-05 §05.5",
+    }
+  - {
+      key: a11y.display.theme,
+      tier: USER,
+      type: enum,
+      values: [system, light, dark, hc_light, hc_dark],
+      default: "system",
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.text.scale,
+      tier: USER,
+      type: int,
+      default: 100,
+      min: 100,
+      max: 200,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.text.font,
+      tier: USER,
+      type: enum,
+      values: [default, lexend, opendyslexic],
+      default: "default",
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.text.line_spacing,
+      tier: USER,
+      type: enum,
+      values: [normal, relaxed, loose],
+      default: "normal",
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.focus.enhanced,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.cursor.large,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.tts.enabled,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.tts.rate,
+      tier: USER,
+      type: decimal,
+      default: 1.0,
+      min: 0.5,
+      max: 2.0,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.tts.voice,
+      tier: USER,
+      type: string,
+      default: null,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.charts.sonification,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.captions.enabled,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.captions.language,
+      tier: USER,
+      type: locale,
+      default: null,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.captions.style,
+      tier: USER,
+      type: json,
+      default: { "size": "medium", "background": "opaque" },
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.alerts.visual,
+      tier: USER,
+      type: bool,
+      default: true,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.alerts.haptic,
+      tier: USER,
+      type: bool,
+      default: true,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.alerts.sound,
+      tier: USER,
+      type: bool,
+      default: true,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.isl.preferred,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.motion.reduced,
+      tier: USER,
+      type: enum,
+      values: [system, on, off],
+      default: "system",
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.timeouts.multiplier,
+      tier: USER,
+      type: int,
+      default: 1,
+      min: 1,
+      max: 10,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.keyboard.enabled,
+      tier: USER,
+      type: bool,
+      default: true,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.keyboard.single_key_enabled,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.keyboard.remaps,
+      tier: USER,
+      type: json,
+      default: {},
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.reading.plain_language,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      note: "UDF borrower true",
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.reading.easy_read,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      note: "UDF borrower true",
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.ui.simple_mode,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.forms.confirm_leave,
+      tier: USER,
+      type: bool,
+      default: true,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.locale.native_numerals,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.voice.guidance,
+      tier: USER,
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      note: "UDF borrower true",
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.isl.lead_time_hours,
+      tier: TENANT,
+      type: int,
+      default: 48,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.isl.roster_source,
+      tier: TENANT,
+      type: enum,
+      values: [internal, external],
+      default: "internal",
+      change: [ORG_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.live_captions.enabled,
+      tier: TENANT,
+      type: bool,
+      default: true,
+      mc_deactivate: "R2",
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.live_captions.adapter,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "India-resident adapter; none until approved",
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.gov_facing,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.feedback.ack_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      max: 24,
+      tighten: "max",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.feedback.workaround_days,
+      tier: PLATFORM,
+      type: int,
+      default: 5,
+      max: 5,
+      tighten: "max",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.feedback.fix_days,
+      tier: PLATFORM,
+      type: json,
+      default: { "p1": 30, "other": 90 },
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.ci.lighthouse_min,
+      tier: PLATFORM,
+      type: int,
+      default: 95,
+      min: 95,
+      tighten: "min",
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      note: "may not be lowered below 95",
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.ci.axe_tags,
+      tier: PLATFORM,
+      type: "string[]",
+      default: ["wcag2a", "wcag2aa", "wcag22aa"],
+      tighten: "superset",
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.statement.auto_publish,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.statement.reviewer_role,
+      tier: PLATFORM,
+      type: string,
+      default: "PLT_LEGAL_REVIEWER",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.locales.required,
+      tier: BRAND,
+      type: "string[]",
+      default: ["en", "hi"],
+      tighten: "superset",
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.at_matrix,
+      tier: PLATFORM,
+      type: json,
+      default:
+        ["NVDA+Firefox", "NVDA+Chrome", "JAWS+Chrome", "VoiceOver+Safari", "TalkBack+Chrome"],
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: a11y.artefacts.alt_required,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: a11y.artefacts.captions_required,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: tut.isl.required_tutorials,
+      tier: PLATFORM,
+      type: "string[]",
+      default: [],
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-06 §06.5",
+    }
+  - {
+      key: trust.sor.product,
+      tier: PLATFORM,
+      type: string,
+      default: "OH",
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.gating.nda_version,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.download.url_ttl_s,
+      tier: PLATFORM,
+      type: int,
+      default: 300,
+      max: 300,
+      tighten: "max",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R2,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.mirror.stale_minutes,
+      tier: PLATFORM,
+      type: int,
+      default: 60,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.mirror.fallback_enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.retention.years,
+      tier: PLATFORM,
+      type: int,
+      default: 10,
+      min: 8,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      note: "no purge job in PL5 (PL5 #48)",
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.claims.enforce,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.trust_centre.enabled,
+      tier: BRAND,
+      type: bool,
+      default: true,
+      mc_deactivate: "R2",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.trust_centre.sections,
+      tier: BRAND,
+      type: json,
+      default: null,
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.subprocessors.notice_days,
+      tier: PLATFORM,
+      type: int,
+      default: 30,
+      min: 30,
+      tighten: "min",
+      change: [PLT_DPO],
+      mc: R2,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.tenant.view_roles,
+      tier: TENANT,
+      type: "string[]",
+      default: ["ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR_RO"],
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: trust.financials.gating,
+      tier: PLATFORM,
+      type: string,
+      default: "per_tenant",
+      locked: true,
+      change: [],
+      mc: false,
+      source: "IPB-08 §08.5",
+    }
+  - {
+      key: res.review.claims_required_for_public,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      tighten: true,
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: res.review.legal_required_kinds,
+      tier: PLATFORM,
+      type: "string[]",
+      default: ["deck_pricing", "deck_investor", "comparative"],
+      tighten: "superset",
+      change: [PLT_LEGAL_REVIEWER],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: res.export.formats_allowed,
+      tier: PLATFORM,
+      type: json,
+      default:
+        {
+          "doc": ["md", "pdf", "docx"],
+          "deck": ["pptx", "pdf", "png"],
+          "design": ["png", "svg", "pdf"],
+          "diagram": ["mmd", "svg", "png"],
+          "motion": ["webm", "mp4", "vtt", "png"],
+        },
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      source: "IPB-13 §13.5",
+    }
+  - {
+      key: eco.v12.emit_enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "off until every product owner records v1.2 approval (PL5 #46)",
+      source: "Ecosystem §6.1 (A) rule; PL5 plan §3.6",
+    }
