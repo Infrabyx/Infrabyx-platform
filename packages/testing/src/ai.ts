@@ -28,7 +28,7 @@ export interface FakeAiOptions {
 }
 
 const residencyTag = (r: AiResidency): AiAdapterDescriptor["residency"] =>
-  r === "IN" || r === "SELF" ? "IN-ZR" : "GLOBAL";
+  r === "SELF" ? "IN" : r === "IN" ? "IN-ZR" : "GLOBAL";
 
 function descriptor(port: string, o: FakeAiOptions): AiAdapterDescriptor {
   const region = o.region ?? null;

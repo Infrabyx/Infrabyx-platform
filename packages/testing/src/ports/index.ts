@@ -3,4 +3,5 @@
 export * from "./sandbox.js";
 export * from "./fault-proxy.js";
 export * from "./rules.js";
+export * from "./ai.js";
 export * from "../stubs/index.js";
