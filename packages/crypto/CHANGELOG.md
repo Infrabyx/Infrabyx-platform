@@ -1,5 +1,22 @@
 # @infrabyx/crypto
 
+## 0.4.0
+
+### Minor Changes
+
+- f6e9a88: C-24 widened to Vertex AI (owner approval OWNER-QUESTIONS #27, PL4-C-01): `VERTEX_SCOPE` and `GOOGLE_ASSERTION_SCOPES`. `signServiceAccountAssertion` now signs only for the approved Google scopes (FCM and cloud-platform) and only with Google's token endpoint as audience; any other scope or audience throws.
+
+### Patch Changes
+
+- Updated dependencies [2b07109]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [200b25a]
+- Updated dependencies [9af583a]
+- Updated dependencies [288ae44]
+- Updated dependencies [b205b1d]
+- Updated dependencies [183c532]
+  - @infrabyx/contracts@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

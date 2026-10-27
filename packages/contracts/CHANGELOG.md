@@ -1,5 +1,24 @@
 # @infrabyx/contracts
 
+## 0.4.0
+
+### Minor Changes
+
+- 2b07109: `IPB-EXP-006` (export archive expired and deleted, 410) and the `SVC_EXPORT_SWEEP` service reader
+  role (PL3-D-25).
+- f6e9a88: Service reader role `SVC_AI_RUN_SWEEP` (`ai.run`: id, tenant and time only) for the AI run retention sweep (OWNER-QUESTIONS #30, PL4-D-05).
+- 200b25a: PL4 session 1 (PL4-D-02):
+
+  - AI port interfaces LLM, EMBEDDING, IMAGE_GEN, SPEECH and RERANK (`ports/ai.ts`): data blocks, tools, usage, residency and retention, routing bands, the provenance sidecar and `AiProviderError`;
+  - `@infrabyx/contracts/vidhi`: the skill-manifest schema, autonomy levels, task states and locked-action categories;
+  - the IPB-03 §03.6.3 error codes (`IPB-AI-001` takes the IPB-03 meaning; PR-024), plus `IPB-AI-032`;
+  - new ids, the `AGT_VIDHI` role and the `in.<p>.ai.*` and `in.<p>.vidhi.*` event names and payloads.
+
+- 9af583a: The `FeedbackReceived` payload schema (`FeedbackReceivedData`, PL4-D-11).
+- 288ae44: The `NotebookOutputCreated` payload schema (`NotebookOutputCreatedData`, PL4-D-10).
+- b205b1d: Payload schemas for the Vidhi events: `TaskStateChangedData`, `VidhiApprovalRequestedData`, `ActionExecutedData`, `LockedActionAttemptedData` and `AutonomyChangedData` (PL4 session 6).
+- 183c532: The service reader role `SVC_VIDHI_SCHED` (due Vidhi schedules) and the `ScheduleRunSkipped` payload schema with `SCHEDULE_SKIP_REASONS` (PL4-D-09).
+
 ## 0.3.0
 
 ### Minor Changes
