@@ -1,0 +1,12 @@
+{
+  "prompt_key": "ai.summarise",
+  "version": "1.0.0",
+  "content_sha256": "70254f2cb29027d7485297d6c3e7dd9447b476589061f96f9f2fa3d218194e7d",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 36,
+  "passed": 36,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}

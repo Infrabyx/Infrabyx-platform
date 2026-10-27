@@ -1,6 +1,6 @@
 // startPostgres (PL1 plan §10): a fresh PostgreSQL database with the roles and every platform
 // migration applied. IPB_TEST_PG_URL points at an existing server (CI service container); without
-// it a postgres:18 container starts through Testcontainers.
+// it a PostgreSQL 18 container with pgvector starts through Testcontainers.
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import { envUrl, envVar, validateEnv } from "@infrabyx/config/env";
 import { randomBytes, toHex } from "@infrabyx/crypto";
 import { PgKernel } from "@infrabyx/tenancy";
 import { migrate, platformSources, type MigrationSource } from "@infrabyx/tenancy/migrate";
+import { TEST_IMAGES } from "./containers.js";
 
 const testEnv = z.object({
   APP_ENV: envVar(z.string(), {
@@ -49,6 +50,9 @@ export interface TestDatabase {
   end(): Promise<void>;
 }
 
+/** PostgreSQL 18 with pgvector, as CI's integration job runs it (PL4 plan §4.9). */
+export const PG_TEST_IMAGE = TEST_IMAGES.pgvector.image;
+
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 async function serverUrl(image: string): Promise<{ url: string; stop?: () => Promise<void> }> {
@@ -61,7 +65,7 @@ async function serverUrl(image: string): Promise<{ url: string; stop?: () => Pro
 }
 
 export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestDatabase> {
-  const server = await serverUrl(o.image ?? "postgres:18");
+  const server = await serverUrl(o.image ?? PG_TEST_IMAGE);
   const name = `t_${toHex(randomBytes(6))}`;
   const root = new pg.Client({ connectionString: server.url });
   await root.connect();

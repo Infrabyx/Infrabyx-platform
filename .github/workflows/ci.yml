@@ -48,6 +48,8 @@ jobs:
     # rls-lint, integration, at-report (job `integration`, PostgreSQL 18 service).
     # PL2 adds routing-check here and the port-contract workflow (port-contract.yml).
     # PL3 adds notify-lint and export-map-gate here and golden-archive-diff in `integration`.
+    # PL4 adds ai-prompt-lint and ai-eval-gate here, and runs `integration` on PostgreSQL 18 with
+    # pgvector.
     # Still to add: e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
     # change-class.
     runs-on: ubuntu-24.04
@@ -125,6 +127,10 @@ jobs:
         run: pnpm routing:check
       - name: notify-lint (PL3 plan §6.2; notification catalogue)
         run: pnpm notify:lint
+      - name: ai-prompt-lint (IPB-03-25, 03-40; golden set per prompt, no inline prompt text)
+        run: pnpm ai:prompt-lint
+      - name: ai-eval-gate (IPB-03-41; golden sets on the scripted fake model, baseline and committed results)
+        run: pnpm ai:eval-gate
       - name: export-map-gate (IPB-09-34, @IPB-09-AT-14; IPB-ENG-006)
         if: github.event_name == 'pull_request'
         env:
@@ -172,13 +178,14 @@ jobs:
       - name: consumer-smoke (pack, clean install, import every export)
         run: node scripts/consumer-smoke.mjs
   integration:
-    # IPB-01 §01.4.10: integration tests run against real PostgreSQL 18 (IPB-D-02).
+    # IPB-01 §01.4.10: integration tests run against real PostgreSQL 18 (IPB-D-02), with pgvector for
+    # AI retrieval (PL4 plan §4.9; image pinned by digest, PL4 spike §4).
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
     services:
       postgres:
-        image: postgres:18
+        image: pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
         env:
           POSTGRES_PASSWORD: postgres
         ports:
@@ -205,7 +212,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
       - name: build
         run: pnpm build
-      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules → workflow → notify → export, checksums in meta.migration_checksums)
+      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules → workflow → notify → export → ai, checksums in meta.migration_checksums)
         run: node packages/tenancy/dist/migrate/cli.js --db "$IPB_TEST_PG_URL"
       - name: rls-lint (IPB-02-12; every tenant table enabled + forced + tenant policy, no BYPASSRLS)
         run: node packages/tenancy/dist/rls-lint/cli.js --db "$IPB_TEST_PG_URL"

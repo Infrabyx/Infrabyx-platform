@@ -14,9 +14,14 @@
     },
     "./package.json": "./package.json"
   },
+  "bin": {
+    "infrabyx-ai": "./dist/cli.js"
+  },
   "files": [
     "dist",
     "migrations",
+    "prompts",
+    "evals",
     "README.md"
   ],
   "scripts": {
@@ -24,7 +29,9 @@
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "typecheck": "tsc -p tsconfig.json",
-    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
+    "ai:prompt-lint": "node dist/cli.js prompt-lint --root ../..",
+    "ai:eval": "node dist/cli.js eval"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -39,16 +46,19 @@
     "node": "24.22.1"
   },
   "dependencies": {
+    "@infrabyx/audit": "workspace:*",
     "@infrabyx/config": "workspace:*",
     "@infrabyx/contracts": "workspace:*",
     "@infrabyx/crypto": "workspace:*",
     "@infrabyx/tenancy": "workspace:*",
-    "@opentelemetry/api": "1.9.1"
+    "@opentelemetry/api": "1.9.1",
+    "pg": "8.23.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "@infrabyx/audit": "workspace:*",
     "@infrabyx/seed": "workspace:*",
     "@infrabyx/testing": "workspace:*",
-    "@opentelemetry/sdk-trace-base": "2.12.0"
+    "@opentelemetry/sdk-trace-base": "2.12.0",
+    "@types/pg": "8.23.1"
   }
 }

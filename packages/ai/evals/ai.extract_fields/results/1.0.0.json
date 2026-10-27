@@ -1,0 +1,12 @@
+{
+  "prompt_key": "ai.extract_fields",
+  "version": "1.0.0",
+  "content_sha256": "3ab0d49716e556abab385ec2d1d539890a4f075460e337ff7fd874378f1bf67a",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 36,
+  "passed": 36,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}

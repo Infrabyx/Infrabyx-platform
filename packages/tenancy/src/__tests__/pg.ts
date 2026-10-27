@@ -1,5 +1,5 @@
 // Integration-test database: a fresh database per call on the server named by
-// IPB_TEST_PG_URL (CI provides a postgres:18 service). @infrabyx/testing adds Testcontainers.
+// IPB_TEST_PG_URL (CI provides a PostgreSQL 18 service with pgvector). @infrabyx/testing adds Testcontainers.
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import pg from "pg";

@@ -6,7 +6,7 @@ The test kit every product installs as a devDependency: a PostgreSQL test databa
 
 ## Database
 
-`startPostgres({ migrations? })` creates a fresh database, applies the platform migrations (tenancy → audit → config → seed → connectors) then the product's, and returns `{ pool, admin, kernel, audit, end }`. With `IPB_TEST_PG_URL` set (CI's `postgres:18` service) it uses that server; otherwise it starts a `postgres:18` container through Testcontainers. `APP_ENV` defaults to `test`.
+`startPostgres({ migrations? })` creates a fresh database, applies the platform migrations (tenancy → audit → config → seed → connectors) then the product's, and returns `{ pool, admin, kernel, audit, end }`. With `IPB_TEST_PG_URL` set (CI's PostgreSQL 18 service with pgvector) it uses that server; otherwise it starts the pinned `pgvector` image (PostgreSQL 18 with pgvector) through Testcontainers. `APP_ENV` defaults to `test`.
 
 ## NN pattern suites (IPB-14 §14.5 item 4)
 

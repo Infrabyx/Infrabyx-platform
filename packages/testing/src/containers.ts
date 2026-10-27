@@ -22,6 +22,12 @@ export const TEST_IMAGES = {
     version: "18",
     role: "platform PostgreSQL; pg-boss",
   },
+  pgvector: {
+    image:
+      "pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c",
+    version: "PostgreSQL 18, pgvector 0.8.1",
+    role: "platform PostgreSQL with vector search (startPostgres, CI integration; PL4)",
+  },
   pgbouncer: {
     image:
       "edoburu/pgbouncer@sha256:8638aa563607256d3c7440437534195f1066a92b68015d89ae9d6b935b444a6d",
