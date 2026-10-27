@@ -53,6 +53,12 @@ export const KILL_SWITCHES = [
     "Disable outbound messaging on one channel",
     "^kill\\.msg\\.[a-z][a-z0-9_-]*$",
   ),
+  // NOTIFY channels (PL3 plan §3.5); exact keys so flags.defaults.json lists them.
+  kill("kill.msg.email", "Disable outbound email"),
+  kill("kill.msg.sms", "Disable outbound SMS"),
+  kill("kill.msg.whatsapp", "Disable outbound WhatsApp"),
+  kill("kill.msg.push", "Disable push notifications"),
+  kill("kill.msg.inapp", "Disable in-app notifications"),
   kill("kill.payments", "Disable checkout and payment collection"),
   kill("kill.payouts", "Disable payouts"),
   kill("kill.signup", "Disable public sign-up"),

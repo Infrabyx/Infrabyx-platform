@@ -1,5 +1,6 @@
-// Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports are
-// in this folder; the rest land with the phase that builds their adapters (PL1-D-02, PL2 plan §1).
+// Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports and
+// the four PL3 ports (RULES, NOTIFY, PUSH, ESIGN) are in this folder; the rest land with the phase
+// that builds their adapters (PL1-D-02, PL2 plan §1, PL3 plan §10).
 
 export type PortTier = 0 | 1 | 2 | 3;
 
@@ -37,7 +38,7 @@ export const PORT_CATALOGUE = {
     ownerFile: "IPB-01",
     interfaceDefined: true,
   },
-  PUSH: { tier: 2, configPrefix: "int.push.", ownerFile: "IPB-01", interfaceDefined: false },
+  PUSH: { tier: 2, configPrefix: "int.push.", ownerFile: "IPB-01", interfaceDefined: true },
   VOICE: { tier: 2, configPrefix: "int.voice.", ownerFile: "IPB-01", interfaceDefined: false },
   PAYMENTS: {
     tier: 1,
@@ -46,7 +47,7 @@ export const PORT_CATALOGUE = {
     interfaceDefined: true,
   },
   PAYOUTS: { tier: 1, configPrefix: "int.payouts.", ownerFile: "IPB-01", interfaceDefined: false },
-  ESIGN: { tier: 2, configPrefix: "int.esign.", ownerFile: "IPB-01", interfaceDefined: false },
+  ESIGN: { tier: 2, configPrefix: "int.esign.", ownerFile: "IPB-01", interfaceDefined: true },
   ESTAMP: { tier: 2, configPrefix: "int.estamp.", ownerFile: "IPB-01", interfaceDefined: false },
   KYC: { tier: 2, configPrefix: "int.kyc.", ownerFile: "IPB-01", interfaceDefined: false },
   COMPANY_DATA: {
@@ -128,7 +129,7 @@ export const PORT_CATALOGUE = {
   },
   DNS_CDN: { tier: 1, configPrefix: "int.dns_cdn.", ownerFile: "IPB-01", interfaceDefined: false },
   GEO_MAPS: { tier: 3, configPrefix: "int.geo.", ownerFile: "IPB-01", interfaceDefined: false },
-  RULES: { tier: 2, configPrefix: "rules.", ownerFile: "IPB-01", interfaceDefined: false },
+  RULES: { tier: 2, configPrefix: "rules.", ownerFile: "IPB-01", interfaceDefined: true },
   BILLING: { tier: 1, configPrefix: "int.billing.", ownerFile: "IPB-01", interfaceDefined: false },
   CRM: { tier: 2, configPrefix: "int.crm.", ownerFile: "IPB-01", interfaceDefined: false },
   // Supplementary ports (IPB-01 §01.4.4.3)
@@ -139,7 +140,7 @@ export const PORT_CATALOGUE = {
     ownerFile: "IPB-06",
     interfaceDefined: false,
   },
-  NOTIFY: { tier: 2, configPrefix: "int.notify.", ownerFile: "IPB-07", interfaceDefined: false },
+  NOTIFY: { tier: 2, configPrefix: "int.notify.", ownerFile: "IPB-07", interfaceDefined: true },
   TRUST: { tier: 2, configPrefix: "int.trust.", ownerFile: "IPB-08", interfaceDefined: false },
   SUPPORT: { tier: 3, configPrefix: "int.support.", ownerFile: "IPB-04", interfaceDefined: false },
   BACKLOG: { tier: 3, configPrefix: "int.backlog.", ownerFile: "IPB-04", interfaceDefined: false },

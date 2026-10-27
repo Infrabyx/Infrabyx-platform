@@ -66,7 +66,7 @@ for (const k of doc.keys) {
   if (!k.locked && !Array.isArray(k.change))
     errors.push(`${k.key}: change roles required unless locked`);
   if (!k.source) errors.push(`${k.key}: source required`);
-  if (k.tighten && !["min", "max", "superset", true, false].includes(k.tighten))
+  if (k.tighten && !["min", "max", "superset", "subset", true, false].includes(k.tighten))
     errors.push(`${k.key}: bad tighten ${k.tighten}`);
 }
 const nodes = doc.tree.map((n) => n.n);

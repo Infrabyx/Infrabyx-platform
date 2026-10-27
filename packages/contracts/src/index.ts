@@ -13,3 +13,4 @@ export * from "./kernel.js";
 export * from "./ports/index.js";
 export * from "./routing.js";
 export * from "./connector-manifest.js";
+export * from "./export.js";

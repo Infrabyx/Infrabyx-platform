@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { IpbError } from "@infrabyx/contracts/errors";
 import { FlagAdmin } from "./admin.js";
-import { FlagService, SNAPSHOT_MAX_AGE_MS } from "./evaluator.js";
+import {
+  ALERT_THROTTLE_MS,
+  FlagService,
+  SNAPSHOT_MAX_AGE_MS,
+  type FlagAlert,
+} from "./evaluator.js";
 import { MemoryFlagProvider, MemorySnapshotStore } from "./providers.js";
 import {
   FUT_REGISTER,
@@ -251,5 +256,64 @@ describe("flags.defaults.json (IPB-12-03)", () => {
       await readFile(new URL("../../flags.defaults.json", import.meta.url), "utf8"),
     ) as Record<string, boolean>;
     expect(committed).toEqual(defaultFlagRegistry.defaults());
+  });
+});
+
+describe("persisted snapshot and provider alert (PL3-D-13)", () => {
+  it("boot persists a snapshot, and a restart during an outage loads it", async () => {
+    const store = new MemorySnapshotStore();
+    const provider = new MemoryFlagProvider({ "kill.msg.sms": false });
+    const first = new FlagService({ provider, snapshots: store });
+    expect(await first.boot()).toBe("provider");
+    expect(await store.load()).not.toBeNull();
+
+    provider.down = true;
+    const alerts: FlagAlert[] = [];
+    const restarted = new FlagService({
+      provider,
+      snapshots: store,
+      onAlert: (a) => alerts.push(a),
+    });
+    expect(await restarted.boot()).toBe("snapshot");
+    expect(await restarted.evaluate("kill.msg.sms")).toMatchObject({
+      value: false,
+      source: "snapshot",
+    });
+    expect(alerts.map((a) => `${a.key}:${a.servedFrom}`)).toEqual([
+      "*:snapshot",
+      "kill.msg.sms:snapshot",
+    ]);
+    expect(alerts.every((a) => a.alert === "ops.flags.provider_unreachable")).toBe(true);
+  });
+  it("boot with no provider and no snapshot reports none, and kill switches stay on", async () => {
+    const provider = new MemoryFlagProvider();
+    provider.down = true;
+    const alerts: FlagAlert[] = [];
+    const svc = new FlagService({
+      provider,
+      snapshots: new MemorySnapshotStore(),
+      onAlert: (a) => alerts.push(a),
+    });
+    expect(await svc.boot()).toBe("none");
+    expect(await svc.isOn("kill.msg.email")).toBe(true);
+    expect(alerts.map((a) => a.servedFrom)).toEqual(["none", "safe-state"]);
+  });
+  it("throttles the alert to one per key per window", async () => {
+    let now = Date.parse("2026-10-27T00:00:00Z");
+    const provider = new MemoryFlagProvider();
+    provider.down = true;
+    const alerts: FlagAlert[] = [];
+    const svc = new FlagService({ provider, now: () => now, onAlert: (a) => alerts.push(a) });
+    await svc.evaluate("kill.msg.push");
+    await svc.evaluate("kill.msg.push");
+    await svc.evaluate("kill.msg.inapp");
+    expect(alerts).toHaveLength(2);
+    now += ALERT_THROTTLE_MS;
+    await svc.evaluate("kill.msg.push");
+    expect(alerts).toHaveLength(3);
+  });
+  it("registers the five NOTIFY kill switches as exact keys", () => {
+    for (const c of ["email", "sms", "whatsapp", "push", "inapp"])
+      expect(defaultFlagRegistry.defaults()).toHaveProperty(`kill.msg.${c}`, false);
   });
 });

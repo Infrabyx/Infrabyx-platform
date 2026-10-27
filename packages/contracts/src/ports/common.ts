@@ -81,6 +81,10 @@ export const PL2_PORTS = [
 ] as const;
 export type Pl2Port = (typeof PL2_PORTS)[number];
 
+/** The ports whose interfaces PL3 adds (PL3 plan §10). */
+export const PL3_PORTS = ["RULES", "NOTIFY", "PUSH", "ESIGN"] as const;
+export type Pl3Port = (typeof PL3_PORTS)[number];
+
 /** Default data class of a call when the caller states none (plan §3.1). */
 export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Object.freeze({
   EMAIL: "INTERNAL",
@@ -90,6 +94,7 @@ export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Obje
   FEATURE_FLAG: "INTERNAL",
   OBSERVABILITY: "INTERNAL",
   PAYMENTS: "REGULATED",
+  PUSH: "INTERNAL",
 });
 
 /** Port default data class; CONFIDENTIAL for every port not listed (plan §3.1). */

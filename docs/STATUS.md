@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 1** (2026-10-27). Patch 0.1.1 published; owner answers #7–#17 applied (PL3-D-04 to PL3-D-14); spike done (PL3-D-15); contracts and config in progress. Continuous build mode (PL2-D-41)                                                           |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
-| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                       |
+| Item                  | Value                                                                                                                                                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 session 1 done** (2026-10-27): patch 0.1.1 published; owner answers #7–#17 applied (PL3-D-04 to PL3-D-14); spike (PL3-D-15); contracts and config (PL3-D-16). Next: PL3 session 2 (`rules` and the `zen` and `json-rules` adapters). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                      |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)             |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                        |
+| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                   |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -146,7 +146,25 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- PL3 session 1: spike, then contracts and config (PL3 plan §12).
+- PL3 session 2: the `rules` package (store, publish through approvals at R4, decision log, simulation, `explain`), and the `connectors/rules` adapters `zen` (`@gorules/zen-engine` 2.1.7) and `json-rules` (`json-rules-engine` 7.3.1) with CEL from `@marcbachmann/cel-js` 8.0.0 (PL3 plan §4, PL3-D-15).
+- Then sessions 3–7 as in plan §12.
+
+## PL3 session 1 (2026-10-27)
+
+- `@infrabyx/contracts` (minor):
+  - the RULES, NOTIFY, PUSH and ESIGN port interfaces;
+  - the notification catalogue schema;
+  - `HumanQueue` and the Work Inbox item types;
+  - the export map (`requiredMapBump`) and `ArchiveManifestV1` (subpath `./export`);
+  - ten id prefixes and `IPB-NTF-002`–`006`;
+  - `IPB-UX-012`, the new events and the Ecosystem payloads `MarketingConsentUpdated`, `ExportRequested` and `ExportCompleted` (PL3-D-16).
+- `@infrabyx/config` (minor):
+  - 17 new settings: `rules.*`, `int.push.*`, `int.notify.dedupe_window_h`, `workflow.timers.engine`, `eng.export.*`, and the tighten-only `mc.*` keys (PL3-D-08);
+  - the new tighten mode `subset`;
+  - exact `kill.msg.*` switches for the five channels;
+  - `FlagService.boot()` and `onAlert` (PL3-D-13).
+- `@infrabyx/testing` (patch): the PUSH default class in `ipb/port-data-class`.
+- Products: nothing to change until the PL3 gate. The new keys and flags ship with the next minor releases.
 
 ## PL2 session 7 (2026-10-27)
 

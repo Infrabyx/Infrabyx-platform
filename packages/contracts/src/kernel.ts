@@ -95,3 +95,42 @@ export interface ApprovalRequestInput {
 export interface ApprovalGateway {
   request(tx: Tx, input: ApprovalRequestInput): Promise<{ id: string }>;
 }
+
+/** Work Inbox item types (IPB-07 §07.4.9). */
+export const INBOX_ITEM_TYPES = [
+  "task",
+  "approval",
+  "mention",
+  "suggestion",
+  "due",
+  "job_failed",
+] as const;
+export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number];
+
+export interface InboxItemInput {
+  type: InboxItemType;
+  /** Raising module, e.g. "rules", "notify", "payments". */
+  productModule: string;
+  /** Id of the record the item is about (`dcs_…`, `dlv_…`, `apr_…`). */
+  recordRef: string;
+  /** INTERNAL text only; no personal data (IPB-07 §07.4.9). */
+  title: string;
+  /** A user id or a role name. */
+  assignee: { kind: "user" | "role"; id: string };
+  severity?: "info" | "warning" | "critical";
+  /** Machine hint for the screen, e.g. "confirm_resend", "review_undetermined". */
+  actionHint?: string;
+  deepLink: string;
+  helpKey: string;
+  dueAt?: string;
+  /** Set for Vidhi suggestions, so the item is labelled AI (PL4). */
+  fromAgent?: boolean;
+}
+
+/**
+ * Raises a Work Inbox item inside the caller's transaction (PL3 plan §5.3). `workflow` implements it;
+ * `notify`, `rules` and `connectors` depend only on this interface, so no package imports `workflow`.
+ */
+export interface HumanQueue {
+  raise(tx: Tx, item: InboxItemInput): Promise<{ id: string }>;
+}

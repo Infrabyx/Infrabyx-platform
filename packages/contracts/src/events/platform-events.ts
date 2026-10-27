@@ -15,6 +15,9 @@ export const PLATFORM_EVENTS = {
   ApprovalDecided: { module: "security", name: "ApprovalDecided" },
   ApprovalExecuted: { module: "security", name: "ApprovalExecuted" },
   ApprovalCancelled: { module: "security", name: "ApprovalCancelled" },
+  // PL3-D-07 (PR-019): expiry and escalation of maker-checker requests
+  ApprovalExpired: { module: "security", name: "ApprovalExpired" },
+  ApprovalEscalated: { module: "security", name: "ApprovalEscalated" },
   BreakGlassGranted: { module: "security", name: "BreakGlassGranted" },
   BreakGlassRevoked: { module: "security", name: "BreakGlassRevoked" },
   ImpersonationStarted: { module: "security", name: "ImpersonationStarted" },
@@ -36,6 +39,15 @@ export const PLATFORM_EVENTS = {
   AdapterRecovered: { module: "platform", name: "AdapterRecovered" },
   ResidencyViolationBlocked: { module: "platform", name: "ResidencyViolationBlocked" },
   RoutingConfigChanged: { module: "platform", name: "RoutingConfigChanged" },
+  // PL3 (plan §10)
+  RuleSetPublished: { module: "rules", name: "RuleSetPublished" },
+  NotificationDigestSent: { module: "ntf", name: "NotificationDigestSent" },
+  NotificationHeld: { module: "ntf", name: "NotificationHeld" },
+  ItemCreated: { module: "inbox", name: "ItemCreated" },
+  ItemResolved: { module: "inbox", name: "ItemResolved" },
+  ExportMapBumped: { module: "eng", name: "ExportMapBumped" },
+  GoldenArchiveDrift: { module: "eng", name: "GoldenArchiveDrift" },
+  FlagProviderUnreachable: { module: "eng", name: "FlagProviderUnreachable" },
 } as const;
 export type PlatformEventName = keyof typeof PLATFORM_EVENTS;
 

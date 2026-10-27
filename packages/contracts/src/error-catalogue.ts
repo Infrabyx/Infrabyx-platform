@@ -354,6 +354,11 @@ export const ERROR_CATALOGUE = {
     title: "Principal may not change this setting at this tier",
     source: "PL1-D-08 (PR-005)",
   },
+  "IPB-UX-012": {
+    status: 410,
+    title: "Approval request expired; raise it again",
+    source: "PL3-D-07 (PR-019)",
+  },
   "IPB-HLP-001": {
     status: "ci",
     title: "Missing help key or key not in registry",
@@ -403,6 +408,31 @@ export const ERROR_CATALOGUE = {
     status: 422,
     title: "Attempt to disable a mandatory notification class",
     source: "IPB-07 §07.6.3",
+  },
+  "IPB-NTF-002": {
+    status: 422,
+    title: "Unknown notification class",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-NTF-003": {
+    status: 422,
+    title: "No deliverable channel after preferences, consent and suppression",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-NTF-004": {
+    status: 503,
+    title: "Notification channel is switched off by its kill switch",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-NTF-005": {
+    status: 202,
+    title: "Resend held for review",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-NTF-006": {
+    status: 422,
+    title: "Push payload carries more than a title, a deep link and INTERNAL data",
+    source: "PL3 plan §10 (PR-017)",
   },
   "IPB-CST-001": {
     status: 403,

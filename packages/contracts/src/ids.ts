@@ -26,6 +26,16 @@ export const ID_PREFIXES = {
   brd: "brand pack (IPB-D-10)",
   idm: "port idempotency record (PL2 plan §3.5)",
   rvk: "revoked session or user (IDENTITY, IPB-02-05)",
+  rls: "rule set (RULES, PL3)",
+  dcs: "rule decision (RULES decision log)",
+  sca: "scheduled action (workflow timers, IPB-02-80)",
+  ibx: "Work Inbox item (IPB-07 §07.4.9)",
+  ntf: "notification (NOTIFY)",
+  dlv: "notification delivery (NOTIFY)",
+  sup: "suppression entry (NOTIFY)",
+  exj: "export job (export)",
+  arc: "export archive (Ecosystem entity 40)",
+  esr: "e-sign envelope (ESIGN)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 
