@@ -17,3 +17,5 @@ export * from "./scheduler.js";
 export * from "./purge.js";
 export { cmsServiceContext } from "./repo.js";
 export * from "./brand-hook.js";
+export * from "./policy-template.js";
+export * from "./policies.js";
