@@ -8,7 +8,7 @@ Updated: 2026-10-27
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                      |
 | Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)             |
 | Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                        |
-| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                   |
+| Working branch        | `claude/optimistic-heisenberg-w0jdgf` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                           |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -62,6 +62,39 @@ SHA-512 integrity values are in `docs/phases/PL2-gate-A.md` §6 (registry values
 - Release (PR #10, PL1-D-18): 0.1.0 of the seven packages published by `release.yml` run 10, tags `@infrabyx/<pkg>@0.1.0` pushed.
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
+
+## Handover (2026-10-27, end of the session that built the 0.1.1 patch and PL3 session 1)
+
+**Done (merged).**
+
+- #42 and #43: the plain-Node ESM fix and `consumer-smoke` (PL3-D-02); `@infrabyx/connectors@0.1.1` published by release run 32.
+- #44: owner answers #7–#17 recorded and applied to the PL3 plan (PL3-D-04 to PL3-D-14); the spike (PL3-D-15); registry checksums corrected (#17 closed); PR-018 and PR-019.
+- #45: PL3 session 1, the contracts and config (PL3-D-16).
+
+**Next: PL3 session 2**, the `rules` package and the `connectors/rules` adapters. The design was worked out in this session but no code was written:
+
+- **Dependencies** (in `connectors` only, exact pins, all at least 7 days old): `@gorules/zen-engine` 2.1.7, `@marcbachmann/cel-js` 8.0.0, `json-rules-engine` 7.3.1. The ZEN prebuild needs no build script. `json-rules-engine` and the CEL library load in plain Node through named imports. `consumer-smoke` must stay green.
+- **CEL subset compiled to both engines.** Parse each row's `when` with a cel-js `Environment` that carries the structural limits (`maxAstNodes` = `rules.cel.max_cost`). Lower the AST (`{ op, args }`; ops `id`, `value`, `list`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!_`, `in`; int literals are `bigint`) to a small IR covering and, or, not, a comparison of a declared input with a literal (either side), `in` a literal list, a bare boolean input, and a constant. Anything else is refused when the draft is validated, so both engines always run the same rows.
+- **ZEN.** One decision-table node; its single input column has no `field`, so each cell is a whole expression (`a == "x" and b >= 10 and not (c in ["X","Y"])`). Outputs are JSON literals, plus a `_rule` output column carrying the row id. `first` returns `{}` on no match; `collect` returns an array; both were tested in the spike. String literals are limited to characters without `"`, `\` or newlines. A missing input evaluates to false without an error, so the service validates the input against the declared inputs first; an invalid input is `UNDETERMINED`, reason `input_invalid`.
+- **json-rules-engine.** One rule per row, with conditions as `all`/`any`/`not` trees of `{ fact, operator, value }` and `allowUndefinedFacts`. For `first`, pick the matching row with the lowest index.
+- **Memory engine:** direct CEL row walk, placed in `connectors/rules` (not `testing`), because CEL is a vendor import and `testing` cannot import it. A differential test proves that all three engines agree on a fixture table.
+- **`RulesPort` change** (contracts minor, unreleased): `evaluate`, `listRuleSets`, `publish`, `simulate` and `explain` take a `KernelContext` first, because the service runs inside tenancy.
+- **Errors:** register `IPB-RULE-001` (rule set invalid, 422), `-002` (no effective version, 404) and `-003` (version not a draft, 409), with source "PL3 plan §10 (PR-017)", as `IPB-UX-011` was registered under PR-005.
+- **Migration `rules/0001_init.sql`:** `rule_set`, `rule_set_version` (with a body-immutability trigger outside `draft`), `decision_log` and `simulation_run`, with RLS forced. Platform rule sets in `tnt_platform` are readable by every tenant and writable only in platform scope. Add `@infrabyx/rules` (and later `workflow`, `notify`, `export`) to `PLATFORM_MIGRATION_PACKAGES` in `tenancy/src/migrate/index.ts`, the root `migration:lint` paths and `migrations/checksums.json`.
+- **Service:**
+  - drafts are validated by compiling them on every engine;
+  - `publish` creates an R4 approval `rules.ruleset.publish` with the payload `{ ruleSetId, version, digest }` and registers the executor that publishes the version and retires the previous one;
+  - after evaluation, a matched `verify` row that drives a statutory output makes the decision `UNDETERMINED` (reason `verify_row`);
+  - engine errors, timeouts and limit overruns are `UNDETERMINED` and raise `HumanQueue.raise({ type: "task", productModule: "rules", actionHint: "review_undetermined" })`;
+  - every decision is logged (inputs above INTERNAL sealed with FieldCrypto), and `explain` and `@IPB-07-AT-11` read the log.
+- **CI:** add `RULES` (and later `PUSH`, `ESIGN`) to `PL2_PORTS` in `scripts/port-matrix.mjs` (rename the list to `PORTS`). In-process engines have no sandbox leg, so they are not listed in `sandbox-status.json`.
+- Flip `@infrabyx/rules` to publishable in its first changeset (0.1.0, PL1-D-20).
+
+**Branch and PR state.** No PR is open, and `main` is at `2725b6c`. `claude/optimistic-heisenberg-w0jdgf` equals `main` once this handover merges.
+
+**Open questions:** #18 (FCM token minting), #19 (Leegality HMAC-SHA1) and #20 (snapshot age). Defaults are in use and nothing is blocked.
+
+**Local environment.** The sandbox has Node 22, so download Node 24.22.1 into the scratchpad and check it against `SHASUMS256.txt`, as this session did. `consumer-smoke` needs network access to npmjs.
 
 ## Patch 0.1.1 and owner answers (2026-10-27)
 
