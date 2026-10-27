@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 2 done** (2026-10-27): owner answers #18–#20 applied (PL3-C-01 C-24, PL3-C-02 C-25, PL3-D-17); `rules` package and the RULES engine adapters `zen`, `json-rules` and the CEL row walk (PL3-D-18). Next: PL3 session 3 (`workflow` and `tenancy/0002`). Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)                                       |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                                                  |
-| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                               |
+| Item                  | Value                                                                                                                                                                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 session 3 done** (2026-10-27): `workflow` (Work Inbox, scheduled actions, timers, reminders, escalation, expiry, bulk decide, `RefundApprovals`) and `tenancy/0002` (PL3-D-19). Next: PL3 session 4 (`notify` and the PUSH adapters). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                       |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20)              |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                                         |
+| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                      |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -179,8 +179,17 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- PL3 session 3: `workflow` (scheduled actions and delay windows, timers on Temporal and PostgreSQL, the Work Inbox and `HumanQueue`, approval expiry, reminders and escalation per PL3-D-07, `mc.*` per PL3-D-08, bulk decide, `RefundApprovals`) and migration `tenancy/0002`.
-- Then sessions 4–7 as in plan §12.
+- PL3 session 4: `notify` (catalogue and lint, routing, preferences, quiet hours and digest, resend classes, suppression with C-23, marketing consent, in-app, `kill.msg.*`, the `approval.reminder` and `approval.escalated` classes behind `ApprovalNotifier`) and the PUSH adapters `expo` and `fcm` (C-24 token minting in `@infrabyx/crypto`).
+- Then sessions 5–7 as in plan §12.
+
+## PL3 session 3 (2026-10-27)
+
+- `@infrabyx/tenancy` (minor), migration `tenancy/0002_approvals_pl3.sql` (expand-only): request expiry (7 days; 72 hours for R4, R5 and financial R3), terminal through `expired_at` and a trigger; `remind`, `escalate` (to `ORG_ADMIN`, never decides) and `expire`; `IPB-UX-012`; the checker `diff`; the tighten-only `tenantPolicy` hook (`mc.checker_roles`, `mc.dual_checker_above`); `PLT_SECURITY_OFFICER` may cancel; same-transaction `observers`.
+- `@infrabyx/workflow` 0.1.0 (first release at the PL3 gate), migration `workflow/0001_init.sql`: `createWorkflow`; the Work Inbox (`InboxService`, the `HumanQueue`); scheduled actions (`IPB-UX-005` early, cancel by maker, `ORG_OWNER` or `PLT_SECURITY_OFFICER`); durable timers (PostgreSQL poller and reconciler; optional Temporal); reminders, escalation and expiry by timer; `decideMany` (`IPB-UX-006`); `settingsApprovalPolicy`; `engineRefundApprovals`. Tests on PostgreSQL 18: `@IPB-07-AT-06`, `-07`, `-09`, `-10` (backend), `@IPB-02-AT-11/12` through the workflow, `@NN-45`.
+- `@infrabyx/connectors` (minor): `TemporalTimers`, the `ipbTimer` workflow and `timerActivities`, proven in the WORKFLOW hermetic leg. `@infrabyx/contracts` (minor): `TimerEngine`, `ApprovalRequestInput.diff`. `@infrabyx/config` (minor): setting approvals carry the diff.
+- Deferred: `awaitApproval` to PL4 with Vidhi; reminder and escalation notifications go through `ApprovalNotifier` until NOTIFY (session 4).
+- New owner question #22 (the timer poller's read-only platform context); defaults in use, nothing blocked.
+- Products at the PL3 gate: install `@infrabyx/workflow`, build the engine with `createWorkflow` instead of `new ApprovalsEngine`, run `timers.start()` in one worker process (and, with `workflow.timers.engine = temporal`, a timer worker on `TIMER_WORKFLOWS_PATH`), register money actions with `financial: true`, pass `engineRefundApprovals` to PAYMENTS, and run `infrabyx-migrate` (tenancy 0002, workflow 0001).
 
 ## PL3 session 2 (2026-10-27)
 
