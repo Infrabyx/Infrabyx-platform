@@ -37,7 +37,6 @@ module "kms" {
 
 module "secrets" {
   source      = "../secrets"
-  name        = local.name
   region      = var.region_primary
   region_dr   = var.region_dr
   path_prefix = local.secrets

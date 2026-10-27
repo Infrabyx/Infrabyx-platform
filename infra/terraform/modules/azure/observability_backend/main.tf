@@ -47,3 +47,10 @@ resource "azurerm_storage_container" "this" {
   storage_account_id    = azurerm_storage_account.telemetry.id
   container_access_type = "private"
 }
+
+resource "azurerm_management_lock" "telemetry" {
+  name       = "${azurerm_storage_account.telemetry.name}-lock"
+  scope      = azurerm_storage_account.telemetry.id
+  lock_level = "CanNotDelete"
+  notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the containers"
+}

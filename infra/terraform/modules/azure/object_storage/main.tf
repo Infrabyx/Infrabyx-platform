@@ -70,3 +70,11 @@ resource "azurerm_storage_container" "objects" {
   storage_account_id    = azurerm_storage_account.this[each.key].id
   container_access_type = "private"
 }
+
+resource "azurerm_management_lock" "this" {
+  for_each   = local.names
+  name       = "${each.value}-lock"
+  scope      = azurerm_storage_account.this[each.key].id
+  lock_level = "CanNotDelete"
+  notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the containers"
+}

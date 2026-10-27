@@ -27,3 +27,11 @@ plugin "google" {
 rule "terraform_unused_required_providers" {
   enabled = false
 }
+
+# Deletion protection on Azure is the platform's own: CanNotDelete management locks on the
+# storage accounts, key vaults and the PostgreSQL server (a lock covers their child resources),
+# plus purge protection on the vaults. prevent_destroy cannot vary per environment and would stop
+# `tofu test` from cleaning up its mock resources.
+rule "azurerm_resources_missing_prevent_destroy" {
+  enabled = false
+}

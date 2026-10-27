@@ -30,6 +30,7 @@ OpenTofu modules per cloud with one output contract (IPB-01-34, §01.4.9; PL6 pl
 - **AKS:** private API server unless `admin_cidrs` is set, local accounts off, Azure RBAC, workload identity, the Key Vault CSI driver, Cilium network policy, encryption at host, control-plane logs. etcd uses Azure's platform-managed encryption (PL6-D-06).
 - **Secrets:** a separate vault; OpenTofu creates no secret (Key Vault needs a value). The bootstrap writes `secrets-<env>-db-app-rw`, `-redis-url` and `-k8s-kubeconfig`; each workload identity reads this vault only.
 - **Registry:** ACR Premium, no admin user or anonymous pull, a geo-replica in southindia, CMK, untagged manifests purged after 30 days; the kubelet identity pulls.
+- **Deletion protection:** `CanNotDelete` locks on every storage account, key vault and the PostgreSQL server, which cover their containers, keys, secrets and database (PL6-D-07).
 - **Break-glass:** off by default; named Entra groups get AKS cluster admin while enabled (time-bound elevation is Entra PIM).
 
 ## What the GCP modules set

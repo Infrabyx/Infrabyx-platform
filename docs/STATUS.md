@@ -23,7 +23,7 @@ Updated: 2026-10-27
 
 ## PL6 session 3c (2026-10-27)
 
-- **tflint 0.64.0** with the Terraform recommended preset and the AWS 0.49.0, AzureRM 0.32.0 and Google 0.40.0 rulesets, installed from pinned versions by `scripts/ci/infra-tools.sh` and run over every module and stack in the `infra` job (`infra/terraform/.tflint.hcl`). The GCP network and workload-identity modules lose a `tags` input they never used.
+- **tflint 0.64.0** with the Terraform recommended preset and the AWS 0.49.0, AzureRM 0.32.0 and Google 0.40.0 rulesets, installed from pinned versions by `scripts/ci/infra-tools.sh` and run over every module and stack in the `infra` job (`infra/terraform/.tflint.hcl`). Four unused inputs are removed (GCP network, workload identity and secrets; Azure DNS), and the Azure storage accounts and key vaults get `CanNotDelete` locks like the PostgreSQL server (PL6-D-07).
 - **Next:** session 4, `apps/reference` `api` and `worker`.
 
 ## PL6 session 3b (2026-10-27, PL6-D-06)

@@ -69,3 +69,11 @@ resource "azurerm_role_assignment" "cmk" {
   principal_id         = azurerm_user_assigned_identity.cmk.principal_id
   principal_type       = "ServicePrincipal"
 }
+
+resource "azurerm_management_lock" "vault" {
+  for_each   = local.vaults
+  name       = "${azurerm_key_vault.this[each.key].name}-lock"
+  scope      = azurerm_key_vault.this[each.key].id
+  lock_level = "CanNotDelete"
+  notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the keys"
+}
