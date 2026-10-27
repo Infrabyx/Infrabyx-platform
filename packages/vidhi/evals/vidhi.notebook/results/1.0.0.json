@@ -1,0 +1,12 @@
+{
+  "prompt_key": "vidhi.notebook",
+  "version": "1.0.0",
+  "content_sha256": "313ed3ea731a66a6e051c7f3adf79f50f20813d67e0d6616a25088658e00334b",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 108,
+  "passed": 108,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}

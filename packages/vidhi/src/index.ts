@@ -9,3 +9,5 @@ export * from "./persona.js";
 export * from "./rrule.js";
 export * from "./schedules.js";
 export * from "./missions.js";
+export * from "./mcp.js";
+export * from "./notebooks.js";

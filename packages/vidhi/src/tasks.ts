@@ -242,6 +242,25 @@ export class TaskRuntime {
     );
   }
 
+  /** A task's state for its owner or a status tool; null when it is not in the caller's tenant. */
+  async status(
+    ctx: KernelContext,
+    taskId: string,
+  ): Promise<{ id: string; state: TaskState; owner_id: string; error_code: string | null } | null> {
+    return this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query<{
+            id: string;
+            state: TaskState;
+            owner_id: string;
+            error_code: string | null;
+          }>("select id, state, owner_id, error_code from vidhi.task where id = $1", [taskId])
+        ).rows[0] ?? null,
+    );
+  }
+
   /** Kill switches stop a task at every step; a task found under a switch is cancelled. */
   private async killed(ctx: KernelContext, skillKey: string): Promise<string | null> {
     return (await this.o.kill.gateway(ctx, skillKey)).on;
@@ -276,6 +295,8 @@ export class TaskRuntime {
       args: Record<string, unknown>;
       idempotencyKey?: string;
       insist?: boolean;
+      /** Wait for a human whatever the level (MCP write tools, IPB-03-75). */
+      forceApproval?: boolean;
     },
   ): Promise<ToolCallResult> {
     const task = await this.o.kernel.read(ctx, (tx) => this.load(tx, taskId));
@@ -301,7 +322,9 @@ export class TaskRuntime {
       throw new IpbError("IPB-VID-010", {
         detail: `${call.tool} needs L2; the task runs at ${level}`,
       });
-    const needsApproval = Boolean(policy.locked) || (policy.tool.write && autonomyRank(level) <= 2);
+    const needsApproval =
+      Boolean(policy.locked) ||
+      (policy.tool.write && (autonomyRank(level) <= 2 || Boolean(call.forceApproval)));
     if (needsApproval) return this.awaitApproval(ctx, task, policy, call);
     return this.o.kernel.mutate(
       ctx,

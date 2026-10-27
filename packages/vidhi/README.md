@@ -1,10 +1,10 @@
 # @infrabyx/vidhi
 
-The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product ceilings, the immutable locked-action list, the persona and reserved-advice routing, scheduled tasks and missions. MCP and notebooks follow in PL4 session 7b.
+The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product ceilings, the immutable locked-action list, the persona and reserved-advice routing, scheduled tasks, missions, MCP (server and client) and knowledge notebooks. Digest, feedback and QA sampling follow in PL4 session 8.
 
-**Specified by:** IPB-03 §03.3.I–K, §03.4.6–§03.4.8 and §03.4.11. Plan: `docs/phases/PL4-plan.md` §8. Migrations `vidhi/0001_init.sql` and `vidhi/0002_missions_schedules.sql` are applied by `infrabyx-migrate` after `ai`.
+**Specified by:** IPB-03 §03.3.I–K, §03.4.6–§03.4.8 and §03.4.11. Plan: `docs/phases/PL4-plan.md` §8. Migrations `vidhi/0001_init.sql` to `vidhi/0003_notebooks.sql` are applied by `infrabyx-migrate` after `ai`.
 
-**Status:** PL4 session 7a. First release (0.1.0) at the PL4 gate.
+**Status:** PL4 session 7. First release (0.1.0) at the PL4 gate.
 
 ## What it does
 
@@ -41,7 +41,19 @@ The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product 
   - before every run the owner must still be active and hold every role they had when they created the schedule, the plan must include the skill, and no kill switch may be on. Otherwise the run is skipped (`IPB-VID-020`, NOTIFY `vidhi.schedule.skipped`), and the third skip in a row pauses the schedule (`IPB-VID-021`);
   - scheduled tasks run at L2 at most (L3 only for ORG_OWNER or ORG_ADMIN owners where the tenant allows), never L4.
 - **`Missions`** (IPB-03-63) break a goal into steps with the `vidhi.mission_plan@1` planner. Each step is a task at no more than the mission's level (the lowest ceiling of its skills). A step that needs a human makes the mission wait. Running out of budget (tokens, cost, wall-clock, tool calls) stops it with `IPB-VID-070`. `advance` is safe to call from a QUEUE at any time.
-- **Prompts:** `persona/vidhi.persona/1.0.0.md` and `persona/vidhi.plain_language/1.0.0.md` (110 golden cases each), and `persona/vidhi.mission_plan/1.0.0.md` (41), with golden sets in `evals/`. CI grades them with `ai-eval-gate`, and `infrabyx-ai prompts sync --set packages/vidhi/persona:packages/vidhi/evals` loads them.
+- **`McpServer`** (IPB-03-75; MCP 2026-07-28, stateless) is the JSON-RPC handler products mount on `/mcp`, after `checkMcpHeaders` and OAuth:
+  - it is off until `ai.mcp.server_enabled`;
+  - it offers one tool per tool of the skills that list the `mcp` surface, filtered by your permission check, plus `vidhi.task_status`;
+  - read tools run as a Vidhi task for the caller;
+  - write and locked tools only return `{status: "needs_approval", approval_url, tsk_id}`, at any autonomy level, and a client that asks to execute directly gets `IPB-VID-040`.
+- **`McpClient`** (IPB-03-76) calls only servers on `vidhi.mcp.client_allowlist` (a tenant list can only narrow the platform list), within each server's class ceiling, tool allow-list and rate (`IPB-VID-041` otherwise). Results come back as `tool_result` data blocks.
+- **`Notebooks`** (IPB-03-79 to 03-82):
+  - sources are sealed text, Markdown, PDF through your extractor, records by reference (re-read through your permission check at every use) and URLs through your egress fetcher;
+  - the notebook's class is its highest source's;
+  - outputs (Q&A, FAQ, briefing, timeline, Mermaid mind map, flashcards) are grounded through `vidhi.notebook@1`, with provenance, and show as stale when a source changes;
+  - platform notebooks are read-only to tenants;
+  - sharing with another organisation is a locked action (`IPB-VID-060` until approved), and exposes the outputs only.
+- **Prompts:** `persona/vidhi.persona/1.0.0.md` and `persona/vidhi.plain_language/1.0.0.md` (110 golden cases each), `persona/vidhi.mission_plan/1.0.0.md` (41) and `persona/vidhi.notebook/1.0.0.md` (108), with golden sets in `evals/`. CI grades them with `ai-eval-gate`, and `infrabyx-ai prompts sync --set packages/vidhi/persona:packages/vidhi/evals` loads them.
 
 ## For products
 
@@ -51,3 +63,5 @@ The Vidhi AI kernel: skills, tasks and approvals, autonomy L0–L4 with product 
 4. Pass your contacts to `Vidhi` (for Udofin, the grievance officer), and override the neutral hand-off text after counsel review.
 5. Call `Scheduler.tick` once a minute and `Scheduler.onEvent` from your inbox consumer. Pass `authorize`, `entitled` and `connectorsValid` where you have them, and the rules engine's `evaluateCel`.
 6. Run each mission with `Missions.advance` from your QUEUE, and again after each approval of one of its steps.
+7. Mount `McpServer.handle` on `/mcp` (Streamable HTTP, OAuth 2.1 with PKCE, resource `urn:infrabyx:<product>:mcp`) after `checkMcpHeaders`; pass `authorize` and `approvalUrl`. Give `McpClient` your egress fetch.
+8. Give `Notebooks` FieldCrypto, the gateway, the approvals engine and, where you have them, `records`, `egress` and `pdfText`.
