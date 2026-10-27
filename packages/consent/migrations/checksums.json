@@ -1,3 +1,4 @@
 {
-  "0001_init.sql": "a69ba941e57a3a8f1650dec0fe8bef54622c65ca391df76f4d2bcc2bf7802509"
+  "0001_init.sql": "a69ba941e57a3a8f1650dec0fe8bef54622c65ca391df76f4d2bcc2bf7802509",
+  "0002_form_consent_end.sql": "f56aad4fbc6d93157861a0fe3bbce3bc646759f95d5a0a4f8c8190ca38ba96ae"
 }
