@@ -14,7 +14,7 @@ The headless CMS core (IPB-04 §04.3.1). It provides:
 
 **Specified by:** `docs/ipb/` IPB-04 (§04.3.1, §04.3.8, §04.4.1, §04.4.3). Its acceptance tests are the `@IPB-04-AT-..` scenarios tagged in `src`.
 
-**Status:** PL5 session 4. The package stays private until the PL5 gate (`docs/phases/PL5-plan.md` §5.3–§5.6). Session 5 adds policies, resources, forms and pricing.
+**Status:** PL5 sessions 4 and 5a. The package stays private until the PL5 gate (`docs/phases/PL5-plan.md` §5.3–§5.7). Session 5b adds resources, forms and pricing.
 
 ## Data
 
@@ -57,3 +57,25 @@ any edit ──▶ draft (voids the approval; the published revision keeps servi
 - `PublicContent` serves published revisions only. Its `resolve` returns content (falling back to en-IN with the right `lang`), a redirect, or a 410. `handlePublicApi` is the GET-only `/api/public/v1` API.
 - The sanitiser is available as `@infrabyx/cms/sanitise` (`htmlToPortableText`, `sanitisePortableText`, `toHtml`). SEO and the generated files come from `organizationLd`, `sitemapIndex`, `sitemapFor`, `robotsTxt`, `llmsTxt`, `llmsFullTxt` and `rssFeed`.
 - The footer: `validateFooter`, `footerInputFrom`, and `brandFooterHook` for Brand Studio's publish precondition. The `infrabyx-cms validate-footer <file.json>` CLI checks it in CI.
+
+## Policies (IPB-05)
+
+Migration `cms/0002_policies.sql` adds `cms.policy_set` (`pol_`), one per brand pack with its parameters, and `cms.policy_instance` (`pin_`), one row per version of a template.
+
+```
+draft ──submit (lint)──▶ submitted ──[dpoApprove]──▶ approve ──▶ approved ──tick at effective_at──▶ effective ──▶ superseded
+```
+
+- **Templates.** `policies/<key>/1.0.md` holds the 17 IPB-05 skeletons: numbered clause headings, parameters and `[COUNSEL]` markers. The legal reviewer enters the reviewed wording.
+- **Roles.** `PolicyStudio` takes a PLT_LEGAL_REVIEWER as maker and a PLT_SUPER_ADMIN as checker. Privacy-class templates also need a PLT_DPO (`IPB-POL-006`). None of them may be the maker.
+- **Lint.** Submit and approve run the lint:
+  - `IPB-POL-001`: unresolved parameters and counsel markers;
+  - `-002`: missing sections;
+  - `-003`: banned wording;
+  - `-004`: stale citations, checked through LAW_REGISTER;
+  - `-005`: the notice period for MAJOR changes to Terms and Payment Terms;
+  - `-007`: Hindi.
+- **Versions.** An approved version never changes (`IPB-POL-008`).
+- **Completeness.** `policySetHook()` is Brand Studio's `policySetPublished` hook (`IPB-POL-009`).
+- **Scheduling and review.** Run `PolicyStudio.tick()` with the CMS scheduler. `reviewQueue` and `emitReviewDue` follow the 6- and 12-month cadence.
+- **Publishing.** `PublicPolicies` serves the current version, the prior versions with a superseded banner, and `/legal/index.json`.
