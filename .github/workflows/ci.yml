@@ -241,6 +241,59 @@ jobs:
       - name: dev:down
         if: always()
         run: pnpm dev:down
+  infra:
+    # The shared Helm chart and the admission policies (IPB-01-32, IPB-01-35; PL6 plan §5, §6):
+    # helm lint and the render tests (@IPB-01-AT-12, Helm scenario), kubeconform against pinned
+    # schemas, `trivy config` on the chart, `kyverno test` on the policies, then `kyverno apply` of
+    # every policy over every rendered CI values file. Tools from pinned versions only
+    # (scripts/ci/infra-tools.sh), cached between runs.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      TRIVY_IMAGE: aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+      INFRA_TOOLS: ${{ github.workspace }}/.infra-tools
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: tools-cache
+        with:
+          path: .infra-tools
+          key: infra-tools-${{ hashFiles('scripts/ci/infra-tools.sh') }}
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: steps.tools-cache.outputs.cache-hit != 'true'
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: tools (Helm, kubeconform, Kyverno CLI)
+        run: |
+          scripts/ci/infra-tools.sh
+          echo "$INFRA_TOOLS" >> "$GITHUB_PATH"
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: helm lint and render tests (@IPB-01-AT-12)
+        run: pnpm infra:test
+      - name: kubeconform
+        run: infra/helm/infrabyx-app/tests/kubeconform.sh
+      - name: trivy config (chart)
+        run: >-
+          docker run --rm -v "$PWD:/src:ro" "$TRIVY_IMAGE" config --exit-code 1
+          --severity HIGH,CRITICAL --helm-values /src/infra/helm/infrabyx-app/ci/api-prod-values.yaml
+          /src/infra/helm/infrabyx-app
+      - name: kyverno test
+        run: kyverno test infra/policy/kyverno/tests
+      - name: kyverno apply over the rendered chart
+        run: |
+          for values in infra/helm/infrabyx-app/ci/*.yaml; do
+            echo "== $values"
+            helm template r infra/helm/infrabyx-app -f "$values" > "$RUNNER_TEMP/render.yaml"
+            kyverno apply infra/policy/kyverno --resource "$RUNNER_TEMP/render.yaml"
+          done
   consumer-smoke:
     # Installs the packed tarballs in a clean directory with plain npm and imports every JavaScript
     # export with plain Node 24.22.1, as a product does (PL3-D-02). Catches CommonJS named-import

@@ -1,0 +1,18 @@
+{{- if .Values.autoscaling.keda.enabled }}
+{{- if ne .Values.app.kind "worker" }}
+{{- fail "KEDA scaling is for workers (app.kind=worker); other kinds use the CPU autoscaler" }}
+{{- end }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "infrabyx-app.name" . }}
+  labels:
+    {{- include "infrabyx-app.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    name: {{ include "infrabyx-app.name" . }}
+  minReplicaCount: {{ .Values.autoscaling.minReplicas }}
+  maxReplicaCount: {{ .Values.autoscaling.maxReplicas }}
+  triggers:
+    {{- required "autoscaling.keda.triggers is required when KEDA is enabled" .Values.autoscaling.keda.triggers | toYaml | nindent 4 }}
+{{- end }}

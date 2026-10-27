@@ -1,0 +1,24 @@
+# Worker in staging: no Service, KEDA on queue depth, Vault through the CSI driver.
+image:
+  {
+    repository: registry.example.test/infrabyx/worker,
+    digest: "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  }
+app: { kind: worker, args: ["dist/worker.js"] }
+env:
+  name: staging
+routing: { configMap: staging-routing }
+secrets:
+  provider: vault
+  parameters:
+    vaultAddress: https://vault.example.test
+    roleName: example-worker
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  keda:
+    enabled: true
+    triggers:
+      - type: redis
+        metadata: { address: redis.example.test:6379, listName: bull:jobs:wait, listLength: "50" }

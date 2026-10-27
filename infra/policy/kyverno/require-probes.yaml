@@ -1,0 +1,32 @@
+# Long-running containers have liveness and readiness probes (IPB-01 §01.4.8.2). One-off job pods
+# (the chart's migration hook, labelled infrabyx.dev/job) are excluded.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-probes
+  annotations:
+    policies.kyverno.io/title: Health probes
+spec:
+  background: true
+  rules:
+    - name: liveness-and-readiness
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              selector:
+                matchExpressions:
+                  - { key: infrabyx.dev/job, operator: Exists }
+      validate:
+        failureAction: Enforce
+        message: "Containers have liveness and readiness probes (/health/live, /health/ready)."
+        pattern:
+          spec:
+            containers:
+              - livenessProbe:
+                  periodSeconds: ">0"
+                readinessProbe:
+                  periodSeconds: ">0"

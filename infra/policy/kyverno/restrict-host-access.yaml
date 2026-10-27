@@ -1,0 +1,25 @@
+# No host paths, host network, host PID or host IPC (IPB-02 container baseline).
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: restrict-host-access
+  annotations:
+    policies.kyverno.io/title: No host access
+spec:
+  background: true
+  rules:
+    - name: no-host-namespaces-or-paths
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      validate:
+        failureAction: Enforce
+        message: "Pods use no hostPath volume and do not share the host network, PID or IPC namespace."
+        pattern:
+          spec:
+            =(hostNetwork): false
+            =(hostPID): false
+            =(hostIPC): false
+            =(volumes):
+              - X(hostPath): "null"

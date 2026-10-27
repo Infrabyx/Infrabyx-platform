@@ -1,0 +1,306 @@
+# Pods for the admission policy tests: `good` matches the chart's rendered pod; each other pod
+# breaks one rule.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: good
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        periodSeconds: 10
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: root
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsUser: 0
+        runAsGroup: 10001
+        allowPrivilegeEscalation: true
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        periodSeconds: 10
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: tagged
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api:1.0.0
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        periodSeconds: 10
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: no-probes
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: migrate
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+    infrabyx.dev/job: migrate
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-path
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        periodSeconds: 10
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+    - name: host
+      hostPath:
+        path: /var/run
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: host-network
+  namespace: apps
+  labels:
+    app.kubernetes.io/name: r-api
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: api
+      image: registry.example.test/infrabyx/api@sha256:0000000000000000000000000000000000000000000000000000000000000001
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        privileged: false
+        capabilities:
+          drop:
+            - ALL
+      livenessProbe:
+        httpGet:
+          path: /health/live
+          port: 3000
+        periodSeconds: 20
+      readinessProbe:
+        httpGet:
+          path: /health/ready
+          port: 3000
+        periodSeconds: 10
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+  volumes:
+    - name: tmp
+      emptyDir: {}
+  hostNetwork: true

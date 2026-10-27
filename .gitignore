@@ -25,3 +25,6 @@ next-env.d.ts
 
 # Local storage of pnpm dev:up seeds
 .storage/
+
+# Chart and policy tools built by scripts/ci/infra-tools.sh in CI
+.infra-tools/

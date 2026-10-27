@@ -1,0 +1,7 @@
+apiVersion: v2
+name: infrabyx-app
+description: The shared chart for every Infrabyx deployable (IPB-01-32, §01.4.8.2). Products deploy with their own values.<env>.yaml; no product writes raw manifests.
+type: application
+version: 0.1.0
+appVersion: "0.0.0"
+kubeVersion: ">=1.30.0-0"

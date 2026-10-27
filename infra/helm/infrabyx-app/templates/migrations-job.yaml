@@ -1,0 +1,44 @@
+{{/* Expand-only migrations before install and upgrade, as app_migrate (IPB-09 §09.4.6). */}}
+{{- if .Values.migrations.job }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "infrabyx-app.name" . }}-migrate
+  labels:
+    {{- include "infrabyx-app.labels" . | nindent 4 }}
+    infrabyx.dev/job: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        {{- include "infrabyx-app.selector" . | nindent 8 }}
+        infrabyx.dev/job: migrate
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "infrabyx-app.name" . }}
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "infrabyx-app.podSecurity" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "infrabyx-app.image" . }}
+          command:
+            {{- toYaml .Values.migrations.command | nindent 12 }}
+          args: ["--db-file", {{ .Values.migrations.dbUrlFile | quote }}]
+          env:
+            {{- include "infrabyx-app.env" . | nindent 12 }}
+          securityContext:
+            {{- include "infrabyx-app.containerSecurity" . | nindent 12 }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            {{- include "infrabyx-app.mounts" . | nindent 12 }}
+      volumes:
+        {{- include "infrabyx-app.volumes" . | nindent 8 }}
+{{- end }}

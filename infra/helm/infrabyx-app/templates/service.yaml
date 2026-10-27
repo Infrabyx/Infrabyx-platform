@@ -1,0 +1,17 @@
+{{- if include "infrabyx-app.served" . }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "infrabyx-app.name" . }}
+  labels:
+    {{- include "infrabyx-app.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "infrabyx-app.selector" . | nindent 4 }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+{{- end }}

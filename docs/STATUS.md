@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); session 1 (container images and the Compose stack) in review; next session 2 (Helm chart and Kyverno policies). 1.0.0 is published only on the owner's word (#67)                                                                             |
+| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); sessions 1 and 2 built (#96 merged; the chart and admission policies in review); next session 3 (OpenTofu modules). 1.0.0 is published only on the owner's word (#67)                                                                         |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages (PL5 gate, release run 74, `dc51032`): ui, a11y, hlp, brand, cms, consent, feedback and trust 0.1.0 (new); contracts, config, testing and tenancy 0.5.0; connectors 0.4.0; notify and seed 0.3.0; ai and vidhi 0.2.0; crypto 0.4.1; export 0.2.1; audit 0.1.4; rules and workflow 0.1.2. Checksums in `docs/phases/PL5-gate.md` §6 |
 | Last exit gate passed | PL5 gate (2026-10-27): report `docs/phases/PL5-gate.md`; PR #94 (report) and PR #79 (version), every required check green; release run 74. Before it: PL4 gate (`docs/phases/PL4-gate.md`)                                                                                                                                                                      |
@@ -20,6 +20,16 @@ Updated: 2026-10-27
 - **#54, #56, #58, #59:** defaults kept. The owner sets `trust.gating.nda_version` once legal approves the NDA.
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
+
+## PL6 session 2 (2026-10-27, PL6-D-04)
+
+- **Chart:** `infra/helm/infrabyx-app` (Helm 4): Deployment, Service (not for workers), ServiceAccount, HPA or KEDA `ScaledObject`, PDB, default-deny NetworkPolicy, `SecretProviderClass`, and the migration hook. The security context is locked; images by digest only; the values schema makes the IPB's required keys required.
+- **Refusals:** a seed profile in prod, dr or pre-prod (`IPB-ENV-001`, `@IPB-01-AT-12`), a Supabase host and secret-named plain variables from staging up (`IPB-ENV-002`, `IPB-ENV-003`).
+- **Admission policies:** `infra/policy/kyverno` (security context, digest images, probes, no host access; `verify-images` Audit until #67) with an offline `kyverno test`.
+- **`@infrabyx/tenancy`:** `infrabyx-migrate --db-file` (minor), so the hook reads the URL from the secrets mount.
+- **CI:** the `infra` job (render tests, kubeconform with pinned schemas, `trivy config`, `kyverno test`, `kyverno apply` over every render).
+- **New owner question:** #70 (Helm 4, tool builds, the stricter chart rules; nothing blocked).
+- **Next:** session 3, the OpenTofu modules for AWS, Azure and GCP.
 
 ## PL6 session 1b (2026-10-27, PL6-D-03)
 
