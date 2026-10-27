@@ -479,7 +479,33 @@ importers:
 
   packages/ui: {}
 
-  packages/vidhi: {}
+  packages/vidhi:
+    dependencies:
+      '@infrabyx/ai':
+        specifier: workspace:*
+        version: link:../ai
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/seed':
+        specifier: workspace:*
+        version: link:../seed
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
 
   packages/workflow:
     dependencies:
