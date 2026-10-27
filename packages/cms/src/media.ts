@@ -116,6 +116,17 @@ export interface MediaRecord {
   renditions: RenditionRef[];
 }
 
+/** One row of the media library. */
+export interface MediaSummary {
+  id: string;
+  kind: MediaKind;
+  mime: string;
+  bytes: number;
+  altText: string | null;
+  decorative: boolean;
+  createdAt: Date;
+}
+
 /** What a page needs to render a `<picture>`: one source per modern format, then the fallback. */
 export interface MediaSources {
   mime: string;
@@ -357,6 +368,39 @@ export class MediaLibrary {
         .filter((x) => x.srcset.length),
       fallback: fb.length ? { mime: `image/${fallbackFormat(r.mime)}`, srcset: fb } : null,
     };
+  }
+
+  /** The library (Studio's Media section): live items, newest first; `missingAlt` is the alt-text queue. */
+  async list(
+    ctx: KernelContext,
+    f: { kind?: MediaKind; missingAlt?: boolean } = {},
+  ): Promise<MediaSummary[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        id: string;
+        kind: MediaKind;
+        mime: string;
+        bytes: string;
+        alt_text: string | null;
+        decorative: boolean;
+        created_at: Date;
+      }>(
+        `select id, kind, mime, bytes, alt_text, decorative, created_at from cms.media
+          where deleted_at is null and ($1::text is null or kind = $1)
+            and (not $2 or (alt_text is null and not decorative and kind in ('image', 'svg')))
+          order by created_at desc, id desc limit 500`,
+        [f.kind ?? null, f.missingAlt === true],
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        kind: x.kind,
+        mime: x.mime,
+        bytes: Number(x.bytes),
+        altText: x.alt_text,
+        decorative: x.decorative,
+        createdAt: x.created_at,
+      }));
+    });
   }
 
   /** Where a media item is used: live items whose current or published revision refers to it. */

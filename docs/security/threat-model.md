@@ -399,6 +399,16 @@ The reference group website on Next.js 16 (`@infrabyx/public-site`, private, nev
 - **I (unmapped hosts):** a host not mapped to a pack serves the product's default pack under another name. Control: such responses carry `noindex` and the generated files (sitemaps) are empty for them.
 - **Residual:** the site has no edge rate limit or WAF of its own yet (PL6 deployment); the fixture CRM and HR keep form data in memory only, so local and test submissions are lost on restart, by design.
 
+### 3.35 `@infrabyx/ui/studio`, the Studio screens (built, PL5 session 8; PL5-D-14)
+
+Server-rendered screens and form handlers over the existing Studio services; no new table or port. Each app mounts them behind its own sign-in and AUTHZ check (`apps/console` in session 9).
+
+- **E (bypassing a rule from the screen):** a screen offers a move the person may not make. Control: screens only show and post; every move, role, maker-checker rule and lint is checked in the service, so a forged post gets the same `IpbError` as any other caller.
+- **S/T (forged posts):** another site posts to a Studio action. Control: the app's actions must check the request origin (Next server actions do; a POST route uses the same `sameOrigin` check as the group site); Studio pages are `noindex` and framed by nobody (`frame-ancestors 'none'`).
+- **T (injected markup):** a title, a sanitiser report or a notice carries markup. Control: React escapes all text; the post-redirect-get result is base64url JSON of short strings, decoded to text only, size-capped, and holds no authority; JSON bodies are parsed and checked by the service, never rendered as HTML.
+- **I (preview links):** a preview path is shown in the notice once after it is created; it expires (`cms.preview.ttl_hours`) and can be revoked from the item or the Preview links screen.
+- **Residual:** the read lists have no role check of their own (PL5-D-14 item 6, #62); a product that mounts Studio without its AUTHZ gate would expose draft content to signed-in users.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

@@ -64,12 +64,13 @@ export interface FieldProps {
   /** Required (IPB-07-42); the help lint checks the key exists. */
   helpKey: string;
   help?: HelpEntry;
-  type?: "text" | "email" | "tel" | "url" | "number" | "search" | "password";
+  type?:
+    "text" | "email" | "tel" | "url" | "number" | "search" | "password" | "date" | "datetime-local";
   autoComplete?: string;
   required?: boolean;
-  hint?: string;
-  error?: string;
-  defaultValue?: string;
+  hint?: string | undefined;
+  error?: string | undefined;
+  defaultValue?: string | undefined;
   multiline?: boolean;
   maxLength?: number;
   t?: Messages;
@@ -126,6 +127,61 @@ export function Field(p: FieldProps) {
   );
 }
 
+/** A native select with a visible label and a help key (no script, SC 3.2.2: no change on select). */
+export function SelectField(p: {
+  id: string;
+  name?: string;
+  label: string;
+  helpKey: string;
+  options: readonly { value: string; label: string }[];
+  defaultValue?: string | undefined;
+  required?: boolean;
+  hint?: string | undefined;
+  error?: string | undefined;
+  t?: Messages;
+}) {
+  const t = p.t ?? en;
+  const hintId = p.hint ? `${p.id}-hint` : undefined;
+  const errorId = p.error ? `${p.id}-error` : undefined;
+  return (
+    <div className={`ibx-field${p.error ? " ibx-field--error" : ""}`}>
+      <label className="ibx-field__label" htmlFor={p.id}>
+        {p.label}
+        <span className="ibx-field__req">
+          {" "}
+          ({p.required ? t.t("ui.field.required") : t.t("ui.field.optional")})
+        </span>
+      </label>
+      {p.hint ? (
+        <p className="ibx-field__hint" id={hintId}>
+          {p.hint}
+        </p>
+      ) : null}
+      {p.error ? (
+        <p className="ibx-field__error" id={errorId}>
+          {p.error}
+        </p>
+      ) : null}
+      <select
+        className="ibx-field__input"
+        id={p.id}
+        name={p.name ?? p.id}
+        required={p.required}
+        defaultValue={p.defaultValue}
+        aria-invalid={p.error ? true : undefined}
+        aria-describedby={[hintId, errorId].filter(Boolean).join(" ") || undefined}
+        data-help-key={p.helpKey}
+      >
+        {p.options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 /** A consent or choice checkbox: unticked unless the person ticked it (`checked` from their input). */
 export function CheckboxField(p: {
   id: string;
@@ -134,7 +190,7 @@ export function CheckboxField(p: {
   helpKey: string;
   required?: boolean;
   checked?: boolean;
-  error?: string;
+  error?: string | undefined;
   value?: string;
 }) {
   const errorId = p.error ? `${p.id}-error` : undefined;

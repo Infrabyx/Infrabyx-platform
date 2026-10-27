@@ -2,6 +2,7 @@
 // column headers with scope, an optional row header and `aria-sort`; it reflows at 320 px through a
 // labelled scroll region. A chart is an SVG image with a text summary and a "View as table" toggle
 // (a native disclosure, no script), with direct labels so colour is never the only carrier.
+import type { ReactNode } from "react";
 import { messages, type Messages } from "../i18n/messages.js";
 
 const en = messages("en-IN");
@@ -23,7 +24,8 @@ export function DataTable({
 }: {
   caption: string;
   columns: readonly Column[];
-  rows: readonly Readonly<Record<string, string | number>>[];
+  /** Cell values: text, numbers, or links and buttons (a row's actions). */
+  rows: readonly Readonly<Record<string, ReactNode>>[];
   id?: string;
 }) {
   return (

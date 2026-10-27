@@ -716,3 +716,50 @@ describe("soft delete, offices and the 90-day purge (OWNER-QUESTIONS #48)", () =
     expect((await studio.restore(a, page.item.id)).deletedAt).toBeNull();
   });
 });
+
+describe("Studio readers (PL5 session 8: redirects, claims and the media library)", () => {
+  const P2 = "brd_01JB0000000000000000000009";
+  it("lists a pack's redirects by state, the Claims Register by status, and the alt-text queue", async () => {
+    const r = await studio.addRedirect(a, P2, {
+      from: "/reader-old",
+      to: "/reader-new",
+      status: 301,
+    });
+    const pending = await studio.redirects(a, P2, { state: "pending" });
+    expect(pending.map((x) => [x.id, x.from, x.to, x.status, x.state])).toEqual([
+      [r.id, "/reader-old", "/reader-new", 301, "pending"],
+    ]);
+    expect(await studio.redirects(a, P2, { state: "active" })).toEqual([]);
+    expect(await studio.redirects(a, PACK)).not.toContainEqual(
+      expect.objectContaining({ id: r.id }),
+    );
+
+    const { id: claimId } = await studio.proposeClaim(a, {
+      text: "Reader claim",
+      asOf: "2026-10-01",
+      reviewDue: "2027-10-01",
+    });
+    const proposed = await studio.claims(a, { status: "proposed" });
+    expect(proposed.find((c) => c.id === claimId)).toMatchObject({
+      text: "Reader claim",
+      evidenceClass: "E0",
+      status: "proposed",
+    });
+    expect((await studio.claims(a, { status: "active" })).map((c) => c.id)).not.toContain(claimId);
+
+    const png = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      ),
+      (c) => c.charCodeAt(0),
+    );
+    const img = await media.upload(a, { mime: "image/png", bytes: png });
+    expect((await media.list(a, { missingAlt: true })).map((m) => m.id)).toContain(img.id);
+    await media.describe(a, img.id, { altText: "A dot" });
+    expect((await media.list(a, { missingAlt: true })).map((m) => m.id)).not.toContain(img.id);
+    expect((await media.list(a, { kind: "image" })).find((m) => m.id === img.id)).toMatchObject({
+      altText: "A dot",
+      mime: "image/png",
+    });
+  });
+});

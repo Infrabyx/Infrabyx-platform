@@ -127,6 +127,40 @@ export interface Revision {
   createdAt: Date;
 }
 
+/** One row of the Redirects list. */
+export interface RedirectSummary {
+  id: string;
+  from: string;
+  /** null for 410 Gone. */
+  to: string | null;
+  status: 301 | 302 | 410;
+  source: "manual" | "legacy_import" | "slug_change" | "retire";
+  state: "pending" | "active" | "rejected" | "retired";
+  makerId: string;
+  checkerId: string | null;
+  legalReviewerId: string | null;
+  hits: number;
+  lastHitAt: Date | null;
+  createdAt: Date;
+}
+
+/** One row of the Claims Register. */
+export interface ClaimSummary {
+  id: string;
+  text: string;
+  value: string | null;
+  unit: string | null;
+  asOf: Date;
+  evidenceClass: "E0" | "E1" | "E2" | "E3" | "E4";
+  kind: "figure" | "certification" | "audit" | "permission" | "category";
+  sourceUrl: string | null;
+  ownerId: string;
+  reviewDue: Date;
+  status: "proposed" | "active" | "expired" | "withdrawn";
+  createdBy: string;
+  assignedBy: string | null;
+}
+
 export interface SaveResult {
   item: Item;
   revision: Revision;
@@ -1376,6 +1410,96 @@ export class CmsStudio {
   }
 
   /** Add a manual redirect: checked for loops and chains now, active after maker-checker and legal review. */
+  /** A pack's redirects, newest first (Studio's Redirects section, IPB-04-100). */
+  async redirects(
+    ctx: KernelContext,
+    packId: string,
+    f: { state?: RedirectSummary["state"] } = {},
+  ): Promise<RedirectSummary[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        id: string;
+        from_path: string;
+        to_path: string | null;
+        status_code: 301 | 302 | 410;
+        source: RedirectSummary["source"];
+        state: RedirectSummary["state"];
+        maker_id: string;
+        checker_id: string | null;
+        legal_reviewer_id: string | null;
+        hits: string;
+        last_hit_at: Date | null;
+        created_at: Date;
+      }>(
+        `select id, from_path, to_path, status_code, source, state, maker_id, checker_id,
+                legal_reviewer_id, hits, last_hit_at, created_at
+           from cms.redirect
+          where brand_pack_id = $1 and deleted_at is null and ($2::text is null or state = $2)
+          order by created_at desc, id desc limit 500`,
+        [packId, f.state ?? null],
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        from: x.from_path,
+        to: x.to_path,
+        status: x.status_code,
+        source: x.source,
+        state: x.state,
+        makerId: x.maker_id,
+        checkerId: x.checker_id,
+        legalReviewerId: x.legal_reviewer_id,
+        hits: Number(x.hits),
+        lastHitAt: x.last_hit_at,
+        createdAt: x.created_at,
+      }));
+    });
+  }
+
+  /** The Claims Register (IPB-04-07), by review date. */
+  async claims(
+    ctx: KernelContext,
+    f: { status?: ClaimSummary["status"] } = {},
+  ): Promise<ClaimSummary[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        id: string;
+        text: string;
+        value: string | null;
+        unit: string | null;
+        as_of: Date;
+        evidence_class: ClaimSummary["evidenceClass"];
+        kind: ClaimSummary["kind"];
+        source_url: string | null;
+        owner_id: string;
+        review_due: Date;
+        status: ClaimSummary["status"];
+        created_by: string;
+        assigned_by: string | null;
+      }>(
+        `select id, text, value, unit, as_of, evidence_class, kind, source_url, owner_id,
+                review_due, status, created_by, assigned_by
+           from cms.claim where ($1::text is null or status = $1)
+          order by review_due, id limit 500`,
+        [f.status ?? null],
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        text: x.text,
+        value: x.value,
+        unit: x.unit,
+        asOf: x.as_of,
+        evidenceClass: x.evidence_class,
+        kind: x.kind,
+        sourceUrl: x.source_url,
+        ownerId: x.owner_id,
+        reviewDue: x.review_due,
+        status: x.status,
+        createdBy: x.created_by,
+        assignedBy: x.assigned_by,
+      }));
+    });
+  }
+
   async addRedirect(
     ctx: KernelContext,
     packId: string,

@@ -311,3 +311,26 @@ describe("PNG favicons from the sanitised logo through the MEDIA port (OWNER-QUE
     expect(media.calls).toEqual(["rasterise 32,64,180,192,512"]);
   });
 });
+
+describe("Studio readers (PL5 session 8: the Brand list and the approvals queue)", () => {
+  it("lists packs default first, a pack's revisions newest first, and the revisions waiting for approval", async () => {
+    const packId = (await studio.createPack(maker, { product: "LD", label: "Readers" })).id;
+    const up = await studio.uploadLogo(maker, packId, LOGO);
+    const first = await studio.saveDraft(maker, packId, {
+      body: body({ svg: up.ref }),
+      hosts: [{ host: "readers.example.test", role: "PUBLIC", verified: true }],
+    });
+    await studio.submit(maker, first.id);
+    const ld = await studio.packs(maker, { product: "LD" });
+    expect(ld.map((k) => k.label)).toContain("Readers");
+    expect(ld.every((k) => k.product === "LD")).toBe(true);
+    const all = await studio.packs(maker);
+    const grp = all.filter((k) => k.product === "GRP");
+    expect(grp[0]!.isDefault).toBe(true);
+    expect((await studio.revisions(maker, packId)).map((r) => r.id)).toEqual([first.id]);
+    expect((await studio.pending(checker)).map((r) => r.id)).toContain(first.id);
+    await studio.legalReview(legal, first.id);
+    await studio.approve(checker, first.id);
+    expect((await studio.pending(checker)).map((r) => r.id)).not.toContain(first.id);
+  });
+});
