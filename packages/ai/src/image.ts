@@ -50,6 +50,7 @@ export interface ImageApprovals {
       ) => Promise<void>;
     },
   ): unknown;
+  get(ctx: KernelContext, id: string): Promise<{ state: string }>;
   request(
     tx: Tx,
     input: {
@@ -471,12 +472,9 @@ export class ImageService {
         if (!img.sgi_label || !img.xmp)
           throw new IpbError("IPB-AI-031", { detail: "an unlabelled image cannot be published" });
         if (img.state !== "generated" && img.approval_id) {
-          const r = await tx.query<{ state: string; expired_at: Date | null }>(
-            "select state, expired_at from tenancy.approval_request where id = $1",
-            [img.approval_id],
-          );
-          const s = r.rows[0];
-          if (s && !s.expired_at && ["pending", "approved", "executed"].includes(s.state)) {
+          // The engine's own view of the request (no read across the module boundary).
+          const prev = await this.o.approvals.get(ctx, img.approval_id);
+          if (["pending", "approved", "executed"].includes(prev.state)) {
             await this.o.audit.record(tx, {
               action: "ai.image.publish.request",
               resourceType: "ai_image",
