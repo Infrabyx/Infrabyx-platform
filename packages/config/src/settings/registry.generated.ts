@@ -3245,7 +3245,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R5",
     "source": "IPB-03 §03.5",
-    "note": "no purge job until the owner approves one (OWNER-QUESTIONS #30)"
+    "note": "the 180-day floor is the owner's (OWNER-QUESTIONS #30, PL4-D-05); `RunRetention.sweep` deletes routine runs older than this, ledgered; held runs are kept"
   },
   {
     "key": "ai.mcp.server_enabled",
