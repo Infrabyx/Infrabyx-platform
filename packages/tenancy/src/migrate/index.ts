@@ -21,6 +21,7 @@ export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/config",
   "@infrabyx/seed",
   "@infrabyx/connectors",
+  "@infrabyx/rules",
 ] as const;
 
 export interface MigrationSource {
