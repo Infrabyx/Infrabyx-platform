@@ -1,0 +1,12 @@
+{
+  "prompt_key": "vidhi.mission_plan",
+  "version": "1.0.0",
+  "content_sha256": "4d10135f6e0326b1befe97d2d3c44062f03bade4f88a910ee46754bd39235f00",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 41,
+  "passed": 41,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}
