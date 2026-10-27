@@ -1,0 +1,53 @@
+# Platform help entries, module `vidhi` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: vidhi
+entries:
+  - key: hlp.vidhi.level
+    term: "Vidhi autonomy level"
+    plain: "How much Vidhi may do on its own for this task. Higher levels still never allow the actions only a person may take."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.locked
+    term: "Locked action"
+    plain: "Only a person can take this action. Vidhi can prepare it for you to review and approve."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.approver
+    term: "Approver needed"
+    plain: "This step needs someone with the right role to approve it. Vidhi cannot approve its own work."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.already_decided
+    term: "Already decided"
+    plain: "Someone has already approved or rejected this item, so it cannot be decided again."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.consent
+    term: "Consent needed for Vidhi"
+    plain: "Vidhi needs your consent before it can use this information for the task."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.share
+    term: "Sharing limited"
+    plain: "Only the outputs of this notebook can be shared, never its sources."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.vidhi.budget
+    term: "Vidhi task budget"
+    plain: "This task has used the time or cost allowed for it, so Vidhi stopped. An administrator can raise the budget."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

@@ -127,6 +127,8 @@ jobs:
         run: pnpm routing:check
       - name: notify-lint (PL3 plan §6.2; notification catalogue)
         run: pnpm notify:lint
+      - name: hlp-lint (IPB-07-43, @IPB-07-AT-02; every help key in the platform registry)
+        run: pnpm hlp:lint
       - name: ai-prompt-lint (IPB-03-25, 03-40; golden set per prompt, no inline prompt text)
         run: pnpm ai:prompt-lint
       - name: ai-eval-gate (IPB-03-41; golden sets on the scripted fake model, baseline and committed results)

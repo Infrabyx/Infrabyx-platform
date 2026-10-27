@@ -27,16 +27,21 @@ export interface KeyUse {
 
 const SHARED = /^hlp\.shared\./;
 
-// `helpKey="hlp.x.y"`, `helpKey: "hlp.x.y"`, `help_key: hlp.x.y`, `help: hlp.x.y` (settings tree).
-const USE =
-  /\b(?:helpKey|help_key|help)\s*[:=]\s*\{?\s*["'`]?([a-z][a-z0-9_]*\.[a-z0-9_.]+)["'`]?/g;
+// In YAML and JSON: `help_key: hlp.x.y` and `help: hlp.x.y` (catalogues, the settings tree). In code:
+// any quoted `hlp.<module>.<term>` literal (a `helpKey` prop, an error catalogue entry, a lookup
+// map); expressions such as `v.help` are not keys, and comment lines are skipped.
+const DATA_USE = /\b(?:helpKey|help_key|help)\s*:\s*["']?([a-z][a-z0-9_]*\.[a-z0-9_.]+)["']?/g;
+const CODE_USE = /["'`](hlp\.[a-z0-9_]+\.[a-z0-9_.]+)["'`]/g;
+const DATA = new Set([".yaml", ".yml", ".json"]);
 const SCANNED = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".yaml", ".yml", ".json"]);
 
 /** Help keys used in the given text (one entry per use, with its line). */
 export function keysInText(text: string, file: string): KeyUse[] {
   const out: KeyUse[] = [];
+  const data = DATA.has(extname(file));
   text.split("\n").forEach((l, i) => {
-    for (const m of l.matchAll(USE)) {
+    if (!data && /^\s*(?:\/\/|\*|\/\*)/.test(l)) return;
+    for (const m of l.matchAll(data ? DATA_USE : CODE_USE)) {
       const key = m[1]!.replace(/\.$/, "");
       out.push({ key, file, line: i + 1 });
     }
@@ -44,7 +49,7 @@ export function keysInText(text: string, file: string): KeyUse[] {
   return out;
 }
 
-/** Walk files and directories (skipping node_modules, dist and tests) and collect key uses. */
+/** Walk files and directories (skipping node_modules, dist, tests and generated files) and collect key uses. */
 export function collectKeys(paths: readonly string[]): KeyUse[] {
   const out: KeyUse[] = [];
   const walk = (p: string) => {
@@ -52,7 +57,12 @@ export function collectKeys(paths: readonly string[]): KeyUse[] {
     if (st.isDirectory()) {
       for (const f of readdirSync(p).sort())
         if (!["node_modules", "dist", "__tests__", "__fixtures__"].includes(f)) walk(join(p, f));
-    } else if (SCANNED.has(extname(p)) && !/\.test\.[tj]sx?$/.test(p)) {
+    } else if (
+      SCANNED.has(extname(p)) &&
+      !/\.test\.[tj]sx?$/.test(p) &&
+      // Generated files mirror a source that is scanned itself (the settings tree).
+      !/\.generated\.[a-z]+$/.test(p)
+    ) {
       out.push(...keysInText(readFileSync(p, "utf8"), p));
     }
   };

@@ -33,6 +33,7 @@
     "registry:check": "pnpm --filter @infrabyx/config check:registry",
     "routing:check": "node packages/config/dist/routing/cli.js check infra/routing/reference/local.routing.yaml infra/routing/reference/ci.routing.yaml --sandbox-status packages/connectors/sandbox-status.json",
     "notify:lint": "node packages/notify/dist/lint-cli.js",
+    "hlp:lint": "node packages/hlp/dist/cli.js lint --registry packages/hlp/registry --keys packages packages/config/settings-tree.yaml",
     "ai:prompt-lint": "node packages/ai/dist/cli.js prompt-lint --root . --set packages/ai/prompts:packages/ai/evals --set packages/vidhi/persona:packages/vidhi/evals",
     "ai:eval-gate": "node packages/ai/dist/cli.js eval --set packages/ai/prompts:packages/ai/evals --set packages/vidhi/persona:packages/vidhi/evals",
     "dev-keys:check": "pnpm --filter @infrabyx/crypto dev-keys --check"

@@ -1,0 +1,53 @@
+# Platform help entries, module `feedback` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: feedback
+entries:
+  - key: hlp.feedback.summary
+    term: "Your feedback"
+    plain: "Tell us what happened or what you would like, in your own words. Please do not include passwords, account numbers or other personal details."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.contact_ok
+    term: "May we contact you"
+    plain: "Tick this if you are happy for us to reply about this feedback. We use your details only for this reply."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.a11y_route
+    term: "Page with the problem"
+    plain: "The page or screen where the accessibility problem happened, for example the contact form."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.a11y_at
+    term: "Assistive technology"
+    plain: "The screen reader, magnifier, voice control or other tool you were using, if any, so we can reproduce the problem."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.a11y_summary
+    term: "What went wrong"
+    plain: "Describe the accessibility problem in your own words, for example a button a screen reader does not announce."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.a11y_expected
+    term: "What you expected"
+    plain: "What should have happened instead, so we know when the problem is fixed."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.feedback.a11y_blocking
+    term: "Problem stops you"
+    plain: "Tick this if the problem stops you completing a task. We treat these first."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

@@ -1,0 +1,81 @@
+# Platform help entries, module `ai` (IPB-07 §07.4.3; PL5 session 7). Plain text of at most 40 words;
+# no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: ai
+entries:
+  - key: hlp.ai.residency_unavailable
+    term: "AI not available in India now"
+    plain: "No AI service that keeps your data in India is available right now, so the request was not sent anywhere. Try again later."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.paused
+    term: "AI paused"
+    plain: "AI features are paused for your organisation by an administrator or a safety switch. Everything else keeps working."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.model_unavailable
+    term: "AI model unavailable"
+    plain: "The AI model this feature uses is not available at the moment. Try again later; nothing was sent."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.cost_cap
+    term: "AI usage limit reached"
+    plain: "Your organisation has reached the AI usage limit set for this period. An administrator can review the limit."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.busy
+    term: "AI busy"
+    plain: "The AI service is handling too many requests right now. Wait a moment and try again."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.image_forbidden
+    term: "Image request refused"
+    plain: "This image request was refused because it asked for something our rules do not allow, such as a real person or an official document."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.stopped_for_safety
+    term: "Stopped for safety"
+    plain: "The AI answer was stopped because it failed a safety check. Rephrase the request or ask a person for help."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.invalid_result
+    term: "AI result not usable"
+    plain: "The AI returned a result that did not match the expected format, so it was not used. Try again."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.withheld
+    term: "AI result withheld"
+    plain: "The AI result was held back because it may contain advice only a qualified person should give. A reviewer can release it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.byok_rejected
+    term: "Own AI key not accepted"
+    plain: "The AI key your organisation supplied was not accepted, so no request was sent. Check the key with your administrator."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public
+  - key: hlp.ai.image_unapproved
+    term: "Image not yet approved"
+    plain: "An AI-generated image must be reviewed and labelled before it can be published."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: public

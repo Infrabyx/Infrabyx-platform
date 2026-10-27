@@ -16,7 +16,7 @@ const cls = (over: Record<string, unknown> = {}) =>
     category: "transactional",
     resend: "safe",
     default_channels: ["inapp", "email"],
-    help_key: "ntf.inbox.mention",
+    help_key: "hlp.notify.inbox.mention",
     deep_link: "/inbox",
     ...over,
   });

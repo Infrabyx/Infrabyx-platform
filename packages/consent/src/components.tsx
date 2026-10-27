@@ -75,6 +75,12 @@ export function CookieBanner(p: {
   );
 }
 
+/** Help keys of the switchable categories (literals, so `hlp-lint` sees each one). */
+const CATEGORY_HELP = {
+  functional: "hlp.consent.functional",
+  analytics: "hlp.consent.analytics",
+  marketing: "hlp.consent.marketing",
+} as const;
 const CATEGORY_LABEL = {
   necessary: "Necessary",
   functional: "Functional",
@@ -103,7 +109,7 @@ export function PreferenceCentre(p: {
             id={`ibx-cmp-${c}`}
             name={c}
             label={`Allow ${CATEGORY_LABEL[c].toLowerCase()} cookies`}
-            helpKey={`hlp.consent.${c}`}
+            helpKey={CATEGORY_HELP[c]}
             checked={(p.state.choice as ConsentChoice)[c]}
           />
         )}
