@@ -103,13 +103,21 @@ export interface SharedSecretAuth {
   sourceCidrs?: readonly string[];
 }
 
-/** Bearer token (`Authorization: Bearer …`) or URL credentials (`Authorization: Basic …`, password). */
+/** Query parameter for gateways that can only call a configured URL (no headers, no userinfo). */
+export const WEBHOOK_TOKEN_PARAM = "ipb_token";
+
+/**
+ * Bearer token (`Authorization: Bearer …`), URL credentials (`Authorization: Basic …`, password),
+ * or, for gateways that cannot send headers, the `ipb_token` query parameter of the configured
+ * URL (ingress logs must redact it).
+ */
 export async function checkSharedSecret(
   port: string,
   adapter: string,
   auth: SharedSecretAuth,
   headers: Readonly<Record<string, string>>,
   sourceIp?: string,
+  query?: string,
 ): Promise<void> {
   if (auth.sourceCidrs?.length && !ipAllowed(sourceIp, auth.sourceCidrs))
     throw webhookRefused(port, adapter, "source address not in the vendor's ranges");
@@ -119,7 +127,7 @@ export async function checkSharedSecret(
   else if (/^Basic /i.test(a)) {
     const decoded = Buffer.from(a.slice(6).trim(), "base64").toString("utf8");
     presented = decoded.slice(decoded.indexOf(":") + 1);
-  }
+  } else if (query) presented = new URLSearchParams(query).get(WEBHOOK_TOKEN_PARAM) ?? "";
   if (!presented || !verifyWebhookSecret(await auth.secret(), presented))
     throw webhookRefused(port, adapter, "shared secret missing or wrong");
 }

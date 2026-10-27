@@ -3,3 +3,4 @@ export * from "./http.js";
 export * from "./ses.js";
 export * from "./brevo.js";
 export * from "./sns.js";
+export * from "./sms.js";
