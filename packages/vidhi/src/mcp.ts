@@ -226,12 +226,10 @@ export class McpServer {
     if (req?.jsonrpc !== "2.0" || typeof req.method !== "string")
       return rpcError(req?.id, -32600, "invalid request");
     if (req.id === undefined) return null;
-    let enabled = false;
-    try {
-      enabled = (await this.o.settings.get(ctx, "ai.mcp.server_enabled")) === true;
-    } catch {
-      enabled = false;
-    }
+    const enabled = await this.o.settings
+      .get(ctx, "ai.mcp.server_enabled")
+      .then((v) => v === true)
+      .catch(() => false);
     if (!enabled)
       return rpcError(req.id, -32001, "the Vidhi MCP server is not enabled for this organisation");
     switch (req.method) {
