@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 sessions 1–7 built** (#13, #15, #17–#21, #23–#25, session 7 PR); next is session 8 (exit gate and release) and gate A. Continuous build mode (PL2-D-41)                            |
+| Current phase         | **PL2 sessions 1–7 done** (#13, #15–#21, #23–#26); next is session 8 (exit gate and release) and gate A. Continuous build mode (PL2-D-41)                                                |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
@@ -26,39 +26,42 @@ Updated: 2026-10-27
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
 
-## Handover (2026-10-27, end of the session that built PL2 session 6)
+## Handover (2026-10-27, end of the session that built PL2 sessions 6 and 7)
 
-**Done.** PL2 sessions 1–6 are built and merged:
+**Done.** PL2 sessions 1–7 are built and merged:
 
-- #13, #15, #16, #17, #18 (sessions 1–3 and field-encryption v2);
-- #19, #20, #21 (sessions 4–5 and the MinIO-server leg);
-- #23 (flaky base62 test fixed at the draw; public-repository rules, PL2-D-62; owner answers to OWNER-QUESTIONS #5, PL2-D-63; Zitadel projection wait; per-token workflow-id check);
-- #24 (session 6: EMAIL `ses`/`brevo`, SMS `msg91`/`gupshup-sms`, WHATSAPP `gupshup`/`meta-cloud` on vendor stubs, PL2-D-64).
+- #13, #15–#21 (sessions 1–5, field-encryption v2, the MinIO-server leg);
+- #23 (flaky base62 test fixed at the draw; public-repository rules, PL2-D-62; OWNER-QUESTIONS #5, PL2-D-63);
+- #24 (session 6: EMAIL, SMS, WHATSAPP, PL2-D-64);
+- #25 (OWNER-QUESTIONS #6 and the Gupshup conditions, PL2-D-65);
+- #26 (session 7: PAYMENTS `razorpay` and `cashfree`, test mode only, PL2-D-66).
 
-Version PR #14 is green on its latest regeneration and collects every changeset; it is merged only at gate A (PL2-D-31). Nothing from PL2 is published yet.
+All thirteen PL2 ports now have both adapters with green hermetic contract legs in CI. Every SaaS adapter stays `unproven` until its sandbox leg runs (IPB-DEV-04).
 
-**Branch and PR state.** No PR is open. `claude/funny-cori-6upyrr` equals `main` (`13c7379`); GitHub deletes it after each squash merge, so push it again from `main` before the next session's first commit.
+Version PR #14 collects every changeset and was green after #23. It is regenerated after each merge, so check it again before gate A. It is merged only at gate A (PL2-D-31). Nothing from PL2 is published yet.
 
-**Next: PL2 session 7, PAYMENTS** (`razorpay` reference, `cashfree` alternative), plan §6.13 and the locked list in §8 (approved with conditions; P-05 and P-07 revised by the owner):
+**Branch and PR state.** No PR is open. `claude/funny-cori-6upyrr` equals `main` (`0c4535d`). GitHub deletes it after each squash merge, so push it again from `main` before the next session's first commit.
 
-- integer paise only;
-- signatures verified in the adapter;
-- refunds need an approved R3 `approvalRef`;
-- no live keys outside prod/dr;
-- `kill.payments`;
-- idempotency with the human queue for unresolved money operations;
-- `@IPB-01-AT-08` failover Razorpay → Cashfree.
+**Next: PL2 session 8, then gate A** (plan §11, §14 of IPB-14):
 
-Stubs as in session 6 (`@infrabyx/testing` stubs), and the sandbox legs stay off until the accounts exist. Then session 8 (exit gate, release through #14) and gate A.
+1. Walk the PL2 exit-gate checklist in plan §11: the IPB-09 required checks, each port's `@IPB-..-AT-..` acceptance tests, `at-report`, the threat model, `sandbox-status.json`, and the owner tasks for sandbox accounts.
+2. Write a short gate-A report with what passed, what is unproven and why, and the owner tasks.
+3. When the checklist is green, merge version PR #14 so `release.yml` publishes the 0.x pre-releases.
+4. Update STATUS with what products can install and what they must change: migrations `connectors/0002` and `0003`; the settings added in PL2; the env vars `AUTH_SUPER_ADMIN_EMAIL` and the `PAYMENTS_*`/`MSG_*` names; routing `dpa_ref` for GLOBAL messaging; `RefundApprovals` and `customerContact` for PAYMENTS; `router.portFor` for refunds.
+
+Then PL3 (plan first). The owner's PL3 items so far:
+
+- NOTIFY resend classes and the platform suppression list (PL2-D-65);
+- the platform-issued support token, when a product first needs it (PL2-D-55).
 
 **Local environment notes.**
 
 - Start Docker with `nohup dockerd &`, then `docker start pgs2` (PostgreSQL 18 on 55433); use `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres`.
-- Docker Hub works (moto, LocalStack, Keycloak and others are cached); GHCR (Zitadel) and quay.io are unreachable here, and vendor documentation hosts are blocked, so vendor facts come from official SDKs on GitHub and web search (PL2-D-64).
-- gitleaks 8.30.1 can be fetched from GitHub releases and checked against the SHA in `ci.yml`. Run `gitleaks git --log-opts="origin/main..HEAD" .` before pushing, and keep credential-shaped literals out of tests: stubs use `stubCredential()`.
-- Commit subjects are at most 100 characters (commitlint). Force-pushes are refused by the session's permission policy.
+- Docker Hub works; GHCR (Zitadel) and quay.io do not. Vendor documentation hosts are blocked, so vendor facts come from official SDKs on GitHub plus web search (PL2-D-64, PL2-D-66). Clones are in the session scratchpad.
+- gitleaks 8.30.1 from GitHub releases, checked against the SHA in `ci.yml`. Run `gitleaks git --log-opts="origin/main..HEAD" .` before pushing. Build credential-shaped test values at run time; stubs use `stubCredential()`.
+- Commit subjects are at most 100 characters (commitlint). Force-pushes are refused by the session's permission policy. Pass the exact 40-character head SHA to the squash merge.
 
-**Open questions.** None. OWNER-QUESTIONS #6 is answered (PL2-D-65); for PL3 it sets the NOTIFY resend classes (safe to resend / hold for review; unclassified types hold) and the platform suppression list as the single source of truth.
+**Open questions.** None. OWNER-QUESTIONS #1–#6 are answered (PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61, PL2-D-63, PL2-D-65).
 
 ## Working mode (PL2-D-41)
 
