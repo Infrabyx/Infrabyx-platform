@@ -1,7 +1,7 @@
 // Brevo transactional API v3 stub (PL2 plan §7), from Brevo's API definition (official Node SDK,
 // generated from it). Field names not yet proven against the live API are [VERIFY] until the
 // sandbox leg (`X-Sib-Sandbox: drop`) runs.
-import { startStub, type StubReply, type VendorStub } from "./http.js";
+import { startStub, stubCredential, type StubReply, type VendorStub } from "./http.js";
 
 export interface BrevoStubMessage {
   messageId: string;
@@ -30,7 +30,7 @@ const fail = (status: number, code: string, message: string): StubReply => ({
 
 let seq = 0;
 
-export async function startBrevoStub(apiKey = "stub-brevo-key"): Promise<BrevoStub> {
+export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoStub> {
   const messages: BrevoStubMessage[] = [];
   const byIdem = new Map<string, string>();
   const ref: { s?: BrevoStub } = {};

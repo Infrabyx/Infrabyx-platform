@@ -38,7 +38,7 @@ const policy = { lastInboundAt, rateCard, marketingEnabled: () => marketing };
 const gupshupAdapter = () =>
   new GupshupWhatsapp({
     ...policy,
-    apiKey: "stub-gupshup-wa-key",
+    apiKey: () => gup.credential,
     appId: "app-1",
     appName: "ldapp",
     source: "+919999900099",
@@ -52,7 +52,7 @@ const metaAdapter = (o: { window?: boolean } = {}) =>
     rateCard,
     marketingEnabled: policy.marketingEnabled,
     ...(o.window === false ? {} : { lastInboundAt }),
-    accessToken: "stub-meta-token",
+    accessToken: () => meta.credential,
     appSecret: () => appSecret,
     verifyToken,
     phoneNumberId: "1000000001",

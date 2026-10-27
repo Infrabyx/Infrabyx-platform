@@ -2,6 +2,10 @@
 // failures. Stubs prove adapter logic only; the sandbox leg proves the vendor (plan §3.11).
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { generateWebhookSecret } from "@infrabyx/crypto";
+
+/** A random credential for one stub run, so no credential-shaped literal is committed. */
+export const stubCredential = (): string => generateWebhookSecret();
 
 export interface StubRequest {
   method: string;

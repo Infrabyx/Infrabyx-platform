@@ -1,7 +1,7 @@
 // Gupshup WhatsApp BSP and Meta WhatsApp Cloud API (Graph) stubs (PL2 plan §7), from the
 // vendors' documentation as summarised in PL2-D-64. Sandbox legs: the Gupshup sandbox app and the
 // Meta test business number with allow-listed recipients only (D-07).
-import { startStub, type StubReply, type VendorStub } from "./http.js";
+import { startStub, stubCredential, type StubReply, type VendorStub } from "./http.js";
 
 export interface StubWhatsappTemplate {
   id: string;
@@ -25,13 +25,16 @@ export interface WhatsappStub extends VendorStub {
   readonly media: Array<{ id: string; type: string; bytes: number }>;
   readonly submitted: Array<Record<string, string>>;
   templates: StubWhatsappTemplate[];
+  /** The credential this stub accepts (API key or bearer token), random per run. */
+  credential: string;
   /** Recipients (msisdn) whose 24 h window is open; others get the vendor's window error. */
   openSessions: Set<string>;
   qualityRating: string;
 }
 
-const base = (stub: VendorStub) =>
+const base = (stub: VendorStub, credential: string) =>
   Object.assign(stub, {
+    credential,
     sent: [] as StubWhatsappMessage[],
     media: [] as Array<{ id: string; type: string; bytes: number }>,
     submitted: [] as Array<Record<string, string>>,
@@ -40,9 +43,7 @@ const base = (stub: VendorStub) =>
     qualityRating: "GREEN",
   });
 
-export async function startGupshupWhatsappStub(
-  apiKey = "stub-gupshup-wa-key",
-): Promise<WhatsappStub> {
+export async function startGupshupWhatsappStub(apiKey = stubCredential()): Promise<WhatsappStub> {
   const ref: { s?: WhatsappStub } = {};
   let seq = 0;
   const stub = await startStub((r): StubReply => {
@@ -91,12 +92,12 @@ export async function startGupshupWhatsappStub(
     }
     return { status: 404, body: { status: "error", message: "not found" } };
   });
-  const s: WhatsappStub = base(stub);
+  const s: WhatsappStub = base(stub, apiKey);
   ref.s = s;
   return s;
 }
 
-export async function startMetaGraphStub(token = "stub-meta-token"): Promise<WhatsappStub> {
+export async function startMetaGraphStub(token = stubCredential()): Promise<WhatsappStub> {
   const ref: { s?: WhatsappStub } = {};
   let seq = 0;
   const graphError = (status: number, code: number, message: string): StubReply => ({
@@ -192,7 +193,7 @@ export async function startMetaGraphStub(token = "stub-meta-token"): Promise<Wha
       return { status: 200, body: { quality_rating: s.qualityRating, id: phone[1] } };
     return graphError(404, 100, "Unknown path");
   });
-  const s: WhatsappStub = base(stub);
+  const s: WhatsappStub = base(stub, token);
   ref.s = s;
   return s;
 }

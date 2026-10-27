@@ -1,7 +1,7 @@
 // MSG91 Flow API and Gupshup Enterprise SMS stubs (PL2 plan §7), from the vendors' documentation
 // as summarised in PL2-D-64. They prove adapter logic only; the sandbox legs (read-only calls
 // nightly, one real send a week after DLT registration, D-07) prove the vendors.
-import { startStub, type VendorStub } from "./http.js";
+import { startStub, stubCredential, type VendorStub } from "./http.js";
 
 export interface StubSms {
   id: string;
@@ -21,7 +21,7 @@ export interface Msg91Stub extends VendorStub {
   balance: number;
 }
 
-export async function startMsg91Stub(authKey = "stub-msg91-key"): Promise<Msg91Stub> {
+export async function startMsg91Stub(authKey = stubCredential()): Promise<Msg91Stub> {
   const sent: StubSms[] = [];
   const ref: { s?: Msg91Stub } = {};
   let seq = 0;
@@ -86,7 +86,7 @@ const matches = (template: string, text: string) =>
 
 export async function startGupshupSmsStub(
   userId = "2000000001",
-  password = "stub-gupshup-password",
+  password = stubCredential(),
 ): Promise<GupshupSmsStub> {
   const sent: StubSms[] = [];
   const ref: { s?: GupshupSmsStub } = {};
