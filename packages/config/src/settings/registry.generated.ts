@@ -2906,6 +2906,801 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R4",
     "source": "IPB-09 §09.4.7.2"
+  },
+  {
+    "key": "ai.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.registry.promotion_tolerance",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 0.02,
+    "min": 0,
+    "max": 0.2,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.routing.policy.{feature}.{band}",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "pattern": "^ai\\.routing\\.policy\\.([a-z0-9_-]+)\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5",
+    "note": "ordered candidates with weights per feature and band (open, in_zero, self); seeded"
+  },
+  {
+    "key": "ai.routing.breaker_failures",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 100,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.routing.breaker_window_s",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 60,
+    "min": 5,
+    "max": 3600,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.cost.tenant_daily_cap",
+    "tier": "TENANT",
+    "type": "int",
+    "default": null,
+    "min": 0,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "minor units; plan-defined, a tenant may only lower it"
+  },
+  {
+    "key": "ai.cost.feature_monthly_cap.{feature}",
+    "tier": "PLAN",
+    "type": "int",
+    "default": null,
+    "min": 0,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "pattern": "^ai\\.cost\\.feature_monthly_cap\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5",
+    "note": "minor units; plan-defined"
+  },
+  {
+    "key": "ai.cost.tenant_daily_token_cap",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 2000000,
+    "min": 0,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "source": "PL4 plan §12",
+    "note": "token cap while model prices are unset (PL4-D-01 A-07)"
+  },
+  {
+    "key": "ai.cost.feature_monthly_token_cap.{feature}",
+    "tier": "PLAN",
+    "type": "int",
+    "default": null,
+    "min": 0,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "pattern": "^ai\\.cost\\.feature_monthly_token_cap\\.([a-z0-9_-]+)$",
+    "source": "PL4 plan §12",
+    "note": "token cap while model prices are unset (PL4-D-01 A-07)"
+  },
+  {
+    "key": "ai.byok.enabled",
+    "tier": "PLAN",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.byok.adapter.{key}",
+    "tier": "TENANT",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^ai\\.byok\\.adapter\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5",
+    "note": "SECRETS reference only, never a key value (IPB-03-47)"
+  },
+  {
+    "key": "ai.kill.all",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER",
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "activation direct; deactivation through an R2 approval (ai.kill.deactivate, PL4 plan §3.5)"
+  },
+  {
+    "key": "ai.kill.adapter.{key}",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "pattern": "^ai\\.kill\\.adapter\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5",
+    "note": "activation direct; deactivation through an R2 approval"
+  },
+  {
+    "key": "ai.kill.feature.{key}",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER",
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "pattern": "^ai\\.kill\\.feature\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5",
+    "note": "platform or tenant; activation direct; deactivation through an R2 approval"
+  },
+  {
+    "key": "ai.kill.tenant",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER",
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "activation direct; deactivation through an R2 approval"
+  },
+  {
+    "key": "ai.scrub.patterns",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5",
+    "note": "extra detectors; the seeded list in code is always applied"
+  },
+  {
+    "key": "ai.guard.input_threshold.{feature}",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 0.7,
+    "min": 0,
+    "max": 1,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "pattern": "^ai\\.guard\\.input_threshold\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.guard.output_policy.{feature}",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "redact",
+    "values": [
+      "redact",
+      "refuse"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "pattern": "^ai\\.guard\\.output_policy\\.([a-z0-9_-]+)$",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.limits.user_runs_per_hour",
+    "tier": "PLAN",
+    "type": "int",
+    "default": 120,
+    "min": 1,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.limits.max_input_tokens",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 200000,
+    "min": 1000,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.obs.capture_content",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": true,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5",
+    "note": "off by owner decision (27 Oct 2026); no code path captures content (PL4-D-01 A-08)"
+  },
+  {
+    "key": "ai.obs.run_retention_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 180,
+    "min": 180,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R5",
+    "source": "IPB-03 §03.5",
+    "note": "no purge job until the owner approves one (OWNER-QUESTIONS #30)"
+  },
+  {
+    "key": "ai.mcp.server_enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.a2a.agent_card",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.image.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "ai.image.default_adapter",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "gemini_imagen",
+    "values": [
+      "gemini_imagen",
+      "flux_self_hosted"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "OWN-10"
+  },
+  {
+    "key": "ai.image.c2pa_sign",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.9",
+    "note": "off until IPB-OI-03-06 (key custody) is decided"
+  },
+  {
+    "key": "ai.speech.default_stt",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "bhashini",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "no SPEECH adapter in PL4 (OWNER-QUESTIONS #28)"
+  },
+  {
+    "key": "ai.speech.default_tts",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "azure_speech_in",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "no SPEECH adapter in PL4 (OWNER-QUESTIONS #28)"
+  },
+  {
+    "key": "ai.inference.confidential_only",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.9",
+    "note": "when true every route is refused: no attested adapter exists (IPB-OI-03-03)"
+  },
+  {
+    "key": "trust.privacy.cross_border_ai_allowed",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03-24; PL4 plan §12",
+    "note": "false: every class routes IN/SELF only (IPB-03-24; PR-023)"
+  },
+  {
+    "key": "vidhi.brand.display_name",
+    "tier": "BRAND",
+    "type": "string",
+    "default": "Vidhi",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "white-label plans; kernel id stays vidhi in logs, events and the ledger; no brand-admin role exists yet"
+  },
+  {
+    "key": "vidhi.persona.version",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "vidhi.persona@1",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.surfaces.{surface}.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "pattern": "^vidhi\\.surfaces\\.([a-z0-9_-]+)\\.enabled$",
+    "source": "IPB-03 §03.5",
+    "note": "panel, palette, inline, chat true; voice, whatsapp, email false"
+  },
+  {
+    "key": "vidhi.skill.{key}.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "pattern": "^vidhi\\.skill\\.([a-z0-9_-]+)\\.enabled$",
+    "source": "IPB-03 §03.5",
+    "note": "per product floor"
+  },
+  {
+    "key": "vidhi.skill.{key}.autonomy_level",
+    "tier": "TENANT",
+    "type": "enum",
+    "default": "L1",
+    "values": [
+      "L0",
+      "L1",
+      "L2",
+      "L3",
+      "L4"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^vidhi\\.skill\\.([a-z0-9_-]+)\\.autonomy_level$",
+    "source": "IPB-03 §03.5",
+    "note": "never above the skill and product ceilings; L3/L4 through the promotion flow"
+  },
+  {
+    "key": "vidhi.autonomy.promotion_min_runs",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 50,
+    "min": 50,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.autonomy.repromotion_cooldown_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.task.input_timeout_h",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 72,
+    "min": 1,
+    "max": 720,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.autonomy.l3_delay_min",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 15,
+    "min": 15,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.sched.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.sched.max_skips",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 3,
+    "min": 1,
+    "max": 10,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.sched.templates.{key}.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "pattern": "^vidhi\\.sched\\.templates\\.([a-z0-9_-]+)\\.enabled$",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.sched.allow_l4",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": true,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.9",
+    "note": "never in v1 (IPB-03-67, IPB-OI-03-08)"
+  },
+  {
+    "key": "vidhi.a2a.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.mcp.client_allowlist",
+    "tier": "TENANT",
+    "type": "json",
+    "default": [],
+    "locked": false,
+    "tighten": "subset",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER",
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "source": "IPB-03 §03.5",
+    "note": "a tenant may only narrow the platform list"
+  },
+  {
+    "key": "vidhi.connectors.calendar.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "no calendar connector in PL4 (OWNER-QUESTIONS #31)"
+  },
+  {
+    "key": "vidhi.notebooks.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.notebooks.audio_overview",
+    "tier": "PLAN",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5",
+    "note": "off until SPEECH adapters exist (OWNER-QUESTIONS #32)"
+  },
+  {
+    "key": "vidhi.notebooks.pptx",
+    "tier": "PLAN",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "PL4 plan §12",
+    "note": "off until a docgen package exists (OWNER-QUESTIONS #32)"
+  },
+  {
+    "key": "vidhi.digest.hour_local",
+    "tier": "USER",
+    "type": "int",
+    "default": 8,
+    "min": 0,
+    "max": 23,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.qa.sample_rate",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 0.02,
+    "min": 0.02,
+    "max": 1,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.a11y.plain_language",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "vidhi.feedback.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-03 §03.5"
   }
 ];
 
@@ -3074,6 +3869,48 @@ export type SettingValueMap = {
   "eng.export.map_version": string | null;
   "eng.export.dual_run_days": number;
   "eng.export.font_drift_allowed": boolean;
+  "ai.enabled": boolean;
+  "ai.registry.promotion_tolerance": number;
+  "ai.routing.breaker_failures": number;
+  "ai.routing.breaker_window_s": number;
+  "ai.cost.tenant_daily_cap": number | null;
+  "ai.cost.tenant_daily_token_cap": number;
+  "ai.byok.enabled": boolean;
+  "ai.kill.all": boolean;
+  "ai.kill.tenant": boolean;
+  "ai.scrub.patterns": JsonValue;
+  "ai.limits.user_runs_per_hour": number;
+  "ai.limits.max_input_tokens": number;
+  "ai.obs.capture_content": boolean;
+  "ai.obs.run_retention_days": number;
+  "ai.mcp.server_enabled": boolean;
+  "ai.a2a.agent_card": boolean;
+  "ai.image.enabled": boolean;
+  "ai.image.default_adapter": "gemini_imagen" | "flux_self_hosted";
+  "ai.image.c2pa_sign": boolean;
+  "ai.speech.default_stt": string;
+  "ai.speech.default_tts": string;
+  "ai.inference.confidential_only": boolean;
+  "trust.privacy.cross_border_ai_allowed": boolean;
+  "vidhi.brand.display_name": string;
+  "vidhi.persona.version": string;
+  "vidhi.autonomy.promotion_min_runs": number;
+  "vidhi.autonomy.repromotion_cooldown_days": number;
+  "vidhi.task.input_timeout_h": number;
+  "vidhi.autonomy.l3_delay_min": number;
+  "vidhi.sched.enabled": boolean;
+  "vidhi.sched.max_skips": number;
+  "vidhi.sched.allow_l4": boolean;
+  "vidhi.a2a.enabled": boolean;
+  "vidhi.mcp.client_allowlist": JsonValue;
+  "vidhi.connectors.calendar.enabled": boolean;
+  "vidhi.notebooks.enabled": boolean;
+  "vidhi.notebooks.audio_overview": boolean;
+  "vidhi.notebooks.pptx": boolean;
+  "vidhi.digest.hour_local": number;
+  "vidhi.qa.sample_rate": number;
+  "vidhi.a11y.plain_language": boolean;
+  "vidhi.feedback.enabled": boolean;
 } & {
   [k: `int.${string}.primary`]: string | null;
   [k: `int.${string}.secondary`]: string | null;
@@ -3090,6 +3927,18 @@ export type SettingValueMap = {
   [k: `mc.amount_threshold.${string}`]: number | null;
   [k: `mc.dual_checker_above.${string}`]: number | null;
   [k: `mc.checker_roles.${string}`]: string[] | null;
+  [k: `ai.routing.policy.${string}.${string}`]: JsonValue | null;
+  [k: `ai.cost.feature_monthly_cap.${string}`]: number | null;
+  [k: `ai.cost.feature_monthly_token_cap.${string}`]: number | null;
+  [k: `ai.byok.adapter.${string}`]: string | null;
+  [k: `ai.kill.adapter.${string}`]: boolean;
+  [k: `ai.kill.feature.${string}`]: boolean;
+  [k: `ai.guard.input_threshold.${string}`]: number;
+  [k: `ai.guard.output_policy.${string}`]: "redact" | "refuse";
+  [k: `vidhi.surfaces.${string}.enabled`]: boolean | null;
+  [k: `vidhi.skill.${string}.enabled`]: boolean | null;
+  [k: `vidhi.skill.${string}.autonomy_level`]: "L0" | "L1" | "L2" | "L3" | "L4";
+  [k: `vidhi.sched.templates.${string}.enabled`]: boolean;
 };
 
 /** Every key code may read. An unregistered key fails typecheck (IPB-01 §01.5, @IPB-07-AT-05). */

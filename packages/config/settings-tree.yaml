@@ -1981,3 +1981,558 @@ keys:
       mc: R4,
       source: "IPB-09 §09.4.7.2",
     }
+
+  # ---------------------------------------------------------------- PL4: AI gateway and Vidhi (IPB-03 §03.5; PL4 plan §12)
+  - {
+      key: ai.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: true,
+      change: [ORG_OWNER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.registry.promotion_tolerance,
+      tier: "PLATFORM",
+      type: decimal,
+      default: 0.02,
+      min: 0,
+      max: 0.2,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.routing.policy.{feature}.{band}",
+      tier: "PLATFORM",
+      type: json,
+      default: null,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "ordered candidates with weights per feature and band (open, in_zero, self); seeded",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.routing.breaker_failures,
+      tier: "PLATFORM",
+      type: int,
+      default: 5,
+      min: 1,
+      max: 100,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.routing.breaker_window_s,
+      tier: "PLATFORM",
+      type: int,
+      default: 60,
+      min: 5,
+      max: 3600,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.cost.tenant_daily_cap,
+      tier: "TENANT",
+      type: int,
+      default: null,
+      min: 0,
+      tighten: max,
+      change: [ORG_OWNER],
+      mc: false,
+      note: "minor units; plan-defined, a tenant may only lower it",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.cost.feature_monthly_cap.{feature}",
+      tier: "PLAN",
+      type: int,
+      default: null,
+      min: 0,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "minor units; plan-defined",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.cost.tenant_daily_token_cap,
+      tier: "TENANT",
+      type: int,
+      default: 2000000,
+      min: 0,
+      tighten: max,
+      change: [ORG_OWNER],
+      mc: false,
+      note: "token cap while model prices are unset (PL4-D-01 A-07)",
+      source: "PL4 plan \u00a712",
+    }
+  - {
+      key: "ai.cost.feature_monthly_token_cap.{feature}",
+      tier: "PLAN",
+      type: int,
+      default: null,
+      min: 0,
+      change: [PLT_SUPER_ADMIN],
+      mc: R2,
+      note: "token cap while model prices are unset (PL4-D-01 A-07)",
+      source: "PL4 plan \u00a712",
+    }
+  - {
+      key: ai.byok.enabled,
+      tier: "PLAN",
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.byok.adapter.{key}",
+      tier: "TENANT",
+      type: string,
+      default: null,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "SECRETS reference only, never a key value (IPB-03-47)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.kill.all,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN],
+      mc: false,
+      note: "activation direct; deactivation through an R2 approval (ai.kill.deactivate, PL4 plan \u00a73.5)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.kill.adapter.{key}",
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      note: "activation direct; deactivation through an R2 approval",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.kill.feature.{key}",
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER, ORG_OWNER],
+      mc: false,
+      note: "platform or tenant; activation direct; deactivation through an R2 approval",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.kill.tenant,
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [ORG_OWNER, PLT_SECURITY_OFFICER],
+      mc: false,
+      note: "activation direct; deactivation through an R2 approval",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.scrub.patterns,
+      tier: "PLATFORM",
+      type: json,
+      default: [],
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "extra detectors; the seeded list in code is always applied",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.guard.input_threshold.{feature}",
+      tier: "PLATFORM",
+      type: decimal,
+      default: 0.7,
+      min: 0,
+      max: 1,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "ai.guard.output_policy.{feature}",
+      tier: "PLATFORM",
+      type: enum,
+      values: ["redact", "refuse"],
+      default: "redact",
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.limits.user_runs_per_hour,
+      tier: "PLAN",
+      type: int,
+      default: 120,
+      min: 1,
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.limits.max_input_tokens,
+      tier: "PLATFORM",
+      type: int,
+      default: 200000,
+      min: 1000,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.obs.capture_content,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      locked: true,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "off by owner decision (27 Oct 2026); no code path captures content (PL4-D-01 A-08)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.obs.run_retention_days,
+      tier: "PLATFORM",
+      type: int,
+      default: 180,
+      min: 180,
+      tighten: min,
+      change: [PLT_DPO],
+      mc: R5,
+      note: "no purge job until the owner approves one (OWNER-QUESTIONS #30)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.mcp.server_enabled,
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [ORG_OWNER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.a2a.agent_card,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.image.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.image.default_adapter,
+      tier: "PLATFORM",
+      type: enum,
+      values: ["gemini_imagen", "flux_self_hosted"],
+      default: "gemini_imagen",
+      change: [PLT_CONTENT_EDITOR],
+      mc: false,
+      note: "OWN-10",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.image.c2pa_sign,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "off until IPB-OI-03-06 (key custody) is decided",
+      source: "IPB-03 \u00a703.9",
+    }
+  - {
+      key: ai.speech.default_stt,
+      tier: "PLATFORM",
+      type: string,
+      default: "bhashini",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      note: "no SPEECH adapter in PL4 (OWNER-QUESTIONS #28)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.speech.default_tts,
+      tier: "PLATFORM",
+      type: string,
+      default: "azure_speech_in",
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      note: "no SPEECH adapter in PL4 (OWNER-QUESTIONS #28)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: ai.inference.confidential_only,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "when true every route is refused: no attested adapter exists (IPB-OI-03-03)",
+      source: "IPB-03 \u00a703.9",
+    }
+  - {
+      key: trust.privacy.cross_border_ai_allowed,
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "false: every class routes IN/SELF only (IPB-03-24; PR-023)",
+      source: "IPB-03-24; PL4 plan \u00a712",
+    }
+  - {
+      key: vidhi.brand.display_name,
+      tier: "BRAND",
+      type: string,
+      default: "Vidhi",
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      note: "white-label plans; kernel id stays vidhi in logs, events and the ledger; no brand-admin role exists yet",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.persona.version,
+      tier: "PLATFORM",
+      type: string,
+      default: "vidhi.persona@1",
+      change: [PLT_CONTENT_EDITOR],
+      mc: R2,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "vidhi.surfaces.{surface}.enabled",
+      tier: "TENANT",
+      type: bool,
+      default: null,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "panel, palette, inline, chat true; voice, whatsapp, email false",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "vidhi.skill.{key}.enabled",
+      tier: "TENANT",
+      type: bool,
+      default: null,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "per product floor",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "vidhi.skill.{key}.autonomy_level",
+      tier: "TENANT",
+      type: enum,
+      values: ["L0", "L1", "L2", "L3", "L4"],
+      default: "L1",
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "never above the skill and product ceilings; L3/L4 through the promotion flow",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.autonomy.promotion_min_runs,
+      tier: "PLATFORM",
+      type: int,
+      default: 50,
+      min: 50,
+      tighten: min,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.autonomy.repromotion_cooldown_days,
+      tier: "PLATFORM",
+      type: int,
+      default: 30,
+      min: 30,
+      tighten: min,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.task.input_timeout_h,
+      tier: "TENANT",
+      type: int,
+      default: 72,
+      min: 1,
+      max: 720,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.autonomy.l3_delay_min,
+      tier: "TENANT",
+      type: int,
+      default: 15,
+      min: 15,
+      tighten: min,
+      change: [ORG_OWNER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.sched.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.sched.max_skips,
+      tier: "PLATFORM",
+      type: int,
+      default: 3,
+      min: 1,
+      max: 10,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: "vidhi.sched.templates.{key}.enabled",
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.sched.allow_l4,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      locked: true,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "never in v1 (IPB-03-67, IPB-OI-03-08)",
+      source: "IPB-03 \u00a703.9",
+    }
+  - {
+      key: vidhi.a2a.enabled,
+      tier: "PLATFORM",
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.mcp.client_allowlist,
+      tier: "TENANT",
+      type: json,
+      default: [],
+      tighten: subset,
+      change: [PLT_SECURITY_OFFICER, ORG_OWNER],
+      mc: R4,
+      note: "a tenant may only narrow the platform list",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.connectors.calendar.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: false,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "no calendar connector in PL4 (OWNER-QUESTIONS #31)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.notebooks.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.notebooks.audio_overview,
+      tier: "PLAN",
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      note: "off until SPEECH adapters exist (OWNER-QUESTIONS #32)",
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.notebooks.pptx,
+      tier: "PLAN",
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: false,
+      note: "off until a docgen package exists (OWNER-QUESTIONS #32)",
+      source: "PL4 plan \u00a712",
+    }
+  - {
+      key: vidhi.digest.hour_local,
+      tier: "USER",
+      type: int,
+      default: 8,
+      min: 0,
+      max: 23,
+      change: [self],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.qa.sample_rate,
+      tier: "PLATFORM",
+      type: decimal,
+      default: 0.02,
+      min: 0.02,
+      max: 1,
+      tighten: min,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.a11y.plain_language,
+      tier: "USER",
+      type: bool,
+      default: false,
+      change: [self],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
+  - {
+      key: vidhi.feedback.enabled,
+      tier: "TENANT",
+      type: bool,
+      default: true,
+      change: [ORG_ADMIN],
+      mc: false,
+      source: "IPB-03 \u00a703.5",
+    }
