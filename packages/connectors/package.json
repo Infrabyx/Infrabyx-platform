@@ -53,6 +53,18 @@
       "types": "./dist/workflow/worker.d.ts",
       "default": "./dist/workflow/worker.js"
     },
+    "./email": {
+      "types": "./dist/email/index.d.ts",
+      "default": "./dist/email/index.js"
+    },
+    "./sms": {
+      "types": "./dist/sms/index.d.ts",
+      "default": "./dist/sms/index.js"
+    },
+    "./whatsapp": {
+      "types": "./dist/whatsapp/index.d.ts",
+      "default": "./dist/whatsapp/index.js"
+    },
     "./policy/*": "./policy/*"
   },
   "files": [
@@ -86,6 +98,7 @@
     "@aws-sdk/client-kms": "3.1152.0",
     "@aws-sdk/client-s3": "3.1152.0",
     "@aws-sdk/client-secrets-manager": "3.1152.0",
+    "@aws-sdk/client-sesv2": "3.1152.0",
     "@aws-sdk/s3-request-presigner": "3.1152.0",
     "@cerbos/http": "0.30.1",
     "@infrabyx/config": "workspace:*",

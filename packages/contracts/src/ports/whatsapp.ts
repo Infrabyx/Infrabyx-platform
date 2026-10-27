@@ -1,7 +1,7 @@
 // WHATSAPP port (IPB-01 §01.4.4.2). Message content is INTERNAL; media of class CONFIDENTIAL goes
 // as a secure link; marketing templates stay off (OWN-08).
 import { z } from "zod";
-import type { Port, PortCall } from "./common.js";
+import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed, recipient } from "./payload-class.js";
 import { E164 } from "./sms.js";
 
@@ -28,6 +28,10 @@ export interface WhatsappEvent {
   messageId?: string;
   type: "sent" | "delivered" | "read" | "failed" | "inbound";
   at: string;
+  /** Pricing category the vendor reports for the message (OH8 billing); present when billable. */
+  pricingCategory?: string;
+  /** Vendor error code of a failed message (for example 131047 or 470: outside the 24 h window). */
+  errorCode?: string;
 }
 
 export interface WhatsappPort extends Port {
@@ -51,6 +55,7 @@ export interface WhatsappPort extends Port {
   verifyWebhook(
     rawBody: Uint8Array,
     headers: Readonly<Record<string, string>>,
+    meta?: WebhookRequestMeta,
   ): Promise<WhatsappEvent[]>;
   /** Category and per-message cost so OH8 can bill (IPB-01 WHATSAPP). */
   getConversationCost(

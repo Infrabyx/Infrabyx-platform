@@ -1,7 +1,7 @@
 // SMS port (IPB-01 §01.4.4.2). Indian traffic uses DLT-registered templates and headers only;
 // SMS OTP is never an MFA factor for admin roles (IPB-02-02).
 import { z } from "zod";
-import type { Port, PortCall } from "./common.js";
+import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed, recipient } from "./payload-class.js";
 
 const internal = <T extends z.ZodType>(s: T): T => classed(s, "INTERNAL");
@@ -33,5 +33,6 @@ export interface SmsPort extends Port {
   verifyWebhook(
     rawBody: Uint8Array,
     headers: Readonly<Record<string, string>>,
+    meta?: WebhookRequestMeta,
   ): Promise<SmsDeliveryReport[]>;
 }

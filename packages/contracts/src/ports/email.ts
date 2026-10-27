@@ -1,7 +1,7 @@
 // EMAIL port (IPB-01 §01.4.4.2). Bodies are INTERNAL; CONFIDENTIAL content goes only as a secure
 // link; recipient addresses may reach a GLOBAL provider for delivery only, under a DPA (IPB-DEV-05).
 import { z } from "zod";
-import type { Port, PortCall } from "./common.js";
+import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed, recipient } from "./payload-class.js";
 
 const internal = <T extends z.ZodType>(s: T): T => classed(s, "INTERNAL");
@@ -46,6 +46,7 @@ export interface EmailPort extends Port {
   verifyWebhook(
     rawBody: Uint8Array,
     headers: Readonly<Record<string, string>>,
+    meta?: WebhookRequestMeta,
   ): Promise<EmailEvent[]>;
   verifyDomain(domain: string): Promise<{
     verified: boolean;

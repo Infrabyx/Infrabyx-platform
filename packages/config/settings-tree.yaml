@@ -770,6 +770,16 @@ keys:
       source: "IPB-01 §01.4.4.2 SMS",
     }
   - {
+      key: int.sms.low_balance_credits,
+      tier: "PLATFORM",
+      type: "int",
+      default: 500,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "SMS credit balance below which the adapter reports degraded health (PL2-D-64)",
+      source: "IPB-01 §01.4.4.2 SMS",
+    }
+  - {
       key: int.whatsapp.provider,
       tier: "PLATFORM",
       type: "enum",
@@ -815,6 +825,26 @@ keys:
       mc: "R4",
       note: "secret:// reference only, never a literal",
       source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: int.whatsapp.rate_card,
+      tier: "PLATFORM",
+      type: "json",
+      default: {},
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "per-message cost by category in minor units for OH8 billing; deployment configuration only, never committed (PL2-D-64)",
+      source: "IPB-01 §01.4.4.2 WHATSAPP",
+    }
+  - {
+      key: mkt.meta.enabled,
+      tier: "PLATFORM",
+      type: "bool",
+      default: false,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "WhatsApp marketing templates; off in year one (OWN-08); the WHATSAPP adapters refuse marketing templates while false",
+      source: "OWN-08; IPB-01 §01.4.4.2 WHATSAPP",
     }
   - {
       key: int.payments.webhook_path,

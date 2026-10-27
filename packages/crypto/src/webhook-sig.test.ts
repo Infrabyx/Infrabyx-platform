@@ -12,6 +12,7 @@ import {
   verifyMetaSignature,
   verifyRazorpaySignature,
   verifySnsMessage,
+  verifyWebhookSecret,
   type SnsMessage,
 } from "./webhook-sig.js";
 
@@ -57,6 +58,15 @@ describe("C-13 vendor HMAC signatures", () => {
     expect(a).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(Buffer.from(a, "base64url")).toHaveLength(32);
     expect(generateWebhookSecret()).not.toBe(a);
+  });
+
+  it("C-19: a presented webhook secret is compared in constant time; short secrets never match", () => {
+    const s = generateWebhookSecret();
+    expect(verifyWebhookSecret(s, s)).toBe(true);
+    expect(verifyWebhookSecret(s, `${s}x`)).toBe(false);
+    expect(verifyWebhookSecret(s, s.slice(0, -1))).toBe(false);
+    expect(verifyWebhookSecret(s, "")).toBe(false);
+    expect(verifyWebhookSecret("short", "short")).toBe(false);
   });
 });
 
