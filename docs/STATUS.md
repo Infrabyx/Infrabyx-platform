@@ -2,13 +2,25 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                 |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–3 merged (#80–#82); owner answers #41–#52 applied (PL5-D-05: Studio screens and `apps/console` join PL5 as sessions 8–9, gate is session 10; approved purge sweeps; role-based contrast rule); next: session 4 (`cms` core). Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                |
-| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20)                                      |
-| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                         |
-| Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                                  |
+| Item                  | Value                                                                                                                                                                                                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–3 merged (#80–#82); owner answers #41–#52 applied (#83, PL5-D-05); session 4 built (`cms` core, PL5-D-06); next: session 5 (`cms` policies, resources, forms and pricing; `consent`). Continuous build mode (PL2-D-41)   |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
+| Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
+| Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
+| Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                             |
+
+## PL5 session 4 (2026-10-27, PL5-D-06)
+
+- `@infrabyx/cms` core, migration `cms/0001_init.sql`:
+  - content items, immutable revisions and the named state machine with maker-checker and legal review (`@IPB-04-AT-01`, `-02`, `-03`, `-101`);
+  - the Claims Register and the publish lint (`@IPB-04-AT-06`), the sanitiser (`@IPB-04-AT-20`) and the media library with alt text, photo consent and EXIF stripping (`@IPB-04-AT-09`);
+  - slugs and redirects (`@IPB-04-AT-08`), templates and menus (`@IPB-04-AT-10`), locale fallback (`@IPB-04-AT-11`) and the stale queue (`@IPB-04-AT-13`);
+  - preview links (`@IPB-04-AT-05`), the scheduler and IndexNow logging (`@IPB-04-AT-04`), and the read-only public API (`@IPB-04-AT-14`, `-93`);
+  - SEO and JSON-LD (`@IPB-04-AT-07`), the generated files, the footer validator with `infrabyx-cms validate-footer` (`@IPB-04-AT-73`) and `brandFooterHook`;
+  - the 90-day purge of soft-deleted content (#48).
+- `contracts`: the `gls_` prefix and the cms event payloads. `brand`: the footer hook receives the pack id. `tenancy`: `infrabyx-migrate` applies `cms` after `brand`.
+- New owner question #54 (session-4 defaults); platform request PR-034 (legal review returns to `in_review`).
 
 ## Owner answers #41–#52 (2026-10-27, PL5-D-05)
 

@@ -3036,7 +3036,7 @@ keys:
       default: false,
       change: [PLT_RELEASE_MANAGER],
       mc: R2,
-      note: "off until a native image library is approved (PL5 #43)",
+      note: "off: sharp failed the licence check (LGPL libvips; OWNER-QUESTIONS #43, #53)",
       source: "IPB-04 §04.5",
     }
   - {
@@ -3046,7 +3046,7 @@ keys:
       default: 30,
       change: [PLT_SUPER_ADMIN],
       mc: R2,
-      note: "no purge job in PL5 (PL5 #48)",
+      note: "restore window; soft-deleted content is purged after 90 days by the ledgered sweep (OWNER-QUESTIONS #48, PL5-D-05)",
       source: "IPB-04 §04.5",
     }
   - {

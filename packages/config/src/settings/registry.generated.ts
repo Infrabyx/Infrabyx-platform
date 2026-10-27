@@ -4426,7 +4426,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R2",
     "source": "IPB-04 §04.5",
-    "note": "off until a native image library is approved (PL5 #43)"
+    "note": "off: sharp failed the licence check (LGPL libvips; OWNER-QUESTIONS #43, #53)"
   },
   {
     "key": "cms.soft_delete.restore_days",
@@ -4440,7 +4440,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R2",
     "source": "IPB-04 §04.5",
-    "note": "no purge job in PL5 (PL5 #48)"
+    "note": "restore window; soft-deleted content is purged after 90 days by the ledgered sweep (OWNER-QUESTIONS #48, PL5-D-05)"
   },
   {
     "key": "cms.blocks.mermaid.enabled",
