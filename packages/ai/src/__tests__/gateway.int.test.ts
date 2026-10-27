@@ -562,4 +562,16 @@ describe("runs, metering and caps (IPB-03-22, 03-45, 03-46; no content stored)",
     );
     expect(seen.every((r) => r.tenant_id === "tnt_sandbox")).toBe(true);
   });
+
+  it("a run linked to an approval is held in the run's own transaction (PL4-D-05)", async () => {
+    const r = await gateway().chat(
+      user,
+      req("INTERNAL", { hold: { kind: "approval", ref: "apr_linked" } }),
+    );
+    const h = await db.admin.query(
+      "select kind, ref, released_at from ai.run_hold where run_id = $1",
+      [r.runId],
+    );
+    expect(h.rows).toEqual([{ kind: "approval", ref: "apr_linked", released_at: null }]);
+  });
 });
