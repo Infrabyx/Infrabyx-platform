@@ -416,8 +416,175 @@ describe("infrabyx-migrate", () => {
   it("is idempotent and refuses an edited released migration", async () => {
     const again = await migrate({ client: db.admin, sources: [TENANCY_SOURCE] });
     expect(again.applied).toEqual([]);
-    expect(again.skipped).toEqual(["@infrabyx/tenancy/0001_init.sql"]);
+    expect(again.skipped).toEqual([
+      "@infrabyx/tenancy/0001_init.sql",
+      "@infrabyx/tenancy/0002_approvals_pl3.sql",
+    ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
+  });
+});
+
+describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers (PL3-D-07, PL3-D-08)", () => {
+  const fieldCrypto = new FieldCrypto({ kms: new LocalKms(), keyIdFor: localTenantKeyId });
+  const seen: string[] = [];
+  const policy: Record<string, { checkerRoles?: string[]; dualCheckerAbove?: number }> = {};
+  let engine: ApprovalsEngine;
+  beforeAll(() => {
+    engine = new ApprovalsEngine({
+      kernel,
+      audit,
+      outbox,
+      product: "LD",
+      fieldCrypto,
+      tenantPolicy: async (_ctx, action) => policy[action] ?? {},
+      observers: [
+        {
+          onRequested: async (_tx, r) => void seen.push(`requested:${r.state}`),
+          onDecided: async (_tx, r, d) => void seen.push(`${d}:${r.state}`),
+          onExecuted: async (_tx, r) => void seen.push(`executed:${r.state}`),
+          onCancelled: async (_tx, r) => void seen.push(`cancelled:${r.state}`),
+          onExpired: async (_tx, r) => void seen.push(`expired:${r.state}`),
+          onReminded: async () => void seen.push("reminded"),
+          onEscalated: async (_tx, _r, role) => void seen.push(`escalated:${role}`),
+        },
+      ],
+    });
+    engine.register("payments.refund", {
+      financial: true,
+      amountOf: (p) => Number(p.amountMinor),
+      execute: async () => undefined,
+    });
+    engine.register("org.setting.change", { execute: async () => undefined });
+  });
+  const maker = user("usr_maker", ["ORG_ADMIN"]);
+  const make = (input: Parameters<ApprovalsEngine["request"]>[1], ctx = maker) =>
+    kernel.mutate(ctx, (tx) => engine.request(tx, input));
+  const hoursLeft = async (id: string) =>
+    (
+      await db.admin.query<{ h: number }>(
+        "select round(extract(epoch from expires_at - created_at) / 3600)::int as h from tenancy.approval_request where id = $1",
+        [id],
+      )
+    ).rows[0]?.h;
+
+  it("expires after 7 days, or 72 hours for R4/R5 and financial R3; an expired request is terminal", async () => {
+    const a = await make({ action: "org.setting.change", riskClass: "R2", payload: {} });
+    const b = await make({
+      action: "payments.refund",
+      riskClass: "R3",
+      payload: { amountMinor: 10 },
+    });
+    const c = await make({ action: "access.ip_allowlist.change", riskClass: "R4", payload: {} });
+    expect([await hoursLeft(a.id), await hoursLeft(b.id), await hoursLeft(c.id)]).toEqual([
+      168, 72, 72,
+    ]);
+    expect(await err(engine.expire(maker, a.id))).toBe("ConflictError");
+    await db.admin.query(
+      "update tenancy.approval_request set expires_at = now() - interval '1 second' where id = $1",
+      [a.id],
+    );
+    // Overdue but not yet expired by the timer: still refused.
+    expect(await err(engine.decide(user("usr_c", ["ORG_CHECKER"]), a.id, "approve"))).toBe(
+      "IPB-UX-012",
+    );
+    const e = await engine.expire(user("svc_timer", []), a.id);
+    expect(e.state).toBe("expired");
+    expect(await err(engine.cancel(maker, a.id))).toBe("IPB-UX-012");
+    await expect(
+      db.admin.query("update tenancy.approval_request set state = 'approved' where id = $1", [
+        a.id,
+      ]),
+    ).rejects.toThrow(/expired/);
+    const ev = await db.admin.query<{ type: string }>(
+      "select type from tenancy.outbox where envelope->'data'->>'request_id' = $1 order by created_at",
+      [a.id],
+    );
+    expect(ev.rows.map((r) => r.type)).toContain("in.ld.security.ApprovalExpired.v1");
+    expect(audit.entries.map((x) => x.action)).toContain("approvals.request.expire");
+  });
+
+  it("reminds once, escalates once to ORG_ADMIN, and never decides", async () => {
+    const { id } = await make({ action: "org.setting.change", riskClass: "R2", payload: {} });
+    seen.length = 0;
+    expect((await engine.remind(user("svc_timer", []), id)).remindedAt).not.toBeNull();
+    expect(await err(engine.remind(user("svc_timer", []), id))).toBe("ConflictError");
+    const r = await engine.escalate(user("svc_timer", []), id);
+    expect(r.state).toBe("pending");
+    expect(seen).toEqual(["reminded", "escalated:ORG_ADMIN"]);
+    const ev = await db.admin.query<{ envelope: { data: Record<string, unknown> } }>(
+      "select envelope from tenancy.outbox where type = 'in.ld.security.ApprovalEscalated.v1' and envelope->'data'->>'request_id' = $1",
+      [id],
+    );
+    expect(ev.rows[0]?.envelope.data).toMatchObject({ escalated_to_role: "ORG_ADMIN" });
+  });
+
+  it("stores the checker diff, with field names only above INTERNAL", async () => {
+    const plain = await make({
+      action: "org.setting.change",
+      riskClass: "R2",
+      payload: { key: "k" },
+      diff: { before: { limit: 5 }, after: { limit: 10 } },
+    });
+    const sealed = await make({
+      action: "org.setting.change",
+      riskClass: "R2",
+      payload: { pan: "ZZZZA1234Z" },
+      payloadDataClass: "REGULATED",
+      diff: { before: null, after: { pan: "ZZZZA1234Z" } },
+    });
+    expect((await engine.get(maker, plain.id)).diff).toEqual({
+      before: { limit: 5 },
+      after: { limit: 10 },
+    });
+    expect((await engine.get(maker, sealed.id)).diff).toEqual({ fields: ["pan"] });
+  });
+
+  it("mc.* only tightens: narrower checker roles and a second checker above the amount", async () => {
+    policy["payments.refund"] = {
+      checkerRoles: ["ORG_OWNER", "NOT_A_CHECKER"],
+      dualCheckerAbove: 1000,
+    };
+    const big = await make({
+      action: "payments.refund",
+      riskClass: "R3",
+      payload: { amountMinor: 5000 },
+    });
+    const small = await make({
+      action: "payments.refund",
+      riskClass: "R3",
+      payload: { amountMinor: 500 },
+    });
+    expect((await engine.get(maker, big.id)).requiredCheckers).toBe(2);
+    expect((await engine.get(maker, small.id)).requiredCheckers).toBe(1);
+    expect(await engine.checkerRolesFor(maker, "payments.refund")).toEqual(["ORG_OWNER"]);
+    expect(await err(engine.decide(user("usr_c", ["ORG_CHECKER"]), small.id, "approve"))).toBe(
+      "IPB-UX-011",
+    );
+    await engine.decide(user("usr_o1", ["ORG_OWNER"]), big.id, "approve");
+    expect((await engine.get(maker, big.id)).state).toBe("pending");
+    expect((await engine.decide(user("usr_o2", ["ORG_OWNER"]), big.id, "approve")).state).toBe(
+      "executed",
+    );
+    // A tenant list with no allowed role never widens or locks out: the platform roles apply.
+    policy["payments.refund"] = { checkerRoles: ["NOT_A_CHECKER"] };
+    expect(await engine.checkerRolesFor(maker, "payments.refund")).toEqual([
+      "ORG_CHECKER",
+      "ORG_ADMIN",
+      "ORG_OWNER",
+    ]);
+  });
+
+  it("PLT_SECURITY_OFFICER may cancel (IPB-02-80); observers see every transition", async () => {
+    seen.length = 0;
+    const { id } = await make({
+      action: "access.ip_allowlist.change",
+      riskClass: "R4",
+      payload: {},
+    });
+    await engine.decide(user("usr_c", ["ORG_CHECKER"]), id, "approve");
+    const officer = user("usr_so", ["PLT_SECURITY_OFFICER"]);
+    expect((await engine.cancel(officer, id)).state).toBe("cancelled");
+    expect(seen).toEqual(["requested:pending", "approve:approved", "cancelled:cancelled"]);
   });
 });

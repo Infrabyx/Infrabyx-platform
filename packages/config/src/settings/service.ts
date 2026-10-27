@@ -101,11 +101,14 @@ export class SettingsService {
             scopeId: target.scopeId,
             value,
           };
+          // The checker sees what changes at this scope (IPB-07-15, @IPB-07-AT-06).
+          const [cur] = await this.o.store.read(tx, key, [target]);
           const req = await this.o.approvals.request(tx, {
             action: SETTING_CHANGE_ACTION,
             riskClass: def.mc,
             payload: payload as unknown as Record<string, unknown>,
             summary: `Change ${key} at ${target.tier}`,
+            diff: { before: cur ? { [key]: cur.value } : null, after: { [key]: value } },
           });
           return { status: "pending", requestId: req.id } as const;
         }

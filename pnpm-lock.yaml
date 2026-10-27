@@ -391,7 +391,27 @@ importers:
 
   packages/vidhi: {}
 
-  packages/workflow: {}
+  packages/workflow:
+    dependencies:
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
 
 packages:
 

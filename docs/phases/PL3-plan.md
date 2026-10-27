@@ -202,6 +202,7 @@ Engine adapters compile this format:
 
 ### 5.2 Additions to `tenancy` (no edit to shipped migrations)
 
+- _(as built, PL3-D-19: expiry is the terminal marker `expired_at`, because widening the CHECK would need a drop in the same release; the index is not needed)_
 - `tenancy/0002_approvals_pl3.sql`:
   - an `approval_request.diff` jsonb column (CONFIDENTIAL; a sealed variant when the payload is sealed);
   - an index on `(tenant_id, state, delay_until)`.
@@ -239,7 +240,7 @@ Engine adapters compile this format:
   - At 48 hours the request **escalates**: NOTIFY class `approval.escalated` (mandatory) and an inbox item for the tenant's `ORG_ADMIN` role. Escalation never decides.
   - At `expires_at` the request expires (section 5.2).
 - **Bulk approve.** `decideMany(ids)` applies `decide` per id, each with its own audit entry. Above `ux.bulk.confirm_threshold` it requires a typed confirmation token, or returns `IPB-UX-006` (IPB-07-14).
-- **Temporal helper** `awaitApproval(approvalId)` for PL4 Vidhi missions: a workflow waits for a signal raised by the `ApprovalDecided` consumer. A late signal after cancellation is ignored (prepares `IPB-VID-022`).
+- **Temporal helper** _(deferred to PL4 with Vidhi, PL3-D-19)_ `awaitApproval(approvalId)` for PL4 Vidhi missions: a workflow waits for a signal raised by the `ApprovalDecided` consumer. A late signal after cancellation is ignored (prepares `IPB-VID-022`).
 
 ### 5.5 `RefundApprovals` (gate A product ask)
 

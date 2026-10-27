@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL3 session 2: the `rules` package, the RULES engine adapters `zen`, `json-rules` and the CEL row walk, the decision log and the flag-provider alert escalation).
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL3 session 3: `@infrabyx/workflow` — Work Inbox, scheduled actions, timers including the cross-tenant poller and `TemporalTimers` — and the tenancy approvals additions: expiry, reminder, escalation, diff, `mc.*`).
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -187,6 +187,16 @@ Types, schemas and error codes only; no I/O.
 - **D:** a costly expression. Control: `rules.cel.max_cost` bounds AST nodes (with fixed depth and list limits), rows are at most 4 KiB, inputs at most 64 KiB, and evaluation runs under the time limit.
 - **I:** decision inputs in clear. Control: inputs above INTERNAL are sealed together with FieldCrypto in `decision_log.inputs_enc`; `explain` returns values only for PUBLIC and INTERNAL inputs; the ledger holds digests only; simulation runs store counts and indexes, never inputs; invalid inputs are not stored.
 - **R:** an unexplained decision. Control: every decision has a `dcs_` log row and a ledger entry; `explain` reads the log and the version body (`@IPB-07-AT-11`).
+
+### 3.14 `@infrabyx/workflow` and the approvals additions (built, PL3 session 3)
+
+- **E:** a request approved after its time, or a stale approval executed. Control: every request expires (7 days; 72 hours for R4, R5 and financial R3); an overdue or expired request is refused by `decide`, `execute` and `cancel` (`IPB-UX-012`) even before the timer runs; a trigger makes `expired_at` terminal for every role.
+- **E:** escalation or a timer deciding. Control: escalation only notifies and raises an inbox item; timers only call the engine's `execute`, `remind`, `escalate` and `expire`, which keep every PL1 rule (checker ≠ maker, agents never check, delay windows); a scheduled action executes only after its window (`IPB-SEC-008`, `IPB-UX-005` by hand).
+- **E:** a tenant loosening maker-checker. Control: `mc.checker_roles` can only narrow the action's roles (an empty or foreign list falls back to the platform roles); `mc.dual_checker_above` can only add a checker; the settings validator refuses loosening values (PL3-D-08); every `mc.*` change is itself an R4 request.
+- **I:** cross-tenant reads by the timer poller. Control: the poller's platform context is read-only (`kernel.read`) and selects only timer ids, kinds and times; it fires each timer in its own tenant's context, where forced RLS applies (owner question #22).
+- **T:** a lost, duplicated or late timer. Control: timers are rows written in the same transaction as the change that needs them; the poller runs as the reconciler; handlers re-check state, so a duplicate fire is a no-op; failures back off and give up after 5 attempts with a `job_failed` item; Temporal timer ids carry identifiers only (C-16).
+- **I:** personal data in the Work Inbox. Control: titles are INTERNAL text built from action names and ids; the checker diff keeps values only for PUBLIC/INTERNAL payloads and field names above; the maker never sees the approval item for their own request.
+- **R:** unexplained inbox or schedule changes. Control: every inbox, scheduled-action and timer write carries a ledger entry; `ItemCreated`/`ItemResolved` and `ScheduledAction*` events go to the outbox.
 
 ## 4. Ports
 

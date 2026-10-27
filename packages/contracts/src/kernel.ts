@@ -89,6 +89,11 @@ export interface ApprovalRequestInput {
   payload: Record<string, unknown>;
   payloadDataClass?: DataClass;
   summary?: string;
+  /**
+   * What the change does, for the checker (IPB-07-15, 07-39). Stored as given when the payload is
+   * PUBLIC or INTERNAL; above that only the changed field names are kept (PL3 plan §5.2).
+   */
+  diff?: { before: Record<string, unknown> | null; after: Record<string, unknown> };
 }
 
 /** Maker-checker gateway used by config for settings that require approval (IPB-07-39). */
