@@ -1,5 +1,38 @@
 # @infrabyx/seed
 
+## 0.2.0
+
+### Minor Changes
+
+- 5482043: The super-admin address is configuration: `AUTH_SUPER_ADMIN_EMAIL` (optional) sets it, and without it the persona uses the placeholder `super.admin@example.test`; no personal address ships in the package any more. `personasFor(product, superAdminEmail?)`, `RunSeedOptions.superAdminEmail`, `CredentialsOptions.superAdminEmail` and `checkCredentialsFile(text, product, superAdminEmail?)` carry it, and `findRealIdentifiers` takes the allowed address as a third argument. Products set `AUTH_SUPER_ADMIN_EMAIL` in their local environment (PL2-D-63).
+
+### Patch Changes
+
+- Updated dependencies [5482043]
+- Updated dependencies [efd00ab]
+- Updated dependencies [2969424]
+- Updated dependencies [858a76a]
+- Updated dependencies [9ac878e]
+- Updated dependencies [ded1ae2]
+- Updated dependencies [9c774b9]
+- Updated dependencies [9ac878e]
+- Updated dependencies [9ac878e]
+- Updated dependencies [858a76a]
+- Updated dependencies [7a36249]
+- Updated dependencies [7a36249]
+- Updated dependencies [7a36249]
+- Updated dependencies [13c7379]
+- Updated dependencies [13c7379]
+- Updated dependencies [13c7379]
+- Updated dependencies [0c4535d]
+- Updated dependencies [0c4535d]
+- Updated dependencies [858a76a]
+  - @infrabyx/crypto@0.2.0
+  - @infrabyx/config@0.2.0
+  - @infrabyx/contracts@0.2.0
+  - @infrabyx/tenancy@0.2.0
+  - @infrabyx/audit@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
