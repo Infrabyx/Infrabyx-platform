@@ -195,3 +195,15 @@ export const ScheduleRunSkippedData = z
     consecutive_skips: z.number().int().min(1),
   })
   .strict();
+
+/** `in.<p>.vidhi.NotebookOutputCreated.v1`: a grounded notebook output was generated (IPB-03-80). */
+export const NotebookOutputCreatedData = z
+  .object({
+    notebook_id: z.string().regex(/^nbk_/),
+    output_id: z.string().regex(/^out_/),
+    tenant_id: z.string(),
+    kind: z.enum(["qa", "faq", "briefing", "timeline", "mindmap", "flashcards"]),
+    run_id: z.string().regex(/^run_/),
+    sources: z.number().int().min(1),
+  })
+  .strict();
