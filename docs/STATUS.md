@@ -2,13 +2,47 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 session 8 and gate A** (2026-10-27): gate-A checklist walked, report `docs/phases/PL2-gate-A.md`; two gaps fixed in the gate-A PR (AT tags, `port-contract` issues #28–#39) and `sandbox-status.json` now ships; next is the release through version PR #14, then PL3. Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                        |
-| Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20)                                                                                                                      |
-| Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                                                                                                                                       |
-| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; it is re-pushed from `main` for the next session)                                                                                                                                                                                   |
+| Item                  | Value                                                                                                                                                                                                                       |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL2 closed at gate A (2026-10-27); PL3 started.** PL3 plan `docs/phases/PL3-plan.md` written and self-reviewed (PL3-D-01); next is PL3 session 1 (spike, contracts, config). Continuous build mode (PL2-D-41)             |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                      |
+| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.0 (release run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
+| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                        |
+| Working branch        | `claude/sweet-maxwell-mv0qk2` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                   |
+
+## What products can install (PL2 gate A, 2026-10-27)
+
+| Package                | Version | shasum (SHA-1, reproduced; owner confirms against the registry, #17) |
+| ---------------------- | ------- | -------------------------------------------------------------------- |
+| `@infrabyx/contracts`  | 0.2.0   | `812119f57992b4a96a9a06ff5cc25235c6f9b6d1`                           |
+| `@infrabyx/crypto`     | 0.2.0   | `d999360aa85318cf5835f9bc68cded9817b69d91`                           |
+| `@infrabyx/config`     | 0.2.0   | `4e3ecaa978abc82d6133270d4ff23c6d280f9b6c`                           |
+| `@infrabyx/tenancy`    | 0.2.0   | `740d4167d6b6b96dde549c5447b0fc29e2f6b194`                           |
+| `@infrabyx/audit`      | 0.1.1   | `333771decdbab2ce0e5410efb3c4270d58c24b65`                           |
+| `@infrabyx/seed`       | 0.2.0   | `378f258996e5c7d3c1941e786efd786e8afc276d`                           |
+| `@infrabyx/testing`    | 0.2.0   | `25f5f0b4ddb12b243e8715173394a99acbb5fc27`                           |
+| `@infrabyx/connectors` | 0.1.0   | `5e97dd5c6a6ed8a53a6f057fc8bf07388d5ad6d7`                           |
+
+SHA-512 integrity values are in `docs/phases/PL2-gate-A.md` §6. To adopt this release, products must change the following (full list in §5 of that report):
+
+- **Versions:** move all `@infrabyx/*` packages together and add `@infrabyx/connectors`.
+- **Migrations:** `connectors/0001_init`, `0002_session_revocation` and `0003_pgboss` run through the existing `infrabyx-migrate` (tenancy 0.2.0), with no new command; run `infrabyx-rls-lint` afterwards.
+- **Environment:**
+  - `AUTH_SUPER_ADMIN_EMAIL`, in each private product repository's local environment only;
+  - the port variables for the adapters routed to: `SECRETS_*`, `AUTH_*`, `FLAGS_*`, `OBS_*`, `STORAGE_*`, `QUEUE_*`, `WORKFLOW_*`, `MSG_*`, `PAYMENTS_*` (test mode only);
+  - in production, `_REF` values are SECRETS paths.
+- **Settings:** the `int.*`, `eng.otel.*`, `eng.logs.*` and `eng.flags.*` keys, plus `mkt.meta.enabled` (156 keys in the registry).
+- **Routing:**
+  - one `infra/routing/<env>.routing.yaml` per environment;
+  - CI runs `infrabyx-routing check --sandbox-status node_modules/@infrabyx/connectors/sandbox-status.json`;
+  - GLOBAL messaging entries need a `dpa_ref`;
+  - staging and above may not name an unproven adapter (#28–#39).
+- **Code:**
+  - PAYMENTS: a `RefundApprovals` view, R3 refund requests, a Cashfree `customerContact` resolver, and `router.portFor` for refunds;
+  - IDENTITY: PKCE `codeVerifier` and `assertMfaForRoles`;
+  - field encryption v2;
+  - `presign` options;
+  - redaction of the Gupshup `ipb_token` in ingress logs.
 
 ## Done
 
@@ -25,6 +59,31 @@ Updated: 2026-10-27
 - Release (PR #10, PL1-D-18): 0.1.0 of the seven packages published by `release.yml` run 10, tags `@infrabyx/<pkg>@0.1.0` pushed.
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
+
+## Handover (2026-10-27, end of the session that closed PL2 gate A)
+
+**Done.**
+
+- **PL2 session 8 and gate A.** The gate-A walk (`docs/phases/PL2-gate-A.md`) found:
+  - the §10 acceptance-test tags missing for five IDs;
+  - no `port-contract` issues;
+  - `sandbox-status.json` not shipped in the package.
+
+  All three were fixed in #40 (PL2-D-67). Issues #28–#39 track the 12 unproven SaaS adapters.
+
+- **Release.** Version PR #14 was merged, and release run 29 published the 8 packages, with tags (PL2-D-68). The checksums were reproduced locally, and the owner confirms them against the registry (#17). `release.yml` now records registry checksums after each publish.
+- **PL3 plan.** `docs/phases/PL3-plan.md` is written and self-reviewed (PL3-D-01). It carries the owner's PL3 decisions: resend classes with default hold, the platform suppression list as the single source of truth, Brevo send-only, and no support-token work until a product needs it. It asks questions #7–#16, and the defaults are in use.
+
+**Next.** PL3 session 1:
+
+- spike on the [VERIFY] items: ZEN prebuilds on Node 24.22.1, the CEL library, the XLSX library licence, and the Expo, FCM, Leegality and Digio API shapes;
+- then `contracts` (RULES, NOTIFY, PUSH, ESIGN, `HumanQueue`, catalogue and export schemas, IDs, events, `IPB-NTF-002..006`) and the `config` keys and `kill.msg.*` flags.
+
+Then sessions 2–7 as in plan §12.
+
+**Branch and PR state.** The PR with the PL3 plan and this handover is the only open PR. When it merges, `main` carries everything.
+
+**Open questions.** OWNER-QUESTIONS #7–#17. Only #9 (signing and restricted exports), #13 (retention) and #14 (push accounts) park any work, and only the parts named there.
 
 ## Handover (2026-10-27, end of the session that built PL2 sessions 6 and 7)
 
@@ -65,12 +124,11 @@ Then PL3 (plan first). The owner's PL3 items so far:
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#6 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61, PL2-D-63, PL2-D-65). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
+Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#7–#17 open with defaults in use; #1–#6 answered). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
 ## Next
 
-- Merge version PR #14 once its CI is green on the new `main`; confirm `release.yml` published; record versions and checksums in `docs/phases/PL2-gate-A.md` §6 and here.
-- PL3 (rules, workflow, notify, export): plan first, in continuous mode.
+- PL3 session 1: spike, then contracts and config (PL3 plan §12).
 
 ## PL2 session 7 (2026-10-27)
 
