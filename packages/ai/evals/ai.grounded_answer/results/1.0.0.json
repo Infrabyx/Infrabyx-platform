@@ -1,0 +1,12 @@
+{
+  "prompt_key": "ai.grounded_answer",
+  "version": "1.0.0",
+  "content_sha256": "70f29daed780042dff95f2c755a47697e2322c34964fc2ddd8338c405a675738",
+  "model": "fake/scripted",
+  "live": false,
+  "total": 110,
+  "passed": 110,
+  "score": 1,
+  "skipped_graders": 0,
+  "failures": []
+}

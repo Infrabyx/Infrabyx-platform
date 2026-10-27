@@ -9,3 +9,8 @@ export * from "./obs.js";
 export * from "./separation.js";
 export * from "./gateway.js";
 export * from "./retention.js";
+export * from "./scrub.js";
+export * from "./guard.js";
+export * from "./prompt-files.js";
+export * from "./evals.js";
+export * from "./prompt-sync.js";
