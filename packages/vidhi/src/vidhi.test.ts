@@ -4,6 +4,7 @@ import { LOCKED_ACTION_CATEGORIES } from "@infrabyx/contracts/vidhi";
 import { productCeiling } from "./ceilings.js";
 import { coveredCategories, KERNEL_LOCKED_LIST, lockedCategory, toolWords } from "./locked.js";
 import { aiLabel, asksForAdvice, assistantName, labelDate, modelFamily } from "./persona.js";
+import { lintManifest } from "./manifest-lint.js";
 import { SkillRegistry } from "./skills.js";
 
 const manifest = (over: Record<string, unknown> = {}) => ({
@@ -14,9 +15,9 @@ const manifest = (over: Record<string, unknown> = {}) => ({
   inputs: { type: "object" },
   outputs: { type: "object" },
   tools: [
-    { name: "vendors.lookup", kind: "service", write: false },
-    { name: "payments.release", kind: "service", write: true },
-    { name: "drafts.save_note", kind: "service", write: true },
+    { name: "vendors.lookup", kind: "service", write: false, locked: false },
+    { name: "payments.release", kind: "service", write: true, locked: false },
+    { name: "drafts.save_note", kind: "service", write: true, locked: false },
   ],
   data_class_max: "CONFIDENTIAL",
   autonomy_ceiling: "L4",
@@ -101,7 +102,11 @@ describe("skill manifests (IPB-03-61)", () => {
     });
     expect(s.tools.get("vendors.lookup")).toMatchObject({ ceiling: "L4", locked: null });
     const reads = new SkillRegistry()
-      .load([manifest({ tools: [{ name: "payments.list", kind: "service", write: false }] })])
+      .load([
+        manifest({
+          tools: [{ name: "payments.list", kind: "service", write: false, locked: false }],
+        }),
+      ])
       .get("oh.vendor_payment_prepare")!;
     expect(reads.tools.get("payments.list")!.locked).toBeNull();
   });
@@ -132,5 +137,42 @@ describe("disclosure (IPB-03-53, 03-58)", () => {
     expect(asksForAdvice("Should I sign this agreement?")).toBe(true);
     expect(asksForAdvice("Kya mujhe yeh loan lena chahiye?")).toBe(true);
     expect(asksForAdvice("What is the interest rate?")).toBe(false);
+  });
+});
+
+describe("manifest lint: every tool declares locked (OWNER-QUESTIONS #37)", () => {
+  it("fails a tool without locked, notes a false that the kernel list overrides", () => {
+    const missing = manifest({
+      tools: [{ name: "drafts.save_note", kind: "service", write: true }],
+    });
+    const f = lintManifest(missing, "skill.manifest.json");
+    expect(f.filter((x) => x.severity === "error").map((x) => x.message)).toEqual(
+      expect.arrayContaining([expect.stringMatching(/drafts\.save_note must declare locked/)]),
+    );
+    expect(new SkillRegistry().load([missing]).keys()).toEqual([]);
+    const notes = lintManifest(manifest(), "skill.manifest.json");
+    expect(notes.filter((x) => x.severity === "error")).toEqual([]);
+    expect(notes).toEqual([
+      expect.objectContaining({
+        severity: "note",
+        message: expect.stringMatching(/payments\.release .* locks it \(payments\)/),
+      }),
+    ]);
+  });
+
+  it("locked: false never unlocks a tool the kernel list matches; locked: true always locks", () => {
+    const s = new SkillRegistry()
+      .load([
+        manifest({
+          tools: [
+            { name: "payments.release", kind: "service", write: true, locked: false },
+            { name: "drafts.save_note", kind: "service", write: true, locked: true },
+          ],
+        }),
+      ])
+      .get("oh.vendor_payment_prepare")!;
+    expect(s.tools.get("payments.release")!.locked).toMatchObject({ category: "payments" });
+    expect(s.tools.get("drafts.save_note")).toMatchObject({ ceiling: "L2" });
+    expect(s.tools.get("drafts.save_note")!.locked).not.toBeNull();
   });
 });

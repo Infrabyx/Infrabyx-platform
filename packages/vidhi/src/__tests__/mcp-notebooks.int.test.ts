@@ -113,8 +113,8 @@ beforeAll(async () => {
       inputs: { type: "object" },
       outputs: { type: "object" },
       tools: [
-        { name: "tickets.list", kind: "service", write: false },
-        { name: "tickets.set_priority", kind: "service", write: true },
+        { name: "tickets.list", kind: "service", write: false, locked: false },
+        { name: "tickets.set_priority", kind: "service", write: true, locked: false },
       ],
       data_class_max: "INTERNAL",
       autonomy_ceiling: "L3",

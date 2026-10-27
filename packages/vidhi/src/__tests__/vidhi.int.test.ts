@@ -130,11 +130,11 @@ beforeAll(async () => {
   });
   const skills = new SkillRegistry().load([
     skillManifest("oh.vendor_payment_prepare", "L4", [
-      { name: "vendors.lookup", kind: "service", write: false },
-      { name: "payments.release", kind: "service", write: true },
+      { name: "vendors.lookup", kind: "service", write: false, locked: false },
+      { name: "payments.release", kind: "service", write: true, locked: false },
     ]),
     skillManifest("oh.ticket_triage", "L3", [
-      { name: "tickets.set_priority", kind: "service", write: true },
+      { name: "tickets.set_priority", kind: "service", write: true, locked: false },
     ]),
   ]);
   expect(skills.issues).toEqual([]);

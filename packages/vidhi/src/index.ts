@@ -3,6 +3,7 @@ export const PACKAGE_NAME = "@infrabyx/vidhi" as const;
 export * from "./locked.js";
 export * from "./ceilings.js";
 export * from "./skills.js";
+export * from "./manifest-lint.js";
 export * from "./autonomy.js";
 export * from "./tasks.js";
 export * from "./persona.js";
