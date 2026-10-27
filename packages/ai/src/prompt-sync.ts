@@ -1,15 +1,16 @@
 // `infrabyx-ai prompts sync` (PL4 plan §4.4): load the platform prompt files into the platform
 // tenant. A new version is stored as DRAFT; it is activated only when its committed eval result
 // (`evals/<key>/results/<version>.json`) graded exactly this content and met the baseline. In
-// staging, pre-production, production and DR only a live result counts (a real model, run with the
-// owner's approval); the scripted CI result is enough for dev, test and demo environments.
+// pre-production, production and DR only a live result counts (a real model, in a paid run the
+// owner approves); the scripted CI result is enough for dev, test, demo and staging, so AI features
+// can be tested on synthetic data in staging (OWNER-QUESTIONS #35, PL4-D-13).
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import { gateAgainstBaseline, loadEvalSet, platformEvalsDir } from "./evals.js";
 import type { PromptFile } from "./prompt-files.js";
 import { PromptRegistry } from "./prompts.js";
 
-const LIVE_ONLY_ENVS = new Set(["staging", "pre-prod", "prod", "dr"]);
+const LIVE_ONLY_ENVS = new Set(["pre-prod", "prod", "dr"]);
 
 export interface SyncResult {
   key: string;

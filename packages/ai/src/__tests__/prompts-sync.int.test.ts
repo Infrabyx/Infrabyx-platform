@@ -25,16 +25,18 @@ describe("prompts sync", () => {
   const sync = (env: string, prompts = files) =>
     syncPrompts({ kernel: db.kernel, audit: db.audit, actorId: "usr_release", env, prompts });
 
-  it("in prod a scripted CI result leaves the version as a draft", async () => {
-    const r = await sync("prod");
-    expect(r.every((x) => x.action === "draft_only" && /live eval/.test(x.reason ?? ""))).toBe(
-      true,
-    );
+  it("in pre-prod, prod and DR a scripted CI result leaves the version as a draft", async () => {
+    for (const env of ["pre-prod", "prod", "dr"]) {
+      const r = await sync(env);
+      expect(r.every((x) => x.action === "draft_only" && /live eval/.test(x.reason ?? ""))).toBe(
+        true,
+      );
+    }
     expect((await status()).every((s) => s.status === "DRAFT")).toBe(true);
   });
 
-  it("in test the CI result activates each version; a second sync changes nothing", async () => {
-    expect((await sync("test")).map((x) => x.action)).toEqual([
+  it("in staging the CI result activates each version (OWNER-QUESTIONS #35); a second sync changes nothing", async () => {
+    expect((await sync("staging")).map((x) => x.action)).toEqual([
       "activated",
       "activated",
       "activated",
