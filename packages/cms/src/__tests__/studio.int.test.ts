@@ -3,8 +3,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AuditService } from "@infrabyx/audit";
 import { PgOutbox } from "@infrabyx/tenancy";
 import {
+  FakeMedia,
   MemoryStorage,
   platformContext,
+  testPng,
   startPostgres,
   withTenant,
   type TestDatabase,
@@ -364,6 +366,51 @@ describe("@IPB-04-AT-09 media alt text and photo consent", () => {
   });
 });
 
+describe("@IPB-04-AT-09 raster re-encoding through the MEDIA port (OWNER-QUESTIONS #53)", () => {
+  it("stores AVIF, WebP and a PNG fallback at the fixed widths, serves them as picture sources, and purges them with the media", async () => {
+    let on = true;
+    const port = new FakeMedia();
+    const lib = new MediaLibrary({
+      kernel: db.kernel,
+      audit: db.audit,
+      storage,
+      media: port,
+      settings: { get: async (_c, k) => (k === "cms.media.reencode_enabled" ? on : undefined) },
+    });
+    const up = await lib.upload(a, {
+      mime: "image/png",
+      bytes: testPng(1400, 700),
+      altText: "A gradient",
+    });
+    expect(up.renditions.map((r) => `${r.format}@${r.width}`).sort()).toEqual(
+      ["avif", "webp", "png"].flatMap((f) => [320, 640, 960, 1280].map((w) => `${f}@${w}`)).sort(),
+    );
+    for (const r of up.renditions) expect(storage.objects.has(r.key)).toBe(true);
+    const src = await lib.sources(a, up.id);
+    expect(src.sources.map((x) => x.mime)).toEqual(["image/avif", "image/webp"]);
+    expect(src.sources[0]!.srcset.map((x) => x.width)).toEqual([320, 640, 960, 1280]);
+    expect(src.fallback?.mime).toBe("image/png");
+    expect([src.alt, src.width, src.height]).toEqual(["A gradient", 1280, 640]);
+
+    on = false;
+    const plain = await lib.upload(a, { mime: "image/png", bytes: testPng(300, 200) });
+    expect(plain.renditions).toEqual([]);
+    expect((await lib.sources(a, plain.id)).fallback).toBeNull();
+    expect(port.calls).toEqual(["reencode 1400x700"]);
+
+    await lib.softDelete(a, up.id);
+    await db.admin.query(
+      "update cms.media set deleted_at = now() - interval '91 days' where id = $1",
+      [up.id],
+    );
+    expect(
+      (await new CmsPurge({ kernel: db.kernel, audit: db.audit, storage }).sweep()).media,
+    ).toContain(up.id);
+    for (const r of up.renditions)
+      await expect(storage.get(r.key)).rejects.toMatchObject({ code: "IPB-STOR-001" });
+  });
+});
+
 describe("@IPB-04-AT-10 pages and menus without code", () => {
   it("creates a product page, links it from the header menu, then retires it to a redirect", async () => {
     const page = await studio.createItem(a, {
@@ -652,7 +699,9 @@ describe("soft delete, offices and the 90-day purge (OWNER-QUESTIONS #48)", () =
         ])
       ).rowCount,
     ).toBe(0);
-    expect((await ledger("cms.purge.sweep")).map((r) => r.actor_id)).toEqual(["svc_cms_purge"]);
+    expect(new Set((await ledger("cms.purge.sweep")).map((r) => r.actor_id))).toEqual(
+      new Set(["svc_cms_purge"]),
+    );
   });
 
   it("restores within the window", async () => {

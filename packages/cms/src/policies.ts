@@ -1,6 +1,11 @@
 // Policies (IPB-05 §05.3, §05.4.19; IPB-04 §04.4.3 "Legal page / policy instance"; PL5 plan §5.7).
 //   draft ──submit (lint)──▶ submitted ──[dpoApprove]──▶ approve ──▶ approved ──tick at effective_at──▶ effective
 //   effective ──a newer version becomes effective──▶ superseded (still readable at /legal/{slug}/v/{version})
+// A MAJOR change to the Terms or the Payment Terms (IPB-05-06; OWNER-QUESTIONS #55, PL5-D-11) waits
+// for its notice: the period (`pol.notice_days`, 30) counts from the date users are notified, the
+// later of the notice being published (`publishNotice`) and sent (`recordNoticeSent`, or the
+// `notifyPolicyChange` hook's result), never from the approval. The tick makes it effective at
+// the later of `effective_at` and that date plus the period.
 // The maker is a PLT_LEGAL_REVIEWER, the checker a PLT_SUPER_ADMIN, and privacy-class templates
 // (1, 5, 9, 15) need a PLT_DPO too, never the maker (IPB-05-12). Approval snapshots the parameters
 // and the rendered hash; an approved instance never changes (`IPB-POL-008`, trigger).
@@ -35,6 +40,8 @@ import type { SettingsReader } from "./studio.js";
 export const POLICY_MAKER = "PLT_LEGAL_REVIEWER";
 export const POLICY_CHECKER = "PLT_SUPER_ADMIN";
 export const POLICY_DPO = "PLT_DPO";
+/** The service principal that records a notice sent through the approval hook (#55). */
+export const POLICY_NOTICE_PRINCIPAL_ID = "svc_cms_policy_notice";
 /** IPB-05-06: a MAJOR change to these takes effect only after the notice period. */
 export const NOTICE_PERIOD_KEYS = ["terms", "payment_terms"] as const;
 
@@ -90,6 +97,7 @@ interface InstanceRow {
   params_snapshot: Record<string, unknown> | null;
   rendered_sha256: string | null;
   approved_at: Date | null;
+  effective_since: Date | null;
 }
 
 const toInstance = (r: InstanceRow): PolicyInstance => ({
@@ -128,15 +136,36 @@ export interface PolicyHooks {
   params?(ctx: KernelContext, packId: string): Promise<PolicyParams>;
   /** `pol.full_hindi` for a pack; Hindi is deferred for the group site (OWN-11). */
   fullHindi?(ctx: KernelContext, packId: string): Promise<boolean>;
-  /** NOTIFY `notice.policy.change` to account owners when a MAJOR change is approved (IPB-05-06). */
+  /**
+   * NOTIFY `notice.policy.change` to account owners when a MAJOR change is approved (IPB-05-06).
+   * Return `sentAt` once the notice has been sent; a dispatcher that sends later calls
+   * `PolicyStudio.recordNoticeSent` instead.
+   */
   notifyPolicyChange?(n: {
+    instanceId: string;
     packId: string;
     key: string;
     version: string;
     effectiveAt: Date;
     reconsent: boolean;
-  }): Promise<void>;
+  }): Promise<void | { sentAt: Date }>;
 }
+
+/** Where a notice-period change stands (#55). */
+export interface PolicyNoticeStatus {
+  required: boolean;
+  publishedAt: Date | null;
+  sentAt: Date | null;
+  /** The later of published and sent; null until both exist. */
+  notifiedAt: Date | null;
+  noticeDays: number;
+  /** When the version can take effect: the later of `effective_at` and notified + period. */
+  effectiveFrom: Date | null;
+}
+
+/** True when a MAJOR change of this key must wait for its notice period (IPB-05-06). */
+export const needsNotice = (key: string, change: string) =>
+  change === "MAJOR" && (NOTICE_PERIOD_KEYS as readonly string[]).includes(key);
 
 /** "27 Oct 2026" in Asia/Kolkata (IPB-06-43 date format). */
 export const policyDate = (d: Date) =>
@@ -504,7 +533,7 @@ export class PolicyStudio {
         findings.push({
           code: "IPB-POL-005",
           location: "effective_at",
-          message: `a MAJOR change takes effect at least ${days} days after approval`,
+          message: `a MAJOR change takes effect at least ${days} days after users are notified, so never sooner than ${days} days from now`,
         });
     }
     if (inst.hi_machine_translated)
@@ -656,15 +685,102 @@ export class PolicyStudio {
       },
       { action: "cms.policy.approve" },
     );
-    if (r.inst.changeClass === "MAJOR")
-      await this.o.hooks?.notifyPolicyChange?.({
+    if (r.inst.changeClass === "MAJOR") {
+      const sent = await this.o.hooks?.notifyPolicyChange?.({
+        instanceId: r.inst.id,
         packId: r.packId,
         key: r.inst.key,
         version: r.inst.versionLabel,
         effectiveAt: r.inst.effectiveAt,
         reconsent: r.inst.reconsentRequired,
       });
+      if (sent && needsNotice(r.inst.key, r.inst.changeClass))
+        await this.addNotice(
+          cmsServiceContext(POLICY_NOTICE_PRINCIPAL_ID),
+          r.inst.id,
+          "sent",
+          sent.sentAt,
+        );
+    }
     return r.inst;
+  }
+
+  // --- Notice of a MAJOR change (IPB-05-06; OWNER-QUESTIONS #55) ----------------------------
+
+  private async addNotice(
+    ctx: KernelContext,
+    id: string,
+    kind: "published" | "sent",
+    at: Date,
+  ): Promise<PolicyNoticeStatus> {
+    await this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const cur = await this.row(tx, id, true);
+        if (cur.state !== "approved" || !needsNotice(cur.policy_key, cur.change_class))
+          throw new IpbError("IPB-CMS-003", {
+            detail: "only an approved MAJOR change to the Terms or Payment Terms has a notice",
+            meta: { reason: "transition" },
+          });
+        if (
+          at.getTime() > this.now().getTime() + 60_000 ||
+          (cur.approved_at && at < cur.approved_at)
+        )
+          throw new IpbError("IPB-CMS-001", {
+            detail: "a notice is dated between the approval and now",
+          });
+        const r = await tx.query(
+          `insert into cms.policy_notice (instance_id, kind, noticed_at, recorded_by) values ($1, $2, $3, $4)
+           on conflict do nothing`,
+          [id, kind, at, ctx.principal.id],
+        );
+        if (!r.rowCount)
+          throw new IpbError("IPB-CMS-003", {
+            detail: `the notice was already ${kind}`,
+            meta: { reason: "duplicate" },
+          });
+        await this.o.audit.record(tx, {
+          action: `cms.policy.notice_${kind}`,
+          resourceType: "cms_policy_instance",
+          resourceId: id,
+          after: { at: at.toISOString() },
+        });
+      },
+      { action: `cms.policy.notice_${kind}` },
+    );
+    return this.noticeStatus(ctx, id);
+  }
+
+  /**
+   * Publish the notice of an approved MAJOR change (the upcoming version and its "what changed" on
+   * the public legal page, `PublicPolicies.upcoming`). Dated now; never backdated.
+   */
+  async publishNotice(ctx: KernelContext, id: string): Promise<PolicyNoticeStatus> {
+    this.platform(ctx, [POLICY_MAKER, POLICY_CHECKER], "publishing a policy notice");
+    return this.addNotice(ctx, id, "published", this.now());
+  }
+
+  /** Record when the NOTIFY notice was sent (the dispatcher's delivery time, never in the future). */
+  async recordNoticeSent(
+    ctx: KernelContext,
+    id: string,
+    sentAt: Date,
+  ): Promise<PolicyNoticeStatus> {
+    if (ctx.principal.type !== "service")
+      this.platform(ctx, [POLICY_MAKER, POLICY_CHECKER], "recording a policy notice");
+    return this.addNotice(ctx, id, "sent", sentAt);
+  }
+
+  async noticeStatus(ctx: KernelContext, id: string): Promise<PolicyNoticeStatus> {
+    const days = await this.setting<number>(ctx, "pol.notice_days", 30);
+    return this.o.kernel.read(ctx, async (tx) => {
+      const cur = await this.row(tx, id);
+      const n = await tx.query<{ kind: string; noticed_at: Date }>(
+        "select kind, noticed_at from cms.policy_notice where instance_id = $1",
+        [id],
+      );
+      return noticeOf(cur, n.rows, days);
+    });
   }
 
   /**
@@ -674,11 +790,18 @@ export class PolicyStudio {
    */
   async tick(now: Date = this.now()): Promise<string[]> {
     const ctx = cmsServiceContext("svc_cms_scheduler");
+    const days = await this.setting<number>(ctx, "pol.notice_days", 30);
+    // A notice-period change is due only once users were notified and the period has passed (#55).
     const due = await this.o.kernel.read(ctx, async (tx) =>
       (
         await tx.query<{ id: string }>(
-          "select id from cms.policy_instance where state = 'approved' and effective_at <= $1 order by effective_at",
-          [now],
+          `select i.id from cms.policy_instance i
+            where i.state = 'approved' and i.effective_at <= $1
+              and (not (i.change_class = 'MAJOR' and i.policy_key = any($2))
+                   or (select count(*) = 2 and max(n.noticed_at) + make_interval(days => $3) <= $1
+                         from cms.policy_notice n where n.instance_id = i.id))
+            order by i.effective_at`,
+          [now, [...NOTICE_PERIOD_KEYS], days],
         )
       ).rows.map((r) => r.id),
     );
@@ -712,7 +835,10 @@ export class PolicyStudio {
               policy_key: cur.policy_key,
               version: cur.version_label,
               brand_pack_id: set.brand_pack_id,
-              effective_at: cur.effective_at.toISOString(),
+              effective_at: (needsNotice(cur.policy_key, cur.change_class)
+                ? now
+                : cur.effective_at
+              ).toISOString(),
               reconsent_required: cur.reconsent_required,
             }),
           );
@@ -901,6 +1027,33 @@ export interface PublicPolicy {
   versions: { versionLabel: string; effectiveAt: string; state: "effective" | "superseded" }[];
 }
 
+/** A notice-period version took effect when the tick ran, which may be after `effective_at`. */
+const shownEffective = (r: {
+  policy_key: string;
+  change_class: string;
+  effective_at: Date;
+  effective_since: Date | null;
+}) => (needsNotice(r.policy_key, r.change_class) && r.effective_since) || r.effective_at;
+
+function noticeOf(
+  cur: { policy_key: string; change_class: string; effective_at: Date },
+  rows: { kind: string; noticed_at: Date }[],
+  days: number,
+): PolicyNoticeStatus {
+  const at = (k: string) => rows.find((r) => r.kind === k)?.noticed_at ?? null;
+  const publishedAt = at("published");
+  const sentAt = at("sent");
+  const required = needsNotice(cur.policy_key, cur.change_class);
+  const notifiedAt =
+    publishedAt && sentAt ? new Date(Math.max(publishedAt.getTime(), sentAt.getTime())) : null;
+  const effectiveFrom = !required
+    ? cur.effective_at
+    : notifiedAt
+      ? new Date(Math.max(cur.effective_at.getTime(), notifiedAt.getTime() + days * 86_400_000))
+      : null;
+  return { required, publishedAt, sentAt, notifiedAt, noticeDays: days, effectiveFrom };
+}
+
 export class PublicPolicies {
   constructor(
     private readonly o: { kernel: MutationKernel; slugs?: Readonly<Record<string, string>> },
@@ -930,7 +1083,7 @@ export class PublicPolicies {
         key: r.policy_key,
         title: r.title,
         versionLabel: r.version_label,
-        effectiveAt: r.effective_at.toISOString(),
+        effectiveAt: shownEffective(r).toISOString(),
         lastReviewed: r.last_reviewed_at.toISOString(),
         summaryOfChanges: r.summary_of_changes,
         html: renderPolicy(text),
@@ -943,7 +1096,7 @@ export class PublicPolicies {
         noindex: r.seeded_placeholder || r.state === "superseded",
         versions: rows.map((x) => ({
           versionLabel: x.version_label,
-          effectiveAt: x.effective_at.toISOString(),
+          effectiveAt: shownEffective(x).toISOString(),
           state: x.state as "effective" | "superseded",
         })),
       };
@@ -952,6 +1105,46 @@ export class PublicPolicies {
 
   current(packId: string, key: string): Promise<PublicPolicy | null> {
     return this.load(packId, key);
+  }
+
+  /**
+   * The published notice of an approved MAJOR change (#55): what changes and, once the notice has
+   * also been sent, the earliest date it takes effect. Null when no notice is published.
+   */
+  async upcoming(
+    packId: string,
+    key: string,
+    noticeDays = 30,
+  ): Promise<{
+    versionLabel: string;
+    summaryOfChanges: string;
+    publishedAt: string;
+    effectiveFrom: string | null;
+    reconsentRequired: boolean;
+  } | null> {
+    return this.o.kernel.read(this.ctx, async (tx) => {
+      const r = (
+        await tx.query<InstanceRow>(
+          `select i.* from cms.policy_instance i join cms.policy_set s on s.id = i.policy_set_id
+            where s.brand_pack_id = $1 and i.policy_key = $2 and i.state = 'approved'`,
+          [packId, key],
+        )
+      ).rows[0];
+      if (!r || !needsNotice(r.policy_key, r.change_class)) return null;
+      const n = await tx.query<{ kind: string; noticed_at: Date }>(
+        "select kind, noticed_at from cms.policy_notice where instance_id = $1",
+        [r.id],
+      );
+      const st = noticeOf(r, n.rows, noticeDays);
+      if (!st.publishedAt) return null;
+      return {
+        versionLabel: r.version_label,
+        summaryOfChanges: r.summary_of_changes,
+        publishedAt: st.publishedAt.toISOString(),
+        effectiveFrom: st.effectiveFrom?.toISOString() ?? null,
+        reconsentRequired: r.reconsent_required,
+      };
+    });
   }
 
   version(packId: string, key: string, label: string): Promise<PublicPolicy | null> {
