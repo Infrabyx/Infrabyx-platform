@@ -42,8 +42,9 @@ export function keysInText(text: string, file: string): KeyUse[] {
   text.split("\n").forEach((l, i) => {
     if (!data && /^\s*(?:\/\/|\*|\/\*)/.test(l)) return;
     for (const m of l.matchAll(data ? DATA_USE : CODE_USE)) {
-      const key = m[1]!.replace(/\.$/, "");
-      out.push({ key, file, line: i + 1 });
+      // A quoted literal ending in "." is a key prefix (`startsWith("hlp.web.field.")`), not a use.
+      if (!data && m[1]!.endsWith(".")) continue;
+      out.push({ key: m[1]!.replace(/\.$/, ""), file, line: i + 1 });
     }
   });
   return out;

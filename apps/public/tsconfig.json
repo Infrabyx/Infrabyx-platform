@@ -16,6 +16,6 @@
     "declaration": false,
     "sourceMap": false
   },
-  "include": ["src", "next-env.d.ts", ".next/types/**/*.ts"],
+  "include": ["src", "scripts", "next-env.d.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules", ".next", "dist"]
 }

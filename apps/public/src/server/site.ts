@@ -132,15 +132,30 @@ async function build(): Promise<Site> {
 let site: Promise<Site> | undefined;
 export const getSite = (): Promise<Site> => (site ??= build());
 
+const siteCtx = {
+  tenantId: PLATFORM_TENANT_ID,
+  principal: { id: "svc_site_public", type: "service" as const, roles: [] },
+};
+
+/** The published packs of the site's brand product (the gate checks run over each). */
+export const publishedPacks = (s: Site) =>
+  s.kernel.read(
+    siteCtx,
+    async (tx) =>
+      (
+        await tx.query<{ id: string; label: string }>(
+          "select id, label from brand.pack where product = $1 and status = 'published' order by id",
+          [s.brandProduct],
+        )
+      ).rows,
+  );
+
 /** The brand pack for a request: published hosts, the product default otherwise (with noindex). */
 export async function packFor(
   s: Site,
   host: string | null,
 ): Promise<{ packId: string; rev: Revision; noindex: boolean }> {
-  const ctx = {
-    tenantId: PLATFORM_TENANT_ID,
-    principal: { id: "svc_site_public", type: "service" as const, roles: [] },
-  };
+  const ctx = siteCtx;
   const res = await s.brand.resolve(ctx, s.brandProduct, { host });
   const rev = await s.brand.published(ctx, res.packId);
   if (!rev) throw new Error(`brand pack ${res.packId} has no published revision`);

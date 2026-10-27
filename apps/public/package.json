@@ -9,9 +9,11 @@
     "build": "next build --webpack",
     "start": "next start",
     "dev": "next dev --webpack",
-    "lint": "eslint src",
+    "lint": "eslint src scripts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
+    "test:e2e": "vitest run --config vitest.e2e.config.mjs"
   },
   "engines": {
     "node": "24.22.1"

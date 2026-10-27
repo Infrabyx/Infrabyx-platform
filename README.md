@@ -50,4 +50,4 @@ Credentials never go in the committed `.npmrc`: pnpm 10 does not expand `${NODE_
 
 ## Layout
 
-`packages/*` publishable packages · `apps/reference` integration app and product template · `infra/` Docker, Helm, Terraform (aws/azure/gcp) · `docs/` spec, status, decisions, phase plans · `.github/workflows` CI and release.
+`packages/*` publishable packages · `apps/reference` integration app and product template · `apps/public` the group website (Next.js 16) and the template for product sites · `infra/` Docker, Helm, Terraform (aws/azure/gcp) · `docs/` spec, status, decisions, phase plans · `.github/workflows` CI and release.

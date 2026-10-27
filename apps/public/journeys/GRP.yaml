@@ -1,0 +1,43 @@
+# Journey registry of the group site (IPB-06 §06.4.4, IPB-06-15; PL5-D-03 item 6). Each journey lists
+# its routes and the screen-reader scripts the Accessibility Lead runs before a release
+# (`at-scripts/grp/`). `infrabyx-a11y journeys-lint` checks it in `verify`, and against the routes
+# the site serves in the `a11y` job.
+product: GRP
+journeys:
+  - id: grp.visitor.learn
+    persona: A visitor learning what the group does
+    title: Learn about the group and its companies
+    routes: [/, /about, /group-companies, /group-companies/*, /glossary]
+    click_budget: 3
+    at_scripts: [grp.visitor.learn.nvda.md]
+  - id: grp.visitor.contact
+    persona: A visitor who wants to write to the group
+    title: Send a message through the contact form
+    routes: [/contact]
+    click_budget: 3
+    at_scripts: [grp.visitor.contact.nvda.md]
+  - id: grp.applicant.careers
+    persona: A job seeker
+    title: Find a role and send an application
+    routes: [/careers, /careers/*]
+    click_budget: 4
+    at_scripts: [grp.applicant.careers.nvda.md]
+  - id: grp.visitor.trust
+    persona: A customer's security reviewer
+    title: Read the trust documents and report a security issue
+    routes: [/trust, /security]
+    click_budget: 3
+    at_scripts: [grp.visitor.trust.nvda.md]
+  - id: grp.visitor.policies
+    persona: A visitor checking how their data is used
+    title: Read a policy, set cookie choices, raise a grievance
+    routes: [/legal, /legal/*, /cookie-settings, /grievance]
+    click_budget: 3
+    at_scripts: [grp.visitor.policies.nvda.md]
+  - id: grp.visitor.feedback
+    persona: A visitor who meets a problem
+    title: Report a problem or an accessibility barrier
+    routes: [/feedback, /feedback/*, /accessibility]
+    click_budget: 3
+    at_scripts: [grp.visitor.feedback.nvda.md]
+out_of_journey: [/sitemap, /__gallery, /__not-found]

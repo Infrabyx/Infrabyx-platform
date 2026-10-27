@@ -6,7 +6,7 @@ const integration = process.env.INFRABYX_TEST_INT === "1";
 export default defineConfig({
   test: {
     include: integration ? ["src/**/*.int.test.ts"] : ["src/**/*.test.{ts,tsx}"],
-    exclude: integration ? [] : ["src/**/*.int.test.ts"],
+    exclude: integration ? [] : ["src/**/*.int.test.ts", "src/**/*.e2e.test.ts"],
     testTimeout: integration ? 120_000 : 10_000,
     hookTimeout: integration ? 300_000 : 10_000,
     fileParallelism: !integration,

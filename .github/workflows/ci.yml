@@ -50,7 +50,8 @@ jobs:
     # PL3 adds notify-lint and export-map-gate here and golden-archive-diff in `integration`.
     # PL4 adds ai-prompt-lint and ai-eval-gate here, and runs `integration` on PostgreSQL 18 with
     # pgvector.
-    # Still to add: e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
+    # PL5 adds hlp-lint and journeys-lint here and the `a11y` job (the group site's gate).
+    # Still to add: sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
     # change-class.
     runs-on: ubuntu-24.04
     strategy:
@@ -129,6 +130,8 @@ jobs:
         run: pnpm notify:lint
       - name: hlp-lint (IPB-07-43, @IPB-07-AT-02; every help key in the platform registry)
         run: pnpm hlp:lint
+      - name: journeys-lint (IPB-06-15, 06-58; journey registry and AT scripts of the group site)
+        run: pnpm journeys:lint
       - name: ai-prompt-lint (IPB-03-25, 03-40; golden set per prompt, no inline prompt text)
         run: pnpm ai:prompt-lint
       - name: ai-eval-gate (IPB-03-41; golden sets on the scripted fake model, baseline and committed results)
@@ -224,3 +227,88 @@ jobs:
         run: pnpm test:int
       - name: at-report (acceptance-test coverage; report only)
         run: pnpm at:report
+  a11y:
+    # The group site's gate (PL5 plan §11, §15; IPB-06-54, IPB-04-71): build, migrate and seed the
+    # site on PostgreSQL 18, check the footer of every published pack and the served routes against
+    # the journey registry, scan the build for overlay widgets, then run the end-to-end suite in
+    # Chromium (axe and HTML_CodeSniffer in light and dark themes, reflow, text scale, skip link,
+    # no third-party request before or after consent, content without JavaScript, CSP).
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      # Synthetic data only: the test profile with fixture adapters (refused from staging upwards).
+      APP_ENV: test
+      APP_PRODUCT: OH
+      APP_BASE_URL: https://group.example.org
+      APP_FIXTURE_ADAPTERS: "true"
+      DB_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
+      DB_PASSWORD: postgres
+      STORAGE_DIR: ${{ github.workspace }}/.site-storage
+      NEXT_TELEMETRY_DISABLED: "1"
+      IPB_TEST_SITE_URL: http://127.0.0.1:3123
+      IPB_CHROMIUM: /usr/bin/google-chrome
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: "@infrabyx"
+      - name: Install
+        run: pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: build
+        run: pnpm build
+      - name: migrate
+        run: node packages/tenancy/dist/migrate/cli.js --db "$DB_URL"
+      - name: seed (test profile; the platform and public-site modules)
+        working-directory: apps/public
+        env:
+          SEED_ENABLED: "true"
+          SEED_RANDOM_SEED: "1"
+          SEED_VAULT_PREFIX: test
+          # Written outside the workspace and never uploaded (SEED_CREDENTIALS.md is never committed).
+          SEED_CREDENTIALS_PATH: ${{ runner.temp }}/seed-credentials.md
+        run: node ../../packages/seed/dist/cli.js --profile test --modules src/seed/public-site.ts
+      - name: gate inputs (footer of every published pack, served routes)
+        working-directory: apps/public
+        run: node scripts/gate-inputs.ts "$RUNNER_TEMP/gate"
+      - name: validate-footer (IPB-04-71, @IPB-04-AT-73)
+        run: node packages/cms/dist/cli.js validate-footer "$RUNNER_TEMP/gate/footer.json"
+      - name: journeys-lint against the served routes (IPB-06-58)
+        run: >-
+          node packages/a11y/dist/cli.js journeys-lint apps/public/journeys/GRP.yaml
+          --routes "$RUNNER_TEMP/gate/routes.json" --at-scripts apps/public/at-scripts
+      - name: overlay-scan (IPB-06-17; no accessibility overlay in the build)
+        run: node packages/a11y/dist/cli.js overlay-scan apps/public/.next/static apps/public/src
+      - name: start the site
+        working-directory: apps/public
+        run: |
+          PORT=3123 nohup pnpm start > "$RUNNER_TEMP/site.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://127.0.0.1:3123/robots.txt && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/site.log"
+          exit 1
+      - name: e2e and accessibility gate (@IPB-06-AT-01 @IPB-04-AT-70/74/80/81/85 @IPB-04-AT-12/40)
+        run: pnpm --filter @infrabyx/public-site test:e2e
+      - name: site log
+        if: failure()
+        run: cat "$RUNNER_TEMP/site.log" || true

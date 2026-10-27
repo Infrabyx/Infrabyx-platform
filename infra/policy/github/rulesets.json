@@ -48,6 +48,9 @@
               },
               {
                 "context": "consumer-smoke"
+              },
+              {
+                "context": "a11y"
               }
             ]
           },

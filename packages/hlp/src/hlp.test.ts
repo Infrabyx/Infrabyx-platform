@@ -65,6 +65,7 @@ describe("@IPB-07-AT-02 a missing help key fails CI", () => {
         `const KEYS = { functional: "hlp.consent.functional" };`,
         `// helpKey="hlp.x.y" in a comment is not a use`,
         `const h = v.help; schema: z.string(); help: err.def.help`,
+        `if (key.startsWith("hlp.web.field.")) skip();`,
       ].join("\n"),
       "a.tsx",
     );
