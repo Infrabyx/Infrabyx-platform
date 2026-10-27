@@ -1,5 +1,37 @@
 # @infrabyx/notify
 
+## 0.3.0
+
+### Minor Changes
+
+- b7de3c6: PL5 session 7: the platform catalogue's help keys move from `ntf.*` to the help-key form `hlp.notify.*` (for example `hlp.notify.security.login_alert`), registered in the platform help registry. Message keys (`title_key`) and the `ntf.*` settings keys are unchanged. A product that links to the old help keys should use the new ones.
+
+### Patch Changes
+
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/tenancy@0.5.0
+  - @infrabyx/crypto@0.4.1
+
 ## 0.2.0
 
 ### Minor Changes

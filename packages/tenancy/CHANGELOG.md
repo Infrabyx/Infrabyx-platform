@@ -1,5 +1,35 @@
 # @infrabyx/tenancy
 
+## 0.5.0
+
+### Minor Changes
+
+- e8e83cb: `infrabyx-migrate` applies `@infrabyx/brand` migrations after `@infrabyx/vidhi` when the package is installed.
+
+### Patch Changes
+
+- b0dc390: `infrabyx-migrate` applies `@infrabyx/cms` migrations after `@infrabyx/brand`.
+- 686d24b: `infrabyx-migrate` applies `@infrabyx/consent` migrations after `@infrabyx/cms`.
+- 275d4ba: `infrabyx-migrate` applies `@infrabyx/feedback` and then `@infrabyx/trust` migrations after `@infrabyx/consent`.
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/crypto@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes

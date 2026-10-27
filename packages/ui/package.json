@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/ui",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Shared server-rendered React components, design tokens per product and theme, i18n formatters and accessibility primitives (IPB-06, IPB-07)",
   "license": "UNLICENSED",
   "private": false,

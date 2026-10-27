@@ -1,5 +1,42 @@
 # @infrabyx/vidhi
 
+## 0.2.0
+
+### Minor Changes
+
+- de53086: Owner answers #37 and #40 (PL4-D-13).
+
+  - New CLI `infrabyx-vidhi manifest-lint <dir or file>...`: add it to product CI over the skill manifests. It fails on a tool without an explicit `locked: true` or `locked: false`, and notes a `false` that the kernel locked list overrides (word matching stays the safety net). `lintManifest` is exported too.
+  - `QaSampler` reads the governed, tighten-only settings `vidhi.qa.min_reviews`, `vidhi.qa.precision_floor` and `vidhi.qa.recall_floor` per tenant, never below the platform floor of 20 reviews and 0.8 (`QaSampler.floor(ctx)`). **Breaking:** the `floor` constructor option and `QA_DEFAULT_FLOOR` are removed; use `QA_PLATFORM_FLOOR`.
+
+### Patch Changes
+
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+  - @infrabyx/ai@0.2.0
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/tenancy@0.5.0
+  - @infrabyx/crypto@0.4.1
+
 ## 0.1.0
 
 ### Minor Changes

@@ -1,5 +1,37 @@
 # @infrabyx/connectors
 
+## 0.4.0
+
+### Minor Changes
+
+- 1fecf45: Owner answer #53 (PL5-D-11): `@infrabyx/connectors/media` with the MEDIA reference adapter `SharpMedia` (libvips through `sharp`, under the owner's licence exception for the unmodified `@img/sharp-libvips-*` binaries) and the alternative `PassthroughMedia` (uploads served as uploaded). `sharp` 0.35.5 is an optional peer dependency: install it in the product to re-encode; without it the adapter reports `IPB-PORT-001` (`not_installed`). The package now ships a `NOTICE` naming libvips and its licence.
+
+### Patch Changes
+
+- Updated dependencies [de53086]
+- Updated dependencies [de53086]
+- Updated dependencies [f1a36a1]
+- Updated dependencies [1fecf45]
+- Updated dependencies [1fecf45]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [b0dc390]
+- Updated dependencies [275d4ba]
+- Updated dependencies [934355c]
+- Updated dependencies [686d24b]
+- Updated dependencies [686d24b]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+- Updated dependencies [36338c3]
+- Updated dependencies [934355c]
+- Updated dependencies [b7de3c6]
+- Updated dependencies [e8e83cb]
+- Updated dependencies [275d4ba]
+  - @infrabyx/config@0.5.0
+  - @infrabyx/contracts@0.5.0
+  - @infrabyx/tenancy@0.5.0
+  - @infrabyx/crypto@0.4.1
+
 ## 0.3.0
 
 ### Minor Changes

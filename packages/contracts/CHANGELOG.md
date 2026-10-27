@@ -1,5 +1,27 @@
 # @infrabyx/contracts
 
+## 0.5.0
+
+### Minor Changes
+
+- de53086: Owner answers #34 and #37 (PL4-D-13). **Breaking for manifests:** `SkillTool.locked` is now required, so every tool in a skill manifest declares `locked: true` or `locked: false`; a manifest without it fails validation (`IPB-VID-001` in `SkillRegistry.load`). `false` never unlocks a tool the kernel list matches by name. New service reader role `SVC_AI_INDEX_SWEEP` (`ai.retrieval_index`: id, tenant, state and retirement time) for the retired-version sweep.
+- f1a36a1: Owner answer #52 (PL5-D-05): `ContrastGuardFailedData` pairs gain optional `role` (`fill`, `text`, `icon`, `border`, `focus`) and `reason` (`contrast`, `role_not_permitted`).
+- 1fecf45: Owner answers #53 and #57 (PL5-D-11): the MEDIA port interface (`MediaPort` with `probe`, `reencode` and `rasteriseSvg`; `MEDIA_FORMATS`, `MEDIA_RENDITION_WIDTHS`, `MEDIA_MAX_INPUT_PIXELS`, `FAVICON_PNG_SIZES`, `renditionWidths`). MEDIA is now a defined port (`PL5_PORTS`). The `SVC_CONSENT_SWEEP` reader may also read `consent.subject_status`.
+- b0dc390: PL5 session 4: the `gls_` id prefix (CMS glossary terms) and payload schemas for the `cms` events `RevisionCreated`, `PublishRequested`, `ContentUnpublished`, `ClaimsLintFailed`, `ContentStale` and `RedirectChanged`.
+- 686d24b: Service reader role `SVC_CONSENT_SWEEP` (`consent.record`: id, tenant and time) for the consent purge (OWNER-QUESTIONS #48).
+- e8e83cb: `ContrastGuardFailedData`, the payload of `in.<product>.brand.ContrastGuardFailed.v1` (IPB-04 §04.6.1): the pack and the failing pairs, each with its scheme, ratio, minimum and suggested colour.
+- 275d4ba: Feedback and trust contracts (PL5 session 6):
+
+  - service reader roles `SVC_FEEDBACK_SLA` (`feedback.item`) and `SVC_TRUST_SWEEP` (`trust.acknowledgement`, `trust.request`);
+  - id prefixes `fbs_` (feedback status change) and `vads_` (vendor assurance subscription);
+  - payload schemas `FeedbackStatusChangedInternalData`, `AccessibilityIssueReportedData`, `AccessibilityIssueSlaBreachedData`, `VendorAssuranceDocumentAcknowledgedData`, `NdaAcceptedData` and `VendorDocumentRequestedData`.
+
+- 934355c: PL5 session 1 (PL5-D-02): the twelve website ports in `ports/web.ts` (CONSENT, CRM, HR, SUPPORT, BACKLOG, TRUST, BILLING catalogue, TAG_MANAGER, ANALYTICS, EGRESS, CLAIMS, LAW_REGISTER) with their payload schemas and the Ecosystem v1.2 code tables they use; the error areas `IPB-CMS`, `IPB-BRD`, `IPB-WEB`, `IPB-FB`, `IPB-POL`, `IPB-A11Y`, `IPB-TRUST` and `IPB-RES`; the content, consent and trust id prefixes; and the PL5 internal event names with payload schemas for the Ecosystem v1.2 events (`BrandPackPublished`, `PolicyEffective`, `MarketingConsentUpdated`, `LeadCaptured`, `FeedbackSubmitted`, `FeedbackStatusChanged`, the vendor-assurance events). The `TAG_MANAGER` port's settings prefix is now `mkt.tag_manager.`.
+
+### Patch Changes
+
+- 36338c3: Id prefixes `rsv_` (CMS resource version) and `rdl_` (CMS resource download).
+
 ## 0.4.0
 
 ### Minor Changes
