@@ -3,6 +3,7 @@
 // addresses through a product-supplied resolver. The method list is derived from IPB-07-25 and the
 // IPB-04/05 uses, because IPB-01 gives none (assumption A-06).
 import { z } from "zod";
+import type { KernelContext } from "../kernel.js";
 import type { Port, PortCall } from "./common.js";
 
 export const NOTIFY_CHANNELS = ["inapp", "email", "sms", "whatsapp", "push"] as const;
@@ -208,8 +209,12 @@ export interface DomainCheck {
   dmarc: boolean;
 }
 
+/**
+ * NOTIFY runs inside tenancy, so every method that touches tenant data takes the verified
+ * `KernelContext` first (PL3 session 4).
+ */
 export interface NotifyPort extends Port {
-  send(n: NotificationRequest, call?: PortCall): Promise<SendResult>;
+  send(ctx: KernelContext, n: NotificationRequest, call?: PortCall): Promise<SendResult>;
   /** "Test notification": renders without sending. */
   preview(
     classId: string,
@@ -217,12 +222,12 @@ export interface NotifyPort extends Port {
     vars: Record<string, unknown>,
   ): Promise<RenderedChannels>;
   /** Refuses to disable every channel of a mandatory class with IPB-NTF-001. */
-  setPreferences(userId: string, prefs: ChannelMatrix): Promise<void>;
-  suppress(entry: SuppressionInput): Promise<void>;
+  setPreferences(ctx: KernelContext, userId: string, prefs: ChannelMatrix): Promise<void>;
+  suppress(ctx: KernelContext, entry: SuppressionInput): Promise<void>;
   /** One-click marketing unsubscribe with a random, one-time, revocable token (PL3-D-06). */
   unsubscribe(token: string): Promise<void>;
   verifySenderDomain(brand: string, domain: string): Promise<DomainCheck>;
-  deliveryStatus(notificationId: string): Promise<DeliveryRecord[]>;
+  deliveryStatus(ctx: KernelContext, notificationId: string): Promise<DeliveryRecord[]>;
 }
 
 /** Product-supplied address lookup; addresses never travel through events or queues. */

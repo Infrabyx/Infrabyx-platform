@@ -33,6 +33,8 @@ export const ID_PREFIXES = {
   ntf: "notification (NOTIFY)",
   dlv: "notification delivery (NOTIFY)",
   sup: "suppression entry (NOTIFY)",
+  ptk: "push device token (NOTIFY)",
+  inm: "in-app message (NOTIFY)",
   exj: "export job (export)",
   arc: "export archive (Ecosystem entity 40)",
   esr: "e-sign envelope (ESIGN)",
