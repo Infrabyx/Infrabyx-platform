@@ -7,7 +7,7 @@
 // down: stops the stack and removes its volumes (local data only).
 // Needs Docker and a built workspace (`pnpm build`).
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
@@ -88,6 +88,8 @@ function profilesFrom(argv) {
 function up(argv) {
   const env = ensureEnv();
   const profiles = profilesFrom(argv);
+  // The seed's file storage, mounted into the apps; created here so Docker does not create it as root.
+  mkdirSync(join(ROOT, ".storage"), { recursive: true });
   compose([...profiles.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
   const port = env.PG_PORT ?? "55432";
   const db = `postgres://postgres:${env.POSTGRES_PASSWORD}@127.0.0.1:${port}/infrabyx`;

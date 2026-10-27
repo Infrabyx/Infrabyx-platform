@@ -15,8 +15,11 @@ RUN git -c advice.detachedHead=false clone --depth 1 --branch "$TAG" https://git
 # health check a client.
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
 COPY --from=build /out/minio /usr/local/bin/minio
+# The data directory belongs to the runtime user, so a fresh named volume inherits that owner.
+RUN mkdir /data && chown 10001:10001 /data
 USER 10001
 EXPOSE 9000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=6 \
     CMD ["node", "-e", "fetch('http://127.0.0.1:9000/minio/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
-ENTRYPOINT ["minio", "server", "/data", "--address", ":9000"]
+# Certificates directory under /tmp (the root filesystem is read-only in Compose).
+ENTRYPOINT ["minio", "server", "/data", "--address", ":9000", "--certs-dir", "/tmp/minio-certs"]

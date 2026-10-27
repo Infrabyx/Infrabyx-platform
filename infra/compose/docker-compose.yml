@@ -35,6 +35,9 @@ services:
     profiles: [core]
     <<: *hardened
     image: redis:7.4-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541
+    # Runs as the image's redis user directly: with every capability dropped, the entrypoint
+    # cannot switch users itself.
+    user: "999:999"
     command:
       ["redis-server", "--requirepass", "${REDIS_PASSWORD:?run pnpm dev:up}", "--appendonly", "yes"]
     ports: ["127.0.0.1:${REDIS_PORT:-56379}:6379"]
@@ -109,10 +112,9 @@ services:
     profiles: [core]
     <<: *hardened
     image: temporalio/temporal@sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
-    command:
-      ["server", "start-dev", "--ip", "0.0.0.0", "--headless", "--db-filename", "/data/temporal.db"]
+    # In-memory dev server: workflow state resets with the container (local only).
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--headless"]
     ports: ["127.0.0.1:${TEMPORAL_PORT:-57233}:7233"]
-    volumes: [temporaldata:/data]
     healthcheck:
       test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
       interval: 5s
@@ -185,13 +187,15 @@ services:
     image: infrabyx/public:local
     read_only: true
     tmpfs: [/tmp, "/app/.next/cache:uid=10001"]
+    # The brand and media files the dev seed wrote (pnpm dev:up); the site only reads them.
+    volumes: ["../../.storage:/storage:ro"]
     depends_on:
       postgres: { condition: service_healthy }
     environment:
       APP_ENV: local
       APP_BASE_URL: http://localhost:${PUBLIC_PORT:-53123}
       DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
-      STORAGE_DIR: /tmp/storage
+      STORAGE_DIR: /storage
       APP_FIXTURE_ADAPTERS: "true"
     ports: ["127.0.0.1:${PUBLIC_PORT:-53123}:3000"]
 
@@ -202,6 +206,8 @@ services:
     image: infrabyx/console:local
     read_only: true
     tmpfs: [/tmp, "/app/.next/cache:uid=10001"]
+    # The same files as the site; uploads need the directory writable by UID 10001.
+    volumes: ["../../.storage:/storage"]
     depends_on:
       postgres: { condition: service_healthy }
     environment:
@@ -209,7 +215,7 @@ services:
       APP_BASE_URL: http://localhost:${CONSOLE_PORT:-53124}
       APP_SITE_URL: http://localhost:${PUBLIC_PORT:-53123}
       DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
-      STORAGE_DIR: /tmp/storage
+      STORAGE_DIR: /storage
       APP_FIXTURE_ADAPTERS: "true"
     ports: ["127.0.0.1:${CONSOLE_PORT:-53124}:3000"]
 
@@ -242,6 +248,5 @@ volumes:
   pgdata:
   redisdata:
   miniodata:
-  temporaldata:
   osdata:
   ollamadata:

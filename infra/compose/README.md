@@ -21,6 +21,8 @@ pnpm dev:down                    # stop and remove the stack and its volumes
 | `ai`            | Ollama (51434)                                                                                                                                                                                                                                                                                         |
 | `observability` | Grafana with Tempo, Loki and Prometheus behind one OTLP endpoint (`grafana/otel-lgtm`; UI 53300, OTLP gRPC 54317, HTTP 54318)                                                                                                                                                                          |
 
+The Temporal dev server keeps its state in memory, so workflows reset with the container. The site and console read the files the dev seed wrote from the checkout's `.storage/` (gitignored), mounted at `/storage`.
+
 Every port can be moved with its variable in `.env.local` (for example `PG_PORT=55433`).
 
 ## Images
