@@ -1,0 +1,2 @@
+# Golden archives are compared byte for byte (IPB-09-35): no line-ending conversion
+packages/export/golden/** -text

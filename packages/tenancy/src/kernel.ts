@@ -9,6 +9,7 @@ import type {
   MutateOptions,
   MutationKernel,
   QueryResult,
+  ReadOptions,
   Tx,
 } from "@infrabyx/contracts/kernel";
 import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
@@ -130,23 +131,38 @@ export class PgKernel implements MutationKernel {
     });
   }
 
-  async read<T>(ctx: KernelContext, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  async read<T>(
+    ctx: KernelContext,
+    fn: (tx: Tx) => Promise<T>,
+    opts: ReadOptions = {},
+  ): Promise<T> {
     assertValidContext(ctx);
     // A service reader in platform scope runs as its own database role, which is granted only the
     // columns it needs (PL3-D-21); RLS still applies.
     const reader = ctx.scope === "platform" ? serviceReaderRole(ctx) : undefined;
-    return this.run(ctx, reader ? SERVICE_READER_ROLES[reader].dbRole : this.readRole, true, fn);
+    return this.run(
+      ctx,
+      reader ? SERVICE_READER_ROLES[reader].dbRole : this.readRole,
+      opts.snapshot ? "snapshot" : true,
+      fn,
+    );
   }
 
   private async run<T>(
     ctx: KernelContext,
     role: string,
-    readOnly: boolean,
+    readOnly: boolean | "snapshot",
     fn: (tx: Tx) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
     try {
-      await client.query(readOnly ? "begin read only" : "begin");
+      await client.query(
+        readOnly === "snapshot"
+          ? "begin isolation level repeatable read read only"
+          : readOnly
+            ? "begin read only"
+            : "begin",
+      );
       await client.query(`set local role ${quoteIdent(role)}`);
       await client.query(
         `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),

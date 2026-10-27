@@ -497,6 +497,32 @@ export const ERROR_CATALOGUE = {
     title: "Rule set version is not in the state this action needs",
     source: "PL3 plan §10 (PR-017)",
   },
+  // EXPORT runtime errors (PL3-D-22), under PR-017 like the RULE area.
+  "IPB-EXP-001": {
+    status: 403,
+    title: "Restricted export folders need a second approver and are not available yet",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-EXP-002": {
+    status: 422,
+    title: "Export scope or destination not supported",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-EXP-003": {
+    status: 500,
+    title: "Export control totals differ from the live system; the job failed",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-EXP-004": {
+    status: 422,
+    title: "Export map names a field that is never exported (secret, sealed, Aadhaar or card data)",
+    source: "PL3 plan §10 (PR-017)",
+  },
+  "IPB-EXP-005": {
+    status: 403,
+    title: "This role may not request or download this export",
+    source: "PL3 plan §10 (PR-017)",
+  },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {
     status: 401,

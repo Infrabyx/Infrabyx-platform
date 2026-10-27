@@ -4,8 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question | Default taken | Impact if changed | How to reverse | Blocks |
-| --- | -------- | -------- | ------------- | ----------------- | -------------- | ------ |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                           | Default taken | Impact if changed                                                                                                                                   | How to reverse                                        | Blocks  |
+| --- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------- |
+| 24  | PL3-D-22 | Export defaults from session 5: archives in STORAGE bucket class `CONFIDENTIAL` (no EXPORT class exists) without Object Lock; only `ORG_OWNER` requests and downloads unless a product adds roles; all archive times in UTC; the reference map `REF-EXPORT-1.0` excludes approval payloads and notification variables. Keep these? | As stated     | A REGULATED bucket or Object Lock changes one `put` call; more roles are an option; IST times change the writer and the golden archive (a map bump) | `ExportService` options; a map bump for the time zone | Nothing |
 
 ## Answered
 

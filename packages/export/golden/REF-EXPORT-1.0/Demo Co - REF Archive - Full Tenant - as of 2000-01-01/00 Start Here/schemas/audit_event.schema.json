@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:audit_event",
+  "title": "audit_event",
+  "description": "Rows of audit.ledger exported under REF-EXPORT-1.0",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "tenant_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "seq": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
+    "actor_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "actor_type": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "actor_type_label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "PUBLIC"
+    },
+    "action": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "resource_type": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "resource_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "before_digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "after_digest": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "corrects_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "trace_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "ip_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "ua_hash": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "prev_hash": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "entry_hash": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "tenant_id",
+    "seq",
+    "actor_id",
+    "actor_type",
+    "action",
+    "resource_type",
+    "resource_id",
+    "occurred_at",
+    "prev_hash",
+    "entry_hash"
+  ],
+  "additionalProperties": false
+}

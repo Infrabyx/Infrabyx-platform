@@ -55,7 +55,15 @@ export interface MutateOptions {
 
 export interface MutationKernel {
   mutate<T>(ctx: KernelContext, fn: (tx: Tx) => Promise<T>, opts?: MutateOptions): Promise<T>;
-  read<T>(ctx: KernelContext, fn: (tx: Tx) => Promise<T>): Promise<T>;
+  /**
+   * Read-only transaction. `snapshot: true` makes every statement see one snapshot (REPEATABLE
+   * READ), for readers that reconcile counts against rows (the export snapshot, PL3-D-22).
+   */
+  read<T>(ctx: KernelContext, fn: (tx: Tx) => Promise<T>, opts?: ReadOptions): Promise<T>;
+}
+
+export interface ReadOptions {
+  snapshot?: boolean;
 }
 
 export interface AuditEntryInput {

@@ -1,0 +1,103 @@
+{
+  "map_version": "REF-EXPORT-1.0",
+  "entities": {
+    "tenant": {
+      "source": "tenancy.tenant",
+      "id": "id",
+      "files": ["01 Data/tenant.csv", "01 Data/tenant.jsonl"],
+      "fields": ["id", "product", "name", "status", "residency", "created_at"]
+    },
+    "legal_entity": {
+      "source": "tenancy.legal_entity",
+      "id": "id",
+      "files": ["01 Data/legal_entity.csv", "01 Data/legal_entity.jsonl"],
+      "fields": ["id", "name", "cin", "gstin", "created_at", "deleted_at"]
+    },
+    "membership": {
+      "source": "tenancy.membership",
+      "id": "user_id",
+      "files": ["01 Data/membership.csv", "01 Data/membership.jsonl"],
+      "fields": ["user_id", "roles", "entity_ids", "created_at"]
+    },
+    "setting": {
+      "source": "config.setting_value",
+      "id": "id",
+      "files": ["01 Data/setting.csv", "01 Data/setting.jsonl"],
+      "fields": ["id", "key", "tier", "scope_id", "value", "version", "updated_at", "updated_by"]
+    },
+    "approval_request": {
+      "source": "tenancy.approval_request",
+      "id": "id",
+      "files": ["01 Data/approval_request.csv", "01 Data/approval_request.jsonl"],
+      "fields": [
+        "id",
+        "action",
+        "risk_class",
+        "summary",
+        "maker_id",
+        "state",
+        "required_checkers",
+        "created_at",
+        "approved_at",
+        "executed_at"
+      ]
+    },
+    "approval_decision": {
+      "source": "tenancy.approval_decision",
+      "id": "request_id",
+      "files": ["01 Data/approval_decision.csv", "01 Data/approval_decision.jsonl"],
+      "fields": ["request_id", "maker_id", "decision", "decided_at"]
+    },
+    "notification": {
+      "source": "notify.notification",
+      "id": "id",
+      "files": ["01 Data/notification.csv", "01 Data/notification.jsonl"],
+      "fields": ["id", "class_id", "deep_link", "locale", "created_at"]
+    },
+    "inbox_item": {
+      "source": "workflow.inbox_item",
+      "id": "id",
+      "files": ["01 Data/inbox_item.csv", "01 Data/inbox_item.jsonl"],
+      "fields": [
+        "id",
+        "type",
+        "product_module",
+        "record_ref",
+        "title",
+        "assignee_kind",
+        "assignee_id",
+        "severity",
+        "created_at",
+        "resolved_at",
+        "resolution"
+      ]
+    },
+    "audit_event": {
+      "source": "audit.ledger",
+      "id": "id",
+      "files": ["02 Audit Trail/audit-events-{yyyy}-{mm}.jsonl"],
+      "fields": [
+        "id",
+        "tenant_id",
+        "seq",
+        "actor_id",
+        "actor_type",
+        "action",
+        "resource_type",
+        "resource_id",
+        "before_digest",
+        "after_digest",
+        "corrects_id",
+        "trace_id",
+        "ip_hash",
+        "ua_hash",
+        "occurred_at",
+        "prev_hash",
+        "entry_hash"
+      ],
+      "views": ["chain_anchor"]
+    }
+  },
+  "manifest": "manifest.json",
+  "normalisers": ["timestamps_iso8601", "ulid_stable_sort", "runtime_ids", "zip_entry_times"]
+}

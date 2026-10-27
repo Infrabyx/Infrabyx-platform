@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:approval_request",
+  "title": "approval_request",
+  "description": "Rows of tenancy.approval_request exported under REF-EXPORT-1.0",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "action": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "risk_class": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "risk_class_label": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "PUBLIC"
+    },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "maker_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "state": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "required_checkers": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "approved_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    },
+    "executed_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "action",
+    "risk_class",
+    "maker_id",
+    "state",
+    "required_checkers",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

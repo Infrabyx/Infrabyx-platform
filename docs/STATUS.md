@@ -4,11 +4,11 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 4 done** (2026-10-27): `notify` and the PUSH adapters `expo` and `fcm`; C-23 and C-24 in `crypto` (PL3-D-20). Next: PL3 session 5 (`export`). Continuous build mode (PL2-D-41)                                                                    |
+| Current phase         | **PL3 session 5 done** (2026-10-27): `export` and C-22 (PL3-D-22); owner answers #21–#23 applied (PL3-D-21). Next: PL3 session 6 (ESIGN). Continuous build mode (PL2-D-41)                                                                                      |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
 | Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
-| Working branch        | `claude/nifty-mayer-xmxxq0` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                         |
+| Working branch        | `claude/festive-sagan-x3370c` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                       |
 
 ## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
@@ -177,6 +177,23 @@ Then PL3 (plan first). The owner's PL3 items so far:
 
 Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#7–#17 open with defaults in use; #1–#6 answered). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
+## PL3 session 5 (2026-10-27, PL3-D-22)
+
+- `@infrabyx/crypto` (minor): C-22 `signDetachedJws` and `verifyDetachedJws` (ES256 through KMS `sign`), `spkiToEs256Jwk` and `cloudEventSigningPayload`.
+- `@infrabyx/export` 0.1.0 (first release at the PL3 gate):
+  - migration `export/0001_init.sql`;
+  - `REF-EXPORT-1.0` and `ExportMapRegistry`;
+  - the deterministic archive writer to the Ecosystem §12.1 standard, with the signed manifest and an Apache-2.0 offline verifier;
+  - `ExportService`: R0 for `ORG_OWNER`, rate-limited, a reconciled REPEATABLE READ snapshot, STORAGE `CONFIDENTIAL`, ledgered downloads (`@IPB-09-37`);
+  - `infrabyx-export map-gate | diff | verify`.
+- CI: `export-map-gate` in `verify` (`@IPB-09-AT-14`) and `golden-archive-diff` in `integration` (`@IPB-09-AT-15`), with the committed fixture `packages/export/golden/REF-EXPORT-1.0/`. CI also reruns on label changes (`export:unchanged`).
+- `@infrabyx/contracts` (minor): `IPB-EXP-001`–`005` and the `snapshot` read option. `@infrabyx/tenancy` (minor): REPEATABLE READ reads; `infrabyx-migrate` applies the export migration.
+- New owner question #24 (export defaults); defaults in use, nothing blocked.
+- Products at the PL3 gate:
+  - install `@infrabyx/export` and ship a `<PRODUCT>-EXPORT-1.0` map;
+  - build `ExportService` with STORAGE, the KMS export-signing key and an `ecosystemEvent` builder, and run jobs from a worker;
+  - add `map-gate` and a golden archive of their demo tenant to CI.
+
 ## Owner answers #21–#23 (2026-10-27, PL3-D-21)
 
 - **#21:** UNDETERMINED review tasks go to `ORG_CHECKER` (or `ORG_ADMIN` when the tenant has no checker), exclude the requesting principal and escalate once to `ORG_ADMIN` after 48 hours (`inbox.escalate` timer, class `inbox.escalated`); one ledger entry per decision stays.
@@ -186,8 +203,7 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- PL3 session 5: `export` (maps, the archive writer to the Ecosystem §12.1 profile with C-22 signed manifests, jobs, `export-map-gate` and `golden-archive-diff` CI checks, the golden fixture; `@IPB-09-AT-14`, `@IPB-09-AT-15`).
-- Then session 6 (ESIGN `leegality` with C-25 and `digio`) and session 7 (gate and release).
+- Session 6 (ESIGN `leegality` with C-25 and `digio`) and session 7 (gate and release).
 
 ## Handover (2026-10-27, end of the session that built PL3 sessions 2–4)
 

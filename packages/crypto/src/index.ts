@@ -75,3 +75,12 @@ export {
   FCM_SCOPE,
   type ServiceAccountAssertionInput,
 } from "./google-assertion.js";
+export {
+  signDetachedJws,
+  verifyDetachedJws,
+  derToJose,
+  spkiToEs256Jwk,
+  cloudEventSigningPayload,
+  type DerSigner,
+  type Es256PublicJwk,
+} from "./detached-jws.js";
