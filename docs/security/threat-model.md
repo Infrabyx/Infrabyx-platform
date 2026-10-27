@@ -430,6 +430,15 @@ One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/c
 - **D (an unhealthy container kept in service):** Control: `/health/live`, `/health/ready` and `/health/startup` (database round trip within 2 seconds, 503 when down), and a `HEALTHCHECK` on the liveness probe. The probes skip the CMS lookup in the proxy and return only status, latency and time (no host, version or error text).
 - **Residual:** images are unsigned until cosign is approved (#67); known vulnerabilities without a fix are listed by `trivy image` and must be waived with an expiry in `infra/docker/trivyignore.yaml`.
 
+### 3.38 The local Compose stack (built, PL6 session 1b; PL6-D-03)
+
+`infra/compose/docker-compose.yml` and `pnpm dev:up` run the platform's services on a developer machine and in the `compose` CI job. Local only; never a deployment.
+
+- **I (local secrets leaking):** Control: secrets are generated per machine into `infra/compose/.env.local` (mode 600, ignored by git and the image build context); none is a default or committed value; seeded passwords go to the never-committed `SEED_CREDENTIALS.md`. Local data is synthetic (the `dev` seed; IPB-11).
+- **S and E (other hosts reaching the services):** Control: every published port is bound to `127.0.0.1`; Redis, MinIO, Keycloak, Unleash and PostgreSQL each require a generated password or token; containers drop all capabilities where the image allows it, and the apps run read-only as UID 10001.
+- **T (a tampered image):** Control: every image is pinned by digest and was published at least 7 days before pinning (PL2-D-32); MinIO is built from source at the pinned commit, never from a mirror.
+- **Residual:** Keycloak and the Temporal dev server run in development mode (no TLS) on loopback; the stack must never be exposed beyond the machine. Seeds stay refused in prod, dr and pre-prod by the seed guard regardless of this stack.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

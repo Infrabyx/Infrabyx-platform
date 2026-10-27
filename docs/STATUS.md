@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); session 1a (container images) in review; next 1b (Compose). 1.0.0 is published only on the owner's word (#67)                                                                                                                                 |
+| Current phase         | **PL6 — infra and release** (2026-10-27): plan `docs/phases/PL6-plan.md` (PL6-D-01, OWNER-QUESTIONS #66 and #67); session 1 (container images and the Compose stack) in review; next session 2 (Helm chart and Kyverno policies). 1.0.0 is published only on the owner's word (#67)                                                                             |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages (PL5 gate, release run 74, `dc51032`): ui, a11y, hlp, brand, cms, consent, feedback and trust 0.1.0 (new); contracts, config, testing and tenancy 0.5.0; connectors 0.4.0; notify and seed 0.3.0; ai and vidhi 0.2.0; crypto 0.4.1; export 0.2.1; audit 0.1.4; rules and workflow 0.1.2. Checksums in `docs/phases/PL5-gate.md` §6 |
 | Last exit gate passed | PL5 gate (2026-10-27): report `docs/phases/PL5-gate.md`; PR #94 (report) and PR #79 (version), every required check green; release run 74. Before it: PL4 gate (`docs/phases/PL4-gate.md`)                                                                                                                                                                      |
@@ -21,13 +21,20 @@ Updated: 2026-10-27
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
 
+## PL6 session 1b (2026-10-27, PL6-D-03)
+
+- **Compose:** `infra/compose/docker-compose.yml` with the `core` (PostgreSQL 18 with pgvector, Redis, MinIO built from source, Mailpit, Keycloak, Temporal and its UI, Gotenberg, Unleash, Cerbos with the platform policies), `apps`, `search`, `ai` and `observability` profiles; every image pinned by digest, every port on 127.0.0.1.
+- **`pnpm dev:up` / `pnpm dev:down`:** generated local secrets in `infra/compose/.env.local` (never committed), the stack up with health checks, then `infrabyx-migrate` and the `dev` seed.
+- **CI:** the `compose` job runs `dev:up` with the apps, checks the seeded site and console through their images and tears down.
+- **New owner question:** #69 (generated secrets instead of SOPS, the `dev` profile, what comes with `apps/reference`; nothing blocked).
+- **Next:** session 2, the Helm chart `infra/helm/infrabyx-app` and the Kyverno policies.
+
 ## PL6 session 1a (2026-10-27, PL6-D-02)
 
 - **Images:** `infra/docker/next/Dockerfile` builds `apps/public` and `apps/console` (`--build-arg APP=<folder>`): pinned Node base, `pnpm fetch` then a frozen install, `turbo build`, `pnpm deploy --prod`; the runtime runs as UID 10001 on a read-only root, code owned by root, with a `HEALTHCHECK`. `.dockerignore` keeps secrets, local state and build output out of the context.
 - **Probes:** `/health/live`, `/health/ready`, `/health/startup` on both apps (database round trip, 503 when down).
 - **CI:** the `containers` job (hadolint, `trivy config`, build, `trivy image` with dated waivers, `@IPB-01-AT-15`). It becomes a required check after two green runs on `main`.
 - **New owner question:** #68 (one Dockerfile, root-owned code, tool pins, probes, unfixed findings fail; nothing blocked).
-- **Next:** session 1b, Compose (`infra/compose`, `pnpm dev:up`).
 
 ## PL5 release and PL6 plan (2026-10-27)
 
