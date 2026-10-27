@@ -1,6 +1,6 @@
 // Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports and
 // the four PL3 ports (RULES, NOTIFY, PUSH, ESIGN) and the five PL4 AI ports (LLM, EMBEDDING, IMAGE_GEN,
-// SPEECH, RERANK, in `ai.ts`) and the twelve PL5 website ports (`web.ts`) are in this folder; the rest land with the phase
+// SPEECH, RERANK, in `ai.ts`), the twelve PL5 website ports (`web.ts`) and MEDIA (`media.ts`, #53) are in this folder; the rest land with the phase
 // that builds their adapters (PL1-D-02, PL2 plan §1, PL3 plan §10).
 
 export type PortTier = 0 | 1 | 2 | 3;
@@ -156,7 +156,7 @@ export const PORT_CATALOGUE = {
     ownerFile: "IPB-04, IPB-05",
     interfaceDefined: true,
   },
-  MEDIA: { tier: 2, configPrefix: "int.media.", ownerFile: "IPB-04", interfaceDefined: false },
+  MEDIA: { tier: 2, configPrefix: "int.media.", ownerFile: "IPB-04", interfaceDefined: true },
   AV: { tier: 2, configPrefix: "int.av.", ownerFile: "IPB-02, IPB-04", interfaceDefined: false },
   PLAGIARISM: {
     tier: 3,

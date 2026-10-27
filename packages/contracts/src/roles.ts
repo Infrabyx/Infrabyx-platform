@@ -56,8 +56,11 @@ export const SERVICE_READER_ROLES = {
   SVC_AI_RUN_SWEEP: { dbRole: "svc_ai_run_sweep", tables: ["ai.run"] },
   /** Finds retired retrieval index versions past 30 days (OWNER-QUESTIONS #34). */
   SVC_AI_INDEX_SWEEP: { dbRole: "svc_ai_index_sweep", tables: ["ai.retrieval_index"] },
-  /** Finds tenants with consent records past the retention rule (OWNER-QUESTIONS #48). */
-  SVC_CONSENT_SWEEP: { dbRole: "svc_consent_sweep", tables: ["consent.record"] },
+  /** Finds tenants with consent records or subject status rows past the retention rules (#48, #57). */
+  SVC_CONSENT_SWEEP: {
+    dbRole: "svc_consent_sweep",
+    tables: ["consent.record", "consent.subject_status"],
+  },
   /** Finds accessibility SLA timers due, hand-offs pending and items to purge (IPB-06-62; #48). */
   SVC_FEEDBACK_SLA: { dbRole: "svc_feedback_sla", tables: ["feedback.item"] },
   /** Finds document requests past their SLA and acknowledgements to purge (IPB-08-17; #48). */

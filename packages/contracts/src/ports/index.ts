@@ -20,3 +20,4 @@ export * from "./push.js";
 export * from "./esign.js";
 export * from "./ai.js";
 export * from "./web.js";
+export * from "./media.js";
