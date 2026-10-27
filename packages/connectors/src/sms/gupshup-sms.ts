@@ -5,7 +5,9 @@
 //   GET; POST is the sandbox leg's first check].
 // - No client reference or lookup is documented: a send left pending is sent again (at-least-once).
 // - Delivery reports arrive by GET (query parameters) without a signature: the configured URL
-//   carries our C-19 secret as `ipb_token` (ingress logs redact it).
+//   carries our C-19 secret (at least 32 random bytes) as `ipb_token`, redacted by the telemetry
+//   scrubber; a report is passed on only after its status is confirmed (`confirmStatus`), and
+//   withheld without one (PL2-D-65).
 // - No status or balance API is documented: `getStatus` is unsupported and health is reachability.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
@@ -21,7 +23,9 @@ import { createEgress } from "../core/http.js";
 import {
   assertBodyClass,
   checkSharedSecret,
+  confirmed,
   vendorError,
+  type ConfirmStatus,
   webhookRefused,
   type SharedSecretAuth,
 } from "../messaging/common.js";
@@ -32,6 +36,10 @@ export interface GupshupSmsOptions extends DltOptions {
   credentials: () =>
     Promise<{ userId: string; password: string }> | { userId: string; password: string };
   webhook: SharedSecretAuth;
+  /** Status confirmation before a report is acted on (PL2-D-65); without it reports are withheld. */
+  confirmStatus?: ConfirmStatus;
+  /** Told how many reports were withheld (unconfirmed). */
+  onWithheld?: (n: number) => void;
   /** Tests only: the Gupshup SMS stub. */
   baseUrl?: string;
   allowLoopbackHttp?: boolean;
@@ -129,7 +137,7 @@ export class GupshupSms implements SmsPort {
     if (state !== "SUCCESS" && state !== "FAILURE") return []; // UNKNOWN is not final
     const cause = (p.get("cause") ?? "").toUpperCase();
     const ts = Number(p.get("deliveredTS"));
-    return [
+    const reports: SmsDeliveryReport[] = [
       {
         vendorEventId: `${id}:${state}`,
         messageId: id,
@@ -138,6 +146,7 @@ export class GupshupSms implements SmsPort {
         at: Number.isFinite(ts) && ts > 0 ? new Date(ts).toISOString() : new Date().toISOString(),
       },
     ];
+    return confirmed(reports, this.o.confirmStatus, this.o.onWithheld);
   }
 
   async health(): Promise<PortHealth> {

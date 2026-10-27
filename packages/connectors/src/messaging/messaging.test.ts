@@ -48,6 +48,14 @@ describe("messaging helpers (PL2 plan §6.10–6.12)", () => {
     await expect(checkSharedSecret("SMS", "x", auth, {}, "198.51.100.7")).rejects.toMatchObject({
       code: "IPB-API-018",
     });
+    // URL token: accepted at 32 random bytes, refused when the configured secret is shorter.
+    await expect(
+      checkSharedSecret("SMS", "x", auth, {}, "198.51.100.7", `ipb_token=${encodeURIComponent(s)}`),
+    ).resolves.toBeUndefined();
+    const short = "0123456789abcdef0123456789";
+    await expect(
+      checkSharedSecret("SMS", "x", { secret: () => short }, {}, undefined, `ipb_token=${short}`),
+    ).rejects.toThrow(/32 random bytes/);
   });
 
   it("timestamp windows", () => {

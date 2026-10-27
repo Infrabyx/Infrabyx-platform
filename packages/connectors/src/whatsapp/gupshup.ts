@@ -3,8 +3,9 @@
 // only under the DPA on file (IPB-DEV-05).
 // - Templates are sent by Gupshup template id, looked up (cached) from the app's template list,
 //   which also gives the category for the marketing check.
-// - Webhooks (v2 envelope) carry no signature: the subscription URL carries our C-19 secret as
-//   `ipb_token` (ingress logs redact it).
+// - Webhooks (v2 envelope) carry no signature: the subscription URL carries our C-19 secret (at
+//   least 32 random bytes) as `ipb_token`, redacted by the telemetry scrubber; an event is passed on
+//   only after its status is confirmed (`confirmStatus`), and withheld without one (PL2-D-65).
 // - The non-partner API documents no media upload: media goes as a link (`uploadMedia`
 //   unsupported; CONFIDENTIAL media is a secure link in any case).
 // - No idempotency key or lookup: a send left pending is sent again.
@@ -24,8 +25,10 @@ import { createEgress, type EgressResponse } from "../core/http.js";
 import {
   assertBodyClass,
   checkSharedSecret,
+  confirmed,
   parseJson,
   vendorError,
+  type ConfirmStatus,
   type SharedSecretAuth,
 } from "../messaging/common.js";
 import { msisdn } from "../sms/common.js";
@@ -49,6 +52,10 @@ export interface GupshupWhatsappOptions extends WhatsappPolicyOptions {
   source: string;
   dpaRef: string;
   webhook: SharedSecretAuth;
+  /** Status confirmation before an event is acted on (PL2-D-65); without it events are withheld. */
+  confirmStatus?: ConfirmStatus;
+  /** Told how many events were withheld (unconfirmed). */
+  onWithheld?: (n: number) => void;
   /** Tests only: the Gupshup stub. */
   baseUrl?: string;
   allowLoopbackHttp?: boolean;
@@ -236,13 +243,13 @@ export class GupshupWhatsapp implements WhatsappPort {
     const at = b.timestamp ? new Date(b.timestamp).toISOString() : new Date().toISOString();
     const p = b.payload ?? {};
     if (b.type === "message" && p.id)
-      return [{ vendorEventId: p.id, messageId: p.id, type: "inbound", at }];
+      return this.withConfirmation([{ vendorEventId: p.id, messageId: p.id, type: "inbound", at }]);
     if (b.type !== "message-event" || !p.id) return [];
     const kind = p.type;
     const type = (["sent", "delivered", "read", "failed"] as const).find((t) => t === kind);
     if (!type) return []; // enqueued and deleted are not port events
     const code = p.payload?.code;
-    return [
+    return this.withConfirmation([
       {
         vendorEventId: `${p.gsId ?? p.id}:${kind}`,
         messageId: p.gsId ?? p.id,
@@ -250,7 +257,11 @@ export class GupshupWhatsapp implements WhatsappPort {
         at,
         ...(code !== undefined ? { errorCode: String(code) } : {}),
       },
-    ];
+    ]);
+  }
+
+  private withConfirmation(events: WhatsappEvent[]): Promise<WhatsappEvent[]> {
+    return confirmed(events, this.o.confirmStatus, this.o.onWithheld);
   }
 
   /** Whether a failed event means the 24-hour window had closed (Gupshup code 470). */

@@ -58,11 +58,11 @@ Stubs as in session 6 (`@infrabyx/testing` stubs), and the sandbox legs stay off
 - gitleaks 8.30.1 can be fetched from GitHub releases and checked against the SHA in `ci.yml`. Run `gitleaks git --log-opts="origin/main..HEAD" .` before pushing, and keep credential-shaped literals out of tests: stubs use `stubCredential()`.
 - Commit subjects are at most 100 characters (commitlint). Force-pushes are refused by the session's permission policy.
 
-**Open questions.** OWNER-QUESTIONS #6 (PL2-D-64: at-least-once messages, Gupshup URL secret, Brevo manual suppression), defaults in place; nothing is blocked.
+**Open questions.** None. OWNER-QUESTIONS #6 is answered (PL2-D-65); for PL3 it sets the NOTIFY resend classes (safe to resend / hold for review; unclassified types hold) and the platform suppression list as the single source of truth.
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#6 open; #1–#5 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61, PL2-D-63). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#6 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61, PL2-D-63, PL2-D-65). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
 ## Next
 

@@ -59,6 +59,8 @@ const gupshupAdapter = () =>
     ...dlt,
     credentials: () => ({ userId: gup.userId, password: gup.password }),
     webhook: { secret: () => secret },
+    // Stands in for Gupshup's status lookup until the sandbox leg finds one (PL2-D-65).
+    confirmStatus: async (e) => gup.sent.some((m) => m.id === e.messageId),
     baseUrl: gup.url,
     allowLoopbackHttp: true,
   });
@@ -291,6 +293,38 @@ describe("SMS hermetic leg: gupshup-sms (stub)", () => {
     expect(r.method).toBe("POST");
     expect([...r.query.keys()]).toEqual([]);
     expect(r.form().get("password")).toBe(gup.password);
+  });
+
+  it("reports are withheld until their status is confirmed; a short URL token is refused (PL2-D-65)", async () => {
+    const withheld: number[] = [];
+    const bare = new GupshupSms({
+      ...dlt,
+      credentials: () => ({ userId: gup.userId, password: gup.password }),
+      webhook: { secret: () => secret },
+      onWithheld: (n) => withheld.push(n),
+      baseUrl: gup.url,
+      allowLoopbackHttp: true,
+    });
+    const { messageId } = await bare.send(sms());
+    expect(await verify(bare, gupshupHarness.report(messageId, "delivered"))).toEqual([]);
+    expect(withheld).toEqual([1]);
+    expect(
+      await verify(gupshupAdapter(), gupshupHarness.report("spoofed-id", "delivered")),
+    ).toEqual([]);
+    const short = new GupshupSms({
+      ...dlt,
+      credentials: () => ({ userId: gup.userId, password: gup.password }),
+      webhook: { secret: () => "short-token-1234567890" },
+      baseUrl: gup.url,
+      allowLoopbackHttp: true,
+    });
+    const r = gupshupHarness.report(messageId, "delivered");
+    await expect(
+      verify(short, {
+        ...r,
+        query: r.query!.replace(/ipb_token=[^&]+/, "ipb_token=short-token-1234567890"),
+      }),
+    ).rejects.toMatchObject({ code: "IPB-API-018" });
   });
 
   it("text that does not match the approved template is refused by the gateway (error 038)", async () => {

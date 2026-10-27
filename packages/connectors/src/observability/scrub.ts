@@ -15,6 +15,11 @@ const ID_KEY =
 const PAYLOAD_KEY = /^(body|payload|headers|request|response|html|text|prompt|completion)$/i;
 
 const PATTERNS: ReadonlyArray<[RegExp, (m: string) => string]> = [
+  // Credential-named query parameters, such as the `ipb_token` webhook secret (PL2-D-65).
+  [
+    /((?:^|[?&\s])(?:ipb_token|[a-z_]*token|[a-z_]*secret|api[_-]?key|key|signature|sig|password)=)[^&#\s]+/gi,
+    (m) => `${m.slice(0, m.indexOf("=") + 1)}[REDACTED]`,
+  ],
   [/\b[\w.+-]+@[\w-]+(\.[\w-]+)+\b/g, (m) => mask("email", m)],
   [/\b[A-Z]{5}\d{4}[A-Z]\b/g, (m) => mask("pan", m)],
   // 12 digits is an Aadhaar number, 13–19 a card number (optional space or hyphen separators).

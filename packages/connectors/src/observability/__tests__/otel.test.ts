@@ -31,6 +31,20 @@ describe("@IPB-02-23 telemetry scrubber", () => {
     expect(out).toContain("XXXX XXXX XXXX 1111");
   });
 
+  it("redacts credential-named query parameters such as the webhook ipb_token (PL2-D-65)", () => {
+    const t = "GET /hooks/gupshup?externalId=abc&ipb_token=SeCrEt-123_x&status=SUCCESS";
+    const out = scrubText(t);
+    expect(out).not.toContain("SeCrEt-123_x");
+    expect(out).toContain("ipb_token=[REDACTED]&status=SUCCESS");
+    expect(s.attrs({ "url.query": "a=1&api_key=k9&sig=zz" })["url.query"]).toBe(
+      "a=1&api_key=[REDACTED]&sig=[REDACTED]",
+    );
+    expect(scrubText("ipb_token=abc123&x=1")).toBe("ipb_token=[REDACTED]&x=1");
+    expect(scrubText("/v1/x?externalId=abc&status=SUCCESS")).toBe(
+      "/v1/x?externalId=abc&status=SUCCESS",
+    );
+  });
+
   it("masks by key, redacts credentials, hashes identifiers and drops payloads", () => {
     expect(
       s.attrs({

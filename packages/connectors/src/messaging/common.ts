@@ -105,6 +105,8 @@ export interface SharedSecretAuth {
 
 /** Query parameter for gateways that can only call a configured URL (no headers, no userinfo). */
 export const WEBHOOK_TOKEN_PARAM = "ipb_token";
+/** A URL token is at least 32 random bytes: 43 base64url characters (PL2-D-65, C-19). */
+export const URL_TOKEN_MIN_CHARS = 43;
 
 /**
  * Bearer token (`Authorization: Bearer …`), URL credentials (`Authorization: Basic …`, password),
@@ -128,8 +130,39 @@ export async function checkSharedSecret(
     const decoded = Buffer.from(a.slice(6).trim(), "base64").toString("utf8");
     presented = decoded.slice(decoded.indexOf(":") + 1);
   } else if (query) presented = new URLSearchParams(query).get(WEBHOOK_TOKEN_PARAM) ?? "";
-  if (!presented || !verifyWebhookSecret(await auth.secret(), presented))
+  const expected = await auth.secret();
+  if (!/^(Bearer|Basic) /i.test(a) && expected.length < URL_TOKEN_MIN_CHARS)
+    throw webhookRefused(port, adapter, "the URL token must be at least 32 random bytes");
+  if (!presented || !verifyWebhookSecret(expected, presented))
     throw webhookRefused(port, adapter, "shared secret missing or wrong");
+}
+
+/**
+ * Gupshup webhooks rest on a URL secret only, so a state-changing event is acted on only after its
+ * status is confirmed at the vendor (owner condition, PL2-D-65). Gupshup documents no status lookup
+ * yet [VERIFY in the sandbox]; until one is wired, the lookup is injected and, without it, events
+ * are acknowledged but withheld.
+ */
+export type ConfirmStatus = (e: { messageId: string; status: string }) => Promise<boolean>;
+
+export async function confirmed<E extends { messageId?: string; type?: string; status?: string }>(
+  events: E[],
+  confirm: ConfirmStatus | undefined,
+  onWithheld?: (n: number) => void,
+): Promise<E[]> {
+  if (!confirm) {
+    if (events.length) onWithheld?.(events.length);
+    return [];
+  }
+  const out: E[] = [];
+  for (const e of events)
+    if (
+      e.messageId &&
+      (await confirm({ messageId: e.messageId, status: e.status ?? e.type ?? "" }))
+    )
+      out.push(e);
+  if (out.length < events.length) onWithheld?.(events.length - out.length);
+  return out;
 }
 
 /** Parse JSON, refusing anything that is not an object or array. */
