@@ -4,7 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
-/** Ports with adapters under packages/connectors/src/ (PL2's thirteen, then PL3's as they land). */
+/** Ports with adapters under packages/connectors/src/ (PL2's thirteen, then PL3's and PL4's as they land). */
 export const PORTS = [
   "SECRETS",
   "KMS",
@@ -22,6 +22,8 @@ export const PORTS = [
   "RULES",
   "PUSH",
   "ESIGN",
+  "LLM",
+  "EMBEDDING",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -44,10 +46,17 @@ export const SHARED_PATHS = [
   "scripts/port-matrix.mjs",
 ];
 
+/** Extra paths per port: the AI ports share their adapters and contracts (PL4 plan §5). */
+const EXTRA_PATHS = {
+  LLM: ["packages/contracts/src/ports/ai.ts"],
+  EMBEDDING: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
+};
+
 export const portPaths = (port) => [
   `packages/connectors/src/${portDir(port)}/`,
   `packages/contracts/src/ports/${portDir(port)}.ts`,
   `packages/testing/src/ports/${portDir(port)}`,
+  ...(EXTRA_PATHS[port] ?? []),
 ];
 
 /** Ports to run for `changed` files; `all` selects every port; `has` says whether a port has adapters. */
