@@ -2,7 +2,13 @@
 // PostgreSQL (PL5 plan §7.1).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PgOutbox } from "@infrabyx/tenancy";
-import { FakeOhDesk, startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
+import {
+  FakeOhDesk,
+  platformContext,
+  startPostgres,
+  withTenant,
+  type TestDatabase,
+} from "@infrabyx/testing";
 import { FeedbackService, FeedbackSweep } from "../index.js";
 
 let db: TestDatabase;
@@ -325,5 +331,23 @@ describe("OWNER-QUESTIONS #48: items are deleted 3 years after closure", () => {
     await expect(
       db.admin.query("delete from feedback.status_change where item_id = $1", [recent.id]),
     ).rejects.toThrow(/append-only/);
+  });
+});
+
+describe("the staff queue (PL5 session 8b: Studio's Feedback section)", () => {
+  it("lists the platform tenant's items with the accessibility timers, for the roles that may read it", async () => {
+    const r = await service.submit(
+      { type: "accessibility", summary: "The menu cannot be opened with the keyboard", route: "/" },
+      visitor("AbCdEfGhIjKlMnOpQrQ1"),
+    );
+    const lead = platformContext(["PLT_ACCESSIBILITY_LEAD"], "tnt_platform", "usr_a11y_lead");
+    const mine = (await service.queue(lead, { type: "accessibility" })).find((x) => x.id === r.id);
+    expect(mine).toMatchObject({ type: "accessibility", status: "received", route: "/" });
+    expect(mine!.ackDueAt).toBeInstanceOf(Date);
+    expect((await service.queue(lead, { type: "bug" })).map((x) => x.id)).not.toContain(r.id);
+    expect(
+      await code(service.queue(platformContext(["PLT_CONTENT_EDITOR"], "tnt_platform", "usr_ed"))),
+    ).toBe("IPB-UX-011");
+    expect(await code(service.queue(user))).toBe("IPB-UX-011");
   });
 });

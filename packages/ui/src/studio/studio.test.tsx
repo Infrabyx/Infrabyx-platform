@@ -63,7 +63,7 @@ const rev = (id: string, seq: number): StudioRevision => ({
   createdAt: new Date("2026-10-02T10:00:00Z"),
 });
 const reader = (it: StudioItem, list: StudioItem[] = [it]): ContentReader<typeof CTX> => ({
-  list: async (_c, f) =>
+  list: async (_c, f = {}) =>
     list.filter((x) => (!f.status || x.status === f.status) && (!f.type || x.type === f.type)),
   get: async () => it,
   revision: async (_c, id) => rev(id, id === "rev_2" ? 2 : 1),

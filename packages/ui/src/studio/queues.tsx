@@ -6,7 +6,20 @@ import type { BrandReader, StudioBrandRevision } from "./brand.js";
 import type { ContentReader, PackOption } from "./content.js";
 import { Hidden, StatusBadge, StudioPage, studioPath, type StudioSection } from "./layout.js";
 import type { RedirectReader } from "./redirects.js";
+import { isIpbError } from "@infrabyx/contracts/errors";
+import type { StudioConsentText } from "./consent.js";
+import type { PolicyReader } from "./policies.js";
 import type { FormAction, ScreenProps } from "./types.js";
+
+/** A queue the viewer's roles do not cover is left out (the service refuses it with IPB-UX-011). */
+async function ifAllowed<T>(p: Promise<T[]>): Promise<T[]> {
+  try {
+    return await p;
+  } catch (e) {
+    if (isIpbError(e) && e.code === "IPB-UX-011") return [];
+    throw e;
+  }
+}
 
 /** Which section edits each content type (the reference console's layout). */
 export const CONTENT_SECTION_TYPES = {
@@ -22,6 +35,7 @@ export const CONTENT_SECTION_TYPES = {
   ],
   menus: ["nav_menu"],
   footer: ["footer", "office"],
+  pricing: ["pricing_copy"],
   resources: ["resource"],
   forms: ["form"],
 } as const satisfies Partial<Record<StudioSection, readonly string[]>>;
@@ -40,18 +54,41 @@ export async function ApprovalsScreen<C>(
     cms: ContentReader<C> & RedirectReader<C>;
     brand: BrandQueueReader<C>;
     packs: readonly PackOption[];
+    /** Policy versions waiting for the DPO or a checker. */
+    policies?: Pick<PolicyReader<C>, "setFor" | "instances">;
+    /** Consent texts waiting for the legal reviewer. */
+    texts?: { drafts(ctx: C): Promise<StudioConsentText[]> };
   },
 ) {
-  const [inReview, inLegal, brandPending, redirects] = await Promise.all([
-    p.cms.list(p.ctx, { status: "in_review" }),
-    p.cms.list(p.ctx, { status: "legal_review" }),
-    p.brand.pending(p.ctx),
-    Promise.all(
-      p.packs.map(async (k) =>
-        (await p.cms.redirects(p.ctx, k.id, { state: "pending" })).map((r) => ({ ...r, pack: k })),
-      ),
-    ).then((x) => x.flat()),
-  ]);
+  const policySets = p.policies
+    ? (
+        await Promise.all(
+          p.packs.map(async (k) => ({ pack: k, set: await p.policies!.setFor(p.ctx, k.id) })),
+        )
+      ).filter((x) => x.set)
+    : [];
+  const [inReview, inLegal, brandPending, redirects, submittedPolicies, textDrafts] =
+    await Promise.all([
+      p.cms.list(p.ctx, { status: "in_review" }),
+      p.cms.list(p.ctx, { status: "legal_review" }),
+      p.brand.pending(p.ctx),
+      Promise.all(
+        p.packs.map(async (k) =>
+          (await p.cms.redirects(p.ctx, k.id, { state: "pending" })).map((r) => ({
+            ...r,
+            pack: k,
+          })),
+        ),
+      ).then((x) => x.flat()),
+      Promise.all(
+        policySets.map(async ({ pack, set }) =>
+          (await p.policies!.instances(p.ctx, set!.id))
+            .filter((v) => v.state === "submitted")
+            .map((v) => ({ ...v, pack })),
+        ),
+      ).then((x) => x.flat()),
+      p.texts ? ifAllowed(p.texts.drafts(p.ctx)) : Promise.resolve([]),
+    ]);
   const packLabel = (id: string) => p.packs.find((k) => k.id === id)?.label ?? id;
   const rows = [
     ...[...inLegal, ...inReview].map((i) => ({
@@ -81,6 +118,26 @@ export async function ApprovalsScreen<C>(
         .filter(Boolean)
         .join(" and "),
       status: <StatusBadge status={r.state} />,
+    })),
+    ...submittedPolicies.map((v) => ({
+      what: (
+        <a href={studioPath(p.base, "policies", v.id)}>
+          {v.title} {v.versionLabel}
+        </a>
+      ),
+      pack: v.pack.label,
+      waits: v.privacyClass && !v.dpoId ? "DPO and checker" : "Checker",
+      status: <StatusBadge status={v.state} />,
+    })),
+    ...textDrafts.map((t) => ({
+      what: (
+        <a href={studioPath(p.base, "consent")}>
+          Consent text {t.key} {t.version} ({t.region})
+        </a>
+      ),
+      pack: "All packs",
+      waits: "Legal reviewer",
+      status: <StatusBadge status={t.state} />,
     })),
   ];
   return (

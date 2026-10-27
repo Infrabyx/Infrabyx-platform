@@ -3,6 +3,7 @@
 // workflow, revisions and preview links. The editor shows only the moves the state machine allows
 // from the item's state (`transitions`, the `cms` table passed by the app); the service still
 // checks every move, role and maker-checker rule.
+import type { ReactNode } from "react";
 import { Button, Field, SelectField } from "../components/forms.js";
 import { DataTable } from "../components/data.js";
 import { when } from "./form.js";
@@ -52,7 +53,7 @@ export interface StudioRevision {
 export interface ContentReader<C> {
   list(
     ctx: C,
-    f: { packId?: string; type?: string; status?: string; deleted?: boolean },
+    f?: { packId?: string; type?: string; status?: string; deleted?: boolean },
   ): Promise<StudioItem[]>;
   get(ctx: C, itemId: string): Promise<StudioItem>;
   revision(ctx: C, revisionId: string): Promise<StudioRevision>;
@@ -191,6 +192,8 @@ export async function ContentEditScreen<C>(
     transitions: TransitionTable;
     actions: { save: FormAction; workflow: FormAction; preview: FormAction };
     reveal?: string | undefined;
+    /** A type's own panel, shown before the revisions (a resource's versions). */
+    extra?: ReactNode;
   },
 ) {
   const item = await p.cms.get(p.ctx, p.itemId);
@@ -404,6 +407,8 @@ export async function ContentEditScreen<C>(
           <Button type="submit">Revoke all preview links</Button>
         </form>
       </StudioSectionBox>
+
+      {p.extra}
 
       <StudioSectionBox id="history" title="Revisions">
         <DataTable

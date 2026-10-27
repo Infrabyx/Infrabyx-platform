@@ -320,3 +320,31 @@ describe("@IPB-05-AT-01 mandatory policy set", () => {
     });
   });
 });
+
+describe("Studio readers (PL5 session 8b: Policies)", () => {
+  it("finds a pack's set with its parameters and lists every version by key, newest first", async () => {
+    expect(await policies.setFor(legal, "brd_01JB00000000000000000000R1")).toBeNull();
+    const { id: setId } = await policies.createSet(legal, "brd_01JB00000000000000000000R1");
+    await policies.proposeParams(legal, setId, { grievance_officer: "Example Officer" });
+    expect(await policies.setFor(admin, "brd_01JB00000000000000000000R1")).toMatchObject({
+      id: setId,
+      pendingParams: { grievance_officer: "Example Officer" },
+      pendingMakerId: "usr_legal",
+    });
+    const a = await policies.draft(legal, {
+      setId,
+      key: "terms",
+      summaryOfChanges: "First",
+      effectiveAt: clock,
+    });
+    const b = await policies.draft(legal, {
+      setId,
+      key: "privacy",
+      summaryOfChanges: "First",
+      effectiveAt: clock,
+    });
+    const list = await policies.instances(admin, setId);
+    expect(list.map((x) => x.key)).toEqual(["privacy", "terms"]);
+    expect(list.map((x) => x.id)).toEqual([b.id, a.id]);
+  });
+});

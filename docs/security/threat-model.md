@@ -407,7 +407,8 @@ Server-rendered screens and form handlers over the existing Studio services; no 
 - **S/T (forged posts):** another site posts to a Studio action. Control: the app's actions must check the request origin (Next server actions do; a POST route uses the same `sameOrigin` check as the group site); Studio pages are `noindex` and framed by nobody (`frame-ancestors 'none'`).
 - **T (injected markup):** a title, a sanitiser report or a notice carries markup. Control: React escapes all text; the post-redirect-get result is base64url JSON of short strings, decoded to text only, size-capped, and holds no authority; JSON bodies are parsed and checked by the service, never rendered as HTML.
 - **I (preview links):** a preview path is shown in the notice once after it is created; it expires (`cms.preview.ttl_hours`) and can be revoked from the item or the Preview links screen.
-- **Residual:** the read lists have no role check of their own (PL5-D-14 item 6, #62); a product that mounts Studio without its AUTHZ gate would expose draft content to signed-in users.
+- **I (visitor text and consent wording):** the feedback queue holds visitors' words and the consent texts are legal drafts. Control: `FeedbackService.queue` needs PLT_SUPER_ADMIN or PLT_ACCESSIBILITY_LEAD and `ConsentTexts.list` needs PLT_DPO or PLT_LEGAL_REVIEWER, both in the platform context (PL5-D-15); feedback, trust documents and prices are read-only in Studio.
+- **Residual:** the content, brand, redirect, claim, media and policy lists have no role check of their own (PL5-D-14 item 6, #62); a product that mounts Studio without its AUTHZ gate would expose draft content to signed-in users.
 
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
