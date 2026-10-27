@@ -6,6 +6,7 @@ import { resolve } from "./resolve.js";
 import { SettingsService } from "./service.js";
 import { MemorySettingsStore } from "./store.js";
 import type { SettingDef } from "./types.js";
+import { tightenError } from "./validate.js";
 import { FakeApprovals, FakeAudit, FakeKernel, FakeOutbox, ctxFor } from "../__tests__/fakes.js";
 
 const code = (fn: () => unknown) => {
@@ -272,5 +273,33 @@ describe("@IPB-07-AT-06 @NN-18 maker-checker on organisation settings", () => {
     expect(
       (await store.read(null, disbursement.key, [{ tier: "TENANT", scopeId: "tnt_a" }]))[0]?.value,
     ).toBe(1000000);
+  });
+});
+
+describe("PL3 maker-checker tenant keys are tighten-only (PL3-D-08)", () => {
+  const def = (key: string) => defaultRegistry.require(key);
+  it("registers the mc.* keys at TENANT tier, governed at R4", () => {
+    for (const k of [
+      "mc.extra_actions",
+      "mc.amount_threshold.payments_refund",
+      "mc.dual_checker_above.payments_refund",
+      "mc.checker_roles.payments_refund",
+      "mc.reminder_hours",
+    ]) {
+      expect(def(k)).toMatchObject({ tier: "TENANT", mc: "R4" });
+    }
+  });
+  it("only lowers thresholds and the reminder, only adds actions, only narrows checker roles", () => {
+    expect(tightenError(def("mc.reminder_hours"), 24, 12)).toBeNull();
+    expect(tightenError(def("mc.reminder_hours"), 12, 24)).toMatch(/lowered/);
+    expect(tightenError(def("mc.amount_threshold.payments_refund"), 100_000, 200_000)).toMatch(
+      /lowered/,
+    );
+    expect(tightenError(def("mc.extra_actions"), ["a"], ["a", "b"])).toBeNull();
+    expect(tightenError(def("mc.extra_actions"), ["a", "b"], ["b"])).toMatch(/add/);
+    const roles = def("mc.checker_roles.payments_refund");
+    expect(tightenError(roles, ["ORG_CHECKER", "ORG_ADMIN"], ["ORG_CHECKER"])).toBeNull();
+    expect(tightenError(roles, ["ORG_CHECKER"], ["ORG_CHECKER", "ORG_ADMIN"])).toMatch(/part/);
+    expect(tightenError(roles, ["ORG_CHECKER"], [])).toMatch(/part/);
   });
 });

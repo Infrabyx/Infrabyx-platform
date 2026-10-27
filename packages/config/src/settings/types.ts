@@ -17,7 +17,7 @@ export type SettingType =
   | "range"
   | "date";
 
-export type Tighten = "min" | "max" | "superset" | true | false;
+export type Tighten = "min" | "max" | "superset" | "subset" | true | false;
 
 export interface SettingDef {
   key: string;

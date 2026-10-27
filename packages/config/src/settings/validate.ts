@@ -98,6 +98,13 @@ export function tightenError(def: SettingDef, inherited: unknown, next: unknown)
         : null;
     case "superset":
       return superset(next, inherited) ? null : "may only add to the inherited value";
+    case "subset":
+      return Array.isArray(next) &&
+        Array.isArray(inherited) &&
+        next.length > 0 &&
+        next.every((n) => inherited.some((b) => JSON.stringify(b) === JSON.stringify(n)))
+        ? null
+        : "may only keep a non-empty part of the inherited value";
     case true:
       return inherited === true && next !== true
         ? "may not be switched off below the tier that switched it on"

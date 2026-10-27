@@ -2611,6 +2611,268 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R2",
     "source": "IPB-11 §11.5"
+  },
+  {
+    "key": "int.notify.dedupe_window_h",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "min": 1,
+    "max": 72,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "PL3 plan §6.8",
+    "note": "a repeated idempotency key inside the window returns the first notification"
+  },
+  {
+    "key": "int.push.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "expo",
+    "values": [
+      "expo",
+      "fcm",
+      "memory"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PUSH"
+  },
+  {
+    "key": "int.push.fcm_project_id",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PUSH"
+  },
+  {
+    "key": "int.push.apns_topic",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PUSH"
+  },
+  {
+    "key": "rules.engine",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "zen",
+    "values": [
+      "zen",
+      "json-rules"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 RULES"
+  },
+  {
+    "key": "rules.cel.max_cost",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10000,
+    "min": 100,
+    "max": 100000,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 RULES",
+    "note": "maximum AST nodes per CEL expression (the library has no runtime cost counter; PL3-D-15)"
+  },
+  {
+    "key": "rules.eval.timeout_ms",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 50,
+    "min": 5,
+    "max": 1000,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "PL3 plan §4.4",
+    "note": "a timeout is UNDETERMINED, routed to a human queue"
+  },
+  {
+    "key": "rules.publish.requires_checker",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-01 §01.4.4.2 RULES"
+  },
+  {
+    "key": "workflow.timers.engine",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "temporal",
+    "values": [
+      "temporal",
+      "pg"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 WORKFLOW; PL3 plan §5.1",
+    "note": "scheduled actions, approval reminders, escalation and expiry (PL3-D-07)"
+  },
+  {
+    "key": "mc.extra_actions",
+    "tier": "TENANT",
+    "type": "string[]",
+    "default": [],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "source": "PL3-D-08; IPB-07 node 8",
+    "note": "adds registered actions to maker-checker; the platform floor (RISK_POLICY) is never removed"
+  },
+  {
+    "key": "mc.amount_threshold.{action}",
+    "tier": "TENANT",
+    "type": "int",
+    "default": null,
+    "min": 0,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^mc\\.amount_threshold\\.([a-z0-9_-]+)$",
+    "source": "PL3-D-08; IPB-07 node 8",
+    "note": "minor units; may only be lowered below the platform value, which applies when unset"
+  },
+  {
+    "key": "mc.dual_checker_above.{action}",
+    "tier": "TENANT",
+    "type": "int",
+    "default": null,
+    "min": 0,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^mc\\.dual_checker_above\\.([a-z0-9_-]+)$",
+    "source": "PL3-D-08; IPB-07 node 8",
+    "note": "minor units; above it two distinct checkers decide"
+  },
+  {
+    "key": "mc.checker_roles.{action}",
+    "tier": "TENANT",
+    "type": "string[]",
+    "default": null,
+    "locked": false,
+    "tighten": "subset",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^mc\\.checker_roles\\.([a-z0-9_-]+)$",
+    "source": "PL3-D-08; IPB-07 node 8",
+    "note": "a non-empty subset of the action's allowed checker roles; never widens them"
+  },
+  {
+    "key": "mc.reminder_hours",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 24,
+    "min": 1,
+    "max": 24,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "source": "PL3-D-08; IPB-07 node 8",
+    "note": "may only shorten the platform 24 h reminder; escalation (48 h) and expiry stay platform policy (PL3-D-07)"
+  },
+  {
+    "key": "eng.export.map_version",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "pipeline"
+    ],
+    "mc": false,
+    "source": "IPB-09 §09.4.7.1",
+    "note": "newest map version emitted, e.g. REF-EXPORT-1.0; set by the release"
+  },
+  {
+    "key": "eng.export.dual_run_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 90,
+    "min": 90,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-09 §09.4.7.1"
+  },
+  {
+    "key": "eng.export.font_drift_allowed",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R4",
+    "source": "IPB-09 §09.4.7.2"
   }
 ];
 
@@ -2763,6 +3025,20 @@ export type SettingValueMap = {
   "eng.seed.demo_date_anchor": string | null;
   "eng.env.show_banner": boolean;
   "eng.env.guard_report_public": boolean;
+  "int.notify.dedupe_window_h": number;
+  "int.push.provider": "expo" | "fcm" | "memory";
+  "int.push.fcm_project_id": string | null;
+  "int.push.apns_topic": string | null;
+  "rules.engine": "zen" | "json-rules";
+  "rules.cel.max_cost": number;
+  "rules.eval.timeout_ms": number;
+  "rules.publish.requires_checker": boolean;
+  "workflow.timers.engine": "temporal" | "pg";
+  "mc.extra_actions": string[];
+  "mc.reminder_hours": number;
+  "eng.export.map_version": string | null;
+  "eng.export.dual_run_days": number;
+  "eng.export.font_drift_allowed": boolean;
 } & {
   [k: `int.${string}.primary`]: string | null;
   [k: `int.${string}.secondary`]: string | null;
@@ -2776,6 +3052,9 @@ export type SettingValueMap = {
   [k: `int.whatsapp.phone_id.${string}`]: string | null;
   [k: `cst.branding.${string}`]: string | null;
   [k: `cst.custom_fields.${string}`]: JsonValue;
+  [k: `mc.amount_threshold.${string}`]: number | null;
+  [k: `mc.dual_checker_above.${string}`]: number | null;
+  [k: `mc.checker_roles.${string}`]: string[] | null;
 };
 
 /** Every key code may read. An unregistered key fails typecheck (IPB-01 §01.5, @IPB-07-AT-05). */

@@ -11,7 +11,9 @@
 #   min / max  hard bounds (floors and ceilings; a lower tier can never cross them)
 #   locked     true: nobody may change the value at any tier (IPB-02-86, IPB-SEC-020)
 #   tighten    a lower tier may only make the value stricter: min (higher is stricter), max (lower is
-#              stricter), superset (lists may only grow), true / false (the strict boolean value)
+#              stricter), superset (lists may only grow), subset (lists may only shrink, never to empty),
+#              true / false (the strict boolean value). A floor kept in code (RISK_POLICY for mc.*) is
+#              enforced again where the value is read: the stricter of floor and setting wins
 #   user_override  USER may set a TENANT/ENTITY key
 #   change     roles that may change it; "self" = the user the value belongs to; "pipeline" = deploy only
 #   mc         maker-checker risk class (R2 | R4 | R5) or false
@@ -1760,4 +1762,199 @@ keys:
       change: [PLT_SECURITY_OFFICER],
       mc: R2,
       source: "IPB-11 §11.5",
+    }
+
+  # ---------------------------------------------------------------- PL3: notifications
+  - {
+      key: int.notify.dedupe_window_h,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      min: 1,
+      max: 72,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R2,
+      note: "a repeated idempotency key inside the window returns the first notification",
+      source: "PL3 plan §6.8",
+    }
+
+  # ---------------------------------------------------------------- PL3: PUSH (IPB-01 PUSH)
+  - {
+      key: int.push.provider,
+      tier: PLATFORM,
+      type: enum,
+      values: [expo, fcm, memory],
+      default: expo,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 PUSH",
+    }
+  - {
+      key: int.push.fcm_project_id,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 PUSH",
+    }
+  - {
+      key: int.push.apns_topic,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 PUSH",
+    }
+
+  # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
+  - {
+      key: rules.engine,
+      tier: PLATFORM,
+      type: enum,
+      values: [zen, json-rules],
+      default: zen,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 RULES",
+    }
+  - {
+      key: rules.cel.max_cost,
+      tier: PLATFORM,
+      type: int,
+      default: 10000,
+      min: 100,
+      max: 100000,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      note: "maximum AST nodes per CEL expression (the library has no runtime cost counter; PL3-D-15)",
+      source: "IPB-01 §01.4.4.2 RULES",
+    }
+  - {
+      key: rules.eval.timeout_ms,
+      tier: PLATFORM,
+      type: int,
+      default: 50,
+      min: 5,
+      max: 1000,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      note: "a timeout is UNDETERMINED, routed to a human queue",
+      source: "PL3 plan §4.4",
+    }
+  - {
+      key: rules.publish.requires_checker,
+      tier: PLATFORM,
+      type: bool,
+      default: true,
+      locked: true,
+      mc: false,
+      source: "IPB-01 §01.4.4.2 RULES",
+    }
+
+  # ---------------------------------------------------------------- PL3: workflow timers
+  - {
+      key: workflow.timers.engine,
+      tier: PLATFORM,
+      type: enum,
+      values: [temporal, pg],
+      default: temporal,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      note: "scheduled actions, approval reminders, escalation and expiry (PL3-D-07)",
+      source: "IPB-01 §01.4.4.2 WORKFLOW; PL3 plan §5.1",
+    }
+
+  # ---------------------------------------------------------------- PL3: maker-checker tenant keys (PL3-D-08)
+  - {
+      key: mc.extra_actions,
+      tier: TENANT,
+      type: "string[]",
+      default: [],
+      tighten: superset,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "adds registered actions to maker-checker; the platform floor (RISK_POLICY) is never removed",
+      source: "PL3-D-08; IPB-07 node 8",
+    }
+  - {
+      key: "mc.amount_threshold.{action}",
+      tier: TENANT,
+      type: int,
+      default: null,
+      min: 0,
+      tighten: max,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "minor units; may only be lowered below the platform value, which applies when unset",
+      source: "PL3-D-08; IPB-07 node 8",
+    }
+  - {
+      key: "mc.dual_checker_above.{action}",
+      tier: TENANT,
+      type: int,
+      default: null,
+      min: 0,
+      tighten: max,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "minor units; above it two distinct checkers decide",
+      source: "PL3-D-08; IPB-07 node 8",
+    }
+  - {
+      key: "mc.checker_roles.{action}",
+      tier: TENANT,
+      type: "string[]",
+      default: null,
+      tighten: subset,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "a non-empty subset of the action's allowed checker roles; never widens them",
+      source: "PL3-D-08; IPB-07 node 8",
+    }
+  - {
+      key: mc.reminder_hours,
+      tier: TENANT,
+      type: int,
+      default: 24,
+      min: 1,
+      max: 24,
+      tighten: max,
+      change: [ORG_OWNER],
+      mc: R4,
+      note: "may only shorten the platform 24 h reminder; escalation (48 h) and expiry stay platform policy (PL3-D-07)",
+      source: "PL3-D-08; IPB-07 node 8",
+    }
+
+  # ---------------------------------------------------------------- PL3: export (IPB-09 §09.4.7)
+  - {
+      key: eng.export.map_version,
+      tier: PLATFORM,
+      type: string,
+      default: null,
+      change: [pipeline],
+      mc: false,
+      note: "newest map version emitted, e.g. REF-EXPORT-1.0; set by the release",
+      source: "IPB-09 §09.4.7.1",
+    }
+  - {
+      key: eng.export.dual_run_days,
+      tier: PLATFORM,
+      type: int,
+      default: 90,
+      min: 90,
+      tighten: min,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      source: "IPB-09 §09.4.7.1",
+    }
+  - {
+      key: eng.export.font_drift_allowed,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_RELEASE_MANAGER],
+      mc: R4,
+      source: "IPB-09 §09.4.7.2",
     }
