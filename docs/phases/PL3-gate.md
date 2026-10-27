@@ -106,4 +106,12 @@ The reader roles are granted to `app_rw` and `app_ro`, so login users that hold 
 | `@infrabyx/notify`     | —     | **0.1.0** (new)              |
 | `@infrabyx/export`     | —     | **0.1.0** (new)              |
 
-The 10 later-phase scaffolds stay private until their phase (PL1-D-20). Version PR #47 is merged under the standing authority (PL2-D-19) once its CI is green on the new `main`; `release.yml` then re-runs the full `port-contract` matrix and `consumer-smoke`, publishes to GitHub Packages and pushes one tag per package. The published versions, tags and registry checksums are recorded in `docs/STATUS.md` after the run.
+The 10 later-phase scaffolds stay private until their phase (PL1-D-20). Version PR #47 is merged under the standing authority (PL2-D-19) once its CI is green on the new `main`; `release.yml` then re-runs the full `port-contract` matrix and `consumer-smoke`, publishes to GitHub Packages and pushes one tag per package.
+**Published.** Version PR #47 was merged as `4a9bbcb` after all 21 checks went green on its head `8779557`. `release.yml` run 43 (id 40461661687) then:
+
+- re-ran the full `port-contract` matrix: 16 of 16 ports green, including RULES, PUSH and ESIGN;
+- published the 12 packages above to GitHub Packages;
+- pushed one tag per package (`@infrabyx/<name>@<version>`);
+- printed the registry's `dist.shasum` and `dist.integrity` for each version in the job summary of its `release` job (job id 122048259420), through `scripts/registry-dist.mjs`.
+
+No package was skipped and no publish error was logged. The checksums are not copied here because this session has no registry token; compare them against the run's job summary, or with `npm view <name>@<version> dist` (PL3-D-14).

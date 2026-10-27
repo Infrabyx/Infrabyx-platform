@@ -2,15 +2,52 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 gate** (2026-10-27): sessions 1–6 merged (#45, #48, #49, #52, #53, #54, #57); gate report `docs/phases/PL3-gate.md` passes; next: merge version PR #47 to publish the PL3 releases. Then PL4 (plan first). Continuous build mode (PL2-D-41)               |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
-| Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
-| Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
-| Working branch        | `claude/festive-sagan-x3370c` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                       |
+| Item                  | Value                                                                                                                                                                                                                                                                                       |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages. Next: PL4 (`docs/phases/PL4-plan.md`, plan first). Continuous build mode (PL2-D-41)                                                                                             |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                      |
+| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20) |
+| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                     |
+| Working branch        | `claude/festive-sagan-x3370c` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                   |
 
-## What products can install (PL2 gate A and the 0.1.1 patch, 2026-10-27)
+## What products can install (PL3 gate, 2026-10-27)
+
+| Package                | Version   | Tag                          |
+| ---------------------- | --------- | ---------------------------- |
+| `@infrabyx/contracts`  | 0.3.0     | `@infrabyx/contracts@0.3.0`  |
+| `@infrabyx/crypto`     | 0.3.0     | `@infrabyx/crypto@0.3.0`     |
+| `@infrabyx/config`     | 0.3.0     | `@infrabyx/config@0.3.0`     |
+| `@infrabyx/tenancy`    | 0.3.0     | `@infrabyx/tenancy@0.3.0`    |
+| `@infrabyx/testing`    | 0.3.0     | `@infrabyx/testing@0.3.0`    |
+| `@infrabyx/connectors` | 0.2.0     | `@infrabyx/connectors@0.2.0` |
+| `@infrabyx/audit`      | 0.1.2     | `@infrabyx/audit@0.1.2`      |
+| `@infrabyx/seed`       | 0.2.1     | `@infrabyx/seed@0.2.1`       |
+| `@infrabyx/rules`      | 0.1.0 new | `@infrabyx/rules@0.1.0`      |
+| `@infrabyx/workflow`   | 0.1.0 new | `@infrabyx/workflow@0.1.0`   |
+| `@infrabyx/notify`     | 0.1.0 new | `@infrabyx/notify@0.1.0`     |
+| `@infrabyx/export`     | 0.1.0 new | `@infrabyx/export@0.1.0`     |
+
+Registry checksums (`dist.shasum`, `dist.integrity`) are in the job summary of release run 43 (`release` job 122048259420). Copy them here once read with a registry token (PL3-D-14).
+
+**To adopt this release**, products follow `docs/phases/PL3-gate.md` §5. In short:
+
+- **Versions:** move every `@infrabyx/*` package together, and add `rules`, `workflow`, `notify` and `export` as needed.
+- **Migrations:** `infrabyx-migrate` applies `tenancy/0002`, `rules/0001`, `workflow/0001`–`0002`, `notify/0001`–`0002` and `export/0001`, with no new command. Run `infrabyx-rls-lint` afterwards.
+- **Settings:** 178 keys in the registry, including the new `rules.*`, `workflow.timers.engine`, `int.push.*`, `int.notify.*`, `int.esign.*`, `eng.export.*` and `mc.*` keys, and the `kill.msg.<channel>` flags.
+- **Secrets (SECRETS port):**
+  - the C-23 group consent key and the C-22 export-signing key id;
+  - the FCM service-account key (C-24) and the Expo token;
+  - the Leegality auth token and private salt (C-25);
+  - the Digio client id and secret, and the Digio callback `ipb_token`.
+- **Code:**
+  - build approvals with `createWorkflow`;
+  - pass the Work Inbox to `RulesService`;
+  - wire `NotifyService`, with a catalogue, a contact resolver, the time-zone and contact-window hooks, and a dispatcher worker;
+  - wire `ExportService` with a product map, `kmsArchiveSigner` and an export worker, and add `map-gate` and a golden archive to CI;
+  - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
+  - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
+
+## What products could install before (PL2 gate A and the 0.1.1 patch, 2026-10-27)
 
 | Package                | Version | shasum (SHA-1, from the registry, PL3-D-14) |
 | ---------------------- | ------- | ------------------------------------------- |
@@ -217,10 +254,36 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 - **#23:** NOTIFY defaults confirmed; collection and recovery classes go only inside 08:00–21:00 in the recipient's zone, narrowed by a product's `contactWindow` hook, never widened.
 - Products at the PL3 gate: run `infrabyx-migrate` (`workflow/0002`, `notify/0002` create the reader roles and grant them to `app_rw` and `app_ro`); pass `itemEscalated` (from `notifyApprovalNotifier`) to `createWorkflow`; optionally `contactWindow` to `NotifyService`.
 
+## Handover (2026-10-27, end of the session that closed PL3)
+
+**Done (merged).**
+
+- #53: owner answers #21–#23 (PL3-D-21), covering:
+  - UNDETERMINED review tasks go to ORG_CHECKER (ORG_ADMIN when there is no checker) and escalate after 48 hours;
+  - the `SVC_SCHEDULER`, `SVC_NOTIFY_DISPATCH` and `SVC_NOTIFY_UNSUBSCRIBE` service readers replace `PLT_AUDITOR_RO`;
+  - the NOTIFY collection contact window.
+- #54: PL3 session 5, `export` and C-22 (PL3-D-22).
+- #57: PL3 session 6, ESIGN `leegality` and `digio` and C-25 (PL3-D-23).
+- #58: the PL3 gate report and the `export-map-gate` scope fix found at the gate (PL3-D-24).
+- #47: the version PR. Release run 43 published 12 packages with tags (above).
+
+**Next: PL4.** Read IPB-14 §14.3 for the PL4 package list and the IPB files it names. Then write `docs/phases/PL4-plan.md`, self-review it, commit it, and start under the continuous-build mode. Before that, three items are worth doing:
+
+- Copy the run-43 registry checksums into this file when a registry token is at hand.
+- Tell the six products about the release (gate report §5).
+- Check the owner's answers to #24 and #25.
+
+**Open questions.** #24 (export defaults) and #25 (ESIGN defaults). Defaults are in use and nothing is blocked.
+
+**Owner tasks before staging.** Expo and Firebase accounts (#50, #51); Leegality and Digio sandbox accounts (#55, #56); plus the PL2 vendor accounts (#28–#39) and the GitHub `sandbox` environment.
+
+**Branch and PR state.** No PR is open, and `main` is at the version commit `4a9bbcb` plus this handover. Work continues on `claude/festive-sagan-x3370c`, pushed again from `main`. When GitHub does not delete the branch after a squash merge, merge its old head instead of force-pushing; the content is already on `main`.
+
+**Local environment.** Use Node 24.22.1 from nodejs.org, checked against `SHASUMS256.txt` and kept in the scratchpad. Use Docker with the `mirror.gcr.io` registry mirror. Start PostgreSQL 18 with `docker run -d --name pgs2 -e POSTGRES_PASSWORD=pw -p 55433:5432 postgres:18` and set `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres`. Vendor documentation hosts are unreachable from the sandbox.
+
 ## Next
 
-- PL3 gate: merge version PR #47 once green (12 packages, `docs/phases/PL3-gate.md` §6); record the published versions, tags and registry checksums here; tell products what changed (gate report §5).
-- Then PL4: write `docs/phases/PL4-plan.md` (IPB-14 §14.3), self-review and start.
+- PL4: plan first (`docs/phases/PL4-plan.md`), then build under the continuous-build mode.
 
 ## Handover (2026-10-27, end of the session that built PL3 sessions 2–4)
 
