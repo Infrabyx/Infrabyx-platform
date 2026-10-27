@@ -36,3 +36,17 @@ export interface WorkflowPort extends Port {
   listOpen(filter?: { type?: string; taskQueue?: string }): Promise<WorkflowExecution[]>;
   describe(id: string): Promise<WorkflowExecution>;
 }
+
+/**
+ * Durable timers behind `@infrabyx/workflow` (PL3 plan §5.1): scheduled actions, approval reminders,
+ * escalation and expiry. The PostgreSQL poller in `workflow` is always on as the catch-up
+ * reconciler; a Temporal engine (`@infrabyx/connectors/workflow`) adds precise firing. Timer ids
+ * are identifiers only (no personal data, C-16), and firing is idempotent at the receiver.
+ */
+export interface TimerEngine {
+  readonly name: string;
+  /** Arrange for the timer to fire at or after `at`; scheduling the same id again is a no-op. */
+  schedule(timerId: string, at: Date): Promise<void>;
+  /** Best effort: a timer fired after cancellation is ignored by the receiver. */
+  cancel(timerId: string): Promise<void>;
+}
