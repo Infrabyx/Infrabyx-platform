@@ -179,6 +179,22 @@ export const GUARDS: readonly Guard[] = [
     },
   },
   {
+    // P-03: no live payment credential outside prod and dr (Razorpay live key ids start rzp_live_;
+    // Cashfree's production host is refused by its adapter). Any variable, declared or not.
+    id: "payments-live-key",
+    source: "PL2 plan §8 P-03",
+    phase: "resolved",
+    applies: (env) => env !== "prod" && env !== "dr",
+    check: (i) =>
+      Object.entries(i.raw)
+        .filter(([, v]) => typeof v === "string" && v.startsWith("rzp_live_"))
+        .map(([name]) => ({
+          name,
+          code: "IPB-ENV-005" as const,
+          reason: "live payment credential outside prod/dr (P-03)",
+        })),
+  },
+  {
     id: "public-url-host-map",
     source: "IPB-11-18",
     phase: "raw",

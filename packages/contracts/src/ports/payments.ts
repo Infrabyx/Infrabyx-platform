@@ -78,6 +78,8 @@ export interface PaymentEvent {
   orderId?: string;
   paymentId?: string;
   amountMinor?: number;
+  /** Method category only (P-10): never card, VPA or account values. */
+  method?: "card" | "upi" | "netbanking" | "wallet" | "emi" | "other";
   at: string;
 }
 

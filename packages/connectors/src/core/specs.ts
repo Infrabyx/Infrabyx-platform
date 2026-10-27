@@ -20,6 +20,8 @@ export interface MethodSpec {
   payload?: { arg: number; schema: z.ZodType };
   /** Side effect with an idempotency key: where the key is, and whether money moves (P-05). */
   idempotent?: { keyArg: number | "call"; money?: boolean };
+  /** Never moves to the secondary: it acts on something the primary (or pinned PA) owns (P-08). */
+  noFailover?: boolean;
 }
 
 const read: MethodSpec = { kind: "read" };
@@ -111,8 +113,17 @@ export const PORT_METHODS: Readonly<Record<string, Readonly<Record<string, Metho
       callArg: 2,
       payload: { arg: 0, schema: RefundSpec },
       idempotent: { keyArg: 1, money: true },
+      noFailover: true,
     },
-    createMandate: { kind: "write", callArg: 2, idempotent: { keyArg: 1, money: true } },
+    createMandate: {
+      kind: "write",
+      callArg: 2,
+      idempotent: { keyArg: 1, money: true },
+      noFailover: true,
+    },
+    createCheckoutSession: { kind: "write", noFailover: true },
+    capture: { kind: "write", noFailover: true },
+    verifySignature: { kind: "read", noFailover: true },
     reconcile: read,
     lookup: read,
   },

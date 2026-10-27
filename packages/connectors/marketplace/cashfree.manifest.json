@@ -1,0 +1,51 @@
+{
+  "id": "cashfree",
+  "name": "Cashfree Payments",
+  "version": "0.1.0",
+  "category": "payments",
+  "vendor": {
+    "name": "Cashfree Payments India Private Limited",
+    "privacy_url": "https://www.cashfree.com/privacypolicy/",
+    "support_url": "https://www.cashfree.com/contact-us/"
+  },
+  "auth": {
+    "type": "api_key",
+    "secrets": ["app_id", "secret_key"]
+  },
+  "scopes_required": ["payments.order:write", "payments.refund:write", "payments.reconcile:read"],
+  "events_consumed": [],
+  "events_produced": ["in.infrabyx.billing.SubscriptionPaymentReceived.v1"],
+  "actions": [
+    {
+      "id": "create_order",
+      "input_schema": "OrderSpec",
+      "write": true
+    },
+    {
+      "id": "refund",
+      "input_schema": "RefundSpec",
+      "write": true
+    },
+    {
+      "id": "reconcile",
+      "input_schema": "DateRange",
+      "write": false
+    }
+  ],
+  "settings_schema": {
+    "methods_enabled": {
+      "type": "array",
+      "default": ["upi", "card", "netbanking"]
+    }
+  },
+  "data_class_max": "REGULATED",
+  "residency": "IN",
+  "health": {
+    "type": "status_endpoint_and_synthetic_order",
+    "interval_seconds": 3600
+  },
+  "ports": ["PAYMENTS"],
+  "tiers": ["growth", "enterprise"],
+  "help_key": "hlp.int.connector.cashfree",
+  "settlement": "tenant_own_account"
+}

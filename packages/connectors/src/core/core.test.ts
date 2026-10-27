@@ -328,6 +328,33 @@ describe("router: failover (IPB-01-18)", () => {
     });
   });
 
+  it("P-08: refunds and mandates never fail over; portFor pins a call to the PA that owns it", async () => {
+    const razorpay = pay("razorpay");
+    const cashfree = pay("cashfree");
+    razorpay.failNext = 5;
+    const { router } = await build(
+      doc,
+      { razorpay, cashfree },
+      { idempotency: new MemoryIdempotencyStore() },
+    );
+    type P = Port & {
+      createOrder(s: unknown, k: string): Promise<{ by: string }>;
+      refund(s: unknown, k: string): Promise<{ by: string }>;
+    };
+    const p = router.port<P>("PAYMENTS");
+    for (let i = 0; i < 5; i++)
+      await expect(p.createOrder(spec, `o-${i}`)).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    // The primary's circuit is open: a new order moves, a refund does not.
+    expect((await p.createOrder(spec, "o-next")).by).toBe("cashfree");
+    const refund = { paymentId: "pay_1", amountMinor: 100, reason: "r", approvalRef: "apr_1" };
+    await expect(p.refund(refund, "r-1")).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    // An order captured on cashfree is refunded on cashfree, even while razorpay is healthy again.
+    expect((await router.portFor<P>("PAYMENTS", "cashfree").refund(refund, "r-2")).by).toBe(
+      "cashfree",
+    );
+    expect(() => router.portFor("PAYMENTS", "payu")).toThrow(/not routed/);
+  });
+
   it("a money operation without an idempotency key is refused (P-05)", async () => {
     const { router } = await build(
       doc,

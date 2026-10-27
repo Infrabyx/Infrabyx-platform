@@ -5,3 +5,4 @@ export * from "./brevo.js";
 export * from "./sns.js";
 export * from "./sms.js";
 export * from "./whatsapp.js";
+export * from "./payments.js";
