@@ -14,10 +14,7 @@ mock_provider "google" {
     }
   }
   mock_data "google_project" {
-    defaults = {
-      number     = "123456789012"
-      project_id = "infrabyx-mock"
-    }
+    defaults = { number = "123456789012" }
   }
   mock_resource "google_compute_network" {
     defaults = {
