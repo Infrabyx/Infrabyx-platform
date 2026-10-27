@@ -1,5 +1,31 @@
 # @infrabyx/crypto
 
+## 0.3.0
+
+### Minor Changes
+
+- e268b60: C-22 (PL3-D-06): `signDetachedJws` (RFC 7515 Appendix F, ES256 through a KMS DER signer),
+  `verifyDetachedJws`, `derToJose`, `spkiToEs256Jwk` and `cloudEventSigningPayload` (JCS of a
+  CloudEvent without its signature attribute).
+- 1ed0659: C-23 `addressHash` (HMAC-SHA-256 of the normalised e-mail or E.164 phone with the group consent
+  key, PL3-D-05) and C-24 `signServiceAccountAssertion` (RS256 only for the Google service-account
+  assertion that FCM's OAuth requires, PL3-C-01); both added to the algorithm registry.
+- 50093e9: C-25 (PL3-C-02): `verifyLeegalityMac`, HMAC-SHA1 verification only, for Leegality webhooks:
+  constant-time comparison and a replay window when a timestamp is sent. `hmac-sha1` is in the
+  algorithm registry for that use only.
+
+### Patch Changes
+
+- Updated dependencies [50093e9]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [2725b6c]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [3951517]
+  - @infrabyx/contracts@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

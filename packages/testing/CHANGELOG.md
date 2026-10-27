@@ -1,5 +1,47 @@
 # @infrabyx/testing
 
+## 0.3.0
+
+### Minor Changes
+
+- 50093e9: Leegality and Digio stubs (`startLeegalityStub`, `startDigioStub`) and `MemoryEsignEnvelopeStore`
+  for the ESIGN contract legs.
+- 1ed0659: Expo push and FCM HTTP v1 stubs (the FCM stub checks the RS256 service-account assertion at its
+  token endpoint with a throwaway key) and `MemoryPushTokenStore`.
+- 53697f5: RULES engine contract cases (`RULE_ENGINE_CASES`, `RULES_FIXTURE`, `fixtureInput`) for
+  `defineContractSuite("RULES", …)`.
+
+### Patch Changes
+
+- 2725b6c: `ipb/port-data-class`: PUSH payloads default to INTERNAL, mirroring `@infrabyx/contracts`.
+- Updated dependencies [50093e9]
+- Updated dependencies [2725b6c]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [50093e9]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [2725b6c]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [50093e9]
+- Updated dependencies [53697f5]
+- Updated dependencies [3951517]
+- Updated dependencies [3951517]
+- Updated dependencies [dd7a98b]
+- Updated dependencies [e268b60]
+- Updated dependencies [1ed0659]
+- Updated dependencies [53697f5]
+- Updated dependencies [dd7a98b]
+  - @infrabyx/config@0.3.0
+  - @infrabyx/contracts@0.3.0
+  - @infrabyx/crypto@0.3.0
+  - @infrabyx/tenancy@0.3.0
+  - @infrabyx/audit@0.1.2
+  - @infrabyx/seed@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes

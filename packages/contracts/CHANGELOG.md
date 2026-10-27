@@ -1,5 +1,33 @@
 # @infrabyx/contracts
 
+## 0.3.0
+
+### Minor Changes
+
+- 50093e9: `EsignEnvelopeStore` and `EsignEnvelopeRecord`: products persist envelope ids, vendor references
+  and each signer's method (PL3-D-23).
+- e268b60: Export runtime errors `IPB-EXP-001` to `-005` (PR-017) and `MutationKernel.read` options with
+  `snapshot` (REPEATABLE READ) for the export snapshot (PL3-D-22).
+- 1ed0659: `NotifyPort` methods that touch tenant data take the `KernelContext` first (unreleased interface);
+  id prefixes `ptk` (push device token) and `inm` (in-app message).
+- 2725b6c: PL3 session 1: RULES, NOTIFY, PUSH and ESIGN port interfaces (`@infrabyx/contracts/ports`); the
+  notification catalogue schema; `HumanQueue` and Work Inbox item types (`./kernel`); export map and
+  `archive_manifest` v1 schemas (new subpath `./export`); id prefixes `rls`, `dcs`, `sca`, `ibx`,
+  `ntf`, `dlv`, `sup`, `exj`, `arc`, `esr`; error codes `IPB-NTF-002` to `-006` and `IPB-UX-012`;
+  platform events for rules, inbox, notifications, export, approval expiry and escalation, and the
+  flag-provider alert; Ecosystem payloads `MarketingConsentUpdated`, `ExportRequested` and
+  `ExportCompleted`. Additive only.
+- 1ed0659: `PushTokenStore`: the device-token store behind the PUSH adapters (NOTIFY seals the tokens).
+- 53697f5: `RulesPort` methods take the verified `KernelContext` first (the service runs inside tenancy);
+  error codes `IPB-RULE-001` (rule set invalid), `-002` (no effective version) and `-003` (version
+  not in the needed state), registered under PR-017 (PL3-D-18). Unreleased interface, so no product
+  code changes.
+- dd7a98b: `ApprovalRequestInput.diff` (`{ before, after }`, the checker diff) and the `TimerEngine` interface
+  for durable workflow timers (PL3 plan §5, PL3-D-19).
+- 3951517: Owner answers #21 and #22 (PL3-D-21): `SERVICE_READER_ROLES` (`SVC_SCHEDULER`,
+  `SVC_NOTIFY_DISPATCH`, `SVC_NOTIFY_UNSUBSCRIBE`), each with its database role and the one table it
+  may read, and `isServiceReaderRole`; `InboxItemInput.excludePrincipal` and `escalateAfterHours`.
+
 ## 0.2.0
 
 ### Minor Changes
