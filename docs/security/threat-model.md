@@ -261,6 +261,15 @@ Types, schemas and error codes only; no I/O.
 - **I:** prompt content stored or logged. Control: only the prompt hash is stored; adapters log no bodies; spans carry no content.
 - **D:** an image provider outage. Control: the same routing, breaker, kill switches (`ai.kill.*`, `ai.image.enabled`) and fail-closed behaviour as chat.
 
+### 3.22 `@infrabyx/vidhi` kernel: locked actions, autonomy and tasks (built, PL4 session 6)
+
+- **E:** an agent executes a payment, credit decision, signature, deletion, external share, approval or grant on its own. Control: the frozen kernel locked list (word-matched, additive product lists) sends any such tool to NEEDS_APPROVAL at every level; only a human with the action's role approves; the approvals engine refuses agents and the maker; an agent that insists fails the task, emits `LockedActionAttempted` and is demoted to L2; the kernel's agent-verb guard (IPB-SEC-004) stays as a second layer.
+- **E:** autonomy raised without evidence or by the wrong person. Control: L3/L4 only through an R4 approval checked by `ORG_OWNER`, with IPB-03-70 evidence and the cool-down; product ceilings are constants (no product reaches L4; Udofin borrowers L1); scheduled runs are capped at L2/L3.
+- **T/R:** a double execution or an execution after a kill switch or a rejection. Control: compare-and-set transitions with a row lock, a trigger that freezes terminal states, `IPB-VID-022` for late or duplicate decisions, the kill-switch sweep, and one ledger entry per transition and tool call.
+- **I:** tool arguments (possibly CONFIDENTIAL) stored in clear. Control: they travel only in the approval payload, sealed by FieldCrypto at the skill's class; task rows hold no content.
+- **I/T:** reserved advice given as Vidhi's own, or the brand name leaking into audit. Control: the output classifier plus a hand-off card for advice questions; the display name is presentation only, and runs, events and ledger rows say `vidhi`.
+- **Residual:** word matching can over-lock a harmless tool (#37); an under-tagged product tool with a novel verb relies on the product's manifest review.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
