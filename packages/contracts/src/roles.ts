@@ -54,6 +54,8 @@ export const SERVICE_READER_ROLES = {
   },
   /** Finds tenants with AI runs past the retention floor (OWNER-QUESTIONS #30). */
   SVC_AI_RUN_SWEEP: { dbRole: "svc_ai_run_sweep", tables: ["ai.run"] },
+  /** Finds retired retrieval index versions past 30 days (OWNER-QUESTIONS #34). */
+  SVC_AI_INDEX_SWEEP: { dbRole: "svc_ai_index_sweep", tables: ["ai.retrieval_index"] },
   /** Finds due Vidhi schedules across tenants (IPB-03-64; PL4 plan §8.6). */
   SVC_VIDHI_SCHED: { dbRole: "svc_vidhi_sched", tables: ["vidhi.schedule"] },
 } as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;

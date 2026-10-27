@@ -18,7 +18,7 @@ const manifest = {
   description: "Explains a loan product from its KFS.",
   inputs: { type: "object" },
   outputs: { type: "object" },
-  tools: [{ name: "udf.kfs.read", kind: "service", write: false }],
+  tools: [{ name: "udf.kfs.read", kind: "service", write: false, locked: false }],
   data_class_max: "CONFIDENTIAL",
   autonomy_ceiling: "L1",
   prompt_key: "udf.product_explainer",
