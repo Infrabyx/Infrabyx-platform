@@ -62,11 +62,6 @@ mock_provider "azurerm" {
     defaults = {
       id              = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-fbx-prod/providers/Microsoft.ContainerService/managedClusters/infrabyx-fbx-prod"
       oidc_issuer_url = "https://centralindia.oic.prod-aks.azure.com/11111111-1111-1111-1111-111111111111/66666666-6666-6666-6666-666666666666/"
-      kubelet_identity = [{
-        client_id                 = "77777777-7777-7777-7777-777777777777"
-        object_id                 = "88888888-8888-8888-8888-888888888888"
-        user_assigned_identity_id = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-fbx-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/kubelet"
-      }]
     }
   }
   mock_resource "azurerm_container_registry" {

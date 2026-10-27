@@ -7,7 +7,7 @@ output "oidc_issuer" {
 }
 
 output "kubelet_object_id" {
-  value = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
+  value = azurerm_user_assigned_identity.kubelet.principal_id
 }
 
 # Written by the bootstrap after the cluster exists; see the secrets module.

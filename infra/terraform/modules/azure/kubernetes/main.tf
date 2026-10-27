@@ -13,6 +13,21 @@ resource "azurerm_user_assigned_identity" "cluster" {
   tags                = var.tags
 }
 
+# The nodes' own identity (image pulls); the cluster identity may assign it to the nodes.
+resource "azurerm_user_assigned_identity" "kubelet" {
+  name                = "${var.name}-kubelet"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  tags                = var.tags
+}
+
+resource "azurerm_role_assignment" "kubelet_operator" {
+  scope                = azurerm_user_assigned_identity.kubelet.id
+  role_definition_name = "Managed Identity Operator"
+  principal_id         = azurerm_user_assigned_identity.cluster.principal_id
+  principal_type       = "ServicePrincipal"
+}
+
 resource "azurerm_role_assignment" "network" {
   scope                = var.subnet_id
   role_definition_name = "Network Contributor"
@@ -64,6 +79,12 @@ resource "azurerm_kubernetes_cluster" "this" {
     identity_ids = [azurerm_user_assigned_identity.cluster.id]
   }
 
+  kubelet_identity {
+    client_id                 = azurerm_user_assigned_identity.kubelet.client_id
+    object_id                 = azurerm_user_assigned_identity.kubelet.principal_id
+    user_assigned_identity_id = azurerm_user_assigned_identity.kubelet.id
+  }
+
   # Nodes come from the autoscaled default pool, not node auto-provisioning.
   node_provisioning_profile {
     mode = "Manual"
@@ -107,7 +128,7 @@ resource "azurerm_kubernetes_cluster" "this" {
   }
 
   tags       = var.tags
-  depends_on = [azurerm_role_assignment.network]
+  depends_on = [azurerm_role_assignment.network, azurerm_role_assignment.kubelet_operator]
 }
 
 resource "azurerm_monitor_diagnostic_setting" "control_plane" {
