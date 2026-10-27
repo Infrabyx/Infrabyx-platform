@@ -63,6 +63,10 @@
     "./export": {
       "types": "./dist/export.d.ts",
       "default": "./dist/export.js"
+    },
+    "./vidhi": {
+      "types": "./dist/vidhi.d.ts",
+      "default": "./dist/vidhi.js"
     }
   },
   "files": [

@@ -303,3 +303,38 @@ describe("PL3 maker-checker tenant keys are tighten-only (PL3-D-08)", () => {
     expect(tightenError(roles, ["ORG_CHECKER"], [])).toMatch(/part/);
   });
 });
+
+describe("kill switches: activate at once, deactivate through a checker (IPB-03-48, PL4 plan §3.5)", () => {
+  it("applies true directly and routes true → false to an R2 request", async () => {
+    const { svc, approvals, store } = setup();
+    const owner = ctxFor(["ORG_OWNER"]);
+    const target = { tier: "TENANT" as const, scopeId: "tnt_a" };
+    expect(await svc.set(owner, "ai.kill.tenant", target, true)).toMatchObject({
+      status: "applied",
+    });
+    expect((await store.read(null, "ai.kill.tenant", [target]))[0]?.value).toBe(true);
+    expect(await svc.set(owner, "ai.kill.tenant", target, false)).toMatchObject({
+      status: "pending",
+    });
+    expect(approvals.requests.at(-1)).toMatchObject({
+      action: "settings.setting.change",
+      riskClass: "R2",
+      payload: { key: "ai.kill.tenant", value: false },
+    });
+    expect((await store.read(null, "ai.kill.tenant", [target]))[0]?.value).toBe(true);
+  });
+
+  it("marks only the kill-switch keys with mcDeactivate", () => {
+    const keys = defaultRegistry
+      .all()
+      .filter((d) => d.mcDeactivate)
+      .map((d) => d.key)
+      .sort();
+    expect(keys).toEqual([
+      "ai.kill.adapter.{key}",
+      "ai.kill.all",
+      "ai.kill.feature.{key}",
+      "ai.kill.tenant",
+    ]);
+  });
+});

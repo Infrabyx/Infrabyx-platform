@@ -19,7 +19,7 @@ export const ID_PREFIXES = {
   led: "audit ledger entry",
   anc: "audit anchor",
   set: "setting value",
-  run: "seed or job run",
+  run: "seed, job or AI run (IPB-03 §03.2)",
   evt: "internal event",
   org: "organisation (Ecosystem Spec §4.1)",
   re: "regulated entity (Ecosystem Spec §4.1)",
@@ -38,6 +38,19 @@ export const ID_PREFIXES = {
   exj: "export job (export)",
   arc: "export archive (Ecosystem entity 40)",
   esr: "e-sign envelope (ESIGN)",
+  skl: "Vidhi skill (IPB-03 §03.2)",
+  tsk: "Vidhi task",
+  msn: "Vidhi mission",
+  sch: "Vidhi scheduled task",
+  agt: "Vidhi agent identity",
+  nbk: "knowledge notebook",
+  src: "notebook source",
+  out: "notebook output",
+  fbk: "AI feedback",
+  img: "generated image (IMAGE_GEN)",
+  idx: "retrieval index",
+  chk: "retrieval chunk",
+  grt: "autonomy grant",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

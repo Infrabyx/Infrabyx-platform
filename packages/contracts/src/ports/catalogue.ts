@@ -1,5 +1,6 @@
 // Port catalogue as metadata (IPB-01 §01.4.4.2, §01.4.4.3). Interfaces for the thirteen PL2 ports and
-// the four PL3 ports (RULES, NOTIFY, PUSH, ESIGN) are in this folder; the rest land with the phase
+// the four PL3 ports (RULES, NOTIFY, PUSH, ESIGN) and the five PL4 AI ports (LLM, EMBEDDING, IMAGE_GEN,
+// SPEECH, RERANK, in `ai.ts`) are in this folder; the rest land with the phase
 // that builds their adapters (PL1-D-02, PL2 plan §1, PL3 plan §10).
 
 export type PortTier = 0 | 1 | 2 | 3;
@@ -56,24 +57,24 @@ export const PORT_CATALOGUE = {
     ownerFile: "IPB-01",
     interfaceDefined: false,
   },
-  LLM: { tier: 2, configPrefix: "ai.llm.", ownerFile: "IPB-01, IPB-03", interfaceDefined: false },
+  LLM: { tier: 2, configPrefix: "ai.llm.", ownerFile: "IPB-01, IPB-03", interfaceDefined: true },
   EMBEDDING: {
     tier: 2,
     configPrefix: "ai.embedding.",
     ownerFile: "IPB-01, IPB-03",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   IMAGE_GEN: {
     tier: 2,
     configPrefix: "ai.image_gen.",
     ownerFile: "IPB-01, IPB-03",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   SPEECH: {
     tier: 2,
     configPrefix: "ai.speech.",
     ownerFile: "IPB-01, IPB-03",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   TRANSLATE: {
     tier: 2,
@@ -133,7 +134,7 @@ export const PORT_CATALOGUE = {
   BILLING: { tier: 1, configPrefix: "int.billing.", ownerFile: "IPB-01", interfaceDefined: false },
   CRM: { tier: 2, configPrefix: "int.crm.", ownerFile: "IPB-01", interfaceDefined: false },
   // Supplementary ports (IPB-01 §01.4.4.3)
-  RERANK: { tier: 2, configPrefix: "ai.rerank.", ownerFile: "IPB-03", interfaceDefined: false },
+  RERANK: { tier: 2, configPrefix: "ai.rerank.", ownerFile: "IPB-03", interfaceDefined: true },
   INTERPRETER: {
     tier: 3,
     configPrefix: "int.interpreter.",

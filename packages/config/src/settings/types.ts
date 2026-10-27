@@ -33,6 +33,12 @@ export interface SettingDef {
   /** Roles that may change; "self" = the owning user; "pipeline"/"system" = no human writes. */
   change: readonly string[];
   mc: false | "R2" | "R4" | "R5";
+  /**
+   * Bool keys only: turning the value from true to false needs maker-checker at this class, while
+   * every other change applies directly (kill switches: activate at once, deactivate with a
+   * checker; IPB-03-48, PL4 plan §3.5).
+   */
+  mcDeactivate?: "R2" | "R4";
   help?: string;
   /** Present for templated keys such as int.{port}.primary. */
   pattern?: string;

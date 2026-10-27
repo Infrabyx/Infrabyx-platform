@@ -90,6 +90,9 @@ export const PrincipalType = z.enum(PRINCIPAL_TYPES);
 export type PrincipalType = z.infer<typeof PrincipalType>;
 
 /** Verbs an agent may never perform regardless of grants (IPB-02-10). */
+/** The Vidhi agent role (IPB-03 §03.2): a maker only, never a checker, approver or signer. */
+export const VIDHI_AGENT_ROLE = "AGT_VIDHI" as const;
+
 export const AGENT_FORBIDDEN_VERBS = ["approve", "sign", "disburse", "delete", "grant"] as const;
 export type AgentForbiddenVerb = (typeof AGENT_FORBIDDEN_VERBS)[number];
 

@@ -90,7 +90,8 @@ export class SettingsService {
       ctx,
       async (tx) => {
         await this.assertTighten(tx, ctx, def, target, value);
-        if (def.mc) {
+        const riskClass = def.mc || (await this.deactivationClass(tx, def, target, value));
+        if (riskClass) {
           if (!this.o.approvals)
             throw new Error(
               `setting ${key} requires maker-checker but no ApprovalGateway is configured`,
@@ -105,7 +106,7 @@ export class SettingsService {
           const [cur] = await this.o.store.read(tx, key, [target]);
           const req = await this.o.approvals.request(tx, {
             action: SETTING_CHANGE_ACTION,
-            riskClass: def.mc,
+            riskClass,
             payload: payload as unknown as Record<string, unknown>,
             summary: `Change ${key} at ${target.tier}`,
             diff: { before: cur ? { [key]: cur.value } : null, after: { [key]: value } },
@@ -138,6 +139,18 @@ export class SettingsService {
       payload.value,
       requestId,
     );
+  }
+
+  /** `mcDeactivate` keys: switching an explicit true at this scope to false needs a checker. */
+  private async deactivationClass(
+    tx: Tx,
+    def: SettingDef,
+    target: SettingScopeRef,
+    value: unknown,
+  ): Promise<SettingDef["mcDeactivate"] | false> {
+    if (!def.mcDeactivate || value !== false) return false;
+    const [cur] = await this.o.store.read(tx, def.key, [target]);
+    return cur?.value === true ? def.mcDeactivate : false;
   }
 
   private async write(
