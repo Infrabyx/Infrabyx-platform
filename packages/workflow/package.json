@@ -1,9 +1,9 @@
 {
   "name": "@infrabyx/workflow",
   "version": "0.0.0",
-  "description": "Temporal helpers, maker-checker, approvals, SLAs",
+  "description": "Maker-checker around the approvals engine: Work Inbox, scheduled actions, durable timers, reminders, escalation, expiry, bulk decide",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,17 +11,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +37,15 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }

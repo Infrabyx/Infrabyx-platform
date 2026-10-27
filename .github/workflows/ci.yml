@@ -192,7 +192,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_READ_TOKEN || secrets.GITHUB_TOKEN }}
       - name: build
         run: pnpm build
-      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules, checksums in meta.migration_checksums)
+      - name: migrate (infrabyx-migrate applies tenancy → audit → config → seed → connectors → rules → workflow, checksums in meta.migration_checksums)
         run: node packages/tenancy/dist/migrate/cli.js --db "$IPB_TEST_PG_URL"
       - name: rls-lint (IPB-02-12; every tenant table enabled + forced + tenant policy, no BYPASSRLS)
         run: node packages/tenancy/dist/rls-lint/cli.js --db "$IPB_TEST_PG_URL"
