@@ -2,13 +2,13 @@
 
 Updated: 2026-10-27
 
-| Item                  | Value                                                                                                                                                                                                                                                                                           |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages, checksums recorded. Owner answers #24 and #25 applied (PL3-D-25). **PL4 plan written** (`docs/phases/PL4-plan.md`, PL4-D-01); next: PL4 session 1. Continuous build mode (PL2-D-41) |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                          |
-| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)     |
-| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                         |
-| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                       |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **PL3 closed** (2026-10-27): gate passed (`docs/phases/PL3-gate.md`), release run 43 published 12 packages, checksums recorded. Owner answers #24 and #25 applied (PL3-D-25). **PL4 plan written** (`docs/phases/PL4-plan.md`, PL4-D-01); session 1 built (spike, contracts, config; PL4-D-02); next: session 2 (`ai` core). Continuous build mode (PL2-D-41) |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                        |
+| Packages              | Published to GitHub Packages (PL3 gate, release run 43, `4a9bbcb`): contracts, crypto, config, tenancy and testing 0.3.0; connectors 0.2.0; audit 0.1.2; seed 0.2.1; rules, workflow, notify and export 0.1.0 (new). The 10 later-phase scaffolds stay private until their phase (PL1-D-20)                                                                   |
+| Last exit gate passed | PL3 gate (2026-10-27): report `docs/phases/PL3-gate.md`; PR #58 (report and the map-gate fix) and PR #47 (version), CI green; release run 43 published 12 packages. Before it: PL2 gate A (`docs/phases/PL2-gate-A.md`)                                                                                                                                       |
+| Working branch        | `claude/lucid-davinci-fqtf6b` (GitHub deletes it after each squash merge; push it again from `main` for the next session)                                                                                                                                                                                                                                     |
 
 ## What products can install (PL3 gate, 2026-10-27)
 
@@ -46,6 +46,16 @@ Registry checksums are the values release run 43 printed in the job summary of i
   - wire `ExportService` with a product map, `kmsArchiveSigner` and an export worker, and add `map-gate` and a golden archive to CI;
   - wire `LeegalityEsign` or `DigioEsign` with a persisted `EsignEnvelopeStore`;
   - cross-tenant workers use the `SVC_` service readers, never `PLT_AUDITOR_RO`.
+
+## PL4 session 1 (2026-10-27, PL4-D-02)
+
+- `@infrabyx/contracts` (minor): the AI ports (LLM, EMBEDDING, IMAGE_GEN, SPEECH, RERANK), `contracts/vidhi`, ids, events and the IPB-03 error codes. `IPB-AI-001` now means "AI paused" (IPB-03); PR-024 asks to reconcile the IPB-02 table.
+- `@infrabyx/config` (minor): the `ai.*` and `vidhi.*` keys (232 in the registry) and the new `mc_deactivate` rule for kill switches.
+- Spike notes: `docs/phases/PL4-spike.md`. No provider was called.
+- **Owner tasks for PL4** (accounts; nothing is blocked while stubs are used):
+  - an AWS Bedrock account in ap-south-1 with Claude and embeddings model access, and confirmed data-protection terms;
+  - a Google Cloud Vertex AI project in asia-south1 with Gemini and Imagen, the zero-data-retention setting and an identity for the platform (#27);
+  - later, GitHub `sandbox` environment secrets for a live run you approve.
 
 ## Owner answers #24 and #25 (2026-10-27, PL3-D-25; ships in the next release)
 
