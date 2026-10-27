@@ -3078,14 +3078,16 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "type": "bool",
     "default": false,
     "locked": false,
+    "tighten": true,
     "userOverride": false,
     "change": [
       "PLT_SECURITY_OFFICER",
       "PLT_SUPER_ADMIN"
     ],
     "mc": false,
+    "mcDeactivate": "R2",
     "source": "IPB-03 §03.5",
-    "note": "activation direct; deactivation through an R2 approval (ai.kill.deactivate, PL4 plan §3.5)"
+    "note": "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one"
   },
   {
     "key": "ai.kill.adapter.{key}",
@@ -3093,14 +3095,16 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "type": "bool",
     "default": false,
     "locked": false,
+    "tighten": true,
     "userOverride": false,
     "change": [
       "PLT_SECURITY_OFFICER"
     ],
     "mc": false,
+    "mcDeactivate": "R2",
     "pattern": "^ai\\.kill\\.adapter\\.([a-z0-9_-]+)$",
     "source": "IPB-03 §03.5",
-    "note": "activation direct; deactivation through an R2 approval"
+    "note": "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one"
   },
   {
     "key": "ai.kill.feature.{key}",
@@ -3108,15 +3112,17 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "type": "bool",
     "default": false,
     "locked": false,
+    "tighten": true,
     "userOverride": false,
     "change": [
       "PLT_SECURITY_OFFICER",
       "ORG_OWNER"
     ],
     "mc": false,
+    "mcDeactivate": "R2",
     "pattern": "^ai\\.kill\\.feature\\.([a-z0-9_-]+)$",
     "source": "IPB-03 §03.5",
-    "note": "platform or tenant; activation direct; deactivation through an R2 approval"
+    "note": "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one"
   },
   {
     "key": "ai.kill.tenant",
@@ -3124,14 +3130,16 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "type": "bool",
     "default": false,
     "locked": false,
+    "tighten": true,
     "userOverride": false,
     "change": [
       "ORG_OWNER",
       "PLT_SECURITY_OFFICER"
     ],
     "mc": false,
+    "mcDeactivate": "R2",
     "source": "IPB-03 §03.5",
-    "note": "activation direct; deactivation through an R2 approval"
+    "note": "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one"
   },
   {
     "key": "ai.scrub.patterns",

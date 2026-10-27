@@ -2107,7 +2107,9 @@ keys:
       default: false,
       change: [PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN],
       mc: false,
-      note: "activation direct; deactivation through an R2 approval (ai.kill.deactivate, PL4 plan \u00a73.5)",
+      mc_deactivate: R2,
+      tighten: true,
+      note: "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one",
       source: "IPB-03 \u00a703.5",
     }
   - {
@@ -2117,7 +2119,9 @@ keys:
       default: false,
       change: [PLT_SECURITY_OFFICER],
       mc: false,
-      note: "activation direct; deactivation through an R2 approval",
+      mc_deactivate: R2,
+      tighten: true,
+      note: "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one",
       source: "IPB-03 \u00a703.5",
     }
   - {
@@ -2127,7 +2131,9 @@ keys:
       default: false,
       change: [PLT_SECURITY_OFFICER, ORG_OWNER],
       mc: false,
-      note: "platform or tenant; activation direct; deactivation through an R2 approval",
+      mc_deactivate: R2,
+      tighten: true,
+      note: "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one",
       source: "IPB-03 \u00a703.5",
     }
   - {
@@ -2137,7 +2143,9 @@ keys:
       default: false,
       change: [ORG_OWNER, PLT_SECURITY_OFFICER],
       mc: false,
-      note: "activation direct; deactivation through an R2 approval",
+      mc_deactivate: R2,
+      tighten: true,
+      note: "activation applies at once; deactivation needs an R2 checker (mc_deactivate); a lower tier can never switch off a higher one",
       source: "IPB-03 \u00a703.5",
     }
   - {

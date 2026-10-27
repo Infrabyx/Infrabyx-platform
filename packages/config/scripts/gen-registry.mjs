@@ -66,6 +66,8 @@ for (const k of doc.keys) {
   if (!k.locked && !Array.isArray(k.change))
     errors.push(`${k.key}: change roles required unless locked`);
   if (!k.source) errors.push(`${k.key}: source required`);
+  if (k.mc_deactivate && (!["R2", "R4"].includes(k.mc_deactivate) || k.type !== "bool" || k.mc))
+    errors.push(`${k.key}: mc_deactivate is R2 or R4 on a bool key without mc`);
   if (k.tighten && !["min", "max", "superset", "subset", true, false].includes(k.tighten))
     errors.push(`${k.key}: bad tighten ${k.tighten}`);
 }
@@ -102,6 +104,7 @@ const defs = doc.keys.map((k) => {
     userOverride: Boolean(k.user_override),
     change: k.change ?? [],
     mc: k.mc ?? false,
+    ...(k.mc_deactivate ? { mcDeactivate: k.mc_deactivate } : {}),
     ...(k.help ? { help: k.help } : {}),
     ...(isTemplate(k.key) ? { pattern: pattern(k.key) } : {}),
     source: k.source,
