@@ -10,6 +10,22 @@ Updated: 2026-10-27
 | Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                                                                                                                                                                                                          |
 | Working branch        | `claude/vibrant-babbage-udtz4j` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                                                                                                                                                                                                             |
 
+## Handover (2026-10-27, end of the session that built PL5 sessions 1–3)
+
+- **Done:**
+  - PL4 released (release run 56; checksums in `docs/phases/PL4-gate.md` §6), and owner answers #34–#40 applied (#78).
+  - The PL5 plan and session 1 (#80), and session 2 (`ui`, `a11y`; #81).
+  - Session 3 (`hlp`, `brand`) is in PR #82.
+- **Next:**
+  1. Merge #82 when green (PL2-D-19).
+  2. Session 4, `cms` core (plan §5.3–§5.6): content and revisions with the state machine and approvals; the Claims Register and lint; the sanitiser (`parse5`); slugs and redirects; SEO and generated files; preview; the scheduler (`svc_cms_scheduler`); the public API; the footer validator, wired into `BrandStudio` through `validateFooter`.
+  3. Session 5: the rest of `cms`, then `consent`. Session 6: `feedback` and `trust`. Session 7: `apps/public`, the platform help registry, renaming notify's `ntf.*` help keys, `hlp-lint` and `journeys-lint` in `verify`, and the `a11y` CI job. Session 8: the gate.
+- **Open questions:** #41–#52, all with defaults taken; nothing blocked. #51 parks only the live Lighthouse step; #52 is the strict brand-contrast reading.
+- **Branch and PR state:** `claude/vibrant-babbage-udtz4j` carries #82. Recreate it from `main` after the squash merge.
+- **Local tooling:** Node 24.22.1 in the session scratchpad; PostgreSQL 16 with pgvector 0.6 at `IPB_TEST_PG_URL`, where `iterative_scan` is unsupported so the retrieval int tests need CI; Chromium at `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`; gitleaks 8.30.1 in the scratchpad.
+
+HANDOVER READY
+
 ## PL5 session 3 (2026-10-27, PL5-D-04)
 
 - `@infrabyx/hlp`: the glossary entry schema and registry loader, popover content per locale (falling back to Hindi, then English), the public glossary (`@IPB-07-AT-17`), `infrabyx-hlp lint` (`@IPB-07-AT-02`, `@IPB-07-AT-15`) and tours (`@IPB-07-AT-19`).
