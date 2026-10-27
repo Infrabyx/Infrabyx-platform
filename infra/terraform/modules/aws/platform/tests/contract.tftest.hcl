@@ -35,6 +35,31 @@ mock_provider "aws" {
   mock_resource "aws_s3_bucket" {
     defaults = { arn = "arn:aws:s3:::mock" }
   }
+  # IDs the provider checks for their prefix.
+  mock_resource "aws_vpc" {
+    defaults = { id = "vpc-0123456789abcdef0" }
+  }
+  mock_resource "aws_subnet" {
+    defaults = { id = "subnet-0123456789abcdef0" }
+  }
+  mock_resource "aws_security_group" {
+    defaults = { id = "sg-0123456789abcdef0" }
+  }
+  mock_resource "aws_internet_gateway" {
+    defaults = { id = "igw-0123456789abcdef0" }
+  }
+  mock_resource "aws_nat_gateway" {
+    defaults = { id = "nat-0123456789abcdef0" }
+  }
+  mock_resource "aws_route_table" {
+    defaults = { id = "rtb-0123456789abcdef0" }
+  }
+  mock_resource "aws_eip" {
+    defaults = { id = "eipalloc-0123456789abcdef0" }
+  }
+  mock_resource "aws_launch_template" {
+    defaults = { id = "lt-0123456789abcdef0" }
+  }
 }
 
 mock_provider "aws" {
