@@ -10,4 +10,4 @@ Every `apps/*/Dockerfile` stage uses the pinned Node image **by tag and digest**
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS base
 ```
 
-Rules (IPB-01-31): multi-stage, non-root UID 10001, read-only root filesystem, `HEALTHCHECK`; `hadolint` and `trivy config` gate in CI (PL6).
+Rules (IPB-01-31): multi-stage, non-root UID 10001, read-only root filesystem, `HEALTHCHECK`; `hadolint`, `trivy config` and `trivy image` gate in the `containers` CI job (PL6, `README.md`).

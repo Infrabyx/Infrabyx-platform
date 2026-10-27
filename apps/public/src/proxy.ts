@@ -10,9 +10,9 @@ import { randomBytes, toBase64Url } from "@infrabyx/crypto";
 import { keyOf } from "./render/legal.tsx";
 import { getSite, packFor } from "./server/site.ts";
 
-/** Static assets carry no page, so they skip the proxy. */
+/** Static assets and the health probes carry no page, so they skip the proxy. */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  matcher: ["/((?!_next/static|_next/image|health/).*)"],
 };
 
 /** The site's own routes: everything else is a CMS path. */

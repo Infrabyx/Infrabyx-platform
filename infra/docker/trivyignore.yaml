@@ -1,0 +1,4 @@
+# Trivy waivers for the platform images (IPB-01 §01.4.8.1): each needs a statement, a reason and an
+# expiry no more than 90 days out; an expired waiver fails the `containers` job again.
+vulnerabilities: []
+secrets: []

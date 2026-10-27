@@ -11,10 +11,11 @@
   },
   "packageManager": "pnpm@10.34.7",
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "node scripts/prepare-hooks.mjs",
     "build": "turbo run build",
     "test": "turbo run test",
     "test:policy": "vitest run infra/policy packages/testing/eslint",
+    "images:test": "vitest run infra/docker",
     "lint": "turbo run lint && eslint scripts infra/policy packages/testing/eslint eslint.config.mjs vitest.shared.mjs",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",

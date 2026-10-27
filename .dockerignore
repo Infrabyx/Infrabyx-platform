@@ -1,0 +1,24 @@
+# Build context of the platform images (IPB-01 §01.4.8.1): never secrets, local state or build output.
+.git
+.github
+**/node_modules
+**/.next
+**/dist
+**/.turbo
+**/coverage
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+SEED_CREDENTIALS.md
+**/SEED_CREDENTIALS.md
+*.pem
+*.key
+*.p12
+*.pfx
+.site-storage
+.storage
+docs
+infra/terraform
+infra/helm
