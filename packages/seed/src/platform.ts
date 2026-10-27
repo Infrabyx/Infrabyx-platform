@@ -22,9 +22,9 @@ export const personaUserId = (email: string): string =>
   deterministicId("usr", "tenancy.user", email.toLowerCase(), SEED_EPOCH);
 
 export function seedPersonas(
-  ctx: Pick<SeedModuleContext, "product">,
+  ctx: Pick<SeedModuleContext, "product"> & { superAdminEmail?: string | undefined },
 ): Array<Persona & { email: string; userId: string }> {
-  return personasFor(ctx.product).map((p) => {
+  return personasFor(ctx.product, ctx.superAdminEmail).map((p) => {
     const email = personaEmail(p, ctx.product);
     return { ...p, email, userId: personaUserId(email) };
   });

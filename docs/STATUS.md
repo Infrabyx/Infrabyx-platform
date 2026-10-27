@@ -151,7 +151,7 @@ Since 27 Oct 2026 this repository is public and its Actions minutes are free (PL
 
 ## Owner decisions
 
-- 2026-10-26: owner decisions OWN-01…14 recorded in `docs/DECISIONS.md`; pending confirmation: intern stipend upper bound (₹4 LPA assumed).
+- 2026-10-26: owner decisions OWN-01…14 recorded in `docs/DECISIONS.md`.
 
 ## Blocked / waiting on owner
 

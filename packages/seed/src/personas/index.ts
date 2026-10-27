@@ -21,15 +21,19 @@ export const PRODUCT_PERSONAS: Readonly<Record<ProductCode, readonly Persona[]>>
   OH: OH_PERSONAS,
 };
 
-export function personasFor(product: ProductCode): Persona[] {
-  return [...COMMON_PERSONAS, ...PRODUCT_PERSONAS[product]];
+/** `superAdminEmail` is `AUTH_SUPER_ADMIN_EMAIL`; without it the super admin keeps the placeholder. */
+export function personasFor(product: ProductCode, superAdminEmail?: string): Persona[] {
+  const common = superAdminEmail
+    ? COMMON_PERSONAS.map((p) => (p.key === "super_admin" ? { ...p, email: superAdminEmail } : p))
+    : COMMON_PERSONAS;
+  return [...common, ...PRODUCT_PERSONAS[product]];
 }
 
 export function serviceAccountsFor(_product: ProductCode): ServiceAccount[] {
   return [...COMMON_SERVICE_ACCOUNTS];
 }
 
-/** `test.<persona>@<label>.test` (IPB-11-33); the super admin keeps its real address (IPB-11-32). */
+/** `test.<persona>@<label>.test` (IPB-11-33); the super admin keeps its configured address (IPB-11-32). */
 export function personaEmail(p: Persona, product: ProductCode): string {
   if (p.email) return p.email;
   return `${p.emailLocal ?? p.key}@${PRODUCT_EMAIL_LABEL[product]}.test`;

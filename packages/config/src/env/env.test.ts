@@ -106,15 +106,15 @@ const secrets: SecretResolver = async (ref) => {
 const prodEnv = (over: Record<string, string | undefined> = {}) => ({
   APP_ENV: "prod",
   NODE_ENV: "production",
-  APP_BASE_URL: "https://api.lawdocscomply.in",
+  APP_BASE_URL: "https://api.example.org",
   APP_PORT: "4000",
-  DB_URL: "postgres://app@db.internal.lawdocscomply.in:5432/ldc",
+  DB_URL: "postgres://app@db.example.org:5432/ldc",
   DB_PASSWORD: "secret://aws-sm/infrabyx/ldc/prod/db#password",
   DB_SSL_MODE: "verify-full",
   AUTH_CLIENT_SECRET: "secret://aws-sm/infrabyx/ldc/prod/auth#client_secret",
   ...over,
 });
-const hostMap = ["api.lawdocscomply.in"];
+const hostMap = ["api.example.org"];
 
 async function boot(source: Record<string, string | undefined>) {
   const err: string[] = [];

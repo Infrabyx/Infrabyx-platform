@@ -86,9 +86,12 @@ export interface IdentifierViolation {
   reason: string;
 }
 
-const ALLOWED_REAL_EMAILS = new Set(["rjnprajapati@gmail.com"]);
-
-function check(path: string, v: string, out: IdentifierViolation[]): void {
+function check(
+  path: string,
+  v: string,
+  out: IdentifierViolation[],
+  allowEmails: ReadonlySet<string>,
+): void {
   const s = v.trim();
   const compact = s.replace(/\s/g, "");
   if (/^\d{12}$/.test(compact) && /^\d{4}\s?\d{4}\s?\d{4}$/.test(s)) {
@@ -112,16 +115,24 @@ function check(path: string, v: string, out: IdentifierViolation[]): void {
     if (!/^\+91[\s-]?99999[\s-]?0\d{4}$/.test(s))
       out.push({ path, kind: "mobile", reason: "mobile must be +91 99999 0xxxx" });
   } else if (/^[^@\s]+@[^@\s]+\.[a-z]+$/i.test(s)) {
-    if (!/\.test$/i.test(s) && !ALLOWED_REAL_EMAILS.has(s.toLowerCase()))
+    if (!/\.test$/i.test(s) && !allowEmails.has(s.toLowerCase()))
       out.push({ path, kind: "email", reason: "email must use a .test domain" });
   }
 }
 
-/** Walk seed rows and report any value that looks like a real identifier (IPB-SEED-004). */
-export function findRealIdentifiers(value: unknown, path = "$"): IdentifierViolation[] {
+/**
+ * Walk seed rows and report any value that looks like a real identifier (IPB-SEED-004).
+ * `allowEmails` holds the configured super-admin address (`AUTH_SUPER_ADMIN_EMAIL`), the only
+ * real address a seed may write (IPB-11-32).
+ */
+export function findRealIdentifiers(
+  value: unknown,
+  path = "$",
+  allowEmails: ReadonlySet<string> = new Set(),
+): IdentifierViolation[] {
   const out: IdentifierViolation[] = [];
   const walk = (v: unknown, p: string) => {
-    if (typeof v === "string") check(p, v, out);
+    if (typeof v === "string") check(p, v, out, allowEmails);
     else if (Array.isArray(v)) v.forEach((x, i) => walk(x, `${p}[${i}]`));
     else if (v && typeof v === "object")
       for (const [k, x] of Object.entries(v)) walk(x, `${p}.${k}`);

@@ -28,6 +28,8 @@ import { SEED_TENANT_IDS } from "./framework.js";
 export interface CredentialsOptions {
   env: { APP_ENV: AppEnv; SEED_ENABLED?: boolean };
   product: ProductCode;
+  /** AUTH_SUPER_ADMIN_EMAIL; the placeholder when unset. */
+  superAdminEmail?: string;
   secrets: SecretsPort;
   identity: IdentityProvisioning;
   /** SEED_VAULT_PREFIX, e.g. secret://env/infrabyx/ldc/local/seed */
@@ -201,13 +203,17 @@ export async function generateCredentials(
 }
 
 /** IPB-11-27 / IPB-SEED-003: the credentials file lists exactly the product's personas (email, role, tenant). */
-export function checkCredentialsFile(text: string, product: ProductCode): string[] {
+export function checkCredentialsFile(
+  text: string,
+  product: ProductCode,
+  superAdminEmail?: string,
+): string[] {
   const rows = text
     .split("\n")
     .filter((l) => /^\| [^|]+ \| [A-Z][A-Z0-9_]+ \| [^|]+@[^|]+ \|/.test(l))
     .map((l) => l.split("|").map((c) => c.trim()))
     .map((c) => ({ role: c[2], email: c[3], tenant: c[5] }));
-  const want = seedPersonas({ product }).map((p) => ({
+  const want = seedPersonas({ product, superAdminEmail }).map((p) => ({
     role: p.role,
     email: p.email,
     tenant: p.tenant,

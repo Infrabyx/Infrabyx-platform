@@ -39,7 +39,7 @@ Every upserted value passes `findRealIdentifiers()`, or the write fails with `IP
 
 ## Personas and credentials
 
-- `personasFor(product)`: the common personas of IPB-11 §11.4.5 (super admin `rjnprajapati@gmail.com` as `PLT_SUPER_ADMIN` in `tnt_platform`, MFA always) plus `personas/<product>.ts`. Emails: `test.<persona>@<lawdocs|ldc|equator|finbyx|udofin|ophub>.test` (IPB-11-33).
+- `personasFor(product)`: the common personas of IPB-11 §11.4.5 (super admin as `PLT_SUPER_ADMIN` in `tnt_platform`, MFA always; its address is `AUTH_SUPER_ADMIN_EMAIL`, set only in each product repository's local environment, with the placeholder `super.admin@example.test` when unset) plus `personas/<product>.ts`. Emails: `test.<persona>@<lawdocs|ldc|equator|finbyx|udofin|ophub>.test` (IPB-11-33).
 - `generateCredentials()` (IPB-11-35 to 39, §11.4.7): passwords from `@infrabyx/crypto` `generateSeedPassword()`, unique within the file and across products (salted hash list in the vault), written to the seed vault through SECRETS before anything else (`IPB-SEED-006` and no file on failure), set on the IdP through IDENTITY (temporary + MFA in staging/demo), `SEED_CREDENTIALS.md` in the §11.4.6 template with mode 0600 and an entry in `.git/info/exclude`, exactly one stdout line, and `CredentialsGenerated` with counts only. Agents and services are listed without passwords. Refused in prod, dr and pre-prod. `checkCredentialsFile()` cross-checks the file against the personas (IPB-11-27, `IPB-SEED-003`).
 - In PL1 the SECRETS and IDENTITY adapters are supplied by the product (`--adapters`); Keycloak and Vault adapters arrive in PL2.
 
