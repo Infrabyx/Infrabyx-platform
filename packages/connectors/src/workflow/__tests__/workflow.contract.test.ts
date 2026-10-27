@@ -19,6 +19,7 @@ import {
 import { ENCRYPTED_ENCODING } from "../codec.js";
 import { resolveInput, TemporalCloudWorkflow, TemporalWorkflow } from "../temporal.js";
 import { createIpbWorker } from "../worker.js";
+import { TemporalTimers, TIMER_WORKFLOWS_PATH, timerActivities } from "../timers.js";
 
 const NS = "default";
 const TQ = "ipb-contract";
@@ -28,6 +29,10 @@ let address = "";
 let worker: Worker;
 let running: Promise<void>;
 let native: NativeConnection;
+let timerWorker: Worker;
+let timerRunning: Promise<void>;
+const fired: string[] = [];
+const TIMER_TQ = "ipb-timers";
 const storage = new MemoryStorage();
 const kms = new LocalKms();
 const envelope = new FieldEnvelope(kms);
@@ -62,10 +67,22 @@ beforeAll(async () => {
     workflowsPath: fileURLToPath(new URL("./fixtures/workflows.ts", import.meta.url)),
   });
   running = worker.run();
+  timerWorker = await createIpbWorker({
+    adapter: adapter(),
+    address,
+    namespace: NS,
+    taskQueue: TIMER_TQ,
+    connection: native,
+    workflowsPath: TIMER_WORKFLOWS_PATH,
+    activities: timerActivities(async (tid) => void fired.push(tid)),
+  });
+  timerRunning = timerWorker.run();
 }, 240_000);
 afterAll(async () => {
   worker?.shutdown();
+  timerWorker?.shutdown();
   await running?.catch(() => undefined);
+  await timerRunning?.catch(() => undefined);
   await native?.close();
   await temporal?.stop();
 });
@@ -231,5 +248,27 @@ describe("@IPB-01-15 WORKFLOW hermetic leg: temporal dev server (CLI 1.9.1, serv
       codec: { envelope, keyId: KEY },
     });
     expect((await p.health()).status).toBe("down");
+  });
+});
+
+describe("TemporalTimers: the WORKFLOW-port timer engine for @infrabyx/workflow (PL3-D-19)", () => {
+  const waitFor = async (cond: () => boolean, ms = 20_000) => {
+    for (let t = 0; t < ms && !cond(); t += 200) await new Promise((r) => setTimeout(r, 200));
+  };
+  it("fires once at or after the time; a second schedule is a no-op; a cancelled timer never fires", async () => {
+    const timers = new TemporalTimers({ port: adapter(), taskQueue: TIMER_TQ });
+    const due = id("ipb-timer.tnt_a.approval.remind");
+    const gone = id("ipb-timer.tnt_a.approval.expire");
+    const at = new Date(Date.now() + 1500);
+    await timers.schedule(due, at);
+    await timers.schedule(due, at);
+    await timers.schedule(gone, new Date(Date.now() + 3000));
+    await timers.cancel(gone);
+    await waitFor(() => fired.includes(due));
+    expect(Date.now()).toBeGreaterThanOrEqual(at.getTime());
+    await new Promise((r) => setTimeout(r, 3000));
+    expect(fired.filter((f) => f === due)).toHaveLength(1);
+    expect(fired).not.toContain(gone);
+    await timers.cancel("ipb-timer.unknown");
   });
 });
