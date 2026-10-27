@@ -198,6 +198,35 @@ describe("@IPB-11-AT-01 @IPB-02-AT-07 @IPB-11-14 production refuses seed profile
   });
 });
 
+describe("P-03 no live payment credential outside prod and dr", () => {
+  // Built at run time so no credential-shaped literal sits in the source.
+  const liveKeyId = ["rzp", "live", "0".repeat(14)].join("_");
+  const local = {
+    APP_ENV: "local",
+    NODE_ENV: "development",
+    APP_BASE_URL: "http://localhost:4000",
+    APP_PORT: "4000",
+    DB_URL: "postgres://app@localhost:5432/ldc",
+    DB_PASSWORD: "app",
+    DB_SSL_MODE: "disable",
+    AUTH_CLIENT_SECRET: "dev-secret",
+    SEED_ENABLED: "true",
+  };
+  it("a live Razorpay key id in local refuses to start, naming the variable", async () => {
+    const r = await boot({ ...local, PAYMENTS_RAZORPAY_KEY_ID: liveKeyId });
+    expect(r.exitCode).toBe(78);
+    expect(r.err).toMatch(/IPB-ENV-005 PAYMENTS_RAZORPAY_KEY_ID: live payment credential/);
+    expect(r.err).not.toContain(liveKeyId);
+  });
+  it("a test key id in local starts", async () => {
+    const r = await boot({
+      ...local,
+      PAYMENTS_RAZORPAY_KEY_ID: ["rzp", "test", "x".repeat(14)].join("_"),
+    });
+    expect(r.exitCode).toBeNull();
+  });
+});
+
 describe("IPB-11-02 schema failures", () => {
   it("missing DB_URL → exit 78 naming DB_URL (IPB-ENV-011)", async () => {
     const r = await boot({

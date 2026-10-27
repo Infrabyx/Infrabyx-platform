@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 sessions 1–6 built** (#13, #15, #17–#21, #23, session 6 PR); next is session 7 (PAYMENTS). Continuous build mode (PL2-D-41)                                                        |
+| Current phase         | **PL2 sessions 1–7 built** (#13, #15, #17–#21, #23–#25, session 7 PR); next is session 8 (exit gate and release) and gate A. Continuous build mode (PL2-D-41)                            |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
@@ -66,8 +66,23 @@ Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults ta
 
 ## Next
 
-- PL2 session 7 (D-11 order): PAYMENTS (`razorpay`, `cashfree`), locked list approved with conditions (plan §8); no live money.
-- Then session 8 (exit gate and release) and gate A.
+- PL2 session 8: exit gate (plan §11) and the gate-A release through version PR #14; then gate A.
+
+## PL2 session 7 (2026-10-27)
+
+- `@infrabyx/connectors/payments`: `razorpay` (reference) and `cashfree` (alternative), test mode only, on the approved locked list P-01 to P-18 (PL2-D-66):
+  - no live key outside prod/dr (P-03, adapters and env guard);
+  - exact integer paise (P-04);
+  - references derived from the idempotency key and vendor lookup before any retry (P-05);
+  - refunds only with an approved R3 request for the same payload, read against the PA's refund list and never repeated (P-07);
+  - unresolved pending refunds go to the human queue;
+  - `kill.payments` (P-12);
+  - raw-body webhook signatures (P-09);
+  - read-only reconciliation (P-11).
+- Router: `noFailover` method specs and `router.portFor(port, adapter)` so refunds, mandates and captures stay with their PA (P-08); `@IPB-01-AT-08` Razorpay → Cashfree proven on stubs.
+- P-18 manifests `packages/connectors/marketplace/{razorpay,cashfree}.manifest.json` with a lint test.
+- Hermetic legs: 29 PAYMENTS cases green on the Razorpay and Cashfree stubs; sandbox legs wait for the test accounts.
+- Products: refunds need an approvals-engine view (`RefundApprovals`) and a maker request with payload `{ paymentId, amountMinor, reason }`; Cashfree needs a `customerContact` resolver; refunds of orders taken during failover go through `router.portFor("PAYMENTS", order.adapter)`.
 
 ## PL2 session 6 (2026-10-27)
 

@@ -160,6 +160,32 @@ export class Router {
     return s.adapter as P;
   }
 
+  /**
+   * A facade pinned to one routed adapter, for calls on something that adapter owns (an order's
+   * refund goes to the PA that captured it, P-07/P-08). Pinned calls never fail over.
+   */
+  portFor<P extends Port>(port: string, adapter: string): P {
+    const ps = this.slots(port);
+    const slot = [ps.primary, ps.secondary].find((s) => s?.instance.adapter === adapter);
+    if (!slot)
+      throw new PortError("IPB-PORT-001", port, {
+        adapter,
+        detail: `${adapter} is not routed for ${port}`,
+      });
+    return new Proxy({} as P, {
+      get: (_t, prop) => {
+        if (typeof prop !== "string") return undefined;
+        if (prop === "descriptor") return slot.adapter.descriptor;
+        if (prop === "then") return undefined;
+        if (LOCAL_METHODS.has(prop)) {
+          const v = (slot.adapter as unknown as Record<string, unknown>)[prop];
+          return typeof v === "function" ? v.bind(slot.adapter) : v;
+        }
+        return (...args: unknown[]) => this.route(port, prop, args, slot);
+      },
+    });
+  }
+
   /** A routed facade with the port's interface. */
   port<P extends Port>(port: string): P {
     let f = this.facades.get(port);
@@ -214,7 +240,12 @@ export class Router {
     return undefined;
   }
 
-  private async route(port: string, method: string, args: unknown[]): Promise<unknown> {
+  private async route(
+    port: string,
+    method: string,
+    args: unknown[],
+    pinned?: Slot,
+  ): Promise<unknown> {
     const spec = methodSpec(port, method);
     const call =
       spec.callArg !== undefined ? (args[spec.callArg] as PortCall | undefined) : undefined;
@@ -222,9 +253,9 @@ export class Router {
     const cls = effectiveDataClass(port, call, report);
     const ps = this.slots(port);
 
-    let slot = ps.primary;
+    let slot = pinned ?? ps.primary;
     if (!slot.breaker.tryPass()) {
-      const sec = ps.secondary;
+      const sec = pinned || spec.noFailover ? undefined : ps.secondary;
       const modeAllows =
         ps.mode === "active_failover" || (ps.mode === "read_only_failover" && spec.kind === "read");
       if (
@@ -239,8 +270,8 @@ export class Router {
           port === "STORAGE" && spec.kind === "write" ? "IPB-STOR-002" : "IPB-PORT-002",
           port,
           {
-            adapter: ps.primary.instance.adapter,
-            detail: `${ps.primary.instance.adapter} circuit open; no admissible secondary for this ${spec.kind}`,
+            adapter: slot.instance.adapter,
+            detail: `${slot.instance.adapter} circuit open; no admissible secondary for this ${spec.kind}`,
           },
         );
     }

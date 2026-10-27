@@ -65,11 +65,17 @@
       "types": "./dist/whatsapp/index.d.ts",
       "default": "./dist/whatsapp/index.js"
     },
+    "./payments": {
+      "types": "./dist/payments/index.d.ts",
+      "default": "./dist/payments/index.js"
+    },
+    "./marketplace/*": "./marketplace/*",
     "./policy/*": "./policy/*"
   },
   "files": [
     "dist",
     "migrations",
+    "marketplace",
     "policy",
     "README.md"
   ],
