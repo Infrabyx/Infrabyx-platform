@@ -341,7 +341,14 @@ importers:
 
   packages/feedback: {}
 
-  packages/hlp: {}
+  packages/hlp:
+    dependencies:
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
 
   packages/notify:
     dependencies:
