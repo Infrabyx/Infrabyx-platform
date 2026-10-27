@@ -9,10 +9,60 @@ mock_provider "aws" {
       identity = [{ oidc = [{ issuer = "https://oidc.eks.ap-south-1.amazonaws.com/id/EXAMPLE" }] }]
     }
   }
+  # The mock provider fills computed attributes with random strings; the provider still validates
+  # the ARNs one resource passes to another, so those resources get well-formed ones.
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn    = "arn:aws:kms:ap-south-1:111122223333:key/mrk-00000000000000000000000000000000"
+      key_id = "mrk-00000000000000000000000000000000"
+    }
+  }
+  mock_resource "aws_kms_replica_key" {
+    defaults = { arn = "arn:aws:kms:ap-south-1:111122223333:key/mrk-00000000000000000000000000000000" }
+  }
+  mock_resource "aws_iam_role" {
+    defaults = { arn = "arn:aws:iam::111122223333:role/mock" }
+  }
+  mock_resource "aws_iam_policy" {
+    defaults = { arn = "arn:aws:iam::111122223333:policy/mock" }
+  }
+  mock_resource "aws_iam_openid_connect_provider" {
+    defaults = { arn = "arn:aws:iam::111122223333:oidc-provider/oidc.eks.ap-south-1.amazonaws.com/id/EXAMPLE" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:ap-south-1:111122223333:log-group:mock" }
+  }
+  mock_resource "aws_s3_bucket" {
+    defaults = { arn = "arn:aws:s3:::mock" }
+  }
 }
 
 mock_provider "aws" {
   alias = "dr"
+  mock_resource "aws_kms_key" {
+    defaults = {
+      arn    = "arn:aws:kms:ap-south-2:111122223333:key/mrk-00000000000000000000000000000000"
+      key_id = "mrk-00000000000000000000000000000000"
+    }
+  }
+  mock_resource "aws_kms_replica_key" {
+    defaults = { arn = "arn:aws:kms:ap-south-2:111122223333:key/mrk-00000000000000000000000000000000" }
+  }
+  mock_resource "aws_iam_role" {
+    defaults = { arn = "arn:aws:iam::111122223333:role/mock" }
+  }
+  mock_resource "aws_iam_policy" {
+    defaults = { arn = "arn:aws:iam::111122223333:policy/mock" }
+  }
+  mock_resource "aws_iam_openid_connect_provider" {
+    defaults = { arn = "arn:aws:iam::111122223333:oidc-provider/oidc.eks.ap-south-2.amazonaws.com/id/EXAMPLE" }
+  }
+  mock_resource "aws_cloudwatch_log_group" {
+    defaults = { arn = "arn:aws:logs:ap-south-2:111122223333:log-group:mock" }
+  }
+  mock_resource "aws_s3_bucket" {
+    defaults = { arn = "arn:aws:s3:::mock" }
+  }
 }
 
 variables {

@@ -13,8 +13,8 @@ resource "aws_s3_bucket" "this" {
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
-  for_each                = aws_s3_bucket.this
-  bucket                  = each.value.id
+  for_each                = local.names
+  bucket                  = aws_s3_bucket.this[each.key].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -22,24 +22,24 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "this" {
-  for_each = aws_s3_bucket.this
-  bucket   = each.value.id
+  for_each = local.names
+  bucket   = aws_s3_bucket.this[each.key].id
   rule {
     object_ownership = "BucketOwnerEnforced"
   }
 }
 
 resource "aws_s3_bucket_versioning" "this" {
-  for_each = aws_s3_bucket.this
-  bucket   = each.value.id
+  for_each = local.names
+  bucket   = aws_s3_bucket.this[each.key].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
-  for_each = aws_s3_bucket.this
-  bucket   = each.value.id
+  for_each = local.names
+  bucket   = aws_s3_bucket.this[each.key].id
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
@@ -62,8 +62,8 @@ resource "aws_s3_bucket_object_lock_configuration" "this" {
 
 # TLS only, on every bucket.
 resource "aws_s3_bucket_policy" "tls" {
-  for_each = aws_s3_bucket.this
-  bucket   = each.value.id
+  for_each = local.names
+  bucket   = aws_s3_bucket.this[each.key].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -71,7 +71,7 @@ resource "aws_s3_bucket_policy" "tls" {
       Effect    = "Deny"
       Principal = "*"
       Action    = "s3:*"
-      Resource  = [each.value.arn, "${each.value.arn}/*"]
+      Resource  = [aws_s3_bucket.this[each.key].arn, "${aws_s3_bucket.this[each.key].arn}/*"]
       Condition = { Bool = { "aws:SecureTransport" = "false" } }
     }]
   })
@@ -88,9 +88,9 @@ resource "aws_s3_bucket" "dr" {
 }
 
 resource "aws_s3_bucket_public_access_block" "dr" {
-  for_each                = aws_s3_bucket.dr
+  for_each                = local.locked
   provider                = aws.dr
-  bucket                  = each.value.id
+  bucket                  = aws_s3_bucket.dr[each.key].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -98,18 +98,18 @@ resource "aws_s3_bucket_public_access_block" "dr" {
 }
 
 resource "aws_s3_bucket_versioning" "dr" {
-  for_each = aws_s3_bucket.dr
+  for_each = local.locked
   provider = aws.dr
-  bucket   = each.value.id
+  bucket   = aws_s3_bucket.dr[each.key].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "dr" {
-  for_each = aws_s3_bucket.dr
+  for_each = local.locked
   provider = aws.dr
-  bucket   = each.value.id
+  bucket   = aws_s3_bucket.dr[each.key].id
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
