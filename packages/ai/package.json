@@ -1,9 +1,9 @@
 {
   "name": "@infrabyx/ai",
   "version": "0.0.0",
-  "description": "LLM / EMBEDDING / IMAGE_GEN / SPEECH gateway, model registry, data-class routing, evals",
+  "description": "The AI Gateway: model registry, data-class routing that fails closed, prompt registry, guardrails, metering, kill switches and the LLM, EMBEDDING and IMAGE_GEN gateways (IPB-03)",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,17 +11,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +37,18 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*",
+    "@opentelemetry/api": "1.9.1"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/seed": "workspace:*",
+    "@infrabyx/testing": "workspace:*",
+    "@opentelemetry/sdk-trace-base": "2.12.0"
   }
 }
