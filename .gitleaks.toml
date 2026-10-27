@@ -4,9 +4,16 @@ title = "infrabyx-platform"
 [extend]
 useDefault = true
 
-[allowlist]
+[[allowlists]]
 description = "Spec of record: example payloads in the IPB and Ecosystem spec contain placeholder tokens (e.g. tokenised PAN examples). These files are read-only here and contain no live credentials."
 paths = [
   '''^docs/ipb/.*''',
   '''^docs/ecosystem/.*''',
 ]
+
+[[allowlists]]
+description = "Settings key names in the generated registry (PL5-D-02): a line that is exactly `\"key\": \"<dotted settings key>\",` names a setting (for example a11y.captions.enabled), not a credential. Values are never allowlisted, and settings-tree.yaml itself is scanned in full."
+condition = "AND"
+paths = ['''^packages/config/src/settings/registry\.generated\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*"key": "[a-z][a-z0-9_]*(\.([a-z0-9_]+|\{[a-z_]+\}[a-z0-9_]*))+",$''']

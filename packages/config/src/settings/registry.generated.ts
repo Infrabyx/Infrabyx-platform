@@ -3760,6 +3760,2413 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": false,
     "source": "IPB-03 §03.5"
+  },
+  {
+    "key": "web.site.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.site.default_locale",
+    "tier": "BRAND",
+    "type": "locale",
+    "default": "en-IN",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.site.locales",
+    "tier": "BRAND",
+    "type": "string[]",
+    "default": [
+      "en-IN",
+      "hi-IN"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5",
+    "note": "hi-IN later for the group site (OWN-11)"
+  },
+  {
+    "key": "web.site.timezone",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "Asia/Kolkata",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.seo.indexnow.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5",
+    "note": "the IndexNow adapter stays none until the owner approves the external call (PL5 #49)"
+  },
+  {
+    "key": "web.seo.llms_txt.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.seo.health.schedule_cron",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "0 2 * * *",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.seo.budget.lcp_ms",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 2500,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.seo.budget.cls",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 0.1,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.seo.budget.inp_ms",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 200,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.pricing.public",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "false for the group pack (PL5 plan §5.8)"
+  },
+  {
+    "key": "web.pricing.gst_display",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "exclusive_labelled",
+    "values": [
+      "exclusive_labelled",
+      "inclusive"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "UDF inclusive"
+  },
+  {
+    "key": "web.pricing.contact_sales_threshold",
+    "tier": "BRAND",
+    "type": "json",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.pricing.catalogue_cache_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 300,
+    "max": 300,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5",
+    "note": "false for the group pack and OH (OWN-11)"
+  },
+  {
+    "key": "web.blog.user_posts.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.user_posts.eligible_roles",
+    "tier": "BRAND",
+    "type": "string[]",
+    "default": [
+      "ORG_OWNER",
+      "ORG_ADMIN",
+      "ORG_MEMBER"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.user_posts.min_account_age_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.user_posts.daily_limit",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 3,
+    "max": 3,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.comments.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.blog.feed.full_text",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.vlog.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.vlog.require_captions",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.resources.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.resources.review_due_months",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 12,
+    "max": 12,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.resources.expired_behaviour",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "banner",
+    "values": [
+      "banner",
+      "withdraw"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.investors.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "false for the group site (OWN-11)"
+  },
+  {
+    "key": "web.docs.url",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.status_page.url",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.footer.group_url",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.consent.geo_detect",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.consent.region_default",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "IN",
+    "values": [
+      "IN",
+      "EU",
+      "US-CA",
+      "OTHER"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.consent.reprompt_on_change",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.consent.cookie_ttl_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 365,
+    "max": 365,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "web.consent.honour_gpc",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.review.stale_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 365,
+    "max": 365,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.preview.ttl_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "max": 24,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.publish.legal_review_types",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "legal_page",
+      "pricing_copy",
+      "footer",
+      "redirect",
+      "brand_pack",
+      "investors",
+      "trust"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "may only add"
+  },
+  {
+    "key": "cms.import.max_files",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 200,
+    "max": 200,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.import.max_bytes",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 524288000,
+    "max": 524288000,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.import.zip_ratio_max",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10,
+    "max": 10,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.import.plagiarism_adapter",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "none",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.media.formats",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "avif",
+      "webp",
+      "jpeg"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.media.widths",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": [
+      320,
+      640,
+      960,
+      1280,
+      1920
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.media.max_upload_mb",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 200,
+    "max": 200,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "cms.media.reencode_enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "off until a native image library is approved (PL5 #43)"
+  },
+  {
+    "key": "cms.soft_delete.restore_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "no purge job in PL5 (PL5 #48)"
+  },
+  {
+    "key": "cms.blocks.mermaid.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "cms.blocks.mermaid.max_nodes",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 200,
+    "max": 200,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "cms.blocks.mermaid.require_long_description",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "brand.app_name",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.terminology",
+    "tier": "BRAND",
+    "type": "json",
+    "default": {},
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.contrast.min_text",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 4.5,
+    "min": 4.5,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.contrast.min_ui",
+    "tier": "PLATFORM",
+    "type": "decimal",
+    "default": 3,
+    "min": 3,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.fonts.self_hosted_only",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.email.require_dmarc",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "brand.hosts.unknown_behaviour",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "default_pack_noindex",
+    "values": [
+      "default_pack_noindex",
+      "reject"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "mkt.tag_manager.adapter",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "none",
+    "values": [
+      "none",
+      "gtm_web",
+      "gtm_server"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "none at launch (OWN-09); DPO veto"
+  },
+  {
+    "key": "mkt.tag_manager.container_id",
+    "tier": "BRAND",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "mkt.analytics.adapter",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "none",
+    "values": [
+      "none",
+      "posthog_selfhosted",
+      "matomo",
+      "plausible",
+      "ga4"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "none at launch; self-hosted PostHog later (OWN-09)"
+  },
+  {
+    "key": "mkt.pixels.enabled",
+    "tier": "BRAND",
+    "type": "string[]",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "DPO veto"
+  },
+  {
+    "key": "mkt.sensitive_routes",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "/contact",
+      "/careers/*/apply",
+      "/grievance",
+      "/dpa-request",
+      "/resources/*/download",
+      "/trust/request"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "locked list plus additions; may only add"
+  },
+  {
+    "key": "mkt.attribution.window_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "mkt.forms.retain_payload_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 0,
+    "max": 72,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5",
+    "note": "0: field values are never stored (PL5 #47); IPB-04 allows up to 72"
+  },
+  {
+    "key": "mkt.webhooks",
+    "tier": "BRAND",
+    "type": "json",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "mkt.ab.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "fb.widget.floating",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "OPS_PRODUCT"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5",
+    "note": "false on public sites, true in apps"
+  },
+  {
+    "key": "fb.nps.interval_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 90,
+    "min": 90,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "OPS_PRODUCT"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "fb.screenshot.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "fb.idea_board.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "OPS_PRODUCT"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "tut.public_route_enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-04 §04.5"
+  },
+  {
+    "key": "hlp.motion.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "hlp.motion.max_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 90,
+    "max": 90,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "hlp.motion.autoplay",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "pol.notice_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.reconsent.terms_class_keys",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "terms",
+      "payment_terms",
+      "ugc_terms"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.reconsent.notice_class_keys",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "privacy",
+      "ai_policy"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.refusal_mode",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "read_only_with_export",
+    "values": [
+      "read_only_with_export"
+    ],
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.full_hindi",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": false,
+    "source": "IPB-05 §05.5",
+    "note": "UDF true; Hindi later for the group site (OWN-11)"
+  },
+  {
+    "key": "pol.gdpr_annex",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.ccpa_annex",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.dpa_clickwrap",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.review_cadence_months.{policy_key}",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 12,
+    "max": 12,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": false,
+    "pattern": "^pol\\.review_cadence_months\\.([a-z0-9_-]+)$",
+    "source": "IPB-05 §05.5",
+    "note": "6 for privacy, cookie, retention and ai_policy"
+  },
+  {
+    "key": "pol.refund.rule",
+    "tier": "PLAN",
+    "type": "enum",
+    "default": "full_within_window",
+    "values": [
+      "prorated",
+      "none_after_window",
+      "full_within_window"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.refund.window_days",
+    "tier": "PLAN",
+    "type": "int",
+    "default": 7,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.refund.timeline_days_min",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 5,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.refund.timeline_days_max",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 7,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.trial.auto_convert",
+    "tier": "PLAN",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.billing.renewal_notice_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 7,
+    "min": 7,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.billing.dunning_days",
+    "tier": "BRAND",
+    "type": "json",
+    "default": [
+      3,
+      7,
+      14
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "OPS_BILLING_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.billing.grace_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 14,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "OPS_BILLING_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.grievance.ack_hours",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 48,
+    "max": 48,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_GRIEVANCE_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.grievance.resolve_days",
+    "tier": "BRAND",
+    "type": "int",
+    "default": 30,
+    "max": 30,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_GRIEVANCE_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.grievance.intermediary_ack_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.grievance.intermediary_resolve_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 15,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.dpa.exit_assistance_days",
+    "tier": "PLAN",
+    "type": "int",
+    "default": 90,
+    "min": 90,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.dpa.subprocessor_notice_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.vdp.bounty",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "none",
+    "values": [
+      "none",
+      "discretionary",
+      "programme_url"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.vdp.disclosure_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.ugc.licence",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "non_exclusive_perpetual",
+    "values": [
+      "non_exclusive_perpetual",
+      "non_exclusive_term"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.resources.default_licence",
+    "tier": "BRAND",
+    "type": "enum",
+    "default": "personal_internal",
+    "values": [
+      "personal_internal",
+      "cc_by_nd",
+      "custom"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": false,
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.dispute.odr_mandatory",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "pol.dispute.arbitration",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5",
+    "note": "B2B true; consumer packs false"
+  },
+  {
+    "key": "pol.liability_cap_formula",
+    "tier": "PLAN",
+    "type": "string",
+    "default": "fees_12_months",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-05 §05.5"
+  },
+  {
+    "key": "a11y.display.theme",
+    "tier": "USER",
+    "type": "enum",
+    "default": "system",
+    "values": [
+      "system",
+      "light",
+      "dark",
+      "hc_light",
+      "hc_dark"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.text.scale",
+    "tier": "USER",
+    "type": "int",
+    "default": 100,
+    "min": 100,
+    "max": 200,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.text.font",
+    "tier": "USER",
+    "type": "enum",
+    "default": "default",
+    "values": [
+      "default",
+      "lexend",
+      "opendyslexic"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.text.line_spacing",
+    "tier": "USER",
+    "type": "enum",
+    "default": "normal",
+    "values": [
+      "normal",
+      "relaxed",
+      "loose"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.focus.enhanced",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.cursor.large",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.tts.enabled",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.tts.rate",
+    "tier": "USER",
+    "type": "decimal",
+    "default": 1,
+    "min": 0.5,
+    "max": 2,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.tts.voice",
+    "tier": "USER",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.charts.sonification",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.captions.enabled",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.captions.language",
+    "tier": "USER",
+    "type": "locale",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.captions.style",
+    "tier": "USER",
+    "type": "json",
+    "default": {
+      "size": "medium",
+      "background": "opaque"
+    },
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.alerts.visual",
+    "tier": "USER",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.alerts.haptic",
+    "tier": "USER",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.alerts.sound",
+    "tier": "USER",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.isl.preferred",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.motion.reduced",
+    "tier": "USER",
+    "type": "enum",
+    "default": "system",
+    "values": [
+      "system",
+      "on",
+      "off"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.timeouts.multiplier",
+    "tier": "USER",
+    "type": "int",
+    "default": 1,
+    "min": 1,
+    "max": 10,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.keyboard.enabled",
+    "tier": "USER",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.keyboard.single_key_enabled",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.keyboard.remaps",
+    "tier": "USER",
+    "type": "json",
+    "default": {},
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.reading.plain_language",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5",
+    "note": "UDF borrower true"
+  },
+  {
+    "key": "a11y.reading.easy_read",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5",
+    "note": "UDF borrower true"
+  },
+  {
+    "key": "a11y.ui.simple_mode",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.forms.confirm_leave",
+    "tier": "USER",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.locale.native_numerals",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.voice.guidance",
+    "tier": "USER",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "self"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5",
+    "note": "UDF borrower true"
+  },
+  {
+    "key": "a11y.isl.lead_time_hours",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 48,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.isl.roster_source",
+    "tier": "TENANT",
+    "type": "enum",
+    "default": "internal",
+    "values": [
+      "internal",
+      "external"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.live_captions.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "mcDeactivate": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.live_captions.adapter",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5",
+    "note": "India-resident adapter; none until approved"
+  },
+  {
+    "key": "a11y.gov_facing",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.feedback.ack_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "max": 24,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.feedback.workaround_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "max": 5,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.feedback.fix_days",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": {
+      "p1": 30,
+      "other": 90
+    },
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.ci.lighthouse_min",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 95,
+    "min": 95,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5",
+    "note": "may not be lowered below 95"
+  },
+  {
+    "key": "a11y.ci.axe_tags",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag22aa"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.statement.auto_publish",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.statement.reviewer_role",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "PLT_LEGAL_REVIEWER",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.locales.required",
+    "tier": "BRAND",
+    "type": "string[]",
+    "default": [
+      "en",
+      "hi"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.at_matrix",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": [
+      "NVDA+Firefox",
+      "NVDA+Chrome",
+      "JAWS+Chrome",
+      "VoiceOver+Safari",
+      "TalkBack+Chrome"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "a11y.artefacts.alt_required",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "a11y.artefacts.captions_required",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "tut.isl.required_tutorials",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": "R2",
+    "source": "IPB-06 §06.5"
+  },
+  {
+    "key": "trust.sor.product",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "OH",
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.gating.nda_version",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.download.url_ttl_s",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 300,
+    "max": 300,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.mirror.stale_minutes",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 60,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.mirror.fallback_enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.retention.years",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10,
+    "min": 8,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5",
+    "note": "no purge job in PL5 (PL5 #48)"
+  },
+  {
+    "key": "trust.claims.enforce",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.trust_centre.enabled",
+    "tier": "BRAND",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "mcDeactivate": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.trust_centre.sections",
+    "tier": "BRAND",
+    "type": "json",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_CONTENT_EDITOR"
+    ],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.subprocessors.notice_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_DPO"
+    ],
+    "mc": "R2",
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.tenant.view_roles",
+    "tier": "TENANT",
+    "type": "string[]",
+    "default": [
+      "ORG_OWNER",
+      "ORG_ADMIN",
+      "ORG_AUDITOR_RO"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "trust.financials.gating",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "per_tenant",
+    "locked": true,
+    "userOverride": false,
+    "change": [],
+    "mc": false,
+    "source": "IPB-08 §08.5"
+  },
+  {
+    "key": "res.review.claims_required_for_public",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": true,
+    "locked": false,
+    "tighten": true,
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "res.review.legal_required_kinds",
+    "tier": "PLATFORM",
+    "type": "string[]",
+    "default": [
+      "deck_pricing",
+      "deck_investor",
+      "comparative"
+    ],
+    "locked": false,
+    "tighten": "superset",
+    "userOverride": false,
+    "change": [
+      "PLT_LEGAL_REVIEWER"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "res.export.formats_allowed",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": {
+      "doc": [
+        "md",
+        "pdf",
+        "docx"
+      ],
+      "deck": [
+        "pptx",
+        "pdf",
+        "png"
+      ],
+      "design": [
+        "png",
+        "svg",
+        "pdf"
+      ],
+      "diagram": [
+        "mmd",
+        "svg",
+        "png"
+      ],
+      "motion": [
+        "webm",
+        "mp4",
+        "vtt",
+        "png"
+      ]
+    },
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": "R2",
+    "source": "IPB-13 §13.5"
+  },
+  {
+    "key": "eco.v12.emit_enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R2",
+    "source": "Ecosystem §6.1 (A) rule; PL5 plan §3.6",
+    "note": "off until every product owner records v1.2 approval (PL5 #46)"
   }
 ];
 
@@ -3973,6 +6380,170 @@ export type SettingValueMap = {
   "vidhi.qa.recall_floor": number;
   "vidhi.a11y.plain_language": boolean;
   "vidhi.feedback.enabled": boolean;
+  "web.site.enabled": boolean;
+  "web.site.default_locale": string;
+  "web.site.locales": string[];
+  "web.site.timezone": string;
+  "web.seo.indexnow.enabled": boolean;
+  "web.seo.llms_txt.enabled": boolean;
+  "web.seo.health.schedule_cron": string;
+  "web.seo.budget.lcp_ms": number;
+  "web.seo.budget.cls": number;
+  "web.seo.budget.inp_ms": number;
+  "web.pricing.public": boolean;
+  "web.pricing.gst_display": "exclusive_labelled" | "inclusive";
+  "web.pricing.contact_sales_threshold": JsonValue | null;
+  "web.pricing.catalogue_cache_seconds": number;
+  "web.blog.enabled": boolean;
+  "web.blog.user_posts.enabled": boolean;
+  "web.blog.user_posts.eligible_roles": string[];
+  "web.blog.user_posts.min_account_age_days": number;
+  "web.blog.user_posts.daily_limit": number;
+  "web.blog.comments.enabled": boolean;
+  "web.blog.feed.full_text": boolean;
+  "web.vlog.enabled": boolean;
+  "web.vlog.require_captions": boolean;
+  "web.resources.enabled": boolean;
+  "web.resources.review_due_months": number;
+  "web.resources.expired_behaviour": "banner" | "withdraw";
+  "web.investors.enabled": boolean;
+  "web.docs.url": string | null;
+  "web.status_page.url": string | null;
+  "web.footer.group_url": string | null;
+  "web.consent.geo_detect": boolean;
+  "web.consent.region_default": "IN" | "EU" | "US-CA" | "OTHER";
+  "web.consent.reprompt_on_change": boolean;
+  "web.consent.cookie_ttl_days": number;
+  "web.consent.honour_gpc": boolean;
+  "cms.review.stale_days": number;
+  "cms.preview.ttl_hours": number;
+  "cms.publish.legal_review_types": string[];
+  "cms.import.max_files": number;
+  "cms.import.max_bytes": number;
+  "cms.import.zip_ratio_max": number;
+  "cms.import.plagiarism_adapter": string;
+  "cms.media.formats": string[];
+  "cms.media.widths": JsonValue;
+  "cms.media.max_upload_mb": number;
+  "cms.media.reencode_enabled": boolean;
+  "cms.soft_delete.restore_days": number;
+  "cms.blocks.mermaid.enabled": boolean;
+  "cms.blocks.mermaid.max_nodes": number;
+  "cms.blocks.mermaid.require_long_description": boolean;
+  "brand.app_name": string | null;
+  "brand.terminology": JsonValue;
+  "brand.contrast.min_text": number;
+  "brand.contrast.min_ui": number;
+  "brand.fonts.self_hosted_only": boolean;
+  "brand.email.require_dmarc": boolean;
+  "brand.hosts.unknown_behaviour": "default_pack_noindex" | "reject";
+  "mkt.tag_manager.adapter": "none" | "gtm_web" | "gtm_server";
+  "mkt.tag_manager.container_id": string | null;
+  "mkt.analytics.adapter": "none" | "posthog_selfhosted" | "matomo" | "plausible" | "ga4";
+  "mkt.pixels.enabled": string[];
+  "mkt.sensitive_routes": string[];
+  "mkt.attribution.window_days": number;
+  "mkt.forms.retain_payload_hours": number;
+  "mkt.webhooks": JsonValue;
+  "mkt.ab.enabled": boolean;
+  "fb.widget.floating": boolean;
+  "fb.nps.interval_days": number;
+  "fb.screenshot.enabled": boolean;
+  "fb.idea_board.enabled": boolean;
+  "tut.public_route_enabled": boolean;
+  "hlp.motion.enabled": boolean;
+  "hlp.motion.max_seconds": number;
+  "hlp.motion.autoplay": boolean;
+  "pol.notice_days": number;
+  "pol.reconsent.terms_class_keys": string[];
+  "pol.reconsent.notice_class_keys": string[];
+  "pol.refusal_mode": "read_only_with_export";
+  "pol.full_hindi": boolean;
+  "pol.gdpr_annex": boolean;
+  "pol.ccpa_annex": boolean;
+  "pol.dpa_clickwrap": boolean;
+  "pol.refund.rule": "prorated" | "none_after_window" | "full_within_window";
+  "pol.refund.window_days": number;
+  "pol.refund.timeline_days_min": number;
+  "pol.refund.timeline_days_max": number;
+  "pol.trial.auto_convert": boolean;
+  "pol.billing.renewal_notice_days": number;
+  "pol.billing.dunning_days": JsonValue;
+  "pol.billing.grace_days": number;
+  "pol.grievance.ack_hours": number;
+  "pol.grievance.resolve_days": number;
+  "pol.grievance.intermediary_ack_hours": number;
+  "pol.grievance.intermediary_resolve_days": number;
+  "pol.dpa.exit_assistance_days": number;
+  "pol.dpa.subprocessor_notice_days": number;
+  "pol.vdp.bounty": "none" | "discretionary" | "programme_url";
+  "pol.vdp.disclosure_days": number;
+  "pol.ugc.licence": "non_exclusive_perpetual" | "non_exclusive_term";
+  "pol.resources.default_licence": "personal_internal" | "cc_by_nd" | "custom";
+  "pol.dispute.odr_mandatory": boolean;
+  "pol.dispute.arbitration": boolean;
+  "pol.liability_cap_formula": string;
+  "a11y.display.theme": "system" | "light" | "dark" | "hc_light" | "hc_dark";
+  "a11y.text.scale": number;
+  "a11y.text.font": "default" | "lexend" | "opendyslexic";
+  "a11y.text.line_spacing": "normal" | "relaxed" | "loose";
+  "a11y.focus.enhanced": boolean;
+  "a11y.cursor.large": boolean;
+  "a11y.tts.enabled": boolean;
+  "a11y.tts.rate": number;
+  "a11y.tts.voice": string | null;
+  "a11y.charts.sonification": boolean;
+  "a11y.captions.enabled": boolean;
+  "a11y.captions.language": string | null;
+  "a11y.captions.style": JsonValue;
+  "a11y.alerts.visual": boolean;
+  "a11y.alerts.haptic": boolean;
+  "a11y.alerts.sound": boolean;
+  "a11y.isl.preferred": boolean;
+  "a11y.motion.reduced": "system" | "on" | "off";
+  "a11y.timeouts.multiplier": number;
+  "a11y.keyboard.enabled": boolean;
+  "a11y.keyboard.single_key_enabled": boolean;
+  "a11y.keyboard.remaps": JsonValue;
+  "a11y.reading.plain_language": boolean;
+  "a11y.reading.easy_read": boolean;
+  "a11y.ui.simple_mode": boolean;
+  "a11y.forms.confirm_leave": boolean;
+  "a11y.locale.native_numerals": boolean;
+  "a11y.voice.guidance": boolean;
+  "a11y.isl.lead_time_hours": number;
+  "a11y.isl.roster_source": "internal" | "external";
+  "a11y.live_captions.enabled": boolean;
+  "a11y.live_captions.adapter": string | null;
+  "a11y.gov_facing": boolean;
+  "a11y.feedback.ack_hours": number;
+  "a11y.feedback.workaround_days": number;
+  "a11y.feedback.fix_days": JsonValue;
+  "a11y.ci.lighthouse_min": number;
+  "a11y.ci.axe_tags": string[];
+  "a11y.statement.auto_publish": boolean;
+  "a11y.statement.reviewer_role": string;
+  "a11y.locales.required": string[];
+  "a11y.at_matrix": JsonValue;
+  "a11y.artefacts.alt_required": boolean;
+  "a11y.artefacts.captions_required": boolean;
+  "tut.isl.required_tutorials": string[];
+  "trust.sor.product": string;
+  "trust.gating.nda_version": string | null;
+  "trust.download.url_ttl_s": number;
+  "trust.mirror.stale_minutes": number;
+  "trust.mirror.fallback_enabled": boolean;
+  "trust.retention.years": number;
+  "trust.claims.enforce": boolean;
+  "trust.trust_centre.enabled": boolean;
+  "trust.trust_centre.sections": JsonValue | null;
+  "trust.subprocessors.notice_days": number;
+  "trust.tenant.view_roles": string[];
+  "trust.financials.gating": string;
+  "res.review.claims_required_for_public": boolean;
+  "res.review.legal_required_kinds": string[];
+  "res.export.formats_allowed": JsonValue;
+  "eco.v12.emit_enabled": boolean;
 } & {
   [k: `int.${string}.primary`]: string | null;
   [k: `int.${string}.secondary`]: string | null;
@@ -4001,6 +6572,7 @@ export type SettingValueMap = {
   [k: `vidhi.skill.${string}.enabled`]: boolean | null;
   [k: `vidhi.skill.${string}.autonomy_level`]: "L0" | "L1" | "L2" | "L3" | "L4";
   [k: `vidhi.sched.templates.${string}.enabled`]: boolean;
+  [k: `pol.review_cadence_months.${string}`]: number;
 };
 
 /** Every key code may read. An unregistered key fails typecheck (IPB-01 §01.5, @IPB-07-AT-05). */

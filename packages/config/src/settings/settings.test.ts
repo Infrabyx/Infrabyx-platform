@@ -324,17 +324,20 @@ describe("kill switches: activate at once, deactivate through a checker (IPB-03-
     expect((await store.read(null, "ai.kill.tenant", [target]))[0]?.value).toBe(true);
   });
 
-  it("marks only the kill-switch keys with mcDeactivate", () => {
+  it("marks the kill switches and the PL5 switch-off-needs-a-checker keys with mcDeactivate", () => {
     const keys = defaultRegistry
       .all()
       .filter((d) => d.mcDeactivate)
       .map((d) => d.key)
       .sort();
     expect(keys).toEqual([
+      // IPB-06 §06.5 and IPB-08 §08.5: switching these off needs a checker (PL5 plan §8).
+      "a11y.live_captions.enabled",
       "ai.kill.adapter.{key}",
       "ai.kill.all",
       "ai.kill.feature.{key}",
       "ai.kill.tenant",
+      "trust.trust_centre.enabled",
     ]);
   });
 });
@@ -354,5 +357,30 @@ describe("Vidhi QA floor keys are tighten-only (OWNER-QUESTIONS #40, PL4-D-13)",
     expect(tightenError(def("vidhi.qa.min_reviews"), 40, 20)).toMatch(/raised/);
     expect(tightenError(def("vidhi.qa.precision_floor"), 0.8, 0.9)).toBeNull();
     expect(tightenError(def("vidhi.qa.recall_floor"), 0.9, 0.85)).toMatch(/raised/);
+  });
+});
+
+describe("PL5 website keys (PL5 plan §8)", () => {
+  const def = (key: string) => defaultRegistry.require(key);
+  it("registers the owner's launch defaults: no tag manager, no analytics, no stored form payloads", () => {
+    expect(def("mkt.tag_manager.adapter").default).toBe("none");
+    expect(def("mkt.analytics.adapter").default).toBe("none");
+    expect(def("mkt.forms.retain_payload_hours").default).toBe(0);
+    expect(def("eco.v12.emit_enabled").default).toBe(false);
+    expect(def("web.investors.enabled").default).toBe(false);
+  });
+  it("locks GPC, self-hosted fonts and the Claims Register on", () => {
+    for (const k of [
+      "web.consent.honour_gpc",
+      "brand.fonts.self_hosted_only",
+      "trust.claims.enforce",
+    ])
+      expect(def(k)).toMatchObject({ locked: true, default: true });
+  });
+  it("never lets a lower tier loosen contrast, the Lighthouse floor or the consent cookie lifetime", () => {
+    expect(tightenError(def("brand.contrast.min_text"), 4.5, 4)).toMatch(/raised/);
+    expect(tightenError(def("a11y.ci.lighthouse_min"), 95, 90)).toMatch(/raised/);
+    expect(tightenError(def("web.consent.cookie_ttl_days"), 365, 400)).toMatch(/lowered/);
+    expect(tightenError(def("mkt.sensitive_routes"), ["/contact"], [])).toMatch(/add/);
   });
 });
