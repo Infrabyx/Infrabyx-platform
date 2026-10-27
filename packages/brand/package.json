@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/brand",
   "version": "0.0.0",
-  "description": "Brand packs, Brand Studio, host map, display name, contrast guard",
+  "description": "Brand packs, Brand Studio with maker-checker publish and rollback, contrast guard, SVG sanitiser, favicon set, host map and terminology (IPB-04 §04.3.2)",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -11,17 +11,20 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +37,19 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*",
+    "@infrabyx/ui": "workspace:*",
+    "@xmldom/xmldom": "0.9.12",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/seed": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }
