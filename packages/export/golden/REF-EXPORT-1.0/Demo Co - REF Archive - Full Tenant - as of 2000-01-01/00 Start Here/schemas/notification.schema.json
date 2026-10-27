@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.0:notification",
+  "title": "notification",
+  "description": "Rows of notify.notification exported under REF-EXPORT-1.0",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "class_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "deep_link": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "locale": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "class_id",
+    "deep_link",
+    "created_at"
+  ],
+  "additionalProperties": false
+}

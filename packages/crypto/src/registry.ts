@@ -54,7 +54,11 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     primitive: "signature",
     parameterSet: "P-256",
     oid: "1.2.840.10045.4.3.2",
-    usedFor: ["audit anchor signatures (C-03)", "JWT ES256 verification (C-11)"],
+    usedFor: [
+      "audit anchor signatures (C-03)",
+      "JWT ES256 verification (C-11)",
+      "export manifest and ExportCompleted detached JWS through KMS sign (C-22)",
+    ],
   },
   {
     id: "rsassa-pss-sha256",

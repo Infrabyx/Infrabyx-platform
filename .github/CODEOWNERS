@@ -3,3 +3,6 @@
 /packages/tenancy/ @infrabyx/platform-owners
 /packages/audit/ @infrabyx/platform-owners
 /.github/ @infrabyx/platform-owners
+# Export maps and the golden archive: the export:unchanged attestation is reviewed by PLT_RELEASE_MANAGER (IPB-09-34)
+/packages/export/maps/ @infrabyx/platform-owners
+/packages/export/golden/ @infrabyx/platform-owners

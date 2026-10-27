@@ -211,6 +211,17 @@ Types, schemas and error codes only; no I/O.
 - **I:** cross-tenant reads by the dispatcher and the unsubscribe link. Control: the service readers `SVC_NOTIFY_DISPATCH` (delivery-queue columns) and `SVC_NOTIFY_UNSUBSCRIBE` (token lookup by hash); every delivery runs in its own tenant's context (owner answer #22, see 3.16).
 - **E:** collection or recovery messages outside permitted hours. Control: collection classes go only inside the contact window (the complement of the 21:00–08:00 quiet hours in the recipient's zone, from the product's time-zone hook, default Asia/Kolkata), never bypassed; a product may narrow the window and a wider one is refused, so the send fails closed (owner answer #23).
 
+### 3.17 `@infrabyx/export` and C-22 (built, PL3 session 5)
+
+- **I:** one tenant's data in another tenant's archive. Control: the snapshot runs in the requesting tenant's context with forced RLS and an explicit `tenant_id` filter; archives, jobs and downloads are RLS-scoped; storage keys carry the tenant id and the adapters refuse cross-tenant keys.
+- **I:** data that must never leave. Control: map fields that are SECRET, binary, sealed (`*_enc`) or named like Aadhaar or card data are refused (`IPB-EXP-004`); restricted folders are refused (`IPB-EXP-001`); approval payloads and notification variables are not in `REF-EXPORT-1.0`; file and folder names carry ids only, plus the tenant name in the root folder; job and event payloads describe the job, never its content.
+- **T:** an archive changed after export, or a forged one. Control: every file has a SHA-256 in `manifest.json`, which carries a pack hash and is signed with a detached ES256 JWS made by KMS `sign` with the platform export-signing key (C-22); the shipped offline verifier checks hashes, unlisted files, the signature, control totals, CSV headers and the audit chain; the `export.archive` row is insert-only, and each download ledgers `<archive id>:<sha256>`.
+- **T:** an archive that silently disagrees with the live system. Control: one REPEATABLE READ snapshot, recounted per table before signing; a difference fails the job (`IPB-EXP-003`).
+- **D:** export abuse as a load or exfiltration path. Control: 5 concurrent and 20 a day per principal (`IPB-SEC-019`); only user principals with `ORG_OWNER` (or roles a product adds) may request or download, never agents; presigned URLs last at most 300 s.
+- **E:** a new destination used to exfiltrate. Control: only download exists; any other destination is refused (`IPB-EXP-002`) until it is built as the delay-window action of IPB-07-27(c).
+- **S/R:** downloads that cannot be traced. Control: ledgered request, start, archive creation and each download; the signed `ExportCompleted` JWS is kept with the archive.
+- **Residual:** the export-signing key is a single platform key per environment, so its compromise affects every tenant's future archives; it never leaves KMS and is used only for C-22 (R3-06).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

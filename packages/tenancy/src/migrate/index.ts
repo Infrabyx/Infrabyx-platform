@@ -24,6 +24,7 @@ export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/rules",
   "@infrabyx/workflow",
   "@infrabyx/notify",
+  "@infrabyx/export",
 ] as const;
 
 export interface MigrationSource {

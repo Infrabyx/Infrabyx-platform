@@ -27,7 +27,7 @@
     "licence:check": "node scripts/licence-check.mjs",
     "pr:checklist": "node scripts/pr-checklist.mjs",
     "test:int": "turbo run test:int",
-    "migration:lint": "node packages/testing/dist/migration-lint/cli.js packages/tenancy/migrations packages/audit/migrations packages/config/migrations packages/seed/migrations packages/connectors/migrations packages/rules/migrations packages/workflow/migrations packages/notify/migrations",
+    "migration:lint": "node packages/testing/dist/migration-lint/cli.js packages/tenancy/migrations packages/audit/migrations packages/config/migrations packages/seed/migrations packages/connectors/migrations packages/rules/migrations packages/workflow/migrations packages/notify/migrations packages/export/migrations",
     "at:report": "node packages/testing/dist/at-report/cli.js --root packages --spec docs/ipb",
     "env:example:check": "node packages/config/dist/env/cli.js example --schema packages/seed/dist/cli.js --export seedEnvSchema --out packages/seed/.env.example --check",
     "registry:check": "pnpm --filter @infrabyx/config check:registry",

@@ -1,9 +1,9 @@
 {
   "name": "@infrabyx/export",
   "version": "0.0.0",
-  "description": "<PRODUCT>-EXPORT-1.0 export map and golden-archive gate",
+  "description": "Tenant exports to the Ecosystem archive standard: export maps, signed archives, jobs and ledgered downloads, export-map-gate and golden-archive-diff",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,17 +11,24 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json",
+    "./maps/*": "./maps/*"
   },
   "files": [
     "dist",
+    "migrations",
+    "maps",
+    "verify",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests",
+    "test:golden": "INFRABYX_TEST_INT=1 vitest run src/__tests__/golden.int.test.ts"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +41,18 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "bin": {
+    "infrabyx-export": "./dist/cli.js"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/seed": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }
