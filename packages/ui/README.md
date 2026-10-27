@@ -1,7 +1,19 @@
 # @infrabyx/ui
 
-Shared React components, per-product design tokens, a11y primitives.
+Server-rendered React components, design tokens per product and theme, and Indian-locale formatters (IPB-06, IPB-07).
 
-**Specified by:** `docs/ipb/` — IPB-06, IPB-07. This package implements the requirements of that file; its acceptance tests are the `@IPB-..-AT-..` scenarios there.
+**Specified by:** `docs/ipb/` IPB-06 and IPB-07 (§07.4.1 tokens, §07.4.4 help popovers), with IPB-04 §04.4.5 for the website shell. Its acceptance tests are the `@IPB-..-AT-..` scenarios tagged in `src`.
 
-**Status:** scaffold only (phase per `docs/ipb/IPB-14_Platform_Build_Runbook.md` §14.3).
+**Status:** PL5 session 2. The package stays private until the PL5 gate (`docs/phases/PL5-plan.md` §4).
+
+## Entry points
+
+| Import                              | What it holds                                                                                                                                                                                                                                            |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@infrabyx/ui`                      | Components: `AppShell`, `SkipLinks`, `Header` (at most seven items), `Breadcrumb`, `Footer`, `Field`, `CheckboxField`, `ErrorSummary`, `ErrorMessage`, `Button`, `HelpButton`, `LiveRegion`, `Notice`, `AiLabel`, `DataTable`, `BarChart`, `ClickToLoad` |
+| `@infrabyx/ui/tokens`               | `buildTheme(product, theme)`, `themeCss(product)`, `contrastRatio`, `meetsContrast`, `nearestCompliant`, `onColour`                                                                                                                                      |
+| `@infrabyx/ui/i18n`                 | `messages(locale)` with en-IN and hi-IN, `formatAmountInr(minor)`, `amountInWords`, `formatDate`                                                                                                                                                         |
+| `@infrabyx/ui/styles.css`           | Component styles (no inline styles anywhere, so the CSP needs no `unsafe-inline`)                                                                                                                                                                        |
+| `@infrabyx/ui/tokens/<product>.css` | Token custom properties for `ld`, `ldc`, `eq`, `fbx`, `udf`, `oh` or `grp` in all four themes                                                                                                                                                            |
+
+Themes follow the OS (`prefers-color-scheme`, `prefers-contrast`) until the person chooses; then `data-theme` on the root element wins. `data-focus="enhanced"` widens the focus ring and `data-motion="reduced"` stops transitions. Amounts are integer paise and are never floating point.
