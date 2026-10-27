@@ -1,18 +1,24 @@
 // LLM contract legs (PL4 plan §5, §15). Hermetic: Bedrock Runtime, Vertex AI and vLLM stubs. The
 // sandbox legs need the owner's provider accounts and an approved paid run (owner decision O-6):
 // they are not defined until then, so nothing here can reach a provider.
+import { createServer } from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   defineContractSuite,
   llmContractCases,
   startBedrockStub,
+  startFcmStub,
   startVertexStub,
   startVllmStub,
   stubCredential,
   type AiStub,
 } from "@infrabyx/testing";
 import { BedrockClaudeLlm, bedrockObservedRegion } from "../bedrock_claude_in.js";
-import { VertexGeminiLlm, vertexObservedRegion } from "../gemini_vertex_asia_south1.js";
+import {
+  VertexGeminiLlm,
+  vertexObservedRegion,
+  vertexServiceAccountToken,
+} from "../gemini_vertex_asia_south1.js";
 import { VllmLlm } from "../self_hosted_vllm.js";
 
 let bedrock: AiStub;
@@ -151,6 +157,58 @@ describe("gemini_vertex_asia_south1 specifics", () => {
       contents: [{ role: "user" }, { role: "model" }, { role: "user" }],
       generationConfig: { maxOutputTokens: 9, temperature: 0 },
     });
+  });
+
+  it("C-24 for Vertex (PL4-C-01): a service-account key gives a cloud-platform token, cached", async () => {
+    // A fresh RSA key from the FCM stub's generator; this test's token endpoint checks the grant
+    // and the scope and returns the token the Vertex stub accepts.
+    const keys = await startFcmStub();
+    await keys.close();
+    const scopes: string[] = [];
+    const server = createServer((rq, rs) => {
+      let body = "";
+      rq.on("data", (c: Buffer) => (body += c.toString()));
+      rq.on("end", () => {
+        const f = new URLSearchParams(body);
+        const claims = JSON.parse(
+          Buffer.from((f.get("assertion") ?? "").split(".")[1] ?? "", "base64url").toString("utf8"),
+        ) as { scope: string; iss: string };
+        scopes.push(claims.scope);
+        const ok =
+          f.get("grant_type") === "urn:ietf:params:oauth:grant-type:jwt-bearer" &&
+          claims.iss === "ai@infrabyx-test.iam.example";
+        rs.writeHead(ok ? 200 : 400, { "content-type": "application/json" });
+        rs.end(JSON.stringify(ok ? { access_token: token, expires_in: 3599 } : {}));
+      });
+    });
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as { port: number }).port;
+    try {
+      const a = new VertexGeminiLlm({
+        project: "infrabyx-test",
+        accessToken: vertexServiceAccountToken({
+          clientEmail: "ai@infrabyx-test.iam.example",
+          privateKey: () => keys.privateKeyPem,
+          tokenUrl: `http://127.0.0.1:${port}/token`,
+          allowLoopbackHttp: true,
+        }),
+        baseUrl: vertex.url,
+        allowLoopbackHttp: true,
+      });
+      const call = () =>
+        a.chat({
+          model: "gemini-contract",
+          system: "",
+          messages: [{ role: "user", content: "x" }],
+          maxOutputTokens: 4,
+          timeoutMs: 2000,
+        });
+      await Promise.all([call(), call()]);
+      await call();
+      expect(scopes).toEqual(["https://www.googleapis.com/auth/cloud-platform"]);
+    } finally {
+      server.close();
+    }
   });
 
   it("an access-token failure is refused, not retried", async () => {

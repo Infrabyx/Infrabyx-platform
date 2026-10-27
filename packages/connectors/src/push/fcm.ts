@@ -19,7 +19,8 @@ import type {
   PushSendResult,
   PushTokenStore,
 } from "@infrabyx/contracts/ports";
-import { GOOGLE_TOKEN_URL, signServiceAccountAssertion } from "@infrabyx/crypto";
+import { FCM_SCOPE } from "@infrabyx/crypto";
+import { googleServiceAccountToken } from "../core/google-token.js";
 import { createEgress } from "../core/http.js";
 import { vendorError } from "../messaging/common.js";
 import { guardPush, unsupported } from "./common.js";
@@ -50,14 +51,13 @@ export interface FcmPushOptions {
 }
 
 const BASE = "https://fcm.googleapis.com";
-const REFRESH_EARLY_MS = 5 * 60_000;
 const TOPIC = /^[a-zA-Z0-9-_.~%]{1,900}$/;
 
 export class FcmPush implements PushPort {
   readonly descriptor: AdapterDescriptor;
   private readonly egress;
   private readonly base: string;
-  private cached: { token: string; expiresAt: number } | null = null;
+  private readonly token: () => Promise<string>;
 
   constructor(private readonly o: FcmPushOptions) {
     if (!/^[a-z][a-z0-9-]{4,29}$/.test(o.projectId)) throw new Error("invalid FCM project id");
@@ -77,6 +77,21 @@ export class FcmPush implements PushPort {
       retries: 1,
       ...(o.allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
     });
+    const c = o.credentials;
+    this.token =
+      c.kind === "access_token"
+        ? async () => c.accessToken()
+        : googleServiceAccountToken({
+            port: "PUSH",
+            adapter: "fcm",
+            clientEmail: c.clientEmail,
+            privateKey: c.privateKey,
+            ...(c.privateKeyId ? { privateKeyId: c.privateKeyId } : {}),
+            scope: FCM_SCOPE,
+            ...(o.tokenUrl ? { tokenUrl: o.tokenUrl } : {}),
+            ...(o.allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
+            ...(o.now ? { now: o.now } : {}),
+          });
   }
 
   async register(
@@ -179,31 +194,8 @@ export class FcmPush implements PushPort {
   }
 
   /** The OAuth access token, cached until 5 minutes before expiry (PL3-C-01). */
-  private async accessToken(): Promise<string> {
-    const now = this.o.now?.() ?? Date.now();
-    if (this.cached && now < this.cached.expiresAt - REFRESH_EARLY_MS) return this.cached.token;
-    const c = this.o.credentials;
-    if (c.kind === "access_token") return c.accessToken();
-    const assertion = signServiceAccountAssertion({
-      clientEmail: c.clientEmail,
-      privateKeyPem: await c.privateKey(),
-      ...(c.privateKeyId ? { privateKeyId: c.privateKeyId } : {}),
-      now: Math.floor(now / 1000),
-    });
-    const res = await this.egress(this.o.tokenUrl ?? GOOGLE_TOKEN_URL, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-        assertion,
-      }).toString(),
-    });
-    if (res.status !== 200) throw vendorError("PUSH", "fcm", res.status, "Google token endpoint");
-    const t = res.json() as { access_token?: string; expires_in?: number };
-    if (!t.access_token)
-      throw vendorError("PUSH", "fcm", 502, "Google token endpoint gave no token");
-    this.cached = { token: t.access_token, expiresAt: now + (t.expires_in ?? 3600) * 1000 };
-    return t.access_token;
+  private accessToken(): Promise<string> {
+    return this.token();
   }
 }
 

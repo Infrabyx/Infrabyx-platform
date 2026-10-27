@@ -2,8 +2,10 @@
 // PL2-D-06): Gemini on Vertex AI in asia-south1 (Mumbai), plain HTTPS to the Vertex REST API over
 // the egress client; no Google SDK (PL4-D-02).
 // - `:generateContent` for chat and tools; `:predict` for text embeddings.
-// - The bearer token comes from an injected provider (workload identity, or a token the product
-//   mints); C-24 is not extended to Vertex without the owner's approval (OWNER-QUESTIONS #27).
+// - The bearer token comes from an injected provider: `vertexServiceAccountToken` (C-24, approved
+//   for Vertex by the owner, PL4-C-01: a service-account key through SECRETS, the RS256 assertion
+//   signed in `@infrabyx/crypto`, the token cached until 5 minutes before expiry), or keyless
+//   workload identity federation, preferred once the platform runs on a cloud that supports it.
 // - Residency is checked at construction: both the `{location}-aiplatform.googleapis.com` host and
 //   the `locations/{location}` path must be asia-south1 (IPB-03-23).
 // - Streaming is emulated in PL4 (PL4-D-04). Bodies are never logged (IPB-03-10).
@@ -22,6 +24,11 @@ import type {
   StopReason,
   ToolCall,
 } from "@infrabyx/contracts";
+import { VERTEX_SCOPE } from "@infrabyx/crypto";
+import {
+  googleServiceAccountToken,
+  type GoogleServiceAccountTokenOptions,
+} from "../core/google-token.js";
 import { createEgress } from "../core/http.js";
 import {
   aiDescriptor,
@@ -37,6 +44,21 @@ export const VERTEX_LOCATION = "asia-south1";
 
 /** A short-lived OAuth access token for Vertex (scope cloud-platform). */
 export type GoogleAccessToken = () => Promise<string>;
+
+/**
+ * C-24 (PL4-C-01): a Vertex access-token provider from a service-account key read through SECRETS
+ * (`secrets/<env>/ai/vertex/service_account_key`), scope cloud-platform. Never logged.
+ */
+export function vertexServiceAccountToken(
+  o: Omit<GoogleServiceAccountTokenOptions, "port" | "adapter" | "scope">,
+): GoogleAccessToken {
+  return googleServiceAccountToken({
+    ...o,
+    port: "LLM",
+    adapter: VERTEX_ADAPTER_KEY,
+    scope: VERTEX_SCOPE,
+  });
+}
 
 export interface VertexOptions {
   project: string;
