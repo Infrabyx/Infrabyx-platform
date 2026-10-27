@@ -287,12 +287,16 @@ jobs:
           /src/infra/helm/infrabyx-app
       - name: kyverno test
         run: kyverno test infra/policy/kyverno/tests
-      - name: kyverno apply over the rendered chart
+      - name: kyverno apply over the pods the rendered chart creates
+        # Every policy over every pod; the step fails unless rules ran, all passed and none failed.
         run: |
           for values in infra/helm/infrabyx-app/ci/*.yaml; do
             echo "== $values"
-            helm template r infra/helm/infrabyx-app -f "$values" > "$RUNNER_TEMP/render.yaml"
-            kyverno apply infra/policy/kyverno --resource "$RUNNER_TEMP/render.yaml"
+            helm template r infra/helm/infrabyx-app -f "$values" |
+              node infra/helm/infrabyx-app/tests/pods-from-render.mjs > "$RUNNER_TEMP/pods.yaml"
+            kyverno apply infra/policy/kyverno/*.yaml --resource "$RUNNER_TEMP/pods.yaml" |
+              tee "$RUNNER_TEMP/apply.txt"
+            grep -Eq '^pass: [1-9][0-9]*, fail: 0, warn: 0, error: 0' "$RUNNER_TEMP/apply.txt"
           done
   consumer-smoke:
     # Installs the packed tarballs in a clean directory with plain npm and imports every JavaScript
