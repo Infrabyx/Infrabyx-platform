@@ -182,6 +182,37 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 - PL3 session 5: `export` (maps, the archive writer to the Ecosystem §12.1 profile with C-22 signed manifests, jobs, `export-map-gate` and `golden-archive-diff` CI checks, the golden fixture; `@IPB-09-AT-14`, `@IPB-09-AT-15`).
 - Then session 6 (ESIGN `leegality` with C-25 and `digio`) and session 7 (gate and release).
 
+## Handover (2026-10-27, end of the session that built PL3 sessions 2–4)
+
+**Done (merged or in the last PR).**
+
+- #48: owner answers #18–#20 (PL3-C-01 C-24, PL3-C-02 C-25, PL3-D-17 alert escalation) and PL3 session 2 (`rules`, RULES engines, PL3-D-18).
+- #49: PL3 session 3 (`workflow`, `tenancy/0002`, `TemporalTimers`, PL3-D-19).
+- #52: PL3 session 4 (`notify`, PUSH `expo` and `fcm`, C-23 and C-24, PL3-D-20). It merges under PL2-D-19 once CI is green.
+
+**Next: PL3 session 5, `export`** (plan §7):
+
+- `REF-EXPORT-1.0` map, the map registry and `requiredMapBump` from `contracts/export`;
+- the archive writer to the Ecosystem §12.1 profile (CSV, JSON Schema 2020-12, JSONL, SHA-256 per file, README in TXT and Markdown), with the manifest signed as a detached JWS through KMS `sign` (C-22, ES256 DIGEST) and the signed `ExportCompleted`;
+- jobs on STORAGE with a ledgered SHA-256 per download;
+- the `export-map-gate` and `golden-archive-diff` CLIs with CI steps and a committed golden fixture from `tnt_demo` (`@IPB-09-AT-14`, `@IPB-09-AT-15`);
+- restricted folders stay refused (PL3-D-06).
+
+**Then:**
+
+- session 6: ESIGN `leegality` with C-25 (HMAC-SHA1, verification only: constant time, replay window, read-back before any state change) and `digio`, both on stubs and `unproven` with port-contract issues;
+- session 7: the gate report `docs/phases/PL3-gate.md`, then the version PR and release.
+
+**Open questions:** #21 (RULES review assignee, per-decision ledger), #22 (timer and dispatcher platform context with `PLT_AUDITOR_RO`), #23 (NOTIFY fallback, inbound consent before PR-018, time-zone keys). Defaults are in use and nothing is blocked.
+
+**Branch and PR state.** Work is on `claude/nifty-mayer-xmxxq0`. GitHub deletes the branch after each squash merge, so push it again from `main`.
+
+**Local environment.**
+
+- Node 24.22.1 from nodejs.org, checked against `SHASUMS256.txt` and kept in the scratchpad.
+- Docker Hub rate-limits the sandbox. Set `/etc/docker/daemon.json` to `{"registry-mirrors":["https://mirror.gcr.io"]}` and restart `dockerd`; the PostgreSQL 18 and Temporal images (by digest) then pull through the mirror.
+- The `consumer-smoke` check needs npmjs.
+
 ## PL3 session 4 (2026-10-27)
 
 - `@infrabyx/crypto` (minor): C-23 `addressHash` and C-24 `signServiceAccountAssertion` (PL3-C-01).
