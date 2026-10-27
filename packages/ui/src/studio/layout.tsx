@@ -38,7 +38,7 @@ export function StudioPage({
   flash,
   errors = [],
   reveal,
-  sections = STUDIO_SECTIONS.map((s) => s.key),
+  sections,
   children,
 }: {
   base: string;
@@ -49,14 +49,14 @@ export function StudioPage({
   /** A value shown once after the action (a preview link). */
   reveal?: string | undefined;
   /** The sections this app mounts (default: all). */
-  sections?: readonly StudioSection[];
+  sections?: readonly StudioSection[] | undefined;
   children: ReactNode;
 }) {
   return (
     <div className="ibx-studio">
       <nav className="ibx-studio__nav" aria-label="Studio sections">
         <ul>
-          {STUDIO_SECTIONS.filter((s) => sections.includes(s.key)).map((s) => (
+          {STUDIO_SECTIONS.filter((s) => !sections || sections.includes(s.key)).map((s) => (
             <li key={s.key}>
               <a
                 href={studioPath(base, s.key)}

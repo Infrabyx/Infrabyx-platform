@@ -331,3 +331,10 @@ entries:
     review_by: 2027-10-27
     status: published
     visibility: internal
+  - key: hlp.studio.persona
+    term: "Persona"
+    plain: "A test identity with fixed roles, for trying Studio in development and test. Real consoles sign people in with their own accounts."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal

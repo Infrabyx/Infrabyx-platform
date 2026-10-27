@@ -410,6 +410,16 @@ Server-rendered screens and form handlers over the existing Studio services; no 
 - **I (visitor text and consent wording):** the feedback queue holds visitors' words and the consent texts are legal drafts. Control: `FeedbackService.queue` needs PLT_SUPER_ADMIN or PLT_ACCESSIBILITY_LEAD and `ConsentTexts.list` needs PLT_DPO or PLT_LEGAL_REVIEWER, both in the platform context (PL5-D-15); feedback, trust documents and prices are read-only in Studio.
 - **Residual:** the content, brand, redirect, claim, media and policy lists have no role check of their own (PL5-D-14 item 6, #62); a product that mounts Studio without its AUTHZ gate would expose draft content to signed-in users.
 
+### 3.36 `apps/console`, the reference Studio console (built, PL5 session 9; PL5-D-16)
+
+A private Next.js app that mounts the Studio screens; every change goes through the package services and the kernel.
+
+- **S (who is signed in):** the reference sign-in is a fixture persona cookie. Control: `consoleEnv` refuses fixtures outside local, dev, test and preview (exit 78), so in staging and above no persona is accepted and the AUTHZ port is unconfigured (`IPB-PORT-001`): nothing opens until a product wires its IDENTITY sign-in and AUTHZ adapter. The cookie is HttpOnly and SameSite=Strict, Secure over HTTPS.
+- **E (opening a section without the role):** Control: the proxy asks the AUTHZ port before any Studio page or action and answers 403; each page and action route asks again; deny by default for unknown sections and roles; the services still check every role and maker-checker rule (`@IPB-04-AT-03` runs through the forms in CI).
+- **T (forged posts):** Control: every POST route requires the same origin (Origin or Sec-Fetch-Site) and SameSite=Strict cookies; `form-action 'self'` and `frame-ancestors 'none'` in the CSP.
+- **I (caching and indexing):** Control: `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow` on every response; `Referrer-Policy: same-origin`.
+- **Residual:** the fixture role table is the reference policy only; a product's AUTHZ policy decides in production. The console has no rate limit of its own (PL6 edge).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

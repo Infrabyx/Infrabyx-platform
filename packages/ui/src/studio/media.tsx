@@ -46,7 +46,14 @@ export async function MediaScreen<C>(
   const items = await p.media.list(p.ctx, p.missingAlt ? { missingAlt: true } : {});
   const err = (id: string) => errorFor(p.errors, id);
   return (
-    <StudioPage base={p.base} section="media" title="Media" flash={p.flash} errors={p.errors}>
+    <StudioPage
+      sections={p.sections}
+      base={p.base}
+      section="media"
+      title="Media"
+      flash={p.flash}
+      errors={p.errors}
+    >
       <p>
         {p.missingAlt ? (
           <a href={studioPath(p.base, "media")}>Show all media</a>

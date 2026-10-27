@@ -142,6 +142,7 @@ export async function ApprovalsScreen<C>(
   ];
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="approvals"
       title="Approvals"
@@ -182,6 +183,7 @@ export async function PreviewsScreen<C>(
   const packLabel = (id: string) => p.packs.find((k) => k.id === id)?.label ?? id;
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="previews"
       title="Preview links"

@@ -4,6 +4,8 @@
 // own Studio service satisfies them without `ui` importing it; `apps/console` proves that at type
 // check. Role checks, maker-checker and lint stay in the services: a screen only shows and posts.
 
+import type { StudioSection } from "./layout.js";
+
 /** A form's action: a URL (POST) or a server action. Both work without JavaScript. */
 export type FormAction = string | ((formData: FormData) => void | Promise<void>);
 
@@ -39,4 +41,6 @@ export interface ScreenProps<C> {
   base: string;
   flash?: Flash | null;
   errors?: readonly FieldError[];
+  /** The sections the viewer may open (the menu shows only these; default: all). */
+  sections?: readonly StudioSection[] | undefined;
 }

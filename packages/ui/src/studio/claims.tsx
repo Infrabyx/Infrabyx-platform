@@ -57,6 +57,7 @@ export async function ClaimsScreen<C>(
   const err = (id: string) => errorFor(p.errors, id);
   return (
     <StudioPage
+      sections={p.sections}
       base={p.base}
       section="claims"
       title="Claims Register"
