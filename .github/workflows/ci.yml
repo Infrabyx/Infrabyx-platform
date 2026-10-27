@@ -48,6 +48,8 @@ jobs:
     # rls-lint, integration, at-report (job `integration`, PostgreSQL 18 service).
     # PL2 adds routing-check here and the port-contract workflow (port-contract.yml).
     # PL3 adds notify-lint and export-map-gate here and golden-archive-diff in `integration`.
+    # PL4 adds ai-prompt-lint and ai-eval-gate here, and runs `integration` on PostgreSQL 18 with
+    # pgvector.
     # Still to add: e2e, a11y, sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
     # change-class.
     runs-on: ubuntu-24.04
@@ -125,6 +127,10 @@ jobs:
         run: pnpm routing:check
       - name: notify-lint (PL3 plan §6.2; notification catalogue)
         run: pnpm notify:lint
+      - name: ai-prompt-lint (IPB-03-25, 03-40; golden set per prompt, no inline prompt text)
+        run: pnpm ai:prompt-lint
+      - name: ai-eval-gate (IPB-03-41; golden sets on the scripted fake model, baseline and committed results)
+        run: pnpm ai:eval-gate
       - name: export-map-gate (IPB-09-34, @IPB-09-AT-14; IPB-ENG-006)
         if: github.event_name == 'pull_request'
         env:

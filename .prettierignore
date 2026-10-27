@@ -11,3 +11,6 @@ CHANGELOG.md
 **/*.generated.ts
 # Golden archives are compared byte for byte (IPB-09-35)
 packages/export/golden/
+# Prompt versions are content-hashed and eval results are written by `infrabyx-ai eval --write`
+packages/ai/prompts/
+packages/ai/evals/
