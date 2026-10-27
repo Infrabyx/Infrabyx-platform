@@ -7,6 +7,13 @@ import {
   type AiResidency,
   type EmbeddingPort,
   type EmbeddingPortRequest,
+  type GeneratedImageBytes,
+  type ImageGenPort,
+  type ImageGenPortRequest,
+  type RerankCandidate,
+  type RerankPort,
+  type SpeechPort,
+  type Transcript,
   type LlmChunk,
   type LlmPort,
   type LlmPortRequest,
@@ -16,6 +23,7 @@ import {
   type PortHealth,
 } from "@infrabyx/contracts/ports";
 import type { DataClass } from "@infrabyx/contracts/data-class";
+import { stubPng } from "./stubs/ai.js";
 
 export interface FakeAiOptions {
   adapterKey: string;
@@ -151,5 +159,93 @@ export class FakeEmbedding implements EmbeddingPort {
     });
     const tokens = req.texts.reduce((n, t) => n + Math.ceil(t.length / 4), 0);
     return { vectors, usage: { inputTokens: tokens, outputTokens: 0, cachedTokens: 0 } };
+  }
+}
+
+/** IMAGE_GEN double: solid PNGs, or the bytes and MIME type a test scripts. */
+export class FakeImageGen implements ImageGenPort {
+  readonly descriptor: AiAdapterDescriptor;
+  readonly calls: ImageGenPortRequest[] = [];
+  private next: GeneratedImageBytes[] | Error | null = null;
+  constructor(private readonly o: FakeAiOptions) {
+    this.descriptor = descriptor("IMAGE_GEN", { maxDataClass: "INTERNAL", ...o });
+  }
+  capabilities(): readonly ModelCapability[] {
+    return this.o.capabilities ?? ["image"];
+  }
+  health(): Promise<PortHealth> {
+    return up();
+  }
+  /** The next `generate` returns this (once). */
+  script(next: GeneratedImageBytes[] | Error): this {
+    this.next = next;
+    return this;
+  }
+  async generate(req: ImageGenPortRequest): Promise<GeneratedImageBytes[]> {
+    this.calls.push(req);
+    const n = this.next;
+    this.next = null;
+    if (n instanceof Error) throw n;
+    if (n) return n;
+    const [w, h] = req.size.split("x").map((x) => Math.min(Number(x) || 64, 128));
+    return Array.from({ length: req.n }, () => ({
+      bytes: stubPng(w ?? 64, h ?? 64, [20, 140, 90]),
+      mimeType: "image/png" as const,
+    }));
+  }
+  async edit(): Promise<GeneratedImageBytes[]> {
+    throw new AiProviderError("edit is not supported by the fake", 400, false);
+  }
+  async variations(): Promise<GeneratedImageBytes[]> {
+    throw new AiProviderError("variations are not supported by the fake", 400, false);
+  }
+}
+
+/** SPEECH double (interfaces and fakes only in PL4, #28): echoes text and returns silence. */
+export class FakeSpeech implements SpeechPort {
+  readonly descriptor: AiAdapterDescriptor;
+  constructor(o: FakeAiOptions) {
+    this.descriptor = descriptor("SPEECH", o);
+  }
+  capabilities(): readonly ModelCapability[] {
+    return ["stt", "tts"];
+  }
+  health(): Promise<PortHealth> {
+    return up();
+  }
+  async stt(audio: Uint8Array, o: { lang: string }): Promise<Transcript> {
+    const text = new TextDecoder().decode(audio);
+    return { lang: o.lang, text, segments: [{ startMs: 0, endMs: 1000, text }] };
+  }
+  async tts(text: string, o: { format: "mp3" | "ogg" | "wav" }) {
+    return { bytes: new TextEncoder().encode(text), mimeType: `audio/${o.format}` };
+  }
+}
+
+/** RERANK double (S tier, #28): orders by words shared with the query. */
+export class FakeRerank implements RerankPort {
+  readonly descriptor: AiAdapterDescriptor;
+  constructor(o: FakeAiOptions) {
+    this.descriptor = descriptor("RERANK", o);
+  }
+  capabilities(): readonly ModelCapability[] {
+    return ["rerank"];
+  }
+  health(): Promise<PortHealth> {
+    return up();
+  }
+  async rerank(
+    query: string,
+    candidates: readonly RerankCandidate[],
+    topK: number,
+  ): Promise<RerankCandidate[]> {
+    const q = new Set(query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+    return candidates
+      .map((c) => ({
+        ...c,
+        score: (c.text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).filter((w) => q.has(w)).length,
+      }))
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, topK);
   }
 }

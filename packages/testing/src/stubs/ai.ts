@@ -6,6 +6,7 @@
 //   CALL_TOOL  → a call to the first tool with `{ "q": "x" }`
 //   RATE_LIMIT → 429, SERVER_ERROR → 503, BAD_REQUEST → 400
 // otherwise the reply is `stub:<model>` with token counts from the request size.
+import { crc32, deflateSync } from "node:zlib";
 import { startStub, type StubReply, type VendorStub } from "./http.js";
 
 export interface AiStub extends VendorStub {
@@ -32,6 +33,41 @@ export function stubVector(text: string, dims: number): number[] {
   const n = Math.hypot(...v) || 1;
   return v.map((x) => x / n);
 }
+
+/** A solid-colour 8-bit RGB PNG: what the image stubs return. */
+export function stubPng(width: number, height: number, rgb: [number, number, number]): Uint8Array {
+  const chunk = (type: string, data: Uint8Array) => {
+    const out = Buffer.alloc(12 + data.length);
+    out.writeUInt32BE(data.length, 0);
+    out.write(type, 4, "latin1");
+    Buffer.from(data).copy(out, 8);
+    out.writeUInt32BE(crc32(out.subarray(4, 8 + data.length)), 8 + data.length);
+    return out;
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr.set([8, 2, 0, 0, 0], 8);
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) raw.set(rgb, y * (width * 3 + 1) + 1 + x * 3);
+  return new Uint8Array(
+    Buffer.concat([
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      chunk("IHDR", ihdr),
+      chunk("IDAT", deflateSync(raw)),
+      chunk("IEND", new Uint8Array(0)),
+    ]),
+  );
+}
+
+const ASPECT: Record<string, [number, number]> = {
+  "1:1": [64, 64],
+  "16:9": [96, 54],
+  "9:16": [54, 96],
+  "4:3": [80, 60],
+  "3:4": [60, 80],
+};
 
 function failure(m: Marker, awsType = false): StubReply | null {
   const status =
@@ -120,6 +156,35 @@ export async function startVertexStub(token: string | null = null): Promise<AiSt
     const [, , location, model, verb] = m;
     if (location !== "asia-south1")
       return { status: 400, body: { error: { code: 400, message: "wrong location" } } };
+    if (verb === "predict" && model?.startsWith("imagen")) {
+      // Imagen: `instances[0].prompt`, `parameters.sampleCount`, `aspectRatio`, `outputOptions`.
+      const b = r.json<{
+        instances: { prompt: string }[];
+        parameters: {
+          sampleCount?: number;
+          aspectRatio?: string;
+          personGeneration?: string;
+          outputOptions?: { mimeType?: string };
+        };
+      }>();
+      const prompt = b.instances[0]?.prompt ?? "";
+      const fail = failure(marker(prompt));
+      if (fail) return fail;
+      if (b.parameters.personGeneration !== "dont_allow")
+        return { status: 400, body: { error: { code: 400, message: "personGeneration" } } };
+      const [w, h] = ASPECT[b.parameters.aspectRatio ?? "1:1"] ?? [64, 64];
+      const n = Math.min(b.parameters.sampleCount ?? 1, 4);
+      const png = Buffer.from(stubPng(w, h, [30, 90, 160])).toString("base64");
+      return {
+        status: 200,
+        body: {
+          predictions: Array.from({ length: n }, () => ({
+            bytesBase64Encoded: png,
+            mimeType: b.parameters.outputOptions?.mimeType ?? "image/png",
+          })),
+        },
+      };
+    }
     if (verb === "predict") {
       const b = r.json<{
         instances: { content: string }[];
@@ -230,6 +295,30 @@ export async function startVllmStub(): Promise<AiStub> {
           },
         ],
         usage: { prompt_tokens: inTok, completion_tokens: 5 },
+      },
+    };
+  });
+  return Object.assign(stub, { token: null });
+}
+
+/**
+ * Self-hosted FLUX behind an OpenAI-compatible images endpoint, `POST /v1/images/generations`
+ * with `response_format: "b64_json"` ([VERIFY] against the server chosen for the host, #65).
+ */
+export async function startFluxStub(): Promise<AiStub> {
+  const stub = await startStub((r) => {
+    if (r.method !== "POST" || r.path !== "/v1/images/generations")
+      return { status: 404, body: {} };
+    const b = r.json<{ model: string; prompt: string; n?: number; size?: string }>();
+    const fail = failure(marker(b.prompt));
+    if (fail) return fail;
+    const [w, h] = (b.size ?? "64x64").split("x").map((x) => Math.min(Number(x) || 64, 128));
+    const png = Buffer.from(stubPng(w ?? 64, h ?? 64, [160, 60, 30])).toString("base64");
+    return {
+      status: 200,
+      body: {
+        created: 1,
+        data: Array.from({ length: Math.min(b.n ?? 1, 4) }, () => ({ b64_json: png })),
       },
     };
   });

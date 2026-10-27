@@ -87,18 +87,28 @@
     },
     "bedrock-claude-in": {
       "status": "unproven",
-      "needs": "AWS Bedrock ap-south-1 model access; each paid run approved by the owner (PL4 plan \u00a710)",
+      "needs": "AWS Bedrock ap-south-1 model access; each paid run approved by the owner (PL4 plan §10)",
       "issue": 63
     },
     "gemini-vertex-asia-south1": {
       "status": "unproven",
-      "needs": "Vertex AI asia-south1 project with zero data retention and an identity (#27); each paid run approved by the owner (PL4 plan \u00a710)",
+      "needs": "Vertex AI asia-south1 project with zero data retention and an identity (#27); each paid run approved by the owner (PL4 plan §10)",
       "issue": 64
     },
     "self-hosted-vllm": {
       "status": "unproven",
       "needs": "A deployed vLLM inference server in our infrastructure (owner decision on GPU cost)",
       "issue": 65
+    },
+    "gemini-imagen": {
+      "status": "unproven",
+      "needs": "Vertex AI asia-south1 project with Imagen (shared with #64); each paid run approved by the owner (PL4 plan §10)",
+      "issue": 69
+    },
+    "flux-self-hosted": {
+      "status": "unproven",
+      "needs": "A self-hosted inference host (owner, 27 Oct 2026: not until a product needs one; #65)",
+      "issue": 70
     }
   }
 }

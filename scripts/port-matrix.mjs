@@ -24,6 +24,7 @@ export const PORTS = [
   "ESIGN",
   "LLM",
   "EMBEDDING",
+  "IMAGE_GEN",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -50,6 +51,7 @@ export const SHARED_PATHS = [
 const EXTRA_PATHS = {
   LLM: ["packages/contracts/src/ports/ai.ts"],
   EMBEDDING: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
+  IMAGE_GEN: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
 };
 
 export const portPaths = (port) => [
