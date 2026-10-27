@@ -10,6 +10,29 @@ Updated: 2026-10-27
 | Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                                                |
 | Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                                                         |
 
+## Handover (2026-10-27, end of the session that built PL5 sessions 4–6)
+
+- **Done:**
+  - Owner answers #41–#52 recorded and applied (#83, PL5-D-05).
+  - Session 4, `cms` core (#84).
+  - Session 5a, policies (#85); 5b, resources, forms and pricing (#86); 5c, `consent` (#87).
+  - Session 6, `feedback` and `trust`, is in PR #88.
+- **Next:**
+  1. Merge #88 when every required check is green (PL2-D-19).
+  2. Session 7 (plan §9.1–§9.5, §11):
+     - `apps/public` on Next 16 with the nonce CSP, the §9.2 routes and the consent, feedback and trust wiring;
+     - `publicSiteSeedModule`: policy placeholders through `PolicyStudio.seedPlaceholder`, consent texts through `ConsentTexts.seedDefaults` plus their approval, and the trust fixture mirror;
+     - the platform help registry, including the `hlp.feedback.*` keys, and renaming notify's `ntf.*` help keys;
+     - `hlp-lint` and `journeys-lint` in `verify`;
+     - the `a11y` CI job, and `a11y` added to the required checks in `infra/policy/github/rulesets.json` (the owner applies the ruleset, #49);
+     - re-check whether Lighthouse resolves under the trust policy (#51).
+  3. Sessions 8 and 9: the Studio screens (`@infrabyx/ui/studio`) and the reference `apps/console` (#41). Session 10: the gate.
+- **Open questions:** #53–#59, all with defaults taken; nothing blocked.
+- **Branch and PR state:** `claude/cool-bohr-klglyy` carries #88. Recreate it from `main` after the squash merge.
+- **Local tooling:** Node 24.22.1 is unpacked in the session scratchpad (put it first on `PATH`). PostgreSQL 16 at `IPB_TEST_PG_URL` has an older pgvector without `hnsw.iterative_scan`, so the `ai` retrieval integration tests only pass in CI. gitleaks is not installed locally; the CI secret scan runs it.
+
+HANDOVER READY
+
 ## PL5 session 6 (2026-10-27, PL5-D-10)
 
 - `@infrabyx/feedback`, migration `feedback/0001_init.sql`:
