@@ -1808,6 +1808,29 @@ keys:
       source: "IPB-01 §01.4.4.2 PUSH",
     }
 
+  # ---------------------------------------------------------------- PL3: ESIGN (IPB-01 ESIGN)
+  - {
+      key: int.esign.provider,
+      tier: PLATFORM,
+      type: enum,
+      values: [leegality, digio, memory],
+      default: leegality,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 ESIGN; PL3-D-04",
+    }
+  - {
+      key: int.esign.expire_in_days,
+      tier: PLATFORM,
+      type: int,
+      default: 10,
+      min: 1,
+      max: 90,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 ESIGN; PL3-D-23",
+    }
+
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {
       key: rules.engine,

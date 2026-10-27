@@ -74,6 +74,10 @@
       "types": "./dist/push/index.d.ts",
       "default": "./dist/push/index.js"
     },
+    "./esign": {
+      "types": "./dist/esign/index.d.ts",
+      "default": "./dist/esign/index.js"
+    },
     "./rules": {
       "types": "./dist/rules/index.d.ts",
       "default": "./dist/rules/index.js"

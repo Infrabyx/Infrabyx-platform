@@ -2673,6 +2673,39 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 PUSH"
   },
   {
+    "key": "int.esign.provider",
+    "tier": "PLATFORM",
+    "type": "enum",
+    "default": "leegality",
+    "values": [
+      "leegality",
+      "digio",
+      "memory"
+    ],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 ESIGN; PL3-D-04"
+  },
+  {
+    "key": "int.esign.expire_in_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10,
+    "min": 1,
+    "max": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 ESIGN; PL3-D-23"
+  },
+  {
     "key": "rules.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -3029,6 +3062,8 @@ export type SettingValueMap = {
   "int.push.provider": "expo" | "fcm" | "memory";
   "int.push.fcm_project_id": string | null;
   "int.push.apns_topic": string | null;
+  "int.esign.provider": "leegality" | "digio" | "memory";
+  "int.esign.expire_in_days": number;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;

@@ -74,6 +74,16 @@
     "minio": {
       "status": "unproven",
       "needs": "Owner decision PL2-D-61: frozen upstream, so refused outside dev and test even when its hermetic leg is green"
+    },
+    "leegality": {
+      "status": "unproven",
+      "needs": "Leegality sandbox account, workflows, auth token and private salt (PL3-D-04)",
+      "issue": 55
+    },
+    "digio": {
+      "status": "unproven",
+      "needs": "Digio sandbox client id and secret (PL3-D-04)",
+      "issue": 56
     }
   }
 }

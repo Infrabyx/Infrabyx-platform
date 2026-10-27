@@ -5,6 +5,8 @@ import { fromBase64Url } from "./encoding.js";
 import { FCM_SCOPE, GOOGLE_TOKEN_URL, signServiceAccountAssertion } from "./google-assertion.js";
 import { hmacSha256Hex } from "./hmac.js";
 import { SecretKey } from "./keys.js";
+import { assertApproved } from "./registry.js";
+import { verifyLeegalityMac } from "./webhook-sig.js";
 
 describe("C-23 address hash (PL3-D-05)", () => {
   const key = new SecretKey("consent:test", "hmac-sha-256", new Uint8Array(32).fill(7));
@@ -63,5 +65,36 @@ describe("C-24 service-account assertion (PL3-C-01)", () => {
     expect(() =>
       signServiceAccountAssertion({ clientEmail: "x", privateKeyPem: small.toString() }),
     ).toThrow(/2048/);
+  });
+});
+
+describe("C-25 Leegality webhook mac, verification only (PL3-C-02)", () => {
+  // HMAC-SHA1 test vector (key "key", the pangram), standing in for (salt, documentId).
+  const doc = "The quick brown fox jumps over the lazy dog";
+  const mac = "de7c9b85b8b78aa6bc8a7a36f70a90701c9db4d9";
+  it("accepts the HMAC-SHA1 of the document id with the salt, in any hex case", () => {
+    expect(verifyLeegalityMac("key", doc, mac)).toBe(true);
+    expect(verifyLeegalityMac("key", doc, mac.toUpperCase())).toBe(true);
+  });
+  it("refuses another salt, document id, a truncated or non-hex mac", () => {
+    expect(verifyLeegalityMac("salt", doc, mac)).toBe(false);
+    expect(verifyLeegalityMac("key", `${doc}.`, mac)).toBe(false);
+    expect(verifyLeegalityMac("key", doc, mac.slice(0, 38))).toBe(false);
+    expect(verifyLeegalityMac("key", doc, `${mac.slice(0, 39)}g`)).toBe(false);
+    expect(verifyLeegalityMac("key", "", mac)).toBe(false);
+  });
+  it("enforces the replay window when a timestamp is sent", () => {
+    const now = Date.parse("2026-10-27T10:00:00Z");
+    const ok = { now, timestamp: "2026-10-27T09:58:00Z" };
+    expect(verifyLeegalityMac("key", doc, mac, ok)).toBe(true);
+    expect(verifyLeegalityMac("key", doc, mac, { now, timestamp: String(now / 1000 - 600) })).toBe(
+      false,
+    );
+    expect(verifyLeegalityMac("key", doc, mac, { now, timestamp: "yesterday" })).toBe(false);
+  });
+  it("is registered for Leegality verification only", () => {
+    expect(assertApproved("hmac-sha1", "mac").usedFor).toEqual([
+      "Leegality webhook verification only (C-25); never for signing anything of ours",
+    ]);
   });
 });

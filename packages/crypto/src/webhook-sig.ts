@@ -186,3 +186,39 @@ export async function verifySnsMessage(
   const ok = nodeVerify("sha256", Buffer.from(toSign, "utf8"), cert.publicKey, sig);
   return ok ? null : "signature";
 }
+
+/**
+ * C-25 (PL3-C-02): Leegality webhook `mac`, HMAC-SHA1 over the document id with the account's
+ * private salt, compared in constant time. Verification only, for Leegality and nothing else; a
+ * verified webhook is still only a trigger, and the adapter reads the status back before any
+ * state change. `timestamp` (seconds, milliseconds or ISO 8601), when Leegality sends one, must
+ * fall inside ±`windowSeconds`.
+ */
+export function verifyLeegalityMac(
+  salt: BytesLike,
+  documentId: string,
+  macHex: string,
+  opts: { timestamp?: string | number; now?: number; windowSeconds?: number } = {},
+): boolean {
+  if (!documentId || documentId.length > 200) return false;
+  if (opts.timestamp !== undefined) {
+    const t = opts.timestamp;
+    const ms =
+      typeof t === "number"
+        ? t < 1e12
+          ? t * 1000
+          : t
+        : /^\d{10}$/.test(t)
+          ? Number(t) * 1000
+          : /^\d{13}$/.test(t)
+            ? Number(t)
+            : Date.parse(t);
+    if (!Number.isFinite(ms)) return false;
+    if (Math.abs((opts.now ?? Date.now()) - ms) > (opts.windowSeconds ?? 300) * 1000) return false;
+  }
+  const got = decodeHex(macHex);
+  const want = createHmac("sha1", Buffer.from(toBytes(salt)))
+    .update(Buffer.from(documentId, "utf8"))
+    .digest();
+  return got !== null && equal(got, want);
+}

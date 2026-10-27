@@ -61,6 +61,7 @@ export {
   verifyMetaSignature,
   verifySnsMessage,
   verifyWebhookSecret,
+  verifyLeegalityMac,
   snsCertUrlAllowed,
   generateWebhookSecret,
   type SnsMessage,
