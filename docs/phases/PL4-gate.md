@@ -144,4 +144,13 @@ Reader roles are granted to `app_rw` and `app_ro`. Run `infrabyx-rls-lint` after
 | `@infrabyx/ai`         | —     | **0.1.0** (new)              |
 | `@infrabyx/vidhi`      | —     | **0.1.0** (new)              |
 
-The later-phase scaffolds stay private until their phase (PL1-D-20). Version PR #61 is merged under the standing authority (PL2-D-19) once its CI is green. `release.yml` then re-runs the full `port-contract` matrix and `consumer-smoke`, publishes to GitHub Packages, pushes one tag per package and prints the registry checksums in its job summary. The published checksums are added here after the release run.
+The later-phase scaffolds stay private until their phase (PL1-D-20). Version PR #61 is merged under the standing authority (PL2-D-19) once its CI is green. `release.yml` then re-runs the full `port-contract` matrix and `consumer-smoke`, publishes to GitHub Packages, pushes one tag per package and prints the registry checksums in its job summary.
+
+**Published.** Version PR #61 was merged as `25771c8` after all 24 checks went green on its head `3037f84` (based on `main` with #76). `release.yml` run 56 (id 40489202908) then:
+
+- re-ran the full `port-contract` matrix: 19 of 19 ports green, including LLM, EMBEDDING and IMAGE_GEN;
+- published the 14 packages above to GitHub Packages (no package skipped, no publish error);
+- pushed one tag per package (`@infrabyx/<name>@<version>`);
+- printed the registry's `dist.shasum` and `dist.integrity` for each version in the job summary of its `release` job (job id 122139655138), through `scripts/registry-dist.mjs`.
+
+**Registry checksums:** owner task — copy them from that job summary into this section and into STATUS, as at the PL3 gate (this session cannot read job summaries or the private registry).
