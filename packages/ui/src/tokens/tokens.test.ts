@@ -55,3 +55,18 @@ describe("CSS", () => {
     expect(css).not.toMatch(/https?:\/\//);
   });
 });
+
+describe("accents are fill-only (PL5-D-05, OWNER-QUESTIONS #52)", () => {
+  it("no component style uses the accent for text, borders, outlines or icon strokes", async () => {
+    const { COMPONENT_CSS } = await import("../styles.js");
+    const misuse =
+      /(?:^|[;{\s])(?:color|border(?:-[a-z]+)*|outline(?:-color)?|stroke|fill|text-decoration-color|caret-color|column-rule-color)\s*:[^;}]*var\(--color-accent\)/m;
+    expect(COMPONENT_CSS).not.toMatch(misuse);
+  });
+
+  it("keeps a light accent as set and puts text on it at 4.5:1", () => {
+    const set = buildTheme("UDF", "light", { accent: "#F59E0B" });
+    expect(set.colours.accent).toBe("#F59E0B");
+    expect(contrastRatio(set.colours["on-accent"], set.colours.accent)).toBeGreaterThanOrEqual(4.5);
+  });
+});

@@ -2,7 +2,14 @@
 // product (IPB-D-11); four themes — light, dark, high-contrast light and high-contrast dark. Brand
 // colours are moved, never replaced, until every declared pair meets its floor: text 4.5:1 (7:1 in
 // the high-contrast themes), large text and UI 3:1. Components use these names only (IPB-07-31).
-import { CONTRAST_MIN, contrastRatio, nearestCompliant, onColour } from "./contrast.js";
+import {
+  CONTRAST_MIN,
+  contrastRatio,
+  nearestCompliant,
+  onColour,
+  parseHex,
+  toHex,
+} from "./contrast.js";
 
 export const PRODUCTS = ["LD", "LDC", "EQ", "FBX", "UDF", "OH", "GRP"] as const;
 export type Product = (typeof PRODUCTS)[number];
@@ -224,7 +231,7 @@ export const DECLARED_PAIRS: readonly ContrastPair[] = [
   { fg: "focus", bg: "bg", kind: "ui" },
   { fg: "focus", bg: "surface", kind: "ui" },
   { fg: "primary", bg: "surface", kind: "ui" },
-  { fg: "accent", bg: "surface", kind: "ui" },
+  // No accent/surface pair: the accent is never text, an icon, a border or a focus ring (PL5-D-05).
 ];
 
 const isHighContrast = (t: Theme) => t === "hc_light" || t === "hc_dark";
@@ -253,9 +260,10 @@ export function buildTheme(
     contrastRatio(id.primary, s) < contrastRatio(id.primary, worst) ? s : worst,
   );
   const primary = nearestCompliant(id.primary, darkest, textMin);
-  // The accent is a fill: it must stand out from the surface (3:1) and carry text on it. A mid-tone
-  // that neither white nor dark text can meet (7:1 in high contrast) moves away from the surface.
-  let accent = nearestCompliant(id.accent, n.surface, CONTRAST_MIN.ui);
+  // The accent is a fill only (badges, highlights, chart fills, decorative bands; PL5-D-05): it
+  // need not stand out from the surface, but text on it must meet the text floor. A mid-tone that
+  // neither white nor dark text can meet (7:1 in high contrast) moves away from the surface.
+  let accent = toHex(parseHex(id.accent));
   if (contrastRatio(onColour(accent, textMin), accent) < textMin) {
     const lightSurface = contrastRatio(n.surface, "#000000") > contrastRatio(n.surface, "#FFFFFF");
     accent = nearestCompliant(accent, lightSurface ? "#FFFFFF" : "#000000", textMin);
