@@ -28,6 +28,10 @@ export interface WhatsappEvent {
   messageId?: string;
   type: "sent" | "delivered" | "read" | "failed" | "inbound";
   at: string;
+  /** Pricing category the vendor reports for the message (OH8 billing); present when billable. */
+  pricingCategory?: string;
+  /** Vendor error code of a failed message (for example 131047 or 470: outside the 24 h window). */
+  errorCode?: string;
 }
 
 export interface WhatsappPort extends Port {

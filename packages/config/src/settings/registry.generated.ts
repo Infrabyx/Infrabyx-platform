@@ -1180,6 +1180,20 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "logical template id → DLT template id per adapter"
   },
   {
+    "key": "int.sms.low_balance_credits",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 500,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 SMS",
+    "note": "SMS credit balance below which the adapter reports degraded health (PL2-D-64)"
+  },
+  {
     "key": "int.whatsapp.provider",
     "tier": "PLATFORM",
     "type": "enum",
@@ -1250,6 +1264,34 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "mc": "R4",
     "source": "IPB-01 §01.4.4.2 WHATSAPP",
     "note": "secret:// reference only, never a literal"
+  },
+  {
+    "key": "int.whatsapp.rate_card",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": {},
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 WHATSAPP",
+    "note": "per-message cost by category in minor units for OH8 billing; deployment configuration only, never committed (PL2-D-64)"
+  },
+  {
+    "key": "mkt.meta.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "OWN-08; IPB-01 §01.4.4.2 WHATSAPP",
+    "note": "WhatsApp marketing templates; off in year one (OWN-08); the WHATSAPP adapters refuse marketing templates while false"
   },
   {
     "key": "int.payments.webhook_path",
@@ -2626,9 +2668,12 @@ export type SettingValueMap = {
   "int.sms.provider": "msg91" | "gupshup-sms";
   "int.sms.dlt_entity_id": string | null;
   "int.sms.template_map": JsonValue;
+  "int.sms.low_balance_credits": number;
   "int.whatsapp.provider": "gupshup" | "meta-cloud";
   "int.whatsapp.template_namespace": string | null;
   "int.whatsapp.webhook_verify_token": string | null;
+  "int.whatsapp.rate_card": JsonValue;
+  "mkt.meta.enabled": boolean;
   "int.payments.webhook_path": string;
   "int.payments.settlement_account_ref": string | null;
   "int.payments.methods_enabled": Array<"upi" | "card" | "netbanking" | "wallet" | "emandate">;

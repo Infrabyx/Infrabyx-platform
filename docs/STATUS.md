@@ -1,10 +1,10 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-10-26
+Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                    |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL2 sessions 1–5 done** (#13, #15, #17–#21); next is session 6 (EMAIL, SMS, WHATSAPP). Continuous build mode (PL2-D-41)                                                                |
+| Current phase         | **PL2 sessions 1–6 built** (#13, #15, #17–#21, #23, session 6 PR); next is session 7 (PAYMENTS). Continuous build mode (PL2-D-41)                                                        |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                   |
 | Packages              | Published to GitHub Packages: 0.1.0 of contracts, crypto, config, tenancy, audit, seed, testing; the 15 later-phase scaffolds (0.0.0, kept) are now private until their phase (PL1-D-20) |
 | Last exit gate passed | PL1 (2026-10-26): PR #8 (code) and PR #10 (release), CI green; release run 10 published                                                                                                  |
@@ -55,11 +55,24 @@ Nothing from PL2 is published yet. Version PR #14 collects every changeset and i
 
 ## Working mode (PL2-D-41)
 
-Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (none open; #1–#4 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
+Continuous build through PL2 sessions 3–8, gate A, then PL3–PL6. Defaults taken for the owner are listed in `docs/OWNER-QUESTIONS.md` (#6 open; #1–#5 answered as PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61, PL2-D-63). Threat model: `docs/security/threat-model.md` (PL2-D-43). CI: this repository is public, so its minutes are free (PL2-D-62); the budget rules bind the private product repositories. Public-content rules apply to everything written here.
 
 ## Next
 
-- PL2 session 6 (D-11 order): EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); no live sends. See the handover above.
+- PL2 session 7 (D-11 order): PAYMENTS (`razorpay`, `cashfree`), locked list approved with conditions (plan §8); no live money.
+- Then session 8 (exit gate and release) and gate A.
+
+## PL2 session 6 (2026-10-27)
+
+- `@infrabyx/connectors` (subpaths `/email`, `/sms`, `/whatsapp`):
+  - EMAIL `ses` (SES v2 ap-south-1, configuration set per brand, SNS events per C-13 with a timestamp window, reputation block as `IPB-PORT-002`) and `brevo` (GLOBAL with DPA reference, idempotencyKey and tag lookup, DKIM-checked failover target, bearer webhooks with Brevo's source ranges);
+  - SMS `msg91` and `gupshup-sms` with a shared DLT registry (template, header, entity and variables checked before any request), CRQID, bearer or URL-token delivery reports, credentials never in URLs, failover msg91 → gupshup-sms through the router;
+  - WHATSAPP `gupshup` and `meta-cloud`: 24-hour session window, marketing refused while `mkt.meta.enabled` is false (OWN-08), Meta `X-Hub-Signature-256` and handshake, rate card from configuration.
+- `@infrabyx/contracts`: `IPB-API-018`; `WebhookRequestMeta` on messaging `verifyWebhook`; `WhatsappEvent.pricingCategory` and `errorCode`.
+- `@infrabyx/crypto`: `verifyWebhookSecret` (C-19 in use). `@infrabyx/config`: `mkt.meta.enabled`, `int.sms.low_balance_credits`, `int.whatsapp.rate_card`.
+- `@infrabyx/testing`: stub server and stubs for SES v2, Brevo, MSG91, Gupshup SMS and WhatsApp, Meta Graph; SNS test signer.
+- Hermetic legs: EMAIL 32, SMS 23, WHATSAPP 27 cases green on the stubs and moto. All six adapters stay `unproven` until their sandbox legs run (IPB-DEV-04); vendor details marked [VERIFY] (PL2-D-64). Owner question #6 opened.
+- Products: no migration; new settings above; WhatsApp and Brevo routing entries need a `dpa_ref`; Gupshup webhook URLs carry `ipb_token`, which ingress logs must redact.
 
 ## PL2 session 5 (2026-10-26)
 
