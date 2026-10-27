@@ -22,6 +22,7 @@ import type {
 } from "@infrabyx/contracts/kernel";
 import {
   autonomyRank,
+  minLevel,
   type AutonomyLevel,
   type TaskState,
   type VidhiProduct,
@@ -198,6 +199,8 @@ export class TaskRuntime {
       ownerRoles?: readonly string[];
       missionId?: string;
       scheduleId?: string;
+      /** A mission's level: its tasks never run above it (IPB-03-63). */
+      maxLevel?: AutonomyLevel;
     },
   ): Promise<{ taskId: string; level: AutonomyLevel }> {
     const skill = this.o.skills.get(i.skillKey);
@@ -207,10 +210,11 @@ export class TaskRuntime {
       async (tx) => {
         const st = await this.o.autonomy.state(tx, ctx.tenantId, i.skillKey);
         if (!st.enabled) throw new IpbError("IPB-VID-010", { detail: `${i.skillKey} is disabled` });
-        const { level } = await this.o.autonomy.effectiveLevel(ctx, tx, i.skillKey, {
+        const effective = await this.o.autonomy.effectiveLevel(ctx, tx, i.skillKey, {
           scheduled: Boolean(i.scheduleId),
           ...(i.ownerRoles ? { ownerRoles: i.ownerRoles } : {}),
         });
+        const level = i.maxLevel ? minLevel(effective.level, i.maxLevel) : effective.level;
         const id = newId("tsk");
         await tx.query(
           `insert into vidhi.task (id, tenant_id, skill_key, level, agent_id, owner_id, mission_id, schedule_id)

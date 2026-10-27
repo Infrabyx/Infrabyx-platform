@@ -168,3 +168,30 @@ export const AutonomyChangedData = z
     ]),
   })
   .strict();
+
+/** Why the re-check before a scheduled run failed (IPB-03-65). */
+export const SCHEDULE_SKIP_REASONS = [
+  "scheduling_disabled",
+  "owner_inactive",
+  "owner_role_removed",
+  "not_permitted",
+  "plan",
+  "skill_disabled",
+  "skill_invalid",
+  "kill_switch",
+  "connector",
+] as const;
+export type ScheduleSkipReason = (typeof SCHEDULE_SKIP_REASONS)[number];
+
+/** `in.<p>.vidhi.ScheduleRunSkipped.v1`: the re-check before a scheduled run failed (IPB-03-65). */
+export const ScheduleRunSkippedData = z
+  .object({
+    schedule_id: z.string().regex(/^sch_/),
+    tenant_id: z.string(),
+    skill_key: z.string(),
+    /** `IPB-VID-020`, or `IPB-VID-021` when this skip paused the schedule. */
+    code: z.enum(["IPB-VID-020", "IPB-VID-021"]),
+    reason: z.enum(SCHEDULE_SKIP_REASONS),
+    consecutive_skips: z.number().int().min(1),
+  })
+  .strict();

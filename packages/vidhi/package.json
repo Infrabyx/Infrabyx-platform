@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@infrabyx/audit": "workspace:*",
+    "@infrabyx/connectors": "workspace:*",
     "@infrabyx/seed": "workspace:*",
     "@infrabyx/testing": "workspace:*"
   }

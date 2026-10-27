@@ -500,6 +500,9 @@ importers:
       '@infrabyx/audit':
         specifier: workspace:*
         version: link:../audit
+      '@infrabyx/connectors':
+        specifier: workspace:*
+        version: link:../connectors
       '@infrabyx/seed':
         specifier: workspace:*
         version: link:../seed
