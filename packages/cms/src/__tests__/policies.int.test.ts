@@ -14,6 +14,8 @@ let clock = new Date("2026-02-01T10:00:00+05:30");
 let policies: PolicyStudio;
 let pub: PublicPolicies;
 const notices: string[] = [];
+/** When true, the NOTIFY hook reports the notice as sent at approval (#55). */
+let hookSends = false;
 const legal = platformContext(["PLT_LEGAL_REVIEWER"], "tnt_platform", "usr_legal");
 const admin = platformContext(["PLT_SUPER_ADMIN"], "tnt_platform", "usr_admin");
 const dpo = platformContext(["PLT_DPO"], "tnt_platform", "usr_dpo");
@@ -50,7 +52,14 @@ async function publish(
   await policies.submit(legal, i.id);
   if (i.privacyClass) await policies.dpoApprove(dpo, i.id);
   await policies.approve(admin, i.id);
-  await policies.tick(new Date((o.effectiveAt ?? clock).getTime() + 120_000));
+  let at = (o.effectiveAt ?? clock).getTime();
+  if (o.change === "MAJOR" && ["terms", "payment_terms"].includes(key)) {
+    // Users are notified now: the notice is published and sent (#55).
+    await policies.publishNotice(legal, i.id);
+    await policies.recordNoticeSent(legal, i.id, clock);
+    at = Math.max(at, clock.getTime() + 30 * 86_400_000);
+  }
+  await policies.tick(new Date(at + 120_000));
   return i;
 }
 
@@ -77,7 +86,10 @@ beforeAll(async () => {
             .map((p) => [p, `value of ${p}`]),
         ),
       }),
-      notifyPolicyChange: async (n) => void notices.push(`${n.key}@${n.version}`),
+      notifyPolicyChange: async (n) => {
+        notices.push(`${n.key}@${n.version}`);
+        return hookSends ? { sentAt: clock } : undefined;
+      },
     },
   });
   pub = new PublicPolicies({ kernel: db.kernel });
@@ -168,7 +180,7 @@ describe("@IPB-05-AT-04 versions and the archive; IPB-POL-008", () => {
 });
 
 describe("@IPB-05-AT-05 notice period and re-consent", () => {
-  it("refuses a MAJOR Terms change effective inside 30 days, then makes it effective with re-consent", async () => {
+  it("refuses a MAJOR Terms change effective inside 30 days, then makes it effective 30 days after users are notified, with re-consent", async () => {
     const setId = (
       await db.admin.query("select id from cms.policy_set where brand_pack_id = $1", [PACK])
     ).rows[0].id as string;
@@ -184,8 +196,29 @@ describe("@IPB-05-AT-05 notice period and re-consent", () => {
     expect(await code(policies.submit(legal, i.id))).toBe("IPB-POL-005");
     await policies.editDraft(legal, i.id, { effectiveAt: new Date("2026-05-03T00:00:00+05:30") });
     await policies.submit(legal, i.id);
+    hookSends = true;
     expect((await policies.approve(admin, i.id)).reconsentRequired).toBe(true);
-    expect(await policies.tick(new Date("2026-05-03T00:01:00+05:30"))).toEqual([i.id]);
+    hookSends = false;
+    // Sent on approval (1 Apr) but not yet published: users are not notified, nothing takes effect.
+    expect((await policies.noticeStatus(legal, i.id)).sentAt).toEqual(clock);
+    expect(await pub.upcoming(PACK, "terms")).toBeNull();
+    expect(await policies.tick(new Date("2026-05-03T00:01:00+05:30"))).toEqual([]);
+    // Published on 5 Apr: the 30 days count from then (OWNER-QUESTIONS #55), not from approval.
+    clock = new Date("2026-04-05T10:00:00+05:30");
+    const st = await policies.publishNotice(legal, i.id);
+    expect(st.notifiedAt).toEqual(clock);
+    expect(st.effectiveFrom).toEqual(new Date("2026-05-05T10:00:00+05:30"));
+    expect(await code(policies.publishNotice(legal, i.id))).toBe("IPB-CMS-003");
+    expect(await pub.upcoming(PACK, "terms")).toMatchObject({
+      versionLabel: "3.0",
+      effectiveFrom: "2026-05-05T04:30:00.000Z",
+      reconsentRequired: true,
+    });
+    await expect(
+      db.admin.query("delete from cms.policy_notice where instance_id = $1", [i.id]),
+    ).rejects.toThrow(/append-only/);
+    expect(await policies.tick(new Date("2026-05-03T00:01:00+05:30"))).toEqual([]);
+    expect(await policies.tick(new Date("2026-05-05T10:01:00+05:30"))).toEqual([i.id]);
     const ev = await db.admin.query<{ data: { reconsent_required: boolean; version: string } }>(
       "select envelope->'data' as data from cms.outbox where type like '%.PolicyEffective.%' order by created_at desc limit 1",
     );

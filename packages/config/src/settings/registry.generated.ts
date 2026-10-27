@@ -4418,7 +4418,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "key": "cms.media.reencode_enabled",
     "tier": "PLATFORM",
     "type": "bool",
-    "default": false,
+    "default": true,
     "locked": false,
     "userOverride": false,
     "change": [
@@ -4426,7 +4426,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R2",
     "source": "IPB-04 §04.5",
-    "note": "off: sharp failed the licence check (LGPL libvips; OWNER-QUESTIONS #43, #53)"
+    "note": "on: AVIF/WebP renditions and PNG favicons through the MEDIA port (sharp; libvips licence exception, OWNER-QUESTIONS #53, PL5-D-11); passthrough serves uploads as uploaded"
   },
   {
     "key": "cms.soft_delete.restore_days",

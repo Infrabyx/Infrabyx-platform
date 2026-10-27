@@ -13,8 +13,8 @@ import type {
   OutboxWriter,
   Tx,
 } from "@infrabyx/contracts/kernel";
-import type { StoragePort } from "@infrabyx/contracts/ports";
-import { storageKey } from "@infrabyx/contracts/ports";
+import type { MediaPort, StoragePort } from "@infrabyx/contracts/ports";
+import { FAVICON_PNG_SIZES, storageKey } from "@infrabyx/contracts/ports";
 import { BRAND_EVENTS, BrandPackPublishedData, ContrastGuardFailedData } from "@infrabyx/contracts";
 import { internalEvent } from "@infrabyx/config/events";
 import { newId, sha256Hex, ulid } from "@infrabyx/crypto";
@@ -78,7 +78,13 @@ export interface BrandStudioOptions {
   outbox?: OutboxWriter;
   /** `brand.contrast.min_text` and `brand.contrast.min_ui` (raise only). */
   contrastMinimums?: (ctx: KernelContext) => Promise<{ minText?: number; minUi?: number }>;
+  /** MEDIA port that rasterises the sanitised logo into the PNG favicon sizes (#53). */
+  media?: MediaPort;
+  /** `cms.media.reencode_enabled` (default on, #53); off keeps PNGs to an uploaded master. */
+  reencodeEnabled?: (ctx: KernelContext) => Promise<boolean>;
 }
+
+export type LogoPngs = Partial<Record<"32" | "64" | "180" | "192" | "512", MediaRef>>;
 
 interface RevisionRow {
   id: string;
@@ -146,20 +152,43 @@ export class BrandStudio {
     );
   }
 
+  /** PNG favicons rasterised from the sanitised SVG, or none without a capable MEDIA port (#53). */
+  private async rasterise(
+    ctx: KernelContext,
+    svg: string,
+  ): Promise<{ size: number; bytes: Uint8Array }[]> {
+    const m = this.o.media;
+    if (!m || m.descriptor.capabilities?.rasteriseSvg === "unsupported") return [];
+    if (this.o.reencodeEnabled && !(await this.o.reencodeEnabled(ctx))) return [];
+    try {
+      return (await m.rasteriseSvg(svg, FAVICON_PNG_SIZES)).map((r) => ({
+        size: r.width,
+        bytes: r.bytes,
+      }));
+    } catch (e) {
+      // Best effort: the logo is kept and the favicon set lists the PNGs as missing (IPB-04-22).
+      if (/^IPB-(?:PORT|SEC)-/.test((e as { code?: string }).code ?? "")) return [];
+      throw e;
+    }
+  }
+
   /**
    * Sanitise an uploaded SVG logo and store only the result (`@IPB-04-AT-21`). The report lists
-   * every removal; the upload itself is never written anywhere.
+   * every removal; the upload itself is never written anywhere. With a MEDIA port that can
+   * rasterise (#53), the PNG favicon sizes are made from the sanitised result and returned as
+   * `png`, for the revision's `logo.png`.
    */
   async uploadLogo(
     ctx: KernelContext,
     packId: string,
     upload: string | Uint8Array,
-  ): Promise<{ ref: MediaRef; removed: string[] }> {
+  ): Promise<{ ref: MediaRef; removed: string[]; png: LogoPngs }> {
     this.platformOnly(ctx);
     const { svg, removed } = sanitiseSvg(upload);
     const bytes = new TextEncoder().encode(svg);
     const sha256 = sha256Hex(bytes);
     const key = storageKey(PLATFORM_TENANT_ID, "brand", ulid(), "svg");
+    const pngs = await this.rasterise(ctx, svg);
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -170,13 +199,29 @@ export class BrandStudio {
           sha256,
           tags: { [SANITISED_TAG]: "1", pack: packId },
         });
+        const png: LogoPngs = {};
+        for (const p of pngs) {
+          const pKey = storageKey(PLATFORM_TENANT_ID, "brand", ulid(), "png");
+          const pSha = sha256Hex(p.bytes);
+          await this.o.storage.put(pKey, p.bytes, {
+            contentType: "image/png",
+            bucketClass: "PUBLIC_ASSETS",
+            sha256: pSha,
+            tags: { pack: packId, favicon: String(p.size) },
+          });
+          png[String(p.size) as keyof LogoPngs] = {
+            key: pKey,
+            sha256: pSha,
+            content_type: "image/png",
+          };
+        }
         await this.o.audit.record(tx, {
           action: "brand.logo.upload",
           resourceType: "brand_pack",
           resourceId: packId,
-          after: { key, sha256, removed: removed.length },
+          after: { key, sha256, removed: removed.length, png: Object.keys(png) },
         });
-        return { ref: { key, sha256, content_type: "image/svg+xml" }, removed };
+        return { ref: { key, sha256, content_type: "image/svg+xml" }, removed, png };
       },
       { action: "brand.logo.upload" },
     );

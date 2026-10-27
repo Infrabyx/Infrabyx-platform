@@ -354,7 +354,7 @@ export interface LawRegisterPort extends Port {
   >;
 }
 
-/** The ports PL5 defines (PL5 plan §8). */
+/** The ports PL5 defines (PL5 plan §8; MEDIA from OWNER-QUESTIONS #53, `media.ts`). */
 export const PL5_PORTS = [
   "CONSENT",
   "CRM",
@@ -368,5 +368,6 @@ export const PL5_PORTS = [
   "EGRESS",
   "CLAIMS",
   "LAW_REGISTER",
+  "MEDIA",
 ] as const;
 export type Pl5Port = (typeof PL5_PORTS)[number];

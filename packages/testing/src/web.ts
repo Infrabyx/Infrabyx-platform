@@ -1,5 +1,5 @@
 // Fakes and fixtures for the PL5 website ports (PL5 plan §8): CONSENT, CRM, HR, SUPPORT, BACKLOG,
-// TRUST, BILLING (catalogue), TAG_MANAGER, ANALYTICS, EGRESS, CLAIMS and LAW_REGISTER. Every fake
+// TRUST, BILLING (catalogue), TAG_MANAGER, ANALYTICS, EGRESS, CLAIMS, LAW_REGISTER and MEDIA. Every fake
 // records what it received so tests can assert minimisation; none calls a network. The fixture
 // catalogue carries no real price (the repository is public) and the fixture trust feed no real
 // certificate: only a sub-processor list and an accessibility statement.
@@ -23,6 +23,9 @@ import type {
   HrPort,
   LawRegisterPort,
   LeadInput,
+  MediaPort,
+  MediaReencodeRequest,
+  MediaRendition,
   PortHealth,
   SupportPort,
   TagManagerPort,
@@ -30,7 +33,12 @@ import type {
   TrustPort,
   VadDocument,
 } from "@infrabyx/contracts/ports";
-import { ConsentRecordInput as ConsentRecordSchema } from "@infrabyx/contracts/ports";
+import {
+  ConsentRecordInput as ConsentRecordSchema,
+  MEDIA_FORMAT_MIME,
+  renditionWidths,
+} from "@infrabyx/contracts/ports";
+import { PortError } from "@infrabyx/contracts/errors";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 
 const up = async (): Promise<PortHealth> => ({
@@ -267,6 +275,50 @@ export class NoneAnalytics implements AnalyticsPort {
   readonly descriptor = desc("ANALYTICS", "none");
   health = up;
   async track(): Promise<void> {}
+}
+
+/**
+ * MEDIA fixture (#53): reads PNG headers only and returns labelled placeholder bytes for each
+ * rendition, so CMS and brand tests run without an image library. The real adapters are proven by
+ * the MEDIA contract suite in `@infrabyx/connectors`.
+ */
+export class FakeMedia implements MediaPort {
+  readonly descriptor = desc("MEDIA", "fixture");
+  readonly calls: string[] = [];
+  health = up;
+  private dims(bytes: Uint8Array, mime: string): [number, number] {
+    const v = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    if (mime !== "image/png" || bytes.length < 24 || bytes[1] !== 0x50)
+      throw new PortError("IPB-SEC-014", "MEDIA", { adapter: "fixture" });
+    return [v.getUint32(16), v.getUint32(20)];
+  }
+  async probe(bytes: Uint8Array, mime: string) {
+    const [width, height] = this.dims(bytes, mime);
+    return { format: "png" as const, width, height };
+  }
+  async reencode(req: MediaReencodeRequest): Promise<MediaRendition[]> {
+    const [w, h] = this.dims(req.bytes, req.mime);
+    this.calls.push(`reencode ${w}x${h}`);
+    return req.formats.flatMap((format) =>
+      renditionWidths(w, req.widths).map((width) => ({
+        format,
+        mime: MEDIA_FORMAT_MIME[format],
+        width,
+        height: Math.round((width * h) / w),
+        bytes: new TextEncoder().encode(`${format}:${width}`),
+      })),
+    );
+  }
+  async rasteriseSvg(_svg: string, sizes: readonly number[]): Promise<MediaRendition[]> {
+    this.calls.push(`rasterise ${sizes.join(",")}`);
+    return sizes.map((n) => ({
+      format: "png",
+      mime: "image/png",
+      width: n,
+      height: n,
+      bytes: new TextEncoder().encode(`png:${n}`),
+    }));
+  }
 }
 
 /** Egress fixture: serves canned responses for allow-listed URLs only. */

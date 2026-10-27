@@ -5,6 +5,7 @@ import { platformContext, startPostgres, withTenant, type TestDatabase } from "@
 import {
   AcceptanceLedger,
   ConsentPurge,
+  ConsentSubjects,
   ConsentTexts,
   handleConsentPost,
   PgConsentLedger,
@@ -244,5 +245,101 @@ describe("the consent purge (OWNER-QUESTIONS #48)", () => {
       )
     ).rows;
     expect(led).toEqual([{ actor_id: "svc_consent_sweep" }]);
+  });
+});
+
+describe("form consents for marketing leads end 24 months after the last interaction (OWNER-QUESTIONS #57)", () => {
+  it("purges them 3 years after that end, never with an active relationship or under legal hold", async () => {
+    const subjects = new ConsentSubjects({ kernel: db.kernel, audit: db.audit });
+    const tenant = withTenant("tnt_platform");
+    const lead = async (ref: string, age: string) => {
+      const r = await ledger.recordConsent({
+        principalRef: ref,
+        method: "FORM",
+        purposes: ["LEAD_CONTACT"],
+        textKey: "consent.contact_form",
+        textVersion: "1.0",
+        region: "IN",
+        gpc: false,
+      });
+      await db.admin.query("alter table consent.record disable trigger record_append_only");
+      await db.admin.query(
+        `update consent.record set recorded_at = now() - $2::interval where id = $1`,
+        [r.receiptId, age],
+      );
+      await db.admin.query("alter table consent.record enable trigger record_append_only");
+      return r.receiptId;
+    };
+    const quiet = await lead("form:quiet@example.org", "5 years 1 month");
+    const recent = await lead("form:recent@example.org", "5 years 1 month");
+    const customer = await lead("form:customer@example.org", "5 years 1 month");
+    const held = await lead("form:held@example.org", "5 years 1 month");
+    const young = await lead("form:young@example.org", "4 years 11 months");
+    await subjects.recordInteraction(
+      tenant,
+      "form:recent@example.org",
+      new Date(Date.now() - 4 * 365 * 86_400_000),
+    );
+    await subjects.setRelationship(tenant, "form:customer@example.org", true);
+    expect(
+      await code(
+        subjects.legalHold(dpo, {
+          tenantId: "tnt_platform",
+          subjectRef: "form:held@example.org",
+          on: true,
+          reason: "Court order 12/2026",
+        }),
+      ),
+    ).toBe("IPB-UX-011");
+    await subjects.legalHold(legal, {
+      tenantId: "tnt_platform",
+      subjectRef: "form:held@example.org",
+      on: true,
+      reason: "Court order 12/2026",
+    });
+    await db.admin.query(
+      "update consent.subject_status set updated_at = now() - interval '25 months' where subject_ref = $1",
+      ["form:held@example.org"],
+    );
+
+    const purge = new ConsentPurge({ kernel: db.kernel, audit: db.audit });
+    const exists = async (id: string) =>
+      Boolean((await db.admin.query("select 1 from consent.record where id = $1", [id])).rowCount);
+    await purge.sweep();
+    expect(await exists(quiet)).toBe(false);
+    for (const id of [recent, customer, held, young]) expect(await exists(id)).toBe(true);
+    // A held subject's row is never purged, even when old.
+    expect((await subjects.status(tenant, "form:held@example.org"))?.legalHold).toBe(true);
+
+    // The relationship ends now: the consent's 24 months start again from today.
+    await subjects.setRelationship(tenant, "form:customer@example.org", false);
+    await purge.sweep();
+    expect(await exists(customer)).toBe(true);
+
+    await subjects.legalHold(legal, {
+      tenantId: "tnt_platform",
+      subjectRef: "form:held@example.org",
+      on: false,
+      reason: "Order discharged",
+    });
+    await purge.sweep();
+    expect(await exists(held)).toBe(false);
+    // Its status row goes 24 months after its last change, once no record refers to it.
+    await db.admin.query(
+      "update consent.subject_status set updated_at = now() - interval '25 months' where subject_ref = $1",
+      ["form:held@example.org"],
+    );
+    expect((await purge.sweep()).subjects).toBe(1);
+    expect(await subjects.status(tenant, "form:held@example.org")).toBeNull();
+    const actions = (
+      await db.admin.query<{ action: string }>(
+        "select action from audit.ledger where action like 'consent.%hold%' or action = 'consent.subject.purge' order by seq",
+      )
+    ).rows.map((r) => r.action);
+    expect(actions).toEqual([
+      "consent.legal_hold.placed",
+      "consent.legal_hold.lifted",
+      "consent.subject.purge",
+    ]);
   });
 });

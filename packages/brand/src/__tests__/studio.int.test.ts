@@ -3,14 +3,16 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { platformSeedModule, runSeed } from "@infrabyx/seed";
 import { PgOutbox } from "@infrabyx/tenancy";
 import {
+  FakeMedia,
   MemoryStorage,
   platformContext,
   startPostgres,
   withTenant,
   type TestDatabase,
 } from "@infrabyx/testing";
+import { faviconSet } from "../favicon.js";
 import { BrandStudio } from "../studio.js";
-import type { BrandPackBodyInput } from "../shape.js";
+import { BrandPackBody, type BrandPackBodyInput } from "../shape.js";
 
 let db: TestDatabase;
 let studio: BrandStudio;
@@ -273,5 +275,39 @@ describe("Brand Studio publish, maker-checker and rollback", () => {
         "brand.pack.rollback",
       ]),
     );
+  });
+});
+
+describe("PNG favicons from the sanitised logo through the MEDIA port (OWNER-QUESTIONS #53)", () => {
+  it("rasterises every favicon size from the sanitised SVG, and none when re-encoding is off", async () => {
+    let on = true;
+    const media = new FakeMedia();
+    const s = new BrandStudio({
+      kernel: db.kernel,
+      audit: db.audit,
+      product: "OH",
+      storage,
+      hooks: {
+        emailIdentityVerified: async () => true,
+        policySetPublished: async () => true,
+      },
+      media,
+      reencodeEnabled: async () => on,
+    });
+    const packId = (await s.createPack(maker, { product: "OH", label: "Favicons" })).id;
+    const up = await s.uploadLogo(maker, packId, LOGO);
+    expect(Object.keys(up.png).sort()).toEqual(["180", "192", "32", "512", "64"]);
+    for (const ref of Object.values(up.png))
+      expect(storage.objects.get(ref.key)!.meta.contentType).toBe("image/png");
+    const set = faviconSet(
+      BrandPackBody.parse(body({ svg: up.ref, png: up.png })),
+      "<svg/>",
+      "#1D4ED8",
+    );
+    expect(set.missing).toEqual([]);
+    expect(set.files.map((f) => f.path)).toContain("/apple-touch-icon.png");
+    on = false;
+    expect((await s.uploadLogo(maker, packId, LOGO)).png).toEqual({});
+    expect(media.calls).toEqual(["rasterise 32,64,180,192,512"]);
   });
 });

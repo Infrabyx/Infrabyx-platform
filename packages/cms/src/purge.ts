@@ -3,7 +3,8 @@
 // Each batch is one transaction: the item's preview tokens, approvals and revisions, then the item;
 // redirects and media past the period; one ledger entry per sweep batch with the counts and the
 // ids. PostgreSQL refuses any delete outside the 90-day rule (migration `cms/0001`), whatever the
-// caller. A media file leaves storage only when no remaining media row uses its key.
+// caller. A media file leaves storage only when no remaining media row uses its key; its
+// renditions (#53) leave with it.
 import type { AuditSink, MutationKernel } from "@infrabyx/contracts/kernel";
 import type { StoragePort } from "@infrabyx/contracts/ports";
 import { cmsServiceContext } from "./repo.js";
@@ -73,9 +74,13 @@ export class CmsPurge {
             [batch],
           )
         ).rows.map((r) => r.id);
-        const media = await tx.query<{ id: string; storage_key: string }>(
+        const media = await tx.query<{
+          id: string;
+          storage_key: string;
+          renditions: { key: string }[];
+        }>(
           `delete from cms.media where id in (select id from cms.media where deleted_at < ${cutoff} limit $1)
-           returning id, storage_key`,
+           returning id, storage_key, renditions`,
           [batch],
         );
         result.media = media.rows.map((r) => r.id);
@@ -84,6 +89,8 @@ export class CmsPurge {
             m.storage_key,
           ]);
           if (!still.rowCount) storageKeys.push(m.storage_key);
+          // Renditions are written per upload, so no other row shares their keys (#53).
+          for (const r of m.renditions) storageKeys.push(r.key);
         }
         if (result.items.length || result.redirects.length || result.media.length)
           await this.o.audit.record(tx, {

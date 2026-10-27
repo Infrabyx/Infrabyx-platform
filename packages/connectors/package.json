@@ -87,6 +87,10 @@
     "./ai": {
       "types": "./dist/ai/index.d.ts",
       "default": "./dist/ai/index.js"
+    },
+    "./media": {
+      "types": "./dist/media/index.d.ts",
+      "default": "./dist/media/index.js"
     }
   },
   "files": [
@@ -95,7 +99,8 @@
     "marketplace",
     "policy",
     "sandbox-status.json",
-    "README.md"
+    "README.md",
+    "NOTICE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -158,10 +163,19 @@
     "yaml": "2.9.1",
     "zod": "4.6.7"
   },
+  "peerDependencies": {
+    "sharp": "0.35.5"
+  },
+  "peerDependenciesMeta": {
+    "sharp": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@infrabyx/audit": "workspace:*",
     "@infrabyx/testing": "workspace:*",
     "@types/pg": "8.23.1",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "sharp": "0.35.5"
   }
 }

@@ -25,6 +25,7 @@ export const PORTS = [
   "LLM",
   "EMBEDDING",
   "IMAGE_GEN",
+  "MEDIA",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

@@ -1,5 +1,7 @@
 // licence (IPB-09-07): every dependency's licence is on the allow-list.
-// Reads `pnpm licenses list --json`; fails on copyleft or unknown licences unless listed in EXCEPTIONS.
+// Reads `pnpm licenses list --json`; fails on copyleft or unknown licences unless listed in EXCEPTIONS
+// or matched by a FAMILY_EXCEPTIONS entry. An SPDX "OR" needs one allowed choice; "AND" needs every
+// part allowed.
 import { execFileSync } from "node:child_process";
 
 const ALLOW = new Set([
@@ -28,6 +30,33 @@ const EXCEPTIONS = {
     "Unlicense — LICENSE file in the published package (github.com/streamich/unionfs); package.json has no license field; via @temporalio/worker",
 };
 
+// Package families granted a licence exception by the owner, each limited to one licence.
+const FAMILY_EXCEPTIONS = [
+  {
+    // OWNER-QUESTIONS #53 (PL5-D-11): the unmodified, dynamically loaded libvips binaries, used only
+    // through `sharp` behind the MEDIA port. Never modified, vendored or statically linked (the
+    // wasm32 builds, which link libvips statically, carry "Apache-2.0 AND LGPL-3.0-or-later" and
+    // still fail). NOTICE names libvips and its licence.
+    name: /^@img\/sharp-libvips-[a-z0-9]+(?:-[a-z0-9]+)*$/,
+    licence: "LGPL-3.0-or-later",
+    reason:
+      "OWNER-QUESTIONS #53: unmodified, dynamically loaded libvips through sharp (MEDIA port)",
+  },
+];
+
+/** True when an SPDX expression (without WITH clauses) is satisfied by the allow-list. */
+function licenceAllowed(expr) {
+  return expr
+    .replace(/[()]/g, "")
+    .split(/\s+OR\s+/)
+    .some((choice) =>
+      choice
+        .split(/\s+AND\s+/)
+        .map((p) => p.trim())
+        .every((p) => ALLOW.has(p)),
+    );
+}
+
 const raw = execFileSync("pnpm", ["licenses", "list", "--json"], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "inherit"],
@@ -36,10 +65,13 @@ const byLicence = JSON.parse(raw);
 let failures = 0;
 for (const [licence, pkgs] of Object.entries(byLicence)) {
   // pnpm may report SPDX expressions such as "(MIT OR Apache-2.0)".
-  const parts = licence.replace(/[()]/g, "").split(/\s+(?:OR|AND)\s+/);
-  const ok = parts.some((p) => ALLOW.has(p));
-  if (ok) continue;
+  if (licenceAllowed(licence)) continue;
   for (const p of pkgs) {
+    const family = FAMILY_EXCEPTIONS.find((f) => f.name.test(p.name) && f.licence === licence);
+    if (family) {
+      console.log(`licence exception: ${p.name}@${p.versions.join(",")} — ${family.reason}`);
+      continue;
+    }
     if (EXCEPTIONS[p.name]) {
       console.log(`licence exception: ${p.name}@${p.versions.join(",")} — ${EXCEPTIONS[p.name]}`);
       continue;

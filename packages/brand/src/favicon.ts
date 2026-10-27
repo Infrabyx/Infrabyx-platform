@@ -1,6 +1,7 @@
 // Favicon set and web manifest (IPB-04-22, `@IPB-04-AT-22` at file level). `icon.svg` is the
-// sanitised logo; PNG sizes come from an uploaded PNG master until a raster library is approved
-// (OWNER-QUESTIONS #43), so `favicon.ico` and the PNGs are listed only when uploaded.
+// sanitised logo; the PNG sizes are rasterised from it through the MEDIA port when re-encoding is
+// on (OWNER-QUESTIONS #53, `BrandStudio.uploadLogo`), or come from an uploaded PNG master, so
+// `favicon.ico` and the PNGs are listed only when present.
 import type { BrandPackBody, MediaRef } from "./shape.js";
 
 export interface FaviconFile {
@@ -13,7 +14,7 @@ export interface FaviconFile {
 
 export interface FaviconSet {
   files: FaviconFile[];
-  /** What a complete IPB-04-22 set still lacks (shown in Studio; never blocks on PNGs, #43). */
+  /** What a complete IPB-04-22 set still lacks (shown in Studio; never blocks on PNGs, #43, #53). */
   missing: string[];
 }
 
