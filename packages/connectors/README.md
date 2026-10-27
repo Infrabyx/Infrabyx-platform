@@ -117,3 +117,11 @@ In-process engine adapters for the platform decision table `ipb.decision_table.v
 - **`memory`**: a direct CEL row walk over the original `when`, used by tests and for draft validation.
 - Engines only decide which rows match; outputs are assembled from the table (`first`: the lowest matching row; `collect`: each output is the list of the matched rows' values). A differential test proves the three engines agree on 600 generated inputs; `health()` evaluates a canary table.
 - `evaluateCel(expr, input, { maxAstNodes })` serves RULES `evaluateCel`.
+
+## MEDIA (`@infrabyx/connectors/media`)
+
+Re-encoding raster uploads and rasterising the sanitised SVG logo (IPB-04-11, 04-22; OWNER-QUESTIONS #53, PL5-D-11).
+
+- `SharpMedia` (reference): libvips through `sharp`, in-process, `IN`. `sharp` 0.35.5 is an optional peer dependency; install it in the product to re-encode. Without it the adapter reports `IPB-PORT-001` (`not_installed`) and the CMS and Brand Studio serve uploads as uploaded. The prebuilt `@img/sharp-libvips-*` binaries are LGPL-3.0-or-later, used unmodified and loaded dynamically under the owner's licence exception (see `NOTICE`).
+- `PassthroughMedia` (alternative): header probe only; `reencode` and `rasteriseSvg` are declared unsupported.
+- Both check the header against the declared type and the 40-megapixel limit before decoding (`IPB-SEC-014`, `IPB-SEC-013`); `rasteriseSvg` takes only the brand sanitiser's output (`IPB-SEC-012`); every output drops EXIF, XMP, IPTC and the ICC profile.

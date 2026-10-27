@@ -1,0 +1,24 @@
+Infrabyx platform — third-party notices
+
+This file lists third-party components that need a notice beyond the licence allow-list in
+scripts/licence-check.mjs.
+
+libvips (through @img/sharp-libvips-* and sharp)
+------------------------------------------------
+@infrabyx/connectors' MEDIA adapter `sharp` loads libvips through the npm package `sharp`
+(Apache-2.0, https://github.com/lovell/sharp). On each platform sharp installs a prebuilt
+`@img/sharp-libvips-<platform>` package that contains libvips and its dependencies as shared
+libraries.
+
+  Component:  libvips (https://www.libvips.org/, https://github.com/libvips/libvips)
+  Package:    @img/sharp-libvips-<platform>, version 1.3.4 (with sharp 0.35.5)
+  Licence:    GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later),
+              https://www.gnu.org/licenses/lgpl-3.0.html
+  Source:     https://github.com/lovell/sharp-libvips (build scripts and the versions of every
+              bundled library), https://github.com/libvips/libvips (libvips source)
+
+The binaries are used unmodified and loaded dynamically at run time. They are never modified,
+vendored into this repository or statically linked into Infrabyx code; a user may replace them
+with their own build of libvips, as the LGPL allows (see https://sharp.pixelplumbing.com/install
+"Custom libvips"). The licence exception covers this package family only (owner decision,
+OWNER-QUESTIONS #53, docs/DECISIONS.md PL5-D-11).
