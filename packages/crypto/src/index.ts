@@ -60,6 +60,7 @@ export {
   verifyCashfreeSignature,
   verifyMetaSignature,
   verifySnsMessage,
+  verifyWebhookSecret,
   snsCertUrlAllowed,
   generateWebhookSecret,
   type SnsMessage,

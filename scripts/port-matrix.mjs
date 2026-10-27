@@ -25,6 +25,8 @@ export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
 /** A change under any of these paths runs every port. */
 export const SHARED_PATHS = [
   "packages/connectors/src/core/",
+  "packages/connectors/src/messaging/",
+  "packages/testing/src/stubs/",
   "packages/connectors/package.json",
   "packages/contracts/src/ports/common.ts",
   "packages/contracts/src/ports/payload-class.ts",

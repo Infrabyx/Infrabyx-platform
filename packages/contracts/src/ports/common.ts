@@ -44,6 +44,16 @@ export interface PortCall extends Idempotent {
   tenantId?: string;
 }
 
+/**
+ * What the inbound-webhook helper knows about the request besides body and headers (plan §3.8).
+ * `sourceIp` comes from the socket, never from a forwarded header the caller did not set itself.
+ */
+export interface WebhookRequestMeta {
+  sourceIp?: string;
+  /** Raw query string without `?`, for vendors that report by GET. */
+  query?: string;
+}
+
 /** Result of looking a side-effect up at the vendor by its idempotency key (plan §3.5). */
 export type LookupResult<T> =
   { status: "found"; result: T } | { status: "absent" } | { status: "unknown"; reason: string };

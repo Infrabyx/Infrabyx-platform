@@ -1,7 +1,13 @@
 // Vendor webhook signature verification (C-13) and the secrets we generate for inbound webhooks
 // (C-19). The algorithm is the vendor's; the choice here is how strictly we verify: raw request
 // bytes, constant-time comparison of decoded MACs, timestamp windows where the vendor sends one.
-import { X509Certificate, createHmac, timingSafeEqual, verify as nodeVerify } from "node:crypto";
+import {
+  X509Certificate,
+  createHash,
+  createHmac,
+  timingSafeEqual,
+  verify as nodeVerify,
+} from "node:crypto";
 import { toBase64Url, toBytes, type BytesLike } from "./encoding.js";
 import { randomBytes } from "./random.js";
 
@@ -62,6 +68,18 @@ export function verifyMetaSignature(
   const m = /^sha256=([0-9a-f]{64})$/i.exec(header);
   const got = m?.[1] ? decodeHex(m[1]) : null;
   return got !== null && equal(got, mac(appSecret, rawBody));
+}
+
+/**
+ * C-19 in use: a vendor that cannot sign its webhooks presents our generated secret (bearer header
+ * or URL credentials). Both values are hashed first, so the comparison is constant-time and does
+ * not leak the secret's length.
+ */
+export function verifyWebhookSecret(expected: BytesLike, presented: string): boolean {
+  const e = toBytes(expected);
+  if (e.byteLength < 16) return false;
+  const digest = (b: Uint8Array) => createHash("sha256").update(b).digest();
+  return equal(digest(e), digest(Buffer.from(presented, "utf8")));
 }
 
 /** C-19: a 32-byte inbound-webhook secret, base64url, to be stored in SECRETS. */

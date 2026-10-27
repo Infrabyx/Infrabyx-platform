@@ -1,5 +1,6 @@
 // Error code catalogue. Generated from the IPB error tables; edit by hand only with a DECISIONS entry.
-// Sources: IPB-01 §01.6.3, IPB-02 §02.6.3, IPB-07 §07.6.3, IPB-09 §09.6.3, IPB-11 §11.6, PL1-D-03, PL1-D-08.
+// Sources: IPB-01 §01.6.3, IPB-02 §02.6.3, IPB-07 §07.6.3, IPB-09 §09.6.3, IPB-10 §10.6.3 (IPB-API-018),
+// IPB-11 §11.6, PL1-D-03, PL1-D-08.
 
 /** Where the error surfaces when it is not an HTTP response. */
 export type NonHttpStatus =
@@ -448,6 +449,12 @@ export const ERROR_CATALOGUE = {
     status: "ci",
     title: "Preview secrets scope violation",
     source: "IPB-09 §09.6.3",
+  },
+  // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
+  "IPB-API-018": {
+    status: 401,
+    title: "HTTP message signature invalid or nonce reused",
+    source: "IPB-10 §10.6.3",
   },
 } as const satisfies Record<string, ErrorDef>;
 
