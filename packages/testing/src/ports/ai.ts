@@ -5,6 +5,8 @@ import { expect } from "vitest";
 import {
   AiProviderError,
   type EmbeddingPort,
+  type ImageGenPort,
+  type ImageGenPortRequest,
   type LlmPort,
   type LlmPortRequest,
 } from "@infrabyx/contracts/ports";
@@ -171,3 +173,58 @@ export function embeddingContractCases(
     },
   ];
 }
+
+/** Cases for an IMAGE_GEN adapter (IPB-03-05, 03-09): PNG out, failover-friendly errors. */
+export function imageGenContractCases(
+  model = "contract-image-model",
+): ContractCase<ImageGenPort>[] {
+  const r = (prompt: string, over: Partial<ImageGenPortRequest> = {}): ImageGenPortRequest => ({
+    model,
+    prompt,
+    size: "1024x1024",
+    n: 1,
+    timeoutMs: 5000,
+    ...over,
+  });
+  return [
+    {
+      name: "declares its IPB-03 residency, INTERNAL prompts only, and serves from its region",
+      async run(p) {
+        expect(["IN", "SELF"]).toContain(p.descriptor.aiResidency);
+        expect(p.descriptor.maxDataClass).toBe("INTERNAL");
+        expect(p.descriptor.observedRegion).toBe(p.descriptor.region);
+        expect(p.capabilities()).toContain("image");
+      },
+    },
+    {
+      name: "generate returns n PNG images (the labeller only accepts PNG)",
+      method: "generate",
+      async run(p) {
+        const out = await p.generate(r("A flat illustration of a ledger book.", { n: 2 }));
+        expect(out).toHaveLength(2);
+        for (const img of out) {
+          expect(img.mimeType).toBe("image/png");
+          expect([...img.bytes.subarray(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+        }
+      },
+    },
+    {
+      name: "a 429 or 5xx is a retryable AiProviderError; a 400 is not",
+      method: "generate",
+      async run(p) {
+        expect((await providerErrorOf(p.generate(r("RATE_LIMIT")))).retryable).toBe(true);
+        expect((await providerErrorOf(p.generate(r("SERVER_ERROR")))).retryable).toBe(true);
+        expect((await providerErrorOf(p.generate(r("BAD_REQUEST")))).retryable).toBe(false);
+      },
+    },
+  ];
+}
+
+const providerErrorOf = async (p: Promise<unknown>): Promise<AiProviderError> => {
+  const e = await p.then(
+    () => null,
+    (x: unknown) => x,
+  );
+  expect(e).toBeInstanceOf(AiProviderError);
+  return e as AiProviderError;
+};
