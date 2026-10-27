@@ -1,5 +1,42 @@
 # @infrabyx/testing
 
+## 0.4.0
+
+### Minor Changes
+
+- c0b6d38: Synthetic AI guardrail corpora (PL4 session 4): `piiGoldenCorpus()` (PAN, Aadhaar including the masked form, mobile, e-mail, UPI, bank account with IFSC, card, voter ID, passport, driving licence, GSTIN, date of birth, JWT, PEM and API keys; check digits computed at run time, nothing real committed), `PII_NEGATIVE_CORPUS`, `INJECTION_CORPUS` (English, Hindi and Hinglish) and `BENIGN_INPUT_CORPUS`, with `syntheticAadhaar`, `syntheticCard` and `syntheticGstin`.
+- 200b25a: `FakeLlm` (scripted, records every request), `FakeEmbedding` (deterministic vectors) and `providerError` for AI tests. No test calls a paid provider (PL4-D-03).
+
+  `startPostgres().end()` tolerates the server's expected "terminating connection due to administrator command" (57P01) from `drop database … with (force)` on a client that is still closing. This removes an intermittent unhandled error after the tests have passed. Any other error still surfaces.
+
+  Bedrock Runtime, Vertex AI and vLLM stubs (`startBedrockStub`, `startVertexStub`, `startVllmStub`) and the LLM and EMBEDDING contract cases (`llmContractCases`, `embeddingContractCases`).
+
+- bfa324d: Imagen (`:predict` on `imagen*` models of the Vertex stub) and FLUX (`startFluxStub`) stubs, `stubPng`, `imageGenContractCases`, and the fakes `FakeImageGen`, `FakeSpeech` and `FakeRerank` (PL4 session 5).
+- c0b6d38: `startPostgres` falls back to `pgvector/pgvector:0.8.1-pg18` (pinned by digest, `TEST_IMAGES.pgvector`, `PG_TEST_IMAGE`) so AI retrieval migrations run; CI's integration job uses the same image. Point `IPB_TEST_PG_URL` at a PostgreSQL 18 server with the `vector` extension available.
+
+### Patch Changes
+
+- 200b25a: `ipb/port-data-class` knows the IMAGE_GEN default class (INTERNAL), mirroring `PORT_DEFAULT_DATA_CLASS` (PL4-D-02).
+- Updated dependencies [2b07109]
+- Updated dependencies [200b25a]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [200b25a]
+- Updated dependencies [9af583a]
+- Updated dependencies [288ae44]
+- Updated dependencies [b205b1d]
+- Updated dependencies [183c532]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [183c532]
+- Updated dependencies [200b25a]
+- Updated dependencies [b205b1d]
+  - @infrabyx/contracts@0.4.0
+  - @infrabyx/config@0.4.0
+  - @infrabyx/crypto@0.4.0
+  - @infrabyx/tenancy@0.4.0
+  - @infrabyx/audit@0.1.3
+  - @infrabyx/seed@0.2.2
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/ai",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "The AI Gateway: model registry, data-class routing that fails closed, prompt registry, guardrails, metering, kill switches and the LLM, EMBEDDING and IMAGE_GEN gateways (IPB-03)",
   "license": "UNLICENSED",
   "private": false,

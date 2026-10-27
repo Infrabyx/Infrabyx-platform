@@ -1,5 +1,47 @@
 # @infrabyx/export
 
+## 0.2.0
+
+### Minor Changes
+
+- 2b07109: Owner answers to OWNER-QUESTIONS #24 (PL3-D-25).
+
+  **Breaking change, accepted by the owner (27 Oct 2026, PL4-D-05):** the `roles` option of 0.1.0 is
+  removed, because only `ORG_OWNER` exports directly. No product consumes `@infrabyx/export` yet;
+  any caller that passed `roles` must drop it and route `ORG_ADMIN` exports through `submit`.
+
+  - `ORG_ADMIN` calls `submit`, an R2 approval (`export.job.request`) that only an `ORG_OWNER` may
+    check; pass the workflow `approvals` engine. The requester downloads their approved archive.
+  - Archives are downloadable for 30 days; run `sweep()` from one worker every few minutes. It
+    enqueues approved jobs and deletes expired archives, with each deletion ledgered. After that a
+    download is refused with `IPB-EXP-006`.
+  - Migration `export/0002_owner_answers.sql` (run `infrabyx-migrate`; it creates the
+    `svc_export_sweep` reader role).
+  - The archive README shows the export time in IST; data stays in UTC.
+
+  export_map: REF-EXPORT-1.1
+
+- 272160f: Reference export map `REF-EXPORT-1.2` (PL4-D-12): adds the AI run log `ai_runs` (from `ai.run`: model, route, class, usage, cost, guard flags and duration; no content) and the Vidhi action log `vidhi_actions` (from `vidhi.task_step`: task, tool, outcome, approval and actor), as `01 Data/ai_runs.{csv,jsonl}` and `01 Data/vidhi_actions.{csv,jsonl}` (IPB-03-55, 03-83). A minor bump: entities are only added. `REF-EXPORT-1.1` stays registered as `REF_EXPORT_MAP_1_1` for the dual run. The golden archive is regenerated as `golden/REF-EXPORT-1.2`.
+
+  export_map: REF-EXPORT-1.2
+
+### Patch Changes
+
+- Updated dependencies [2b07109]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [200b25a]
+- Updated dependencies [9af583a]
+- Updated dependencies [288ae44]
+- Updated dependencies [b205b1d]
+- Updated dependencies [183c532]
+- Updated dependencies [f6e9a88]
+- Updated dependencies [183c532]
+- Updated dependencies [200b25a]
+- Updated dependencies [b205b1d]
+  - @infrabyx/contracts@0.4.0
+  - @infrabyx/crypto@0.4.0
+  - @infrabyx/tenancy@0.4.0
+
 ## 0.1.0
 
 ### Minor Changes
