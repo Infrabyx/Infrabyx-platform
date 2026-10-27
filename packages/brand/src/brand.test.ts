@@ -149,7 +149,8 @@ describe("contrast guard", () => {
     expect(contrastRatio(amber.derived.onPrimary, "#FFD54F")).toBeGreaterThanOrEqual(4.5);
     expect(amber.derived.onPrimary).not.toBe("#FFFFFF");
     expect(Object.keys(amber.previews)).toEqual(["light", "dark", "hc_light", "hc_dark"]);
-    // IPB-07-32 also needs primary-on-surface 3:1; the amber is 1.41:1, so it is refused too (PL5-D-04).
+    // A primary keeps the strict rule (3:1 on the surface; PL5-D-04, PL5-D-05): the amber is 1.41:1,
+    // so it is refused as a primary. As an accent it would pass (fill only).
     expect(amber.failures.map((f) => f.pair)).toEqual(["primary/surface"]);
     const pale = contrastGuard("UDF", {
       primary: "#FFFBEA",
@@ -159,6 +160,80 @@ describe("contrast guard", () => {
     });
     expect(pale.passed).toBe(false);
     expect(pale.failures[0]!.pair).toBe("primary/surface");
+  });
+
+  // PL5-D-05 (OWNER-QUESTIONS #52): accents are fill-only on a light surface.
+  const PRODUCT_ACCENTS = {
+    LD: "#E07A1F",
+    LDC: "#C9A227",
+    EQ: "#F26B5B",
+    FBX: "#10B981",
+    UDF: "#F59E0B",
+    OH: "#2563EB",
+  } as const;
+  it.each(Object.entries(PRODUCT_ACCENTS))(
+    "accepts the %s palette accent %s as a fill with text on it at 4.5:1",
+    (product, accent) => {
+      const g = contrastGuard(product as "LD", {
+        primary: "#1D4ED8",
+        accent,
+        surface: "#FFFFFF",
+        on_surface: "#111827",
+      });
+      expect(g.failures).toEqual([]);
+      expect(contrastRatio(g.derived.onAccent, accent)).toBeGreaterThanOrEqual(4.5);
+    },
+  );
+
+  it("refuses an accent as text, an icon, a border or a focus ring on a light surface", () => {
+    const g = contrastGuard(
+      "LD",
+      { primary: "#1D4ED8", accent: "#E07A1F", surface: "#FFFFFF", on_surface: "#111827" },
+      { roles: { accent: ["text", "icon", "border", "focus"] } },
+    );
+    expect(g.failures.map((f) => [f.role, f.reason])).toEqual([
+      ["text", "role_not_permitted"],
+      ["icon", "role_not_permitted"],
+      ["border", "role_not_permitted"],
+      ["focus", "role_not_permitted"],
+    ]);
+    expect(contrastMessage(g.failures[0]!)).toBe(
+      "An accent colour is used only as a filled background on a light surface, never as text. Use the primary colour for this.",
+    );
+  });
+
+  it("checks an accent's other uses by contrast on a dark surface, with a suggestion", () => {
+    const g = contrastGuard(
+      "LD",
+      { primary: "#93C5FD", accent: "#1D4ED8", surface: "#111827", on_surface: "#F9FAFB" },
+      { roles: { accent: ["text"] } },
+    );
+    const f = g.failures.find((x) => x.pair === "accent/surface")!;
+    expect(f).toMatchObject({ role: "text", reason: "contrast", min: 4.5 });
+    expect(contrastRatio(f.suggestion!, "#111827")).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("refuses a mid-tone accent fill that neither white nor dark text can read on, and suggests one", () => {
+    // Pure black or white always reaches 4.58:1 on some side, so a fill fails only when a tenant
+    // raises the text minimum (here to 7:1).
+    const g = contrastGuard(
+      "GRP",
+      { primary: "#0B2545", accent: "#777777", surface: "#FFFFFF", on_surface: "#000000" },
+      { minText: 7 },
+    );
+    const f = g.failures.find((x) => x.pair === "on_accent/accent")!;
+    expect(f).toMatchObject({ role: "fill", reason: "contrast", min: 7 });
+    expect(contrastRatio("#111827", f.suggestion!)).toBeGreaterThanOrEqual(7);
+  });
+
+  it("keeps the strict primary rule: 3:1 against the surface and text on it at 4.5:1", () => {
+    const g = contrastGuard("GRP", {
+      primary: "#F59E0B",
+      accent: "#F59E0B",
+      surface: "#FFFFFF",
+      on_surface: "#111827",
+    });
+    expect(g.failures.map((f) => [f.pair, f.role])).toEqual([["primary/surface", "border"]]);
   });
 
   it("passes a compliant pack, and the minimums can only be raised", () => {

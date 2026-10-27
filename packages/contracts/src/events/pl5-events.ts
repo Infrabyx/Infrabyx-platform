@@ -132,6 +132,9 @@ export const ContrastGuardFailedData = z
           ratio: z.number(),
           min: z.number(),
           suggestion: z.string().nullable(),
+          /** The use that failed (PL5-D-05, OWNER-QUESTIONS #52). */
+          role: z.enum(["fill", "text", "icon", "border", "focus"]).optional(),
+          reason: z.enum(["contrast", "role_not_permitted"]).optional(),
         })
         .strict(),
     ),
