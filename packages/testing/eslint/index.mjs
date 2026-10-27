@@ -41,6 +41,8 @@ export const VENDOR_SDK_PATTERNS = [
   /^@hyperverge\//,
   /^@digio\//,
   /^@signzy\//,
+  // MEDIA reference adapter (OWNER-QUESTIONS #53): libvips under the licence exception, connectors only.
+  /^sharp$/,
 ];
 
 const toPosix = (p) => p.split(path.sep).join("/");
