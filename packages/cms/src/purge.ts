@@ -54,6 +54,9 @@ export class CmsPurge {
         if (items.length) {
           await tx.query("delete from cms.preview_token where content_item_id = any($1)", [items]);
           await tx.query("delete from cms.approval where content_item_id = any($1)", [items]);
+          await tx.query("delete from cms.resource_version where content_item_id = any($1)", [
+            items,
+          ]);
           const revs = await tx.query("delete from cms.revision where content_item_id = any($1)", [
             items,
           ]);

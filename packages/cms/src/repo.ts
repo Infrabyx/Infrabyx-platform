@@ -292,6 +292,20 @@ export async function publishInTx(
      where id = $1`,
     [item.id, revisionId, rev.slug, path, rev.title, tx.ctx.principal.id],
   );
+  // A resource publishes its file version: recorded once, kept for `?v=` (IPB-04-61).
+  if (item.content_type === "resource" && typeof rev.body.version === "string")
+    await tx.query(
+      `insert into cms.resource_version (id, content_item_id, version, revision_id, media_id, created_by)
+       values ($1, $2, $3, $4, $5, $6) on conflict (content_item_id, version) do nothing`,
+      [
+        newId("rsv"),
+        item.id,
+        rev.body.version,
+        revisionId,
+        (rev.body.file_media_id as string | undefined) ?? null,
+        tx.ctx.principal.id,
+      ],
+    );
   const appr = await tx.query<ApprovalRow>(
     `update cms.approval set state = 'executed', decided_at = coalesce(decided_at, now())
       where content_item_id = $1 and revision_id = $2 and state = 'approved' and action in ('publish', 'rollback')

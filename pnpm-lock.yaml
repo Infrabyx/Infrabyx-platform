@@ -198,6 +198,9 @@ importers:
       '@infrabyx/tenancy':
         specifier: workspace:*
         version: link:../tenancy
+      '@infrabyx/ui':
+        specifier: workspace:*
+        version: link:../ui
       parse5:
         specifier: 8.0.1
         version: 8.0.1

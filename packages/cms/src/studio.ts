@@ -81,6 +81,11 @@ export interface CmsStudioOptions {
   hooks?: CmsHooks;
   /** A product's additions to the claims word list. */
   words?: Partial<WordList>;
+  /** Extra publish lint run at submit, e.g. `PricingService.lintCopy` for pricing copy. */
+  extraLint?: (
+    item: { type: ContentType; packId: string },
+    body: Record<string, unknown>,
+  ) => Promise<LintFinding[]>;
   now?: () => Date;
 }
 
@@ -581,6 +586,13 @@ export class CmsStudio {
       const rev = await loadRevision(tx, item.current_revision_id);
       return { item, rev, lint: await this.publishChecks(tx, item, rev) };
     });
+    if (this.o.extraLint)
+      check.lint.findings.push(
+        ...(await this.o.extraLint(
+          { type: check.item.content_type, packId: check.item.brand_pack_id },
+          check.rev.body,
+        )),
+      );
     if (check.lint.findings.length) {
       const claimsFailures = check.lint.findings.filter((f) => f.code === "IPB-CMS-010");
       if (claimsFailures.length)

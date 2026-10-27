@@ -19,3 +19,6 @@ export { cmsServiceContext } from "./repo.js";
 export * from "./brand-hook.js";
 export * from "./policy-template.js";
 export * from "./policies.js";
+export * from "./resources.js";
+export * from "./forms.js";
+export * from "./pricing.js";

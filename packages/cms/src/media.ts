@@ -79,6 +79,8 @@ export interface MediaUpload {
   altText?: string;
   decorative?: { reason: string };
   licenceNote?: string;
+  /** A gated resource file: stored in a private bucket and served only by presigned URL. */
+  gated?: boolean;
 }
 
 export interface MediaRecord {
@@ -147,7 +149,7 @@ export class MediaLibrary {
         );
         await this.o.storage.put(key, bytes, {
           contentType: u.mime,
-          bucketClass: "PUBLIC_ASSETS",
+          bucketClass: u.gated ? "GENERAL" : "PUBLIC_ASSETS",
           sha256,
           tags: { cms_media: "1" },
         });
