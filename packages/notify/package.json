@@ -1,9 +1,9 @@
 {
   "name": "@infrabyx/notify",
   "version": "0.0.0",
-  "description": "NOTIFY fan-out: email, SMS, WhatsApp, push, in-app",
+  "description": "NOTIFY fan-out to in-app, email, SMS, WhatsApp and push: catalogue, routing, quiet hours and digest, resend classes, suppression, marketing consent, kill switches",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -11,17 +11,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./package.json": "./package.json",
+    "./catalogue/*": "./catalogue/*"
   },
   "files": [
     "dist",
+    "migrations",
+    "catalogue",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +39,20 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "bin": {
+    "infrabyx-notify-lint": "./dist/lint-cli.js"
+  },
+  "dependencies": {
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/connectors": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }

@@ -247,7 +247,33 @@ importers:
 
   packages/hlp: {}
 
-  packages/notify: {}
+  packages/notify:
+    dependencies:
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/connectors':
+        specifier: workspace:*
+        version: link:../connectors
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
 
   packages/rules:
     dependencies:
