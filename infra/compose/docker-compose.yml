@@ -1,0 +1,252 @@
+# Local development stack (IPB-01-33, §01.4.8.3; PL6 plan §4). Start it with `pnpm dev:up`, which
+# writes the generated local secrets to infra/compose/.env.local (never committed), starts the
+# `core` profile, waits for every health check, then migrates and seeds the platform database.
+#
+# Profiles: core (the services every product needs locally), apps (the reference site and console
+# from their images), search (OpenSearch), ai (Ollama), observability (Grafana, Tempo, Loki and
+# Prometheus behind one OTLP endpoint). Every port is bound to 127.0.0.1 only. Images are pinned by
+# digest (infra/docker/TEST_IMAGES.md for the ones the contract legs share; the rest below were
+# published at least 7 days before pinning, PL2-D-32). Local only: never a deployment.
+name: infrabyx
+
+x-hardened: &hardened
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  postgres:
+    profiles: [core]
+    image: pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run pnpm dev:up}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?run pnpm dev:up}
+      UNLEASH_DB_PASSWORD: ${UNLEASH_DB_PASSWORD:?run pnpm dev:up}
+    ports: ["127.0.0.1:${PG_PORT:-55432}:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./postgres/init.sh:/docker-entrypoint-initdb.d/10-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d infrabyx"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  redis:
+    profiles: [core]
+    <<: *hardened
+    image: redis:7.4-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541
+    # Runs as the image's redis user directly: with every capability dropped, the entrypoint
+    # cannot switch users itself.
+    user: "999:999"
+    command:
+      ["redis-server", "--requirepass", "${REDIS_PASSWORD:?run pnpm dev:up}", "--appendonly", "yes"]
+    ports: ["127.0.0.1:${REDIS_PORT:-56379}:6379"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  minio:
+    profiles: [core]
+    <<: *hardened
+    build: ./minio
+    image: infrabyx/minio-local:RELEASE.2025-09-07T16-13-09Z
+    read_only: true
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?run pnpm dev:up}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?run pnpm dev:up}
+      # Server-side encryption for the Object Lock buckets (SSE-S3 with a local-only key).
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?run pnpm dev:up}
+    ports: ["127.0.0.1:${MINIO_PORT:-59000}:9000"]
+    volumes: [miniodata:/data]
+    tmpfs: [/tmp]
+
+  mailpit:
+    profiles: [core]
+    <<: *hardened
+    image: axllent/mailpit:v1.31.6@sha256:23fe39e81bde596a918000b3135c0f85dc8bb4c9ea6be274b051143f3e300387
+    read_only: true
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-51025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-58025}:8025"
+    tmpfs: [/tmp]
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  keycloak:
+    profiles: [core]
+    <<: *hardened
+    image: keycloak/keycloak@sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244
+    command: ["start-dev"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ipb-bootstrap
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?run pnpm dev:up}
+    ports: ["127.0.0.1:${KEYCLOAK_PORT:-58080}:8080"]
+    healthcheck:
+      # The image has no HTTP client; bash opens the management port's readiness endpoint.
+      test:
+        [
+          "CMD-SHELL",
+          "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  temporal:
+    profiles: [core]
+    <<: *hardened
+    image: temporalio/temporal@sha256:ad4c82c97bd12b417d1ea942610dbcd511afb250c4d5ed26c694009533df447e
+    # In-memory dev server: workflow state resets with the container (local only).
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--headless"]
+    ports: ["127.0.0.1:${TEMPORAL_PORT:-57233}:7233"]
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  temporal-ui:
+    profiles: [core]
+    <<: *hardened
+    image: temporalio/ui:2.56.0@sha256:66d55d383bfb334ee0781f21a3b36c865b3f0f2262491a070bb2143394e9fe88
+    depends_on:
+      temporal: { condition: service_healthy }
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports: ["127.0.0.1:${TEMPORAL_UI_PORT:-58233}:8080"]
+
+  gotenberg:
+    profiles: [core]
+    <<: *hardened
+    image: gotenberg/gotenberg:8.38.1@sha256:aa552cc115db488e0f0bcb07446aac13071ad51505b642c84bb894500907b42b
+    ports: ["127.0.0.1:${GOTENBERG_PORT:-53000}:3000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  unleash:
+    profiles: [core]
+    <<: *hardened
+    image: unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      DATABASE_URL: postgres://unleash:${UNLEASH_DB_PASSWORD}@postgres:5432/unleash
+      DATABASE_SSL: "false"
+      INIT_ADMIN_API_TOKENS: ${UNLEASH_ADMIN_TOKEN:?run pnpm dev:up}
+      INIT_CLIENT_API_TOKENS: ${UNLEASH_CLIENT_TOKEN:?run pnpm dev:up}
+    ports: ["127.0.0.1:${UNLEASH_PORT:-54242}:4242"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4242/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  cerbos:
+    profiles: [core]
+    <<: *hardened
+    image: cerbos/cerbos@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
+    read_only: true
+    # The image's default configuration serves the policies in /policies from disk.
+    volumes: ["../../packages/connectors/policy/cerbos:/policies:ro"]
+    ports: ["127.0.0.1:${CERBOS_PORT:-53592}:3592"]
+    healthcheck:
+      test: ["CMD", "/cerbos", "healthcheck"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  public:
+    profiles: [apps]
+    <<: *hardened
+    build: { context: ../.., dockerfile: infra/docker/next/Dockerfile, args: { APP: public } }
+    image: infrabyx/public:local
+    read_only: true
+    tmpfs: [/tmp, "/app/.next/cache:uid=10001"]
+    # The brand and media files the dev seed wrote (pnpm dev:up); the site only reads them.
+    volumes: ["../../.storage:/storage:ro"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      APP_ENV: local
+      APP_BASE_URL: http://localhost:${PUBLIC_PORT:-53123}
+      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
+      STORAGE_DIR: /storage
+      APP_FIXTURE_ADAPTERS: "true"
+    ports: ["127.0.0.1:${PUBLIC_PORT:-53123}:3000"]
+
+  console:
+    profiles: [apps]
+    <<: *hardened
+    build: { context: ../.., dockerfile: infra/docker/next/Dockerfile, args: { APP: console } }
+    image: infrabyx/console:local
+    read_only: true
+    tmpfs: [/tmp, "/app/.next/cache:uid=10001"]
+    # The same files as the site; uploads need the directory writable by UID 10001.
+    volumes: ["../../.storage:/storage"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      APP_ENV: local
+      APP_BASE_URL: http://localhost:${CONSOLE_PORT:-53124}
+      APP_SITE_URL: http://localhost:${PUBLIC_PORT:-53123}
+      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
+      STORAGE_DIR: /storage
+      APP_FIXTURE_ADAPTERS: "true"
+    ports: ["127.0.0.1:${CONSOLE_PORT:-53124}:3000"]
+
+  opensearch:
+    profiles: [search]
+    image: opensearchproject/opensearch:3.8.0@sha256:fafe3fc3587088674669235575aa166228c48bdb940294a8cdbbc1da75236a40
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_ADMIN_PASSWORD:?run pnpm dev:up}
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["127.0.0.1:${OPENSEARCH_PORT:-59200}:9200"]
+    volumes: [osdata:/usr/share/opensearch/data]
+
+  ollama:
+    profiles: [ai]
+    <<: *hardened
+    image: ollama/ollama:0.40.6@sha256:265409e1d931028a8f7d5a32bcbafddd7bffbc6cc629d77efe9560adf692a5e7
+    ports: ["127.0.0.1:${OLLAMA_PORT:-51434}:11434"]
+    volumes: [ollamadata:/root/.ollama]
+
+  observability:
+    profiles: [observability]
+    image: grafana/otel-lgtm:0.37.0@sha256:57b5ab1ca6619beb180174e2fccce04762470750669d043f544b4726d0582d07
+    ports:
+      - "127.0.0.1:${GRAFANA_PORT:-53300}:3000"
+      - "127.0.0.1:${OTLP_GRPC_PORT:-54317}:4317"
+      - "127.0.0.1:${OTLP_HTTP_PORT:-54318}:4318"
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  osdata:
+  ollamadata:

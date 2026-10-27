@@ -20,7 +20,7 @@ async function gate(request: NextRequest): Promise<"ok" | "sign-in" | 403 | 404>
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  matcher: ["/((?!_next/static|_next/image|health/).*)"],
 };
 
 export async function proxy(request: NextRequest) {

@@ -158,6 +158,89 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           HEAD_REF: ${{ github.head_ref }}
         run: pnpm pr:checklist
+  containers:
+    # Every deployable image (IPB-01-31, PL6 plan §3.3): hadolint and `trivy config` on the
+    # Dockerfiles, build each image, `trivy image` (critical and high must be zero or waived with an
+    # expiry in infra/docker/trivyignore.yaml), then the hardening test (@IPB-01-AT-15): UID 10001,
+    # HEALTHCHECK, read-only root, health probes, ready failing closed. Images are never pushed
+    # (OWNER-QUESTIONS #67). Tools run from Docker Hub images pinned by digest (infra/docker/README.md).
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      HADOLINT_IMAGE: hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+      TRIVY_IMAGE: aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
+      APPS: public console
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: hadolint
+        run: |
+          for f in $(git ls-files '*Dockerfile'); do
+            echo "== $f"
+            docker run --rm -i "$HADOLINT_IMAGE" hadolint - < "$f"
+          done
+      - name: trivy config (Dockerfiles)
+        run: >-
+          docker run --rm -v "$PWD:/src:ro" -v "$RUNNER_TEMP/trivy:/root/.cache/trivy"
+          "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL /src/infra/docker
+      - name: build images
+        run: |
+          for app in $APPS; do
+            docker build -f infra/docker/next/Dockerfile --build-arg APP="$app" \
+              -t "infrabyx/$app:ci-${GITHUB_SHA::12}" .
+          done
+      - name: trivy image
+        run: |
+          for app in $APPS; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" \
+              -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 \
+              --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret \
+              "infrabyx/$app:ci-${GITHUB_SHA::12}"
+          done
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: hardening test (@IPB-01-AT-15)
+        run: |
+          IPB_IMAGES="$(for app in $APPS; do printf 'infrabyx/%s:ci-%s ' "$app" "${GITHUB_SHA::12}"; done)" \
+            pnpm images:test
+  compose:
+    # The local stack (IPB-01-33, PL6 plan §4): `pnpm dev:up` starts the `core` profile, waits for
+    # every health check, migrates and seeds; then the seeded site is checked through the `apps`
+    # profile images, and `pnpm dev:down` removes everything. Generated local secrets only.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: build
+        run: pnpm build
+      - name: dev:up (core and apps profiles)
+        run: pnpm dev:up --profile apps
+      - name: the seeded site and console answer through their images
+        run: |
+          for port in 53123 53124; do
+            curl -fsS "http://127.0.0.1:$port/health/ready" | grep -q '"status":"up"'
+          done
+          curl -fsS -o /dev/null http://127.0.0.1:53123/
+          curl -fsS http://127.0.0.1:53123/legal/index.json | grep -q '"policies"'
+      - name: logs on failure
+        if: failure()
+        run: docker compose -f infra/compose/docker-compose.yml --env-file infra/compose/.env.local --profile core --profile apps logs --tail 80 || true
+      - name: dev:down
+        if: always()
+        run: pnpm dev:down
   consumer-smoke:
     # Installs the packed tarballs in a clean directory with plain npm and imports every JavaScript
     # export with plain Node 24.22.1, as a product does (PL3-D-02). Catches CommonJS named-import

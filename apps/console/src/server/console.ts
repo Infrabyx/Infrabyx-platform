@@ -112,6 +112,10 @@ async function build() {
       trust: fixtures ? new FakeTrustFeed() : missingPort<TrustPort>("TRUST"),
     }),
     transitions: TRANSITIONS,
+    /** One round trip to the database, for `/health/ready` (IPB-01 §01.4.8.2). */
+    ping: async () => {
+      await pool.query("select 1");
+    },
   };
 }
 

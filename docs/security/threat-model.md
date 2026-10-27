@@ -420,6 +420,25 @@ A private Next.js app that mounts the Studio screens; every change goes through 
 - **I (caching and indexing):** Control: `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow` on every response; `Referrer-Policy: same-origin`.
 - **Residual:** the fixture role table is the reference policy only; a product's AUTHZ policy decides in production. The console has no rate limit of its own (PL6 edge).
 
+### 3.37 Container images of the deployables (built, PL6 session 1a; PL6-D-02)
+
+One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/console`; the `containers` CI job builds, scans and tests every image and pushes none (OWNER-QUESTIONS #67).
+
+- **T (a tampered base or tool image):** Control: the Node base is pinned by tag and digest (`ipb-check`), and hadolint and Trivy run from Docker Hub images pinned by digest, each published at least 7 days before pinning (PL2-D-32). The lockfile is installed frozen; the build has no registry token (workspace packages are linked, not fetched).
+- **I (secrets baked into a layer):** Control: `.dockerignore` keeps `.env*` (except examples), `SEED_CREDENTIALS.md`, key files, `.git`, docs and local storage out of the build context; a proxy CA is passed as a BuildKit secret, never copied; `trivy image` runs the secret scanner on every image.
+- **E (a compromised process changing its own code or the host):** Control: the runtime runs as UID 10001, the code is owned by root and not writable, the root filesystem is read-only (`/tmp` and `.next/cache` are empty volumes), all capabilities are dropped and `no-new-privileges` is set; `@IPB-01-AT-15` asserts each of these on the built image.
+- **D (an unhealthy container kept in service):** Control: `/health/live`, `/health/ready` and `/health/startup` (database round trip within 2 seconds, 503 when down), and a `HEALTHCHECK` on the liveness probe. The probes skip the CMS lookup in the proxy and return only status, latency and time (no host, version or error text).
+- **Residual:** images are unsigned until cosign is approved (#67); known vulnerabilities without a fix are listed by `trivy image` and must be waived with an expiry in `infra/docker/trivyignore.yaml`.
+
+### 3.38 The local Compose stack (built, PL6 session 1b; PL6-D-03)
+
+`infra/compose/docker-compose.yml` and `pnpm dev:up` run the platform's services on a developer machine and in the `compose` CI job. Local only; never a deployment.
+
+- **I (local secrets leaking):** Control: secrets are generated per machine into `infra/compose/.env.local` (mode 600, ignored by git and the image build context); none is a default or committed value; seeded passwords go to the never-committed `SEED_CREDENTIALS.md`. Local data is synthetic (the `dev` seed; IPB-11).
+- **S and E (other hosts reaching the services):** Control: every published port is bound to `127.0.0.1`; Redis, MinIO, Keycloak, Unleash and PostgreSQL each require a generated password or token; containers drop all capabilities where the image allows it, and the apps run read-only as UID 10001.
+- **T (a tampered image):** Control: every image is pinned by digest and was published at least 7 days before pinning (PL2-D-32); MinIO is built from source at the pinned commit, never from a mirror.
+- **Residual:** Keycloak and the Temporal dev server run in development mode (no TLS) on loopback; the stack must never be exposed beyond the machine. Seeds stay refused in prod, dr and pre-prod by the seed guard regardless of this stack.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

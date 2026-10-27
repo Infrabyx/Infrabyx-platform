@@ -10,14 +10,14 @@ import { randomBytes, toBase64Url } from "@infrabyx/crypto";
 import { keyOf } from "./render/legal.tsx";
 import { getSite, packFor } from "./server/site.ts";
 
-/** Static assets carry no page, so they skip the proxy. */
+/** Static assets and the health probes carry no page, so they skip the proxy. */
 export const config = {
-  matcher: ["/((?!_next/static|_next/image).*)"],
+  matcher: ["/((?!_next/static|_next/image|health/).*)"],
 };
 
 /** The site's own routes: everything else is a CMS path. */
 const SITE_ROUTES =
-  /^\/(?:_next\/|api\/|assets\/|\.well-known\/|feedback(?:\/|$)|(?:accessibility|grievance|sitemap|glossary|security|cookie-settings|__gallery|__not-found|legal|sitemap\.xml|robots\.txt|llms\.txt|icon\.svg|site\.webmanifest|consent\.js|feedback\.js)$)/;
+  /^\/(?:_next\/|api\/|assets\/|\.well-known\/|feedback(?:\/|$)|(?:accessibility|grievance|sitemap|glossary|security|cookie-settings|__gallery|__not-found|legal|legal\/index\.json|sitemap\.xml|robots\.txt|llms\.txt|icon\.svg|site\.webmanifest|consent\.js|feedback\.js)$)/;
 const LEGAL = /^\/legal\/([a-z0-9-]{1,60})(?:\/v\/(\d+\.\d+))?$/;
 
 function securityHeaders(res: NextResponse, csp: string): NextResponse {

@@ -1,0 +1,47 @@
+# Trivy waivers for the platform images (IPB-01 §01.4.8.1: critical and high findings are zero or
+# waived with an expiry). Each entry has a statement and an expiry at most 90 days out; an expired
+# waiver fails the `containers` job again, and a waiver is removed as soon as a fixed package or a
+# new base digest is available (Renovate updates the Node base by digest).
+#
+# All of these are in the Debian 12 packages of the pinned base node:24.22.1-bookworm-slim, with no
+# fixed package in Debian 12 when waived (Trivy status affected, fix_deferred or will_not_fix). The
+# app runs as UID 10001 with every capability dropped, no-new-privileges and a read-only root, and
+# never runs the affected tools itself.
+vulnerabilities:
+  - id: CVE-2026-53613
+    statement: util-linux mount TOCTOU (bsdutils, libblkid1, libmount1, libsmartcols1, libuuid1, mount, util-linux); the container never mounts and has no CAP_SYS_ADMIN. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-53615
+    statement: util-linux DOS partition parser overflow (same packages); the app parses no partition tables. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-76642
+    statement: util-linux X-mount post-hooks (same packages); the container never mounts. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-78408
+    statement: util-linux nsenter --join-cgroup (same packages); nsenter is never run and needs capabilities the container does not have. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-78409
+    statement: util-linux X-mount.subdir symlink escape (same packages); the container never mounts. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-78410
+    statement: util-linux restricted bind mounts (same packages); the container never mounts. Waived 2026-10-27, no Debian 12 fix
+    expired_at: 2027-01-25
+  - id: CVE-2026-41992
+    statement: gzip (fix deferred in Debian 12); the app never runs gzip on input. Waived 2026-10-27
+    expired_at: 2027-01-25
+  - id: CVE-2026-54369
+    statement: libacl1 (fix deferred in Debian 12); the app sets no ACLs and the root is read-only. Waived 2026-10-27
+    expired_at: 2027-01-25
+  - id: CVE-2026-16742
+    statement: libsystemd0 and libudev1 (fix deferred in Debian 12); no systemd or udev runs in the container. Waived 2026-10-27
+    expired_at: 2027-01-25
+  - id: CVE-2025-69720
+    statement: ncurses (libtinfo6, ncurses-base; no Debian 12 fix); the app has no terminal UI. Waived 2026-10-27
+    expired_at: 2027-01-25
+  - id: CVE-2026-9538
+    statement: perl-base Archive::Tar (fix deferred in Debian 12); the app runs no Perl and unpacks no tar files. Waived 2026-10-27
+    expired_at: 2027-01-25
+  - id: CVE-2023-45853
+    statement: zlib minizip zipOpenNewFileInZip4_6 (Debian will not fix; minizip is not built into zlib1g's library API that Node uses). Waived 2026-10-27
+    expired_at: 2027-01-25
+secrets: []

@@ -170,6 +170,15 @@ describe.skipIf(!exe)(`group site gate at ${BASE}`, () => {
     }
   });
 
+  it("@IPB-05-09 serves the machine-readable policy index at /legal/index.json", async () => {
+    const r = await fetch(`${BASE}/legal/index.json`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("content-type")).toMatch(/application\/json/);
+    const body = (await r.json()) as { policies: { key: string; url: string }[] };
+    expect(body.policies.length).toBeGreaterThan(0);
+    for (const p of body.policies) expect(p.url).toMatch(/\/legal\//);
+  });
+
   it("serves the CSP with a nonce and the security headers on every page", async () => {
     const r = await fetch(`${BASE}/`);
     const csp = r.headers.get("content-security-policy") ?? "";

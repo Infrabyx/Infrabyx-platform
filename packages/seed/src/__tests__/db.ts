@@ -25,10 +25,25 @@ export async function freshDb() {
   ];
   await migrate({ client: admin, sources });
   const pool = new pg.Pool({ connectionString: u.toString(), max: 10 });
+  // As in @infrabyx/testing `startPostgres`: `drop database … with (force)` in `end()` can reach a
+  // client whose socket is still closing; the server's 57P01 ("terminating connection due to
+  // administrator command") is then expected and must not surface as an unhandled error. Any
+  // other error still does.
+  let ending = false;
+  const tolerateShutdown = (c: pg.Client | pg.PoolClient) =>
+    c.on("error", (e: Error & { code?: string }) => {
+      if (!(ending && e.code === "57P01")) throw e;
+    });
+  pool.on("connect", tolerateShutdown);
+  pool.on("error", (e: Error & { code?: string }) => {
+    if (!(ending && e.code === "57P01")) throw e;
+  });
+  tolerateShutdown(admin);
   return {
     pool,
     admin,
     async end() {
+      ending = true;
       await pool.end();
       await admin.end();
       const r = new pg.Client({ connectionString: base });

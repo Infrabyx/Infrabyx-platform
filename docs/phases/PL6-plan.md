@@ -74,7 +74,7 @@ Every app serves `/health/live`, `/health/ready` and `/health/startup` (§01.4.8
 - `trivy config` on Dockerfiles and the chart; `trivy image` on each built image: critical and high must be zero, or waived in `infra/docker/trivy-waivers.yaml` with an expiry date.
 - `docker inspect` assertions (`@IPB-01-AT-15`): user `10001`, a `HEALTHCHECK`, no `latest` tag, the base digest from `BASE_IMAGES.md`; read-only root filesystem asserted on the rendered chart.
 
-Tool versions are pinned: in CI by release version plus SHA-256 of the downloaded archive (the same pattern as `scripts/ci/minio-server.sh`); locally through the tools' Docker Hub images by digest, because GitHub release downloads are not reachable from the build sandbox. Tool images are added to `TEST_IMAGES.md` under a new "Tools" table, published at least 7 days before pinning (PL2-D-32).
+Tool versions are pinned: the tools' Docker Hub images by digest, the same pin locally and in CI (PL6-D-02; GitHub release downloads are not reachable from the build sandbox), listed in `infra/docker/README.md` and published at least 7 days before pinning (PL2-D-32).
 
 ---
 
@@ -237,7 +237,7 @@ PL6-D-01 records the defaults below as `[ASSUMED – owner review]` (#66); the b
 4. **pnpm 10 in the Dockerfiles** (ADR-0002), not the `pnpm@9` line of §01.4.8.1; a platform request asks to update the example (PR-036).
 5. **`apps/reference` is three parts** (`api`, `worker`, `web`) in the product layout of §01.4.2; the template's public site and console are `apps/public` and `apps/console`.
 6. **IPB-01 AT-18 and IPB-02-35 disagree** on how the BOM is verified ("the platform public key" against keyless): keyless is assumed (IPB-02 is the security baseline) and a platform request asks to align AT-18 (PR-037).
-7. **Tooling locally from Docker Hub images by digest, in CI from release archives by checksum**; `helm diff` is not run without a cluster.
+7. **Tooling from Docker Hub images by digest, locally and in CI** (PL6-D-02 replaced the release-archive plan for CI); `helm diff` is not run without a cluster.
 8. **No nightly `dev:up` job**: the path-filtered `reference` job runs the same smoke test on every change that could break it.
 
 | #   | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -249,15 +249,15 @@ PL6-D-01 records the defaults below as `[ASSUMED – owner review]` (#66); the b
 
 ## 13. Sessions
 
-| Session | Content                                                                                                                                                                                        |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1       | Containers: the Dockerfile shape, Dockerfiles for `apps/public` and `apps/console`, health routes, `.dockerignore`, the `containers` CI job, `@IPB-01-AT-15`; Compose `core` and `pnpm dev:up` |
-| 2       | Helm chart, render tests, kubeconform, Kyverno policies and tests, the `infra` CI job (Helm part), `@IPB-01-AT-12` (Helm scenario)                                                             |
-| 3       | OpenTofu modules for the three clouds, the `platform` compositions, the output contract and `tofu test`, the example env stack, the `infra` job (OpenTofu part), `@IPB-01-AT-14`               |
-| 4       | `apps/reference` `api` and `worker` (NestJS 11, the `hello` module, the gate endpoints), Dockerfiles                                                                                           |
-| 5       | `apps/reference` `web`, the gate journey in Playwright on Compose, the `reference` job, the NN tests on the stack                                                                              |
-| 6       | Scaffold script and the `scaffold` job; `bom-generate` and `exit-runbook` (`@IPB-01-AT-17`, AT-18 without the signature)                                                                       |
-| 7       | Gate: `docs/phases/PL6-gate.md`, threat model, at-report, the platform exit gate of §14.5 item by item, the held 1.0.0 changeset PR; HANDOVER READY                                            |
+| Session | Content                                                                                                                                                                                                                                    |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1       | **Built: 1a (PL6-D-02) and 1b (PL6-D-03).** Containers: the Dockerfile shape, Dockerfiles for `apps/public` and `apps/console`, health routes, `.dockerignore`, the `containers` CI job, `@IPB-01-AT-15`; Compose `core` and `pnpm dev:up` |
+| 2       | Helm chart, render tests, kubeconform, Kyverno policies and tests, the `infra` CI job (Helm part), `@IPB-01-AT-12` (Helm scenario)                                                                                                         |
+| 3       | OpenTofu modules for the three clouds, the `platform` compositions, the output contract and `tofu test`, the example env stack, the `infra` job (OpenTofu part), `@IPB-01-AT-14`                                                           |
+| 4       | `apps/reference` `api` and `worker` (NestJS 11, the `hello` module, the gate endpoints), Dockerfiles                                                                                                                                       |
+| 5       | `apps/reference` `web`, the gate journey in Playwright on Compose, the `reference` job, the NN tests on the stack                                                                                                                          |
+| 6       | Scaffold script and the `scaffold` job; `bom-generate` and `exit-runbook` (`@IPB-01-AT-17`, AT-18 without the signature)                                                                                                                   |
+| 7       | Gate: `docs/phases/PL6-gate.md`, threat model, at-report, the platform exit gate of §14.5 item by item, the held 1.0.0 changeset PR; HANDOVER READY                                                                                        |
 
 ---
 

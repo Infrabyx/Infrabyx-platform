@@ -22,3 +22,6 @@ __MACOSX/
 # Next.js build output and generated types (apps/public)
 .next/
 next-env.d.ts
+
+# Local storage of pnpm dev:up seeds
+.storage/

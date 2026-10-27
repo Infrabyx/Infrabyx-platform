@@ -56,6 +56,8 @@ export interface Site {
   feedback: FeedbackService;
   mirror: TrustMirror;
   help: HelpRegistry;
+  /** One round trip to the database, for `/health/ready` (IPB-01 §01.4.8.2). */
+  ping: () => Promise<void>;
 }
 
 async function build(): Promise<Site> {
@@ -126,6 +128,9 @@ async function build(): Promise<Site> {
       trust: fixtures ? new FakeTrustFeed() : missingPort<TrustPort>("TRUST"),
     }),
     help: new HelpRegistry(registry.entries),
+    ping: async () => {
+      await pool.query("select 1");
+    },
   };
 }
 
