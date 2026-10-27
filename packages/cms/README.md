@@ -14,7 +14,7 @@ The headless CMS core (IPB-04 §04.3.1). It provides:
 
 **Specified by:** `docs/ipb/` IPB-04 (§04.3.1, §04.3.8, §04.4.1, §04.4.3). Its acceptance tests are the `@IPB-04-AT-..` scenarios tagged in `src`.
 
-**Status:** PL5 sessions 4 and 5a. The package stays private until the PL5 gate (`docs/phases/PL5-plan.md` §5.3–§5.7). Session 5b adds resources, forms and pricing.
+**Status:** PL5 sessions 4, 5a and 5b. The package stays private until the PL5 gate (`docs/phases/PL5-plan.md` §5.3–§5.8).
 
 ## Data
 
@@ -79,3 +79,18 @@ draft ──submit (lint)──▶ submitted ──[dpoApprove]──▶ approve
 - **Completeness.** `policySetHook()` is Brand Studio's `policySetPublished` hook (`IPB-POL-009`).
 - **Scheduling and review.** Run `PolicyStudio.tick()` with the CMS scheduler. `reviewQueue` and `emitReviewDue` follow the 6- and 12-month cadence.
 - **Publishing.** `PublicPolicies` serves the current version, the prior versions with a superseded banner, and `/legal/index.json`.
+
+## Resources, forms and pricing (IPB-04 §04.3.3, §04.3.6)
+
+Migration `cms/0003_resources_forms.sql` adds three tables: `cms.resource_version` (`rsv_`), `cms.resource_download` (`rdl_`) and `cms.form_submission` (`fsb_`). A form submission holds no field values.
+
+- **`ResourceService`.**
+  - `view` returns the versions, the gating and the cite-as text.
+  - `download` serves a file through its gate: `public`, `email_gate`, `login` or `plan`. Email-gated downloads record consent, create a CRM lead and return a 300-second presigned URL.
+  - `withdrawVersion` withdraws a version; requests for it then fail with `IPB-CMS-041`.
+  - `emitReviewDue` runs daily.
+- **`FormService.submit`.** It checks the fields, the honeypot and the rate limit. It records consent, then hands the submission to CRM, HR or SUPPORT.
+- **`PricingService`.**
+  - `view` builds the table from catalogue figures and the copy overlay, with GST labels.
+  - `invalidate` is called on `CatalogueChanged`.
+  - `lintCopy` checks for drip pricing and false urgency. Wire it as the `CmsStudio` `extraLint` option.

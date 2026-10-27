@@ -4,11 +4,19 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4 merged (#80–#82, #84); owner answers #41–#52 applied (#83, PL5-D-05); session 5a built (policies, PL5-D-07); next: 5b (resources, forms, pricing) and 5c (`consent`). Continuous build mode (PL2-D-41)                 |
+| Current phase         | **PL5 in progress** (2026-10-27): plan `docs/phases/PL5-plan.md` (PL5-D-01); sessions 1–4 and 5a merged (#80–#82, #84, #85); owner answers #41–#52 applied (#83, PL5-D-05); session 5b built (resources, forms, pricing; PL5-D-08); next: 5c (`consent`). Continuous build mode (PL2-D-41)                       |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                           |
 | Packages              | Published to GitHub Packages (PL4 gate, release run 56, `25771c8`): ai and vidhi 0.1.0 (new); contracts, crypto, config, tenancy and testing 0.4.0; connectors 0.3.0; notify and export 0.2.0; audit 0.1.3; seed 0.2.2; rules and workflow 0.1.1. The 8 PL5 scaffolds stay private until the PL5 gate (PL1-D-20) |
 | Last exit gate passed | PL4 gate (2026-10-27): report `docs/phases/PL4-gate.md`; PR #76 (report and REF-EXPORT-1.2) and PR #61 (version), every required check green; release run 56. Before it: PL3 gate (`docs/phases/PL3-gate.md`)                                                                                                    |
 | Working branch        | `claude/cool-bohr-klglyy` (recreate it from `main` after each squash merge and push normally; force-push is refused)                                                                                                                                                                                             |
+
+## PL5 session 5b (2026-10-27, PL5-D-08)
+
+- `@infrabyx/cms`, migration `cms/0003_resources_forms.sql`:
+  - resources: versions at `?v=`, cite-as, withdrawal, gated downloads by presigned URL (300 s, IPB-02-15; PR-035), download records with the CRM lead reference, and `ResourceReviewDue` (`@IPB-04-AT-60`, `-61`, `-13`);
+  - forms: field checks, honeypot and rate limit, consent before the hand-off to CRM, HR or SUPPORT, and no field values stored, on success or failure (`@IPB-04-AT-47`);
+  - pricing: catalogue-only prices with a 5-minute cache and a 24-hour stale limit, GST labels and the total payable, and the drip-pricing and false-urgency lint (`@IPB-04-AT-30`, `-31`, `-32`).
+- `contracts`: id prefixes `rsv_` and `rdl_`.
 
 ## PL5 session 5a (2026-10-27, PL5-D-07)
 

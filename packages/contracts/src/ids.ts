@@ -68,6 +68,8 @@ export const ID_PREFIXES = {
   lgl: "CMS legal page",
   frm: "CMS form",
   fsb: "CMS form submission",
+  rsv: "CMS resource version",
+  rdl: "CMS resource download",
   prc: "CMS pricing copy",
   chg: "CMS changelog entry",
   cs: "CMS case study",

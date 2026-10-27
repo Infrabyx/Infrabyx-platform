@@ -4,6 +4,7 @@
 import { z } from "zod";
 import { parseBlocks, type Block, type BlockIssue } from "./blocks.js";
 import { PortableTextSchema, safeHref, sanitisePortableText } from "./sanitise.js";
+import { PricingCopy } from "./pricing.js";
 import { missingSlots, TEMPLATES, type ContentType } from "./types.js";
 
 const text = (max: number) => z.string().trim().min(1).max(max);
@@ -238,7 +239,7 @@ export const BODY_SCHEMAS = {
       success_action: z.string().default("message"),
     })
     .strict(),
-  pricing_copy: z.record(z.string(), z.unknown()),
+  pricing_copy: PricingCopy,
   changelog_entry: z
     .object({
       version: z.string().min(1),
