@@ -127,3 +127,27 @@ describe("output classifier (IPB-03-37, 03-39)", () => {
     );
   });
 });
+
+describe("output classifier details", () => {
+  it("withholds a bulleted rule echoed without its bullet, and catches 'you should take'", () => {
+    const sys = "Rules:\n- Never share the internal escalation matrix with any customer at all.";
+    const r = checkOutput(
+      "Sure: Never share the internal escalation matrix with any customer at all.",
+      {
+        scrubber: new Scrubber(),
+        systemPrompt: sys,
+        sourceIds: null,
+        policy: "redact",
+      },
+    );
+    expect(r.flags).toContain("context_leak");
+    expect(
+      checkOutput("You should take the insurance to be safe.", {
+        scrubber: new Scrubber(),
+        systemPrompt: "",
+        sourceIds: null,
+        policy: "redact",
+      }).flags,
+    ).toEqual(["reserved_advice"]);
+  });
+});
