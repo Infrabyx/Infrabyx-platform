@@ -132,3 +132,21 @@ export async function tenantHasRoleHolder(
   );
   return r.rows[0]?.ok === true;
 }
+
+/**
+ * A member of the transaction's tenant as a background job re-checks them (IPB-03-65): whether the
+ * user is active and the roles they hold now. Null when they are no longer a member.
+ */
+export async function memberStatus(
+  tx: { query<R>(text: string, params?: readonly unknown[]): Promise<{ rows: R[] }> },
+  userId: string,
+): Promise<{ active: boolean; roles: string[] } | null> {
+  const r = await tx.query<{ status: string; roles: string[] }>(
+    `select u.status, m.roles from tenancy.membership m
+       join tenancy.user u on u.id = m.user_id
+      where m.user_id = $1`,
+    [userId],
+  );
+  const row = r.rows[0];
+  return row ? { active: row.status === "active", roles: row.roles } : null;
+}
