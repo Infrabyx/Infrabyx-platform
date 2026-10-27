@@ -59,6 +59,10 @@
     "./connector-manifest": {
       "types": "./dist/connector-manifest.d.ts",
       "default": "./dist/connector-manifest.js"
+    },
+    "./export": {
+      "types": "./dist/export.d.ts",
+      "default": "./dist/export.js"
     }
   },
   "files": [
