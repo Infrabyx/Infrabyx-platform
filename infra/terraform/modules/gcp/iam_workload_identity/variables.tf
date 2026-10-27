@@ -7,13 +7,6 @@ variable "name" {
   }
 }
 
-variable "tags" {
-  description = "Labels on every resource (product, env, data class); lower-case values"
-  type        = map(string)
-  default     = {}
-}
-
-
 variable "workload_pool" {
   description = "The cluster's Workload Identity pool (<project>.svc.id.goog)"
   type        = string

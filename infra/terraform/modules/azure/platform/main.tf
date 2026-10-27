@@ -113,7 +113,6 @@ module "object_storage" {
 
 module "dns_cdn_edge" {
   source              = "../dns_cdn_edge"
-  name                = local.name
   resource_group_name = azurerm_resource_group.this.name
   domain              = var.domain
   tags                = local.tags

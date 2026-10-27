@@ -99,5 +99,5 @@ resource "azurerm_management_lock" "this" {
   name       = "${var.name}-postgres"
   scope      = azurerm_postgresql_flexible_server.this.id
   lock_level = "CanNotDelete"
-  notes      = "Deletion protection (IPB-01 §01.4.9.1)"
+  notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the database"
 }

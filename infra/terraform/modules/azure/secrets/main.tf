@@ -22,3 +22,10 @@ resource "azurerm_key_vault" "this" {
   }
   tags = var.tags
 }
+
+resource "azurerm_management_lock" "vault" {
+  name       = "${azurerm_key_vault.this.name}-lock"
+  scope      = azurerm_key_vault.this.id
+  lock_level = "CanNotDelete"
+  notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the secrets"
+}

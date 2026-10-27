@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Installs the chart and policy tools of the `infra` job (PL6 plan §5.4, §6) into $INFRA_TOOLS
-# (default ~/.cache/ipb-infra-tools), from pinned versions only:
-# - Helm and kubeconform with `go install <module>@<version>`, checked by Go's checksum database;
+# Installs the chart, policy and OpenTofu tools of the `infra` job (PL6 plan §5.4, §6, §7.3) into
+# $INFRA_TOOLS (default ~/.cache/ipb-infra-tools), from pinned versions only:
+# - Helm, kubeconform, tflint and its rulesets with `go install <module>@<version>`, checked by
+#   Go's checksum database (GOTOOLCHAIN=auto fetches the Go release a module asks for);
 # - the Kyverno CLI and OpenTofu, whose modules cannot be `go install`ed (replace directives),
 #   built from their tags after each tag's commit is checked against the pin (the MinIO pattern,
 #   PL2-D-61).
@@ -14,6 +15,8 @@ KYVERNO_TAG="v1.19.1"
 KYVERNO_COMMIT="40ec788d48bb28d83dbf85538e962a59db9d45c6"
 TOFU_TAG="v1.13.1"
 TOFU_COMMIT="233700b795b6d2372f1c56ed57a4abaec9d36475"
+TFLINT_VERSION="v0.64.0"
+TFLINT_RULESETS=("aws@v0.49.0" "azurerm@v0.32.0" "google@v0.40.0")
 
 DIR="${INFRA_TOOLS:-$HOME/.cache/ipb-infra-tools}"
 mkdir -p "$DIR"
@@ -22,6 +25,13 @@ export GOBIN="$DIR" GOTOOLCHAIN=auto GOFLAGS=-trimpath CGO_ENABLED=0
 [ -x "$DIR/helm" ] && "$DIR/helm" version --short | grep -q "^${HELM_VERSION%.*}" ||
   go install "helm.sh/helm/v4/cmd/helm@$HELM_VERSION"
 [ -x "$DIR/kubeconform" ] || go install "github.com/yannh/kubeconform/cmd/kubeconform@$KUBECONFORM_VERSION"
+[ -x "$DIR/tflint" ] || go install "github.com/terraform-linters/tflint@$TFLINT_VERSION"
+# tflint finds a ruleset installed by hand as tflint-ruleset-<name> in TFLINT_PLUGIN_DIR.
+mkdir -p "$DIR/tflint-plugins"
+for r in "${TFLINT_RULESETS[@]}"; do
+  [ -x "$DIR/tflint-plugins/tflint-ruleset-${r%@*}" ] ||
+    GOBIN="$DIR/tflint-plugins" go install "github.com/terraform-linters/tflint-ruleset-${r%@*}@${r#*@}"
+done
 
 # build_tag <name> <repo> <tag> <commit> <package>: clone the tag, check its commit, build once.
 build_tag() {
@@ -49,3 +59,4 @@ build_tag tofu https://github.com/opentofu/opentofu.git "$TOFU_TAG" "$TOFU_COMMI
 "$DIR/kubeconform" -v
 "$DIR/kyverno" version | head -3
 "$DIR/tofu" version | head -1
+"$DIR/tflint" --version | sed -n 1p

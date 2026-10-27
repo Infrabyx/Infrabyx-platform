@@ -7,12 +7,6 @@ variable "name" {
   }
 }
 
-variable "tags" {
-  description = "Labels on every resource (product, env, data class); lower-case values"
-  type        = map(string)
-  default     = {}
-}
-
 variable "region" {
   description = "Primary region (asia-south1 unless an ADR says otherwise)"
   type        = string

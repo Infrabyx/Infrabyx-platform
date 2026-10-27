@@ -24,7 +24,6 @@ module "network" {
   source = "../network"
   name   = local.name
   region = var.region_primary
-  tags   = local.tags
 }
 
 module "kms" {
@@ -38,7 +37,6 @@ module "kms" {
 
 module "secrets" {
   source      = "../secrets"
-  name        = local.name
   region      = var.region_primary
   region_dr   = var.region_dr
   path_prefix = local.secrets
@@ -132,7 +130,6 @@ module "iam_workload_identity" {
   workload_pool       = module.kubernetes.workload_pool
   secrets_path_prefix = local.secrets
   workloads           = var.workloads
-  tags                = local.tags
 }
 
 module "bastion_breakglass" {
