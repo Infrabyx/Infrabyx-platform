@@ -19,3 +19,4 @@ export * from "./retrieval.js";
 export * from "./image-label.js";
 export * from "./image.js";
 export * from "./speech.js";
+export * from "./usage.js";
