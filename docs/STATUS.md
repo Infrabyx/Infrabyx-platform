@@ -26,32 +26,39 @@ Updated: 2026-10-27
 - Commit subjects checked locally by lefthook `commit-msg` (installed by `pnpm install`, PL1-D-17).
 - PL1 accepted by the owner (2026-10-26). Follow-ups: scaffolds private until their phase with an `ipb:check` rule (PL1-D-20); `release.yml` uses `NPM_PUBLISH_TOKEN` so the version PR triggers CI (PL1-D-21).
 
-## Handover (2026-10-26, end of the session that built PL2 sessions 4 and 5)
+## Handover (2026-10-27, end of the session that built PL2 session 6)
 
-**Done.** PL2 sessions 1–5 are built and merged:
+**Done.** PL2 sessions 1–6 are built and merged:
 
-- #13 (contracts, config, testing harness);
-- #15 (connectors core, OBSERVABILITY, FEATURE_FLAG);
-- #16 (working mode, threat model, CI budget);
-- #17 (crypto C-11/C-13/C-19, SECRETS, KMS) and #18 (field-encryption format v2, PL2-D-50);
-- #19 (IDENTITY keycloak and zitadel, AUTHZ cerbos and openfga, revocation migration `connectors/0002`);
-- #20 (STORAGE s3 and minio, QUEUE bullmq and pg-boss with migration `connectors/0003`, WORKFLOW temporal and temporal-cloud);
-- #21 (MinIO-server leg built from source at a pinned commit, PL2-D-61).
+- #13, #15, #16, #17, #18 (sessions 1–3 and field-encryption v2);
+- #19, #20, #21 (sessions 4–5 and the MinIO-server leg);
+- #23 (flaky base62 test fixed at the draw; public-repository rules, PL2-D-62; owner answers to OWNER-QUESTIONS #5, PL2-D-63; Zitadel projection wait; per-token workflow-id check);
+- #24 (session 6: EMAIL `ses`/`brevo`, SMS `msg91`/`gupshup-sms`, WHATSAPP `gupshup`/`meta-cloud` on vendor stubs, PL2-D-64).
 
-Nothing from PL2 is published yet. Version PR #14 collects every changeset and is merged only at gate A (PL2-D-31).
+Version PR #14 is green on its latest regeneration and collects every changeset; it is merged only at gate A (PL2-D-31). Nothing from PL2 is published yet.
 
-**Branch and PR state.** No PR is open. `claude/funny-cori-6upyrr` is re-cut from `main` (`2f29ec8`) for this handover; GitHub deletes it after each squash merge.
+**Branch and PR state.** No PR is open. `claude/funny-cori-6upyrr` equals `main` (`13c7379`); GitHub deletes it after each squash merge, so push it again from `main` before the next session's first commit.
 
-**Next: PL2 session 6.** EMAIL (`ses`, `brevo`), SMS (`msg91`, `gupshup-sms`), WHATSAPP (`gupshup`, `meta-cloud`); plan §6.10–6.12, C-13 webhook checks (already in `@infrabyx/crypto`), IPB-DEV-03/05, PR-007/008/013. No live sends: hermetic legs on stubs or moto (SES v2 send is in moto; LocalStack community lacks SES v2), sandbox legs off until the owner accounts exist. Then session 7 (PAYMENTS, locked list approved with conditions, plan §8), session 8 (exit gate and release), gate A.
+**Next: PL2 session 7, PAYMENTS** (`razorpay` reference, `cashfree` alternative), plan §6.13 and the locked list in §8 (approved with conditions; P-05 and P-07 revised by the owner):
+
+- integer paise only;
+- signatures verified in the adapter;
+- refunds need an approved R3 `approvalRef`;
+- no live keys outside prod/dr;
+- `kill.payments`;
+- idempotency with the human queue for unresolved money operations;
+- `@IPB-01-AT-08` failover Razorpay → Cashfree.
+
+Stubs as in session 6 (`@infrabyx/testing` stubs), and the sandbox legs stay off until the accounts exist. Then session 8 (exit gate, release through #14) and gate A.
 
 **Local environment notes.**
 
 - Start Docker with `nohup dockerd &`, then `docker start pgs2` (PostgreSQL 18 on 55433); use `IPB_TEST_PG_URL=postgres://postgres:pw@127.0.0.1:55433/postgres`.
-- Cached images: Keycloak 26.8.1, Cerbos, OpenFGA, moto, LocalStack, OpenBao, Unleash, Collector, Redis, Valkey, Temporal, PostgreSQL. Docker Hub rate-limits anonymous pulls; GHCR (Zitadel) and quay.io are unreachable here, so the Zitadel leg runs only in CI.
-- MinIO: `scripts/ci/minio-server.sh` builds it locally too (Go 1.24.7 at `/usr/local/go`, about 2 minutes); set `RUNNER_TEMP`, `GITHUB_ENV` and `IPB_MINIO_CACHE` to scratch paths.
-- Commit subjects are at most 100 characters (commitlint); a refused commit leaves files staged, so check `git status` before the next commit. Force-pushes are refused by the session's permission policy.
+- Docker Hub works (moto, LocalStack, Keycloak and others are cached); GHCR (Zitadel) and quay.io are unreachable here, and vendor documentation hosts are blocked, so vendor facts come from official SDKs on GitHub and web search (PL2-D-64).
+- gitleaks 8.30.1 can be fetched from GitHub releases and checked against the SHA in `ci.yml`. Run `gitleaks git --log-opts="origin/main..HEAD" .` before pushing, and keep credential-shaped literals out of tests: stubs use `stubCredential()`.
+- Commit subjects are at most 100 characters (commitlint). Force-pushes are refused by the session's permission policy.
 
-**Open questions.** None. OWNER-QUESTIONS #1–#4 are answered (PL2-D-50, PL2-D-55, PL2-D-56, PL2-D-61).
+**Open questions.** OWNER-QUESTIONS #6 (PL2-D-64: at-least-once messages, Gupshup URL secret, Brevo manual suppression), defaults in place; nothing is blocked.
 
 ## Working mode (PL2-D-41)
 
