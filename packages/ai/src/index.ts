@@ -16,3 +16,6 @@ export * from "./evals.js";
 export * from "./prompt-sync.js";
 export * from "./embedding.js";
 export * from "./retrieval.js";
+export * from "./image-label.js";
+export * from "./image.js";
+export * from "./speech.js";

@@ -14,9 +14,9 @@ The AI Gateway: the only path from Infrabyx code to a language, embedding or ima
 - AI run retention;
 - GenAI spans without content.
 
-**Specified by:** IPB-03 (§03.3.A–H, §03.4.2–§03.4.5) and IPB-01 LLM/EMBEDDING/IMAGE_GEN. Plan: `docs/phases/PL4-plan.md` §4. Migrations `ai/0001` to `ai/0003` are applied by `infrabyx-migrate` when the package is installed; `0003` needs PostgreSQL with the pgvector extension.
+**Specified by:** IPB-03 (§03.3.A–H, §03.4.2–§03.4.5) and IPB-01 LLM/EMBEDDING/IMAGE_GEN. Plan: `docs/phases/PL4-plan.md` §4. Migrations `ai/0001` to `ai/0004` are applied by `infrabyx-migrate` when the package is installed; `0003` needs PostgreSQL with the pgvector extension.
 
-**Status:** PL4 session 4. IMAGE_GEN (session 5) is still to come. Provider adapters live in `@infrabyx/connectors/ai` (session 3).
+**Status:** PL4 session 5. Provider adapters live in `@infrabyx/connectors/ai` (session 3).
 
 ## What it does
 
@@ -46,6 +46,7 @@ The AI Gateway: the only path from Infrabyx code to a language, embedding or ima
 - **`Scrubber`.** Aadhaar (Verhoeff, the masked form, and any 12 digits after the word Aadhaar), PAN, mobile, e-mail, UPI, bank account (after an account keyword or next to an IFSC) and IFSC, card (Luhn), voter ID, passport, driving licence, GSTIN (checksum), date of birth, JWT, PEM keys and API keys; `ai.scrub.patterns` adds detectors, and an invalid setting fails closed.
 - **Prompts and evals.** Platform prompts live in `prompts/<key>/<version>.md`, golden sets in `evals/<key>/` (≥ 30 cases, ≥ 100 for REGULATED) with a baseline and a result per version. `infrabyx-ai eval` runs them on a scripted fake model through the gateway's own text pipeline (CI `ai-eval-gate`); `infrabyx-ai prompt-lint` checks golden sets and refuses inline prompt text (CI `ai-prompt-lint`); `infrabyx-ai prompts sync --db <url> --actor <usr> --env <APP_ENV>` stores platform prompts and activates a version only with a current eval result (a live result in staging and above). `eval --live` refuses to start without `--approved-by`.
 - **`EmbeddingGateway` and `RetrievalService`.** Indexes pin an embedding model and dimensions; chunks are embedded and lexically indexed from scrubbed text, with the original sealed by FieldCrypto. `search` runs pgvector HNSW and full-text search under the caller's RLS, fuses them with reciprocal rank fusion, drops chunks above the feature's data-class ceiling and anything the product's `authorize` callback refuses, and returns data blocks for the gateway. `reembedBatch` builds a new version in resumable batches; `activate` switches.
+- **`ImageService`** (IMAGE_GEN, OWN-10). Permitted uses only; no real people, customers, regulators, courts, documents passing as genuine or personal data in the prompt (`IPB-AI-030`). Every image is labelled before storage (an "AI-generated image" band, XMP and the `Infrabyx-SGI` statement) or refused (`IPB-AI-031`). `requestPublish` raises an R2 approval for a content role; `assertPublishable` is the CMS gate (`IPB-AI-031`, `IPB-AI-032`). SPEECH has no adapter in PL4 (`IPB-AI-010`).
 - **`RunRetention`.** Routine runs are deleted 180 days after they ran (`sweep()`, daily, one worker; one ledger entry per run). A run linked to an approval, a statutory output or a maker-checker request (`hold`) is kept until the hold is released; PostgreSQL enforces both rules.
 
 - **Data blocks** (documents, retrieved chunks, tool results) reach the model only inside `<<<DATA … DATA>>>` blocks. A fixed system instruction says the content is data, and instruction-like phrases, forged markers and foreign links are removed.
@@ -58,5 +59,6 @@ The AI Gateway: the only path from Infrabyx code to a language, embedding or ima
 1. Construct `ApprovalsEngine` (from `createWorkflow`), `ModelRegistry`, `PromptRegistry` and `LlmGateway` with your `SettingsService` and the adapters from `@infrabyx/connectors/ai`.
 2. Call the gateway with `featureKey`, the data class of your inputs, `promptRef` and the data blocks. Show the non-AI path whenever the result is `IPB-AI-001`, `-021`, `-022` or `-023`, and show "part of this answer was withheld" when `blocked` is true.
 3. For retrieval, build `EmbeddingGateway` and `RetrievalService` with FieldCrypto and an `authorize` callback that applies your AUTHZ check to each `resource_ref`; pass `search(...).blocks` to the gateway.
-4. Schedule `RunRetention.sweep()` daily, and pass `hold` on runs linked to approvals, statutory outputs or maker-checker requests.
-5. Never import a model SDK: the `vendor-import` lint fails CI (IPB-03-01).
+4. For images, build `ImageService` with STORAGE, the approvals engine and your content roles, and call `assertPublishable` before publishing anything.
+5. Schedule `RunRetention.sweep()` daily, and pass `hold` on runs linked to approvals, statutory outputs or maker-checker requests.
+6. Never import a model SDK: the `vendor-import` lint fails CI (IPB-03-01).
