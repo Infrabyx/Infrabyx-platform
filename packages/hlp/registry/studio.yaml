@@ -233,3 +233,101 @@ entries:
     review_by: 2027-10-27
     status: published
     visibility: internal
+  - key: hlp.studio.consent_body
+    term: "Consent wording"
+    plain: "The exact words people see. A record of consent keeps the version they agreed to."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.consent_key
+    term: "Text key"
+    plain: "Which text this is, such as the cookie banner or a category description."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.consent_locale
+    term: "Language"
+    plain: "The language of the wording, such as en-IN."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.consent_major
+    term: "Major change"
+    plain: "A change to what people agree to. They are asked again before the new version applies to them."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.consent_region
+    term: "Region"
+    plain: "Where the wording applies: India, the European Union or California. Each region can have its own text."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.feedback_open
+    term: "Open items"
+    plain: "Items not yet shipped, declined or closed in Operations Hub."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.feedback_type
+    term: "Feedback type"
+    plain: "What the person sent: a bug, an idea, praise, a score, an accessibility problem or a help article comment."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_body
+    term: "Policy text"
+    plain: "The policy in Markdown. Clauses marked [COUNSEL] keep their wording until counsel writes it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_change_class
+    term: "Change"
+    plain: "Minor for wording that adds no duty. Major for a change users must be told about before it applies."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_effective
+    term: "Effective from"
+    plain: "The first day the version applies. A major change also waits for the notice period."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_hi_summary
+    term: "Hindi summary"
+    plain: "A short summary of the version in Hindi, shown with the English text."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_key
+    term: "Policy"
+    plain: "Which policy this version belongs to, such as the Privacy Notice or the Terms of Use."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_notice_sent
+    term: "Notice sent"
+    plain: "When the notice of a major change reached users. The notice period counts from the later of this and publishing it."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal
+  - key: hlp.studio.policy_params
+    term: "Policy parameters"
+    plain: "The names, addresses and contacts the policies quote, such as the Grievance Officer, as JSON."
+    effective_date: 2026-10-27
+    review_by: 2027-10-27
+    status: published
+    visibility: internal

@@ -343,3 +343,14 @@ describe("form consents for marketing leads end 24 months after the last interac
     ]);
   });
 });
+
+describe("the Studio list (PL5 session 8b: Consent texts)", () => {
+  it("lists every text and version for the DPO and the legal reviewer, and no one else", async () => {
+    const all = await texts.list(dpo);
+    expect(all.some((t) => t.key === "consent.cookie.banner" && t.state === "approved")).toBe(true);
+    expect((await texts.list(legal)).length).toBe(all.length);
+    expect(
+      await code(texts.list(platformContext(["PLT_CONTENT_EDITOR"], "tnt_platform", "usr_ed"))),
+    ).toBe("IPB-UX-011");
+  });
+});

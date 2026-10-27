@@ -252,6 +252,18 @@ export class ConsentTexts {
     });
   }
 
+  /** Every text and version (Studio's Consent texts section), for the DPO and the legal reviewer. */
+  async list(ctx: KernelContext): Promise<ConsentText[]> {
+    this.platform(ctx, ctx.principal.roles.includes(TEXT_MAKER) ? TEXT_MAKER : TEXT_CHECKER);
+    return this.o.kernel.read(ctx, async (tx) =>
+      (
+        await tx.query<TextRow>(
+          "select * from consent.text order by key, region, locale, created_at desc, id desc limit 1000",
+        )
+      ).rows.map(toText),
+    );
+  }
+
   /** Texts waiting for the legal reviewer (the Studio queue, IPB-04 §04.3.12 section 12). */
   async drafts(ctx: KernelContext): Promise<ConsentText[]> {
     this.platform(ctx, TEXT_CHECKER);

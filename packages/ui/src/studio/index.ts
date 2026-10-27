@@ -22,4 +22,7 @@ export * from "./redirects.js";
 export * from "./media.js";
 export * from "./claims.js";
 export * from "./queues.js";
+export * from "./policies.js";
+export * from "./consent.js";
+export * from "./readonly.js";
 export { STUDIO_CSS } from "./styles.js";

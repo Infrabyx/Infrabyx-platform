@@ -77,6 +77,27 @@ export interface FeedbackView {
   history: { status: Lowercase<FeedbackStatus>; at: string; note: string | null }[];
 }
 
+/** Roles that may read the staff queue. */
+export const QUEUE_ROLES: readonly string[] = ["PLT_SUPER_ADMIN", "PLT_ACCESSIBILITY_LEAD"];
+
+/** One row of the staff queue. */
+export interface FeedbackQueueItem {
+  id: string;
+  type: FeedbackType;
+  category: string;
+  summary: string;
+  route: string | null;
+  severity: string | null;
+  status: Lowercase<FeedbackStatus>;
+  ohRef: string | null;
+  priority: string | null;
+  regulatedStep: boolean;
+  ackDueAt: Date | null;
+  fixDueAt: Date | null;
+  slaBreaches: string[];
+  submittedAt: Date;
+}
+
 interface ItemRow {
   id: string;
   tenant_id: string;
@@ -613,6 +634,53 @@ export class FeedbackService {
         [tx.ctx.tenantId, ctx.principal.id],
       );
       return Promise.all(r.rows.map(async (i) => this.toView(i, await this.history(tx, i.id))));
+    });
+  }
+
+  /**
+   * The staff queue of the context's tenant (Studio's Feedback section): newest first, with the
+   * accessibility timers. Platform scope, for PLT_SUPER_ADMIN or PLT_ACCESSIBILITY_LEAD; triage
+   * and status changes happen in OH (`onStatusChanged`), not here.
+   */
+  async queue(
+    ctx: KernelContext,
+    f: { type?: FeedbackType; open?: boolean } = {},
+  ): Promise<FeedbackQueueItem[]> {
+    if (ctx.scope !== "platform" || !ctx.principal.roles.some((r) => QUEUE_ROLES.includes(r)))
+      throw new IpbError("IPB-UX-011", {
+        detail: `the feedback queue needs ${QUEUE_ROLES.join(" or ")} in the platform context`,
+      });
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<
+        ItemRow & {
+          priority: string | null;
+          regulated_step: boolean;
+          ack_due_at: Date | null;
+          fix_due_at: Date | null;
+          sla_breaches: string[];
+        }
+      >(
+        `select * from feedback.item where tenant_id = $1
+            and ($2::text is null or type = $2) and (not $3 or closed_at is null)
+          order by created_at desc, id desc limit 500`,
+        [tx.ctx.tenantId, f.type ?? null, f.open === true],
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        type: x.type,
+        category: x.category,
+        summary: x.summary,
+        route: x.route_pattern,
+        severity: x.severity,
+        status: lower(x.status),
+        ohRef: x.oh_ref,
+        priority: x.priority,
+        regulatedStep: x.regulated_step,
+        ackDueAt: x.ack_due_at,
+        fixDueAt: x.fix_due_at,
+        slaBreaches: x.sla_breaches,
+        submittedAt: x.created_at,
+      }));
     });
   }
 

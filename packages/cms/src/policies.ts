@@ -152,6 +152,16 @@ export interface PolicyHooks {
 }
 
 /** Where a notice-period change stands (#55). */
+/** A pack's policy set as Studio shows it. */
+export interface PolicySetSummary {
+  id: string;
+  params: Record<string, unknown>;
+  paramsVersion: number;
+  /** Proposed parameters waiting for a checker (maker-checker). */
+  pendingParams: Record<string, unknown> | null;
+  pendingMakerId: string | null;
+}
+
 export interface PolicyNoticeStatus {
   required: boolean;
   publishedAt: Date | null;
@@ -1000,6 +1010,45 @@ export class PolicyStudio {
         return toInstance(await this.row(tx, id));
       },
       { action: "cms.policy.seed_placeholder" },
+    );
+  }
+
+  /** A pack's policy set and its parameters (Studio's Policies section), or null. */
+  async setFor(ctx: KernelContext, packId: string): Promise<PolicySetSummary | null> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        id: string;
+        params: Record<string, unknown>;
+        params_version: number;
+        pending_params: Record<string, unknown> | null;
+        pending_maker_id: string | null;
+      }>(
+        "select id, params, params_version, pending_params, pending_maker_id from cms.policy_set where brand_pack_id = $1",
+        [packId],
+      );
+      const x = r.rows[0];
+      return x
+        ? {
+            id: x.id,
+            params: x.params,
+            paramsVersion: x.params_version,
+            pendingParams: x.pending_params,
+            pendingMakerId: x.pending_maker_id,
+          }
+        : null;
+    });
+  }
+
+  /** Every version of every policy in a set, by key then newest first. */
+  async instances(ctx: KernelContext, setId: string): Promise<PolicyInstance[]> {
+    return this.o.kernel.read(ctx, async (tx) =>
+      (
+        await tx.query<InstanceRow>(
+          `select * from cms.policy_instance where policy_set_id = $1
+            order by policy_key, created_at desc, id desc limit 500`,
+          [setId],
+        )
+      ).rows.map(toInstance),
     );
   }
 
