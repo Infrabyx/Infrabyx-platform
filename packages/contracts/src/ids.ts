@@ -74,6 +74,7 @@ export const ID_PREFIXES = {
   tst: "CMS testimonial",
   lp: "CMS landing page",
   gco: "CMS group company",
+  gls: "CMS glossary term (mirrors hlp)",
   rev: "CMS revision",
   cap: "CMS approval",
   med: "CMS media",

@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL3 session 4: `@infrabyx/notify`, the PUSH adapters `expo` and `fcm`, C-23 and C-24 in `@infrabyx/crypto`, the suppression and consent flows and the notification dispatcher).
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL5 session 4: `@infrabyx/cms` core — content and revisions, approvals, the Claims Register, the sanitiser, redirects, media uploads, preview tokens, the public read API, the scheduler and the 90-day purge).
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -326,6 +326,22 @@ The shared components render on the server with no client script. The accessibil
 - **T (claims and contrast):** an unreadable brand is published. Control: the contrast guard refuses it (`IPB-BRD-003`), the refusal is ledgered with `ContrastGuardFailed`, and the database refuses a published revision without the guard and sanitiser flags.
 - **I:** drafts carry the legal entity and email identity before publication. Control: revisions are INTERNAL and readable through RLS, written only in a platform context. Published values are public by nature (footer, manifest).
 - **Residual:** email-domain verification and policy-set publication are hooks; until NOTIFY and `cms` wire them, a deployment must supply them, and the defaults refuse publish. The help registry lint is not yet in `verify` (session 7).
+
+### 3.29 `@infrabyx/cms` core (built, PL5 session 4)
+
+`cms` adds the `cms` schema (content items, immutable revisions, approvals, redirects, media metadata, the Claims Register, preview tokens), media files through STORAGE, the public read API and two workers (scheduler, purge). Content is platform rows: any context reads them, only a platform context writes them.
+
+- **E (Studio access):** a tenant admin with a stolen Studio URL publishes, or an agent publishes. Control: every Studio write needs the platform context (`IPB-UX-011` otherwise) and the refused attempt is ledgered (`cms.access.denied`, `@IPB-04-AT-93`). Agents are refused every transition but draft and submit (`IPB-SEC-004`), and IPB-02-11 keeps them out of the platform scope entirely.
+- **E/T (publish):** one person publishes, or a legal page skips counsel. Control: the checker and the legal reviewer are never the maker and never each other (service checks and table constraints on `cms.approval` and `cms.redirect`); legal-review types and lint flags route to `legal_review`, and approve or publish without the legal sign-off is `IPB-CMS-005` (`@IPB-04-AT-03`). Any edit voids the approval; the scheduler publishes only the approved revision, otherwise it skips and ledgers the skip (`@IPB-04-AT-101`).
+- **T (stored content):** a revision rewritten after approval. Control: an update trigger refuses any change to `cms.revision`; rollback is a new revision (`@IPB-04-AT-01`).
+- **T/I (XSS):** script, event handlers, `javascript:`/`data:` URLs, inline SVG or iframes in rich text or links. Control: rich text is portable-text JSON, never HTML; one allow-list sanitiser runs on import, at save and again at render, and every text node is escaped (`@IPB-04-AT-20`); block links and CTAs accept only site paths, anchors, `https:`, `mailto:` and `tel:`.
+- **T (uploads):** a hostile SVG or metadata in images. Control: SVGs go through the brand sanitiser and only the result is stored; JPEG APP1/APP13 and PNG text and EXIF chunks are stripped; files are keyed by SHA-256. Raster re-encoding is off (#43, #53).
+- **S/I (preview):** a guessed or leaked preview link. Control: a random 32-byte token stored only as its SHA-256, at most 24 hours (database check), revocable; the page is `noindex` and `no-store` (`@IPB-04-AT-05`).
+- **T (claims):** an unsupported figure, certification or category claim reaches the site. Control: the claims lint at submit (`IPB-CMS-010`, `-012`, `-014`, `IPB-TRUST-006`), with failures ledgered and emitted as `ClaimsLintFailed`; only a legal reviewer other than the proposer activates a claim.
+- **D/T (public API):** writes or scraping through `/api/public/v1`. Control: GET and HEAD only (405 otherwise, no row changes, `@IPB-04-AT-14`), published revisions only, ETag, a rate-limit hook.
+- **T (redirects):** an open redirect or a loop. Control: targets are site paths or `https:` only; loops and chains are refused at save (`IPB-CMS-009`); manual and imported redirects need a checker and the legal reviewer before they are active.
+- **I (deletion, OWNER-QUESTIONS #48):** content kept forever, or deleted early. Control: soft delete with a restore window; the purge deletes only rows soft-deleted more than 90 days ago (restrictive policies refuse any other delete), one ledger entry per sweep.
+- **Residual:** the scheduler and the purge run as service principals carrying `PLT_CONTENT_EDITOR`, because IPB-02-11 opens the platform scope only to PLT roles (PL5-D-06); they call only the scheduled publish, unpublish and purge paths. Rate limiting of the public API is a hook the site must supply.
 
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 

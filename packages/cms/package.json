@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/cms",
   "version": "0.0.0",
-  "description": "Headless CMS: pages, blocks, blog, vlog, resources, redirects, SEO",
+  "description": "Headless CMS: content items with immutable revisions, the publish state machine and approvals, the Claims Register, sanitiser, slugs and redirects, SEO and generated files, preview, scheduler, public read API and footer validator (IPB-04 \u00a704.3.1)",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
@@ -11,17 +11,25 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./sanitise": {
+      "types": "./dist/sanitise.d.ts",
+      "default": "./dist/sanitise.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
+    "migrations",
+    "claims",
     "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -34,5 +42,22 @@
   },
   "engines": {
     "node": "24.22.1"
+  },
+  "bin": {
+    "infrabyx-cms": "./dist/cli.js"
+  },
+  "dependencies": {
+    "@infrabyx/brand": "workspace:*",
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*",
+    "parse5": "8.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/seed": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
   }
 }

@@ -98,6 +98,47 @@ export const RollbackPerformedData = z
   })
   .strict();
 
+/** IPB-04 §04.6.1 payloads for the remaining `cms` events (PL5 session 4). */
+export const RevisionCreatedData = z
+  .object({ item_id: z.string(), revision_id: Id("rev"), source: z.string(), actor_id: z.string() })
+  .strict();
+
+export const PublishRequestedData = z
+  .object({ item_id: z.string(), revision_id: Id("rev"), needs_legal: z.boolean() })
+  .strict();
+
+export const ContentUnpublishedData = z
+  .object({
+    item_id: z.string(),
+    reason: z.enum(["unpublished", "scheduled_unpublish", "retired_gone", "retired_redirect"]),
+    path: z.string().nullable(),
+  })
+  .strict();
+
+export const ClaimsLintFailedData = z
+  .object({
+    item_id: z.string(),
+    revision_id: Id("rev"),
+    failures: z.array(
+      z.object({ code: z.string(), path: z.string(), message: z.string() }).strict(),
+    ),
+  })
+  .strict();
+
+export const ContentStaleData = z
+  .object({ item_id: z.string(), last_reviewed_at: z.string() })
+  .strict();
+
+export const RedirectChangedData = z
+  .object({
+    redirect_id: Id("rdr"),
+    from: z.string(),
+    to: z.string().nullable(),
+    status: z.union([z.literal(301), z.literal(302), z.literal(410)]),
+    change: z.enum(["activated", "retired", "repointed"]),
+  })
+  .strict();
+
 export const PolicyEffectiveData = z
   .object({
     policy_key: z.string(),

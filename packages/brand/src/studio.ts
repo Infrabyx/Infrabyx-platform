@@ -60,8 +60,11 @@ export interface BrandStudioHooks {
   emailIdentityVerified(ctx: KernelContext, domain: string): Promise<boolean>;
   /** The IPB-05 policy set is published (IPB-04-30). */
   policySetPublished(ctx: KernelContext, policySetId: string): Promise<boolean>;
-  /** The footer validator (`@infrabyx/cms`); throws with its own code when the footer fails. */
-  validateFooter?(ctx: KernelContext, body: BrandPackBody): Promise<void>;
+  /**
+   * The footer validator (`@infrabyx/cms` `brandFooterHook`); throws with its own code when the
+   * pack's footer has an empty mandatory field.
+   */
+  validateFooter?(ctx: KernelContext, body: BrandPackBody, packId: string): Promise<void>;
   /** A host-resolution signal (unknown host, forwarded-host mismatch) for the security log. */
   onHostEvent?(event: HostResolution["events"][number]): void;
 }
@@ -529,7 +532,7 @@ export class BrandStudio {
       !(await this.o.hooks.policySetPublished(ctx, rev.body.policy_set_id))
     )
       throw new IpbError("IPB-BRD-006");
-    await this.o.hooks.validateFooter?.(ctx, rev.body);
+    await this.o.hooks.validateFooter?.(ctx, rev.body, rev.packId);
   }
 
   private async assertHostsFree(
