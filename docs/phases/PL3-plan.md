@@ -2,7 +2,7 @@
 
 **Phase:** PL3 (IPB-14 §14.3) · **Packages:** `rules`, `workflow`, `notify`, `export` (first releases). Also ESIGN in `connectors` (owner decision D-09) and additions to `contracts`, `config`, `testing` and `connectors`.
 **Date:** 2026-10-27 · **Branch:** `claude/sweet-maxwell-mv0qk2`
-**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). **Owner answers to #7–#16 applied on 27 Oct 2026** (PL3-D-04 to PL3-D-13; sections marked _(owner, PL3-D-nn)_). Spike results: `docs/phases/PL3-spike.md` (PL3-D-15). Open questions #18–#20 are in `docs/OWNER-QUESTIONS.md`.
+**Status:** written and self-reviewed under the continuous-build mode (PL2-D-41). **Owner answers to #7–#16 applied on 27 Oct 2026** (PL3-D-04 to PL3-D-13; sections marked _(owner, PL3-D-nn)_). Spike results: `docs/phases/PL3-spike.md` (PL3-D-15). Owner answers to #18–#20 applied on 27 Oct 2026 (PL3-C-01, PL3-C-02, PL3-D-17); no question is open.
 **Read for this plan:**
 
 - IPB-01 §01.4.4 (RULES, NOTIFY, PUSH, ESIGN, WORKFLOW, EMAIL, SMS, WHATSAPP rows), §01.4.10;
@@ -109,7 +109,7 @@ These limits follow Ecosystem §13.3 and IPB-01:
   - `FlagService.boot()` fetches a snapshot and persists it in `config.flag_snapshot` before the service reports ready, and every scheduled refresh persists it again;
   - a process that starts during a provider outage loads the persisted snapshot;
   - every evaluation served from the snapshot or the safe state raises the operations alert `ops.flags.provider_unreachable` (`onAlert` hook, throttled to one per key per 5 minutes).
-  - The IPB-01 24-hour snapshot limit is kept (#20).
+  - The IPB-01 24-hour snapshot limit is kept _(owner, PL3-D-17)_: after 24 hours without the provider, `kill.*` switches turn on and other flags take their registry defaults. The alert escalates at 1 hour and again at 12 hours of outage (once each per outage, dated from the last provider contact), so operations can act first.
 
 ## 4. RULES (`@infrabyx/rules`)
 
@@ -514,7 +514,10 @@ PL3 only makes that later work cheap: `workflow` gives it the approval request a
 | **C-22** | Export manifest and `ExportCompleted`     | Detached JWS (RFC 7515 Appendix F), ES256 through KMS `sign` (C-14 `ECC_NIST_P256`, `ECDSA_SHA_256`, DIGEST); one platform export-signing key per environment; `kid` = KMS key id; payload = the manifest bytes, or JCS (RFC 8785) of the CloudEvent without its signature attribute |
 | **C-23** | Suppression and marketing-consent address | HMAC-SHA-256 of the normalised address (lower-cased email; E.164 phone) with the group consent key, one per environment, read through SECRETS (wrapped by KMS) and shared with the products; full 64-hex output; computed only in `@infrabyx/crypto`                                 |
 
-Both are owner-approved (PL3-D-05, PL3-D-06). Anything else (RS256 for FCM, HMAC-SHA1 for Leegality) is not, and is #18 and #19.
+| **C-24** | FCM OAuth service-account assertion | RS256 (RSASSA-PKCS1-v1_5, SHA-256) **only** to sign the Google service-account JWT that FCM HTTP v1's OAuth 2.0 token exchange requires; never for platform tokens (C-12 ES256 stays the rule). Key read through SECRETS; signed in `@infrabyx/crypto` with `node:crypto`; key and assertion never logged; access token cached until 5 minutes before expiry; keyless workload identity federation preferred once the platform runs on a cloud that supports it |
+| **C-25** | Leegality webhook verification | HMAC-SHA1 **verification only**, for Leegality webhooks and nothing else: constant-time comparison over the signed bytes, a timestamp or replay window where Leegality sends one, and the document status read back from the Leegality API before any state change; switch to SHA-256 signing if Leegality offers it once the test account exists |
+
+All four are owner-approved (PL3-D-05, PL3-D-06, PL3-C-01, PL3-C-02). C-24 is built with the `fcm` adapter (session 4) and C-25 with the `leegality` adapter (session 6).
 
 ## 10. Contracts additions
 
