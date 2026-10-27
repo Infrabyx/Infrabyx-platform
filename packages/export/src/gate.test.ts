@@ -124,13 +124,23 @@ describe("@IPB-09-AT-14 export map gate", () => {
     ]);
   });
 
-  it("changes in the export package trigger the gate; the golden folder alone does not", () => {
-    expect(exportMapGate(base({ changedFiles: ["packages/export/src/archive.ts"] })).ok).toBe(
-      false,
-    );
-    expect(exportMapGate(base({ changedFiles: ["packages/export/golden/x/README.txt"] })).ok).toBe(
-      true,
-    );
+  it("source changes in the export package trigger the gate; metadata, tests and the golden folder do not", () => {
+    for (const f of [
+      "packages/export/src/archive.ts",
+      "packages/export/verify/verify.mjs",
+      "packages/export/migrations/0002_x.sql",
+    ])
+      expect(exportMapGate(base({ changedFiles: [f] })).ok).toBe(false);
+    // The version PR changes only package.json and CHANGELOG.md.
+    for (const f of [
+      "packages/export/golden/x/README.txt",
+      "packages/export/package.json",
+      "packages/export/CHANGELOG.md",
+      "packages/export/README.md",
+      "packages/export/src/gate.test.ts",
+      "packages/export/src/__tests__/export.int.test.ts",
+    ])
+      expect(exportMapGate(base({ changedFiles: [f] })).ok).toBe(true);
   });
 
   it("reads tables and columns from create table and add column", () => {

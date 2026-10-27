@@ -1,6 +1,7 @@
 // `export-map-gate` (IPB-09-34, PL3 plan §7.4, @IPB-09-AT-14). Pure: the CLI gathers the PR's
 // changed files, the maps before and after, the changed migrations and changesets; this decides.
-// A PR that changes a mapped table in a migration, a map, or the export package itself needs the
+// A PR that changes a mapped table in a migration, a map, or the export package's source, maps,
+// verifier or migrations needs the
 // map version bumped (at least as far as `requiredMapBump` says) with a changeset line
 // `export_map: <version>`, or the `export:unchanged` attestation (reviewed by PLT_RELEASE_MANAGER
 // through CODEOWNERS). A map that names a table or column no migration creates always fails.
@@ -80,6 +81,17 @@ function actualBump(before: string, after: string): "none" | "minor" | "major" |
 
 const RANK = { none: 0, minor: 1, major: 2 } as const;
 
+/**
+ * Whether a file of the export package can change what an archive contains: its source, maps,
+ * verifier and migrations. Tests, the golden fixture, the README, the changelog and `package.json`
+ * (release metadata, e.g. the version PR) cannot.
+ */
+export function shapesExports(path: string): boolean {
+  if (/^(golden|node_modules|dist)\//.test(path)) return false;
+  if (/(^|\/)__tests__\//.test(path) || /\.test\.[cm]?[jt]s$/.test(path)) return false;
+  return /^(src|maps|verify|migrations)\//.test(path);
+}
+
 export function exportMapGate(i: GateInput): GateResult {
   const findings: string[] = [];
   const triggers: string[] = [];
@@ -116,7 +128,7 @@ export function exportMapGate(i: GateInput): GateResult {
         triggers.push(`${m.path} changes ${src} (${label})`);
   }
   for (const f of i.changedFiles)
-    if (f.startsWith(exportDir) && !f.startsWith(`${exportDir}golden/`))
+    if (f.startsWith(exportDir) && shapesExports(f.slice(exportDir.length)))
       triggers.push(`${f} is in the export package`);
   for (const c of i.mapChanges) triggers.push(`${c.path} changes an export map`);
 

@@ -4,7 +4,7 @@ Updated: 2026-10-27
 
 | Item                  | Value                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **PL3 session 6 done** (2026-10-27): ESIGN `leegality` and `digio`, C-25 (PL3-D-23); sessions 5 (`export`, PL3-D-22) and the owner answers #21–#23 (PL3-D-21) merged. Next: PL3 session 7 (gate and release). Continuous build mode (PL2-D-41)                  |
+| Current phase         | **PL3 gate** (2026-10-27): sessions 1–6 merged (#45, #48, #49, #52, #53, #54, #57); gate report `docs/phases/PL3-gate.md` passes; next: merge version PR #47 to publish the PL3 releases. Then PL4 (plan first). Continuous build mode (PL2-D-41)               |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages: contracts, crypto, config, tenancy, seed and testing 0.2.0; audit 0.1.1; connectors 0.1.1 (patch, release run 32, `f74bb9e`; 0.1.0 was run 29, `a09d13c`). The 15 later-phase scaffolds stay private until their phase (PL1-D-20) |
 | Last exit gate passed | PL2 gate A (2026-10-27): report `docs/phases/PL2-gate-A.md`; PR #40 (gate fixes) and PR #14 (version), CI green; release run 29 published 8 packages                                                                                                            |
@@ -219,7 +219,8 @@ Continuous build: PL2 closed at gate A; now PL3, then PL4–PL6. Defaults taken 
 
 ## Next
 
-- Session 7: the PL3 gate report, consumer-smoke, the version PR and the release.
+- PL3 gate: merge version PR #47 once green (12 packages, `docs/phases/PL3-gate.md` §6); record the published versions, tags and registry checksums here; tell products what changed (gate report §5).
+- Then PL4: write `docs/phases/PL4-plan.md` (IPB-14 §14.3), self-review and start.
 
 ## Handover (2026-10-27, end of the session that built PL3 sessions 2–4)
 
