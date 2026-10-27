@@ -279,6 +279,16 @@ Types, schemas and error codes only; no I/O.
 - **I:** goals or outputs stored in mission rows. Control: missions store only skill keys, task ids and counters; the planner run is metadata-only like every AI run.
 - **Residual:** the owner-role snapshot is strict (#38); a crash between the scheduling commit and task creation leaves a visible `started` run without a task.
 
+### 3.24 `@infrabyx/vidhi` MCP server, MCP client and notebooks (built, PL4 session 7b)
+
+- **E:** an external AI client executes a write or locked action through MCP. Control: the server is off per tenant until `ai.mcp.server_enabled`; write and locked tools only create a task waiting for a person's approval in the product UI, at any autonomy level; a client asking to execute directly is `IPB-VID-040`; calls run as an agent principal, so the approvals engine's agent and maker rules apply; tools are filtered by the product's permission check.
+- **I:** MCP returns data to an external client. Control: only skills that list the `mcp` surface are exposed; the caller's own token and permissions decide; the status tool shows only the caller's tasks; every call is ledgered.
+- **D:** an MCP client floods the server. Control: per-caller, per-tool rate limit (in process) with `IPB-SEC-019`.
+- **T/I:** an external MCP server injects instructions or receives data it should not. Control: allow-list only (`IPB-VID-041`), https only, a class ceiling for arguments, a tool allow-list, a rate limit, a ledger entry per call; results enter prompts only as `tool_result` data blocks.
+- **I:** notebook sources and outputs readable in clear, or across tenants. Control: text sealed with FieldCrypto under the owning tenant's key; RLS limits sources to their tenant (platform notebooks read-only to all); a cross-tenant share is a locked action needing an R3 approval, exposes outputs only, and the other tenant gets `IPB-VID-060` until then; records are re-read through the product's permission check at every use.
+- **T:** an instruction planted in a notebook source (URL, upload) steers Vidhi. Control: sources are data blocks only; notebook outputs use no tools; a REGULATED notebook takes a lower-class web source only with confirmation; URLs come only through the product's egress fetcher.
+- **Residual:** MCP rate limits are per process; outputs regenerate only on request (stale is shown, not fixed).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
