@@ -1,0 +1,22 @@
+name: ruleset-reconcile
+# The live GitHub rulesets against infra/policy/github/rulesets.json, the policy file of record
+# (IPB-09 §09.4.1.4; PL6-D-17). Nightly and on demand; a drift fails the run. Rulesets the file
+# marks "$enforceable": false (branch-naming: Enterprise only) are expected to be missing.
+on:
+  schedule:
+    - cron: "41 20 * * *" # 02:11 IST
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reconcile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: reconcile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/ruleset-reconcile.mjs >> "$GITHUB_STEP_SUMMARY"; status=$?; cat "$GITHUB_STEP_SUMMARY"; exit $status
