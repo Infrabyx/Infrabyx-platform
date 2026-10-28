@@ -1,5 +1,14 @@
 # @infrabyx/audit
 
+## 1.2.2
+
+### Patch Changes
+
+- Updated dependencies [b6058d3]
+  - @infrabyx/contracts@1.3.0
+  - @infrabyx/config@1.0.5
+  - @infrabyx/crypto@1.0.3
+
 ## 1.2.1
 
 ### Patch Changes

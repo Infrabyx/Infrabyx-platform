@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.3.0
+
+### Minor Changes
+
+- b6058d3: The Ecosystem inbox (Spec §3.5; G2): migration `0006` adds `tenancy.create_ecosystem_inbox('<schema>')`, and `EcosystemInbox` stores each event before processing, de-duplicates by `(source, id)` and business key, processes in `seq` order per subject, parks gaps for 15 minutes, replays them through the product's callback and turns a gap still open into a reconciliation break. Every write is ledgered.
+
+### Patch Changes
+
+- Updated dependencies [b6058d3]
+  - @infrabyx/contracts@1.3.0
+  - @infrabyx/config@1.0.5
+  - @infrabyx/crypto@1.0.3
+
 ## 1.2.1
 
 ### Patch Changes
