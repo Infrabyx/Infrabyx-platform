@@ -58,6 +58,18 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
       - name: Build
         run: pnpm build
+      # IPB-01-38, @IPB-01-AT-17: a release refuses an exit runbook older than 180 days.
+      - name: Exit runbook currency
+        run: pnpm exit-runbook --max-age-days 180
+      # IPB-01-40, @IPB-01-AT-18: the reference BOM as valid CycloneDX 1.6. Its cosign signature and
+      # its storage with the release record wait for the signing decision (OWNER-QUESTIONS #67).
+      - name: BOM (CycloneDX 1.6)
+        run: |
+          node scripts/bom.mjs --release "${GITHUB_SHA::12}" --out "$RUNNER_TEMP/bom.cdx.json"
+          node -e 'const b = JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"));
+            const v = (r) => b.components.find((c) => c["bom-ref"].startsWith(r))?.version;
+            console.log(`BOM ${b.serialNumber}: ${b.components.length} components; node ${v("runtime:node@")}, PostgreSQL ${v("database:postgresql@")}`);' \
+            "$RUNNER_TEMP/bom.cdx.json" >> "$GITHUB_STEP_SUMMARY"
       # Never publish a package a product cannot import (PL3-D-02).
       - name: Consumer smoke (pack, clean install, import every export)
         run: node scripts/consumer-smoke.mjs
