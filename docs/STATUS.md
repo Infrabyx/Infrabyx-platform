@@ -2,13 +2,13 @@
 
 Updated: 2026-10-28
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned      |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                           |
-| Packages              | Published to GitHub Packages (release run 117, `daa05c4`): **1.3.0** contracts, tenancy; **1.2.2** audit; **1.1.6** cms; **1.1.2** ui; **1.0.8** connectors, rules; **1.0.7** ai, brand, consent, export, feedback, notify, seed, testing, trust, vidhi, workflow; **1.0.5** config; **1.0.3** a11y, crypto; **1.0.0** hlp. Records under "Releases after 1.0.0" |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                    |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned               |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                    |
+| Packages              | Published to GitHub Packages (release runs 117 and 119, `99eef72`): **1.3.0** contracts, tenancy; **1.2.2** audit; **1.1.6** cms; **1.1.2** ui; **1.0.9** connectors, rules; **1.0.7** ai, brand, consent, export, feedback, notify, seed, testing, trust, vidhi, workflow; **1.0.5** config; **1.0.3** a11y, crypto; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                         |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                             |
 
 ## Handover (2026-10-28, Udofin platform requests PR-UDF-004 to PR-UDF-007)
 
@@ -48,6 +48,21 @@ The owner's answer #82 approved JWS for regulated messages under the C-22 profil
   - KMS signing, and a differential check against `jose`.
   - `contracts`: two list tests.
 - **Products must:** create an ES256 key in KMS for regulated messages, publish its public key to their counterparts, sign every regulated message they produce, and verify those they consume before the inbox (product guide §7b).
+
+### Second-factor patch release (2026-10-28, version PR #140, release run 119)
+
+The `connectors` patch (#138), with the patch of `rules` that depends on it, released under OWNER-QUESTIONS #81(a). Version PR #140 merged as `99eef72` with every required check green, the full 20-port `port-contract` matrix included. Release run 119 (`release` job 123108337969):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3549544552 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:a0f5b234-1dc8-5c7c-8b48-d7f622d08ee7`, 953 components, release `99eef7264f5d`) has SHA-256 `445b928b31125d682289ee355954546da6e12001b6a2108bca0bf9bcca5832a1`.
+- **Published 2 packages** (`consumer-smoke` first: 22 packages, 103 exports, 0 failed), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified both attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40772109841 (job 123111750570) printed the registry's `dist` and rebuilt both packages from `99eef72` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `99eef72`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/connectors` | 1.0.9   | `eacc946e33dde2f2cbdb2f4f7d627ded25ab94b9` | `sha512-LH3kS86l7x97xc5W+AaFY+MJQ1yn8fRPje7saJjjyD5CbHOy97HU/ukObL6QvH3G8e1AaP5ukEIty5tVN8ryBA==` | 3549584437          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.9   | `3cc41e4ef93ba6d91848dab5b66f8d18c12d4c4b` | `sha512-dAlpb1XSsfQ8QIyz/9eXMCWxnndMC3SEhbcyx9+IY9lktWMKj7Rz0vVRXcGsdgf4iUqov7cCcqkS7v8cUrmx+w==` | 3549586241          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together (`connectors` and `rules` 1.0.9, the rest at the run 117 versions) and re-apply the Keycloak realm (`KeycloakIdentity.applyRealm`, as at deploy). No migration, setting or environment variable.
 
 ### The second factor survives the code exchange (patch of `connectors`)
 
