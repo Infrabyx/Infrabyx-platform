@@ -78,6 +78,12 @@ export const SERVICE_READER_ROLES = {
    * else), with the batch's ledger entry in the same transaction.
    */
   SVC_OUTBOX_RELAY: { dbRole: "svc_outbox_relay", tables: [] },
+  /**
+   * Lists the tenants for a product's scheduled per-tenant jobs (audit-chain verification, daily
+   * anchors; PR-UDF-013, R1-D-12): `id` and `status` of `tenancy.tenant`, nothing else. Each job
+   * then runs in each tenant's own context under its RLS.
+   */
+  SVC_TENANT_SWEEP: { dbRole: "svc_tenant_sweep", tables: ["tenancy.tenant"] },
 } as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;
 export type ServiceReaderRole = keyof typeof SERVICE_READER_ROLES;
 /** The only writes `SVC_OUTBOX_RELAY` may make: marking one module outbox's rows dispatched. */

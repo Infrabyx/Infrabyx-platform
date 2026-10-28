@@ -4,3 +4,4 @@ export const PACKAGE_NAME = "@infrabyx/audit" as const;
 export * from "./chain.js";
 export * from "./sink.js";
 export * from "./service.js";
+export * from "./sweep.js";

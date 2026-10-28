@@ -10,6 +10,7 @@ Tenant context, the transaction kernel, RLS tooling, outbox/inbox, the maker-che
 - `new PgKernel({ pool })` implements `MutationKernel`. Each transaction runs `SET LOCAL ROLE app_rw` and sets `app.tenant_id`, `app.entity_id`, `app.actor_id`, `app.trace_id`, `app.scope` with `set_config(…, true)`. Callbacks may not run session-level `SET`/`RESET`, role switches, `app.*` writes, `session_replication_role` or transaction control.
 - `mutate()` refuses writes during impersonation (`IPB-SEC-003`), refuses `approve`/`sign`/`disburse`/`delete`/`grant` for agents (`IPB-SEC-004`), checks a break-glass grant is active (`IPB-SEC-009`), and fails the commit with `IPB-MOD-003` unless the audit ledger was written in the transaction.
 - `PgOutbox.publish(tx, schema, { envelope })` and `PgInbox.firstSeen(tx, schema, consumer, eventId)` (IPB-01 §01.4.3.3).
+- `TenantSweep` (`migrations/0005`, `SVC_TENANT_SWEEP`): list the tenants with a ledgered read and run a scheduled job once per tenant in its own context (`docs/product-guide.md` §7c).
 
 ## Approvals, break-glass, impersonation
 

@@ -59,6 +59,22 @@ The bundles are attached to each package's GitHub release.
 - **Websites:** product editors will not edit JSON; the visual block editor for pages (PR-038) must be in place before the first product website goes live.
 - Run `pnpm exit-runbook --routing <your production routing file>` and keep the runbook younger than 180 days; generate the BOM with each release (IPB-01-38, IPB-01-40).
 
+## 7c. Scheduled per-tenant jobs
+
+A job that must run for every tenant (the IPB-02-51 chain verification weekly, the anchor daily, or a product's own) lists the tenants through `TenantSweep` and runs once per tenant in that tenant's context:
+
+```ts
+const sweep = new TenantSweep({ kernel, audit: sink }); // after infrabyx-migrate (tenancy/0005)
+const audits = new AuditSweep({ service: auditService, tenants: sweep });
+const weekly = await audits.verifyAll(); // weekly.broken: tenants whose chain broke
+const daily = await audits.anchorAll(yesterdayUtc); // daily.failed: tenants to retry
+const own = await sweep.run((ctx) => myJob(ctx)); // ctx: tenant scope, svc_tenant_job
+```
+
+- The list is a ledgered `SVC_TENANT_SWEEP` read (`id`, `status` only); every tenant's ledger shows it.
+- A job runs as `svc_tenant_job`, or as your own service principal passed as `jobPrincipal`, never as the reader.
+- Schedule the calls in your worker (Temporal schedule or cron), and alert on `broken` and `failed`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
