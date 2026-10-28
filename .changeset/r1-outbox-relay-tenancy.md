@@ -1,5 +1,0 @@
----
-"@infrabyx/tenancy": minor
----
-
-`OutboxRelay` relays registered module outboxes to the QUEUE as the `SVC_OUTBOX_RELAY` service reader (owner answer #74(e), R1-D-01). Migration `tenancy/0003` creates the `svc_outbox_relay` role with no grant and `tenancy.register_outbox('<schema>')`, which a module migration calls to grant it select of the relayed columns and update of `dispatched_at` and `attempts` on that one `<schema>.outbox`, plus a platform-scope discovery policy. One pass reads the pending rows per tenant (ledgered per tenant, as every service read), then in each tenant's own context delivers the batch, marks it dispatched and writes the batch's ledger entry in the same transaction. The kernel lets that reader mutate only `<schema>.outbox.dispatch` in a tenant context, running as its own database role. Products replace their own relays: run `infrabyx-migrate`, add `select tenancy.register_outbox('<schema>')` to a migration per module, and run `new OutboxRelay({ kernel, audit, deliver })` in the worker.
