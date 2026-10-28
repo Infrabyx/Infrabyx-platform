@@ -3,7 +3,8 @@
 // check sends contextual tuples derived from the principal's roles and attributes and the
 // resource's attributes, so no tuple data is stored in OpenFGA (PL2-D-52). `planResources` is
 // unsupported: ListObjects needs stored tuples. Deny by default; PDP failure is a deny.
-import { CredentialsMethod, OpenFgaClient, type TupleKey } from "@openfga/sdk";
+// The adapter calls OpenFGA's HTTP API directly: the SDK pinned an axios release with open advisories
+// that products could not override (PR-FBX-05).
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
@@ -38,7 +39,43 @@ const TENANT_RELATION: Readonly<Record<string, string>> = {
   ORG_AUDITOR_RO: "auditor",
 };
 
+/** An OpenFGA tuple key: `user` has `relation` on `object`. */
+export interface TupleKey {
+  user: string;
+  relation: string;
+  object: string;
+}
+
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
+const TIMEOUT_MS = 3000;
+
+/** An OpenFGA API error, with the HTTP status. */
+class OpenFgaHttpError extends Error {
+  constructor(readonly statusCode: number) {
+    super(`OpenFGA answered ${statusCode}`);
+  }
+}
+
+/** POST `body` to `path` under `apiUrl` (any base path kept) and return the JSON answer. */
+async function post<T>(
+  apiUrl: string,
+  path: string,
+  body: unknown,
+  presharedKey?: string,
+): Promise<T> {
+  const r = await fetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      ...(presharedKey ? { authorization: `Bearer ${presharedKey}` } : {}),
+    },
+    body: JSON.stringify(body),
+    redirect: "error",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+  });
+  if (!r.ok) throw new OpenFgaHttpError(r.status);
+  return (await r.json()) as T;
+}
 const ID = /^[A-Za-z0-9_.:@-]{1,128}$/;
 const str = (v: unknown): string | undefined =>
   typeof v === "string" && ID.test(v) ? v : undefined;
@@ -78,7 +115,7 @@ export class OpenFgaAuthz implements AuthzPort {
     maxDataClass: "CONFIDENTIAL",
     capabilities: { planResources: "unsupported" },
   };
-  private client: OpenFgaClient;
+  private modelId: string | undefined;
   private readonly cache: AllowCache;
 
   constructor(private readonly o: OpenFgaOptions) {
@@ -88,24 +125,17 @@ export class OpenFgaAuthz implements AuthzPort {
         adapter: "openfga",
         detail: "OpenFGA URL must be https",
       });
-    this.client = this.make(o.authorizationModelId);
+    if (!ID.test(o.storeId))
+      throw new PortError("IPB-PORT-005", "AUTHZ", {
+        adapter: "openfga",
+        detail: "invalid OpenFGA store id",
+      });
+    this.modelId = o.authorizationModelId;
     this.cache = new AllowCache((o.decisionCacheSeconds ?? 5) * 1000, o.now);
   }
 
-  private make(modelId?: string): OpenFgaClient {
-    return new OpenFgaClient({
-      apiUrl: this.o.apiUrl,
-      storeId: this.o.storeId,
-      ...(modelId ? { authorizationModelId: modelId } : {}),
-      ...(this.o.presharedKey
-        ? {
-            credentials: {
-              method: CredentialsMethod.ApiToken,
-              config: { token: this.o.presharedKey },
-            },
-          }
-        : {}),
-    });
+  private store(path: string): string {
+    return `/stores/${encodeURIComponent(this.o.storeId)}/${path}`;
   }
 
   async check(
@@ -125,12 +155,20 @@ export class OpenFgaAuthz implements AuthzPort {
     const k = this.cache.key(principal, resource, action, ctx);
     if (this.cache.hit(k)) return { allowed: true, policy: "cache" };
     try {
-      const r = await this.client.check({
-        user: `user:${principal.id}`,
-        relation: action,
-        object: `${resource.kind}:${resource.id}`,
-        contextualTuples: contextualTuples(principal, resource),
-      });
+      const r = await post<{ allowed?: boolean }>(
+        this.o.apiUrl,
+        this.store("check"),
+        {
+          tuple_key: {
+            user: `user:${principal.id}`,
+            relation: action,
+            object: `${resource.kind}:${resource.id}`,
+          },
+          contextual_tuples: { tuple_keys: contextualTuples(principal, resource) },
+          ...(this.modelId ? { authorization_model_id: this.modelId } : {}),
+        },
+        this.o.presharedKey,
+      );
       const d: AuthzDecision = {
         allowed: r.allowed === true,
         policy: `openfga:${resource.kind}#${action}`,
@@ -139,7 +177,7 @@ export class OpenFgaAuthz implements AuthzPort {
       return d;
     } catch (e) {
       // An unknown type or relation is a 400 from OpenFGA: deny, not an outage.
-      const status = (e as { statusCode?: number }).statusCode;
+      const status = e instanceof OpenFgaHttpError ? e.statusCode : undefined;
       return status && status >= 400 && status < 500
         ? { allowed: false, policy: "ipb.no_such_relation" }
         : pdpDown("openfga");
@@ -182,8 +220,13 @@ export class OpenFgaAuthz implements AuthzPort {
         adapter: "openfga",
         detail: "bundle has no model.json",
       });
-    const r = await this.client.writeAuthorizationModel(JSON.parse(text) as never);
-    this.client = this.make(r.authorization_model_id);
+    const r = await post<{ authorization_model_id: string }>(
+      this.o.apiUrl,
+      this.store("authorization-models"),
+      JSON.parse(text),
+      this.o.presharedKey,
+    );
+    this.modelId = r.authorization_model_id;
   }
 
   async explain(decision: AuthzDecision): Promise<string> {
@@ -198,7 +241,7 @@ export class OpenFgaAuthz implements AuthzPort {
     const t = Date.now();
     try {
       const r = await fetch(new URL("/healthz", this.o.apiUrl), {
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       return {
         status: r.ok ? "up" : "down",
@@ -212,7 +255,6 @@ export class OpenFgaAuthz implements AuthzPort {
 
   /** Create a store (setup and tests); returns its id. */
   static async createStore(apiUrl: string, name: string): Promise<string> {
-    const c = new OpenFgaClient({ apiUrl });
-    return (await c.createStore({ name })).id;
+    return (await post<{ id: string }>(apiUrl, "/stores", { name })).id;
   }
 }

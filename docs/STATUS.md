@@ -28,6 +28,14 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-05: the OpenFGA adapter without the SDK (security; patch of `connectors`)
+
+Finbyx's platform request PR-FBX-05 (R1-D-09). `@openfga/sdk` 0.9.7, the latest, pins `axios` 1.19.0 (seven high advisories); the platform's workspace override did not reach products, so each carried its own.
+
+- **Fixed:** the `openfga` adapter calls OpenFGA's HTTP API with `fetch` (create a store, write the model, check); same bodies, Bearer key, 3-second timeout and deny-on-failure. `@openfga/sdk`, `axios` and `tiny-async-pool` leave the tree; the workspace `axios` override is removed.
+- **Tests:** `openfga-http.test.ts` (a stand-in server checks paths, bodies, the key, the 4xx deny and the PDP-down deny); the AUTHZ contract leg against OpenFGA v1.22.0 in CI.
+- **Products must:** take the `connectors` patch, then drop their `axios` override (Finbyx SEC-01) and re-run their audit.
+
 ### Finbyx platform requests PR-FBX-01 to PR-FBX-06 (triage) and owner answer #82
 
 - **#82 answered** (R1-D-08): the lender connector stays product-local; the Ecosystem inbox (G2) is the next minor; JWS for regulated messages (G5) is approved under the C-22 profile and follows G2.
