@@ -7,6 +7,9 @@ permissions:
   contents: write
   packages: write
   pull-requests: write
+  # Keyless signing (cosign, GitHub OIDC): the release job's identity signs the BOM and the
+  # package attestations (owner answer #67(1), PL6-D-16).
+  id-token: write
 concurrency: release-${{ github.ref }}
 env:
   TURBO_TELEMETRY_DISABLED: "1"
@@ -61,8 +64,8 @@ jobs:
       # IPB-01-38, @IPB-01-AT-17: a release refuses an exit runbook older than 180 days.
       - name: Exit runbook currency
         run: pnpm exit-runbook --max-age-days 180
-      # IPB-01-40, @IPB-01-AT-18: the reference BOM as valid CycloneDX 1.6. Its cosign signature and
-      # its storage with the release record wait for the signing decision (OWNER-QUESTIONS #67).
+      # IPB-01-40, @IPB-01-AT-18: the reference BOM as valid CycloneDX 1.6, signed below when this run
+      # publishes.
       - name: BOM (CycloneDX 1.6)
         run: |
           node scripts/bom.mjs --release "${GITHUB_SHA::12}" --out "$RUNNER_TEMP/bom.cdx.json"
@@ -70,6 +73,33 @@ jobs:
             const v = (r) => b.components.find((c) => c["bom-ref"].startsWith(r))?.version;
             console.log(`BOM ${b.serialNumber}: ${b.components.length} components; node ${v("runtime:node@")}, PostgreSQL ${v("database:postgresql@")}`);' \
             "$RUNNER_TEMP/bom.cdx.json" >> "$GITHUB_STEP_SUMMARY"
+      # cosign from the Go module proxy, checked by Go's checksum database like the infra tools
+      # (scripts/ci/infra-tools.sh); v3.1.4 was published at least 7 days before it was pinned.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: needs.detect.outputs.publishing == 'true'
+        with:
+          go-version: "1.24"
+          cache: false
+      - name: cosign
+        if: needs.detect.outputs.publishing == 'true'
+        env:
+          GOTOOLCHAIN: auto
+          GOFLAGS: -trimpath
+          CGO_ENABLED: "0"
+        run: |
+          GOBIN="$RUNNER_TEMP/bin" go install github.com/sigstore/cosign/v3/cmd/cosign@v3.1.4
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      # IPB-02-35, @IPB-01-AT-18: sign the BOM keyless before anything is published, and verify the
+      # signature against this workflow's identity, so a release never ships an unsigned BOM.
+      - name: Sign the BOM (cosign keyless)
+        if: needs.detect.outputs.publishing == 'true'
+        run: |
+          ID="https://github.com/${GITHUB_WORKFLOW_REF}"
+          cd "$RUNNER_TEMP"
+          cosign sign-blob --yes --bundle bom.cdx.json.sigstore.json bom.cdx.json
+          cosign verify-blob --bundle bom.cdx.json.sigstore.json --certificate-identity "$ID" \
+            --certificate-oidc-issuer https://token.actions.githubusercontent.com bom.cdx.json
+          echo "BOM signed by $ID (bundle bom.cdx.json.sigstore.json)" >> "$GITHUB_STEP_SUMMARY"
       # Never publish a package a product cannot import (PL3-D-02).
       - name: Consumer smoke (pack, clean install, import every export)
         run: node scripts/consumer-smoke.mjs
@@ -85,6 +115,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+      # The SBOM attestation (IPB-02-35): every published tarball, as the registry serves it, is
+      # attested with the BOM as its CycloneDX predicate and verified; the BOM, its signature bundle
+      # and the attestation bundle go to the package's GitHub release (docs/product-guide.md §6).
+      - name: Attest the published packages (cosign keyless)
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          ID="https://github.com/${GITHUB_WORKFLOW_REF}"
+          mkdir -p "$RUNNER_TEMP/attest" && cd "$RUNNER_TEMP/attest"
+          for p in $(node -e 'for (const x of JSON.parse(process.env.PUBLISHED)) console.log(`${x.name}@${x.version}`)'); do
+            # A version just published can take a moment to be served; try for up to a minute.
+            rm -f pack.json
+            for i in 1 2 3 4 5 6; do
+              npm pack "$p" --registry https://npm.pkg.github.com --json > pack.json && break
+              sleep 10
+            done
+            tgz="$(node -e 'console.log(JSON.parse(require("node:fs").readFileSync("pack.json", "utf8"))[0].filename)')"
+            cosign attest-blob --yes --type cyclonedx --predicate "$RUNNER_TEMP/bom.cdx.json" \
+              --bundle "$tgz.cdx.sigstore.json" "$tgz"
+            cosign verify-blob-attestation --type cyclonedx --bundle "$tgz.cdx.sigstore.json" \
+              --certificate-identity "$ID" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com "$tgz"
+            gh release upload "$p" --repo "$GITHUB_REPOSITORY" --clobber "$RUNNER_TEMP/bom.cdx.json" \
+              "$RUNNER_TEMP/bom.cdx.json.sigstore.json" "$tgz.cdx.sigstore.json"
+            echo "- $p: $tgz attested" >> "$GITHUB_STEP_SUMMARY"
+          done
       # Gate evidence (PL2-D-67): the registry's own shasum and integrity for each published version,
       # in the job summary, so a gate report can quote them.
       - name: Registry checksums

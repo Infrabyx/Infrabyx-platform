@@ -7,7 +7,7 @@ OpenTofu modules per cloud with one output contract (IPB-01-34, §01.4.9; PL6 pl
 | `contract/outputs.schema.json` | The output contract of §01.4.9.3 and the bucket classes; `contract.test.mjs` checks every cloud against it                                                                                                  |
 | `modules/<cloud>/<module>`     | `aws`, `azure`, `gcp`: `network`, `kubernetes`, `postgres`, `redis`, `object_storage`, `kms`, `secrets`, `dns_cdn_edge`, `observability_backend`, `registry`, `iam_workload_identity`, `bastion_breakglass` |
 | `modules/<cloud>/platform`     | The composition: region check (IPB-01-36), every module, the contract outputs; `tests/contract.tftest.hcl`                                                                                                  |
-| `envs/example/preview`         | An example environment stack: providers, the platform module, the contract as one output                                                                                                                    |
+| `envs/example/preview`         | An example environment stack: providers, the platform module, the contract as one output, client-side state and plan encryption (AES-GCM, `enforced`; PL6-D-16)                                             |
 
 ## What the AWS modules set
 
@@ -47,7 +47,7 @@ OpenTofu modules per cloud with one output contract (IPB-01-34, §01.4.9; PL6 pl
 
 ## Tests (`infra` CI job)
 
-`tofu fmt -check`, `tofu init -backend=false` and `tofu validate` for every module and the example stack; `tofu test` in each `platform` (mock providers: no credentials, no resources; `@IPB-01-AT-14`); `tflint --recursive` with `.tflint.hcl` (the Terraform recommended preset and the three cloud rulesets); `trivy config`; and `pnpm infra:test` for the contract file check.
+`tofu fmt -check`, `tofu init -backend=false` and `tofu validate` for every module and the example stack (with a throwaway `TF_VAR_state_passphrase` per run, since the encryption key is needed at init); `tofu test` in each `platform` (mock providers: no credentials, no resources; `@IPB-01-AT-14`); `tflint --recursive` with `.tflint.hcl` (the Terraform recommended preset and the three cloud rulesets); `trivy config`; and `pnpm infra:test` for the contract file check.
 
 | Tool     | Version                                   | Source                                                                                                          |
 | -------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |

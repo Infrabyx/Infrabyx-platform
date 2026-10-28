@@ -21,14 +21,22 @@ Updated: 2026-10-28
 - **New owner question #60** (how #53, #55 and #57 were read where they left a detail open; defaults in PL5-D-12; nothing blocked).
 - **Products must, at the PL5 release:** run `infrabyx-migrate` (`cms/0004`, `consent/0002`); add `sharp` 0.35.5 and pass `SharpMedia` to `MediaLibrary` and `BrandStudio` if they re-encode (otherwise uploads stay as uploaded); publish each MAJOR Terms notice in Studio and report the NOTIFY send time (`recordNoticeSent`, or return `sentAt` from `notifyPolicyChange`); report lead interactions and relationships to `ConsentSubjects`.
 
+## Owner answers #60–#78 (2026-10-28, PL6-D-16)
+
+- **Kept:** #60, #61, #63–#66, #68–#70, #73, #75–#78. **#62** kept for the platform, with platform request PR-038: a visual block editor for pages before the first product website goes live.
+- **#71, #72:** kept, and OpenTofu client-side state encryption is on in the example stack (AES-GCM, `enforced = true`, key from `TF_VAR_state_passphrase` or a KMS key provider) and in `docs/product-guide.md` §4.
+- **#74(e):** the `SVC_OUTBOX_RELAY` reader role (registered outbox tables only, read and update, every batch audited) is the first minor after 1.0.0; the per-tenant relay stays until then.
+- **#67:** (1) the release job signs the BOM with cosign keyless and attests every published tarball with it; `verify-images` enforces from staging up (namespaces labelled `local`, `dev`, `test` or `preview` audit); the product guide explains the Rekor disclosure and the KMS-key alternative. (2) No hosted preview yet. (3) No images pushed. (4) 1.0.0 after the gate PR merges, the 0.x release of #98 is green and the owner confirms the ruleset is applied.
+- **Ruleset checks (gate report §3):** no `v*` tags are created; `dependabot/*` and `cc/PLn-<slug>` branches are admitted; the version PR runs all nine required checks; merges are squash-only.
+
 ## PL6 gate (2026-10-28, PL6-D-15)
 
 - **Report:** `docs/phases/PL6-gate.md`. The PL6 exit gate (plan §14) passes on all seven items, with the BOM unsigned until #67. IPB-14 §14.5: items 3, 4 and 5 pass; item 2 passes locally and on the CI-ephemeral preview, while the hosted preview is held (#67); item 1 (1.0.0) is held for the owner (#67).
 - **Evidence:** every PL6 PR (#95–#109) merged green; `ci` green on `main` after each merge; a full `port-contract` run on `main` (run 184) green on all 20 ports, including the Tier-0 IDENTITY, AUTHZ and KMS legs on both their adapters.
 - **Required checks:** `infra/policy/github/rulesets.json` now lists `integration`, `containers`, `compose`, `infra`, `reference` and `scaffold` beside `verify (24.22.1)`, `consumer-smoke` and `a11y`. **Owner task:** apply the ruleset.
 - **Tests:** `@IPB-01-AT-01` is tagged: the pin check requires a digest on every Dockerfile `FROM` under `apps/` and `infra/`. `at-report`: 146 of 274.
-- **New owner question:** #80 (nothing blocked).
-- **Next:** merge version PR #98 (the PL6 0.x release: `connectors` 0.5.0, `tenancy` 0.6.0 and patches); record the registry checksums; open the held 1.0.0 changeset PR as a draft; write the handover.
+- **New owner question:** #80 (nothing blocked); #60–#78 answered (PL6-D-16).
+- **Next:** merge version PR #98 (the PL6 0.x release: `connectors` 0.5.0, `tenancy` 0.6.0 and patches, with the first signed BOM); record the registry checksums; open the held 1.0.0 changeset PR as a draft; stop for the owner's word on 1.0.0.
 
 ## PL6 session 6b (2026-10-28, PL6-D-14)
 

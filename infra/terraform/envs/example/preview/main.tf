@@ -3,7 +3,9 @@
 # from this repository. Copy it to infra/terraform/envs/<product>/<env>/ in the product.
 #
 # After `tofu apply`, `tofu output -json > outputs.auto.json` feeds the environment's routing.yaml
-# and Helm values. State is SECRET class: keep it in the cloud's locked remote backend.
+# and Helm values. State is SECRET class (it can hold provider-generated secrets, such as the
+# Memorystore AUTH string on GCP): keep it in the cloud's locked remote backend, encrypted on the
+# client as below from the first apply (owner answers #71, #72; PL6-D-16; docs/product-guide.md §4).
 
 terraform {
   required_version = ">= 1.10.0"
@@ -13,6 +15,27 @@ terraform {
       version = "6.69.1"
     }
   }
+  # Client-side state encryption (OpenTofu): state and plans are written with AES-GCM only, never
+  # in plain text. The key is derived from a passphrase supplied at run time
+  # (TF_VAR_state_passphrase, at least 16 characters, from the CI secret store). Once the
+  # environment's KMS key exists, replace the pbkdf2 provider with `aws_kms` (or `gcp_kms`,
+  # `openbao`) and keep this method as a `fallback` for one apply.
+  encryption {
+    key_provider "pbkdf2" "state" {
+      passphrase = var.state_passphrase
+    }
+    method "aes_gcm" "state" {
+      keys = key_provider.pbkdf2.state
+    }
+    state {
+      method   = method.aes_gcm.state
+      enforced = true
+    }
+    plan {
+      method   = method.aes_gcm.state
+      enforced = true
+    }
+  }
   # backend "s3" {
   #   bucket       = "<state bucket>"
   #   key          = "<product>/<env>/platform.tfstate"
@@ -20,6 +43,12 @@ terraform {
   #   encrypt      = true
   #   use_lockfile = true
   # }
+}
+
+variable "state_passphrase" {
+  description = "Passphrase the state and plan encryption key is derived from; never committed"
+  type        = string
+  sensitive   = true
 }
 
 provider "aws" {

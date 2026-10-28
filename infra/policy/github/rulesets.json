@@ -33,9 +33,9 @@
             "require_code_owner_review": false,
             "require_last_push_approval": false,
             "required_review_thread_resolution": false,
-            "allowed_merge_methods": ["squash", "rebase"]
+            "allowed_merge_methods": ["squash"]
           },
-          "$comment": "PL2-D-12: no approving review until a second reviewer exists (GitHub does not let the author approve their own PR; Claude PRs are opened under the owner's account). Raise to 1 with code-owner review when a second reviewer joins. Linear history means squash or rebase merges."
+          "$comment": "PL2-D-12: no approving review until a second reviewer exists (GitHub does not let the author approve their own PR; Claude PRs are opened under the owner's account). Raise to 1 with code-owner review when a second reviewer joins. Linear history with squash merges only: required signatures can break rebase merges, whose rewritten commits GitHub does not sign (owner, 28 Oct 2026; PL6-D-16)."
         },
         {
           "type": "required_status_checks",
@@ -113,7 +113,7 @@
             "require_code_owner_review": true,
             "require_last_push_approval": false,
             "required_review_thread_resolution": true,
-            "allowed_merge_methods": ["squash", "rebase"]
+            "allowed_merge_methods": ["squash"]
           }
         }
       ]
@@ -157,9 +157,9 @@
           "type": "branch_name_pattern",
           "parameters": {
             "operator": "regex",
-            "pattern": "^(feat|fix|hotfix)/[A-Za-z0-9._-]+-[a-z0-9-]+$|^release/[0-9]+\\.[0-9]+$|^(chore|docs)/[a-z0-9-]+$|^cc/[a-z0-9]+-[a-z0-9-]+$|^claude/[a-z0-9-]+$|^changeset-release/main$|^renovate/[A-Za-z0-9._/-]+$",
+            "pattern": "^(feat|fix|hotfix)/[A-Za-z0-9._-]+-[a-z0-9-]+$|^release/[0-9]+\\.[0-9]+$|^(chore|docs)/[a-z0-9-]+$|^cc/[A-Za-z0-9]+-[a-z0-9-]+$|^claude/[a-z0-9-]+$|^changeset-release/main$|^renovate/[A-Za-z0-9._/-]+$|^dependabot/[A-Za-z0-9._/-]+$",
             "negate": false,
-            "name": "IPB-09-02 branch names (+ claude/*, changeset-release/main, renovate/* for tooling)"
+            "name": "IPB-09-02 branch names (+ claude/*, cc/PLn-<slug>, changeset-release/main, renovate/* and dependabot/* for tooling)"
           }
         }
       ]

@@ -1,7 +1,11 @@
 # Images are signed with Sigstore cosign (keyless, GitHub OIDC) and carry a CycloneDX SBOM
-# attestation (IPB-01-35, IPB-02-35). Shipped as Audit: signing is off until the owner approves it
-# (OWNER-QUESTIONS #67); switch failureAction to Enforce in the same change that turns signing on.
-# Matches only the platform's own registry path; products add theirs.
+# attestation (IPB-01-35, IPB-02-35). Enforced by default (owner answer #67, PL6-D-16): a pod is
+# refused unless its namespace is labelled as an environment below staging
+# (`infrabyx.dev/env` = local, dev, test or preview), where the same check only audits. Staging,
+# demo, pre-prod, prod, dr and an unlabelled namespace are enforced. Label namespaces when the
+# cluster is bootstrapped; pods cannot choose their own namespace's labels.
+# Matches only the platform's own registry path and release workflow; products add theirs
+# (docs/product-guide.md §5).
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -17,11 +21,50 @@ spec:
         any:
           - resources:
               kinds: [Pod]
+      exclude:
+        any:
+          - resources:
+              namespaceSelector:
+                matchExpressions:
+                  - key: infrabyx.dev/env
+                    operator: In
+                    values: [local, dev, test, preview]
+      verifyImages:
+        - imageReferences: ["ghcr.io/infrabyx/*"]
+          failureAction: Enforce
+          # The chart and disallow-latest-tag already require digests; nothing is rewritten.
+          mutateDigest: false
+          verifyDigest: true
+          required: true
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: https://token.actions.githubusercontent.com
+                    subjectRegExp: "^https://github\\.com/Infrabyx/[^/]+/\\.github/workflows/release\\.yml@refs/heads/main$"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          attestations:
+            - type: https://cyclonedx.org/bom
+              attestors:
+                - entries:
+                    - keyless:
+                        issuer: https://token.actions.githubusercontent.com
+                        subjectRegExp: "^https://github\\.com/Infrabyx/[^/]+/\\.github/workflows/release\\.yml@refs/heads/main$"
+                        rekor:
+                          url: https://rekor.sigstore.dev
+    - name: signed-and-attested-below-staging
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchExpressions:
+                  - key: infrabyx.dev/env
+                    operator: In
+                    values: [local, dev, test, preview]
       verifyImages:
         - imageReferences: ["ghcr.io/infrabyx/*"]
           failureAction: Audit
-          # Audit cannot rewrite the image to its digest; the chart and disallow-latest-tag already
-          # require digests.
           mutateDigest: false
           verifyDigest: true
           required: true
