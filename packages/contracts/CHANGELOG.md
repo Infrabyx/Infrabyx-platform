@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.2.0
+
+### Minor Changes
+
+- 75e9ea4: The service reader `SVC_TENANT_SWEEP` (`svc_tenant_sweep`, `tenancy.tenant`) for scheduled per-tenant jobs (PR-UDF-013).
+
 ## 1.1.0
 
 ### Minor Changes

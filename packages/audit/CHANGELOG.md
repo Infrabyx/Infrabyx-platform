@@ -1,5 +1,18 @@
 # @infrabyx/audit
 
+## 1.2.0
+
+### Minor Changes
+
+- 75e9ea4: `AuditSweep` (PR-UDF-013): `verifyAll()` for the weekly chain verification and `anchorAll(date)` for the daily anchor of every tenant (IPB-02-51), over `TenantSweep`.
+
+### Patch Changes
+
+- Updated dependencies [75e9ea4]
+  - @infrabyx/contracts@1.2.0
+  - @infrabyx/config@1.0.3
+  - @infrabyx/crypto@1.0.2
+
 ## 1.1.1
 
 ### Patch Changes
