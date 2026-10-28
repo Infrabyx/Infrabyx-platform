@@ -70,6 +70,17 @@ A module that consumes Ecosystem events keeps its own inbox (Spec §3.5). Its mi
    - `raiseBreak` publishes `ReconciliationBreakRaised` through the module's outbox in the transaction it is given.
 4. **Reconcile.** After a break, an operator reconciles the subject from the owner's snapshot (`GET /v1/[aggregate]/{id}`) and calls `inbox.setPosition(ctx, source, subject, lastSeq)`.
 
+## 7b. Signing and verifying regulated messages
+
+For an event that `isRegulatedMessage(type)` names (Ecosystem Spec §3.6):
+
+- **Producer:** sign it with `signRegulatedMessage({ event, kid, sign })`. `sign` is the KMS port's `sign` with the product's ES256 regulated-message key, and `kid` is that key's id. Store the returned JWS with the event and send it as the event's `signature` attribute.
+- **Consumer:** check it with `verifyRegulatedMessage(event, jws, { keys, replay })` before `EcosystemInbox.receive`:
+  - `keys` is a `RegulatedKeyRing` of the producer's published keys;
+  - `replay` is a shared `ReplayStore` when several instances verify.
+  - A failure answers 401 and is logged with its reason, never with the event.
+- **Rotation:** add the new key to every consumer's ring first, then sign with it, and finally set the old key's `notAfter` to the end of the overlap.
+
 ## 7c. Scheduled per-tenant jobs
 
 A job that must run for every tenant (the IPB-02-51 chain verification weekly, the anchor daily, or a product's own) lists the tenants through `TenantSweep` and runs once per tenant in that tenant's context:

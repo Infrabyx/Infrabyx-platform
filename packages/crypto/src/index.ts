@@ -87,3 +87,17 @@ export {
   type DerSigner,
   type Es256PublicJwk,
 } from "./detached-jws.js";
+export {
+  signRegulatedMessage,
+  verifyRegulatedMessage,
+  RegulatedKeyRing,
+  MemoryReplayStore,
+  REGULATED_JWS_TYP,
+  REGULATED_JWS_MAX_AGE_SECONDS,
+  REGULATED_JWS_MAX_SKEW_SECONDS,
+  type RegulatedJwsHeader,
+  type RegulatedVerifyKey,
+  type ReplayStore,
+  type RegulatedJwsFailure,
+  type RegulatedJwsResult,
+} from "./regulated-jws.js";

@@ -2,13 +2,13 @@
 
 Updated: 2026-10-28
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                      |
-| Packages              | Published to GitHub Packages (release run 102, `fb6b33c`): **1.1.2** tenancy, cms; **1.1.1** audit; **1.1.0** contracts, ui; **1.0.3** ai, brand, connectors, consent, export, feedback, notify, rules, seed, testing, trust, vidhi, workflow; **1.0.2** config; **1.0.1** a11y, crypto; **1.0.0** hlp. Records under "Releases after 1.0.0"                |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                           |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                               |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned      |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                           |
+| Packages              | Published to GitHub Packages (release run 117, `daa05c4`): **1.3.0** contracts, tenancy; **1.2.2** audit; **1.1.6** cms; **1.1.2** ui; **1.0.8** connectors, rules; **1.0.7** ai, brand, consent, export, feedback, notify, seed, testing, trust, vidhi, workflow; **1.0.5** config; **1.0.3** a11y, crypto; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                    |
 
 ## Handover (2026-10-28, Udofin platform requests PR-UDF-004 to PR-UDF-007)
 
@@ -27,6 +27,27 @@ Updated: 2026-10-28
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### G5: JWS for regulated messages (minors of `crypto` and `contracts`)
+
+The owner's answer #82 approved JWS for regulated messages under the C-22 profile (R1-D-08); built as R1-D-17 (product guide §7b).
+
+- **Built:**
+  - `crypto`: `signRegulatedMessage`, a detached ES256 JWS over the JCS form of the CloudEvent, signed through KMS `sign`; its protected header holds `kid`, `typ`, `iat` and `jti`.
+  - `crypto`: `verifyRegulatedMessage`, with ES256 only (`none` and `HS*` refused), a strict header allow-list, a five-minute `iat` window and a `jti` claimed once.
+  - `crypto`: `RegulatedKeyRing` for rotation with overlap, and `ReplayStore` with `MemoryReplayStore`.
+  - `contracts`: `REGULATED_MESSAGE_EVENTS` and `isRegulatedMessage`, the 55 names of Spec §3.6.
+- **Tests:** `regulated-jws.test.ts` (24 cases):
+  - refusal of `none`, HS256, HS512, RS256, PS256, ES384 and a lower-case `es256`;
+  - refusal of eight header members;
+  - kid, jti, iat and typ errors;
+  - a changed event, a DER signature, an attached payload and malformed tokens;
+  - stale and future `iat`;
+  - replay, and a forgery that must not burn a real message's `jti`;
+  - rotation with overlap, and EC P-256 keys only;
+  - KMS signing, and a differential check against `jose`.
+  - `contracts`: two list tests.
+- **Products must:** create an ES256 key in KMS for regulated messages, publish its public key to their counterparts, sign every regulated message they produce, and verify those they consume before the inbox (product guide §7b).
 
 ### The second factor survives the code exchange (patch of `connectors`)
 
