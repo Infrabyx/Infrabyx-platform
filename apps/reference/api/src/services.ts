@@ -33,7 +33,13 @@ import { ExportService, kmsArchiveSigner, REF_EXPORT_MAP } from "@infrabyx/expor
 import { HelpRegistry, loadRegistry, PLATFORM_REGISTRY_DIR } from "@infrabyx/hlp";
 import { ApprovalsEngine, PgKernel, PgOutbox } from "@infrabyx/tenancy";
 import { createWorkflow, InboxService, WorkflowTimers } from "@infrabyx/workflow";
-import { FakeLlm, FakeTrustFeed, fakeKms, MemoryStorage } from "@infrabyx/testing";
+import {
+  FakeLlm,
+  FakeTrustFeed,
+  fakeKms,
+  fixtureTrustDocuments,
+  MemoryStorage,
+} from "@infrabyx/testing";
 import { TrustMirror } from "@infrabyx/trust";
 import { Autonomy, SkillRegistry, TaskRuntime } from "@infrabyx/vidhi";
 import { fileURLToPath } from "node:url";
@@ -68,6 +74,17 @@ export const EXPORT_RELEASE = "reference-api/0.0.0";
 export const FIXTURE_MODEL = "fixture-deterministic";
 /** The KMS key the fixture signs archives with (C-22). */
 export const FIXTURE_EXPORT_KEY = "local:sign:export";
+
+/**
+ * The fixture assurance documents as OH would publish them to this product: the fixture names OH
+ * only, so the product joins each document's `publication_targets` (the seed mirrors them).
+ */
+export function fixtureTrustDocumentsFor(product: string) {
+  return fixtureTrustDocuments().map((d) => ({
+    ...d,
+    publication_targets: [...new Set([...d.publication_targets, product])],
+  }));
+}
 
 /** The service context the API's own background reads use for a tenant (no person). */
 export const serviceContext = (tenantId: string): KernelContext => ({
@@ -188,7 +205,7 @@ function fixtureAdapters(env: ApiEnv) {
       replies: [(req) => ({ text: deterministicSummary(req.messages[0]?.content ?? "") })],
     }),
     kms: fakeKms(),
-    trust: new FakeTrustFeed(),
+    trust: new FakeTrustFeed(fixtureTrustDocumentsFor(env.APP_PRODUCT)),
   };
 }
 

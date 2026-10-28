@@ -21,6 +21,8 @@ import {
 import type { Request, Response } from "express";
 import { z } from "zod";
 import { DEFAULT_LOCALE } from "@infrabyx/cms";
+import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
+import type { KernelContext } from "@infrabyx/contracts/kernel";
 import { requireContext } from "@infrabyx/tenancy";
 import { TenantContextInterceptor } from "@infrabyx/tenancy/nest";
 import { trustCentre } from "@infrabyx/trust";
@@ -52,6 +54,12 @@ function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   return r.data;
 }
 
+/** The public reads of the product's site (no person, no role), as `apps/public` reads its packs. */
+const SITE_CONTEXT: KernelContext = {
+  tenantId: PLATFORM_TENANT_ID,
+  principal: { id: "svc_reference_site", type: "service", roles: [] },
+};
+
 const noStore = (res: Response) => {
   res.setHeader("cache-control", "no-store");
   res.setHeader("x-content-type-options", "nosniff");
@@ -71,8 +79,36 @@ export class PublicGateController {
   ): Promise<void> {
     const pack = parse(PackId, packId);
     const loc = parse(Locale, locale || DEFAULT_LOCALE);
-    const prefix = `/content/${pack}/${loc}`;
-    const path = decodeURIComponent((req.path ?? "").slice(prefix.length) || "/");
+    await this.send(res, pack, loc, req.path, `/content/${pack}/${loc}`);
+  }
+
+  /** Published content of this product's default brand pack: the pages the web app renders. */
+  @Get("pages/:locale/*path")
+  async pages(
+    @Param("locale") locale: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ): Promise<void> {
+    const loc = parse(Locale, locale || DEFAULT_LOCALE);
+    const pack = await this.s.kernel.read(SITE_CONTEXT, async (tx) => {
+      const r = await tx.query<{ id: string }>(
+        "select id from brand.pack where product = $1 and is_default order by id limit 1",
+        [this.s.product],
+      );
+      return r.rows[0]?.id;
+    });
+    if (!pack) throw new NotFoundException("this product has no default brand pack");
+    await this.send(res, pack, loc, req.path, `/pages/${loc}`);
+  }
+
+  private async send(
+    res: Response,
+    pack: string,
+    loc: string,
+    reqPath: string | undefined,
+    prefix: string,
+  ): Promise<void> {
+    const path = decodeURIComponent((reqPath ?? "").slice(prefix.length) || "/");
     const r = await this.s.content.resolve(pack, loc, path);
     noStore(res);
     if (r.kind === "content") {

@@ -51,7 +51,7 @@ export const apiEnvSchema = z.object({
     port: "APP",
   }),
   APP_WEB_URL: envVar(envUrl().optional(), {
-    desc: "Origin of the web app the browser returns to after sign-in; the API's own origin when unset",
+    desc: "Origin of the web app that fronts the API (sign-in runs through it: redirect URI, cookies, return); the API's own origin when unset",
     example: "https://app.example.test",
     required: "opt",
     sens: "C",
