@@ -7,7 +7,7 @@
 // down: stops the stack and removes its volumes (local data only).
 // Needs Docker and a built workspace (`pnpm build`).
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
@@ -180,6 +180,16 @@ async function up(argv) {
   const profiles = profilesFrom(argv);
   // The seed's file storage, mounted into the apps; created here so Docker does not create it as root.
   mkdirSync(join(ROOT, ".storage"), { recursive: true });
+  // The Cerbos policy bundle: the platform policies and the reference app's own, in one directory
+  // (a bind mount cannot be nested inside a read-only one).
+  const bundle = join(ROOT, ".cerbos");
+  rmSync(bundle, { recursive: true, force: true });
+  cpSync(join(ROOT, "packages/connectors/policy/cerbos"), join(bundle, "platform"), {
+    recursive: true,
+  });
+  cpSync(join(ROOT, "apps/reference/api/policy/cerbos"), join(bundle, "reference"), {
+    recursive: true,
+  });
   // The core services first: the apps need the realm's secrets and the buckets before they start.
   compose(["--profile", "core", "up", "-d", "--build", "--wait"]);
   await bootstrap(env);

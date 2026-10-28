@@ -172,10 +172,10 @@ services:
     image: cerbos/cerbos@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
     read_only: true
     # The image's default configuration serves the policies in /policies from disk.
-    volumes:
-      - "../../packages/connectors/policy/cerbos:/policies:ro"
-      # The reference app's own resource policies, beside the platform ones (loaded recursively).
-      - "../../apps/reference/api/policy/cerbos:/policies/reference:ro"
+    # The policy bundle dev:up assembles in the checkout's .cerbos/ (gitignored): the platform
+    # policies of packages/connectors and the reference app's own, loaded recursively. One mount,
+    # because a second bind mount cannot be created inside a read-only one.
+    volumes: ["../../.cerbos:/policies:ro"]
     ports: ["127.0.0.1:${CERBOS_PORT:-53592}:3592"]
     healthcheck:
       test: ["CMD", "/cerbos", "healthcheck"]
