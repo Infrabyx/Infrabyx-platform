@@ -9,7 +9,7 @@ import { FieldCrypto } from "./field-crypto.js";
 import { Impersonation } from "./impersonation.js";
 import { PgKernel } from "./kernel.js";
 import { migrate } from "./migrate/index.js";
-import { PgInbox, PgOutbox } from "./outbox.js";
+import { OutboxRelay, PgInbox, PgOutbox, type RelayedEvent } from "./outbox.js";
 import { assertManifestsRls, lintRls } from "./rls-lint/index.js";
 import { internalEvent } from "@infrabyx/config/events";
 import { TENANCY_SOURCE, freshDb, type TestDb } from "./__tests__/pg.js";
@@ -419,6 +419,7 @@ describe("infrabyx-migrate", () => {
     expect(again.skipped).toEqual([
       "@infrabyx/tenancy/0001_init.sql",
       "@infrabyx/tenancy/0002_approvals_pl3.sql",
+      "@infrabyx/tenancy/0003_outbox_relay.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
@@ -586,5 +587,149 @@ describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers 
     const officer = user("usr_so", ["PLT_SECURITY_OFFICER"]);
     expect((await engine.cancel(officer, id)).state).toBe("cancelled");
     expect(seen).toEqual(["requested:pending", "approve:approved", "cancelled:cancelled"]);
+  });
+});
+
+describe("outbox relay as SVC_OUTBOX_RELAY (owner answer #74(e), R1-D-01)", () => {
+  const relayCtx = (tenantId: string): KernelContext => ({
+    tenantId,
+    principal: { id: "svc_outbox_relay", type: "service", roles: ["SVC_OUTBOX_RELAY"] },
+  });
+  const outboxDdl = (schema: string) => `
+    create schema ${schema};
+    create table ${schema}.outbox (
+      id text primary key, tenant_id text not null, type text not null, envelope jsonb not null,
+      created_at timestamptz not null default now(), dispatched_at timestamptz,
+      attempts integer not null default 0);
+    alter table ${schema}.outbox enable row level security;
+    alter table ${schema}.outbox force row level security;
+    create policy outbox_tenant on ${schema}.outbox for all
+      using (tenant_id = current_setting('app.tenant_id', true))
+      with check (tenant_id = current_setting('app.tenant_id', true));
+    grant usage on schema ${schema} to app_rw, app_ro;
+    grant select, insert, update on ${schema}.outbox to app_rw;`;
+  const enqueue = (tenantId: string, id: string) =>
+    kernel.mutate(user("usr_w", ["ORG_MAKER"], { tenantId }), async (tx) => {
+      await tx.query(
+        `insert into relay_a.outbox (id, tenant_id, type, envelope) values ($1, $2, 'in.ld.relay_a.Done.v1', '{}')`,
+        [id, tenantId],
+      );
+      await audit.record(tx, { action: "relay_a.done.create", resourceType: "x", resourceId: id });
+    });
+
+  beforeAll(async () => {
+    await db.admin.query(outboxDdl("relay_a"));
+    await db.admin.query(outboxDdl("relay_b"));
+    await db.admin.query(
+      `create table relay_a.secret (tenant_id text not null, v text);
+       alter table relay_a.secret enable row level security;
+       alter table relay_a.secret force row level security;
+       create policy secret_tenant on relay_a.secret for all
+         using (tenant_id = current_setting('app.tenant_id', true));
+       grant select, insert, update on relay_a.secret to app_rw;
+       insert into relay_a.secret values ('tnt_a', 'x');
+       select tenancy.register_outbox('relay_a');`,
+    );
+  });
+
+  it("registers only a well-formed outbox under forced RLS", async () => {
+    await db.admin
+      .query(`create schema relay_bad; create table relay_bad.outbox (id text, tenant_id text);
+      alter table relay_bad.outbox enable row level security;`);
+    await expect(db.admin.query(`select tenancy.register_outbox('relay_bad')`)).rejects.toThrow(
+      /relay_bad\.outbox lacks/,
+    );
+    await expect(db.admin.query(`select tenancy.register_outbox('Relay;drop')`)).rejects.toThrow(
+      /invalid schema name/,
+    );
+    await expect(db.admin.query(`select tenancy.register_outbox('relay_none')`)).rejects.toThrow(
+      /does not exist/,
+    );
+  });
+
+  it("relays every tenant's pending rows of the registered outbox only, each batch ledgered in its tenant", async () => {
+    await enqueue("tnt_a", "evt_relay_a1");
+    await enqueue("tnt_a", "evt_relay_a2");
+    await enqueue("tnt_b", "evt_relay_b1");
+    await db.admin.query(
+      `insert into relay_b.outbox (id, tenant_id, type, envelope) values ('evt_relay_x', 'tnt_a', 't', '{}')`,
+    );
+    const delivered: Array<[string, RelayedEvent]> = [];
+    const relay = new OutboxRelay({
+      kernel,
+      audit,
+      deliver: async (schema, e) => void delivered.push([schema, e]),
+    });
+    expect(await relay.registered()).toEqual(["relay_a"]);
+    const before = audit.entries.length;
+    expect(await relay.once()).toBe(3);
+    expect(delivered.map(([s, e]) => `${s}:${e.tenant_id}:${e.id}`).sort()).toEqual([
+      "relay_a:tnt_a:evt_relay_a1",
+      "relay_a:tnt_a:evt_relay_a2",
+      "relay_a:tnt_b:evt_relay_b1",
+    ]);
+    const entries = audit.entries.slice(before).map((e) => `${e.tenantId}:${e.action}`);
+    expect(entries.sort()).toEqual([
+      "tnt_a:platform.service_read",
+      "tnt_a:relay_a.outbox.dispatch",
+      "tnt_b:platform.service_read",
+      "tnt_b:relay_a.outbox.dispatch",
+    ]);
+    const left = await db.admin.query(
+      `select id from relay_a.outbox where dispatched_at is null union all
+       select id from relay_b.outbox where dispatched_at is null`,
+    );
+    expect(left.rows.map((r) => r.id)).toEqual(["evt_relay_x"]);
+    const n = audit.entries.length;
+    expect(await relay.once()).toBe(0);
+    expect(audit.entries.length).toBe(n);
+  });
+
+  it("the relay role touches nothing but its registered outbox, and only in a tenant context", async () => {
+    const write = (ctx: KernelContext, sql: string, action = "relay_a.outbox.dispatch") =>
+      err(
+        kernel.mutate(
+          ctx,
+          async (tx) => {
+            await tx.query(sql);
+            await audit.record(tx, {
+              action,
+              resourceType: "outbox",
+              resourceId: "relay_a.outbox",
+            });
+          },
+          { action },
+        ),
+      );
+    expect(await write(relayCtx("tnt_a"), "update relay_a.secret set v = 'y'")).toBe("42501");
+    expect(await write(relayCtx("tnt_a"), "select v from relay_a.secret")).toBe("42501");
+    expect(await write(relayCtx("tnt_a"), "update relay_b.outbox set attempts = 9")).toBe("42501");
+    expect(await write(relayCtx("tnt_a"), "update relay_a.outbox set type = 'forged'")).toBe(
+      "42501",
+    );
+    expect(await write(relayCtx("tnt_a"), "select 1", "relay_a.greeting.delete")).toBe(
+      "IPB-SEC-005",
+    );
+    expect(
+      await write(
+        { ...relayCtx("tnt_platform"), scope: "platform" },
+        "update relay_a.outbox set attempts = 9",
+      ),
+    ).toBe("IPB-SEC-005");
+    // In tnt_a's context the relay sees only tnt_a's rows: tnt_b's row is not updated.
+    await kernel.mutate(
+      relayCtx("tnt_a"),
+      async (tx) => {
+        await tx.query(`update relay_a.outbox set attempts = attempts + 0`);
+        await audit.record(tx, {
+          action: "relay_a.outbox.dispatch",
+          resourceType: "outbox",
+          resourceId: "relay_a.outbox",
+        });
+      },
+      { action: "relay_a.outbox.dispatch" },
+    );
+    const b = await db.admin.query(`select attempts from relay_a.outbox where tenant_id = 'tnt_b'`);
+    expect(b.rows).toEqual([{ attempts: 1 }]);
   });
 });

@@ -70,8 +70,18 @@ export const SERVICE_READER_ROLES = {
   },
   /** Finds due Vidhi schedules across tenants (IPB-03-64; PL4 plan §8.6). */
   SVC_VIDHI_SCHED: { dbRole: "svc_vidhi_sched", tables: ["vidhi.schedule"] },
+  /**
+   * Relays module outboxes to the QUEUE (owner answer #74(e), R1-D-01). Its tables are the
+   * `<schema>.outbox` tables registered with `tenancy.register_outbox()` (the database grants are
+   * the registry), so the list here is empty. It is the one reader that also writes: in a tenant
+   * context it may mark that tenant's outbox rows dispatched (`<schema>.outbox.dispatch`, nothing
+   * else), with the batch's ledger entry in the same transaction.
+   */
+  SVC_OUTBOX_RELAY: { dbRole: "svc_outbox_relay", tables: [] },
 } as const satisfies Record<string, { dbRole: string; tables: readonly string[] }>;
 export type ServiceReaderRole = keyof typeof SERVICE_READER_ROLES;
+/** The only writes `SVC_OUTBOX_RELAY` may make: marking one module outbox's rows dispatched. */
+export const OUTBOX_DISPATCH_ACTION = /^[a-z][a-z0-9_]*\.outbox\.dispatch$/;
 export const isServiceReaderRole = (r: string): r is ServiceReaderRole =>
   Object.prototype.hasOwnProperty.call(SERVICE_READER_ROLES, r);
 

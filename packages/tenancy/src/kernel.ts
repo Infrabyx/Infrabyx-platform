@@ -2,7 +2,11 @@
 // context applied through SET LOCAL (IPB-01 §01.4.6, IPB-02-13), and the commit fails unless the
 // audit ledger was written in that transaction (IPB-02-51, IPB-MOD-003).
 import type pg from "pg";
-import { AGENT_FORBIDDEN_VERBS, SERVICE_READER_ROLES } from "@infrabyx/contracts/roles";
+import {
+  AGENT_FORBIDDEN_VERBS,
+  OUTBOX_DISPATCH_ACTION,
+  SERVICE_READER_ROLES,
+} from "@infrabyx/contracts/roles";
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
   KernelContext,
@@ -84,7 +88,14 @@ export function assertMayMutate(ctx: KernelContext, opts: MutateOptions = {}): v
   const reader = serviceReaderRole(ctx);
   // A service reader writes only the ledger entry that records its own read, in a tenant context;
   // it never mutates in platform scope and never approves, signs, disburses, deletes or grants.
-  if (reader && (ctx.scope === "platform" || opts.action !== SERVICE_READ_ACTION)) {
+  // The outbox relay may also mark one tenant's outbox rows dispatched (R1-D-01); the database
+  // role it then runs as is granted nothing else.
+  const relayDispatch =
+    reader === "SVC_OUTBOX_RELAY" && OUTBOX_DISPATCH_ACTION.test(opts.action ?? "");
+  if (
+    reader &&
+    (ctx.scope === "platform" || (opts.action !== SERVICE_READ_ACTION && !relayDispatch))
+  ) {
     throw new IpbError("IPB-SEC-005", {
       detail: `${reader} is read-only`,
       meta: { action: opts.action ?? null },
@@ -120,7 +131,13 @@ export class PgKernel implements MutationKernel {
   ): Promise<T> {
     assertValidContext(ctx);
     assertMayMutate(ctx, opts);
-    return this.run(ctx, this.role, false, async (tx) => {
+    // The outbox relay's dispatch runs as its own database role, granted only the registered
+    // outbox tables and the ledger append (R1-D-01); every other mutation runs as the app role.
+    const role =
+      serviceReaderRole(ctx) === "SVC_OUTBOX_RELAY"
+        ? SERVICE_READER_ROLES.SVC_OUTBOX_RELAY.dbRole
+        : this.role;
+    return this.run(ctx, role, false, async (tx) => {
       const r = await fn(tx);
       if (!tx.audited) {
         throw new IpbError("IPB-MOD-003", {
