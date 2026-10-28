@@ -248,6 +248,8 @@ services:
       APP_ENV: local
       APP_PRODUCT: LD
       APP_BASE_URL: http://localhost:${API_PORT:-53125}
+      # The web app fronts the API: sign-in runs through its origin (PL6-D-12).
+      APP_WEB_URL: http://localhost:${WEB_PORT:-53127}
       APP_PORT: ${API_PORT:-53125}
       PORT: ${API_PORT:-53125}
       DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@127.0.0.1:${PG_PORT:-55432}/infrabyx
@@ -298,6 +300,25 @@ services:
       <<: *reference-env
       APP_PORT: ${WORKER_PORT:-53126}
       PORT: ${WORKER_PORT:-53126}
+
+  web:
+    # The reference web app (PL6-D-12): the browser's only origin. It proxies sign-in to the api and
+    # calls the api server to server at its loopback port, so it joins the host network as well.
+    profiles: [apps]
+    <<: *hardened
+    build:
+      { context: ../.., dockerfile: infra/docker/next/Dockerfile, args: { APP: reference/web } }
+    image: infrabyx/reference-web:local
+    read_only: true
+    tmpfs: [/tmp, "/app/.next/cache:uid=10001"]
+    network_mode: host
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      APP_ENV: local
+      APP_BASE_URL: http://localhost:${WEB_PORT:-53127}
+      APP_API_URL: http://127.0.0.1:${API_PORT:-53125}
+      PORT: ${WEB_PORT:-53127}
 
   opensearch:
     profiles: [search]

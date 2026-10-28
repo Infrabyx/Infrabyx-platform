@@ -13,7 +13,7 @@ afterAll(() => {
   for (const id of started) execFileSync("docker", ["rm", "-f", id], { stdio: "ignore" });
 });
 
-// The environment the apps validate at start; the database is unreachable on purpose, and the
+// The environment the apps validate at start; the database (and the web app's API) is unreachable on purpose, and the
 // fixture adapters (allowed in `test`) stand in for the real ones so no adapter variable is needed.
 const ENV = [
   "APP_ENV=test",
@@ -21,6 +21,8 @@ const ENV = [
   "APP_SITE_URL=https://group.example.org",
   "APP_FIXTURE_ADAPTERS=true",
   "DB_URL=postgres://nobody@127.0.0.1:1/none",
+  // The reference web app's API, unreachable on purpose as the database is.
+  "APP_API_URL=http://127.0.0.1:1",
   "PORT=3000",
 ];
 

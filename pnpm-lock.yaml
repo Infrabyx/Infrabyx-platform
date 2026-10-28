@@ -285,6 +285,49 @@ importers:
         specifier: 8.23.1
         version: 8.23.1
 
+  apps/reference/web:
+    dependencies:
+      '@infrabyx/cms':
+        specifier: workspace:*
+        version: link:../../../packages/cms
+      '@infrabyx/config':
+        specifier: workspace:*
+        version: link:../../../packages/config
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../../../packages/contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../../../packages/crypto
+      '@infrabyx/ui':
+        specifier: workspace:*
+        version: link:../../../packages/ui
+      next:
+        specifier: 16.4.2
+        version: 16.4.2(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      react:
+        specifier: 19.3.1
+        version: 19.3.1
+      react-dom:
+        specifier: 19.3.1
+        version: 19.3.1(react@19.3.1)
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@infrabyx/a11y':
+        specifier: workspace:*
+        version: link:../../../packages/a11y
+      '@types/react':
+        specifier: 19.3.0
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: 19.3.0
+        version: 19.3.0(@types/react@19.3.0)
+      playwright-core:
+        specifier: 1.64.1
+        version: 1.64.1
+
   apps/reference/worker:
     dependencies:
       '@infrabyx/reference-api':

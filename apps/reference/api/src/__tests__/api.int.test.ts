@@ -287,6 +287,25 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
     expect((await fetch(`${base}/content/brd_nope/en-IN/welcome`)).status).toBe(400);
   });
 
+  it("the gate seed publishes the product's welcome page once, and pages/ serves the default pack", async () => {
+    const { seedGate, WELCOME_PAGE } = await import("../seed/gate.js");
+    const seedCtx = {
+      product: "LD" as const,
+      services: { kernel: db.kernel, audit: db.audit, seedAllowed: true },
+    } as unknown as Parameters<typeof seedGate>[0];
+    expect((await fetch(`${base}/pages/en-IN/welcome`)).status).toBe(404);
+    const first = await seedGate(seedCtx);
+    expect(first.skipped).toBe(false);
+    const again = await seedGate(seedCtx);
+    expect(again).toEqual({ packId: first.packId, skipped: true });
+    const r = await fetch(`${base}/pages/en-IN/welcome`);
+    expect(r.status).toBe(200);
+    const page = await json<{ title: string }>(r);
+    expect(page.title).toBe(WELCOME_PAGE.title);
+    expect((await fetch(`${base}/pages/en-IN/nowhere`)).status).toBe(404);
+    expect((await fetch(`${base}/pages/xx_YY/welcome`)).status).toBe(400);
+  });
+
   it("the Trust Centre shows the mirrored public documents and counts the gated ones", async () => {
     const r = await fetch(`${base}/trust`);
     expect(r.status).toBe(200);
@@ -417,7 +436,9 @@ describe("the Temporal worker (PL6 plan §8.1; PL3 plan §5.1)", () => {
         DB_URL: db.url,
         APP_FIXTURE_ADAPTERS: "true",
         WORKFLOW_TEMPORAL_ADDRESS: address,
-        WORKFLOW_TASK_QUEUE_PREFIX: "ipb-",
+        // A task queue of this run's own: on the Compose stack's Temporal the stack's worker polls
+        // `ipb-timers`, and would take this test's timer to a database it is not in.
+        WORKFLOW_TASK_QUEUE_PREFIX: `ipb-t${newId("run").slice(-8).toLowerCase()}-`,
       },
     });
     if (!r.ok) throw new Error(JSON.stringify(r.failures));

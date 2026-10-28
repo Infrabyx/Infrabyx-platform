@@ -170,7 +170,8 @@ jobs:
     env:
       HADOLINT_IMAGE: hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
       TRIVY_IMAGE: aquasec/trivy:0.76.0@sha256:2416d1f74045b57274df1a340eee6b510cacd73c66a6ccb8da092b117eb7d222
-      APPS: public console
+      # Next.js images: <app folder under apps/>, built with infra/docker/next/Dockerfile.
+      APPS: public console reference/web
       # Node (non-Next.js) images: <app folder under apps/>, built with infra/docker/node/Dockerfile.
       NODE_APPS: reference/api reference/worker
     steps:
@@ -189,7 +190,7 @@ jobs:
         run: |
           for app in $APPS; do
             docker build -f infra/docker/next/Dockerfile --build-arg APP="$app" \
-              -t "infrabyx/$app:ci-${GITHUB_SHA::12}" .
+              -t "infrabyx/${app//\//-}:ci-${GITHUB_SHA::12}" .
           done
           for app in $NODE_APPS; do
             docker build -f infra/docker/node/Dockerfile --build-arg APP="$app" \
@@ -197,7 +198,7 @@ jobs:
           done
       - name: trivy image
         run: |
-          for app in $APPS ${NODE_APPS//\//-}; do
+          for app in ${APPS//\//-} ${NODE_APPS//\//-}; do
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" \
               -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 \
               --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret \
@@ -212,7 +213,7 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: hardening test (@IPB-01-AT-15)
         run: |
-          IPB_IMAGES="$(for app in $APPS ${NODE_APPS//\//-}; do printf 'infrabyx/%s:ci-%s ' "$app" "${GITHUB_SHA::12}"; done)" \
+          IPB_IMAGES="$(for app in ${APPS//\//-} ${NODE_APPS//\//-}; do printf 'infrabyx/%s:ci-%s ' "$app" "${GITHUB_SHA::12}"; done)" \
             pnpm images:test
   compose:
     # The local stack (IPB-01-33, PL6 plan §4): `pnpm dev:up` starts the `core` profile, waits for
@@ -234,16 +235,17 @@ jobs:
         run: pnpm build
       - name: dev:up (core and apps profiles)
         run: pnpm dev:up --profile apps
-      - name: the seeded site, console, reference API and worker answer through their images
+      - name: the seeded site, console, reference API, worker and web answer through their images
         run: |
           # The reference api and worker run on the stack's real Keycloak, Cerbos, MinIO and Redis:
           # `ready` is `up` only when every one of them answers (the buckets with Object Lock, the
-          # realm, the policies, the queue).
-          for port in 53123 53124 53125 53126; do
+          # realm, the policies, the queue); the web is `up` when the api answers.
+          for port in 53123 53124 53125 53126 53127; do
             curl -fsS "http://127.0.0.1:$port/health/ready" | grep -q '"status":"up"'
           done
-          # Sign-in goes to the Keycloak realm dev:up applied; a bare request is refused as a problem.
-          curl -sS -o /dev/null -w '%{redirect_url}\n' http://localhost:53125/auth/login | grep -q '/realms/infrabyx-local/'
+          # Sign-in goes to the Keycloak realm dev:up applied, through the web origin (PL6-D-12); a
+          # bare request to the api is refused as a problem.
+          curl -sS -o /dev/null -w '%{redirect_url}\n' http://localhost:53127/auth/login | grep -q '/realms/infrabyx-local/.*redirect_uri=http%3A%2F%2Flocalhost%3A53127%2Fauth%2Fcallback'
           curl -sS http://localhost:53125/hello/greetings | grep -q '"IPB-API-401"'
           curl -fsS http://localhost:53125/trust | grep -q '"documents"'
           # The seed personas exist in the realm (the credentials file is never committed).
@@ -253,6 +255,50 @@ jobs:
       - name: logs on failure
         if: failure()
         run: docker compose -f infra/compose/docker-compose.yml --env-file infra/compose/.env.local --profile core --profile apps logs --tail 80 || true
+      - name: dev:down
+        if: always()
+        run: pnpm dev:down
+  reference:
+    # The reference application's gate (PL6 plan §8.2, IPB-14 §14.5 items 2 and 4): the Compose stack
+    # with the reference api, worker and web on the real Keycloak, Cerbos, MinIO, Redis and Temporal;
+    # the gate journey in Chromium (a seeded owner signs in through Keycloak and enrols TOTP, reads a
+    # CMS page, asks the assistant, downloads the signed export, opens the Trust Centre; axe on every
+    # page); then the api's integration and NN suites on the stack's PostgreSQL 18 and Temporal.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      IPB_CHROMIUM: /usr/bin/google-chrome
+      IPB_TEST_WEB_URL: http://localhost:53127
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: build
+        run: pnpm build
+      - name: dev:up (core and apps profiles)
+        run: pnpm dev:up --profile apps
+      - name: the gate journey (Playwright, axe on every page)
+        env:
+          IPB_TEST_CREDENTIALS: ${{ github.workspace }}/SEED_CREDENTIALS.md
+        run: pnpm --filter @infrabyx/reference-web test:e2e
+      - name: the api's integration and NN suites on the stack's PostgreSQL and Temporal
+        run: |
+          # Each suite migrates a fresh database of its own on the stack's server; the stack's own
+          # database is not touched. The Temporal test uses a task queue of its own.
+          POSTGRES_PASSWORD="$(grep '^POSTGRES_PASSWORD=' infra/compose/.env.local | cut -d= -f2-)"
+          IPB_TEST_PG_URL="postgres://postgres:${POSTGRES_PASSWORD}@127.0.0.1:55432/postgres" \
+          IPB_TEST_TEMPORAL_URL="http://127.0.0.1:57233" \
+            pnpm --filter @infrabyx/reference-api test:int
+      - name: logs on failure
+        if: failure()
+        run: docker compose -f infra/compose/docker-compose.yml --env-file infra/compose/.env.local --profile core --profile apps logs --tail 120 || true
       - name: dev:down
         if: always()
         run: pnpm dev:down

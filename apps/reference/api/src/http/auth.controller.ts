@@ -2,7 +2,9 @@
 // PKCE and keeps the verifier and state in a short-lived HttpOnly cookie; `/auth/callback` checks
 // the state, exchanges the code through the port, verifies the token and sets the session cookie;
 // `/auth/me` shows the verified claims; `/auth/logout` clears the cookie. Only the fixture IDENTITY
-// honours `?persona=` on login.
+// honours `?persona=` on login. When a web app fronts the API (`APP_WEB_URL`, the BFF of
+// `apps/reference/web`), the browser signs in through the web origin: the web proxies `/auth/*` here,
+// so the redirect URI and the cookies belong to that origin and the browser never calls the API.
 import {
   BadRequestException,
   Controller,
@@ -25,12 +27,17 @@ const PKCE_TTL_SECONDS = 600;
 export class AuthController {
   constructor(@Inject(SERVICES) private readonly s: ServicesLike) {}
 
+  /** The origin the browser signs in on: the web app's when one fronts the API, else the API's. */
+  private get origin(): string {
+    return (this.s.env.APP_WEB_URL ?? this.s.env.APP_BASE_URL).replace(/\/$/, "");
+  }
+
   private get secure(): boolean {
-    return this.s.env.APP_BASE_URL.startsWith("https://");
+    return this.origin.startsWith("https://");
   }
 
   private get redirectUri(): string {
-    return `${this.s.env.APP_BASE_URL}/auth/callback`;
+    return `${this.origin}/auth/callback`;
   }
 
   @Get("login")
@@ -78,7 +85,7 @@ export class AuthController {
       cookie(SESSION_COOKIE, t.accessToken, { secure: this.secure, maxAgeSeconds: t.expiresIn }),
     ]);
     res.setHeader("cache-control", "no-store");
-    res.redirect(303, this.s.env.APP_WEB_URL ?? `${this.s.env.APP_BASE_URL}/auth/me`);
+    res.redirect(303, this.s.env.APP_WEB_URL ? `${this.origin}/` : `${this.origin}/auth/me`);
   }
 
   @Get("me")
