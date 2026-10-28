@@ -542,6 +542,17 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **S (registering a table that is not an outbox):** Control: `register_outbox` is executable by `app_migrate` only, validates the schema name, the columns and forced RLS, and grants on that schema's `outbox` table only.
 - **Residual:** the event envelope is read by the relay (it must be, to deliver it); envelopes carry no secrets by the IPB-10 event contract.
 
+### 3.49 The visual block editor (built, R1 item 2; PR-038, R1-D-02)
+
+The Studio page editor edits a page's blocks through forms (`@infrabyx/ui/studio` `BlockEditor` and `blockHandlers`, with the block forms and the rich text codec from `@infrabyx/cms` `BLOCK_EDITOR`). It is a new way into the same save: every operation becomes one `CmsStudio.saveDraft` call.
+
+- **T (markup or script through rich text):** Control: the editor's text is turned into portable text, never HTML, and `sanitisePortableText` runs on the result, then again at save and at render (IPB-04-15); link targets go through `safeHref`, so a `javascript:` or other non-allow-listed link is dropped (unit-tested). Escapes only change how text reads, not what it may contain.
+- **T (a block outside the library or a hand-made body):** Control: `saveDraft` parses the whole body against the block schemas as before (`IPB-CMS-001`), so a posted field the form did not offer, a block of an unknown type or a second hero is refused; the JSON fallback for blocks without a form has the same check.
+- **T (two editors overwriting each other's blocks by position):** Control: every block form carries the revision it was rendered from; the handler refuses a post against an older revision.
+- **E (editing without the right role, or on a deleted item):** Control: the handler only calls the CMS service, which checks the editor roles and platform scope on every save; the console's AUTHZ gate covers the new action like the section's other actions; a deleted item shows no editor.
+- **R:** every operation is a new immutable revision with a summary (`Block moved (block 2)`) and the save's ledger entry; approvals are voided as for any edit.
+- **Residual:** none new; the editor reuses the save path, its checks and its audit.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
