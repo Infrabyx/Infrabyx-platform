@@ -1,5 +1,11 @@
 # @infrabyx/tenancy
 
+## 1.1.1
+
+### Patch Changes
+
+- 53a973c: Mask rule `passport` (IPB-02-22: last 3 characters shown, ledgered reveal), used by the telemetry scrubber (PR-UDF-007).
+
 ## 1.1.0
 
 ### Minor Changes
