@@ -317,3 +317,22 @@ export class MemoryQueue implements QueuePort {
     return { waiting: 0, active: 0, delayed: 0, failed: dlq, dlq };
   }
 }
+
+/**
+ * A port whose every call answers `IPB-PORT-001`: no adapter is wired for it in this environment
+ * (the product wires its own LLM, KMS and TRUST adapters; the reference has fixtures only below
+ * staging). The descriptor still answers, so `/health/ready` can name the port.
+ */
+export function missingPort<T extends object>(port: string): T {
+  const refuse = () => {
+    throw new IpbError("IPB-PORT-001", { detail: `${port} is not configured for this app` });
+  };
+  return new Proxy({} as T, {
+    get: (_t, prop) =>
+      prop === "descriptor"
+        ? { port, adapter: "unconfigured", residency: "IN", maxDataClass: "INTERNAL" }
+        : prop === "health"
+          ? async () => ({ status: "down", latency_ms: 0, checked_at: new Date().toISOString() })
+          : refuse,
+  });
+}

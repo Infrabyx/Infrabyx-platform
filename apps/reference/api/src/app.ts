@@ -7,6 +7,7 @@ import { NestFactory } from "@nestjs/core";
 import type { NextFunction, Request, Response } from "express";
 import type { Services } from "./services.js";
 import { AuthController } from "./http/auth.controller.js";
+import { GateController, PublicGateController } from "./http/gate.controller.js";
 import { HealthController } from "./http/health.controller.js";
 import { HelloController } from "./http/hello.controller.js";
 import { ProblemFilter } from "./http/problem.js";
@@ -17,7 +18,13 @@ export class AppModule {
   static forServices(services: Services): DynamicModule {
     return {
       module: AppModule,
-      controllers: [HealthController, AuthController, HelloController],
+      controllers: [
+        HealthController,
+        AuthController,
+        HelloController,
+        PublicGateController,
+        GateController,
+      ],
       providers: [{ provide: SERVICES, useValue: services }],
     };
   }

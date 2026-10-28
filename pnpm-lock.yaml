@@ -205,9 +205,18 @@ importers:
 
   apps/reference/api:
     dependencies:
+      '@infrabyx/ai':
+        specifier: workspace:*
+        version: link:../../../packages/ai
       '@infrabyx/audit':
         specifier: workspace:*
         version: link:../../../packages/audit
+      '@infrabyx/brand':
+        specifier: workspace:*
+        version: link:../../../packages/brand
+      '@infrabyx/cms':
+        specifier: workspace:*
+        version: link:../../../packages/cms
       '@infrabyx/config':
         specifier: workspace:*
         version: link:../../../packages/config
@@ -220,6 +229,9 @@ importers:
       '@infrabyx/crypto':
         specifier: workspace:*
         version: link:../../../packages/crypto
+      '@infrabyx/export':
+        specifier: workspace:*
+        version: link:../../../packages/export
       '@infrabyx/hlp':
         specifier: workspace:*
         version: link:../../../packages/hlp
@@ -232,6 +244,12 @@ importers:
       '@infrabyx/testing':
         specifier: workspace:*
         version: link:../../../packages/testing
+      '@infrabyx/trust':
+        specifier: workspace:*
+        version: link:../../../packages/trust
+      '@infrabyx/vidhi':
+        specifier: workspace:*
+        version: link:../../../packages/vidhi
       '@nestjs/common':
         specifier: 11.2.7
         version: 11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)

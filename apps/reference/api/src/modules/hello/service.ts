@@ -126,27 +126,31 @@ export class HelloService {
 
   async create(ctx: KernelContext, input: { message: string }): Promise<Greeting> {
     const message = checkMessage(input.message, await this.maxLength(ctx));
-    return this.o.kernel.mutate(
-      ctx,
-      async (tx) => {
-        const id = newId("grt");
-        const r = await tx.query<Row>(
-          `insert into hello.greeting (id, tenant_id, message, created_by)
-           values ($1, $2, $3, $4)
-           returning id, message, created_by, created_at, retracted_at, retract_reason`,
-          [id, ctx.tenantId, message, ctx.principal.id],
-        );
-        await this.o.audit.record(tx, {
-          action: HELLO_ACTIONS.create,
-          resourceType: "hello_greeting",
-          resourceId: id,
-          after: { message },
-        });
-        await this.emit(tx, HELLO_EVENTS.created, { greeting_id: id, length: message.length });
-        return toGreeting(r.rows[0]!);
-      },
-      { action: HELLO_ACTIONS.create },
+    return this.o.kernel.mutate(ctx, (tx) => this.createIn(tx, message), {
+      action: HELLO_ACTIONS.create,
+    });
+  }
+
+  /**
+   * Insert a greeting in a transaction the caller owns (the Vidhi tool runs in the task's). The
+   * message is already checked against the tenant's limit.
+   */
+  async createIn(tx: Tx, message: string): Promise<Greeting> {
+    const id = newId("grt");
+    const r = await tx.query<Row>(
+      `insert into hello.greeting (id, tenant_id, message, created_by)
+       values ($1, $2, $3, $4)
+       returning id, message, created_by, created_at, retracted_at, retract_reason`,
+      [id, tx.ctx.tenantId, message, tx.ctx.principal.id],
     );
+    await this.o.audit.record(tx, {
+      action: HELLO_ACTIONS.create,
+      resourceType: "hello_greeting",
+      resourceId: id,
+      after: { message },
+    });
+    await this.emit(tx, HELLO_EVENTS.created, { greeting_id: id, length: message.length });
+    return toGreeting(r.rows[0]!);
   }
 
   async list(ctx: KernelContext, limit = 50): Promise<Greeting[]> {

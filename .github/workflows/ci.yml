@@ -244,6 +244,7 @@ jobs:
           # bound to that host and the callback redirects there.
           curl -fsS -c /tmp/ibx.jar -b /tmp/ibx.jar -L -o /dev/null "http://localhost:53125/auth/login?persona=member"
           curl -fsS -b /tmp/ibx.jar http://localhost:53125/hello/greetings | grep -q '"greetings"'
+          curl -fsS http://localhost:53125/trust | grep -q '"documents"'
           curl -fsS -o /dev/null http://127.0.0.1:53123/
           curl -fsS http://127.0.0.1:53123/legal/index.json | grep -q '"policies"'
       - name: logs on failure

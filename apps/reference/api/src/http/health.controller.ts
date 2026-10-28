@@ -25,6 +25,9 @@ export async function readiness(s: ServicesLike): Promise<ReadyBody> {
     { port: "AUTHZ", adapter: s.authz.descriptor.adapter, probe: () => s.authz.health() },
     { port: "STORAGE", adapter: s.storage.descriptor.adapter, probe: () => s.storage.health() },
     { port: "QUEUE", adapter: s.queue.descriptor.adapter, probe: () => s.queue.health() },
+    { port: "LLM", adapter: s.llm.descriptor.adapter, probe: () => s.llm.health() },
+    { port: "KMS", adapter: s.kms.descriptor.adapter, probe: () => s.kms.health() },
+    { port: "TRUST", adapter: s.trust.descriptor.adapter, probe: () => s.trust.health() },
   ];
   const checks: HealthEntry[] = await Promise.all(
     probes.map(async (p) => {

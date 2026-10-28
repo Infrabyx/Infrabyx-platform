@@ -10,16 +10,20 @@ The "hello tenant" application that uses the `@infrabyx/*` packages the way a pr
 
 ## The `hello` module (the module pattern)
 
-`api/src/modules/hello`: the manifest (`defineModule`), the migration `api/migrations/0001_hello.sql` (schema `hello`, one tenant table under forced RLS, the module's outbox and inbox), the service (every write through `kernel.mutate` with its ledger entry and its event in one transaction), the setting `hello.greeting.max_length` registered in `@infrabyx/config`, the help keys in `api/help/hello.yaml`, the Cerbos policy in `api/policy/cerbos`, the seed module `api/src/seed/hello.ts`, and the NN pattern suites in `api/src/__tests__/api.int.test.ts`.
+`api/src/modules/hello`: the manifest (`defineModule`), the migration `api/migrations/0001_hello.sql` (schema `hello`, one tenant table under forced RLS, the module's outbox and inbox), the service (every write through `kernel.mutate` with its ledger entry and its event in one transaction), the setting `hello.greeting.max_length` registered in `@infrabyx/config`, the help keys in `api/help/hello.yaml`, the Cerbos policy in `api/policy/cerbos`, the Vidhi skill `api/src/modules/hello/summarise.ts`, the seed module `api/src/seed/hello.ts`, and the NN pattern suites in `api/src/__tests__/api.int.test.ts`.
 
-| Route                                                                        | Who                         | What                                                                           |
-| ---------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------------------------------ |
-| `GET /hello/greetings`, `GET …/:id`                                          | readers of the tenant       | the tenant's greetings (RLS: another tenant's id answers 404)                  |
-| `POST /hello/greetings`                                                      | makers                      | a greeting of at most `hello.greeting.max_length` characters                   |
-| `POST /hello/greetings/:id/retract`                                          | makers                      | an R2 maker-checker request; a checker decides at `POST /approvals/:id/decide` |
-| `DELETE /hello/greetings/:id`                                                | owners                      | soft delete; the action ends in `delete`, which the kernel refuses to agents   |
-| `GET /auth/login`, `GET /auth/callback`, `GET /auth/me`, `POST /auth/logout` | anyone                      | the OIDC code flow with PKCE; `?persona=` only with the fixture IDENTITY       |
-| `GET /health/live`, `/ready`, `/startup`                                     | the container and the chart | IPB-01 §01.4.8.2 probes                                                        |
+| Route                                                                        | Who                         | What                                                                                                                 |
+| ---------------------------------------------------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `GET /hello/greetings`, `GET …/:id`                                          | readers of the tenant       | the tenant's greetings (RLS: another tenant's id answers 404)                                                        |
+| `POST /hello/greetings`                                                      | makers                      | a greeting of at most `hello.greeting.max_length` characters                                                         |
+| `POST /hello/greetings/:id/retract`                                          | makers                      | an R2 maker-checker request; a checker decides at `POST /approvals/:id/decide`                                       |
+| `DELETE /hello/greetings/:id`                                                | owners                      | soft delete; the action ends in `delete`, which the kernel refuses to agents                                         |
+| `GET /auth/login`, `GET /auth/callback`, `GET /auth/me`, `POST /auth/logout` | anyone                      | the OIDC code flow with PKCE; `?persona=` only with the fixture IDENTITY                                             |
+| `GET /health/live`, `/ready`, `/startup`                                     | the container and the chart | IPB-01 §01.4.8.2 probes                                                                                              |
+| `GET /content/:packId/:locale/*path`                                         | anyone                      | published CMS content of a brand pack (content, redirects, 404)                                                      |
+| `POST /vidhi/hello/summarise`, `GET /vidhi/tasks/:id`                        | makers                      | the hello Vidhi skill: the agent summarises and proposes; a checker decides the post at `POST /approvals/:id/decide` |
+| `POST /export`, `GET /export/:id`, `GET /export/archives/:id/download`       | owners (admins request)     | the tenant export: the worker runs the job, the download is a signed link                                            |
+| `GET /trust`                                                                 | anyone                      | the Trust Centre built from the mirror                                                                               |
 
 ## Run it
 
