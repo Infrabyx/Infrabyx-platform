@@ -223,6 +223,39 @@ interface KcUser {
   requiredActions?: string[];
 }
 
+/** Characters Keycloak's person-name validator rejects (`error-person-name-invalid-character`). */
+const PERSON_NAME_PROHIBITED = /[<>&"$%!#?§;*~/\\|^=[\]{}()\p{Cc}]/gu;
+
+/**
+ * The first name Keycloak accepts for a display name: the prohibited characters removed and the
+ * whitespace collapsed (`Platform auditor (RO)` → `Platform auditor RO`). The display name itself
+ * is kept whole in the `display_name` attribute, which `getUser` prefers.
+ */
+export function keycloakPersonName(displayName: string): string {
+  return displayName.replace(PERSON_NAME_PROHIBITED, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The admin API's validation hint on a 4xx: its `field` and `errorMessage` (user profile), or its
+ * `error_description` (password policy); never the body itself.
+ */
+function validation(r: EgressResponse): string {
+  if (r.status < 400 || r.status >= 500 || !r.body.byteLength) return "";
+  try {
+    const b = r.json<{ field?: unknown; errorMessage?: unknown; error_description?: unknown }>();
+    const msg =
+      typeof b.errorMessage === "string"
+        ? b.errorMessage
+        : typeof b.error_description === "string"
+          ? b.error_description
+          : "";
+    if (!msg) return "";
+    return typeof b.field === "string" ? ` (${b.field}: ${msg})` : ` (${msg})`;
+  } catch {
+    return "";
+  }
+}
+
 export class KeycloakIdentity implements IdentityPort {
   readonly descriptor: AdapterDescriptor = {
     port: "IDENTITY",
@@ -258,11 +291,11 @@ export class KeycloakIdentity implements IdentityPort {
 
   // ---- transport ---------------------------------------------------------------------------------
 
-  private fail(status: number, what: string): never {
+  private fail(status: number, what: string, hint = ""): never {
     throw new PortError(
       status === 401 || status === 403 ? "IPB-PORT-001" : "IPB-PORT-002",
       "IDENTITY",
-      { adapter: "keycloak", detail: `${what} answered ${status}`, meta: { status } },
+      { adapter: "keycloak", detail: `${what} answered ${status}${hint}`, meta: { status } },
     );
   }
 
@@ -315,7 +348,7 @@ export class KeycloakIdentity implements IdentityPort {
           detail: "the user or link already exists",
           meta: { status: 409, definite: true },
         });
-      this.fail(r.status, `${method} ${path.split("/").slice(0, 2).join("/")}`);
+      this.fail(r.status, `${method} ${path.split("/").slice(0, 2).join("/")}`, validation(r));
     }
     return {
       status: r.status,
@@ -389,12 +422,15 @@ export class KeycloakIdentity implements IdentityPort {
     const { headers } = await this.api("POST", "/users", {
       username: spec.email,
       email: spec.email,
-      firstName: spec.displayName,
+      ...(keycloakPersonName(spec.displayName)
+        ? { firstName: keycloakPersonName(spec.displayName) }
+        : {}),
       enabled: true,
       emailVerified: false,
       attributes: {
         tenant_id: [spec.tenantId],
         principal_type: ["user"],
+        display_name: [spec.displayName],
         ...(spec.externalId ? { external_id: [spec.externalId] } : {}),
       },
       requiredActions: required,
@@ -430,7 +466,7 @@ export class KeycloakIdentity implements IdentityPort {
     return {
       id: u.id,
       email: u.email ?? u.username,
-      displayName: u.firstName ?? "",
+      displayName: u.attributes?.display_name?.[0] ?? u.firstName ?? "",
       enabled: u.enabled,
       tenantId: u.attributes?.tenant_id?.[0] ?? "",
       roles: roles.map((r) => r.name).filter((n) => RoleSchema.safeParse(n).success),
@@ -555,7 +591,12 @@ export class KeycloakIdentity implements IdentityPort {
             if (displayName !== undefined || enabled !== undefined)
               await this.api("PUT", `/users/${u.id}`, {
                 ...u,
-                ...(displayName !== undefined ? { firstName: displayName } : {}),
+                ...(displayName !== undefined
+                  ? {
+                      firstName: keycloakPersonName(displayName),
+                      attributes: { ...u.attributes, display_name: [displayName] },
+                    }
+                  : {}),
                 ...(enabled !== undefined ? { enabled } : {}),
               });
             if (roles) {

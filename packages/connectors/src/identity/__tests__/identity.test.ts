@@ -6,6 +6,7 @@
 // eslint-disable-next-line ipb/no-direct-crypto
 import { generateKeyPairSync, sign, type KeyObject } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { keycloakPersonName } from "../keycloak.js";
 import {
   assertMfaForRoles,
   MemoryRevocationStore,
@@ -221,5 +222,16 @@ describe("zitadelClaims", () => {
     expect(scimUserId("o1", "e1")).toBe(scimUserId("o1", "e1"));
     expect(scimUserId("o1", "e1")).not.toBe(scimUserId("o2", "e1"));
     expect(scimUserId("o1", "e1")).toMatch(/^ext[0-9a-f]{40}$/);
+  });
+});
+
+describe("keycloakPersonName", () => {
+  it("removes the characters Keycloak's person-name validator rejects and keeps the rest", () => {
+    expect(keycloakPersonName("Platform auditor (RO)")).toBe("Platform auditor RO");
+    expect(keycloakPersonName("Client (party portal)")).toBe("Client party portal");
+    expect(keycloakPersonName("Counter-party (eSign)")).toBe("Counter-party eSign");
+    expect(keycloakPersonName("Tenant Admin")).toBe("Tenant Admin");
+    expect(keycloakPersonName("Ærø O'Brien-Søren")).toBe("Ærø O'Brien-Søren");
+    expect(keycloakPersonName('<b>&"$%!#?;*~/\\|^=[]{}')).toBe("b");
   });
 });
