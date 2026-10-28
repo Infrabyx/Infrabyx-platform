@@ -120,6 +120,8 @@ jobs:
         run: pnpm licence:check
       - name: ipb-check (structural checks)
         run: pnpm ipb:check
+      - name: scripts-test (the exit runbook, @IPB-01-AT-17; the BOM, @IPB-01-AT-18 without the signature)
+        run: pnpm scripts:test
       - name: migration-lint (IPB-09-31; every rule of §09.4.6.2 and forbidden operation of §09.4.6.3)
         run: pnpm migration:lint
       - name: registry-check (settings-tree.yaml → registry.generated.ts, IPB-07)

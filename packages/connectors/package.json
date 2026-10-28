@@ -50,6 +50,10 @@
       "types": "./dist/workflow/index.d.ts",
       "default": "./dist/workflow/index.js"
     },
+    "./exit": {
+      "types": "./dist/exit.d.ts",
+      "default": "./dist/exit.js"
+    },
     "./workflow/worker": {
       "types": "./dist/workflow/worker.d.ts",
       "default": "./dist/workflow/worker.js"

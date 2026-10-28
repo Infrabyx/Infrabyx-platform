@@ -9,6 +9,10 @@ dist/
 coverage/
 CHANGELOG.md
 **/*.generated.ts
+docs/exit/EXIT_RUNBOOK.md
+docs/bom/
+# Vendored unchanged (CycloneDX specification, Apache-2.0)
+scripts/bom/schema/
 # Golden archives are compared byte for byte (IPB-09-35)
 packages/export/golden/
 # Prompt versions are content-hashed and eval results are written by `infrabyx-ai eval --write`
