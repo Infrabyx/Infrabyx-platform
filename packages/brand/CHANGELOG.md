@@ -1,5 +1,13 @@
 # @infrabyx/brand
 
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies [c0ce8ff]
+- Updated dependencies [2724cd6]
+  - @infrabyx/tenancy@1.1.3
+
 ## 1.0.3
 
 ### Patch Changes

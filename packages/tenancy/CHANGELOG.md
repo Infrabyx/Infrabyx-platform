@@ -1,5 +1,12 @@
 # @infrabyx/tenancy
 
+## 1.1.3
+
+### Patch Changes
+
+- c0ce8ff: `infrabyx-migrate` names each platform package with migrations that it skipped as not installed, and `--require-all` refuses instead (IPB-MOD-001) before connecting; `platformSources` takes `{ missing: "error" }`, an `onSkipped` callback and several directories to resolve from (PR-FBX-06).
+- 2724cd6: Security (PR-UDF-016): migration `0004` makes every `svc_*` service role switch-only for `app_rw` and `app_ro` (INHERIT FALSE, SET TRUE), makes both NOINHERIT, and revokes `svc_outbox_relay` from `app_ro`, so the read-only role can no longer append to the audit ledger or update outbox tables. Run `infrabyx-migrate`.
+
 ## 1.1.2
 
 ### Patch Changes
