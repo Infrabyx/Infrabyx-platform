@@ -1,5 +1,12 @@
 # @infrabyx/audit
 
+## 1.1.1
+
+### Patch Changes
+
+- Updated dependencies [8a2587e]
+  - @infrabyx/config@1.0.2
+
 ## 1.1.0
 
 ### Minor Changes
