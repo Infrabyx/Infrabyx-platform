@@ -2,13 +2,20 @@
 
 Updated: 2026-10-28
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                          |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned    |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                         |
-| Packages              | Published to GitHub Packages (1.1.0 release, run 97, `32b0223`): **1.1.0** contracts, tenancy, audit, ui, cms; **1.0.1** a11y, ai, brand, config, connectors, consent, crypto, export, feedback, notify, rules, seed, testing, trust, vidhi, workflow; **1.0.0** hlp. Checksums below ("Releases after 1.0.0") and in `docs/phases/PL6-gate.md` §6.1 for 1.0.0 |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                              |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                  |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                      |
+| Packages              | Published to GitHub Packages (release run 102, `fb6b33c`): **1.1.2** tenancy, cms; **1.1.1** audit; **1.1.0** contracts, ui; **1.0.3** ai, brand, connectors, consent, export, feedback, notify, rules, seed, testing, trust, vidhi, workflow; **1.0.2** config; **1.0.1** a11y, crypto; **1.0.0** hlp. Records under "Releases after 1.0.0"                |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                           |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                               |
+
+## Handover (2026-10-28, Udofin platform requests PR-UDF-004 to PR-UDF-007)
+
+- **Done, in the owner's order, one PR each:** PR-UDF-007 telemetry scrubber (#120, released as patches by #122, run 100); PR-UDF-005 CLI entry points (#121, released by #123, run 102); PR-UDF-006 scaffold slips (#124, no package change); PR-UDF-004 design note (this PR, no code). Records under "Releases after 1.0.0".
+- **Next:** nothing planned. The owner decides #82 (PR-UDF-004). Udofin can now drop its scrubber restriction, its CLI wrappers (`scripts/platform-cli.mjs`, the direct `generateEnvExample` call) and its hand fixes of the scaffold, and mark PR-UDF-005 to PR-UDF-007 met in its `docs/platform-requests.md`.
+- **Observed:** the `reference` gate journey failed twice on #121's merge-from-main head (the second TOTP sign-in returned a token without an MFA `amr`) and passed on the owner-approved re-run; `main` passed the same job in between. It is intermittent and not tied to a change; if it recurs, the journey should log the token's `amr` and the Keycloak page it saw.
+- **Open questions:** #82. **Branches and PRs:** `main` at `868d3df` plus this PR; no other open PR.
 
 ## Handover (2026-10-28, maintenance mode)
 
@@ -20,6 +27,10 @@ Updated: 2026-10-28
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### PR-UDF-004: `LENDER_CONNECTOR` design note (no code)
+
+Udofin's platform request PR-UDF-004 (G1 to G7 of its connector contract). `docs/phases/R1-lender-connector-note.md` recommends keeping the lender connector out of the platform: the Ecosystem Spec §10.1 defines the connector SPI as `@infrabyx/connector-sdk`, beside `infrabyx-contracts`, and a lender connector is a domain port with one consumer. Two pieces are worth taking in: the Ecosystem inbox (G2: business-key de-duplication and `seq` parking, which all six products need) as the next maintenance minor, and JWS storage and verification for regulated messages (G5) in `crypto` after a cryptography decision. The owner decides (OWNER-QUESTIONS #82); nothing is built or released.
 
 ### PR-UDF-006: scaffold slips (no package change)
 
