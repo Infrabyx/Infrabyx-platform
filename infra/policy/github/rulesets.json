@@ -51,10 +51,28 @@
               },
               {
                 "context": "a11y"
+              },
+              {
+                "context": "integration"
+              },
+              {
+                "context": "containers"
+              },
+              {
+                "context": "compose"
+              },
+              {
+                "context": "infra"
+              },
+              {
+                "context": "reference"
+              },
+              {
+                "context": "scaffold"
               }
             ]
           },
-          "$comment": "IPB-09-07 names ~20 checks; each is added to this list as its job lands (PL1 rls-lint/migration-lint, PL2 contract, PL5 e2e/a11y/lighthouse, PL6 sbom/zap/export-map-gate/golden-archive-diff)."
+          "$comment": "IPB-09-07 names ~20 checks; each is added to this list as its job lands (PL1 rls-lint/migration-lint, PL2 contract, PL5 e2e/a11y/lighthouse, PL6 sbom/zap/export-map-gate/golden-archive-diff). PL6 gate (PL6-D-15): integration, containers, compose, infra, reference and scaffold, each green on main at least twice; a path-filtered job that skips reports skipped, which satisfies the check."
         }
       ],
       "$comment": "PL2-D-12 (owner, 26 Oct 2026): apply after the GitHub Team upgrade with checks, signed commits and linear history only. Merge queue is left out: it is not available for private repositories on GitHub Team."
