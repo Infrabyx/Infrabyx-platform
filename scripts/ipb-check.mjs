@@ -1,6 +1,7 @@
 // IPB structural checks (grows with the IPB-09 required checks).
 // Runs in CI as `pnpm ipb:check`. Exit code 1 on any failure.
 import { readFileSync, existsSync, readdirSync } from "node:fs";
+import { dockerfilePinProblems } from "./dockerfile-pins.mjs";
 
 const NODE_PIN = "24.22.1";
 let failures = 0;
@@ -46,23 +47,8 @@ const nodeRule = (renovate.packageRules ?? []).find(
     r.allowedVersions.includes("24"),
 );
 if (!nodeRule) fail("renovate.json must contain the IPB-01 §01.4.1.2 node 24.x pin rule");
-for (const dir of ["apps", "infra/docker"]) {
-  if (!existsSync(dir)) continue;
-  const walk = (d) =>
-    readdirSync(d, { withFileTypes: true }).flatMap((e) =>
-      e.isDirectory() ? walk(`${d}/${e.name}`) : e.name === "Dockerfile" ? [`${d}/${e.name}`] : [],
-    );
-  for (const df of walk(dir)) {
-    for (const line of read(df).split("\n")) {
-      if (
-        /^\s*FROM\s+node/i.test(line) &&
-        !line.includes(`node:${NODE_PIN}-bookworm-slim@sha256:`)
-      ) {
-        fail(`${df}: FROM must be node:${NODE_PIN}-bookworm-slim@sha256:<digest> (IPB-01-01)`);
-      }
-    }
-  }
-}
+for (const p of dockerfilePinProblems(process.cwd(), ["apps", "infra"], NODE_PIN))
+  fail(`${p} (IPB-01-01)`);
 
 // ---- supply chain (IPB-02-33 tightened by PL2-D-32) ------------------------------------------
 const workspace = read("pnpm-workspace.yaml");
