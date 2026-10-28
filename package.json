@@ -31,6 +31,7 @@
     "licence:check": "node scripts/licence-check.mjs",
     "bom": "node scripts/bom.mjs",
     "exit-runbook": "node scripts/exit-runbook.mjs",
+    "scaffold": "node scripts/scaffold-product.mjs",
     "scripts:test": "vitest run scripts",
     "pr:checklist": "node scripts/pr-checklist.mjs",
     "test:int": "turbo run test:int",

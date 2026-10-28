@@ -304,6 +304,43 @@ jobs:
       - name: dev:down
         if: always()
         run: pnpm dev:down
+  scaffold:
+    # A new product scaffolds from the template and passes CI (IPB-14 §14.5 item 5; PL6 plan §9.1):
+    # every platform package is packed and served from a local registry inside the job (no external
+    # account), a product is scaffolded into a temporary folder, and its own install, lint, format,
+    # typecheck, unit tests and build run there.
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-24.04
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      TURBO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: build
+        run: pnpm build
+      - name: pack every platform package
+        run: pnpm -r --filter "./packages/*" exec pnpm pack --pack-destination "$RUNNER_TEMP/packs"
+      - name: scaffold a product and run its CI against the local registry
+        run: |
+          node scripts/scaffold/registry.mjs --dir "$RUNNER_TEMP/packs" --port 4873 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4873/@infrabyx%2Ftenancy >/dev/null && break; sleep 1; done
+          node scripts/scaffold-product.mjs --product LD --name "LawDocs" \
+            --out "$RUNNER_TEMP/product" --registry http://127.0.0.1:4873
+          cd "$RUNNER_TEMP/product"
+          pnpm install
+          pnpm lint
+          pnpm format:check
+          pnpm typecheck
+          pnpm test
+          pnpm build
   infra:
     # The shared Helm chart and the admission policies (IPB-01-32, IPB-01-35; PL6 plan §5, §6):
     # helm lint and the render tests (@IPB-01-AT-12, Helm scenario), kubeconform against pinned
