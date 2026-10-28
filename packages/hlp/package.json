@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/hlp",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Glossary registry and \"i\" popover content, public glossary, hlp-lint and onboarding tours (IPB-07)",
   "license": "UNLICENSED",
   "private": false,

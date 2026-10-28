@@ -1,5 +1,20 @@
 # @infrabyx/rules
 
+## 1.0.0
+
+### Major Changes
+
+- 9ec9a2c: 1.0.0, the platform baseline release (IPB-14 §14.5 item 1; owner answer #67(4), PL6-D-16). Every `@infrabyx/*` package moves to 1.0.0 together; the public API is unchanged from the 0.x set of the PL6 gate (`docs/phases/PL6-gate.md` §6), so a product upgrades by moving every dependency to 1.0.0 at once. From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting is a major release with an ADR (IPB-09-34/35).
+
+### Patch Changes
+
+- Updated dependencies [9ec9a2c]
+  - @infrabyx/config@1.0.0
+  - @infrabyx/connectors@1.0.0
+  - @infrabyx/contracts@1.0.0
+  - @infrabyx/crypto@1.0.0
+  - @infrabyx/tenancy@1.0.0
+
 ## 0.1.3
 
 ### Patch Changes
