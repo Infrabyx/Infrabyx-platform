@@ -22,10 +22,16 @@ export const envMeta = z.registry<EnvMeta>();
 export type EnvShape = Record<string, z.ZodType>;
 export type EnvSchema<S extends EnvShape = EnvShape> = z.ZodObject<S>;
 
-/** Declare a variable. Values arrive as strings; use the helpers below for typed values. */
+/**
+ * Declare a variable. Values arrive as strings; use the helpers below for typed values. The
+ * metadata is keyed by the schema object, so a shared schema (`ProductCode`, `AppEnv`) declared
+ * a second time is cloned first; otherwise the later declaration's metadata would replace the
+ * earlier one's (the seed CLI's optional gate `APP_PRODUCT` became required, PR-FBX-04 note).
+ */
 export function envVar<T extends z.ZodType>(schema: T, meta: EnvMeta): T {
-  envMeta.add(schema, meta);
-  return schema;
+  const s = envMeta.has(schema) ? (schema.clone() as T) : schema;
+  envMeta.add(s, meta);
+  return s;
 }
 
 /**

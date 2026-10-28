@@ -428,3 +428,40 @@ describe("schema defaults (IPB-11-04)", () => {
     expect(r.ok && r.values).toEqual({ APP_ENV: "local", APP_MODE: "a", APP_FLAG: true });
   });
 });
+
+describe("a shared schema declared twice keeps each declaration's metadata (PR-FBX-04 note)", () => {
+  it("the second envVar on the same schema object registers a clone", async () => {
+    const Shared = z.enum(["A", "B"]);
+    const gate = z.object({
+      APP_ENV: envVar(z.string(), {
+        desc: "e",
+        example: "dev",
+        required: "all",
+        sens: "C",
+        port: "APP",
+      }),
+      APP_PICK: envVar(Shared, {
+        desc: "optional here",
+        example: "A",
+        required: "opt",
+        sens: "C",
+        port: "APP",
+      }),
+    });
+    const full = gate.extend({
+      APP_PICK: envVar(Shared, {
+        desc: "required here",
+        example: "A",
+        required: "all",
+        sens: "C",
+        port: "APP",
+      }),
+    });
+    const meta = (s: z.ZodObject) =>
+      describeSchema(s).find((v) => v.name === "APP_PICK")?.meta.required;
+    expect(meta(gate)).toBe("opt");
+    expect(meta(full)).toBe("all");
+    expect((await validateEnv(gate, { source: { APP_ENV: "prod" }, guards: [] })).ok).toBe(true);
+    expect((await validateEnv(full, { source: { APP_ENV: "prod" }, guards: [] })).ok).toBe(false);
+  });
+});
