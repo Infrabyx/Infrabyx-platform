@@ -24,6 +24,15 @@ Node.js 24.22.1 (`.nvmrc`, `engines`, Dockerfiles, CI; no other version without 
 - Never publish from a branch other than `main`; never force-push `main`; never edit a migration that has shipped.
 - Seeds never run when `APP_ENV` is `prod`, `dr` or `pre-prod` (`SEED_REFUSED_ENVS`, PL1-D-06); `SEED_CREDENTIALS.md` is never committed.
 
+## Working mode — maintenance (owner standing instruction, 28 Oct 2026; R1-D-04)
+
+This supersedes the continuous build below, whose plan (PL2 to PL6, 1.0.0 and R1) is complete.
+
+- **Work only on** platform requests raised by the product repositories (their `docs/platform-requests.md`) and on security updates (dependency advisories, the 7-day update policy PL2-D-32, findings in this repository). Nothing else is planned until a product raises a request.
+- **Each one is a normal PR** on its own `claude/<slug>` branch: plan it where it needs one (`docs/phases/Rn-plan.md`), keep the threat model, STATUS and DECISIONS current, and merge it under the standing authority (PL2-D-19) when every required check is green.
+- **Releases (OWNER-QUESTIONS #81, answer (a)):** merge each 1.x version PR once every required check is green, for minor and patch releases only, and record each release in STATUS as for 1.0.0 (release run, BOM signature, attestations, registry checksums). A major version (2.0.0, or any breaking change) still waits for the owner's word.
+- The stop conditions and the public-repository, CI-budget, reporting and threat-model rules below still apply.
+
 ## Working mode — continuous build (owner standing instruction, 26 Oct 2026; PL2-D-41)
 
 **Goal.** Finish the shared packages so the six product repositories can build on them. Work through PL2 sessions 3 to 8 and gate A, then PL3, PL4, PL5 and PL6 in order, without waiting for the owner between steps. Work only in this repository.
