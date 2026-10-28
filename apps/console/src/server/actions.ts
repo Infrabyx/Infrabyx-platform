@@ -1,7 +1,9 @@
 // Every Studio form posts to `/studio-actions/<section>/<action>`; this map names the handler of
 // each (from `@infrabyx/ui/studio`, over the package services). Unknown pairs are 404.
 import type { KernelContext } from "@infrabyx/contracts/kernel";
+import { BLOCK_EDITOR } from "@infrabyx/cms";
 import {
+  blockHandlers,
   brandHandlers,
   claimHandlers,
   consentTextHandlers,
@@ -28,7 +30,7 @@ export function actionMap(c: Console): Partial<Record<StudioSection, Record<stri
     contentHandlers(c.cms, { base: STUDIO_BASE, section });
   const r = resourceHandlers(c.resources);
   return {
-    pages: content("pages"),
+    pages: { ...content("pages"), ...blockHandlers(c.cms, BLOCK_EDITOR) },
     menus: content("menus"),
     footer: content("footer"),
     pricing: content("pricing"),

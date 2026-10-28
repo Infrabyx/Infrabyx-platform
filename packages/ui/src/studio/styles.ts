@@ -17,4 +17,10 @@ export const STUDIO_CSS = String.raw`
 .ibx-studio__reveal { overflow-wrap: anywhere; }
 .ibx-badge { display: inline-block; padding: 0 var(--space-2); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); font-size: var(--text-sm); }
 .ibx-table td form { margin: 0 0 var(--space-2); }
+.ibx-studio__blocks { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-4); }
+.ibx-studio__block { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-3); min-width: 0; }
+.ibx-studio__ops { display: flex; flex-wrap: wrap; }
+.ibx-studio__group, .ibx-studio__row { border: 1px solid var(--color-border); border-radius: var(--radius-sm); padding: var(--space-3); margin: 0; min-width: 0; display: grid; gap: var(--space-3); }
+.ibx-studio__group legend, .ibx-studio__row legend { font-weight: 700; padding: 0 var(--space-1); }
+.ibx-studio__json summary { cursor: pointer; }
 `;

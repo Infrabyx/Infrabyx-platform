@@ -1,9 +1,18 @@
 // Form handlers of the content screens: read the posted form, call the `cms` Studio service and
 // say what happened. The app wraps each in its server action (or POST route) and redirects with
 // `encodeResult` (post-redirect-get, no JavaScript needed).
+import {
+  applyBlockOp,
+  blockFieldOf,
+  blockOpFromForm,
+  insertAt,
+  type Block,
+  type BlockEditorOptions,
+  type BlockOp,
+} from "./block-editor.js";
 import { FieldProblem, json, oneOf, required, run, text } from "./form.js";
 import { studioPath, type StudioSection } from "./layout.js";
-import type { StudioItem } from "./content.js";
+import type { ContentReader, StudioItem } from "./content.js";
 import type { StudioResult } from "./types.js";
 
 /** What the content handlers call (`CmsStudio` satisfies it). */
@@ -206,6 +215,67 @@ export function contentHandlers<C>(
           reveal: r.path,
         };
       });
+    },
+  };
+}
+
+const BLOCK_DONE: Readonly<Record<BlockOp["op"], string>> = {
+  add: "Block added",
+  remove: "Block removed",
+  move: "Block moved",
+  update: "Block saved",
+};
+
+/**
+ * The block editor's handler (PR-038). It applies one posted operation to the blocks of the item's
+ * current revision and saves the result as a new draft, the same `saveDraft` the JSON editor
+ * calls, so the service checks the whole body and voids approvals as before. A post made against
+ * an older revision is refused, so two editors cannot overwrite each other's blocks by position.
+ */
+export function blockHandlers<C>(
+  cms: ContentReader<C> & ContentWriter<C>,
+  options: BlockEditorOptions,
+) {
+  return {
+    async blocks(ctx: C, fd: FormData): Promise<StudioResult> {
+      let added: { at: number; ref: boolean } | undefined;
+      const fieldOf = (path: string) => {
+        if (added && path.startsWith(`blocks[${added.at}]`))
+          return added.ref ? "f-block-ref" : "f-block-type";
+        return blockFieldOf(path) ?? (path ? "blocks" : undefined);
+      };
+      return run(async () => {
+        const id = required(fd, "itemId", "an item");
+        const item = await cms.get(ctx, id);
+        if (text(fd, "revisionId") !== item.currentRevisionId)
+          throw new FieldProblem([
+            {
+              fieldId: "blocks",
+              message:
+                "The page has changed since you opened it. Reload it and make the change again.",
+            },
+          ]);
+        const rev = await cms.revision(ctx, item.currentRevisionId);
+        if (!Array.isArray(rev.body.blocks))
+          throw new FieldProblem([{ fieldId: "blocks", message: "This item has no blocks." }]);
+        const blocks = rev.body.blocks as Block[];
+        const op = blockOpFromForm(fd, blocks, options);
+        if (op.op === "add")
+          added = {
+            at: insertAt(blocks.length, op.at),
+            ref: options.specs.some((s) => s.type === op.type && s.ref),
+          };
+        const next = applyBlockOp(blocks, op, options);
+        const n = op.op === "add" ? added!.at + 1 : op.index + 1;
+        const r = await cms.saveDraft(ctx, id, {
+          title: rev.title,
+          slug: rev.slug,
+          body: { ...rev.body, blocks: next },
+          seo: rev.seo,
+          summary: `${BLOCK_DONE[op.op]} (block ${n})`,
+        });
+        return saved(BLOCK_DONE[op.op], r);
+      }, fieldOf);
     },
   };
 }

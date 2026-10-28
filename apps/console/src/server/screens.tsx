@@ -1,7 +1,12 @@
 // Which screen each Studio route renders (PL5 plan §9.6). Lists live at `/studio/<section>`,
 // editors at `/studio/<section>/<id>`; each screen gets the package service, the session's
 // context and its form actions.
-import { MANDATORY_POLICY_KEYS, SELLING_POLICY_KEYS, policyTemplate } from "@infrabyx/cms";
+import {
+  BLOCK_EDITOR,
+  MANDATORY_POLICY_KEYS,
+  SELLING_POLICY_KEYS,
+  policyTemplate,
+} from "@infrabyx/cms";
 import {
   ApprovalsScreen,
   BrandEditScreen,
@@ -212,6 +217,8 @@ export async function editScreen(c: Console, section: StudioSection, id: string,
     transitions: c.transitions,
     reveal: s.reveal,
     actions: { save: a("save"), workflow: a("workflow"), preview: a("preview") },
+    // Pages, landing pages and sections are edited block by block (PR-038).
+    ...(section === "pages" ? { blocks: { options: BLOCK_EDITOR, action: a("blocks") } } : {}),
     ...(section === "resources"
       ? {
           extra: await ResourceVersionsPanel({

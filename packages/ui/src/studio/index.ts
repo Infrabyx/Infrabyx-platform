@@ -15,6 +15,7 @@ export {
   type StudioSection,
 } from "./layout.js";
 export * from "./content.js";
+export * from "./block-editor.js";
 export * from "./content-handlers.js";
 export * from "./brand.js";
 export * from "./brand-handlers.js";
