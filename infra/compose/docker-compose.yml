@@ -254,9 +254,12 @@ services:
       AUTH_BASE_URL: http://127.0.0.1:${KEYCLOAK_PORT:-58080}
       AUTH_REALM: infrabyx-local
       AUTH_CLIENT_ID: reference-api
-      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET:?run pnpm dev:up}
+      # Written to .env.local by dev:up once the realm is applied; Compose interpolates every
+      # service even when only `core` starts, so they default to blank and the api refuses to
+      # start without them rather than Compose refusing to start the core services.
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET}
       AUTH_ADMIN_CLIENT_ID: reference-admin
-      AUTH_ADMIN_CLIENT_SECRET: ${AUTH_ADMIN_CLIENT_SECRET:?run pnpm dev:up}
+      AUTH_ADMIN_CLIENT_SECRET: ${AUTH_ADMIN_CLIENT_SECRET}
       AUTH_AUDIENCE: reference-api
       AUTHZ_CERBOS_URL: http://127.0.0.1:${CERBOS_PORT:-53592}
       STORAGE_ENDPOINT: http://127.0.0.1:${MINIO_PORT:-59000}
