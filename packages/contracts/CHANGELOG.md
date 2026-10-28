@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.3.0
+
+### Minor Changes
+
+- b6058d3: `IPB-API-005` (IPB-10 §10.6.3) in the error catalogue, for an Ecosystem event of the other environment (G2).
+
 ## 1.2.0
 
 ### Minor Changes

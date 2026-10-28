@@ -1,5 +1,17 @@
 # @infrabyx/trust
 
+## 1.0.7
+
+### Patch Changes
+
+- Updated dependencies [b6058d3]
+- Updated dependencies [b6058d3]
+  - @infrabyx/contracts@1.3.0
+  - @infrabyx/tenancy@1.3.0
+  - @infrabyx/ai@1.0.7
+  - @infrabyx/config@1.0.5
+  - @infrabyx/crypto@1.0.3
+
 ## 1.0.6
 
 ### Patch Changes
