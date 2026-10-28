@@ -42,9 +42,8 @@ beforeAll(async () => {
   fgaStore = await OpenFgaAuthz.createStore(fgaUrl(), "ipb-contract");
   const f = new OpenFgaAuthz({ apiUrl: fgaUrl(), storeId: fgaStore, allowLoopbackHttp: true });
   await f.loadPolicies(await platformPolicyBundle("openfga"));
-  fgaModel =
-    (f as unknown as { client: { authorizationModelId?: string } }).client.authorizationModelId ??
-    "";
+  fgaModel = (f as unknown as { modelId?: string }).modelId ?? "";
+  if (!fgaModel) throw new Error("OpenFGA returned no authorization model id");
 });
 afterAll(async () => {
   await Promise.all([cerbos?.stop(), fga?.stop()]);
