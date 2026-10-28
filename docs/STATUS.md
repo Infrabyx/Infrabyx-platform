@@ -21,6 +21,16 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-UDF-005: the CLIs run through `pnpm exec` (patches of `ai`, `config`, `export`, `notify`, `seed`, `tenancy`, `testing`)
+
+Udofin's platform request PR-UDF-005 (R1-D-06). Ten of the fourteen `infrabyx-*` CLIs exited 0 with no output when started through a `node_modules` symlink, so a CI step built on them passed without running.
+
+- **Fixed:** the entry guard compares with `realpathSync(process.argv[1])` in `infrabyx-ai`, `infrabyx-env`, `infrabyx-routing`, `infrabyx-export`, `infrabyx-notify-lint`, `infrabyx-seed`, `infrabyx-migrate`, `infrabyx-rls-lint`, `infrabyx-migration-lint` and `infrabyx-at-report` (`a11y`, `hlp` and `vidhi` already did; `cms` has no guard).
+- **Where it bit:** `pnpm exec` with linked packages (a workspace or `link:`), npm's `.bin` symlinks, and `node node_modules/@infrabyx/tenancy/dist/migrate/cli.js`, the chart's migration job command, which would have exited 0 without migrating. A plain registry install with pnpm points its shims at the real path, which is why the platform's `scaffold` job did not catch it.
+- **Test:** `scripts/cli-bins.test.mjs` (`pnpm scripts:test`, in `verify`): every bin linked into a fresh project and run three ways (`pnpm exec`, `node node_modules/<pkg>/<bin>`, an npm-style `.bin` symlink); each must print its usage or its report. 44 cases; 30 fail on the previous entry points.
+- **Products must:** move to these patch versions, then **remove their wrappers** and call the CLIs by name (`pnpm exec infrabyx-…` or a `package.json` script): Udofin's `scripts/platform-cli.mjs`, and `scripts/env-example.mjs` calling `generateEnvExample` directly (`docs/product-guide.md` §2). Re-check that each CI step built on a CLI prints output.
+- **Release:** pending the version PR.
+
 ### PR-UDF-007: telemetry scrubber gaps (security; patches of `connectors` and `tenancy`)
 
 Udofin's platform request PR-UDF-007 (R1-D-05). The IPB-02-23 telemetry scrubber missed a bank account number under `account_number` (the rule key is `bank_account`), an OTP written into a log message (`otp=123456`), and account numbers of 9 to 11 digits in free text.

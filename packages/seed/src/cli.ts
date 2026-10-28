@@ -5,6 +5,7 @@
 // Refusal comes first: in prod/dr/pre-prod, or without SEED_ENABLED=true, the CLI exits 1 with
 // IPB-SEED-001 and emits SeedRefused before any other configuration is read (@IPB-11-AT-02).
 import { resolve } from "node:path";
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import pg from "pg";
@@ -240,7 +241,9 @@ export async function main(
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (e: unknown) => {

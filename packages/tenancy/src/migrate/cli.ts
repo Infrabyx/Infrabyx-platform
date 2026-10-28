@@ -3,7 +3,7 @@
 // Applies platform migrations (tenancy, audit, config, seed, connectors) then the product's own.
 // --db-file reads the URL from a file (the secrets CSI mount in the chart's migration job), so the
 // URL and its password never appear in arguments or the environment (IPB-02-28).
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import pg from "pg";
@@ -54,7 +54,9 @@ export async function main(argv: string[]): Promise<number> {
   }
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (e: unknown) => {

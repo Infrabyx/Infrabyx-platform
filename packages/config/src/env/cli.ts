@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // infrabyx-env example --schema <module> [--export envSchema] [--out .env.example] [--product LDC] [--check]
 // Generates .env.example from an env schema; --check fails on drift and names the variables (@IPB-11-AT-06).
+import { realpathSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -50,7 +51,9 @@ export async function main(argv: string[]): Promise<number> {
   return 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (e: unknown) => {

@@ -11,6 +11,7 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -148,5 +149,7 @@ export function main(argv: string[]): number {
   return 2;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href)
   process.exit(main(process.argv.slice(2)));
