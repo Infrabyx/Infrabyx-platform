@@ -157,7 +157,7 @@ async function bootstrap(env) {
       `dev:up: Unleash flags synchronised (${r.created.length} created, ${r.updated.length} updated, ${r.unchanged.length} unchanged)`,
     );
   } finally {
-    flags.destroy();
+    flags.stop();
   }
 }
 
