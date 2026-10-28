@@ -4,11 +4,21 @@ Updated: 2026-10-28
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **1.0.0 released** (2026-10-28): all 22 packages at 1.0.0 (version PR #113, release run 92, signed and attested; `docs/phases/PL6-gate.md` §6.1). Next: the 1.x line (plan `docs/phases/R1-plan.md`, added with its first PR): the `SVC_OUTBOX_RELAY` reader role, then the visual block editor (PR-038)                                                        |
+| Current phase         | **1.x line, R1 items 1 and 2 merged** (2026-10-28): the outbox relay as `SVC_OUTBOX_RELAY` (#115) and the visual block editor for pages (#117) are on `main`; their release (version PR #116) waits for the owner (OWNER-QUESTIONS #81). Published: 1.0.0 of all 22 packages (`docs/phases/PL6-gate.md` §6.1)                                                   |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                          |
 | Packages              | Published to GitHub Packages at **1.0.0**, all 22 (release run 92, `4ce699b`): a11y, ai, audit, brand, cms, config, connectors, consent, contracts, crypto, export, feedback, hlp, notify, rules, seed, tenancy, testing, trust, ui, vidhi, workflow. Checksums and attestations in `docs/phases/PL6-gate.md` §6.1; adopting them in `docs/product-guide.md` §8 |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                               |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026). `claude/wonderful-franklin-goo59b` keeps the commit #105 rejected and is left untouched                                                                                                                                                          |
+
+## Handover (2026-10-28, after R1 items 1 and 2)
+
+- **Done this session:** the ruleset applied and reconciled nightly (#114); #79 and #80 answered; **1.0.0 published** (#111, #113, release run 92; signed and attested; record in the gate report §6.1); R1 item 1, the outbox relay as `SVC_OUTBOX_RELAY` (#115, which also lets `pr-checklist` accept `docs/phases/Rn-plan.md`); R1 item 2, the visual block editor for pages (#117).
+- **Waiting for the owner:** #81, whether 1.x version PRs may be merged when green. Version PR #116 (1.1.0 of `contracts`, `tenancy`, `audit`, `ui` and `cms`, patches of their dependents) is open and is not merged until then. Also `trust.gating.nda_version` once legal approves the NDA (#59).
+- **Products can install** 1.0.0 now (`docs/product-guide.md` §8). After #116 is released they can adopt the outbox relay (§7, `infrabyx-migrate` for `tenancy/0003` and `audit/0002`) and the block editor (pass `blocks` to `ContentEditScreen`, mount `blockHandlers`).
+- **Next:** nothing else is on the owner's list. A hosted preview waits for the staging accounts (#67(2)); the PR-038 editor could later gain a form for tabs.
+- **Branches and PRs:** `main` at `84e4200`; open: #116 (version PR, held) and this handover PR. `claude/wonderful-franklin-goo59b` is left untouched; the merged session branches can be deleted.
+
+HANDOVER READY
 
 ## R1 item 2: the visual block editor for pages (2026-10-28, PR-038, R1-D-02)
 
