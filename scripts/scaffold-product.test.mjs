@@ -1,11 +1,19 @@
 // The product scaffold (PL6 plan §9.1; IPB-14 §14.4 step 6). The `scaffold` CI job installs,
 // lints, typechecks, tests and builds the result from a local registry; this test checks what the
 // script writes, without an install.
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { APPS, platformCommit, platformPackages, scaffold } from "./scaffold-product.mjs";
+import {
+  APPS,
+  assertPrettierInstalled,
+  platformCommit,
+  platformPackages,
+  PRODUCT_DEFAULTS,
+  productEnvExample,
+  scaffold,
+} from "./scaffold-product.mjs";
 
 const out = join(mkdtempSync(join(tmpdir(), "scaffold-")), "product");
 const read = (p) => readFileSync(join(out, p), "utf8");
@@ -78,6 +86,45 @@ describe("scaffold-product", () => {
         `git::https://github.com/Infrabyx/Infrabyx-platform.git//infra/terraform/modules/aws/platform?ref=${platformCommit()}"`,
       );
     expect(platformCommit()).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  // PR-UDF-006: each slip the Udofin scaffold hit; the `scaffold` job checks them on a real install.
+  it("replaces the reference app's default product everywhere it is copied, tests included", () => {
+    const env = read("apps/api/src/env.ts");
+    expect(env).toContain('ProductCode.default("UDF")');
+    expect(env).toMatch(/APP_PRODUCT: envVar\([^)]*\), \{[^}]*example: "UDF"/);
+    expect(read("apps/api/src/env.test.ts")).toContain('expect(v.APP_PRODUCT).toBe("UDF")');
+    expect(read("apps/web/src/app/assets/web.css/route.ts")).toContain('themeCss("UDF")');
+    for (const [file] of PRODUCT_DEFAULTS) expect(read(file), file).not.toMatch(/\("LD"\)|"LD",/);
+  });
+
+  it("writes the .env.example files for the product, as infrabyx-env example --product does", () => {
+    const examples = APPS.flatMap((a) =>
+      readdirSync(join(out, "apps", a.to))
+        .filter((f) => f.endsWith(".env.example"))
+        .map((f) => `apps/${a.to}/${f}`),
+    );
+    expect(examples.length).toBeGreaterThanOrEqual(5);
+    for (const f of examples) {
+      expect(read(f), f).not.toContain("<PRODUCT>");
+      expect(read(f), f).toContain("# Infrabyx UDF — environment template");
+    }
+    const line = read("apps/api/.env.example")
+      .split("\n")
+      .find((l) => l.startsWith("APP_PRODUCT="));
+    expect(line).toMatch(/^APP_PRODUCT=UDF {32}# The product this instance/);
+    expect(productEnvExample("APP_PRODUCT=LD     # x\n", "LDC")).toBe(
+      `${"APP_PRODUCT=LDC".padEnd(46)} # x\n`,
+    );
+  });
+
+  it("refuses to start, writing nothing, when prettier is not installed in the platform checkout", async () => {
+    const bare = mkdtempSync(join(tmpdir(), "scaffold-bare-"));
+    writeFileSync(join(bare, "package.json"), "{}");
+    expect(() => assertPrettierInstalled(bare)).toThrow(
+      /prettier is not installed in the platform checkout .*pnpm install --frozen-lockfile.*nothing was written/,
+    );
+    expect(() => assertPrettierInstalled()).not.toThrow();
   });
 
   it("refuses an unknown product or a folder that is not empty", async () => {

@@ -333,6 +333,55 @@ const devUp = (pairs, product) =>
       '"node_modules/@infrabyx/connectors/policy/cerbos"',
     );
 
+/**
+ * Fails, before anything is written, when this platform checkout has no installed prettier: the
+ * scaffold used to stop at the format step and leave a half-written product (PR-UDF-006). Only a
+ * node_modules at or above the checkout counts, never NODE_PATH.
+ */
+export function assertPrettierInstalled(root = ROOT) {
+  for (let dir = root; ; dir = dirname(dir)) {
+    if (existsSync(join(dir, "node_modules", "prettier", "package.json"))) return;
+    if (dirname(dir) === dir) break;
+  }
+  throw new Error(
+    `prettier is not installed in the platform checkout ${root}: run \`pnpm install --frozen-lockfile\` there first (nothing was written)`,
+  );
+}
+
+/**
+ * The reference app's default product, LD, in the files the scaffold copies: each becomes the
+ * product's code, and a missing pattern fails the scaffold so a change to the reference app cannot
+ * silently leave LD behind (PR-UDF-006).
+ */
+export const PRODUCT_DEFAULTS = [
+  ["apps/api/src/env.ts", /ProductCode\.default\("LD"\)/g, (p) => `ProductCode.default("${p}")`],
+  [
+    "apps/api/src/env.ts",
+    /(APP_PRODUCT: envVar\([^)]*\), \{[^}]*?example: )"LD"/g,
+    (p) => `$1"${p}"`,
+  ],
+  [
+    "apps/api/src/env.test.ts",
+    /expect\(v\.APP_PRODUCT\)\.toBe\("LD"\)/g,
+    (p) => `expect(v.APP_PRODUCT).toBe("${p}")`,
+  ],
+  ["apps/web/src/app/assets/web.css/route.ts", /themeCss\("LD"\)/g, (p) => `themeCss("${p}")`],
+];
+
+/**
+ * The generated `.env.example` files name the product, as `infrabyx-env example --product <code>`
+ * writes them, instead of `<PRODUCT>`; APP_PRODUCT's example line is rebuilt with the generator's
+ * padding (PR-UDF-006).
+ */
+export function productEnvExample(text, product) {
+  return text
+    .replace(/^# Infrabyx <PRODUCT> — /m, `# Infrabyx ${product} — `)
+    .replace(
+      /^APP_PRODUCT=LD +(# .*)$/m,
+      (_m, rest) => `${`APP_PRODUCT=${product}`.padEnd(46)} ${rest}`,
+    );
+}
+
 /** Format every file the scaffold wrote, so the product's `format:check` starts green. */
 async function formatTree(out) {
   const prettier = await import("prettier");
@@ -366,6 +415,7 @@ export async function scaffold({
   if (!PRODUCTS.includes(product))
     throw new Error(`--product must be one of ${PRODUCTS.join(", ")}`);
   if (existsSync(out) && readdirSync(out).length) throw new Error(`${out} is not empty`);
+  assertPrettierInstalled();
   const slug = product.toLowerCase();
   const scope = `@${slug}`;
   const pkgs = platformPackages();
@@ -384,9 +434,21 @@ export async function scaffold({
     rewritePackageJson(join(dst, "package.json"), scope, pkgs, apps);
   }
   // The product code replaces the reference app's default product.
-  rewriteFile(join(out, "apps/api/src/env.ts"), [
-    [/ProductCode\.default\("LD"\)/g, `ProductCode.default("${product}")`],
-  ]);
+  for (const [file, re, to] of PRODUCT_DEFAULTS) {
+    const f = join(out, file);
+    const src = readFileSync(f, "utf8");
+    if (!re.test(src))
+      throw new Error(`scaffold: ${file} no longer matches ${re}; update PRODUCT_DEFAULTS`);
+    re.lastIndex = 0;
+    writeFileSync(f, src.replace(re, to(product)));
+  }
+  for (const a of APPS)
+    for (const f of readdirSync(join(out, "apps", a.to)).filter((x) =>
+      x.endsWith(".env.example"),
+    )) {
+      const file = join(out, "apps", a.to, f);
+      writeFileSync(file, productEnvExample(readFileSync(file, "utf8"), product));
+    }
 
   write(".nvmrc", read(".nvmrc"));
   write("package.json", `${JSON.stringify(rootPackage(slug, name, pkgs), null, 2)}\n`);

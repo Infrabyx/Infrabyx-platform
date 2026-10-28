@@ -21,6 +21,14 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-UDF-006: scaffold slips (no package change)
+
+Udofin's platform request PR-UDF-006 (R1-D-07); `scripts/scaffold-product.mjs` only, so nothing is released.
+
+- **Fixed:** (1) every copy of the reference default product `LD` becomes the product code: the api's `env.ts` default and example, its `env.test.ts` expectation, and the web app's theme (`themeCss`); a pattern that stops matching fails the scaffold. (2) The scaffold checks that this checkout has prettier installed before writing anything, and otherwise stops with "run `pnpm install --frozen-lockfile` there first (nothing was written)". (3) Each `.env.example` names the product (`# Infrabyx UDF — …`, `APP_PRODUCT=UDF` with the generator's padding), as `infrabyx-env example --product <code>` writes it.
+- **`scaffold` job checks, one per slip:** scaffolds UDF instead of LD, so the product's own tests run the rewritten `env.test.ts` (1); runs the scaffold from a `git worktree` with no dependencies and expects the refusal with nothing written (2); after the build, no `<PRODUCT>` remains and `pnpm exec infrabyx-env example --product UDF --check` passes for all five example files (3). Unit tests: 3 new in `scaffold-product.test.mjs`. The whole job ran locally (install, lint, format, typecheck, test, build, the five checks).
+- **Products must:** nothing; a product scaffolded earlier fixes the three by hand (Udofin already has). Run the scaffold after `pnpm install` in the platform checkout (`docs/product-guide.md` §1).
+
 ### PR-UDF-005: the CLIs run through `pnpm exec` (patches of `ai`, `config`, `export`, `notify`, `seed`, `tenancy`, `testing`)
 
 Udofin's platform request PR-UDF-005 (R1-D-06). Ten of the fourteen `infrabyx-*` CLIs exited 0 with no output when started through a `node_modules` symlink, so a CI step built on them passed without running.
@@ -29,7 +37,8 @@ Udofin's platform request PR-UDF-005 (R1-D-06). Ten of the fourteen `infrabyx-*`
 - **Where it bit:** `pnpm exec` with linked packages (a workspace or `link:`), npm's `.bin` symlinks, and `node node_modules/@infrabyx/tenancy/dist/migrate/cli.js`, the chart's migration job command, which would have exited 0 without migrating. A plain registry install with pnpm points its shims at the real path, which is why the platform's `scaffold` job did not catch it.
 - **Test:** `scripts/cli-bins.test.mjs` (`pnpm scripts:test`, in `verify`): every bin linked into a fresh project and run three ways (`pnpm exec`, `node node_modules/<pkg>/<bin>`, an npm-style `.bin` symlink); each must print its usage or its report. 44 cases; 30 fail on the previous entry points.
 - **Products must:** move to these patch versions, then **remove their wrappers** and call the CLIs by name (`pnpm exec infrabyx-…` or a `package.json` script): Udofin's `scripts/platform-cli.mjs`, and `scripts/env-example.mjs` calling `generateEnvExample` directly (`docs/product-guide.md` §2). Re-check that each CI step built on a CLI prints output.
-- **Release:** pending the version PR.
+- **Merged** as #121 (`8a2587e`). Its `reference` job failed twice on the merge-from-main head (the gate journey's second TOTP sign-in returned a token without an MFA `amr`; `main` passed the same job meanwhile) and passed on the owner-approved second re-run; nothing in the diff reaches Keycloak or the token path, so it is recorded as an intermittent failure of the journey, not of the change.
+- **Release:** release run 102 (record below): `tenancy` 1.1.2, `config` 1.0.2, `audit` 1.1.1 and 14 more patches.
 
 ### PR-UDF-007: telemetry scrubber gaps (security; patches of `connectors` and `tenancy`)
 
@@ -38,7 +47,65 @@ Udofin's platform request PR-UDF-007 (R1-D-05). The IPB-02-23 telemetry scrubber
 - **Fixed:** keys are matched to a mask rule by their spelling (`account_number`, `accountNumber`, `bank_account_no`, `aadhaar_number`, `pan_no`, `card_number`, `phone`, `mobile_number`, `email_address`, `passport_number`, and longer keys ending in a field name such as `borrower_pan`); keys containing `otp`, `totp`, `mpin`, `cvv`, `cvc` or `passcode` are redacted; free text redacts a code next to its label ("OTP is 482913", "482913 is your OTP", `"otp":"482913"`, `otp_code=…`), masks named account numbers of 9 to 18 digits (separators allowed) and any other run of 9 to 11 digits, mobiles written `98765 43210`, and passport numbers. `tenancy` gains the `passport` mask rule (IPB-02-22).
 - **Checked the same way:** every masked field of IPB-02 §02.4.3.3 and IPB-02-22 (bank account, Aadhaar, PAN, card number, mobile, email, passport), under its rule key, the usual spellings, nested, and in free text; 11 new cases in `otel.test.ts`, 6 of which fail on the previous scrubber (bank account three ways, mobile, passport, OTP).
 - **Products must:** move to the patch versions with the rest of `@infrabyx/*`; nothing else. Udofin can drop its "structured keys only" restriction once on these versions.
-- **Release:** pending the version PR.
+- **Release:** `tenancy` 1.1.1, `connectors` 1.0.2 and 13 dependent patches, release run 100 (record below).
+
+### PR-UDF-005 patch release (2026-10-28, version PR #123, release run 102)
+
+The PR-UDF-005 patches (#121): the CLI entry points of `ai`, `config`, `export`, `notify`, `seed`, `tenancy` and `testing`, with the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #123 merged as `fb6b33c` with every required check green, the full 20-port `port-contract` matrix included. Release run 102 (`release` job 122906036689):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3541727636 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:a0eff417-7cc9-500d-9696-93662dc8551e`, 967 components, release `fb6b33cf7757`) has SHA-256 `cc62ab5131a48a9809c0c30ee09c5d9ed4cc8a06aeacd1d8ecb06f49231bfb92`.
+- **Published 17 packages** (`consumer-smoke` first; `a11y`, `crypto`, `contracts`, `ui` and `hlp` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified all 17 attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40716698719 (job 122916231791) printed the registry's `dist` and rebuilt every package from `fb6b33c` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `fb6b33c`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/ai`         | 1.0.3   | `e0355a4e64960987abf0648e2c52c6641225d434` | `sha512-l4FJoUnWUJuI1X+sbcVA6cirELWQWutkLdlmQChqdiWXcuMB3JKi0nO4zzGKHM8e55R1k5nDZpvidIVYdhqFmg==` | 3541906898          | `package.json` dependency order only |
+| `@infrabyx/audit`      | 1.1.1   | `d04973ae617e2230ed29e00eba22660ef021d47b` | `sha512-HMmIDdmnHZeTnA1RMwxD847qGdNvCJU6Rgmyy+IuHDvOQe6nk9HUapAZzsxgss+VtRQmftSggHSUS5BHDqV9Qw==` | 3541910259          | identical                            |
+| `@infrabyx/brand`      | 1.0.3   | `8fc52d96522e854d66ead15a7101cd102f1df0d9` | `sha512-ZcUohSRw0e662tixk5tXRNVNBk4yrCrnzbnwK6WlRe7gge6t3fu1IKrqXvyjJkH4XeuHxfL7x26P+RwOBRDIbw==` | 3541913958          | identical                            |
+| `@infrabyx/cms`        | 1.1.2   | `1f4bd25a4243d65c49c56e917b96b4432d8c6ea3` | `sha512-cBLrMUdZTLpucbI+a85u3URDi3zrIGn5OUquyFDBj0ZOCjcDs66mpg8tT83pIloh2Y9fGzzMH1MBJOguPn0bFg==` | 3541915981          | `package.json` dependency order only |
+| `@infrabyx/config`     | 1.0.2   | `e9d6975e223b00de9dbb099aee805684e6f8c210` | `sha512-pDWbhibKxgtpHPJOwCYkqafOk1hPI5kLMlcpWB0EVoacB5YpDQoSJoGNqEB8I4QhntVcPb9eTX2ifTNCvuBuLQ==` | 3541918810          | `package.json` dependency order only |
+| `@infrabyx/connectors` | 1.0.3   | `28816e5d51662c9d6920c8d9e55426655d8c8a65` | `sha512-JrvG4DzsPelEarE25XbRdrVb+7L4ipuot33q7r7D0GfZePzhtVsajnvIuCrxjyo4QZ7R/cGnXWpJ+UxAwV6RFw==` | 3541926013          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.3   | `a6b5caa017e70d1766150b22e4978f5c40eef4a3` | `sha512-XQGdmmD2ZtsQDnJsN0YW7TWLanENvR3fb+aG5n9PODR2x/qvCGZHTLX2nbM24QXuyjRRq0XV4/oY+ufWlkrGgg==` | 3541930446          | `package.json` dependency order only |
+| `@infrabyx/export`     | 1.0.3   | `4f13e2123b00c60f54ded8fe6327803c9ebae4f7` | `sha512-dF/BBoNrgxma2MHow727tt45m6uyqIILYnJedS9hTcAuAB1H4LSQC+sw4XUgWPi/xLW6ORHJdFqFMNsqerdKog==` | 3541934106          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.3   | `87cba6bd7894c12a784e517e93fa37659f939d5a` | `sha512-h+z6kJQPlK6oODzYVB44+zXkbcGwrbLzgFkD9BP/kV4fK8Bbf97tgGkp0oaHiVCYkrCQcYhl9ktRsVajwbisiQ==` | 3541941394          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.0.3   | `7c14241a84c6255d899d7ad64a83e19f4de1cc3c` | `sha512-YsQFqyCW0cS/yBjCagxEOMIELEkK+Zknt44pWx41f3Ow+rupRwXJCNs0Xz826VwANVGHTnFC+AeD2LjZeBikTA==` | 3541945015          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.3   | `762bfd08386f8b230cd1e137fd6172307a364bd5` | `sha512-110EmqYwitb2HJAsKI4bZAt3VBxDcLosBvJWjP3f9ThLvaNnmt3kPVix7I/KbxcO4ZNBniejNe9GXspRqYTI5A==` | 3541949566          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.3   | `68d8b1620b0b872d98f3da22e6cd0710380d1830` | `sha512-T9iLoyqxp54QKS3/b9HA98MHELq5aFfDaQRu02/phJXqaK8PbGifP75n28x0xVq1KDnCdQBFn4lfxsrthSdOjw==` | 3541951702          | `package.json` dependency order only |
+| `@infrabyx/tenancy`    | 1.1.2   | `d0acb454c573a3c009198373eff18083a9275f6a` | `sha512-ZB6eY1xsOn1huvhWADWRlbgraUo3fyVEoBBbgeWNmsQ0HWvT9YguspdIDwWgX3c2WGwgd77v0iKYnJUOpkA8ew==` | 3541953465          | identical                            |
+| `@infrabyx/testing`    | 1.0.3   | `a7257d77effd110a9ba1028d0d54f5bb26c23e5e` | `sha512-+4Wtnafyk9S3yJznPPpaP0rx261hTxnTZrAdgaNe5XK/ZMYgxfIvzUFPKuKdrojEVNQa3c0BqcljXOZy+FgvqQ==` | 3541960443          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.3   | `c253b6c0f7460df1efa9600e64453e701e70c635` | `sha512-i9WRsF7vmffj6lJicZTzGF/ehwcl3B63jJ/MN09OlvTlG7pEuSLmx/oKEuxNehxh2sM8C7Y5oHeCcx+q5nLllg==` | 3541964687          | `package.json` dependency order only |
+| `@infrabyx/vidhi`      | 1.0.3   | `25e33814340bb93335c9f9457fd3332bbe5bb2b3` | `sha512-CSxy87N538QYlk6r46Iupq6khobvB294jENXzYr2qnTRDyntRthqHjNmkTcKZhKioSReqPMgueUJGheFgRbQ+w==` | 3541970873          | `package.json` dependency order only |
+| `@infrabyx/workflow`   | 1.0.3   | `c911c96df1448bbda04c4ea3cfe43ff15b1bd2c2` | `sha512-Q1MdTLok0qHmskG6ec+QlHiuhH6Tj+qtzg5iAFKzGP52+HC6deX2sak5rx3wVeWzrj/xJJCRbMbnv94UYXBqDQ==` | 3541977190          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`a11y` and `crypto` 1.0.1, `contracts` and `ui` 1.1.0, `hlp` 1.0.0 are unchanged); then remove any wrapper that runs a platform CLI by its real path (`docs/product-guide.md` §2). No migration, setting or environment variable.
+
+### PR-UDF-007 patch release (2026-10-28, version PR #122, release run 100)
+
+The PR-UDF-007 patches (#120): `tenancy` 1.1.1 and `connectors` 1.0.2, with the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #122 merged as `62e9ecc` with every required check green, the full 20-port `port-contract` matrix included. Release run 100 (`release` job 122852933704):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3539872303 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:09bf6af0-c3c6-5926-a1c4-a48c533135f0`, 967 components, release `62e9ecc14561`) has SHA-256 `32628412e0cc6a1f44e95e47cd5d1678e99fe62c4b2748d97096e7c06704a92d`.
+- **Published 15 packages** (`consumer-smoke` first; the other seven unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified all 15 attestations (`dsse` entries below). Each GitHub release carries the BOM, its bundle and the tarball's attestation bundle.
+- **Registry checksums:** `registry-dist` run 40700411802 (job 122858387019) printed the registry's `dist` and rebuilt every package from `62e9ecc`: in all 15 the only difference is the order of the `@infrabyx/*` keys in `package.json`, which the publish step rewrites from `workspace:*` (as at 1.1.0).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `62e9ecc`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/ai`         | 1.0.2   | `fb560c721f9eabd80257f5f1310071f233d408c5` | `sha512-9UfZZMUVBWZJbuJpL/Xpu233OTNA4SwfL40oCB7Wf2HiaioDR7RmqWRQUEknSMd1E7szsH+kBRRWAwd50bmFiw==` | 3539916653          | `package.json` dependency order only |
+| `@infrabyx/brand`      | 1.0.2   | `cc0c54f73c05e3aa99604f91aa02d0fc5967ce30` | `sha512-9jPFScpYwPauCXdXZWzIW+Zq4NZoJFDLCeQ12Nq0CH43d5mGSryDiIsrfkRZsHtviyRcN84fexeeFxOcz63U/w==` | 3539923392          | `package.json` dependency order only |
+| `@infrabyx/cms`        | 1.1.1   | `b5582413f91e969d5a700372c18778ba1ec388f4` | `sha512-QAXGJyH242Zdy2oVBhLUUIARasAtahcn9TubBUd4Hhn8BrCVo32AJbCNiz/O74WKnkEu5Q1K2GQ2BURw2b4PKQ==` | 3539928447          | `package.json` dependency order only |
+| `@infrabyx/connectors` | 1.0.2   | `c9db33092502fd170dfd4e84fa48bb4f782a1f7f` | `sha512-x5M4Mw+EMcQW8wb9QqnEVywr/Bztyw4FlF4gI/buQea/x1yhDmvnXebeaft2jlQYyqx2tXF8mFDquYV2f8x0oQ==` | 3539933413          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.2   | `2e8808e7f63d97baf7e1b01bdd7dc6c0dfdea08d` | `sha512-MVWC0i2+ELgMhPe+3SQt07lj5aBwCwK7z+z69XiUVBgNmbAAbPZn8lGq2Xc7CyRKy1SQ/PuKwmjBv0oLygRZ6g==` | 3539935741          | `package.json` dependency order only |
+| `@infrabyx/export`     | 1.0.2   | `f52309aafe2f2f2c52196edb3c8d61017caf87f7` | `sha512-itwhd0Y0lciIRhRBMe8pe4oiQglMnGEkh2JlwhzQU5W5zH1Q65upedcmaodpSZ4eM7uqVSNN20RHfScnW9fzIA==` | 3539939317          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.2   | `5fa8b096c8e673af723e04937c22316cafca4d16` | `sha512-jGk00Hm1Z2pG2vJ8ipVwyLN24xQQtLOYo13lvmrw1fLWYGXisRwGhNCkXJ+ROY8mmmU/9yfo72vveiPMyypxSg==` | 3539942174          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.0.2   | `fcfc26d196187cefd44702d2f51bc95d9a0e4a15` | `sha512-pTdWjfg9vXCrsdysq0jt99vy4pwFRt8sPQrr9fJgpvAI2cDQ57Xc2bQLCC0/3HngjFFNfMcZ+LUu4jBeMZhUDA==` | 3539945270          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.2   | `c7ccf43f25ec87c7a751fbbe6e9648b533b7d3c4` | `sha512-AbkxPOEhAO1lLL8Sv07tK7SDixoBk1kkTUEg/0pEIOom6oI+1JB/Yf3E/GwYlSm3h3LOi5p1BRmVZkE4o69ZpA==` | 3539947924          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.2   | `d475dcc3911ca9dd1953982fbd387940964a99c4` | `sha512-RRZPC33tYFe9McX+2MaQVdirAE1+dyqk8b8NhsmImEvptRUkUycbDAWR44pBCam7WodDpmQXbFInYV8IFIzkiA==` | 3539951764          | `package.json` dependency order only |
+| `@infrabyx/tenancy`    | 1.1.1   | `cc5e7cb99f4a994dba4174da04e8ce794bad3ac5` | `sha512-Cjn/4ZfM9fLehv0mafs9AEzVJ1U7L7x8RESSF2dhBv7QyVYyjQvA/MGDOkBokgVhSNxMaLel9CFluB3yi5CjdQ==` | 3539954291          | `package.json` dependency order only |
+| `@infrabyx/testing`    | 1.0.2   | `27ee1fd46cd4db7a364fa4031ac18c27ea6f1a09` | `sha512-MqdRI9TFpOvsYXvrt+JJK8oAbpwELHLCKzJSuXe1M8g9sNqETVZCLQi89hkIjrt6v+NwDS0aKfTnLSReRFzF8A==` | 3539956516          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.2   | `701c95dc829452a0ac013a6b113fb5951b720336` | `sha512-I13S7ZdMwWWFhyADxg2Dfu6ELfE3WMMvJJXlIobzQVYzOzUumwE4qaK2zYLyTAKAr5Rlu/nhwSJCYGTax3dZOw==` | 3539959019          | `package.json` dependency order only |
+| `@infrabyx/vidhi`      | 1.0.2   | `4f91622eaffff0081dd2ea22bf8310c3d038e82a` | `sha512-7Ny/SAGw/9Aehz6Rwgw24gNsnrJglz1ZcKu0AbQ5purqYEhDjPXKYsy53pAm3Rz6YTfa8Bks6o69Vis/iN335g==` | 3539962806          | `package.json` dependency order only |
+| `@infrabyx/workflow`   | 1.0.2   | `ff2a014ceef3eda61e2a82f5e7e64122767cc5a1` | `sha512-MJ3YVNmTNwB+RDSgK86hhZE3TZjcju4j0WJtMzYOmzGKy6FoIwFF02g4TJpjNO6E1W+E9Z9+R4wmdO9kQ7oP5A==` | 3539965437          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together (`pnpm add --save-exact` at the versions above; `a11y`, `config`, `crypto` 1.0.1, `audit`, `contracts`, `ui` 1.1.0 and `hlp` 1.0.0 are unchanged). No migration, setting or environment variable. Udofin can lift its "structured keys only" logging restriction.
 
 ### 1.1.0 (2026-10-28, version PR #116, release run 97)
 
