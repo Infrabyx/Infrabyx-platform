@@ -18,6 +18,7 @@ const BUILT = [
   "packages/crypto/dist/index.js",
   "packages/tenancy/dist/migrate/cli.js",
   "packages/seed/dist/cli.js",
+  "packages/seed/dist/index.js",
   "packages/connectors/dist/identity/index.js",
   "packages/connectors/dist/storage/index.js",
   "packages/connectors/dist/feature-flag/index.js",
@@ -32,6 +33,8 @@ for (const f of BUILT)
   }
 // The platform's single crypto call-site (IPB-12-05), from the built workspace package.
 const { randomBytes, toHex } = await import(join(ROOT, "packages/crypto/dist/index.js"));
+/** The product apps/reference stands in for (its seed personas carry the product roles). */
+const PRODUCT = "LD";
 const secret = (bytes = 24) => toHex(randomBytes(bytes));
 
 /** The generated local secrets; existing values are kept so volumes stay usable. */
@@ -101,6 +104,7 @@ async function bootstrap(env) {
   const { KeycloakIdentity } = await import(
     join(ROOT, "packages/connectors/dist/identity/index.js")
   );
+  const { PRODUCT_PERSONAS } = await import(join(ROOT, "packages/seed/dist/index.js"));
   const apiPort = env.API_PORT ?? "53125";
   const secrets = await KeycloakIdentity.applyRealm({
     baseUrl: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
@@ -115,6 +119,8 @@ async function bootstrap(env) {
       adminClientId: "reference-admin",
       audience: "reference-api",
       passkeys: false,
+      // The product roles its seed personas carry (e.g. LD_CLIENT), beside the platform floor.
+      productRoles: [...new Set(PRODUCT_PERSONAS[PRODUCT].map((p) => p.role))],
     },
     ...loopback,
   });
@@ -252,7 +258,7 @@ async function up(argv) {
       env: {
         ...process.env,
         APP_ENV: "local",
-        APP_PRODUCT: "LD",
+        APP_PRODUCT: PRODUCT,
         DB_URL: db,
         DB_PASSWORD: env.POSTGRES_PASSWORD,
         SEED_ENABLED: "true",
@@ -278,7 +284,7 @@ async function up(argv) {
       env: {
         ...process.env,
         APP_ENV: "local",
-        APP_PRODUCT: "LD",
+        APP_PRODUCT: PRODUCT,
         APP_BASE_URL: `http://localhost:${env.API_PORT ?? "53125"}`,
         DB_URL: db,
         DB_PASSWORD: env.POSTGRES_PASSWORD,
