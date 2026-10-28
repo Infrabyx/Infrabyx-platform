@@ -170,6 +170,21 @@ describe.skipIf(!exe)(`Studio console gate at ${BASE}`, () => {
       redirect: "manual",
     });
     expect(forged.status).toBe(403);
+    // PR-FBX-08: an Object.prototype key is not an action; nothing of the session is reflected.
+    for (const action of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+      const r = await fetch(`${BASE}/studio-actions/pages/${action}`, {
+        method: "POST",
+        headers: {
+          cookie: `${COOKIE}=editor`,
+          origin: BASE,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: "x=1",
+        redirect: "manual",
+      });
+      expect(r.status, action).toBe(404);
+      expect(r.headers.get("location"), action).toBeNull();
+    }
   });
 
   it("serves the nonce CSP, noindex and no-store on every page", async () => {

@@ -78,6 +78,7 @@ describe("scaffold-product", () => {
   it("writes the local stack, the chart values and the OpenTofu stacks for the product", () => {
     const devUp = read("scripts/dev-up.mjs");
     expect(devUp).toContain('const PRODUCT = "UDF";');
+    expect(devUp).not.toContain('APP_PRODUCT: "OH"');
     expect(devUp).toContain("node_modules/@infrabyx/tenancy/dist/migrate/cli.js");
     expect(devUp).not.toMatch(/"packages\/|apps\/reference\/api/);
     expect(read("infra/compose/docker-compose.yml")).toContain("APP: api");
@@ -96,7 +97,9 @@ describe("scaffold-product", () => {
     expect(env).toMatch(/APP_PRODUCT: envVar\([^)]*\), \{[^}]*example: "UDF"/);
     expect(read("apps/api/src/env.test.ts")).toContain('expect(v.APP_PRODUCT).toBe("UDF")');
     expect(read("apps/web/src/app/assets/web.css/route.ts")).toContain('themeCss("UDF")');
-    for (const [file] of PRODUCT_DEFAULTS) expect(read(file), file).not.toMatch(/\("LD"\)|"LD",/);
+    // The group's console and site list every brand product (LD among them); checked below.
+    for (const [file] of PRODUCT_DEFAULTS.filter(([f]) => !/^apps\/(console|public)\//.test(f)))
+      expect(read(file), file).not.toMatch(/\("LD"\)|"LD",/);
   });
 
   // PR-FBX-06: under pnpm's isolated linker the api resolves only what it declares, so a platform
@@ -110,6 +113,21 @@ describe("scaffold-product", () => {
     const int = read("apps/api/src/__tests__/api.int.test.ts");
     expect(int).toContain("requirePlatform: true");
     expect(int).not.toMatch(/'LD'|"LD"|in\.ld\./);
+  });
+
+  // PR-FBX-03: the console and the public site are copied from the group's (OH, GRP).
+  it("gives the console and the public site the product's code, theme and brand pack", () => {
+    expect(read("apps/console/src/app/assets/console.css/route.ts")).toContain('themeCss("UDF")');
+    expect(read("apps/console/src/server/console.ts")).toContain('const product = "UDF";');
+    const site = read("apps/public/src/server/site.ts");
+    expect(site).toContain('product: "UDF";');
+    expect(site).toContain('const product = "UDF" as const;');
+    expect(read("apps/public/src/server/env.ts")).toMatch(
+      /APP_BRAND_PRODUCT: envVar\([^)]*\)\.default\("UDF"\), \{[^}]*example: "UDF"/,
+    );
+    // The public seed makes the pack the site serves: APP_BRAND_PRODUCT, defaulted above (PR-FBX-08).
+    expect(read("apps/public/src/seed/public-site.ts")).toContain("APP_BRAND_PRODUCT");
+    expect(read("apps/public/.env.example")).toMatch(/^APP_BRAND_PRODUCT=UDF {26}# Brand product/m);
   });
 
   it("writes the .env.example files for the product, as infrabyx-env example --product does", () => {

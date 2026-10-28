@@ -5,7 +5,7 @@
 // approves, a seed legal reviewer signs off legal-class items, and a seed DPO drafts the consent
 // texts. The seed never runs in prod, dr or pre-prod (`assertSeedAllowed`, PL1-D-06), so the
 // placeholder policies it creates can never exist there. Running it twice changes nothing.
-import { BrandStudio } from "@infrabyx/brand";
+import { BrandStudio, type BrandProduct } from "@infrabyx/brand";
 import { CmsStudio, MANDATORY_POLICY_KEYS, PolicyStudio, type ContentType } from "@infrabyx/cms";
 import { validateEnv } from "@infrabyx/config/env";
 import { ConsentTexts } from "@infrabyx/consent";
@@ -59,14 +59,24 @@ export interface PublicSiteSeedResult {
   published: Partial<Record<ContentType, number>>;
 }
 
-async function readEnv(): Promise<{ group: GroupSeedEnv; storageDir?: string }> {
+async function readEnv(): Promise<{
+  group: GroupSeedEnv;
+  brandProduct: BrandProduct;
+  storageDir?: string;
+}> {
   const g = await validateEnv(groupSeedEnvSchema, { guards: [] });
   if (!g.ok) throw new Error(`SEED_GROUP_* refused: ${g.failures.map((f) => f.name).join(", ")}`);
-  const s = await validateEnv(z.object({ STORAGE_DIR: siteEnvSchema.shape.STORAGE_DIR }), {
-    guards: [],
-  });
+  const s = await validateEnv(
+    z.object({
+      STORAGE_DIR: siteEnvSchema.shape.STORAGE_DIR,
+      APP_BRAND_PRODUCT: siteEnvSchema.shape.APP_BRAND_PRODUCT,
+    }),
+    { guards: [] },
+  );
   return {
     group: g.values,
+    // The pack the site serves when a host is not mapped is the one the seed makes (PR-FBX-08).
+    brandProduct: s.ok ? s.values.APP_BRAND_PRODUCT : "GRP",
     ...(s.ok && s.values.STORAGE_DIR ? { storageDir: s.values.STORAGE_DIR } : {}),
   };
 }
@@ -74,8 +84,9 @@ async function readEnv(): Promise<{ group: GroupSeedEnv; storageDir?: string }> 
 /** Seed the group site through the services. Exported for the site's own tests. */
 export async function seedPublicSite(
   ctx: Pick<SeedModuleContext, "product" | "services">,
-  o: { group: GroupSeedEnv; storage: StoragePort },
+  o: { group: GroupSeedEnv; storage: StoragePort; brandProduct?: BrandProduct },
 ): Promise<PublicSiteSeedResult> {
+  const brandProduct = o.brandProduct ?? "GRP";
   const { kernel, audit, outbox } = ctx.services;
   const base = { kernel, audit, product: ctx.product, ...(outbox ? { outbox } : {}) };
   const existing = await kernel.read(
@@ -83,7 +94,8 @@ export async function seedPublicSite(
     async (tx) =>
       (
         await tx.query<{ id: string; status: string }>(
-          "select id, status from brand.pack where product = 'GRP' and is_default",
+          "select id, status from brand.pack where product = $1 and is_default",
+          [brandProduct],
         )
       ).rows[0],
   );
@@ -108,7 +120,7 @@ export async function seedPublicSite(
 
   // Brand pack and its policy set: placeholders only, never real legal text (PL5 plan §9.5).
   const { id: packId } = await brand.createPack(SEED_CHECKER, {
-    product: "GRP",
+    product: brandProduct,
     label: "Infrabyx Group",
     isDefault: true,
   });
@@ -243,7 +255,7 @@ export const publicSiteSeedModule = defineSeedModule({
   async run(ctx) {
     const env = await readEnv();
     const storage = env.storageDir ? new DirStorage(env.storageDir) : new MemoryStorage();
-    await seedPublicSite(ctx, { group: env.group, storage });
+    await seedPublicSite(ctx, { group: env.group, storage, brandProduct: env.brandProduct });
   },
 });
 

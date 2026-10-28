@@ -19,7 +19,10 @@ export async function POST(req: Request, { params }: Params) {
   if (!(await mayOpen(session, section as StudioSection)))
     return new Response("Forbidden", { status: 403 });
   const c = await getConsole();
-  const handler = actionMap(c)[section]?.[action];
+  // Own keys only: `constructor`, `toString` and the rest of Object.prototype are not actions
+  // (PR-FBX-08).
+  const handlers = actionMap(c)[section];
+  const handler = handlers && Object.hasOwn(handlers, action) ? handlers[action] : undefined;
   if (!handler) return new Response("Not found", { status: 404 });
   const result = await handler(session.ctx, await req.formData());
   const back = result.redirectTo
