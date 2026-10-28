@@ -9,7 +9,15 @@
 // falls below its baseline or a committed result is stale (`--write` refreshes the results).
 // `--live` would call paid providers: it refuses to start without `--approved-by`, and no live
 // target is wired in this repository (owner decision O-6).
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
@@ -181,7 +189,9 @@ export async function main(argv: string[]): Promise<number> {
   return 2;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
   main(process.argv.slice(2)).then(
     (c) => process.exit(c),
     (e: unknown) => {

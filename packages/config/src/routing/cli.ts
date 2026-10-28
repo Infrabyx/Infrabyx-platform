@@ -2,6 +2,7 @@
 // infrabyx-routing check <file...> [--sandbox-status packages/connectors/sandbox-status.json]
 // Validates provider_routing files in CI (IPB-01-20) and refuses unproven adapters in staging and
 // above (IPB-DEV-04). Prints problems only; secrets are paths, never values.
+import { realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { isIpbError } from "@infrabyx/contracts/errors";
@@ -36,6 +37,8 @@ export async function main(argv: string[]): Promise<number> {
   return failed ? 1 : 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+// pnpm and npm run a bin through a symlink; Node resolves the module to its real path (PR-UDF-005).
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(realpathSync(entry)).href) {
   main(process.argv.slice(2)).then((code) => process.exit(code));
 }
