@@ -1,5 +1,13 @@
 # @infrabyx/tenancy
 
+## 1.1.2
+
+### Patch Changes
+
+- 8a2587e: The `infrabyx-*` CLI entry points run when started through a `node_modules` symlink (`pnpm exec`, npm `.bin`, `node node_modules/@infrabyx/tenancy/…`); before, they exited 0 without running (PR-UDF-005).
+- Updated dependencies [8a2587e]
+  - @infrabyx/config@1.0.2
+
 ## 1.1.1
 
 ### Patch Changes
