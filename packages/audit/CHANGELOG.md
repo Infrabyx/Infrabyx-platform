@@ -1,5 +1,18 @@
 # @infrabyx/audit
 
+## 1.1.0
+
+### Minor Changes
+
+- 588b509: Migration `audit/0002` lets the outbox relay (`svc_outbox_relay`, R1-D-01) append the ledger entry of each batch it dispatches, under the ledger's tenant and actor policy; no read and no other table.
+
+### Patch Changes
+
+- Updated dependencies [588b509]
+  - @infrabyx/contracts@1.1.0
+  - @infrabyx/config@1.0.1
+  - @infrabyx/crypto@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
