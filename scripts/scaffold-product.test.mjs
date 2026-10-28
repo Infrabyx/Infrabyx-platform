@@ -98,6 +98,19 @@ describe("scaffold-product", () => {
     for (const [file] of PRODUCT_DEFAULTS) expect(read(file), file).not.toMatch(/\("LD"\)|"LD",/);
   });
 
+  // PR-FBX-06: under pnpm's isolated linker the api resolves only what it declares, so a platform
+  // package missing here had its migrations skipped; the reference test also hard-coded LD.
+  it("declares every platform package with migrations in the api, and its tests use the product", async () => {
+    const { PLATFORM_MIGRATION_PACKAGES } =
+      await import("../packages/tenancy/dist/migrate/index.js");
+    const deps = json("apps/api/package.json").dependencies;
+    for (const name of PLATFORM_MIGRATION_PACKAGES)
+      expect(deps[name], name).toBe(pkgs[name].version);
+    const int = read("apps/api/src/__tests__/api.int.test.ts");
+    expect(int).toContain("requirePlatform: true");
+    expect(int).not.toMatch(/'LD'|"LD"|in\.ld\./);
+  });
+
   it("writes the .env.example files for the product, as infrabyx-env example --product does", () => {
     const examples = APPS.flatMap((a) =>
       readdirSync(join(out, "apps", a.to))

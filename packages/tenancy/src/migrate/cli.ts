@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// infrabyx-migrate --db <url> | --db-file <path> [--dir <product migrations>] [--name <product>] [--dry-run]
-// Applies platform migrations (tenancy, audit, config, seed, connectors) then the product's own.
+// infrabyx-migrate --db <url> | --db-file <path> [--dir <product migrations>] [--name <product>]
+//   [--dry-run] [--require-all]
+// Applies the installed platform packages' migrations then the product's own, and names any platform
+// package it skipped as not installed; --require-all refuses instead, before connecting (PR-FBX-06).
 // --db-file reads the URL from a file (the secrets CSI mount in the chart's migration job), so the
 // URL and its password never appear in arguments or the environment (IPB-02-28).
 import { readFileSync, realpathSync } from "node:fs";
@@ -25,16 +27,22 @@ export async function main(argv: string[]): Promise<number> {
       dir: { type: "string" },
       name: { type: "string", default: "product" },
       "dry-run": { type: "boolean", default: false },
+      "require-all": { type: "boolean", default: false },
     },
   });
   const db = dbUrl(values.db, values["db-file"]);
   if (!db) {
     process.stderr.write(
-      "usage: infrabyx-migrate --db <postgres url> | --db-file <path> [--dir migrations] [--name product] [--dry-run]\n",
+      "usage: infrabyx-migrate --db <postgres url> | --db-file <path> [--dir migrations] [--name product] [--dry-run] [--require-all]\n",
     );
     return 2;
   }
-  const sources: MigrationSource[] = [...platformSources()];
+  const sources: MigrationSource[] = [
+    ...platformSources(process.cwd(), undefined, {
+      missing: values["require-all"] ? "error" : "skip",
+      onSkipped: (names) => process.stdout.write(`not installed, skipped: ${names.join(", ")}\n`),
+    }),
+  ];
   if (values.dir) sources.push({ name: values.name, dir: values.dir });
   const client = new pg.Client({ connectionString: db });
   await client.connect();

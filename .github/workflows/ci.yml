@@ -353,6 +353,13 @@ jobs:
           pnpm typecheck
           pnpm test
           pnpm build
+      - name: the product's api resolves every platform package with migrations (PR-FBX-06)
+        working-directory: ${{ runner.temp }}/product/apps/api
+        run: |
+          node --input-type=module -e '
+            import { platformSources } from "@infrabyx/tenancy/migrate";
+            const s = platformSources(process.cwd(), undefined, { missing: "error" });
+            console.log(`${s.length} platform migration sources resolve from apps/api`);'
       - name: the product's .env.example files are what infrabyx-env writes for it (PR-UDF-006)
         working-directory: ${{ runner.temp }}/product
         run: |

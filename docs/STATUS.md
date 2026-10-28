@@ -28,6 +28,15 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-06: platform migrations are never skipped in silence (patches of `tenancy` and `testing`)
+
+Finbyx's platform request PR-FBX-06 (R1-D-10). A scaffolded product's api did not declare `notify`, `rules`, `consent` or `feedback`, so under pnpm's isolated linker their migrations were skipped in silence and its export test failed.
+
+- **Fixed:** `infrabyx-migrate` names each package it skipped, and `--require-all` refuses (IPB-MOD-001) before connecting. `startPostgres` resolves from the caller's package first, then from `testing`, names what it skipped, and `requirePlatform: true` refuses.
+- **Scaffold:** the reference api declares all sixteen packages with migrations, so a scaffolded `apps/api` pins them. Its integration test requires them all and takes the product code from `env.ts` instead of `LD`.
+- **Checks:** a `scaffold` job step resolves every package with migrations from the product's `apps/api`; `platform-sources.test.ts` (4 cases); a scaffold unit test (the pins, no `LD` in the integration test).
+- **Products must:** take the patches. Then add any missing platform package with migrations to the package that migrates or tests (Finbyx and Udofin: `notify`, `rules`, `consent`, `feedback` in `apps/api`). Pass `--require-all` in CI's migrate step and `requirePlatform: true` to `startPostgres`. Finbyx can drop its `resolveFrom: API_ROOT` workaround.
+
 ### PR-FBX-05: the OpenFGA adapter without the SDK (security; patch of `connectors`)
 
 Finbyx's platform request PR-FBX-05 (R1-D-09). `@openfga/sdk` 0.9.7, the latest, pins `axios` 1.19.0 (seven high advisories); the platform's workspace override did not reach products, so each carried its own.
