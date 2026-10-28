@@ -745,18 +745,33 @@ export class KeycloakIdentity implements IdentityPort {
       if (a.name === "firstName" || a.name === "lastName") delete a.required;
     await call("PUT", `/${realm}/users/profile`, profile);
 
-    // `amr` references on the built-in browser and direct-grant flows.
+    // `amr` references on the built-in browser and direct-grant flows. Keycloak keeps a reference
+    // while `authTime + maxAge >= now` (whole seconds), so the maximum age is the session's
+    // lifetime: a factor proved in a session is reported for that session, and no longer. With 0
+    // the reference survived only a code exchange in the same second as the step, and no refresh.
+    const maxAge = String(KEYCLOAK_SESSION_PROFILES[o.spec.profile].ssoSessionMaxLifespan);
     for (const flow of ["browser", "direct grant"]) {
       const execs = await call<
         Array<{ id: string; providerId?: string; authenticationConfig?: string }>
       >("GET", `/${realm}/authentication/flows/${encodeURIComponent(flow)}/executions`);
       for (const e of execs) {
         const amr = e.providerId ? AMR_REFERENCES[e.providerId] : undefined;
-        if (!amr || e.authenticationConfig) continue;
-        await call("POST", `/${realm}/authentication/executions/${e.id}/config`, {
-          alias: `ipb-amr-${e.id.slice(0, 8)}`,
-          config: { "default.reference.value": amr, "default.reference.maxAge": "0" },
-        });
+        if (!amr) continue;
+        const config = { "default.reference.value": amr, "default.reference.maxAge": maxAge };
+        if (!e.authenticationConfig) {
+          await call("POST", `/${realm}/authentication/executions/${e.id}/config`, {
+            alias: `ipb-amr-${e.id.slice(0, 8)}`,
+            config,
+          });
+          continue;
+        }
+        // A realm applied before: update the platform's own reference, leave any other config.
+        const cur = await call<{ id: string; alias?: string; config?: Record<string, string> }>(
+          "GET",
+          `/${realm}/authentication/config/${e.authenticationConfig}`,
+        );
+        if (cur.alias?.startsWith("ipb-amr-"))
+          await call("PUT", `/${realm}/authentication/config/${cur.id}`, { ...cur, config });
       }
     }
 
