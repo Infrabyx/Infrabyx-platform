@@ -34,8 +34,16 @@ export interface StartPostgresOptions {
   migrations?: readonly MigrationSource[];
   /** Skip the platform migrations (only the given ones run). */
   platform?: boolean;
-  /** Directory from which platform packages are resolved (default: this package). */
+  /**
+   * Directory from which platform packages are resolved. Default: the current directory (the
+   * caller's package when its tests run there), then this package (PR-FBX-06).
+   */
   resolveFrom?: string;
+  /**
+   * Refuse (IPB-MOD-001) when a platform package with migrations cannot be resolved, instead of
+   * naming it on stderr and going on without its tables.
+   */
+  requirePlatform?: boolean;
   image?: string;
 }
 
@@ -65,6 +73,19 @@ async function serverUrl(image: string): Promise<{ url: string; stop?: () => Pro
 }
 
 export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestDatabase> {
+  // Resolved first, so a refusal leaves no database behind.
+  const sources = [
+    ...(o.platform === false
+      ? []
+      : platformSources(o.resolveFrom ?? [process.cwd(), pkgRoot], undefined, {
+          missing: o.requirePlatform ? "error" : "skip",
+          onSkipped: (names) =>
+            process.stderr.write(
+              `startPostgres: not installed, migrations skipped: ${names.join(", ")}\n`,
+            ),
+        })),
+    ...(o.migrations ?? []),
+  ];
   const server = await serverUrl(o.image ?? PG_TEST_IMAGE);
   const name = `t_${toHex(randomBytes(6))}`;
   const root = new pg.Client({ connectionString: server.url });
@@ -76,10 +97,6 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
   const url = u.toString();
   const admin = new pg.Client({ connectionString: url });
   await admin.connect();
-  const sources = [
-    ...(o.platform === false ? [] : platformSources(o.resolveFrom ?? pkgRoot)),
-    ...(o.migrations ?? []),
-  ];
   await migrate({ client: admin, sources });
   const pool = new pg.Pool({ connectionString: url, max: 25 });
   // `drop database … with (force)` in `end()` can reach a client whose socket is still closing; the

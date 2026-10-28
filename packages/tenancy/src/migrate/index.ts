@@ -13,7 +13,8 @@ import { sha256Hex } from "@infrabyx/crypto";
 /**
  * Platform packages that ship migrations, in apply order (PL1 plan §3.1). A package that is not
  * installed is skipped, so a product keeps one migrate command: installing @infrabyx/connectors
- * adds its schema to the next run (PL2-D-34).
+ * adds its schema to the next run (PL2-D-34). `platformSources` names what it skipped, and refuses
+ * instead with `missing: "error"` (PR-FBX-06).
  */
 export const PLATFORM_MIGRATION_PACKAGES = [
   "@infrabyx/tenancy",
@@ -56,18 +57,33 @@ export interface MigrateResult {
 export const NO_TRANSACTION_MARKER = "-- infrabyx:no-transaction";
 const LOCK_KEY = 7_270_140_001; // advisory lock id for concurrent runners
 
-/** Locate installed platform packages' migrations/ directories from `fromDir` (default cwd). */
+export interface PlatformSourcesOptions {
+  /**
+   * A package in `names` that cannot be resolved: `skip` (the default, PL2-D-34) leaves it out,
+   * `error` refuses with IPB-MOD-001 naming every one, before anything is applied (PR-FBX-06).
+   */
+  missing?: "skip" | "error";
+  /** Called once with the packages left out, when any are. */
+  onSkipped?: (names: string[]) => void;
+}
+
+/**
+ * Locate installed platform packages' migrations/ directories, resolving each from `fromDir`
+ * (default cwd) or, given several, from the first that has it.
+ */
 export function platformSources(
-  fromDir = process.cwd(),
+  fromDir: string | readonly string[] = process.cwd(),
   names: readonly string[] = PLATFORM_MIGRATION_PACKAGES,
+  o: PlatformSourcesOptions = {},
 ): MigrationSource[] {
-  const req = createRequire(join(resolve(fromDir), "package.json"));
+  const reqs = (typeof fromDir === "string" ? [fromDir] : fromDir).map((d) =>
+    createRequire(join(resolve(d), "package.json")),
+  );
   const out: MigrationSource[] = [];
+  const missing: string[] = [];
   for (const name of names) {
-    let pkgJson: string;
-    try {
-      pkgJson = req.resolve(`${name}/package.json`);
-    } catch {
+    let pkgJson = resolveFirst(reqs, `${name}/package.json`);
+    if (!pkgJson) {
       // Not installed from `fromDir` (e.g. the platform repository root): use the sibling package.
       const sibling = join(
         dirname(fileURLToPath(import.meta.url)),
@@ -75,12 +91,28 @@ export function platformSources(
         name.split("/")[1] as string,
         "package.json",
       );
-      if (!existsSync(sibling)) continue;
-      pkgJson = sibling;
+      if (existsSync(sibling)) pkgJson = sibling;
     }
-    out.push({ name, dir: join(dirname(pkgJson), "migrations") });
+    if (pkgJson) out.push({ name, dir: join(dirname(pkgJson), "migrations") });
+    else missing.push(name);
   }
+  if (missing.length && o.missing === "error")
+    throw new IpbError("IPB-MOD-001", {
+      detail: `platform packages with migrations are not installed: ${missing.join(", ")}; add them to this package's dependencies`,
+      meta: { rule: "platform-migrations-missing", missing },
+    });
+  if (missing.length) o.onSkipped?.(missing);
   return out;
+}
+
+function resolveFirst(reqs: readonly NodeRequire[], id: string): string | undefined {
+  for (const req of reqs)
+    try {
+      return req.resolve(id);
+    } catch {
+      // not resolvable from this directory
+    }
+  return undefined;
 }
 
 export async function readMigrations(

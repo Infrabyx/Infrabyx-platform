@@ -36,6 +36,9 @@ import { buildServices, type Services } from "../services.js";
 
 const API_ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEMO = "tnt_demo";
+/** The api's default product (`env.ts`), which the scaffold sets to the product's code (PR-FBX-06). */
+const PRODUCT = apiEnvSchema.shape.APP_PRODUCT.parse(undefined);
+const EVENT = (e: string) => `in.${PRODUCT.toLowerCase()}.hello.${e}.v1`;
 const SANDBOX = "tnt_sandbox";
 
 let db: TestDatabase;
@@ -44,16 +47,19 @@ let app: INestApplication;
 let base: string;
 
 beforeAll(async () => {
+  // Every platform package with migrations is a dependency of this package (PR-FBX-06).
   db = await startPostgres({
     migrations: [{ name: "reference", dir: join(API_ROOT, "migrations") }],
+    resolveFrom: API_ROOT,
+    requirePlatform: true,
   });
   for (const [id, name] of [
     [DEMO, "Demo Co"],
     [SANDBOX, "Sandbox"],
   ])
     await db.admin.query(
-      `insert into tenancy.tenant (id, product, name) values ($1, 'LD', $2) on conflict (id) do nothing`,
-      [id, name],
+      `insert into tenancy.tenant (id, product, name) values ($1, $2, $3) on conflict (id) do nothing`,
+      [id, PRODUCT, name],
     );
   const r = await validateEnv(apiEnvSchema, {
     guards: [],
@@ -205,8 +211,8 @@ describe("the hello module over HTTP", () => {
       [g.id],
     );
     expect(outbox.rows.map((r) => r.type)).toEqual([
-      "in.ld.hello.GreetingCreated.v1",
-      "in.ld.hello.GreetingDeleted.v1",
+      EVENT("GreetingCreated"),
+      EVENT("GreetingDeleted"),
     ]);
   });
 });
@@ -223,7 +229,7 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
 
   beforeAll(async () => {
     // A brand pack with one published page, as the Studio (and the public-site seed) make them.
-    const base = { kernel: db.kernel, audit: db.audit, product: "LD" };
+    const base = { kernel: db.kernel, audit: db.audit, product: PRODUCT };
     const brand = new BrandStudio({
       ...base,
       storage: services.storage,
@@ -232,7 +238,7 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
         policySetPublished: async () => true,
       },
     });
-    packId = (await brand.createPack(checker, { product: "LD", label: "Reference" })).id;
+    packId = (await brand.createPack(checker, { product: PRODUCT, label: "Reference" })).id;
     const cms = new CmsStudio(base);
     const { item } = await cms.createItem(editor, {
       type: "page",
@@ -290,7 +296,7 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
   it("the gate seed publishes the product's welcome page once, and pages/ serves the default pack", async () => {
     const { seedGate, WELCOME_PAGE } = await import("../seed/gate.js");
     const seedCtx = {
-      product: "LD" as const,
+      product: PRODUCT,
       services: { kernel: db.kernel, audit: db.audit, seedAllowed: true },
     } as unknown as Parameters<typeof seedGate>[0];
     expect((await fetch(`${base}/pages/en-IN/welcome`)).status).toBe(404);
@@ -399,7 +405,7 @@ describe("the outbox relay (IPB-01 §01.4.3.3)", () => {
         (JSON.parse(String(j.job.data.envelope)) as { data?: { greeting_id?: string } }).data
           ?.greeting_id === g.id,
     );
-    expect(mine.map((j) => j.job.name)).toEqual(["in.ld.hello.GreetingCreated.v1"]);
+    expect(mine.map((j) => j.job.name)).toEqual([EVENT("GreetingCreated")]);
     expect(await relay.once()).toBe(0);
     const left = await db.admin.query(
       "select count(*)::int as n from hello.outbox where dispatched_at is null",
@@ -551,7 +557,7 @@ describe("NN pattern suites on hello.greeting", () => {
       seedMain(["run", "--profile", "dev"], {
         APP_ENV: env.APP_ENV,
         SEED_ENABLED: String(env.SEED_ENABLED),
-        APP_PRODUCT: "LD",
+        APP_PRODUCT: PRODUCT,
         DB_URL: db.url,
       }),
   });

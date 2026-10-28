@@ -226,6 +226,9 @@ importers:
       '@infrabyx/connectors':
         specifier: workspace:*
         version: link:../../../packages/connectors
+      '@infrabyx/consent':
+        specifier: workspace:*
+        version: link:../../../packages/consent
       '@infrabyx/contracts':
         specifier: workspace:*
         version: link:../../../packages/contracts
@@ -235,9 +238,18 @@ importers:
       '@infrabyx/export':
         specifier: workspace:*
         version: link:../../../packages/export
+      '@infrabyx/feedback':
+        specifier: workspace:*
+        version: link:../../../packages/feedback
       '@infrabyx/hlp':
         specifier: workspace:*
         version: link:../../../packages/hlp
+      '@infrabyx/notify':
+        specifier: workspace:*
+        version: link:../../../packages/notify
+      '@infrabyx/rules':
+        specifier: workspace:*
+        version: link:../../../packages/rules
       '@infrabyx/seed':
         specifier: workspace:*
         version: link:../../../packages/seed
