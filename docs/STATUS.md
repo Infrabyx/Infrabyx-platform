@@ -28,6 +28,28 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### Customer identity: design note (no code)
+
+Udofin (PR-UDF-010), LawDocs and Equator need end-user sign-in with one-time codes and short-lived session tokens through the IDENTITY port, which neither adapter can issue today. `docs/phases/R1-customer-identity-note.md` sets out three options and recommends (b): per-product customer realms in Keycloak with an OTP authenticator delivering through NOTIFY, DPoP-bound tokens and refresh rotation, with Zitadel as the alternative. The owner decides (OWNER-QUESTIONS #84); nothing is built.
+
+### PR-UDF-013: scheduled per-tenant jobs (minors of `contracts`, `tenancy` and `audit`)
+
+Udofin's platform request PR-UDF-013 (R1-D-12; product guide §7c).
+
+- **Built:**
+  - The service reader `SVC_TENANT_SWEEP` (`tenancy/0005`: `id` and `status` of `tenancy.tenant` only; switch-only).
+  - `TenantSweep` lists every tenant not deleted, ledgered in each, and runs a job once per tenant in that tenant's context as the job's service principal. Failures are reported by code and don't stop the others.
+  - `AuditSweep.verifyAll()` and `anchorAll(date)` run the IPB-02-51 jobs for every tenant.
+- **Tests:** `sweep.int.test.ts`, 4 cases on PostgreSQL:
+  - the tenant list and its ledger entries;
+  - the role reads `id` and `status` only;
+  - each job sees only its tenant;
+  - a tampered chain is named in `broken`;
+  - anchors written per tenant, with one tenant's failure reported while the others still run.
+  - The read-only role check of R1-D-11 also covers the new role.
+- **Not built:** an `infrabyx-audit` CLI. Anchors need the product's KMS and STORAGE adapters, so products call `AuditSweep` from their worker.
+- **Products must:** run `infrabyx-migrate` (`tenancy/0005`); schedule `verifyAll` weekly and `anchorAll` daily (§7c). Udofin can replace its one-tenant `AuditJobs`.
+
 ### PR-UDF-016: the read-only role writes nothing (security; patch of `tenancy`)
 
 Udofin's platform request PR-UDF-016 (R1-D-11).
@@ -53,6 +75,21 @@ Finbyx's platform request PR-FBX-06 (R1-D-10). A scaffolded product's api did no
 - **Scaffold:** the reference api declares all sixteen packages with migrations, so a scaffolded `apps/api` pins them. Its integration test requires them all and takes the product code from `env.ts` instead of `LD`.
 - **Checks:** a `scaffold` job step resolves every package with migrations from the product's `apps/api`; `platform-sources.test.ts` (4 cases); a scaffold unit test (the pins, no `LD` in the integration test).
 - **Products must:** take the patches. Then add any missing platform package with migrations to the package that migrates or tests (Finbyx and Udofin: `notify`, `rules`, `consent`, `feedback` in `apps/api`). Pass `--require-all` in CI's migrate step and `requirePlatform: true` to `startPostgres`. Finbyx can drop its `resolveFrom: API_ROOT` workaround.
+
+### PR-FBX-05 patch release (2026-10-28, version PR #129, release run 107)
+
+The PR-FBX-05 patch (#127): the OpenFGA adapter without the SDK in `connectors`, with the patch of `rules` that depends on it, released under OWNER-QUESTIONS #81(a). Version PR #129 merged as `5da637d` with every required check green, the full 20-port `port-contract` matrix included. Release run 107 (`release` job 122973856575):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3544159230 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:0de394d1-bc4f-5fbd-8ed4-b55456c5f639`, 953 components, release `5da637dd4e45`) has SHA-256 `352943ae086dd7783fd78d59cbc3b67ad3b4de6e1fd7a643f82515f581739b49`.
+- **Published 2 packages** (`consumer-smoke` first; the other 20 unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified both attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40738017606 (job 122991720131) printed the registry's `dist` and rebuilt both packages from `5da637d` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `5da637d`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/connectors` | 1.0.4   | `56e9f430158d965bcbf087642014a5a59c34bc7b` | `sha512-OLKMG+Io3cTvs8kGnFLFvKzC/ILxkn0NSBgE3mWENn9XHY1fgKvqCikB6o1zDqB1M2I1ElZMjJvakbm6l+MfUA==` | 3544183569          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.4   | `23daedbfbc493911ee242ff9897026aa188a3663` | `sha512-l0ef/RRIxe7V2vVeN3lqei7oarN55DH4+nP8e0r5VoGvbLtO0O/SbLr//34fITTZewnD0t3S1X9DM8bT4pHnxw==` | 3544184888          | `package.json` dependency order only |
+
+**Products adopting this release:** move `@infrabyx/connectors` and `@infrabyx/rules` to 1.0.4 with every other `@infrabyx/*` dependency at its current version; then drop the product's own `axios` override (Finbyx SEC-01) and re-run its audit. No migration, setting or environment variable.
 
 ### PR-FBX-05: the OpenFGA adapter without the SDK (security; patch of `connectors`)
 

@@ -554,11 +554,21 @@ The Studio page editor edits a page's blocks through forms (`@infrabyx/ui/studio
 - **R:** every operation is a new immutable revision with a summary (`Block moved (block 2)`) and the save's ledger entry; approvals are voided as for any edit.
 - **Residual:** none new; the editor reuses the save path, its checks and its audit.
 
+### 3.52 Scheduled per-tenant jobs (built, PR-UDF-013; R1-D-12)
+
+`TenantSweep` in `@infrabyx/tenancy` lists the tenants for a product's scheduled jobs, and `AuditSweep` in `@infrabyx/audit` runs the IPB-02-51 ledger jobs (weekly verification, daily anchor) for each.
+
+- **I and E (a job seeing more than its tenant):** Control: the list is a `SVC_TENANT_SWEEP` read whose database role selects only `id` and `status` of `tenancy.tenant` (anything else is 42501, tested); each job then runs in its tenant's own context under RLS, as the job's service principal, and sees only that tenant's rows (tested: one tenant visible per run).
+- **R (an unrecorded sweep):** Control: the list read is ledgered in every tenant it lists (`platform.service_read`); the job's own writes are ledgered under its principal; a break found by verification is ledgered and raises `LedgerChainBroken`, as for one tenant.
+- **E (a job holding reader rights or reader limits):** Control: the reader and the job principal are separate; a context holding a service-reader role is read-only in the kernel, so the job runs as `svc_tenant_job` (or the product's own principal), never as the reader; the reader's role is switch-only (R1-D-11).
+- **D (one tenant blocking the rest):** Control: a tenant's failure is reported by its error code and the sweep continues.
+- **Residual:** scheduling, retries and alerting on `broken` or `failed` are the product worker's (`docs/product-guide.md` §7c).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
 
-- **E:** a background identity reading or changing more than it needs. Control: each role maps to its own database role (`svc_scheduler`, `svc_notify_dispatch`, `svc_notify_unsubscribe`, `svc_export_sweep`, `svc_ai_run_sweep`, `svc_ai_index_sweep`, `svc_vidhi_sched`, created by the owning package's migration), granted `SELECT` on the named columns of its tables only and nothing else (one table each, except `svc_export_sweep`: jobs, archives and the deletion marker, ids and times only, under platform-scope read policies limited `to` that role; PL3-D-25); the kernel runs a platform-scope read as that role (`SET LOCAL ROLE`), so a query on any other table or column fails with `42501`, and forced RLS still applies.
+- **E:** a background identity reading or changing more than it needs. Control: each role maps to its own database role (`svc_scheduler`, `svc_notify_dispatch`, `svc_notify_unsubscribe`, `svc_export_sweep`, `svc_ai_run_sweep`, `svc_ai_index_sweep`, `svc_vidhi_sched`, `svc_tenant_sweep`, created by the owning package's migration), granted `SELECT` on the named columns of its tables only and nothing else (one table each, except `svc_export_sweep`: jobs, archives and the deletion marker, ids and times only, under platform-scope read policies limited `to` that role; PL3-D-25); the kernel runs a platform-scope read as that role (`SET LOCAL ROLE`), so a query on any other table or column fails with `42501`, and forced RLS still applies.
 - **E:** a reader approving, writing or impersonating. Control: the kernel refuses every mutation by a reader except the ledger entry recording its own read, in a tenant context (`IPB-SEC-005`); its context must be a service principal with exactly one reader role, no `PLT_*` role, no `act` and no break-glass; a token claiming a reader role is refused (`contextFromClaims`), so readers exist only in-process.
 - **R:** an unrecorded cross-tenant read. Control: the query must select `tenant_id`; each read that returned rows writes one `platform.service_read` ledger entry in every tenant it touched (actor = the reader principal, resource = the table) and calls the operational `onServiceRead` hook with the row count per tenant. An empty read returns no tenant data and writes nothing.
 - **Residual:** the platform-scope RLS read policies on these tables still admit PLT_* principals (people, under IPB-02-11), as before.
