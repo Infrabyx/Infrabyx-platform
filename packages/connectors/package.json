@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/connectors",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Vendor adapters behind the IPB-01 ports (one folder per port) and the provider_routing runtime",
   "license": "UNLICENSED",
   "private": false,

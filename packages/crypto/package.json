@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/crypto",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "The only cryptography call-site; crypto-agility layer",
   "license": "UNLICENSED",
   "private": false,
