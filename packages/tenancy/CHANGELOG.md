@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.2.0
+
+### Minor Changes
+
+- 75e9ea4: `TenantSweep` and migration `0005` (PR-UDF-013): list the tenants as `SVC_TENANT_SWEEP` (only `id` and `status`; the read is ledgered in each tenant) and run a scheduled job once per tenant in that tenant's context, as the job's own service principal, reporting each tenant's failure without stopping the others.
+
+### Patch Changes
+
+- Updated dependencies [75e9ea4]
+  - @infrabyx/contracts@1.2.0
+  - @infrabyx/config@1.0.3
+  - @infrabyx/crypto@1.0.2
+
 ## 1.1.3
 
 ### Patch Changes
