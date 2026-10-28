@@ -23,7 +23,7 @@ const BUILT = [
   "packages/connectors/dist/storage/index.js",
   "packages/connectors/dist/feature-flag/index.js",
   "packages/config/dist/flags/index.js",
-  "apps/reference/api/dist/seed/hello.js",
+  "apps/reference/api/dist/seed/index.js",
   "apps/reference/api/dist/seed/adapters.js",
 ];
 for (const f of BUILT)
@@ -106,6 +106,7 @@ async function bootstrap(env) {
   );
   const { PRODUCT_PERSONAS } = await import(join(ROOT, "packages/seed/dist/index.js"));
   const apiPort = env.API_PORT ?? "53125";
+  const webPort = env.WEB_PORT ?? "53127";
   const secrets = await KeycloakIdentity.applyRealm({
     baseUrl: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
     masterAdmin: { username: "ipb-bootstrap", password: env.KEYCLOAK_ADMIN_PASSWORD },
@@ -114,7 +115,11 @@ async function bootstrap(env) {
       profile: "tenant",
       apiClient: {
         clientId: "reference-api",
-        redirectUris: [`http://localhost:${apiPort}/auth/callback`],
+        // The web app's origin (sign-in runs through it) and the api's own, for `pnpm start`.
+        redirectUris: [
+          `http://localhost:${webPort}/auth/callback`,
+          `http://localhost:${apiPort}/auth/callback`,
+        ],
       },
       adminClientId: "reference-admin",
       audience: "reference-api",
@@ -242,7 +247,8 @@ async function up(argv) {
       },
     },
   );
-  // The reference app's seed (the hello greetings of the demo and sandbox tenants).
+  // The reference app's seeds: the hello greetings of the demo and sandbox tenants, and the gate's
+  // welcome page and trust mirror.
   execFileSync(
     "node",
     [
@@ -250,7 +256,7 @@ async function up(argv) {
       "--profile",
       "dev",
       "--modules",
-      "apps/reference/api/dist/seed/hello.js",
+      "apps/reference/api/dist/seed/index.js",
     ],
     {
       stdio: "inherit",

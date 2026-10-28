@@ -512,6 +512,17 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **D (Temporal down):** Control: the readiness probe reports WORKFLOW `degraded`, never `down`; timers still fire through the poller within a minute; the worker's Temporal loop logs and ends without taking the queue consumers with it.
 - **Residual:** the local dev server keeps its state in memory, so timers started before a restart fire through the poller only; the deployed engine (session 6 onwards) is durable.
 
+### 3.46 The reference web app, a backend-for-frontend (built, PL6 session 5; PL6-D-12)
+
+`apps/reference/web` is the browser's only origin: it proxies sign-in to the reference api and renders every page from server-side api calls that carry the person's session cookie.
+
+- **S (session theft):** Control: the session is one HttpOnly, SameSite=Lax cookie set by the api through the web's proxy on the web origin (Secure on https); the browser never holds a token in script and never calls the api; the api verifies the token, its roles and the second factor on every call (IPB-02-AT-02).
+- **T (cross-site requests):** Control: every POST goes to a route handler of the web that refuses another origin (Origin, or Sec-Fetch-Site) and answers 303 to a path of this origin only; the nonce CSP with `form-action 'self'` and `frame-ancestors 'none'`.
+- **I (what the web passes on):** Control: the server-side calls forward the session cookie and nothing else; problems are shown by title and code, never a stack or a host; the export download is a short-lived signed link minted per click and ledgered (C-22), with the archive digest in a response header so the client can check the file.
+- **E (the web as a confused deputy):** Control: the web holds no credential of its own and calls the api only as the person; the api's AUTHZ and maker-checker decide (the assistant drafts, a checker approves).
+- **T and I (web to api in transit):** Control: `APP_API_URL` must be https except to loopback in local, dev, test and preview (IPB-SEC-018).
+- **Residual:** the `pages/` route serves the product's default pack whether or not the pack is published (its pages still pass the CMS maker-checker); a product publishes its pack and resolves it by host.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
