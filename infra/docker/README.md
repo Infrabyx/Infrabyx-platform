@@ -2,25 +2,27 @@
 
 The container images of the platform's deployables (IPB-01-31, §01.4.8.1; PL6 plan §3).
 
-| File                 | What it is                                                                                                                                                |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `next/Dockerfile`    | The image of every Next.js deployable (`apps/public`, `apps/console`): base → deps (`pnpm fetch`) → build (`turbo build`, `pnpm deploy --prod`) → runtime |
-| `healthcheck.mjs`    | The image `HEALTHCHECK`: the app's own `/health/live` on its port                                                                                         |
-| `image.e2e.test.mjs` | `@IPB-01-AT-15` on built images (`IPB_IMAGES="<image> …" pnpm images:test`)                                                                               |
-| `trivyignore.yaml`   | Trivy waivers, each with a statement, a reason and an expiry                                                                                              |
-| `BASE_IMAGES.md`     | The pinned Node base (tag and digest)                                                                                                                     |
-| `TEST_IMAGES.md`     | Images the contract legs run (tests only, never deployed)                                                                                                 |
+| File                 | What it is                                                                                                                                                     |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `next/Dockerfile`    | The image of every Next.js deployable (`apps/public`, `apps/console`): base → deps (`pnpm fetch`) → build (`turbo build`, `pnpm deploy --prod`) → runtime      |
+| `node/Dockerfile`    | The image of every other Node deployable (`apps/reference/api`, `apps/reference/worker`): the same stages, `ENTRYPOINT node --enable-source-maps dist/main.js` |
+| `healthcheck.mjs`    | The image `HEALTHCHECK`: the app's own `/health/live` on its port                                                                                              |
+| `image.e2e.test.mjs` | `@IPB-01-AT-15` on built images (`IPB_IMAGES="<image> …" pnpm images:test`)                                                                                    |
+| `trivyignore.yaml`   | Trivy waivers, each with a statement, a reason and an expiry                                                                                                   |
+| `BASE_IMAGES.md`     | The pinned Node base (tag and digest)                                                                                                                          |
+| `TEST_IMAGES.md`     | Images the contract legs run (tests only, never deployed)                                                                                                      |
 
 ## Build and run
 
 ```sh
 docker build -f infra/docker/next/Dockerfile --build-arg APP=public -t infrabyx/public:dev .
+docker build -f infra/docker/node/Dockerfile --build-arg APP=reference/api -t infrabyx/reference-api:dev .
 # Behind a TLS-inspecting proxy: add --secret id=ca,src=<ca.pem>
 docker run --read-only --tmpfs /tmp --tmpfs /app/.next/cache:uid=10001 --cap-drop ALL \
   --security-opt no-new-privileges -p 3000:3000 --env-file <env file> infrabyx/public:dev
 ```
 
-The runtime runs as UID 10001 with the code owned by root (readable, never writable), on a read-only root filesystem. The only writable paths, `/tmp` and `.next/cache`, are empty volumes in Compose and the Helm chart. Environment variables are the app's `.env.example` keys; in staging and above secrets come through the SECRETS port, never the environment (IPB-02-28).
+The runtime runs as UID 10001 with the code owned by root (readable, never writable), on a read-only root filesystem. The only writable paths, `/tmp` and (Next.js only) `.next/cache`, are empty volumes in Compose and the Helm chart. Environment variables are the app's `.env.example` keys; in staging and above secrets come through the SECRETS port, never the environment (IPB-02-28).
 
 ## Probes
 

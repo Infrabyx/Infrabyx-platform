@@ -1,0 +1,26 @@
+# Help entries of the reference app's hello module (IPB-07 §07.4.3; PL6 plan §8.1). A product keeps
+# its own registry beside the platform one; `infrabyx-hlp lint` checks both. Plain text of at most
+# 40 words; no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: hello
+entries:
+  - key: hlp.hello.greeting
+    term: "Greeting"
+    plain: "A short message your organisation posts for its members. Everyone in the organisation can read it; only the person who wrote it can ask to take it back."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.hello.greeting_max_length
+    term: "Greeting length"
+    plain: "The longest greeting your organisation allows, in characters. An administrator can lower it; the platform ceiling is 2000."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.hello.retract
+    term: "Retract a greeting"
+    plain: "Asks to take a greeting back. A checker in your organisation must agree before it disappears; the request and the decision are kept in the audit trail."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal

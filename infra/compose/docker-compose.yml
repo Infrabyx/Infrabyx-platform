@@ -219,6 +219,45 @@ services:
       APP_FIXTURE_ADAPTERS: "true"
     ports: ["127.0.0.1:${CONSOLE_PORT:-53124}:3000"]
 
+  api:
+    # The reference API (PL6 plan §8): the fixture IDENTITY, AUTHZ, STORAGE and QUEUE adapters in
+    # this stack until session 4b wires Keycloak, Cerbos, MinIO and Redis through dev:up.
+    profiles: [apps]
+    <<: *hardened
+    build:
+      { context: ../.., dockerfile: infra/docker/node/Dockerfile, args: { APP: reference/api } }
+    image: infrabyx/reference-api:local
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      APP_ENV: local
+      APP_PRODUCT: LD
+      APP_BASE_URL: http://localhost:${API_PORT:-53125}
+      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
+      APP_FIXTURE_ADAPTERS: "true"
+    ports: ["127.0.0.1:${API_PORT:-53125}:3000"]
+
+  worker:
+    # The reference worker: the API's codebase at its worker entrypoint (IPB-01 §01.4.2).
+    profiles: [apps]
+    <<: *hardened
+    build:
+      { context: ../.., dockerfile: infra/docker/node/Dockerfile, args: { APP: reference/worker } }
+    image: infrabyx/reference-worker:local
+    read_only: true
+    tmpfs: [/tmp]
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      APP_ENV: local
+      APP_PRODUCT: LD
+      APP_BASE_URL: http://localhost:${API_PORT:-53125}
+      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
+      APP_FIXTURE_ADAPTERS: "true"
+    ports: ["127.0.0.1:${WORKER_PORT:-53126}:3000"]
+
   opensearch:
     profiles: [search]
     image: opensearchproject/opensearch:3.8.0@sha256:fafe3fc3587088674669235575aa166228c48bdb940294a8cdbbc1da75236a40

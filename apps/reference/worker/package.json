@@ -1,0 +1,22 @@
+{
+  "name": "@infrabyx/reference-worker",
+  "version": "0.0.0",
+  "description": "The worker of apps/reference (IPB-01 §01.4.2): the API's codebase started at its worker entrypoint (queue consumers, the health probes); the template products copy as apps/worker",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --enable-source-maps dist/main.js",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "engines": {
+    "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/reference-api": "workspace:*"
+  }
+}

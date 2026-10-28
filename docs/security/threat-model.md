@@ -470,6 +470,18 @@ One Dockerfile (`infra/docker/next/Dockerfile`) builds `apps/public` and `apps/c
 - **Residency:** Control: regions other than centralindia/southindia (Azure) and asia-south1/asia-south2 (GCP) fail the plan without an ADR (IPB-01-36).
 - **Residual:** as on AWS, lock files are not committed yet and the retention defaults must be confirmed before a product applies them (#71, #72).
 
+### 3.42 `apps/reference` api and worker (built, PL6 session 4a; PL6-D-08)
+
+The reference API (NestJS 11) and its worker on the platform packages; the template products copy. Flows: browser → api (session cookie or bearer) → IDENTITY (code exchange, token verification), AUTHZ (one check per route), the kernel (forced RLS, the ledger and the outbox in one transaction); worker → QUEUE consumers and the same health probes.
+
+- **S (a forged or replayed session):** Control: the authorisation code flow uses PKCE S256 with a state kept in a short-lived HttpOnly cookie and checked at the callback; tokens are verified by the IDENTITY port on every request (Keycloak JWKS, or the fixture's per-process HMAC key, which exists only in local, dev, test and preview); MFA is asserted for the roles that require it (IPB-02-02). Residual: the session cookie lives as long as the access token with no refresh; the fixture IdP has no brute-force protection (Keycloak's own applies with the real adapter).
+- **T (cross-site requests on the cookie session):** Control: `SameSite=Lax` and `HttpOnly`, `Secure` on https; every state-changing route is a JSON `POST` or `DELETE` under the authentication guard; CORS is not enabled. Residual: a product that enables CORS for a separate web origin must add a CSRF token or `SameSite=Strict`.
+- **R:** Control: every write runs in `kernel.mutate` with its ledger entry and its outbox event in the same transaction; retraction is an R2 request decided by a checker (never the maker, never an agent); deletion ends in the locked verb, refused to agents in the kernel and denied in the Cerbos policy.
+- **I (what an error or a probe reveals):** Control: problems carry a code, a title and a safe detail, never SQL, stack traces or hosts; `/health/ready` names ports and adapters only; security headers (`nosniff`, `DENY`, `no-referrer`, `no-store`, a `default-src 'none'` CSP) on every response; `x-powered-by` off.
+- **D:** Control: Express's default body limit; list reads capped at 200 rows; health probes time out at 2 s and answer 503 fail-closed. Residual: no rate limit at the API (the ingress or the IdP applies one).
+- **E:** Control: the tenant context comes only from verified claims (`TenantContextInterceptor`); AUTHZ decides per route with the principal's roles and the tenant attribute; a sandbox-tenant owner reading a demo greeting gets 404 under RLS (NN-01).
+- **Residual:** the fixture personas have fixed ids and roles by design (seed tenants only, IPB-11-26); products must never enable `APP_FIXTURE_ADAPTERS` outside the four fixture environments (the env check refuses it).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

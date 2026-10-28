@@ -1,0 +1,22 @@
+# The hello module's AUTHZ policy for Cerbos (PL6 plan §8.1), beside the platform policies of
+# packages/connectors/policy/cerbos. Members read, makers create and ask to retract, owners delete;
+# the platform DENY for agents on the locked verbs wins (IPB-02-10).
+apiVersion: api.cerbos.dev/v1
+resourcePolicy:
+  resource: hello_greeting
+  version: default
+  importDerivedRoles: ["ipb_platform"]
+  rules:
+    - actions: ["read"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_reader", "tenant_agent", "scoped_ops"]
+    - actions: ["create", "retract"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_writer", "tenant_agent"]
+    - actions: ["delete"]
+      effect: EFFECT_ALLOW
+      derivedRoles: ["tenant_owner"]
+    - name: agents_never_decide
+      actions: ["approve", "sign", "disburse", "delete", "grant"]
+      effect: EFFECT_DENY
+      derivedRoles: ["ai_agent"]

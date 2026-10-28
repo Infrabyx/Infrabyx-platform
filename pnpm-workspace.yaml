@@ -1,6 +1,7 @@
 packages:
   - "packages/*"
   - "apps/*"
+  - "apps/reference/*"
 
 # pnpm 10 blocks dependency lifecycle scripts unless listed here (ADR-0002).
 onlyBuiltDependencies:
@@ -16,3 +17,8 @@ minimumReleaseAgeExclude:
   - "@infrabyx/*"
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
+
+# Transitive pins the image scan rejects (PL6 session 4a): @openfga/sdk 0.9.7 pins axios 1.19.0
+# (seven HIGH findings, fixed in 1.20.0 of 2026-08-26). Removed when the SDK moves.
+overrides:
+  axios: 1.20.0

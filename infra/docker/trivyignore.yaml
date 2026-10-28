@@ -44,4 +44,14 @@ vulnerabilities:
   - id: CVE-2023-45853
     statement: zlib minizip zipOpenNewFileInZip4_6 (Debian will not fix; minizip is not built into zlib1g's library API that Node uses). Waived 2026-10-27
     expired_at: 2027-01-25
+  # Node packages of the reference api and worker images (PL6 session 4a). The fixed versions
+  # (body-parser 2.4.0 and multer 2.5.0, both published 2026-10-22) are younger than the 7-day
+  # minimum release age (PL2-D-32) at the time of waiving; the next dependency update after
+  # 2026-10-29 takes them and the waivers go.
+  - id: CVE-2026-111181
+    statement: body-parser 2.3.0 (via express 5.2.1) denial of service on an unhandled decompression stream error; the API reads small JSON bodies behind the ingress and the fix (2.4.0) is under the minimum release age until 2026-10-29. Waived 2026-10-28
+    expired_at: 2026-11-20
+  - id: CVE-2026-113872
+    statement: multer 2.4.0 (via @nestjs/platform-express 11.2.7) denial of service on an aborted multipart request during asynchronous file filtering; the API has no file-upload route and multer is never mounted; the fix (2.5.0) is under the minimum release age until 2026-10-29. Waived 2026-10-28
+    expired_at: 2026-11-20
 secrets: []
