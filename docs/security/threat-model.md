@@ -541,6 +541,7 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **R (an unrecorded relay):** Control: the cross-tenant discovery read is ledgered per tenant (`platform.service_read`), and each batch writes `<schema>.outbox.dispatch` in its tenant's ledger in the same transaction.
 - **S (registering a table that is not an outbox):** Control: `register_outbox` is executable by `app_migrate` only, validates the schema name, the columns and forced RLS, and grants on that schema's `outbox` table only.
 - **Residual:** the event envelope is read by the relay (it must be, to deliver it); envelopes carry no secrets by the IPB-10 event contract.
+- **E (the read-only role writing through the relay role; found by Udofin, PR-UDF-016):** `tenancy/0003` granted `svc_outbox_relay` to `app_ro` and `app_rw` with the default INHERIT, so both held its writes (the ledger append, `dispatched_at` and `attempts`) without switching. Control: `tenancy/0004` revokes it from `app_ro` and makes every `svc_*` membership of `app_rw` and `app_ro` INHERIT FALSE, SET TRUE; `app_ro` and `app_rw` are NOINHERIT, so later grants default the same (R1-D-11). The integration test proves a login holding only `app_ro` is refused every write and the switch to `svc_outbox_relay` (42501), and that no role reachable from a read-only or auditor role holds a write privilege.
 
 ### 3.49 The visual block editor (built, R1 item 2; PR-038, R1-D-02)
 
@@ -561,6 +562,7 @@ Background workers that must find due work across tenants (the workflow timer po
 - **E:** a reader approving, writing or impersonating. Control: the kernel refuses every mutation by a reader except the ledger entry recording its own read, in a tenant context (`IPB-SEC-005`); its context must be a service principal with exactly one reader role, no `PLT_*` role, no `act` and no break-glass; a token claiming a reader role is refused (`contextFromClaims`), so readers exist only in-process.
 - **R:** an unrecorded cross-tenant read. Control: the query must select `tenant_id`; each read that returned rows writes one `platform.service_read` ledger entry in every tenant it touched (actor = the reader principal, resource = the table) and calls the operational `onServiceRead` hook with the row count per tenant. An empty read returns no tenant data and writes nothing.
 - **Residual:** the platform-scope RLS read policies on these tables still admit PLT_* principals (people, under IPB-02-11), as before.
+- **E (inherited reader privileges, PR-UDF-016):** until `tenancy/0004` every `svc_*` role was inherited by `app_ro` and `app_rw`, so their column grants and platform-scope policies applied without the kernel switching roles. Control: the memberships are switch-only (INHERIT FALSE, SET TRUE) and the two roles NOINHERIT, so a reader's grants apply only inside the kernel's `SET LOCAL ROLE` (R1-D-11).
 
 ## 4. Ports
 

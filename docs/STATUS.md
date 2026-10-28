@@ -28,6 +28,23 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-UDF-016: the read-only role writes nothing (security; patch of `tenancy`)
+
+Udofin's platform request PR-UDF-016 (R1-D-11).
+
+- **Defect:** `app_ro` inherited every `svc_*` role. Through `svc_outbox_relay` it could append to `audit.ledger` and update every registered outbox (`dispatched_at`, `attempts`). Reproduced here on PostgreSQL with a login holding only `app_ro`.
+- **Fixed (migration `tenancy/0004`):**
+  - Every `svc_*` membership of `app_rw` and `app_ro` is now switch-only (INHERIT FALSE, SET TRUE).
+  - `app_rw` and `app_ro` are NOINHERIT, so later grants default the same way.
+  - `svc_outbox_relay`, the one service role that writes, is revoked from `app_ro` altogether.
+  - The kernel switches roles with `SET LOCAL ROLE` as before.
+- **Tests:** `readonly-roles.int.test.ts` (4 cases): all fail before the migration and pass after.
+  - A login holding only `app_ro` is refused every write with a privilege error (42501), both as itself and after `set role app_ro`.
+  - It cannot switch to `svc_outbox_relay`.
+  - No role reachable from `app_ro` or any other read-only or auditor role holds a write privilege on any table, column or sequence.
+  - No service role is inherited.
+- **Products must:** take the patch and run `infrabyx-migrate` (`tenancy/0004`). A login that should only read is granted `app_ro` alone. Udofin can keep or drop `udf_external_ro`; `app_ro` is now SELECT-only.
+
 ### PR-FBX-06: platform migrations are never skipped in silence (patches of `tenancy` and `testing`)
 
 Finbyx's platform request PR-FBX-06 (R1-D-10). A scaffolded product's api did not declare `notify`, `rules`, `consent` or `feedback`, so under pnpm's isolated linker their migrations were skipped in silence and its export test failed.
