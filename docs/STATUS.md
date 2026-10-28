@@ -28,6 +28,15 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### The second factor survives the code exchange (patch of `connectors`)
+
+Found by the gate journey on the G2 PR (#137): the owner signed in with the TOTP code, and the API still answered `IPB-SEC-001` (R1-D-16).
+
+- **Cause:** the Keycloak realm setup gave each `amr` reference a maximum age of 0 seconds, so `otp` reached the token only when the code was exchanged in the same second as the TOTP step, and never after a refresh.
+- **Fixed:** the maximum age is the session lifetime of the realm's profile (12 h tenant, 8 h staff; IPB-02-03). Re-applying a realm updates the platform's own references.
+- **Tests:** the IDENTITY contract leg exchanges the code 2.5 s after the TOTP step and still sees the second factor; re-applying a realm that holds 0 restores the lifetime. The reference journey covers the browser path.
+- **Products must:** take the `connectors` patch and re-apply their realm (`KeycloakIdentity.applyRealm`, as at deploy). Products on Zitadel are not affected.
+
 ### G2: the Ecosystem inbox (minors of `tenancy` and `contracts`)
 
 The owner's answer #82: the shared Ecosystem inbox as the next minor (R1-D-15; product guide §7a).

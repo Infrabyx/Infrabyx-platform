@@ -23,6 +23,7 @@ const admin = { username: "ipb-bootstrap", password: pw() };
 let kc: StartedService;
 let base = "";
 let secrets = { clientSecret: "", adminClientSecret: "" };
+let spec: Parameters<typeof KeycloakIdentity.applyRealm>[0]["spec"];
 let logoutServer: Server;
 const logoutTokens: string[] = [];
 const revocations = new MemoryRevocationStore();
@@ -52,22 +53,23 @@ beforeAll(async () => {
       c.withExtraHosts([{ host: "host.docker.internal", ipAddress: "host-gateway" }]),
   });
   base = `http://${kc.host}:${kc.ports[8080]}`;
+  spec = {
+    realm: REALM,
+    profile: "tenant",
+    apiClient: {
+      clientId: API,
+      redirectUris: ["http://127.0.0.1/callback"],
+      backchannelLogoutUrl: `http://host.docker.internal:${hookPort}/logout`,
+    },
+    adminClientId: "ipb-admin",
+    audience: AUDIENCE,
+    passkeys: true,
+  };
   secrets = await KeycloakIdentity.applyRealm({
     baseUrl: base,
     masterAdmin: admin,
     allowLoopbackHttp: true,
-    spec: {
-      realm: REALM,
-      profile: "tenant",
-      apiClient: {
-        clientId: API,
-        redirectUris: ["http://127.0.0.1/callback"],
-        backchannelLogoutUrl: `http://host.docker.internal:${hookPort}/logout`,
-      },
-      adminClientId: "ipb-admin",
-      audience: AUDIENCE,
-      passkeys: true,
-    },
+    spec,
   });
 });
 afterAll(async () => {
@@ -96,12 +98,14 @@ async function loginWith(
   username: string,
   password: string,
   otpSecret?: Uint8Array,
+  exchangeDelayMs = 0,
 ): Promise<string> {
   const r = await new LoginDriver(issuer(), API).login((page) => {
     if (page === "login") return { username, password, credentialId: "" };
     if (page === "otp" && otpSecret) return { otp: totp(otpSecret) };
     throw new Error(`unexpected page ${page}`);
   });
+  if (exchangeDelayMs) await new Promise((res) => setTimeout(res, exchangeDelayMs));
   return (
     await p.authenticate({
       kind: "oidc_code",
@@ -183,7 +187,9 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
           // The next login asks for the TOTP and the token carries amr otp. A code is accepted
           // once, so wait for the next 30 s window after the enrolment code.
           await new Promise((res) => setTimeout(res, 30_500 - (Date.now() % 30_000)));
-          const mfaToken = await loginWith(kp, user, second, secret);
+          // The code is exchanged seconds after the TOTP step, as a slow client would: `amr`
+          // still carries otp (a zero reference max age dropped it after the same second).
+          const mfaToken = await loginWith(kp, user, second, secret, 2_500);
           const mfa = await kp.verifyToken(mfaToken);
           expect(mfa.mfa).toBe(true);
           expect(() => assertMfaForRoles(mfa)).not.toThrow();
@@ -344,6 +350,52 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
     ],
     { leg: "hermetic" },
   );
+
+  it("re-applying the realm brings the amr references to the session lifetime", async () => {
+    const tr = await fetch(`${base}/realms/master/protocol/openid-connect/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "password", client_id: "admin-cli", ...admin }),
+    });
+    const auth = {
+      authorization: `Bearer ${((await tr.json()) as { access_token: string }).access_token}`,
+    };
+    const adminApi = `${base}/admin/realms/${REALM}/authentication`;
+    const references = async () => {
+      const execs = (await (
+        await fetch(`${adminApi}/flows/browser/executions`, { headers: auth })
+      ).json()) as Array<{ authenticationConfig?: string }>;
+      const out: Array<{ id: string; alias: string; config: Record<string, string> }> = [];
+      for (const e of execs)
+        if (e.authenticationConfig)
+          out.push(
+            (await (
+              await fetch(`${adminApi}/config/${e.authenticationConfig}`, { headers: auth })
+            ).json()) as (typeof out)[number],
+          );
+      return out.filter((c) => c.alias.startsWith("ipb-amr-"));
+    };
+    const before = await references();
+    expect(before.map((c) => c.config["default.reference.value"])).toEqual(
+      expect.arrayContaining(["otp", "pwd"]),
+    );
+    const lifetime = String(KEYCLOAK_SESSION_PROFILES.tenant.ssoSessionMaxLifespan);
+    for (const c of before) expect(c.config["default.reference.maxAge"]).toBe(lifetime);
+    // A realm applied by an earlier version holds 0; applying again corrects it.
+    for (const c of before)
+      await fetch(`${adminApi}/config/${c.id}`, {
+        method: "PUT",
+        headers: { ...auth, "content-type": "application/json" },
+        body: JSON.stringify({ ...c, config: { ...c.config, "default.reference.maxAge": "0" } }),
+      });
+    await KeycloakIdentity.applyRealm({
+      baseUrl: base,
+      masterAdmin: admin,
+      allowLoopbackHttp: true,
+      spec,
+    });
+    for (const c of await references()) expect(c.config["default.reference.maxAge"]).toBe(lifetime);
+  });
 
   it("JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002", async () => {
     const p = adapter();
