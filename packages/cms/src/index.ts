@@ -22,3 +22,4 @@ export * from "./policies.js";
 export * from "./resources.js";
 export * from "./forms.js";
 export * from "./pricing.js";
+export * from "./editor.js";

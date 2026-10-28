@@ -229,4 +229,52 @@ describe.skipIf(!exe)(`Studio console gate at ${BASE}`, () => {
     expect(await p2.locator(".ibx-badge").first().textContent()).toBe("published");
     await checker.close();
   });
+
+  it("PR-038 a page's blocks are added, edited, moved and removed through the block editor without JavaScript", async () => {
+    const editor = await fresh("editor", { js: false });
+    const page = await editor.newPage();
+    const notice = async () => page.locator(".ibx-notice__title").first().textContent();
+    await page.goto(`${BASE}/studio/pages`);
+    await page.fill("#f-title", "Block editor page");
+    await page.fill("#f-slug", `block-editor-${Date.now()}`);
+    await page.fill("#f-body", JSON.stringify({ template: "article", blocks: [] }));
+    await page.click("text=Create draft");
+    expect(await notice()).toBe("Draft created");
+
+    await page.selectOption("#f-block-type", "rich_text");
+    await page.click('button:has-text("Add block")');
+    expect(await notice()).toBe("Block added");
+    await page.fill("#b-0-content", "## Why\n\nIt **works**.");
+    await page.click('button:has-text("Save block 1")');
+    expect(await notice()).toBe("Block saved");
+
+    await page.selectOption("#f-block-type", "steps");
+    await page.click('button:has-text("Add block")');
+    expect(await notice()).toBe("Block added");
+    await page.fill("#b-1-items-0-title", "Plan");
+    await page.fill("#b-1-items-2-title", "Review");
+    await page.fill("#b-1-items-2-text", "Someone else checks it.");
+    await page.check("#b-1-items-1-remove");
+    await page.click('button:has-text("Save block 2")');
+    expect(await notice()).toBe("Block saved");
+    expect(await page.inputValue("#b-1-items-1-title")).toBe("Review");
+
+    // A service check comes back on the field it is about.
+    await page.fill("#b-1-items-0-title", "");
+    await page.fill("#b-1-items-0-text", "");
+    await page.click('button:has-text("Save block 2")');
+    expect(await notice()).toContain("IPB-CMS-001");
+    expect(await page.locator("#b-1-items .ibx-field__error").count()).toBe(1);
+
+    await page.click('button:has-text("Move block 2 up")');
+    expect(await notice()).toBe("Block moved");
+    await page.click('button:has-text("Remove block 2")');
+    expect(await notice()).toBe("Block removed");
+    const body = JSON.parse(await page.inputValue("#f-body")) as {
+      blocks: { type: string; items: { title: string }[] }[];
+    };
+    expect(body.blocks.map((b) => b.type)).toEqual(["steps"]);
+    expect(body.blocks[0]!.items.map((i) => i.title)).toEqual(["Plan", "Review"]);
+    await editor.close();
+  });
 });

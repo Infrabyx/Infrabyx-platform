@@ -6,6 +6,7 @@
 import type { ReactNode } from "react";
 import { Button, Field, SelectField } from "../components/forms.js";
 import { DataTable } from "../components/data.js";
+import { BlockEditor, type Block, type BlockEditorOptions } from "./block-editor.js";
 import { when } from "./form.js";
 import {
   errorFor,
@@ -199,6 +200,12 @@ export async function ContentEditScreen<C>(
     transitions: TransitionTable;
     actions: { save: FormAction; workflow: FormAction; preview: FormAction };
     reveal?: string | undefined;
+    /**
+     * The visual block editor (PR-038) for bodies with blocks (pages, landing pages, sections):
+     * the block types' fields (`@infrabyx/cms` `BLOCK_EDITOR`) and the action of `blockHandlers`.
+     * The whole body stays editable as JSON below it.
+     */
+    blocks?: { options: BlockEditorOptions; action: FormAction } | undefined;
     /** A type's own panel, shown before the revisions (a resource's versions). */
     extra?: ReactNode;
   },
@@ -211,6 +218,19 @@ export async function ContentEditScreen<C>(
   const can = (move: string) => p.transitions[move]?.from.includes(item.status) ?? false;
   const err = (id: string) => errorFor(p.errors, id);
   const hidden = { itemId: item.id };
+  const blockEditor =
+    p.blocks && !item.deletedAt && Array.isArray(rev.body.blocks) ? p.blocks : null;
+  const bodyField = (
+    <Field
+      id="f-body"
+      name="body"
+      label="Body (JSON)"
+      helpKey="hlp.studio.body_json"
+      multiline
+      defaultValue={pretty(rev.body)}
+      error={err("f-body")}
+    />
+  );
   return (
     <StudioPage
       sections={p.sections}
@@ -244,6 +264,17 @@ export async function ContentEditScreen<C>(
         <dd>{when(item.lastReviewedAt)}</dd>
       </dl>
 
+      {blockEditor ? (
+        <BlockEditor
+          itemId={item.id}
+          revisionId={rev.id}
+          blocks={rev.body.blocks as Block[]}
+          action={blockEditor.action}
+          options={blockEditor.options}
+          errors={p.errors}
+        />
+      ) : null}
+
       {item.deletedAt ? null : (
         <StudioSectionBox id="edit" title="Edit">
           {item.status !== "draft" ? (
@@ -268,15 +299,14 @@ export async function ContentEditScreen<C>(
               defaultValue={rev.slug ?? ""}
               error={err("f-slug")}
             />
-            <Field
-              id="f-body"
-              name="body"
-              label="Body (JSON)"
-              helpKey="hlp.studio.body_json"
-              multiline
-              defaultValue={pretty(rev.body)}
-              error={err("f-body")}
-            />
+            {blockEditor ? (
+              <details className="ibx-studio__json" open={err("f-body") ? true : undefined}>
+                <summary>Edit the whole body as JSON</summary>
+                {bodyField}
+              </details>
+            ) : (
+              bodyField
+            )}
             <Field
               id="f-seo"
               name="seo"

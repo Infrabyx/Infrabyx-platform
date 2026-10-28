@@ -338,3 +338,52 @@ entries:
     review_by: 2027-10-27
     status: published
     visibility: internal
+  - key: hlp.studio.block_field
+    term: "Block field"
+    plain: "One part of a page block, such as its heading or a button's link. Leave an optional field empty to leave it out. The service checks the block when you save it."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.rich_text
+    term: "Rich text"
+    plain: "Text with paragraphs, headings, lists and links. Leave a blank line between paragraphs; the hint under the field shows how to write headings, lists, bold, italic and links."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.block_list_remove
+    term: "Remove item"
+    plain: "Tick to take this item out of the list when you save the block. The page keeps its earlier revisions, so a removed item can be brought back."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.block_json
+    term: "Block as JSON"
+    plain: "This kind of block, such as tabs that hold other blocks, has no form yet. Edit it as JSON in the shape the block library expects."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.block_type
+    term: "Block type"
+    plain: "The kind of block to add, such as a hero, text, steps or a call to action. It starts with placeholder content for you to change."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.block_position
+    term: "Position"
+    plain: "Where the new block goes: before one of the page's blocks, or at the end. You can move it later."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal
+  - key: hlp.studio.block_ref
+    term: "Reference"
+    plain: "The id a new image, logo, form, testimonial or pricing block needs before it can be saved, copied from the media library or the list it comes from."
+    effective_date: 2026-10-28
+    review_by: 2027-10-28
+    status: published
+    visibility: internal

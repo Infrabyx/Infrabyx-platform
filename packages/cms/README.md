@@ -57,6 +57,7 @@ any edit ──▶ draft (voids the approval; the published revision keeps servi
 - `PublicContent` serves published revisions only. Its `resolve` returns content (falling back to en-IN with the right `lang`), a redirect, or a 410. `handlePublicApi` is the GET-only `/api/public/v1` API.
 - The sanitiser is available as `@infrabyx/cms/sanitise` (`htmlToPortableText`, `sanitisePortableText`, `toHtml`). SEO and the generated files come from `organizationLd`, `sitemapIndex`, `sitemapFor`, `robotsTxt`, `llmsTxt`, `llmsFullTxt` and `rssFeed`.
 - The footer: `validateFooter`, `footerInputFrom`, and `brandFooterHook` for Brand Studio's publish precondition. The `infrabyx-cms validate-footer <file.json>` CLI checks it in CI.
+- The block editor (PR-038): `BLOCK_EDITOR` holds a form for every block type (`BLOCK_EDITOR_SPECS`) and the rich text codec (`textToPortableText`, `portableTextToText`). Pass it to the `@infrabyx/ui/studio` `ContentEditScreen` (`blocks`) and `blockHandlers`; saves still go through `saveDraft`.
 
 ## Policies (IPB-05)
 
