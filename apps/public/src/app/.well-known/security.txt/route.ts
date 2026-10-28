@@ -4,8 +4,10 @@ import { generated, text } from "../../../server/files.ts";
 
 export async function GET(req: Request) {
   const g = await generated(req);
-  const o = await g.site.policies.officers(g.pack.packId);
   const base = g.base.replace(/\/$/, "");
+  // RFC 9116 serves the file over https only; a plain-http site has none (PR-FBX-08).
+  if (!base.startsWith("https://")) return new Response("Not found", { status: 404 });
+  const o = await g.site.policies.officers(g.pack.packId);
   return text(
     securityTxt({
       contacts: [o.dpo.email ?? `security@${new URL(base).hostname}`],

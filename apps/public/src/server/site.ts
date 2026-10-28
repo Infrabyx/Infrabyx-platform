@@ -42,7 +42,10 @@ function missingPort<T extends object>(port: string): T {
 
 export interface Site {
   env: SiteEnv;
-  /** The product code events carry (OH hosts the group CMS, Ecosystem §6.35). */
+  /**
+   * The product code events carry: OH, which hosts the group CMS (Ecosystem §6.35); a product's
+   * scaffolded copy carries its own code.
+   */
   product: "OH";
   brandProduct: BrandProduct;
   kernel: PgKernel;

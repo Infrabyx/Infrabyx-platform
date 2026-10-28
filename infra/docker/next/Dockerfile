@@ -16,9 +16,13 @@ RUN corepack enable
 
 FROM base AS deps
 WORKDIR /repo
+# A product's image fetches @infrabyx/* from GitHub Packages with a read token passed as the
+# build secret `npmrc` (`--secret id=npmrc,src=$HOME/.npmrc`): the user config holds the token,
+# the repository's .npmrc names the registry only, and no layer keeps it (PR-FBX-08).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     --mount=type=secret,id=ca,required=false \
+    --mount=type=secret,id=npmrc,target=/root/.npmrc,required=false \
     if [ -f /run/secrets/ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca; fi \
     && pnpm fetch --store-dir /pnpm/store
 
@@ -29,6 +33,7 @@ ENV LEFTHOOK=0
 COPY . .
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     --mount=type=secret,id=ca,required=false \
+    --mount=type=secret,id=npmrc,target=/root/.npmrc,required=false \
     if [ -f /run/secrets/ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/ca; fi \
     && test -n "$APP" && test -f "apps/$APP/package.json" \
     && PKG="$(node -p "require('./apps/$APP/package.json').name")" \

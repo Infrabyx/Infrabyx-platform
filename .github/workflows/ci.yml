@@ -353,6 +353,13 @@ jobs:
           pnpm typecheck
           pnpm test
           pnpm build
+      - name: no other product's code is left in the product's apps (PR-UDF-006, PR-FBX-03)
+        working-directory: ${{ runner.temp }}/product
+        run: |
+          if grep -rnE 'themeCss\("(LD|OH|GRP)"\)|const product = "OH"|product: "OH";|default\("(LD|GRP)"\)|product = .GRP.' \
+            apps --include="*.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist; then
+            exit 1
+          fi
       - name: the product's api resolves every platform package with migrations (PR-FBX-06)
         working-directory: ${{ runner.temp }}/product/apps/api
         run: |

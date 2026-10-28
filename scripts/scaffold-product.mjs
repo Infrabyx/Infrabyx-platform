@@ -329,6 +329,8 @@ const devUp = (pairs, product) =>
   pairs
     .reduce((t, [re, to]) => t.replace(re, to), read("scripts/dev-up.mjs"))
     .replace(/^const PRODUCT = "[A-Z]+";/m, `const PRODUCT = "${product}";`)
+    // The platform's stack seeds its public site as the group's (OH); a product's as its own.
+    .replace(/APP_PRODUCT: "OH",/g, "APP_PRODUCT: PRODUCT,")
     .replace(/"packages\/([a-z-]+)\/dist\//g, '"node_modules/@infrabyx/$1/dist/')
     .replace(/"\.\.\/\.\.\/packages\/([a-z-]+)\/dist\//g, '"../../node_modules/@infrabyx/$1/dist/')
     .replace(
@@ -369,12 +371,35 @@ export const PRODUCT_DEFAULTS = [
     (p) => `expect(v.APP_PRODUCT).toBe("${p}")`,
   ],
   ["apps/web/src/app/assets/web.css/route.ts", /themeCss\("LD"\)/g, (p) => `themeCss("${p}")`],
+  // The console and the public site are the group's in the platform (OH hosts the group CMS, GRP
+  // is the group brand); a product's copies carry its own code (PR-FBX-03).
+  [
+    "apps/console/src/app/assets/console.css/route.ts",
+    /themeCss\("OH"\)/g,
+    (p) => `themeCss("${p}")`,
+  ],
+  [
+    "apps/console/src/server/console.ts",
+    /const product = "OH";/g,
+    (p) => `const product = "${p}";`,
+  ],
+  ["apps/public/src/server/site.ts", /product: "OH";/g, (p) => `product: "${p}";`],
+  [
+    "apps/public/src/server/site.ts",
+    /const product = "OH" as const;/g,
+    (p) => `const product = "${p}" as const;`,
+  ],
+  [
+    "apps/public/src/server/env.ts",
+    /(APP_BRAND_PRODUCT: envVar\(z\.enum\([^)]*\)\.default\()"GRP"(\), \{[^}]*?example: )"GRP"/g,
+    (p) => `$1"${p}"$2"${p}"`,
+  ],
 ];
 
 /**
  * The generated `.env.example` files name the product, as `infrabyx-env example --product <code>`
- * writes them, instead of `<PRODUCT>`; APP_PRODUCT's example line is rebuilt with the generator's
- * padding (PR-UDF-006).
+ * writes them, instead of `<PRODUCT>`; the APP_PRODUCT and APP_BRAND_PRODUCT example lines are
+ * rebuilt with the generator's padding (PR-UDF-006, PR-FBX-03).
  */
 export function productEnvExample(text, product) {
   return text
@@ -382,6 +407,10 @@ export function productEnvExample(text, product) {
     .replace(
       /^APP_PRODUCT=LD +(# .*)$/m,
       (_m, rest) => `${`APP_PRODUCT=${product}`.padEnd(46)} ${rest}`,
+    )
+    .replace(
+      /^APP_BRAND_PRODUCT=GRP +(# .*)$/m,
+      (_m, rest) => `${`APP_BRAND_PRODUCT=${product}`.padEnd(46)} ${rest}`,
     );
 }
 
