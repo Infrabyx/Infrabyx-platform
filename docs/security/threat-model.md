@@ -482,6 +482,17 @@ The reference API (NestJS 11) and its worker on the platform packages; the templ
 - **E:** Control: the tenant context comes only from verified claims (`TenantContextInterceptor`); AUTHZ decides per route with the principal's roles and the tenant attribute; a sandbox-tenant owner reading a demo greeting gets 404 under RLS (NN-01).
 - **Residual:** the fixture personas have fixed ids and roles by design (seed tenants only, IPB-11-26); products must never enable `APP_FIXTURE_ADAPTERS` outside the four fixture environments (the env check refuses it).
 
+### 3.43 The reference gate endpoints (built, PL6 session 4b; PL6-D-09)
+
+New flows in `apps/reference/api`: published content read from the CMS tables; the hello Vidhi skill (greeting text to the LLM port, an R2 proposal to the approvals engine); the tenant export (snapshot → archive in STORAGE, signed by KMS, downloaded by a signed link); the trust mirror fed by the TRUST port and served at `/trust`.
+
+- **S and T (an agent acting beyond a maker):** Control: the task runs under a delegated agent context (`AGT_VIDHI`); at the tenant's default L1 only read tools run and the runtime refuses writes; the post is an R2 request the agent makes and a checker decides, executed under the checker's identity; the kernel's locked-verb guard and the Cerbos deny for agents stay in force. Residual: none beyond IPB-03's.
+- **I (what reaches the model):** Control: greetings are INTERNAL and sent as data under a system prompt that says so; the fixture never leaves the process. Residual: the reference calls the LLM port directly, so the gateway's scrubber, BYOK and cost caps do not apply until a product wires the gateway (PL6-D-09; #74).
+- **I (the archive and its link):** Control: the archive is built by the export service in the tenant's context under forced RLS, written to STORAGE by class, signed with the KMS key (C-22), downloaded through a short-lived signed link that is ledgered; only an owner exports directly and an admin's request waits for the owner. Residual: the fixture signer's key and the per-process pseudonym key are not production material.
+- **T (a forged trust document):** Control: the mirror records only events it has not seen, verifies digests against the feed, and the Trust Centre shows PUBLISHED, PUBLIC documents only; gated documents are counted, never linked. Residual: the fixture feed is static.
+- **D:** Control: content and trust reads are cheap kernel reads under `no-store`; the export limits per principal (5 open, 20 a day) hold; the worker's sweep is capped at 100 jobs a pass.
+- **Residual:** LLM, KMS and TRUST answer `IPB-PORT-001` above staging until a product wires them, and `/health/ready` reports the service `degraded` meanwhile.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
