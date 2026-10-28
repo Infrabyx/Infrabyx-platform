@@ -1,0 +1,4 @@
+{
+  "$comment": "Exit drill records (IPB-01 §01.4.13): one entry per drill, {port, date (YYYY-MM-DD), env, exitTarget, measuredRtoHours, evidence (vad_ id)}. `pnpm exit-runbook` takes the latest drill per port. No drill has run yet: the staging environments do not exist (OWNER-QUESTIONS #67).",
+  "drills": []
+}
