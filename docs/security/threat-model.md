@@ -567,6 +567,16 @@ The Studio page editor edits a page's blocks through forms (`@infrabyx/ui/studio
 - **D (a failing handler blocking a subject):** Control: the handler's transaction rolls back; the attempt is counted in its own transaction; after `maxAttempts` (5) the event is `failed` and the subject waits for an operator instead of retrying without end.
 - **Residual:** signature verification of the inbound delivery (Standard Webhooks, RFC 9421) happens before `receive`, in the product's gateway; the detached JWS of regulated messages is G5. Inbox rows are kept until the product decides their retention (no purge is built; retention is the owner's).
 
+### 3.51 JWS for regulated messages (built, R1 G5; R1-D-08, R1-D-17)
+
+`signRegulatedMessage` and `verifyRegulatedMessage` in `@infrabyx/crypto` sign and check the detached JWS that Ecosystem Spec §3.6 stores with each regulated message (`isRegulatedMessage` in `@infrabyx/contracts/events` names them).
+
+- **S and T (a forged or altered regulated message):** Control: ES256 only, through an allow-list that refuses `none`, every `HS*` and every other algorithm; the signature covers the JCS form of the whole CloudEvent; the key is in KMS and named by `kid`; a DER signature, an attached payload or non-canonical base64url is refused.
+- **S (algorithm or key confusion through the header):** Control: the protected header must hold exactly `alg`, `kid`, `typ`, `iat` and `jti`; `b64`, `crit`, `jku`, `jwk`, `x5u`, `x5c` and any other member are refused; keys come only from the verifier's own key ring, never from the message, and the ring takes EC P-256 keys only.
+- **R and T (a replayed message):** Control: `iat` must lie within five minutes back and one minute ahead, and a `jti` is accepted once (the replay store); a message that fails any other check never claims its `jti`, so a forgery cannot block the real one.
+- **D (a key rotation dropping messages):** Control: the key ring holds the current and the previous key, each with its validity window; messages signed during the overlap verify with either.
+- **Residual:** `MemoryReplayStore` is per process; a product with several verifier instances backs `ReplayStore` with shared storage, or relies on the Ecosystem inbox's `(source, id)` uniqueness as the durable second line. RFC 9421 transport signatures are the product gateway's.
+
 ### 3.52 Scheduled per-tenant jobs (built, PR-UDF-013; R1-D-12)
 
 `TenantSweep` in `@infrabyx/tenancy` lists the tenants for a product's scheduled jobs, and `AuditSweep` in `@infrabyx/audit` runs the IPB-02-51 ledger jobs (weekly verification, daily anchor) for each.

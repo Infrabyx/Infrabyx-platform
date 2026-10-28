@@ -67,6 +67,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "audit anchor signatures (C-03)",
       "JWT ES256 verification (C-11)",
       "export manifest and ExportCompleted detached JWS through KMS sign (C-22)",
+      "regulated Ecosystem messages, detached JWS with kid, iat and jti through KMS sign (C-22 profile, R1-D-08)",
     ],
   },
   {
