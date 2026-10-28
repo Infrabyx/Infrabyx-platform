@@ -28,9 +28,52 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-07 and the PR-FBX-04 note: the seed CLI (patches of `seed` and `config`)
+
+Finbyx's platform request PR-FBX-07 and the open note on its PR-FBX-04 row (R1-D-13).
+
+- **Fixed:**
+  - `DB_PASSWORD` now reaches PostgreSQL when `DB_URL` has no password, as documented. The password goes into the URL, percent-encoded; before, the documented form failed with `SASL: client password must be a string`.
+  - A seed refusal without `APP_PRODUCT` now names the product the scaffold records in the root `package.json`, else `unknown`, never `LD`.
+- **Root cause found on the way:** `envVar` replaced a shared schema's metadata when it was declared twice, which made the refusal gate's `APP_PRODUCT` required (a production run with it unset exited 78 before reporting the refusal). `envVar` now clones such a schema first.
+- **Tests:**
+  - `seed.test.ts`: the scaffolded product, `unknown`, never `LD`; the encoded password.
+  - `env.test.ts`: a shared schema keeps each declaration's metadata.
+  - Scaffold test: the root `package.json` names the product.
+  - Against PostgreSQL 16: the old form fails with Finbyx's error, the new form connects with a password containing `@ : / % é # ?`.
+- **Products must:** take the patches; a product scaffolded earlier adds `"infrabyx": { "product": "<code>" }` to its root `package.json` (Finbyx: `FBX`). Seeds in `staging` and `demo` with a `secret://` `DB_PASSWORD` now work.
+
 ### Customer identity: design note (no code)
 
 Udofin (PR-UDF-010), LawDocs and Equator need end-user sign-in with one-time codes and short-lived session tokens through the IDENTITY port, which neither adapter can issue today. `docs/phases/R1-customer-identity-note.md` sets out three options and recommends (b): per-product customer realms in Keycloak with an OTP authenticator delivering through NOTIFY, DPoP-bound tokens and refresh rotation, with Zitadel as the alternative. The owner decides (OWNER-QUESTIONS #84); nothing is built.
+
+### PR-UDF-016 and PR-FBX-06 patch release (2026-10-28, version PR #131, release run 110)
+
+The PR-UDF-016 security patch (#130) and the PR-FBX-06 patches (#128) of `tenancy` and `testing`, with the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #131 merged as `292ecc5` with every required check green, the full 20-port `port-contract` matrix included. Release run 110 (`release` job 123013741234):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3545726270 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:b9ae1697-c324-5baf-a415-b505bc0df309`, 953 components, release `292ecc5618b5`) has SHA-256 `db5f2d90dda92e5cec7a42b3019d6dd729934c9598d30db3a36fe24f18d4938f`.
+- **Published 15 packages** (`consumer-smoke` first: 22 packages, 103 exports, 0 failed; `a11y`, `audit`, `config`, `contracts`, `crypto`, `hlp` and `ui` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified all 15 attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40746591383 (job 123021905265) printed the registry's `dist` and rebuilt every package from `292ecc5` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `292ecc5`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/ai`         | 1.0.4   | `d54801ced38a75cd2da5d5cab3aad05d30804925` | `sha512-xgJxCpGMSnl/7KEojGJGhKLqEryV3zFTIBauaGyT3Gu10gJA06GKiiq7pW1qQGq5RuZigO1M765w81xsVH69qg==` | 3545794014          | identical                            |
+| `@infrabyx/brand`      | 1.0.4   | `b85ff3e0ff8e0d58aa2842251500965d08c9ee33` | `sha512-By+CmldDbXxa9QkNlnoQPpjJNBo8gtPkoNQJXrbgKHLzFpC7qqTE/Gk2zfCamMLkixA6jM971LKpoJq/VFbCXg==` | 3545799801          | `package.json` dependency order only |
+| `@infrabyx/cms`        | 1.1.3   | `418e768dd8f82d8cb00490eee043bcb071370b05` | `sha512-PY6k9d5T3AiRv/xaZEjhp5UkoFJ7soxIuA0iJo4RTKQ/ovxpw8VGGC2HcnWw7xoI1gtV4PXVUtiHEZMPESguWA==` | 3545802406          | `package.json` dependency order only |
+| `@infrabyx/connectors` | 1.0.5   | `056ff7881cb223b3f037e11ab2fe9cbc3cc285b0` | `sha512-yqsxu3Ffd+TJzTMUcfFT2n/2aAM5viTbLAcqWIIFykeROaX6sHDNGRLVv37+bo0jXxk7Zn1FKkC1qpvJKjIsEw==` | 3545804376          | identical                            |
+| `@infrabyx/consent`    | 1.0.4   | `98bb94b6a1bfa92a826f68ef005114c3a68dfb15` | `sha512-zFoS3vdLjkQQX7HEv3lRVSLXEp21+Oy0KCimqOd39zBw97P7/gdg+cn+68QtZi1qqBP6OwSBKnD1CYKHxtjAFg==` | 3545810544          | identical                            |
+| `@infrabyx/export`     | 1.0.4   | `f7f14d6e7bb24ba96c2539950af1dcc67d41fb75` | `sha512-EXth27RAKzU65/szJd6EaNMxKQerEo9nZcpNVlrjnMKevjrX30XGEZM1N933xBcxEqdPVQdxzy0qCB3w4m3lcA==` | 3545813151          | identical                            |
+| `@infrabyx/feedback`   | 1.0.4   | `330b14aa4632ba4e7ded48e49d42d1869c4be392` | `sha512-VFQ6VpsjXe8JDmj4YIx+l9+y9exyfBnPHBQARhf75eC1lqTbMe2KjEGd+3XDo7fFounqcdgkYvkJ1UMLdvpIcg==` | 3545815284          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.0.4   | `70900a1ae4d38385d1efbc0a4350d43ec90469b6` | `sha512-vnfwBxgO/PqzqKzypfVM1CXdxeHU04lQhjxkKDtx1AF4u3oSRb9gvpXClenOWpe0lyLIV2/HADcQ1vIDbZCCfw==` | 3545821297          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.5   | `64f217ea00bcbb30bcc84a3c7e6bc009875d4568` | `sha512-IdzzuWnUZ+JueD8NMwtq663C27XSA2OgDSQErJLzTb99LH5AkoX0k+wSQE9zDnrtTmbSIqZAp4ObJV1mMRT9/w==` | 3545825028          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.4   | `0549594ccef49b785b61299c1015afb0a1be29e2` | `sha512-fp2lCBERolS9JnZ18G52zoqOJJqAF1gbspN6my8oN2OnBdsuwDEL8zw61gcVu4dX7+fFgsa0PphDe6JlOGbSFA==` | 3545830526          | `package.json` dependency order only |
+| `@infrabyx/tenancy`    | 1.1.3   | `a9242a4fd70b72b8a145426ce34951d30ca97fa8` | `sha512-k8lVR5ZPCEPxvOM354pVbYOMg77ELCrLHUrnuG01cqHNltUtM7C+PTCUscmx5iSvcbcQb5d/fTgJpdBII8CRXA==` | 3545838691          | `package.json` dependency order only |
+| `@infrabyx/testing`    | 1.0.4   | `29ba402054a2a333d9d35581e809280f7d7b9dbe` | `sha512-/S7O6gYMM6YLddfiBDiykVh61k15xLCojCsUngGLvTvdgPURCFUcZM0CPdXljyn+vw1sLrMr9iitCol9nXcsJA==` | 3545840762          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.4   | `1074cdef2d1a879847fe4d783c144ce5ea8d7faa` | `sha512-SL9xUckR1NAjjQvruDDmhhbhJ/avORvJANfr38oMR9gnb9AEPnA4Wc42UtY8vKoSZeFv4bZLFDR7fANUj06zjg==` | 3545843623          | `package.json` dependency order only |
+| `@infrabyx/vidhi`      | 1.0.4   | `de7012cfafb05092b9a6fdff22a4c033c8884303` | `sha512-4muTsKaw0DoSVhUbONlVZGDFnSLptR705mTdYBbEGp5MXkM98/X1cQ/Pf5N0j5LhXuxS/RYG68t9jGWFqTERoA==` | 3545848352          | identical                            |
+| `@infrabyx/workflow`   | 1.0.4   | `9eac6a346d3bc496b7f308ccd73d8945c3f8af91` | `sha512-rpzU6TWXWRe9UraYt7TFY4+UvupYKCVijljwUNFndAxovNcMCl1dP5qxNS8oIVGLiRSptzBEWPcSjilaqkWvHQ==` | 3545854546          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (the seven unchanged packages stay where they are), then run `infrabyx-migrate`: `tenancy/0004` makes the service roles switch-only and leaves `app_ro` with no write path (PR-UDF-016). A login meant only for reading gets `app_ro` alone. Products that start PostgreSQL in tests with `startPostgres` can pass `requirePlatform: true` (PR-FBX-06). No setting or environment variable.
 
 ### PR-UDF-013: scheduled per-tenant jobs (minors of `contracts`, `tenancy` and `audit`)
 

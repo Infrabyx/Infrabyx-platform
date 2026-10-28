@@ -46,6 +46,7 @@ describe("scaffold-product", () => {
     const root = json("package.json");
     expect(root.packageManager).toMatch(/^pnpm@10\./);
     expect(root.engines.node).toBe("24.22.1");
+    expect(root.infrabyx).toEqual({ product: "UDF" });
     expect(root.devDependencies["@infrabyx/testing"]).toBe(pkgs["@infrabyx/testing"].version);
     const ws = read("pnpm-workspace.yaml");
     expect(ws).toContain('  - "apps/*"');

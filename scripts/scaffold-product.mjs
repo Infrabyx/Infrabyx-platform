@@ -130,7 +130,7 @@ function rewritePackageJson(file, scope, pkgs, apps) {
   writeFileSync(file, `${JSON.stringify(p, null, 2)}\n`);
 }
 
-const rootPackage = (slug, name, pkgs) => {
+const rootPackage = (slug, name, pkgs, product) => {
   const platform = JSON.parse(read("package.json"));
   const dev = platform.devDependencies;
   const pick = (...names) =>
@@ -141,6 +141,9 @@ const rootPackage = (slug, name, pkgs) => {
     private: true,
     description: `${name}: built on the Infrabyx platform packages (@infrabyx/*)`,
     type: "module",
+    // Read by the platform bins that run before the product's configuration (infrabyx-seed's
+    // refusal report, PR-FBX-04 note).
+    infrabyx: { product },
     engines: platform.engines,
     packageManager: platform.packageManager,
     scripts: {
@@ -451,7 +454,7 @@ export async function scaffold({
     }
 
   write(".nvmrc", read(".nvmrc"));
-  write("package.json", `${JSON.stringify(rootPackage(slug, name, pkgs), null, 2)}\n`);
+  write("package.json", `${JSON.stringify(rootPackage(slug, name, pkgs, product), null, 2)}\n`);
   write("pnpm-workspace.yaml", workspaceYaml());
   write("turbo.json", turboJson());
   write(".npmrc", npmrc(registry));

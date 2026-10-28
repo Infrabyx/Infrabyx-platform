@@ -4,8 +4,8 @@
 // infrabyx-seed credentials --adapters <module> [--rotate] [--no-file]
 // Refusal comes first: in prod/dr/pre-prod, or without SEED_ENABLED=true, the CLI exits 1 with
 // IPB-SEED-001 and emits SeedRefused before any other configuration is read (@IPB-11-AT-02).
-import { resolve } from "node:path";
-import { realpathSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { readFileSync, realpathSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import pg from "pg";
@@ -113,6 +113,37 @@ export const seedEnvSchema = gateSchema.extend({
   }),
 });
 
+/**
+ * The product a scaffolded repository records in its root `package.json`
+ * (`"infrabyx": { "product": "<code>" }`), from the nearest one up from `from` that has it.
+ */
+export function scaffoldedProduct(from: string = process.cwd()): string | undefined {
+  for (let dir = resolve(from); ; dir = dirname(dir)) {
+    try {
+      const v = (
+        JSON.parse(readFileSync(join(dir, "package.json"), "utf8")) as {
+          infrabyx?: { product?: unknown };
+        }
+      ).infrabyx?.product;
+      if (v !== undefined) return ProductCode.safeParse(v).success ? String(v) : undefined;
+    } catch {
+      // no package.json here, or not JSON
+    }
+    if (dirname(dir) === dir) return undefined;
+  }
+}
+
+/**
+ * The pg connection for `DB_URL` and `DB_PASSWORD`. pg lets a URL's empty password override a
+ * separate `password` option, so the password goes into the URL, percent-encoded (PR-FBX-07).
+ */
+export function connectionConfig(url: string, password?: string): { connectionString: string } {
+  if (!password) return { connectionString: url };
+  const u = new URL(url);
+  u.password = encodeURIComponent(password);
+  return { connectionString: u.toString() };
+}
+
 async function importNamed<T>(path: string, name: string): Promise<T> {
   const mod = (await import(pathToFileURL(resolve(path)).href)) as Record<string, unknown>;
   if (!(name in mod)) throw new Error(`${path} does not export ${name}`);
@@ -153,7 +184,8 @@ export async function main(
   try {
     assertSeedAllowed(gate.values, command === "run" ? profile : undefined);
   } catch (e) {
-    const product = gate.values.APP_PRODUCT ?? "LD";
+    // The refusal comes before the rest of the configuration is read, so APP_PRODUCT may be unset.
+    const product = gate.values.APP_PRODUCT ?? scaffoldedProduct() ?? "unknown";
     const ev = internalEvent({
       product,
       event: "SeedRefused",
@@ -179,7 +211,7 @@ export async function main(
   const product = env.APP_PRODUCT;
 
   if (command === "purge") {
-    const client = new pg.Client({ connectionString, password: env.DB_PASSWORD });
+    const client = new pg.Client(connectionConfig(connectionString, env.DB_PASSWORD));
     await client.connect();
     try {
       const r = await purgeSeed(client, env, profile);
@@ -218,7 +250,7 @@ export async function main(
     platformSeedModule,
     ...(values.modules ? await importNamed<SeedModule[]>(values.modules, "seedModules") : []),
   ];
-  const pool = new pg.Pool({ connectionString, password: env.DB_PASSWORD });
+  const pool = new pg.Pool(connectionConfig(connectionString, env.DB_PASSWORD));
   try {
     const report = await runSeed({
       kernel: new PgKernel({ pool }),

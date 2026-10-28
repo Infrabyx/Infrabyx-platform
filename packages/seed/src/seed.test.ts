@@ -1,3 +1,4 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { mkdtemp, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,7 +10,7 @@ import { seededFaker } from "./framework.js";
 import { assertSeedAllowed } from "./guard.js";
 import { COMMON_PERSONAS, SUPER_ADMIN_EMAIL, personaEmail, personasFor } from "./personas/index.js";
 import { findRealIdentifiers, gstinCheckChar, synthetic, verhoeffValid } from "./synthetic.js";
-import { main } from "./cli.js";
+import { connectionConfig, main, scaffoldedProduct } from "./cli.js";
 import { MemoryIdentity, MemorySecrets } from "./__tests__/fakes.js";
 
 const code = (fn: () => unknown) => {
@@ -112,6 +113,56 @@ describe("@IPB-11-AT-02 @IPB-11-14 seeds refuse production", () => {
     expect(rc).toBe(1);
     expect(err.join("")).toContain("IPB-SEED-001");
     expect(err.join("")).toContain("in.ldc.seed.SeedRefused.v1");
+  });
+});
+
+describe("the seed CLI's product and connection (PR-FBX-04 note, PR-FBX-07)", () => {
+  const refusal = async (cwd: string) => {
+    const err: string[] = [];
+    const spy = vi
+      .spyOn(process.stderr, "write")
+      .mockImplementation((s) => (err.push(String(s)), true));
+    const was = process.cwd();
+    process.chdir(cwd);
+    try {
+      // Without SEED_ENABLED a dev run is refused, and APP_PRODUCT is optional there.
+      expect(await main(["--profile", "dev"], { APP_ENV: "dev" })).toBe(1);
+    } finally {
+      process.chdir(was);
+      spy.mockRestore();
+    }
+    return err.join("");
+  };
+
+  it("reports a refusal without APP_PRODUCT as the scaffolded product, else unknown, never LD", async () => {
+    const root = mkdtempSync(join(tmpdir(), "seed-product-"));
+    writeFileSync(join(root, "package.json"), JSON.stringify({ infrabyx: { product: "FBX" } }));
+    mkdirSync(join(root, "apps", "api"), { recursive: true });
+    writeFileSync(join(root, "apps", "api", "package.json"), JSON.stringify({ name: "@fbx/api" }));
+    expect(scaffoldedProduct(join(root, "apps", "api"))).toBe("FBX");
+    expect(await refusal(join(root, "apps", "api"))).toContain("in.fbx.seed.SeedRefused.v1");
+    const bare = mkdtempSync(join(tmpdir(), "seed-bare-"));
+    expect(scaffoldedProduct(bare)).toBeUndefined();
+    const out = await refusal(bare);
+    expect(out).toContain("in.unknown.seed.SeedRefused.v1");
+    expect(out).not.toContain("in.ld.");
+    writeFileSync(join(bare, "package.json"), JSON.stringify({ infrabyx: { product: "XX" } }));
+    expect(scaffoldedProduct(bare)).toBeUndefined();
+  });
+
+  it("puts DB_PASSWORD into the URL, percent-encoded, as pg decodes it", () => {
+    const pw = "p@ss:w/rd%41 é#?";
+    const { connectionString } = connectionConfig("postgres://app@db.example.test:5432/fbx", pw);
+    const u = new URL(connectionString);
+    expect(u.username).toBe("app");
+    expect(decodeURIComponent(u.password)).toBe(pw);
+    expect(u.pathname).toBe("/fbx");
+    expect(connectionConfig("postgres://app@h/db")).toEqual({
+      connectionString: "postgres://app@h/db",
+    });
+    expect(
+      new URL(connectionConfig("postgres://app:old@h/db", "new").connectionString).password,
+    ).toBe("new");
   });
 });
 
