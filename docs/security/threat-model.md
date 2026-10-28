@@ -555,6 +555,17 @@ The Studio page editor edits a page's blocks through forms (`@infrabyx/ui/studio
 - **R:** every operation is a new immutable revision with a summary (`Block moved (block 2)`) and the save's ledger entry; approvals are voided as for any edit.
 - **Residual:** none new; the editor reuses the save path, its checks and its audit.
 
+### 3.50 The Ecosystem inbox (built, R1 G2; R1-D-15)
+
+`EcosystemInbox` in `@infrabyx/tenancy` stores inbound Ecosystem events in the consuming module's `eco_inbox` before processing (`tenancy.create_ecosystem_inbox`, migration `tenancy/0006`) and processes them in `seq` order per subject.
+
+- **T and R (a replayed or doubled event acting twice):** Control: the event is stored first, unique by `(tenant, source, id)` and by `(tenant, type, business key)`; a duplicate of either is acknowledged and never handed to the handler; an event at or below the subject's position is skipped; every receive, step, failure, break and repositioning is ledgered in the same transaction.
+- **T (out-of-order events applied in the wrong order):** Control: an event ahead of the next `seq` is parked, never processed early; after 15 minutes the product's replay fetches the gap, and a gap still open becomes a break the product raises as `ReconciliationBreakRaised`; only an operator's `setPosition` from the owner's snapshot reopens the subject.
+- **S (a sandbox event in production):** Control: an event whose `environment` differs from the inbox's is refused (`IPB-API-005`), as is an envelope that does not validate (consent or legal basis with personal data included).
+- **I and E (one tenant's events seen or changed by another):** Control: both tables have forced row-level security by the consuming tenant; `app_rw` may select, insert and update, never delete; the function that creates them is executable by `app_migrate` only and validates the schema name.
+- **D (a failing handler blocking a subject):** Control: the handler's transaction rolls back; the attempt is counted in its own transaction; after `maxAttempts` (5) the event is `failed` and the subject waits for an operator instead of retrying without end.
+- **Residual:** signature verification of the inbound delivery (Standard Webhooks, RFC 9421) happens before `receive`, in the product's gateway; the detached JWS of regulated messages is G5. Inbox rows are kept until the product decides their retention (no purge is built; retention is the owner's).
+
 ### 3.52 Scheduled per-tenant jobs (built, PR-UDF-013; R1-D-12)
 
 `TenantSweep` in `@infrabyx/tenancy` lists the tenants for a product's scheduled jobs, and `AuditSweep` in `@infrabyx/audit` runs the IPB-02-51 ledger jobs (weekly verification, daily anchor) for each.

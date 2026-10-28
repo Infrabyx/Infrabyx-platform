@@ -693,6 +693,13 @@ export const ERROR_CATALOGUE = {
     helpKey: "hlp.ai.image_unapproved",
     source: "OWN-10; PL4 plan §6 (PR-022)",
   },
+  // IPB-10 §10.6.3, added for the Ecosystem inbox: a test event at a live inbox or the reverse
+  // (Spec §3.2; R1 plan M10).
+  "IPB-API-005": {
+    status: 401,
+    title: "Key environment mismatch (test key on live host or vice versa)",
+    source: "IPB-10 §10.6.3",
+  },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {
     status: 401,
