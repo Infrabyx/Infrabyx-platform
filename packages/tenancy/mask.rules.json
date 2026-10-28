@@ -17,6 +17,7 @@
       "reveal": "never"
     },
     "mobile": { "strategy": "mobile", "keep": 3, "reveal": "ledgered" },
-    "email": { "strategy": "email", "reveal": "ledgered" }
+    "email": { "strategy": "email", "reveal": "ledgered" },
+    "passport": { "strategy": "last", "keep": 3, "reveal": "ledgered" }
   }
 }

@@ -80,6 +80,151 @@ describe("@IPB-02-23 telemetry scrubber", () => {
   it("drops identifiers when no hasher is configured", () => {
     expect(createScrubber().attrs({ tenant_id: "tnt_a", ok: true })).toEqual({ ok: true });
   });
+
+  // PR-UDF-007: every masked field of IPB-02 §02.4.3.3 and IPB-02-22, under its rule key, the
+  // spellings products use, and inside a log message.
+  const FIELDS: ReadonlyArray<{ raw: string; masked: string; keys: string[]; text: string[] }> = [
+    {
+      raw: "50100123456789",
+      masked: "XXXX6789",
+      keys: [
+        "bank_account",
+        "account_number",
+        "accountNumber",
+        "bank_account_number",
+        "bankAccountNo",
+        "acct_no",
+        "beneficiary_account_number",
+      ],
+      text: ["account_number=50100123456789", "A/c no. 50100123456789", "a/c 5010 0123 4567 89"],
+    },
+    {
+      raw: "123456789",
+      masked: "XXXX6789",
+      keys: ["account_number", "accountNo"],
+      text: ["account 123456789", "credited to 123456789 today", "acct: 123456789"],
+    },
+    {
+      raw: "12345678901",
+      masked: "XXXX8901",
+      keys: ["account_number"],
+      text: ['{"account_number":"12345678901"}', "transfer to 12345678901 failed"],
+    },
+    {
+      raw: "9999 1234 5678",
+      masked: "XXXX XXXX 5678",
+      keys: ["aadhaar", "aadhaar_number", "aadhaarNo", "aadhar"],
+      text: ["aadhaar 9999 1234 5678", "uid 999912345678 checked"],
+    },
+    {
+      raw: "ABCDE1234F",
+      masked: "ABCXX1234X",
+      keys: ["pan", "pan_number", "panNo", "borrower_pan"],
+      text: ["pan ABCDE1234F verified"],
+    },
+    {
+      raw: "4111 1111 1111 1111",
+      masked: "XXXX XXXX XXXX 1111",
+      keys: ["card_pan", "card_number", "cardNo"],
+      text: ["card 4111 1111 1111 1111", "card 4111-1111-1111-1111"],
+    },
+    {
+      raw: "9876543210",
+      masked: "XXXXXXX210",
+      keys: ["mobile", "mobile_number", "phone", "phoneNumber", "customer_mobile", "msisdn"],
+      text: ["sms to 9876543210", "sms to 98765 43210", "sms to +91-9876543210"],
+    },
+    {
+      raw: "ravi@example.in",
+      masked: "rXXX@example.in",
+      keys: ["email", "email_address", "emailId", "customer_email"],
+      text: ["mail ravi@example.in"],
+    },
+    {
+      raw: "J8369854",
+      masked: "XXXXX854",
+      keys: ["passport", "passport_number", "passportNo"],
+      text: ["passport J8369854 seen", "passport J83 69854 seen"],
+    },
+  ];
+
+  it.each(FIELDS)("masks $keys.0 under every key spelling and in free text", (f) => {
+    for (const key of f.keys) {
+      expect(s.attrs({ [key]: f.raw }), key).toEqual({ [key]: f.masked });
+      expect(s.attrs({ loan: { [key]: f.raw } }), `loan.${key}`).toEqual({
+        [`loan.${key}`]: f.masked,
+      });
+    }
+    for (const line of f.text) {
+      const out = scrubText(line);
+      expect(out, line).not.toMatch(/\d{5,}/);
+      for (const part of f.raw.split(" "))
+        if (part.length > 4) expect(out, line).not.toContain(part);
+    }
+  });
+
+  it("redacts one-time codes and card security codes by key and in free text", () => {
+    for (const key of [
+      "otp",
+      "otp_code",
+      "otpCode",
+      "sms_otp",
+      "emailOtp",
+      "totp",
+      "otp_value",
+      "mpin",
+      "cvv",
+      "card_cvv",
+      "passcode",
+      "pin",
+      "password",
+    ])
+      expect(s.attrs({ [key]: "482913" }), key).toEqual({ [key]: "[REDACTED]" });
+    expect(s.attrs({ verify: { otp: { code: "482913" } } })).toEqual({});
+
+    for (const [line, kept] of [
+      ["otp=482913", "otp=[REDACTED]"],
+      ["POST /verify?otp=482913&ref=a1", "otp=[REDACTED]&ref=a1"],
+      ["otp_code=482913", "otp_code=[REDACTED]"],
+      ["OTP 482913 sent", "OTP [REDACTED] sent"],
+      ["Your OTP is 482913. Do not share it.", "Your OTP is [REDACTED]."],
+      ["otp: 482913", "otp: [REDACTED]"],
+      ['{"otp":"482913","ok":true}', '"otp":"[REDACTED]"'],
+      ["otp_code: 4829", "otp_code: [REDACTED]"],
+      ["482913 is your OTP for sign-in", "[REDACTED] is your OTP"],
+      ["Use 48291355 as your one-time password", "Use [REDACTED] as your one-time password"],
+      ["verification code 482913", "verification code [REDACTED]"],
+      ["cvv 123 entered", "cvv [REDACTED] entered"],
+      ["cvv=123", "cvv=[REDACTED]"],
+    ] as const) {
+      const out = scrubText(line);
+      expect(out, line).toContain(kept);
+      expect(out, line).not.toMatch(/4829|cvv.?123/);
+    }
+  });
+
+  it("leaves ordinary text, short numbers and non-sensitive keys alone", () => {
+    expect(scrubText("retry 3 of 5 after 250 ms, status 404, order 12345678")).toBe(
+      "retry 3 of 5 after 250 ms, status 404, order 12345678",
+    );
+    expect(
+      s.attrs({
+        account_id: "acc_1",
+        account_type: "savings",
+        card_status: "active",
+        email_verified: true,
+        "gen_ai.usage.input_tokens": 120,
+        duration_ms: 12345678901,
+      }),
+    ).toEqual({
+      account_id: "acc_1",
+      account_type: "savings",
+      card_status: "active",
+      email_verified: true,
+      "gen_ai.usage.input_tokens": 120,
+      duration_ms: 12345678901,
+    });
+  });
 });
 
 describe("otel adapter guards (PL2 plan §6.3)", () => {

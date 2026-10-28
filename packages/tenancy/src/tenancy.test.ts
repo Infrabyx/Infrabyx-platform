@@ -142,6 +142,8 @@ describe("masking (IPB-02 §02.4.3.3)", () => {
     expect(mask("bank_account", "001234567890")).toBe("XXXX7890");
     expect(mask("mobile", "+91 99999 01234")).toBe("+91 XXXXXXX234");
     expect(mask("email", "test.user@lawdocs.test")).toBe("tXXXXXXXX@lawdocs.test");
+    // IPB-02-22: a passport number is displayed masked (PR-UDF-007).
+    expect(mask("passport", "J8369854")).toBe("XXXXX854");
     expect(() => mask("unknown", "x")).toThrow();
   });
 });
