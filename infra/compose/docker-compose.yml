@@ -227,7 +227,8 @@ services:
     # personas that dev:up creates), Cerbos, MinIO and Redis. It joins the host network and reaches
     # them at their published loopback ports, as `pnpm start` outside Compose would: the adapters
     # accept plain HTTP to loopback only (IPB-SEC-018), never to a service name. LLM, KMS and TRUST
-    # stay on fixtures until a product wires them (APP_FIXTURE_PORTS).
+    # stay on fixtures until a product wires them (APP_FIXTURE_PORTS). The durable timers run on
+    # the stack's Temporal (the worker runs their task queue).
     profiles: [apps]
     <<: *hardened
     build:
@@ -242,6 +243,7 @@ services:
       cerbos: { condition: service_healthy }
       minio: { condition: service_healthy }
       redis: { condition: service_healthy }
+      temporal: { condition: service_healthy }
     environment: &reference-env
       APP_ENV: local
       APP_PRODUCT: LD
@@ -268,10 +270,15 @@ services:
       STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
       STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
       QUEUE_REDIS_URL: redis://:${REDIS_PASSWORD}@127.0.0.1:${REDIS_PORT:-56379}
+      WORKFLOW_TEMPORAL_ADDRESS: 127.0.0.1:${TEMPORAL_PORT:-57233}
+      WORKFLOW_TEMPORAL_NAMESPACE: default
+      WORKFLOW_TASK_QUEUE_PREFIX: ipb-
+      WORKFLOW_CODEC_KEY_ID: local:workflow
 
   worker:
     # The reference worker: the API's codebase at its worker entrypoint (IPB-01 §01.4.2), on the
-    # same adapters; the export runner and sweep, and the hello outbox relay.
+    # same adapters; the export runner and sweep, the hello outbox relay, the timers' poller and
+    # the Temporal worker of the timers task queue (`ipb-timers`).
     profiles: [apps]
     <<: *hardened
     build:
@@ -286,6 +293,7 @@ services:
       cerbos: { condition: service_healthy }
       minio: { condition: service_healthy }
       redis: { condition: service_healthy }
+      temporal: { condition: service_healthy }
     environment:
       <<: *reference-env
       APP_PORT: ${WORKER_PORT:-53126}

@@ -15,6 +15,7 @@ export * from "./modules/hello/index.js";
 export {
   FixtureIdentity,
   FixtureHelloAuthz,
+  FixtureWorkflow,
   FIXTURE_PERSONAS,
   fixtureUserId,
   MemoryQueue,

@@ -17,7 +17,9 @@ import {
   describeSeedRefusal,
   describeTenantIsolation,
   startPostgres,
+  startService,
   withTenant,
+  type StartedService,
   type TestDatabase,
 } from "@infrabyx/testing";
 import { BrandStudio } from "@infrabyx/brand";
@@ -115,6 +117,7 @@ describe("@IPB-01-AT-13 health", () => {
       "QUEUE",
       "STORAGE",
       "TRUST",
+      "WORKFLOW",
     ]);
     expect(r.headers.get("x-content-type-options")).toBe("nosniff");
   });
@@ -388,6 +391,92 @@ describe("the outbox relay (IPB-01 §01.4.3.3)", () => {
     );
     expect(ledger.rows[0]?.n).toBeGreaterThanOrEqual(1);
   });
+});
+
+describe("the Temporal worker (PL6 plan §8.1; PL3 plan §5.1)", () => {
+  let temporal: StartedService | undefined;
+  let address = "";
+  beforeAll(async () => {
+    temporal = await startService("temporal", {
+      ports: [7233],
+      command: ["server", "start-dev", "--ip", "0.0.0.0", "--headless"],
+    });
+    address = `${temporal.host}:${temporal.ports[7233]}`;
+  }, 240_000);
+  afterAll(async () => {
+    await temporal?.stop();
+  });
+
+  it("fires a durable timer on time through the timers task queue, in the timer's tenant", async () => {
+    const { runWorker } = await import("../worker.js");
+    const r = await validateEnv(apiEnvSchema, {
+      guards: [],
+      source: {
+        APP_ENV: "test",
+        APP_BASE_URL: "http://127.0.0.1:0",
+        DB_URL: db.url,
+        APP_FIXTURE_ADAPTERS: "true",
+        WORKFLOW_TEMPORAL_ADDRESS: address,
+        WORKFLOW_TASK_QUEUE_PREFIX: "ipb-",
+      },
+    });
+    if (!r.ok) throw new Error(JSON.stringify(r.failures));
+    const env = checkApiEnv(r.values);
+    // The dev server answers a little after its port opens.
+    for (let i = 0; i < 60; i++) {
+      const probe = await buildServices({ env, pool: db.pool });
+      const h = await probe.workflow.health();
+      await probe.close();
+      if (h.status === "up") break;
+      await new Promise((res) => setTimeout(res, 500));
+    }
+    // The poller is kept out of the way (an hour), so only Temporal can fire within the test.
+    const w = await runWorker({ env, pool: db.pool, port: 0, timerIntervalMs: 3_600_000 });
+    try {
+      expect(w.temporal).toBe(true);
+      expect(w.services.workflow.descriptor.adapter).toBe("temporal");
+      const fired: Array<{ tenantId: string; ref: string }> = [];
+      w.services.timers.on("inbox.escalate", async (ctx, t) => {
+        fired.push({ tenantId: ctx.tenantId, ref: t.ref });
+        return "done";
+      });
+      const ref = newId("ibx");
+      const at = new Date(Date.now() + 1_500);
+      await db.kernel.mutate(
+        withTenant(DEMO, ["ORG_ADMIN"]),
+        async (tx) => {
+          await w.services.timers.schedule(tx, "inbox.escalate", ref, at);
+          await db.audit.record(tx, {
+            action: "test.timer.schedule",
+            resourceType: "timer",
+            resourceId: ref,
+            after: { fire_at: at.toISOString() },
+          });
+        },
+        { action: "test.timer.schedule" },
+      );
+      const started = await w.services.workflow.describe(`ipb-timer.${DEMO}.inbox.escalate.${ref}`);
+      expect(["running", "completed"]).toContain(started.status);
+      let state = "";
+      for (let i = 0; i < 120 && state !== "fired"; i++) {
+        await new Promise((res) => setTimeout(res, 500));
+        const row = await db.admin.query<{ state: string }>(
+          "select state from workflow.timer where tenant_id = $1 and kind = 'inbox.escalate' and ref = $2",
+          [DEMO, ref],
+        );
+        state = row.rows[0]?.state ?? "";
+      }
+      expect(state).toBe("fired");
+      expect(fired).toEqual([{ tenantId: DEMO, ref }]);
+      const ready = await fetch(`http://127.0.0.1:${w.port}/health/ready`);
+      const body = await json<{ status: string; checks: Array<{ port: string; adapter: string }> }>(
+        ready,
+      );
+      expect(body.checks.find((c) => c.port === "WORKFLOW")?.adapter).toBe("temporal");
+    } finally {
+      await w.stop();
+    }
+  }, 180_000);
 });
 
 describe("NN pattern suites on hello.greeting", () => {

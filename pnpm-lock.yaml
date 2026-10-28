@@ -250,6 +250,9 @@ importers:
       '@infrabyx/vidhi':
         specifier: workspace:*
         version: link:../../../packages/vidhi
+      '@infrabyx/workflow':
+        specifier: workspace:*
+        version: link:../../../packages/workflow
       '@nestjs/common':
         specifier: 11.2.7
         version: 11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)

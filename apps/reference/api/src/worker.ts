@@ -1,9 +1,12 @@
 // The worker (IPB-01 §01.4.2 `apps/worker`: the same codebase, a worker entrypoint; PL6 plan §8.1).
 // It builds the same services as the API, serves the health probes on its own port, and runs the
 // QUEUE consumers: the hello example job, and the export runner (`export` queue, ids only), with
-// the export sweep that re-enqueues approved jobs and deletes expired archives (IPB-07-27). A
-// product adds its own queues, the Temporal worker and its sweeps here. The outbox relay hands the
-// hello module's committed events to the QUEUE (`relay.ts`); the Temporal worker is session 4d.
+// the export sweep that re-enqueues approved jobs and deletes expired archives (IPB-07-27), the
+// outbox relay that hands the hello module's committed events to the QUEUE (`relay.ts`), the
+// durable timers' PostgreSQL poller (the reconciler that always runs), and, when Temporal is
+// configured, the Temporal worker of the timers task queue (the `ipbTimer` workflow and its
+// `ipbTimerFire` activity, which fires the timer by id in its tenant; PL3 plan §5.1). The worker
+// helper loads the Temporal native bridge, so it is imported here only, never by the API.
 import { createServer, type Server } from "node:http";
 import { readiness } from "./http/health.controller.js";
 import { HELLO_SCHEMA } from "./modules/hello/index.js";
@@ -22,6 +25,10 @@ export interface WorkerHandle {
   sweep(): Promise<{ enqueued: number; deleted: number }>;
   /** One pass of the outbox relay (also run on an interval). */
   relay(): Promise<number>;
+  /** One pass of the timers' PostgreSQL poller (also run on an interval). */
+  tick(): Promise<number>;
+  /** Whether the Temporal worker of the timers task queue is running. */
+  temporal: boolean;
   stop(): Promise<void>;
 }
 
@@ -46,9 +53,42 @@ export function exportJobHandler(services: Services) {
 }
 
 export async function runWorker(
-  o: BuildOptions & { port?: number; sweepIntervalMs?: number; relayIntervalMs?: number } = {},
+  o: BuildOptions & {
+    port?: number;
+    sweepIntervalMs?: number;
+    relayIntervalMs?: number;
+    timerIntervalMs?: number;
+  } = {},
 ): Promise<WorkerHandle> {
   const services = await buildServices(o);
+  // The timers: the poller reconciles every minute; Temporal (when configured) fires on time.
+  const tick = () => services.timers.tick();
+  const stopPoller = services.timers.start(o.timerIntervalMs ?? 60_000, (e: unknown) =>
+    process.stderr.write(
+      `${JSON.stringify({ msg: "timer poll failed", error: (e as Error).message })}\n`,
+    ),
+  );
+  let temporalWorker: { shutdown(): void; run(): Promise<void> } | null = null;
+  let temporalRun: Promise<void> | null = null;
+  if (services.temporal) {
+    const [{ createIpbWorker }, { TIMER_WORKFLOWS_PATH, timerActivities }] = await Promise.all([
+      import("@infrabyx/connectors/workflow/worker"),
+      import("@infrabyx/connectors/workflow"),
+    ]);
+    temporalWorker = await createIpbWorker({
+      adapter: services.temporal,
+      address: services.env.WORKFLOW_TEMPORAL_ADDRESS!,
+      namespace: services.env.WORKFLOW_TEMPORAL_NAMESPACE,
+      taskQueue: services.timersTaskQueue,
+      workflowsPath: TIMER_WORKFLOWS_PATH,
+      activities: timerActivities(services.timers.fireById),
+    });
+    temporalRun = temporalWorker.run().catch((e: Error) => {
+      process.stderr.write(
+        `${JSON.stringify({ msg: "temporal worker stopped", error: e.message })}\n`,
+      );
+    });
+  }
   const outbox = new OutboxRelay({
     kernel: services.kernel,
     audit: services.audit,
@@ -100,9 +140,14 @@ export async function runWorker(
     port: actual,
     sweep,
     relay,
+    tick,
+    temporal: temporalWorker !== null,
     stop: async () => {
       clearInterval(timer);
       clearInterval(relayTimer);
+      stopPoller();
+      temporalWorker?.shutdown();
+      await temporalRun;
       for (const sub of subs) await sub.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await services.close();

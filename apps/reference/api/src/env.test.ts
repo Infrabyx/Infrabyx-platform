@@ -38,9 +38,14 @@ describe("apiEnv (IPB-11 §11.4)", () => {
       AUTHZ_CERBOS_URL: "http://127.0.0.1:53592",
       STORAGE_BUCKET_PREFIX: "ipb-local",
       QUEUE_REDIS_URL: "redis://127.0.0.1:56379",
+      WORKFLOW_TEMPORAL_ADDRESS: "127.0.0.1:57233",
     };
     const v = await load({ ...real, APP_FIXTURE_PORTS: "LLM,KMS,TRUST" });
     expect(v.APP_FIXTURE_PORTS).toEqual(["LLM", "KMS", "TRUST"]);
+    expect(v.WORKFLOW_TASK_QUEUE_PREFIX).toBe("ipb-");
+    await expect(load({ ...real, WORKFLOW_TEMPORAL_ADDRESS: "http://x" })).rejects.toThrow(
+      /WORKFLOW_TEMPORAL_ADDRESS/,
+    );
     await expect(load({ ...real, APP_FIXTURE_PORTS: "STORAGE" })).rejects.toThrow(
       /APP_FIXTURE_PORTS/,
     );
@@ -50,6 +55,6 @@ describe("apiEnv (IPB-11 §11.4)", () => {
     );
   });
   it("needs every real adapter when fixtures are off", async () => {
-    await expect(load(base)).rejects.toThrow(/AUTH_BASE_URL.*QUEUE_REDIS_URL/);
+    await expect(load(base)).rejects.toThrow(/AUTH_BASE_URL.*WORKFLOW_TEMPORAL_ADDRESS/);
   });
 });

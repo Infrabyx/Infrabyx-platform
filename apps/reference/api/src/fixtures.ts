@@ -23,9 +23,12 @@ import type {
   QueueSubscription,
   ResourcePlan,
   ScimOp,
+  StartWorkflowOptions,
   VerifiedClaims,
+  WorkflowExecution,
+  WorkflowPort,
 } from "@infrabyx/contracts/ports";
-import { hmacSha256Hex, randomBytes, SecretKey, toBase64Url } from "@infrabyx/crypto";
+import { hmacSha256Hex, newId, randomBytes, SecretKey, toBase64Url } from "@infrabyx/crypto";
 import type { IdentityFlow } from "./identity.js";
 
 const up = (): PortHealth => ({
@@ -323,6 +326,63 @@ export class MemoryQueue implements QueuePort {
  * (the product wires its own LLM, KMS and TRUST adapters; the reference has fixtures only below
  * staging). The descriptor still answers, so `/health/ready` can name the port.
  */
+/**
+ * The WORKFLOW fixture: no engine. Timers still fire through the PostgreSQL poller of
+ * `@infrabyx/workflow` (the reconciler that always runs), so nothing waits on it; a workflow start
+ * is recorded and reported as running, and nothing else.
+ */
+export class FixtureWorkflow implements WorkflowPort {
+  readonly descriptor: AdapterDescriptor = {
+    port: "WORKFLOW",
+    adapter: "fixture",
+    residency: "IN",
+    maxDataClass: "INTERNAL",
+  };
+  readonly started: WorkflowExecution[] = [];
+
+  async startWorkflow(
+    type: string,
+    _input: unknown,
+    opts: StartWorkflowOptions,
+  ): Promise<WorkflowExecution> {
+    const found = this.started.find((w) => w.id === opts.id);
+    if (found) return found;
+    const w: WorkflowExecution = {
+      id: opts.id,
+      runId: newId("run"),
+      type,
+      status: "running",
+      startedAt: new Date().toISOString(),
+    };
+    this.started.push(w);
+    return w;
+  }
+  async signal(): Promise<void> {}
+  async query<T = unknown>(): Promise<T> {
+    throw new IpbError("IPB-PORT-001", { detail: "the WORKFLOW fixture answers no query" });
+  }
+  async cancel(id: string): Promise<void> {
+    const w = this.started.find((x) => x.id === id);
+    if (w) {
+      w.status = "cancelled";
+      w.closedAt = new Date().toISOString();
+    }
+  }
+  async listOpen(filter?: { type?: string; taskQueue?: string }): Promise<WorkflowExecution[]> {
+    return this.started.filter(
+      (w) => w.status === "running" && (!filter?.type || w.type === filter.type),
+    );
+  }
+  async describe(id: string): Promise<WorkflowExecution> {
+    const w = this.started.find((x) => x.id === id);
+    if (!w) throw new IpbError("IPB-PORT-001", { detail: "no such workflow" });
+    return w;
+  }
+  async health(): Promise<PortHealth> {
+    return { status: "up", latency_ms: 0, checked_at: new Date().toISOString() };
+  }
+}
+
 export function missingPort<T extends object>(port: string): T {
   const refuse = () => {
     throw new IpbError("IPB-PORT-001", { detail: `${port} is not configured for this app` });
