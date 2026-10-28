@@ -141,7 +141,6 @@
     "@infrabyx/crypto": "workspace:*",
     "@infrabyx/tenancy": "workspace:*",
     "@marcbachmann/cel-js": "8.0.0",
-    "@openfga/sdk": "0.9.7",
     "@opentelemetry/api": "1.9.1",
     "@opentelemetry/api-logs": "0.223.0",
     "@opentelemetry/core": "2.12.0",
