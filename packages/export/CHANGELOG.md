@@ -1,5 +1,12 @@
 # @infrabyx/export
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [9d8cd8c]
+  - @infrabyx/tenancy@0.6.0
+
 ## 0.2.1
 
 ### Patch Changes

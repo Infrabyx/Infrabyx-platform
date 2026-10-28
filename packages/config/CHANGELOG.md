@@ -1,5 +1,11 @@
 # @infrabyx/config
 
+## 0.5.1
+
+### Patch Changes
+
+- b3934f9: PL6 session 4a: registers `hello.greeting.max_length` (TENANT, default 280, ceiling 2000), the setting of the reference app's `hello` module (`apps/reference/api`), so the template reads it through `SettingsService` like every product setting. Products that do not keep the hello module ignore it.
+
 ## 0.5.0
 
 ### Minor Changes

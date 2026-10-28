@@ -1,5 +1,16 @@
 # @infrabyx/tenancy
 
+## 0.6.0
+
+### Minor Changes
+
+- 9d8cd8c: PL6 session 2: `infrabyx-migrate --db-file <path>` reads the database URL from the first line of a file, so the `infrabyx-app` chart's migration job takes it from the secrets CSI mount and the password never appears in arguments or the environment (IPB-02-28). `--db` still works; passing both is refused.
+
+### Patch Changes
+
+- Updated dependencies [b3934f9]
+  - @infrabyx/config@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes

@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/reference-api",
   "version": "0.0.0",
-  "description": "The reference API of apps/reference (PL6 plan \u00a78): a NestJS 11 modular monolith on the @infrabyx/* packages with the hello module, the sign-in flow, the gate endpoints (content, Vidhi, export, trust) and the worker entrypoint; the template products copy",
+  "description": "The reference API of apps/reference (PL6 plan §8): a NestJS 11 modular monolith on the @infrabyx/* packages with the hello module, the sign-in flow, the gate endpoints (content, Vidhi, export, trust) and the worker entrypoint; the template products copy",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
