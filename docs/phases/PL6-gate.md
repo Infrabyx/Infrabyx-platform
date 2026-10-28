@@ -36,8 +36,8 @@ Also checked:
 
 ## 3. Checks on `main` and the ruleset
 
-- **`ci` on `main`:** green after #102, #103, #104, #106, #107 and #108 (runs 263, 272, 276, 279, 282) and after #109; `reference` ran green on `main` after #107 and #108, `scaffold` after #109 and this PR.
-- **Full `port-contract` matrix:** dispatched on `main` at `60db887` (run 184), every port's legs green.
+- **`ci` on `main`:** green after #103, #104, #106, #107 and #108 (runs 263, 272, 276, 279 and 282) and after #109 (run 285); `reference` ran green on `main` after #107 and #108, and `scaffold` after #109 and on this PR's merge; `containers`, `compose`, `infra` and `integration` on every PL6 merge.
+- **Full `port-contract` matrix:** dispatched on `main` at `60db887` (run 184): all 20 ports green, including the Tier-0 IDENTITY, AUTHZ and KMS legs.
 - **Ruleset (`infra/policy/github/rulesets.json`):** the required checks are now `verify (24.22.1)`, `consumer-smoke`, `a11y`, `integration`, `containers`, `compose`, `infra`, `reference` and `scaffold`. Each job reports success or, when its path filter skips it, skipped, which satisfies a required check. The owner applies the ruleset (repository settings are the owner's, CLAUDE.md stop condition 5).
 
 ## 4. Acceptance tests
