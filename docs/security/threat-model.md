@@ -502,6 +502,16 @@ New flows in `apps/reference/api`: published content read from the CMS tables; t
 - **E (the relay reading across tenants):** Control: the relay lists tenants as a service principal holding the read-only platform role and nothing else, and reads or marks each tenant's outbox only in that tenant's own context under forced RLS; every batch writes one ledger entry in the tenant; the job carries ids and the envelope only. Residual: the platform role lets the relay read every tenant's row in the platform-scope tables that admit `PLT_*` readers, more than the tenant list it needs; a reader role for product outboxes (#74) would narrow it.
 - **D:** Control: batches of 100 rows per tenant and schema per pass; `skip locked` keeps two workers from blocking each other; the queue de-duplicates on the event id.
 
+### 3.45 The reference worker on Temporal (built, PL6 session 4d; PL6-D-11)
+
+The reference api and worker use the stack's Temporal for the durable timers of `@infrabyx/workflow` (approval reminders, escalation, expiry; Work Inbox escalation): the api starts one `ipbTimer` workflow per timer, the worker runs the `ipb-timers` task queue and fires each timer by id in its own tenant; the PostgreSQL poller reconciles.
+
+- **I and D (payloads and ids at the engine):** Control: every payload passes the C-16 codec (`FieldEnvelope` with the KMS key `WORKFLOW_CODEC_KEY_ID`, AAD bound to the namespace); workflow ids are timer ids (`ipb-timer.<tenant>.<kind>.<ref>`, identifiers only, PL2-C-04) and the input is the id and an instant; the adapter refuses ids that read as personal data and task queues outside the prefix.
+- **E (a fired timer acting in the wrong tenant):** Control: the activity parses the tenant from the timer id and fires through `WorkflowTimers.fire` in that tenant's service context under forced RLS; a timer that is not due, cancelled or already fired is a no-op; the handler re-checks the record it acts on.
+- **T (plain gRPC in the local stack):** Control: the connection is plain only to the loopback address of the Compose stack; a deployment sets mTLS or an API key through `TemporalAuth` (Temporal Cloud takes INTERNAL inputs only, PL2-D-16).
+- **D (Temporal down):** Control: the readiness probe reports WORKFLOW `degraded`, never `down`; timers still fire through the poller within a minute; the worker's Temporal loop logs and ends without taking the queue consumers with it.
+- **Residual:** the local dev server keeps its state in memory, so timers started before a restart fire through the poller only; the deployed engine (session 6 onwards) is durable.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
