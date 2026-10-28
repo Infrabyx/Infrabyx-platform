@@ -9,6 +9,7 @@
 // sends reads to the DR replica (`read_only_failover`). Keys outside the caller's tenant are
 // refused (IPB-PORT-003).
 import {
+  CreateBucketCommand,
   GetBucketReplicationCommand,
   GetBucketVersioningCommand,
   GetObjectCommand,
@@ -129,7 +130,7 @@ export class S3Storage implements StoragePort {
       });
   }
 
-  private bucket(c: BucketClass): string {
+  protected bucket(c: BucketClass): string {
     const b = this.o.buckets[c];
     if (!b)
       throw new PortError("IPB-PORT-001", "STORAGE", {
@@ -139,7 +140,7 @@ export class S3Storage implements StoragePort {
     return b;
   }
 
-  private classes(): BucketClass[] {
+  protected classes(): BucketClass[] {
     return BUCKET_CLASSES.filter((c) => this.o.buckets[c]);
   }
 
@@ -500,6 +501,26 @@ export class MinioStorage extends S3Storage {
       timeoutMs: 5000,
       ...(o.allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
     });
+  }
+
+  /**
+   * Local stacks only (`pnpm dev:up`): create every class bucket that is missing, with Object Lock
+   * (versioning follows) as `health` requires. Deployed buckets come from the OpenTofu modules.
+   */
+  async ensureBuckets(): Promise<{ created: string[] }> {
+    const created: string[] = [];
+    for (const c of this.classes()) {
+      const Bucket = this.bucket(c);
+      try {
+        await this.client.send(new HeadBucketCommand({ Bucket }));
+        continue;
+      } catch (e) {
+        if (!isNotFound(e)) throw e;
+      }
+      await this.client.send(new CreateBucketCommand({ Bucket, ObjectLockEnabledForBucket: true }));
+      created.push(Bucket);
+    }
+    return { created };
   }
 
   /** MinIO's own liveness probe, then the bucket checks. */

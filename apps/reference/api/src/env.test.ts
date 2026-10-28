@@ -25,6 +25,30 @@ describe("apiEnv (IPB-11 §11.4)", () => {
       load({ ...base, APP_ENV: "staging", APP_FIXTURE_ADAPTERS: "true" }),
     ).rejects.toThrow(/refused in staging/);
   });
+  it("keeps the named ports on fixtures only where fixtures run", async () => {
+    const real = {
+      ...base,
+      AUTH_BASE_URL: "http://127.0.0.1:58080",
+      AUTH_REALM: "r",
+      AUTH_CLIENT_ID: "c",
+      AUTH_CLIENT_SECRET: "s",
+      AUTH_ADMIN_CLIENT_ID: "a",
+      AUTH_ADMIN_CLIENT_SECRET: "s2",
+      AUTH_AUDIENCE: "c",
+      AUTHZ_CERBOS_URL: "http://127.0.0.1:53592",
+      STORAGE_BUCKET_PREFIX: "ipb-local",
+      QUEUE_REDIS_URL: "redis://127.0.0.1:56379",
+    };
+    const v = await load({ ...real, APP_FIXTURE_PORTS: "LLM,KMS,TRUST" });
+    expect(v.APP_FIXTURE_PORTS).toEqual(["LLM", "KMS", "TRUST"]);
+    await expect(load({ ...real, APP_FIXTURE_PORTS: "STORAGE" })).rejects.toThrow(
+      /APP_FIXTURE_PORTS/,
+    );
+    // Above the fixture environments the refusal comes after parsing (secret references aside).
+    expect(() => checkApiEnv({ ...v, APP_ENV: "staging", APP_FIXTURE_ADAPTERS: false })).toThrow(
+      /APP_FIXTURE_PORTS is refused in staging/,
+    );
+  });
   it("needs every real adapter when fixtures are off", async () => {
     await expect(load(base)).rejects.toThrow(/AUTH_BASE_URL.*QUEUE_REDIS_URL/);
   });

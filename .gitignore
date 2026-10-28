@@ -32,3 +32,5 @@ next-env.d.ts
 # OpenTofu working directories and lock files written by tofu init (pinned versions in versions.tf)
 .terraform/
 .terraform.lock.hcl
+# The Cerbos policy bundle pnpm dev:up assembles for the local stack
+.cerbos/

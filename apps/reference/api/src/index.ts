@@ -29,3 +29,4 @@ export {
   type WorkerHandle,
 } from "./worker.js";
 export { helloSeedModule } from "./seed/hello.js";
+export { OutboxRelay, EVENTS_QUEUE, RELAY_PRINCIPAL_ID } from "./relay.js";
