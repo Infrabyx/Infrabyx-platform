@@ -1,5 +1,5 @@
-// The reference deployment's BOM (IPB-01-40; PL6 plan §9.2). The cosign signature of
-// @IPB-01-AT-18 waits for the signing decision (OWNER-QUESTIONS #67).
+// The reference deployment's BOM (IPB-01-40; PL6 plan §9.2). The cosign keyless signature of
+// @IPB-01-AT-18 is made and verified in the release job (PL6-D-16); here the BOM itself.
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,7 +8,7 @@ import { buildBom, main, npmPurl, validateBom } from "./bom.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 
-describe("@IPB-01-AT-18 BOM generation (without the signature, #67)", () => {
+describe("@IPB-01-AT-18 BOM generation (signed in the release job)", () => {
   it("writes docs/bom/<release>.cdx.json as valid CycloneDX 1.6 listing Node 24.22.1 and PostgreSQL 18", async () => {
     const out = join(mkdtempSync(join(tmpdir(), "bom-")), "rc-1.cdx.json");
     const log = console.log;
@@ -29,7 +29,7 @@ describe("@IPB-01-AT-18 BOM generation (without the signature, #67)", () => {
       "18",
     );
     expect(bom.metadata.properties.find((p) => p.name === "infrabyx:signature").value).toMatch(
-      /#67/,
+      /^cosign keyless.*release\.yml@refs\/heads\/main/,
     );
   });
 

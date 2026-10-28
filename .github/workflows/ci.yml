@@ -392,6 +392,10 @@ jobs:
           TF_PLUGIN_CACHE_DIR: ${{ github.workspace }}/.infra-tools/tofu-plugins
         run: |
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
+          # The example stack encrypts its state with a key derived from this variable
+          # (PL6-D-16); OpenTofu needs a value to initialise. A throwaway per run, never stored.
+          TF_VAR_state_passphrase="$(openssl rand -hex 24)"
+          export TF_VAR_state_passphrase
           tofu fmt -check -recursive -diff infra/terraform
           for dir in infra/terraform/modules/*/* infra/terraform/envs/example/*; do
             [ -n "$(ls "$dir"/*.tf 2>/dev/null)" ] || continue

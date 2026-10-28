@@ -3,8 +3,9 @@
 // CycloneDX 1.6 JSON, from pnpm-lock.yaml and the workspace packages, the Node.js and pnpm pins, the
 // base images of infra/docker, the Compose images (PostgreSQL, Redis, Keycloak, Temporal…) and the
 // Helm chart. Validated offline against the vendored CycloneDX schema before it is written. The
-// cosign signature and the Terraform state inputs wait for a deployed environment and the signing
-// decision (OWNER-QUESTIONS #67); the BOM says so in its metadata.
+// release job signs it with cosign keyless and attests every published package with it (owner
+// answer #67(1), PL6-D-16); the Terraform state inputs wait for a deployed environment. The BOM
+// says both in its metadata.
 //   node scripts/bom.mjs --release <id> [--out <file>]   # default docs/bom/<id>.cdx.json
 //   node scripts/bom.mjs --validate <file>
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -231,11 +232,12 @@ export async function buildBom({ release, now = new Date() }) {
       properties: [
         {
           name: "infrabyx:signature",
-          value: "pending: cosign signing waits for OWNER-QUESTIONS #67",
+          value:
+            "cosign keyless, detached: <file>.sigstore.json, signed by .github/workflows/release.yml@refs/heads/main (PL6-D-16)",
         },
         {
           name: "infrabyx:terraform-state",
-          value: "none: no deployed environment yet (OWNER-QUESTIONS #67)",
+          value: "none: no deployed environment yet (no hosted environment, owner answer #67(2))",
         },
       ],
     },
