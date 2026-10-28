@@ -18,6 +18,7 @@ const BUILT = [
   "packages/crypto/dist/index.js",
   "packages/tenancy/dist/migrate/cli.js",
   "packages/seed/dist/cli.js",
+  "apps/reference/api/dist/seed/hello.js",
 ];
 for (const f of BUILT)
   if (!existsSync(join(ROOT, f))) {
@@ -97,6 +98,20 @@ function up(argv) {
     stdio: "inherit",
     cwd: ROOT,
   });
+  // The reference app's own migrations (the product pattern: `--dir` and `--name` after the platform).
+  execFileSync(
+    "node",
+    [
+      "packages/tenancy/dist/migrate/cli.js",
+      "--db",
+      db,
+      "--dir",
+      "apps/reference/api/migrations",
+      "--name",
+      "reference",
+    ],
+    { stdio: "inherit", cwd: ROOT },
+  );
   execFileSync(
     "node",
     ["../../packages/seed/dist/cli.js", "--profile", "dev", "--modules", "src/seed/public-site.ts"],
@@ -116,6 +131,32 @@ function up(argv) {
         SEED_RANDOM_SEED: "1",
         SEED_VAULT_PREFIX: "local",
         // Gitignored and never committed (CLAUDE.md); the seeded personas' generated passwords.
+        SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
+      },
+    },
+  );
+  // The reference app's seed (the hello greetings of the demo and sandbox tenants).
+  execFileSync(
+    "node",
+    [
+      "packages/seed/dist/cli.js",
+      "--profile",
+      "dev",
+      "--modules",
+      "apps/reference/api/dist/seed/hello.js",
+    ],
+    {
+      stdio: "inherit",
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        APP_ENV: "local",
+        APP_PRODUCT: "LD",
+        DB_URL: db,
+        DB_PASSWORD: env.POSTGRES_PASSWORD,
+        SEED_ENABLED: "true",
+        SEED_RANDOM_SEED: "1",
+        SEED_VAULT_PREFIX: "local",
         SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
       },
     },

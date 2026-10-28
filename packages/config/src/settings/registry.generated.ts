@@ -4740,6 +4740,25 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "false on public sites, true in apps"
   },
   {
+    "key": "hello.greeting.max_length",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 280,
+    "min": 1,
+    "max": 2000,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN",
+      "ORG_OWNER"
+    ],
+    "mc": false,
+    "help": "hlp.hello.greeting_max_length",
+    "source": "PL6 plan §8.1",
+    "note": "apps/reference hello module (the template); products drop it with the module"
+  },
+  {
     "key": "fb.nps.interval_days",
     "tier": "PLATFORM",
     "type": "int",
@@ -6478,6 +6497,7 @@ export type SettingValueMap = {
   "mkt.webhooks": JsonValue;
   "mkt.ab.enabled": boolean;
   "fb.widget.floating": boolean;
+  "hello.greeting.max_length": number;
   "fb.nps.interval_days": number;
   "fb.screenshot.enabled": boolean;
   "fb.idea_board.enabled": boolean;
