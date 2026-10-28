@@ -357,6 +357,39 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
   });
 });
 
+describe("the outbox relay (IPB-01 §01.4.3.3)", () => {
+  it("hands each committed event to the events queue once and marks it dispatched", async () => {
+    const { OutboxRelay, EVENTS_QUEUE } = await import("../relay.js");
+    const { MemoryQueue } = await import("../fixtures.js");
+    const queue = new MemoryQueue();
+    const relay = new OutboxRelay({
+      kernel: db.kernel,
+      audit: db.audit,
+      queue,
+      schemas: ["hello"],
+    });
+    const g = await services.hello.create(withTenant(DEMO, ["ORG_MAKER"]), { message: "relayed" });
+    const first = await relay.once();
+    expect(first).toBeGreaterThanOrEqual(1);
+    const mine = queue.jobs.filter(
+      (j) =>
+        j.queue === EVENTS_QUEUE &&
+        (JSON.parse(String(j.job.data.envelope)) as { data?: { greeting_id?: string } }).data
+          ?.greeting_id === g.id,
+    );
+    expect(mine.map((j) => j.job.name)).toEqual(["in.ld.hello.GreetingCreated.v1"]);
+    expect(await relay.once()).toBe(0);
+    const left = await db.admin.query(
+      "select count(*)::int as n from hello.outbox where dispatched_at is null",
+    );
+    expect(left.rows[0]?.n).toBe(0);
+    const ledger = await db.admin.query(
+      "select count(*)::int as n from audit.ledger where action = 'hello.outbox.dispatch'",
+    );
+    expect(ledger.rows[0]?.n).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("NN pattern suites on hello.greeting", () => {
   describeTenantIsolation({
     db: () => db,

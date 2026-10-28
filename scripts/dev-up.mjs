@@ -18,7 +18,12 @@ const BUILT = [
   "packages/crypto/dist/index.js",
   "packages/tenancy/dist/migrate/cli.js",
   "packages/seed/dist/cli.js",
+  "packages/connectors/dist/identity/index.js",
+  "packages/connectors/dist/storage/index.js",
+  "packages/connectors/dist/feature-flag/index.js",
+  "packages/config/dist/flags/index.js",
   "apps/reference/api/dist/seed/hello.js",
+  "apps/reference/api/dist/seed/adapters.js",
 ];
 for (const f of BUILT)
   if (!existsSync(join(ROOT, f))) {
@@ -72,6 +77,90 @@ function ensureEnv() {
   return have;
 }
 
+/** Add generated values to .env.local (the Keycloak client secrets after the realm is applied). */
+function setEnv(values) {
+  const lines = readFileSync(ENV_FILE, "utf8").split("\n");
+  const keys = new Set(Object.keys(values));
+  const kept = lines.filter((l) => !keys.has(l.slice(0, l.indexOf("="))));
+  while (kept.length && kept.at(-1) === "") kept.pop();
+  writeFileSync(
+    ENV_FILE,
+    `${[...kept, ...Object.entries(values).map(([k, v]) => `${k}=${v}`)].join("\n")}\n`,
+    { mode: 0o600 },
+  );
+}
+
+/**
+ * The stack's real adapters, made ready for apps/reference (PL6-D-10): the Keycloak realm with the
+ * API and admin clients (their generated secrets go to .env.local), the MinIO class buckets with
+ * Object Lock, and the Unleash project synchronised with the flag registry. Every step is
+ * idempotent, so a second dev:up only confirms.
+ */
+async function bootstrap(env) {
+  const loopback = { allowLoopbackHttp: true };
+  const { KeycloakIdentity } = await import(
+    join(ROOT, "packages/connectors/dist/identity/index.js")
+  );
+  const apiPort = env.API_PORT ?? "53125";
+  const secrets = await KeycloakIdentity.applyRealm({
+    baseUrl: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
+    masterAdmin: { username: "ipb-bootstrap", password: env.KEYCLOAK_ADMIN_PASSWORD },
+    spec: {
+      realm: "infrabyx-local",
+      profile: "tenant",
+      apiClient: {
+        clientId: "reference-api",
+        redirectUris: [`http://localhost:${apiPort}/auth/callback`],
+      },
+      adminClientId: "reference-admin",
+      audience: "reference-api",
+      passkeys: false,
+    },
+    ...loopback,
+  });
+  setEnv({
+    AUTH_CLIENT_SECRET: secrets.clientSecret,
+    AUTH_ADMIN_CLIENT_SECRET: secrets.adminClientSecret,
+  });
+  console.log("dev:up: Keycloak realm infrabyx-local applied (client secrets in .env.local)");
+
+  const { MinioStorage } = await import(join(ROOT, "packages/connectors/dist/storage/index.js"));
+  const classes = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS", "QUARANTINE"];
+  const storage = new MinioStorage({
+    buckets: Object.fromEntries(
+      classes.map((c) => [c, `ipb-local-${c.toLowerCase().replace(/_/g, "-")}`]),
+    ),
+    region: "ap-south-1",
+    endpoint: `http://127.0.0.1:${env.MINIO_PORT ?? "59000"}`,
+    credentials: { accessKeyId: env.MINIO_ROOT_USER, secretAccessKey: env.MINIO_ROOT_PASSWORD },
+    ...loopback,
+  });
+  const { created } = await storage.ensureBuckets();
+  console.log(`dev:up: MinIO buckets ready (${created.length} created)`);
+
+  const { UnleashFlags } = await import(
+    join(ROOT, "packages/connectors/dist/feature-flag/index.js")
+  );
+  const { defaultFlagRegistry } = await import(join(ROOT, "packages/config/dist/flags/index.js"));
+  const flags = await UnleashFlags.start({
+    url: `http://127.0.0.1:${env.UNLEASH_PORT ?? "54242"}`,
+    appName: "dev-up",
+    environment: "development",
+    clientToken: env.UNLEASH_CLIENT_TOKEN,
+    adminToken: env.UNLEASH_ADMIN_TOKEN,
+    project: "default",
+    ...loopback,
+  });
+  try {
+    const r = await flags.syncRegistry(defaultFlagRegistry.all());
+    console.log(
+      `dev:up: Unleash flags synchronised (${r.created.length} created, ${r.updated.length} updated, ${r.unchanged.length} unchanged)`,
+    );
+  } finally {
+    flags.destroy();
+  }
+}
+
 const compose = (args, opts = {}) =>
   execFileSync("docker", ["compose", "-f", COMPOSE, "--env-file", ENV_FILE, ...args], {
     stdio: "inherit",
@@ -86,12 +175,14 @@ function profilesFrom(argv) {
   return [...new Set(out)];
 }
 
-function up(argv) {
+async function up(argv) {
   const env = ensureEnv();
   const profiles = profilesFrom(argv);
   // The seed's file storage, mounted into the apps; created here so Docker does not create it as root.
   mkdirSync(join(ROOT, ".storage"), { recursive: true });
-  compose([...profiles.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
+  // The core services first: the apps need the realm's secrets and the buckets before they start.
+  compose(["--profile", "core", "up", "-d", "--build", "--wait"]);
+  await bootstrap(env);
   const port = env.PG_PORT ?? "55432";
   const db = `postgres://postgres:${env.POSTGRES_PASSWORD}@127.0.0.1:${port}/infrabyx`;
   execFileSync("node", ["packages/tenancy/dist/migrate/cli.js", "--db", db], {
@@ -161,6 +252,51 @@ function up(argv) {
       },
     },
   );
+  // The seed personas into Keycloak (passwords to SEED_CREDENTIALS.md, never committed).
+  const current = ensureEnv();
+  execFileSync(
+    "node",
+    [
+      "packages/seed/dist/cli.js",
+      "credentials",
+      "--adapters",
+      "apps/reference/api/dist/seed/adapters.js",
+    ],
+    {
+      stdio: "inherit",
+      cwd: ROOT,
+      env: {
+        ...process.env,
+        APP_ENV: "local",
+        APP_PRODUCT: "LD",
+        APP_BASE_URL: `http://localhost:${env.API_PORT ?? "53125"}`,
+        DB_URL: db,
+        DB_PASSWORD: env.POSTGRES_PASSWORD,
+        SEED_ENABLED: "true",
+        SEED_RANDOM_SEED: "1",
+        SEED_VAULT_PREFIX: "local",
+        SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
+        APP_FIXTURE_ADAPTERS: "false",
+        AUTH_BASE_URL: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
+        AUTH_REALM: "infrabyx-local",
+        AUTH_CLIENT_ID: "reference-api",
+        AUTH_CLIENT_SECRET: current.AUTH_CLIENT_SECRET,
+        AUTH_ADMIN_CLIENT_ID: "reference-admin",
+        AUTH_ADMIN_CLIENT_SECRET: current.AUTH_ADMIN_CLIENT_SECRET,
+        AUTH_AUDIENCE: "reference-api",
+        AUTHZ_CERBOS_URL: `http://127.0.0.1:${env.CERBOS_PORT ?? "53592"}`,
+        STORAGE_ENDPOINT: `http://127.0.0.1:${env.MINIO_PORT ?? "59000"}`,
+        STORAGE_BUCKET_PREFIX: "ipb-local",
+        STORAGE_ACCESS_KEY: env.MINIO_ROOT_USER,
+        STORAGE_SECRET_KEY: env.MINIO_ROOT_PASSWORD,
+        QUEUE_REDIS_URL: `redis://:${env.REDIS_PASSWORD}@127.0.0.1:${env.REDIS_PORT ?? "56379"}`,
+      },
+    },
+  );
+  // The remaining profiles (the apps read the realm's secrets from .env.local).
+  const extra = profiles.filter((p) => p !== "core");
+  if (extra.length)
+    compose([...extra.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
   console.log(
     `dev:up ready (profiles: ${profiles.join(", ")}); database ${db.replace(/:[^:@]*@/, ":***@")}`,
   );
@@ -177,7 +313,7 @@ function down() {
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
-if (cmd === "up") up(rest);
+if (cmd === "up") await up(rest);
 else if (cmd === "down") down();
 else {
   console.error("usage: node scripts/dev-up.mjs up [--profile <name>]... | down");

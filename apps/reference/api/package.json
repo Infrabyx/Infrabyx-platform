@@ -24,7 +24,11 @@
       "types": "./dist/seed/hello.d.ts",
       "default": "./dist/seed/hello.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./seed-adapters": {
+      "types": "./dist/seed/adapters.d.ts",
+      "default": "./dist/seed/adapters.js"
+    }
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

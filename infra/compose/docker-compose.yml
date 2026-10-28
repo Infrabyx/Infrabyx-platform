@@ -172,7 +172,10 @@ services:
     image: cerbos/cerbos@sha256:e5e3b150b3cb0090975605254f255164567d67e233634199fb20972e3eaff300
     read_only: true
     # The image's default configuration serves the policies in /policies from disk.
-    volumes: ["../../packages/connectors/policy/cerbos:/policies:ro"]
+    volumes:
+      - "../../packages/connectors/policy/cerbos:/policies:ro"
+      # The reference app's own resource policies, beside the platform ones (loaded recursively).
+      - "../../apps/reference/api/policy/cerbos:/policies/reference:ro"
     ports: ["127.0.0.1:${CERBOS_PORT:-53592}:3592"]
     healthcheck:
       test: ["CMD", "/cerbos", "healthcheck"]
@@ -220,8 +223,11 @@ services:
     ports: ["127.0.0.1:${CONSOLE_PORT:-53124}:3000"]
 
   api:
-    # The reference API (PL6 plan §8): the fixture IDENTITY, AUTHZ, STORAGE and QUEUE adapters in
-    # this stack until session 4b wires Keycloak, Cerbos, MinIO and Redis through dev:up.
+    # The reference API on the real adapters of this stack (PL6-D-10): Keycloak (the realm and the
+    # personas that dev:up creates), Cerbos, MinIO and Redis. It joins the host network and reaches
+    # them at their published loopback ports, as `pnpm start` outside Compose would: the adapters
+    # accept plain HTTP to loopback only (IPB-SEC-018), never to a service name. LLM, KMS and TRUST
+    # stay on fixtures until a product wires them (APP_FIXTURE_PORTS).
     profiles: [apps]
     <<: *hardened
     build:
@@ -229,18 +235,40 @@ services:
     image: infrabyx/reference-api:local
     read_only: true
     tmpfs: [/tmp]
+    network_mode: host
     depends_on:
       postgres: { condition: service_healthy }
-    environment:
+      keycloak: { condition: service_healthy }
+      cerbos: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment: &reference-env
       APP_ENV: local
       APP_PRODUCT: LD
       APP_BASE_URL: http://localhost:${API_PORT:-53125}
-      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
-      APP_FIXTURE_ADAPTERS: "true"
-    ports: ["127.0.0.1:${API_PORT:-53125}:3000"]
+      APP_PORT: ${API_PORT:-53125}
+      PORT: ${API_PORT:-53125}
+      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@127.0.0.1:${PG_PORT:-55432}/infrabyx
+      APP_FIXTURE_ADAPTERS: "false"
+      APP_FIXTURE_PORTS: LLM,KMS,TRUST
+      AUTH_BASE_URL: http://127.0.0.1:${KEYCLOAK_PORT:-58080}
+      AUTH_REALM: infrabyx-local
+      AUTH_CLIENT_ID: reference-api
+      AUTH_CLIENT_SECRET: ${AUTH_CLIENT_SECRET:?run pnpm dev:up}
+      AUTH_ADMIN_CLIENT_ID: reference-admin
+      AUTH_ADMIN_CLIENT_SECRET: ${AUTH_ADMIN_CLIENT_SECRET:?run pnpm dev:up}
+      AUTH_AUDIENCE: reference-api
+      AUTHZ_CERBOS_URL: http://127.0.0.1:${CERBOS_PORT:-53592}
+      STORAGE_ENDPOINT: http://127.0.0.1:${MINIO_PORT:-59000}
+      STORAGE_REGION: ap-south-1
+      STORAGE_BUCKET_PREFIX: ipb-local
+      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER}
+      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      QUEUE_REDIS_URL: redis://:${REDIS_PASSWORD}@127.0.0.1:${REDIS_PORT:-56379}
 
   worker:
-    # The reference worker: the API's codebase at its worker entrypoint (IPB-01 §01.4.2).
+    # The reference worker: the API's codebase at its worker entrypoint (IPB-01 §01.4.2), on the
+    # same adapters; the export runner and sweep, and the hello outbox relay.
     profiles: [apps]
     <<: *hardened
     build:
@@ -248,15 +276,17 @@ services:
     image: infrabyx/reference-worker:local
     read_only: true
     tmpfs: [/tmp]
+    network_mode: host
     depends_on:
       postgres: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+      cerbos: { condition: service_healthy }
+      minio: { condition: service_healthy }
+      redis: { condition: service_healthy }
     environment:
-      APP_ENV: local
-      APP_PRODUCT: LD
-      APP_BASE_URL: http://localhost:${API_PORT:-53125}
-      DB_URL: postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/infrabyx
-      APP_FIXTURE_ADAPTERS: "true"
-    ports: ["127.0.0.1:${WORKER_PORT:-53126}:3000"]
+      <<: *reference-env
+      APP_PORT: ${WORKER_PORT:-53126}
+      PORT: ${WORKER_PORT:-53126}
 
   opensearch:
     profiles: [search]

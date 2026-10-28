@@ -29,11 +29,12 @@ The "hello tenant" application that uses the `@infrabyx/*` packages the way a pr
 
 ```sh
 pnpm build
-pnpm dev:up --profile apps             # the Compose stack with the api (53125) and worker (53126) images
+pnpm dev:up --profile apps             # the stack (Keycloak realm, MinIO buckets, Unleash, seeds, personas) and the api (53125) and worker (53126) images on its real adapters
 curl -s http://127.0.0.1:53125/health/ready
-# sign in as a seeded fixture persona (member, maker, checker, admin, owner, sandbox_owner, super_admin)
-curl -s -c jar -b jar -L -o /dev/null "http://127.0.0.1:53125/auth/login?persona=maker"
-curl -s -b jar http://127.0.0.1:53125/hello/greetings
+# sign in through Keycloak as a seed persona (passwords in SEED_CREDENTIALS.md, never committed):
+open http://localhost:53125/auth/login
+# or, with fixture adapters (APP_FIXTURE_ADAPTERS=true outside Compose), as a fixture persona:
+curl -s -c jar -b jar -L -o /dev/null "http://localhost:3000/auth/login?persona=maker"
 ```
 
 Outside Compose: copy `api/.env.example`, set `APP_FIXTURE_ADAPTERS=true` in local, dev, test or preview (or the `AUTH_*`, `AUTHZ_*`, `STORAGE_*` and `QUEUE_*` variables of the real adapters), run `infrabyx-migrate --db <url> --dir apps/reference/api/migrations --name reference` after the platform migrations, then `pnpm --filter @infrabyx/reference-api start` and `start:worker`.

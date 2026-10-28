@@ -2,10 +2,12 @@
 // It builds the same services as the API, serves the health probes on its own port, and runs the
 // QUEUE consumers: the hello example job, and the export runner (`export` queue, ids only), with
 // the export sweep that re-enqueues approved jobs and deletes expired archives (IPB-07-27). A
-// product adds its own queues, the Temporal worker and its sweeps here (PL6 session 4c adds the
-// outbox relay and the Temporal worker).
+// product adds its own queues, the Temporal worker and its sweeps here. The outbox relay hands the
+// hello module's committed events to the QUEUE (`relay.ts`); the Temporal worker is session 4d.
 import { createServer, type Server } from "node:http";
 import { readiness } from "./http/health.controller.js";
+import { HELLO_SCHEMA } from "./modules/hello/index.js";
+import { OutboxRelay } from "./relay.js";
 import { buildServices, EXPORT_QUEUE, type BuildOptions, type Services } from "./services.js";
 
 /** Queues the reference worker consumes. */
@@ -18,6 +20,8 @@ export interface WorkerHandle {
   port: number;
   /** One pass of the export sweep (also run on an interval). */
   sweep(): Promise<{ enqueued: number; deleted: number }>;
+  /** One pass of the outbox relay (also run on an interval). */
+  relay(): Promise<number>;
   stop(): Promise<void>;
 }
 
@@ -42,9 +46,22 @@ export function exportJobHandler(services: Services) {
 }
 
 export async function runWorker(
-  o: BuildOptions & { port?: number; sweepIntervalMs?: number } = {},
+  o: BuildOptions & { port?: number; sweepIntervalMs?: number; relayIntervalMs?: number } = {},
 ): Promise<WorkerHandle> {
   const services = await buildServices(o);
+  const outbox = new OutboxRelay({
+    kernel: services.kernel,
+    audit: services.audit,
+    queue: services.queue,
+    schemas: [HELLO_SCHEMA],
+  });
+  const relay = () => outbox.once();
+  const relayTimer = setInterval(() => {
+    relay().catch((e: Error) =>
+      process.stderr.write(`${JSON.stringify({ msg: "outbox relay failed", error: e.message })}\n`),
+    );
+  }, o.relayIntervalMs ?? 5_000);
+  relayTimer.unref();
   const subs = await Promise.all([
     services.queue.consume(HELLO_QUEUE, handleHelloJob, 2),
     services.queue.consume(EXPORT_QUEUE, exportJobHandler(services), 1),
@@ -82,8 +99,10 @@ export async function runWorker(
     server,
     port: actual,
     sweep,
+    relay,
     stop: async () => {
       clearInterval(timer);
+      clearInterval(relayTimer);
       for (const sub of subs) await sub.close();
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await services.close();

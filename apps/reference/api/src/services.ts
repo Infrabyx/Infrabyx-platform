@@ -190,9 +190,23 @@ async function build(o: BuildOptions): Promise<Services> {
     product,
   });
   const approvals = new ApprovalsEngine({ kernel, audit, product, outbox });
+  // All fixtures, all real adapters, or real adapters with the named ports still on fixtures (the
+  // Compose stack: Keycloak, Cerbos, MinIO and Redis are real; LLM, KMS and TRUST are not yet).
   const adapters = env.APP_FIXTURE_ADAPTERS
     ? fixtureAdapters(env)
-    : realAdapters(env, kernel, audit);
+    : (() => {
+        const real = realAdapters(env, kernel, audit);
+        const keep = new Set(env.APP_FIXTURE_PORTS ?? []);
+        if (keep.size === 0) return real;
+        const fx = fixtureAdapters(env);
+        return {
+          ...real,
+          ...(keep.has("LLM") ? { llm: fx.llm } : {}),
+          ...(keep.has("KMS") ? { kms: fx.kms } : {}),
+          ...(keep.has("TRUST") ? { trust: fx.trust } : {}),
+        };
+      })();
+  const fixtureKms = env.APP_FIXTURE_ADAPTERS || (env.APP_FIXTURE_PORTS ?? []).includes("KMS");
   const hello = new HelloService({ kernel, audit, outbox, settings, product, approvals });
 
   // The Vidhi kernel for the hello skill (IPB-03 §03.4.6, §03.4.7).
@@ -240,7 +254,7 @@ async function build(o: BuildOptions): Promise<Services> {
     product,
     release: EXPORT_RELEASE,
     map: REF_EXPORT_MAP,
-    signer: env.APP_FIXTURE_ADAPTERS
+    signer: fixtureKms
       ? await kmsArchiveSigner(adapters.kms, FIXTURE_EXPORT_KEY)
       : lazySigner(adapters.kms),
     pseudonymKey: new SecretKey("export-pseudonym", "hmac-sha-256", randomBytes(32)),

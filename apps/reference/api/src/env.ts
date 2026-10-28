@@ -8,6 +8,7 @@ import { AppEnv, ProductCode } from "@infrabyx/contracts/env";
 import {
   envBool,
   envInt,
+  envList,
   envUrl,
   envVar,
   loadAndValidate,
@@ -73,6 +74,13 @@ export const apiEnvSchema = z.object({
   APP_FIXTURE_ADAPTERS: envVar(envBool().default(false), {
     desc: "Fixture IDENTITY, AUTHZ, STORAGE and QUEUE adapters; refused from staging upwards",
     example: "true",
+    required: "opt",
+    sens: "C",
+    port: "APP",
+  }),
+  APP_FIXTURE_PORTS: envVar(envList(z.enum(["LLM", "KMS", "TRUST"])).optional(), {
+    desc: "Ports kept on fixtures while the others are real (LLM, KMS, TRUST); fixture environments only",
+    example: "LLM,KMS,TRUST",
     required: "opt",
     sens: "C",
     port: "APP",
@@ -179,6 +187,10 @@ export function checkApiEnv(v: ApiEnv): ApiEnv {
   if (!fixtures && v.APP_FIXTURE_ADAPTERS)
     throw new Error(
       `APP_FIXTURE_ADAPTERS is refused in ${v.APP_ENV} (fixtures run in ${FIXTURE_ENVS.join(", ")} only)`,
+    );
+  if (!fixtures && v.APP_FIXTURE_PORTS?.length)
+    throw new Error(
+      `APP_FIXTURE_PORTS is refused in ${v.APP_ENV} (fixtures run in ${FIXTURE_ENVS.join(", ")} only)`,
     );
   if (!v.APP_FIXTURE_ADAPTERS) {
     const missing = REAL_ADAPTER_VARS.filter((k) => v[k] === undefined);
