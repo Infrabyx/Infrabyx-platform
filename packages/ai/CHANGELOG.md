@@ -1,5 +1,15 @@
 # @infrabyx/ai
 
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies [9d8cd8c]
+- Updated dependencies [b3934f9]
+  - @infrabyx/tenancy@0.6.0
+  - @infrabyx/config@0.5.1
+  - @infrabyx/audit@0.1.5
+
 ## 0.2.0
 
 ### Minor Changes

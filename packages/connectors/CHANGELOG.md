@@ -1,5 +1,20 @@
 # @infrabyx/connectors
 
+## 0.5.0
+
+### Minor Changes
+
+- 60db887: PL6 session 6a: `@infrabyx/connectors/exit` exports `PORT_EXIT`, the exit metadata of every port the package builds adapters for (IPB-01 §01.4.13): the reference primary, the alternative an exit moves to, the data-move method, the data volume class and the lock-in residue with its mitigation. `pnpm exit-runbook` turns it, the port catalogue's RTO tiers, a routing file and the drill records into `docs/exit/EXIT_RUNBOOK.md`.
+- cb669ac: PL6 session 4c: `MinioStorage.ensureBuckets()` creates the class buckets that are missing on a local MinIO, with Object Lock (and so versioning) as `health` requires. `pnpm dev:up` calls it; deployed buckets still come from the OpenTofu modules.
+
+### Patch Changes
+
+- cb669ac: PL6 session 4c: `KeycloakIdentity` writes a display name Keycloak's person-name validator accepts (its prohibited characters removed) as the first name and keeps the display name whole in the `display_name` attribute, so a persona such as "Tenant auditor (RO)" provisions; `getUser` prefers that attribute. A 4xx from the admin API now names the field and validation message in the port error's detail. `ipbRealm` deduplicates the realm roles when `productRoles` repeats a platform role.
+- Updated dependencies [9d8cd8c]
+- Updated dependencies [b3934f9]
+  - @infrabyx/tenancy@0.6.0
+  - @infrabyx/config@0.5.1
+
 ## 0.4.0
 
 ### Minor Changes
