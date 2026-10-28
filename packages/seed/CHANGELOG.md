@@ -1,5 +1,15 @@
 # @infrabyx/seed
 
+## 1.0.6
+
+### Patch Changes
+
+- 1c869a8: `infrabyx-seed` passes `DB_PASSWORD` inside the connection URL (percent-encoded), so `DB_URL` without a password works as documented; before, pg let the URL's empty password win and the connection failed (PR-FBX-07). A refusal without `APP_PRODUCT` names the product from the scaffolded root `package.json` (`infrabyx.product`), else `unknown`, never `LD`.
+- Updated dependencies [1c869a8]
+  - @infrabyx/config@1.0.4
+  - @infrabyx/audit@1.2.1
+  - @infrabyx/tenancy@1.2.1
+
 ## 1.0.5
 
 ### Patch Changes
