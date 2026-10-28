@@ -1,5 +1,16 @@
 # @infrabyx/testing
 
+## 1.0.4
+
+### Patch Changes
+
+- c0ce8ff: `startPostgres` resolves platform packages from the current directory (the caller's package) and then from `@infrabyx/testing`, names any package whose migrations it skipped, and refuses with `requirePlatform: true` (PR-FBX-06).
+- Updated dependencies [c0ce8ff]
+- Updated dependencies [2724cd6]
+  - @infrabyx/tenancy@1.1.3
+  - @infrabyx/audit@1.1.1
+  - @infrabyx/seed@1.0.4
+
 ## 1.0.3
 
 ### Patch Changes
