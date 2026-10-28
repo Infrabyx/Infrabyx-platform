@@ -21,6 +21,15 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-UDF-007: telemetry scrubber gaps (security; patches of `connectors` and `tenancy`)
+
+Udofin's platform request PR-UDF-007 (R1-D-05). The IPB-02-23 telemetry scrubber missed a bank account number under `account_number` (the rule key is `bank_account`), an OTP written into a log message (`otp=123456`), and account numbers of 9 to 11 digits in free text.
+
+- **Fixed:** keys are matched to a mask rule by their spelling (`account_number`, `accountNumber`, `bank_account_no`, `aadhaar_number`, `pan_no`, `card_number`, `phone`, `mobile_number`, `email_address`, `passport_number`, and longer keys ending in a field name such as `borrower_pan`); keys containing `otp`, `totp`, `mpin`, `cvv`, `cvc` or `passcode` are redacted; free text redacts a code next to its label ("OTP is 482913", "482913 is your OTP", `"otp":"482913"`, `otp_code=…`), masks named account numbers of 9 to 18 digits (separators allowed) and any other run of 9 to 11 digits, mobiles written `98765 43210`, and passport numbers. `tenancy` gains the `passport` mask rule (IPB-02-22).
+- **Checked the same way:** every masked field of IPB-02 §02.4.3.3 and IPB-02-22 (bank account, Aadhaar, PAN, card number, mobile, email, passport), under its rule key, the usual spellings, nested, and in free text; 11 new cases in `otel.test.ts`, 6 of which fail on the previous scrubber (bank account three ways, mobile, passport, OTP).
+- **Products must:** move to the patch versions with the rest of `@infrabyx/*`; nothing else. Udofin can drop its "structured keys only" restriction once on these versions.
+- **Release:** pending the version PR.
+
 ### 1.1.0 (2026-10-28, version PR #116, release run 97)
 
 The R1 minors (#115 the outbox relay, #117 the block editor) and the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #116 merged as `32b0223` with every required check green, the full 20-port `port-contract` matrix included. Release run 97 (`release` job 122760867383):
