@@ -306,6 +306,7 @@ async function up(argv) {
         STORAGE_ACCESS_KEY: env.MINIO_ROOT_USER,
         STORAGE_SECRET_KEY: env.MINIO_ROOT_PASSWORD,
         QUEUE_REDIS_URL: `redis://:${env.REDIS_PASSWORD}@127.0.0.1:${env.REDIS_PORT ?? "56379"}`,
+        WORKFLOW_TEMPORAL_ADDRESS: `127.0.0.1:${env.TEMPORAL_PORT ?? "57233"}`,
       },
     },
   );

@@ -28,6 +28,7 @@ export async function readiness(s: ServicesLike): Promise<ReadyBody> {
     { port: "LLM", adapter: s.llm.descriptor.adapter, probe: () => s.llm.health() },
     { port: "KMS", adapter: s.kms.descriptor.adapter, probe: () => s.kms.health() },
     { port: "TRUST", adapter: s.trust.descriptor.adapter, probe: () => s.trust.health() },
+    { port: "WORKFLOW", adapter: s.workflow.descriptor.adapter, probe: () => s.workflow.health() },
   ];
   const checks: HealthEntry[] = await Promise.all(
     probes.map(async (p) => {

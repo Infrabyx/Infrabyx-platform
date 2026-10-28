@@ -14,6 +14,7 @@ import { CerbosAuthz } from "@infrabyx/connectors/authz";
 import { KeycloakIdentity, PgRevocationStore } from "@infrabyx/connectors/identity";
 import { BullmqQueue } from "@infrabyx/connectors/queue";
 import { MinioStorage, S3Storage } from "@infrabyx/connectors/storage";
+import { TemporalTimers, TemporalWorkflow } from "@infrabyx/connectors/workflow";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import {
   BUCKET_CLASSES,
@@ -24,19 +25,27 @@ import {
   type QueuePort,
   type StoragePort,
   type TrustPort,
+  type WorkflowPort,
 } from "@infrabyx/contracts/ports";
 import type { VidhiProduct } from "@infrabyx/contracts/vidhi";
-import { randomBytes, SecretKey } from "@infrabyx/crypto";
+import { FieldEnvelope, randomBytes, SecretKey } from "@infrabyx/crypto";
 import { ExportService, kmsArchiveSigner, REF_EXPORT_MAP } from "@infrabyx/export";
 import { HelpRegistry, loadRegistry, PLATFORM_REGISTRY_DIR } from "@infrabyx/hlp";
 import { ApprovalsEngine, PgKernel, PgOutbox } from "@infrabyx/tenancy";
+import { createWorkflow, InboxService, WorkflowTimers } from "@infrabyx/workflow";
 import { FakeLlm, FakeTrustFeed, fakeKms, MemoryStorage } from "@infrabyx/testing";
 import { TrustMirror } from "@infrabyx/trust";
 import { Autonomy, SkillRegistry, TaskRuntime } from "@infrabyx/vidhi";
 import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { apiEnv, FIXTURE_ENVS, type ApiEnv } from "./env.js";
-import { FixtureHelloAuthz, FixtureIdentity, MemoryQueue, missingPort } from "./fixtures.js";
+import {
+  FixtureHelloAuthz,
+  FixtureIdentity,
+  FixtureWorkflow,
+  MemoryQueue,
+  missingPort,
+} from "./fixtures.js";
 import { KeycloakFlow, type IdentityFlow } from "./identity.js";
 import {
   deterministicSummary,
@@ -80,8 +89,17 @@ export interface Services {
   llm: LlmPort;
   kms: KmsPort;
   trust: TrustPort;
+  /** The WORKFLOW port: Temporal when `WORKFLOW_TEMPORAL_ADDRESS` is set, the fixture otherwise. */
+  workflow: WorkflowPort;
+  /** The Temporal adapter the worker shares its codec and connection with; null on the fixture. */
+  temporal: TemporalWorkflow | null;
+  /** The task queue of the durable timers (`<prefix>timers`). */
+  timersTaskQueue: string;
   settings: SettingsService;
   approvals: ApprovalsEngine;
+  /** `@infrabyx/workflow`: the Work Inbox and the durable timers behind the approvals engine. */
+  inbox: InboxService;
+  timers: WorkflowTimers;
   hello: HelloService;
   summarise: HelloSummarise;
   vidhi: TaskRuntime;
@@ -189,14 +207,14 @@ async function build(o: BuildOptions): Promise<Services> {
     outbox,
     product,
   });
-  const approvals = new ApprovalsEngine({ kernel, audit, product, outbox });
   // All fixtures, all real adapters, or real adapters with the named ports still on fixtures (the
-  // Compose stack: Keycloak, Cerbos, MinIO and Redis are real; LLM, KMS and TRUST are not yet).
+  // Compose stack: Keycloak, Cerbos, MinIO, Redis and Temporal are real; LLM, KMS and TRUST are
+  // not yet).
+  const keep = new Set(env.APP_FIXTURE_PORTS ?? []);
   const adapters = env.APP_FIXTURE_ADAPTERS
     ? fixtureAdapters(env)
     : (() => {
         const real = realAdapters(env, kernel, audit);
-        const keep = new Set(env.APP_FIXTURE_PORTS ?? []);
         if (keep.size === 0) return real;
         const fx = fixtureAdapters(env);
         return {
@@ -206,7 +224,40 @@ async function build(o: BuildOptions): Promise<Services> {
           ...(keep.has("TRUST") ? { trust: fx.trust } : {}),
         };
       })();
-  const fixtureKms = env.APP_FIXTURE_ADAPTERS || (env.APP_FIXTURE_PORTS ?? []).includes("KMS");
+  const fixtureKms = env.APP_FIXTURE_ADAPTERS || keep.has("KMS");
+  // WORKFLOW: Temporal whenever an address is configured (also beside the fixtures, so the stack's
+  // Temporal can be exercised in tests); the codec seals every payload with the KMS in use (C-16).
+  const temporal =
+    env.WORKFLOW_TEMPORAL_ADDRESS && !keep.has("WORKFLOW")
+      ? new TemporalWorkflow({
+          address: env.WORKFLOW_TEMPORAL_ADDRESS,
+          namespace: env.WORKFLOW_TEMPORAL_NAMESPACE,
+          codec: { envelope: new FieldEnvelope(adapters.kms), keyId: env.WORKFLOW_CODEC_KEY_ID },
+          taskQueuePrefix: env.WORKFLOW_TASK_QUEUE_PREFIX,
+        })
+      : null;
+  const workflow: WorkflowPort = temporal ?? new FixtureWorkflow();
+  const timersTaskQueue = `${env.WORKFLOW_TASK_QUEUE_PREFIX}timers`;
+  // The approvals engine with the Work Inbox and the durable timers around it (PL3 plan §5): the
+  // PostgreSQL poller always reconciles; Temporal fires on time when configured.
+  const {
+    approvals,
+    inbox,
+    timers: workflowTimers,
+  } = createWorkflow({
+    kernel,
+    audit,
+    product,
+    outbox,
+    settings: { get: (ctx, key) => settings.get(ctx, key as never) as Promise<unknown> },
+    ...(temporal
+      ? { timerEngine: new TemporalTimers({ port: temporal, taskQueue: timersTaskQueue }) }
+      : {}),
+    onEngineError: (e) =>
+      process.stderr.write(
+        `${JSON.stringify({ msg: "timer engine failed", error: (e as Error).message })}\n`,
+      ),
+  });
   const hello = new HelloService({ kernel, audit, outbox, settings, product, approvals });
 
   // The Vidhi kernel for the hello skill (IPB-03 §03.4.6, §03.4.7).
@@ -277,8 +328,13 @@ async function build(o: BuildOptions): Promise<Services> {
     audit,
     outbox,
     ...adapters,
+    workflow,
+    temporal,
+    timersTaskQueue,
     settings,
     approvals,
+    inbox,
+    timers: workflowTimers,
     hello,
     summarise,
     vidhi,
@@ -292,6 +348,7 @@ async function build(o: BuildOptions): Promise<Services> {
     close: async () => {
       if ("close" in adapters.queue && typeof adapters.queue.close === "function")
         await (adapters.queue as { close(): Promise<void> }).close();
+      await temporal?.close();
       if (owned) await pool.end();
     },
   };

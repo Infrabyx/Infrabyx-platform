@@ -78,8 +78,8 @@ export const apiEnvSchema = z.object({
     sens: "C",
     port: "APP",
   }),
-  APP_FIXTURE_PORTS: envVar(envList(z.enum(["LLM", "KMS", "TRUST"])).optional(), {
-    desc: "Ports kept on fixtures while the others are real (LLM, KMS, TRUST); fixture environments only",
+  APP_FIXTURE_PORTS: envVar(envList(z.enum(["LLM", "KMS", "TRUST", "WORKFLOW"])).optional(), {
+    desc: "Ports kept on fixtures while the others are real (LLM, KMS, TRUST, WORKFLOW); fixture environments only",
     example: "LLM,KMS,TRUST",
     required: "opt",
     sens: "C",
@@ -155,6 +155,46 @@ export const apiEnvSchema = z.object({
     required: "opt",
     port: "QUEUE",
   }),
+  WORKFLOW_TEMPORAL_ADDRESS: envVar(
+    z
+      .string()
+      .regex(/^[A-Za-z0-9.-]+:\d{1,5}$/)
+      .optional(),
+    {
+      desc: "Temporal frontend (host:port); the WORKFLOW adapter is Temporal when set, the fixture otherwise (fixture environments only)",
+      example: "127.0.0.1:57233",
+      required: "opt",
+      sens: "C",
+      port: "WORKFLOW",
+    },
+  ),
+  WORKFLOW_TEMPORAL_NAMESPACE: envVar(z.string().min(1).default("default"), {
+    desc: "Temporal namespace (`int.workflow.namespace`)",
+    example: "default",
+    required: "opt",
+    sens: "C",
+    port: "WORKFLOW",
+  }),
+  WORKFLOW_TASK_QUEUE_PREFIX: envVar(
+    z
+      .string()
+      .regex(/^[a-z][a-z0-9-]*-$/)
+      .default("ipb-"),
+    {
+      desc: "Task queue prefix (`int.workflow.task_queue_prefix`); the durable timers run on <prefix>timers",
+      example: "ipb-",
+      required: "opt",
+      sens: "C",
+      port: "WORKFLOW",
+    },
+  ),
+  WORKFLOW_CODEC_KEY_ID: envVar(z.string().min(1).default("local:workflow"), {
+    desc: "KMS key of the Temporal payload codec (C-16); the fixture KMS accepts any id",
+    example: "local:workflow",
+    required: "opt",
+    sens: "C",
+    port: "WORKFLOW",
+  }),
   SECRETS_VAULT_ADDR: envVar(envUrl().optional(), {
     desc: "Vault or OpenBao address the secret:// references resolve against (staging and above)",
     example: "https://vault.internal:8200",
@@ -179,6 +219,7 @@ const REAL_ADAPTER_VARS = [
   "AUTHZ_CERBOS_URL",
   "STORAGE_BUCKET_PREFIX",
   "QUEUE_REDIS_URL",
+  "WORKFLOW_TEMPORAL_ADDRESS",
 ] as const;
 
 /** Refusals after parsing: fixtures only where allowed, every real adapter configured otherwise. */

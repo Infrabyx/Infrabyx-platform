@@ -5,7 +5,7 @@ The "hello tenant" application that uses the `@infrabyx/*` packages the way a pr
 | Part     | What it is                                                                                                                                                                                                                                                                                                                       |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `api`    | `@infrabyx/reference-api`: NestJS 11 on the kernel (`tenancy`), the ledger (`audit`), settings and events (`config`), the IDENTITY, AUTHZ, STORAGE and QUEUE adapters (`connectors`), help (`hlp`) and the seed framework (`seed`). Sign-in with PKCE through IDENTITY, health probes, the `hello` module, the worker entrypoint |
-| `worker` | `@infrabyx/reference-worker`: the API's codebase started at its worker entrypoint (queue consumers, the same health probes)                                                                                                                                                                                                      |
+| `worker` | `@infrabyx/reference-worker`: the API's codebase started at its worker entrypoint (queue consumers, the outbox relay, the timers' poller and the Temporal worker of `ipb-timers`, the same health probes)                                                                                                                        |
 | `web`    | PL6 session 5                                                                                                                                                                                                                                                                                                                    |
 
 ## The `hello` module (the module pattern)
@@ -37,7 +37,7 @@ open http://localhost:53125/auth/login
 curl -s -c jar -b jar -L -o /dev/null "http://localhost:3000/auth/login?persona=maker"
 ```
 
-Outside Compose: copy `api/.env.example`, set `APP_FIXTURE_ADAPTERS=true` in local, dev, test or preview (or the `AUTH_*`, `AUTHZ_*`, `STORAGE_*` and `QUEUE_*` variables of the real adapters), run `infrabyx-migrate --db <url> --dir apps/reference/api/migrations --name reference` after the platform migrations, then `pnpm --filter @infrabyx/reference-api start` and `start:worker`.
+Outside Compose: copy `api/.env.example`, set `APP_FIXTURE_ADAPTERS=true` in local, dev, test or preview (or the `AUTH_*`, `AUTHZ_*`, `STORAGE_*`, `QUEUE_*` and `WORKFLOW_*` variables of the real adapters; `WORKFLOW_TEMPORAL_ADDRESS` alone switches the timers to Temporal), run `infrabyx-migrate --db <url> --dir apps/reference/api/migrations --name reference` after the platform migrations, then `pnpm --filter @infrabyx/reference-api start` and `start:worker`.
 
 ## Tests
 
