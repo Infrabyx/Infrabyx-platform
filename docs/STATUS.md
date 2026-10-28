@@ -28,6 +28,14 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### Finbyx platform requests PR-FBX-01 to PR-FBX-06 (triage) and owner answer #82
+
+- **#82 answered** (R1-D-08): the lender connector stays product-local; the Ecosystem inbox (G2) is the next minor; JWS for regulated messages (G5) is approved under the C-22 profile and follows G2.
+- **PR-FBX-04** (`infrabyx-env` exits 0 under pnpm) is PR-UDF-005: **resolved** by #121, released in `config` 1.0.2 (run 102). Finbyx can drop `scripts/env-example.mjs` and call `pnpm exec infrabyx-env`.
+- **PR-FBX-03** (scaffold leftovers) is PR-UDF-006: **resolved** by #124 for the api's default and example, its env test, and the web theme. Still open (M8): the console's `themeCss("OH")` and product `OH`, the public site's `APP_BRAND_PRODUCT` default `GRP`.
+- **PR-FBX-02** (tenant-owned keys and buckets) changes key custody: waits for the owner (OWNER-QUESTIONS #83).
+- **Next, one PR each** (`docs/phases/R1-plan.md` M6 to M11): PR-FBX-05 (security), PR-FBX-06, PR-FBX-03's rest, PR-FBX-01, then G2 and G5.
+
 ### PR-UDF-004: `LENDER_CONNECTOR` design note (no code)
 
 Udofin's platform request PR-UDF-004 (G1 to G7 of its connector contract). `docs/phases/R1-lender-connector-note.md` recommends keeping the lender connector out of the platform: the Ecosystem Spec §10.1 defines the connector SPI as `@infrabyx/connector-sdk`, beside `infrabyx-contracts`, and a lender connector is a domain port with one consumer. Two pieces are worth taking in: the Ecosystem inbox (G2: business-key de-duplication and `seq` parking, which all six products need) as the next maintenance minor, and JWS storage and verification for regulated messages (G5) in `crypto` after a cryptography decision. The owner decides (OWNER-QUESTIONS #82); nothing is built or released.
