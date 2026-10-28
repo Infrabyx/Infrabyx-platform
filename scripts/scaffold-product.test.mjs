@@ -5,7 +5,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { APPS, platformPackages, scaffold } from "./scaffold-product.mjs";
+import { APPS, platformCommit, platformPackages, scaffold } from "./scaffold-product.mjs";
 
 const out = join(mkdtempSync(join(tmpdir(), "scaffold-")), "product");
 const read = (p) => readFileSync(join(out, p), "utf8");
@@ -75,8 +75,9 @@ describe("scaffold-product", () => {
     expect(existsSync(join(out, "infra/helm/api/values.prod.yaml"))).toBe(true);
     for (const env of ["dev", "staging", "prod"])
       expect(read(`infra/terraform/envs/udf/${env}/main.tf`)).toContain(
-        "git::https://github.com/Infrabyx/Infrabyx-platform.git//infra/terraform/modules/aws/platform",
+        `git::https://github.com/Infrabyx/Infrabyx-platform.git//infra/terraform/modules/aws/platform?ref=${platformCommit()}"`,
       );
+    expect(platformCommit()).toMatch(/^[0-9a-f]{40}$/);
   });
 
   it("refuses an unknown product or a folder that is not empty", async () => {

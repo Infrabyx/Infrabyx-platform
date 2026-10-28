@@ -523,6 +523,15 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **T and I (web to api in transit):** Control: `APP_API_URL` must be https except to loopback in local, dev, test and preview (IPB-SEC-018).
 - **Residual:** the `pages/` route serves the product's default pack whether or not the pack is published (its pages still pass the CMS maker-checker); a product publishes its pack and resolves it by host.
 
+### 3.47 The product scaffold and its CI registry (built, PL6 session 6b; PL6-D-14)
+
+`scripts/scaffold-product.mjs` writes a new product repository from this one; the `scaffold` CI job installs it from a local npm registry that serves the packed platform tarballs.
+
+- **T (a product built on unpinned or substituted code):** Control: every `@infrabyx/*` dependency is an exact version, the release-age rule and Renovate come with the template, and the OpenTofu modules are referenced at a fixed platform commit, never a branch (IPB-01-38).
+- **I (a credential in the product repository):** Control: the product's `.npmrc` names the registry only; CI supplies the read token through `actions/setup-node`; `.gitignore` excludes `.env*` and `SEED_CREDENTIALS.md`.
+- **S and T (the CI registry):** Control: it listens on loopback only inside one job, serves only the `@infrabyx` scope from tarballs packed in that job, with SHA-256 integrity in each packument; nothing it serves leaves the job.
+- **Residual:** the scaffold copies the reference apps' fixture adapters and seed personas, which run only in local, dev, test and preview (PL1-D-06); a product wires its real adapters before staging. The template does not yet carry the git hooks (gitleaks, the env and credential guard, commitlint) or the secret-scanning job; the product copies them from this repository on day one.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

@@ -16,7 +16,8 @@
 //   package), docs/platform-requests.md;
 // - infra/docker and infra/compose (the local stack and `pnpm dev:up`, resolving the platform's
 //   files from node_modules), infra/helm/values.<env>.yaml for the shared chart, and
-//   infra/terraform/envs/<product>/<env>/ from the example stack (modules referenced by git).
+//   infra/terraform/envs/<product>/<env>/ from the example stack (modules referenced by git at the
+//   platform commit the scaffold ran from).
 import {
   cpSync,
   existsSync,
@@ -26,6 +27,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { dirname, join, relative } from "node:path";
 import { parseArgs } from "node:util";
 
@@ -348,11 +350,17 @@ async function formatTree(out) {
   }
 }
 
+/** The commit the modules are referenced at: a fixed ref, never a moving branch (IPB-01-38). */
+export function platformCommit() {
+  return execFileSync("git", ["rev-parse", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim();
+}
+
 export async function scaffold({
   product,
   name,
   out,
   registry = GITHUB_PACKAGES,
+  platformRef = platformCommit(),
   now = new Date(),
 }) {
   if (!PRODUCTS.includes(product))
@@ -423,7 +431,7 @@ export async function scaffold({
   }
   const tf = read("infra/terraform/envs/example/preview/main.tf").replace(
     /source(\s*)=\s*"\.\.\/\.\.\/\.\.\/modules\/([a-z0-9/-]+)"/g,
-    `source$1= "${PLATFORM_GIT}//infra/terraform/modules/$2?ref=main"`,
+    `source$1= "${PLATFORM_GIT}//infra/terraform/modules/$2?ref=${platformRef}"`,
   );
   for (const env of ["dev", "staging", "prod"])
     write(`infra/terraform/envs/${slug}/${env}/main.tf`, tf);
