@@ -38,7 +38,7 @@ Udofin's platform request PR-UDF-005 (R1-D-06). Ten of the fourteen `infrabyx-*`
 - **Test:** `scripts/cli-bins.test.mjs` (`pnpm scripts:test`, in `verify`): every bin linked into a fresh project and run three ways (`pnpm exec`, `node node_modules/<pkg>/<bin>`, an npm-style `.bin` symlink); each must print its usage or its report. 44 cases; 30 fail on the previous entry points.
 - **Products must:** move to these patch versions, then **remove their wrappers** and call the CLIs by name (`pnpm exec infrabyx-…` or a `package.json` script): Udofin's `scripts/platform-cli.mjs`, and `scripts/env-example.mjs` calling `generateEnvExample` directly (`docs/product-guide.md` §2). Re-check that each CI step built on a CLI prints output.
 - **Merged** as #121 (`8a2587e`). Its `reference` job failed twice on the merge-from-main head (the gate journey's second TOTP sign-in returned a token without an MFA `amr`; `main` passed the same job meanwhile) and passed on the owner-approved second re-run; nothing in the diff reaches Keycloak or the token path, so it is recorded as an intermittent failure of the journey, not of the change.
-- **Release:** pending its version PR.
+- **Release:** release run 102 (record below): `tenancy` 1.1.2, `config` 1.0.2, `audit` 1.1.1 and 14 more patches.
 
 ### PR-UDF-007: telemetry scrubber gaps (security; patches of `connectors` and `tenancy`)
 
@@ -48,6 +48,36 @@ Udofin's platform request PR-UDF-007 (R1-D-05). The IPB-02-23 telemetry scrubber
 - **Checked the same way:** every masked field of IPB-02 §02.4.3.3 and IPB-02-22 (bank account, Aadhaar, PAN, card number, mobile, email, passport), under its rule key, the usual spellings, nested, and in free text; 11 new cases in `otel.test.ts`, 6 of which fail on the previous scrubber (bank account three ways, mobile, passport, OTP).
 - **Products must:** move to the patch versions with the rest of `@infrabyx/*`; nothing else. Udofin can drop its "structured keys only" restriction once on these versions.
 - **Release:** `tenancy` 1.1.1, `connectors` 1.0.2 and 13 dependent patches, release run 100 (record below).
+
+### PR-UDF-005 patch release (2026-10-28, version PR #123, release run 102)
+
+The PR-UDF-005 patches (#121): the CLI entry points of `ai`, `config`, `export`, `notify`, `seed`, `tenancy` and `testing`, with the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #123 merged as `fb6b33c` with every required check green, the full 20-port `port-contract` matrix included. Release run 102 (`release` job 122906036689):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3541727636 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:a0eff417-7cc9-500d-9696-93662dc8551e`, 967 components, release `fb6b33cf7757`) has SHA-256 `cc62ab5131a48a9809c0c30ee09c5d9ed4cc8a06aeacd1d8ecb06f49231bfb92`.
+- **Published 17 packages** (`consumer-smoke` first; `a11y`, `crypto`, `contracts`, `ui` and `hlp` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified all 17 attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40716698719 (job 122916231791) printed the registry's `dist` and rebuilt every package from `fb6b33c` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `fb6b33c`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/ai`         | 1.0.3   | `e0355a4e64960987abf0648e2c52c6641225d434` | `sha512-l4FJoUnWUJuI1X+sbcVA6cirELWQWutkLdlmQChqdiWXcuMB3JKi0nO4zzGKHM8e55R1k5nDZpvidIVYdhqFmg==` | 3541906898          | `package.json` dependency order only |
+| `@infrabyx/audit`      | 1.1.1   | `d04973ae617e2230ed29e00eba22660ef021d47b` | `sha512-HMmIDdmnHZeTnA1RMwxD847qGdNvCJU6Rgmyy+IuHDvOQe6nk9HUapAZzsxgss+VtRQmftSggHSUS5BHDqV9Qw==` | 3541910259          | identical                            |
+| `@infrabyx/brand`      | 1.0.3   | `8fc52d96522e854d66ead15a7101cd102f1df0d9` | `sha512-ZcUohSRw0e662tixk5tXRNVNBk4yrCrnzbnwK6WlRe7gge6t3fu1IKrqXvyjJkH4XeuHxfL7x26P+RwOBRDIbw==` | 3541913958          | identical                            |
+| `@infrabyx/cms`        | 1.1.2   | `1f4bd25a4243d65c49c56e917b96b4432d8c6ea3` | `sha512-cBLrMUdZTLpucbI+a85u3URDi3zrIGn5OUquyFDBj0ZOCjcDs66mpg8tT83pIloh2Y9fGzzMH1MBJOguPn0bFg==` | 3541915981          | `package.json` dependency order only |
+| `@infrabyx/config`     | 1.0.2   | `e9d6975e223b00de9dbb099aee805684e6f8c210` | `sha512-pDWbhibKxgtpHPJOwCYkqafOk1hPI5kLMlcpWB0EVoacB5YpDQoSJoGNqEB8I4QhntVcPb9eTX2ifTNCvuBuLQ==` | 3541918810          | `package.json` dependency order only |
+| `@infrabyx/connectors` | 1.0.3   | `28816e5d51662c9d6920c8d9e55426655d8c8a65` | `sha512-JrvG4DzsPelEarE25XbRdrVb+7L4ipuot33q7r7D0GfZePzhtVsajnvIuCrxjyo4QZ7R/cGnXWpJ+UxAwV6RFw==` | 3541926013          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.3   | `a6b5caa017e70d1766150b22e4978f5c40eef4a3` | `sha512-XQGdmmD2ZtsQDnJsN0YW7TWLanENvR3fb+aG5n9PODR2x/qvCGZHTLX2nbM24QXuyjRRq0XV4/oY+ufWlkrGgg==` | 3541930446          | `package.json` dependency order only |
+| `@infrabyx/export`     | 1.0.3   | `4f13e2123b00c60f54ded8fe6327803c9ebae4f7` | `sha512-dF/BBoNrgxma2MHow727tt45m6uyqIILYnJedS9hTcAuAB1H4LSQC+sw4XUgWPi/xLW6ORHJdFqFMNsqerdKog==` | 3541934106          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.3   | `87cba6bd7894c12a784e517e93fa37659f939d5a` | `sha512-h+z6kJQPlK6oODzYVB44+zXkbcGwrbLzgFkD9BP/kV4fK8Bbf97tgGkp0oaHiVCYkrCQcYhl9ktRsVajwbisiQ==` | 3541941394          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.0.3   | `7c14241a84c6255d899d7ad64a83e19f4de1cc3c` | `sha512-YsQFqyCW0cS/yBjCagxEOMIELEkK+Zknt44pWx41f3Ow+rupRwXJCNs0Xz826VwANVGHTnFC+AeD2LjZeBikTA==` | 3541945015          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.3   | `762bfd08386f8b230cd1e137fd6172307a364bd5` | `sha512-110EmqYwitb2HJAsKI4bZAt3VBxDcLosBvJWjP3f9ThLvaNnmt3kPVix7I/KbxcO4ZNBniejNe9GXspRqYTI5A==` | 3541949566          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.3   | `68d8b1620b0b872d98f3da22e6cd0710380d1830` | `sha512-T9iLoyqxp54QKS3/b9HA98MHELq5aFfDaQRu02/phJXqaK8PbGifP75n28x0xVq1KDnCdQBFn4lfxsrthSdOjw==` | 3541951702          | `package.json` dependency order only |
+| `@infrabyx/tenancy`    | 1.1.2   | `d0acb454c573a3c009198373eff18083a9275f6a` | `sha512-ZB6eY1xsOn1huvhWADWRlbgraUo3fyVEoBBbgeWNmsQ0HWvT9YguspdIDwWgX3c2WGwgd77v0iKYnJUOpkA8ew==` | 3541953465          | identical                            |
+| `@infrabyx/testing`    | 1.0.3   | `a7257d77effd110a9ba1028d0d54f5bb26c23e5e` | `sha512-+4Wtnafyk9S3yJznPPpaP0rx261hTxnTZrAdgaNe5XK/ZMYgxfIvzUFPKuKdrojEVNQa3c0BqcljXOZy+FgvqQ==` | 3541960443          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.3   | `c253b6c0f7460df1efa9600e64453e701e70c635` | `sha512-i9WRsF7vmffj6lJicZTzGF/ehwcl3B63jJ/MN09OlvTlG7pEuSLmx/oKEuxNehxh2sM8C7Y5oHeCcx+q5nLllg==` | 3541964687          | `package.json` dependency order only |
+| `@infrabyx/vidhi`      | 1.0.3   | `25e33814340bb93335c9f9457fd3332bbe5bb2b3` | `sha512-CSxy87N538QYlk6r46Iupq6khobvB294jENXzYr2qnTRDyntRthqHjNmkTcKZhKioSReqPMgueUJGheFgRbQ+w==` | 3541970873          | `package.json` dependency order only |
+| `@infrabyx/workflow`   | 1.0.3   | `c911c96df1448bbda04c4ea3cfe43ff15b1bd2c2` | `sha512-Q1MdTLok0qHmskG6ec+QlHiuhH6Tj+qtzg5iAFKzGP52+HC6deX2sak5rx3wVeWzrj/xJJCRbMbnv94UYXBqDQ==` | 3541977190          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`a11y` and `crypto` 1.0.1, `contracts` and `ui` 1.1.0, `hlp` 1.0.0 are unchanged); then remove any wrapper that runs a platform CLI by its real path (`docs/product-guide.md` §2). No migration, setting or environment variable.
 
 ### PR-UDF-007 patch release (2026-10-28, version PR #122, release run 100)
 
