@@ -25,7 +25,14 @@ export interface ServiceReaderOptions {
   principalId: string;
   /** Operational log of every read that returned rows (after the ledger entries are written). */
   onRead?: (r: ServiceReadRecord) => void;
+  /**
+   * `SVC_OUTBOX_RELAY` only: the registered `<schema>.outbox` tables it may read (its role lists
+   * none statically; the database grants decide, R1-D-01).
+   */
+  tables?: readonly string[];
 }
+
+const OUTBOX_TABLE = /^[a-z][a-z0-9_]*\.outbox$/;
 
 export class ServiceReader {
   private readonly ctx: KernelContext;
@@ -47,7 +54,10 @@ export class ServiceReader {
     sql: string,
     params: readonly unknown[] = [],
   ): Promise<R[]> {
-    const allowed: readonly string[] = SERVICE_READER_ROLES[this.o.role].tables;
+    const allowed: readonly string[] =
+      this.o.role === "SVC_OUTBOX_RELAY"
+        ? (this.o.tables ?? []).filter((t) => OUTBOX_TABLE.test(t))
+        : SERVICE_READER_ROLES[this.o.role].tables;
     if (!allowed.includes(table))
       throw new Error(`${this.o.role} may not read ${table} (allowed: ${allowed.join(", ")})`);
     if (!new RegExp(`\\bfrom\\s+${table.replace(".", "\\.")}\\b`, "i").test(sql))
