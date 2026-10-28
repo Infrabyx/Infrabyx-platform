@@ -28,6 +28,50 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### G2: the Ecosystem inbox (minors of `tenancy` and `contracts`)
+
+The owner's answer #82: the shared Ecosystem inbox as the next minor (R1-D-15; product guide §7a).
+
+- **Built:**
+  - Migration `tenancy/0006` adds `tenancy.create_ecosystem_inbox('<schema>')`: two tables in the consuming module's schema, forced RLS, no delete.
+  - `EcosystemInbox` methods: `receive`, `drain`, `sweep`, `setPosition` and `list`.
+  - Each event is stored before processing, de-duplicated by `(source, id)` and by business key, and processed in `seq` order per subject.
+  - Gaps are parked for 15 minutes, then replayed through the product's callback; a gap still open becomes a break the product raises as `ReconciliationBreakRaised`.
+  - Every write is ledgered.
+  - `contracts` gains `IPB-API-005` (IPB-10) for a test event at a live inbox.
+- **Tests:** `eco-inbox.int.test.ts` (8 cases on PostgreSQL: de-duplication, environment, order, skip, failure and attempts, replay then break, replay that fills the gap, isolation and grants); the `tenancy` integration suite (32 cases) passes with the new migration.
+- **Products must:** run `infrabyx-migrate` (`tenancy/0006`); to consume Ecosystem events, call `create_ecosystem_inbox` from a module migration and follow the product guide §7a. Udofin can replace its product-local inbox shim.
+
+### PR-FBX-07 patch release (2026-10-28, version PR #135, release run 114)
+
+The PR-FBX-07 patches (#134) of `seed` and `config`, with the patches of the packages that depend on them, released under OWNER-QUESTIONS #81(a). Version PR #135 merged as `d260ff6` with every required check green, the full 20-port `port-contract` matrix included. Release run 114 (`release` job 123054245000):
+
+- **Signed the BOM** keyless and verified it: Rekor log index 3547300019 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:377373b0-6ce3-554b-a4ed-68aaad2dad2f`, 953 components, release `d260ff656df5`) has SHA-256 `11e902e5aa4b341a68b0b70cfdedcc89c941874e06b3cbfe634db047f0e24926`.
+- **Published 17 packages** (`consumer-smoke` first: 22 packages, 103 exports, 0 failed; `a11y`, `contracts`, `crypto`, `hlp` and `ui` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; the step verified all 17 attestations (`dsse` entries below).
+- **Registry checksums:** `registry-dist` run 40757900997 (job 123061655829) printed the registry's `dist` and rebuilt every package from `d260ff6` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `d260ff6`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/ai`         | 1.0.6   | `c54afdffd0654cb55429d768e8347437e04aa9f2` | `sha512-jOkkmtDnQ6a3yACL18V1GAe/6dEt7nWsGwqScXXbotw85l1O0ZK6Ca8DrxpjRtvaVUlNg67ZOdwdgHqASnUI+w==` | 3547357589          | `package.json` dependency order only |
+| `@infrabyx/audit`      | 1.2.1   | `276f6bd4f31207c6aca932a34ffbac7d949f56f8` | `sha512-9wUP1sbSKtTSFaMXVkURV0WJqs36RODFYMO4Qu0jaa/3rRw7XZrrjASw4v54m+Xn4L3qP9rU7zoHFfNoleXaxg==` | 3547361748          | identical                            |
+| `@infrabyx/brand`      | 1.0.6   | `fdc3866279c13bf68952be3383a3ef6573705751` | `sha512-4G9dZ9GcajwBktWvGTmBpE6oJuyAITIzRd5Y88ahja+vkHL9k6Szug1jDfFno4Ce+n4bfm3D6x3mc9hEdni7CA==` | 3547364969          | `package.json` dependency order only |
+| `@infrabyx/cms`        | 1.1.5   | `ef9188c761108262b33c39af56e343fccfe3b2b5` | `sha512-HTcAHHexFyzo7pjx3rRa7ctED6sk/sIGEQLu+kzbVbXxlDyq18zd9fX3sGCuyLW6cNnr93MfCO0UueIFEDF9UA==` | 3547367500          | `package.json` dependency order only |
+| `@infrabyx/config`     | 1.0.4   | `92758bd3c715334b75fffd93aa668105725d99c5` | `sha512-nVCoBYNo94oa3/8V94/mAUjjy6LcICO81pytZxX/UgTdoWP6lsHFqNnlVCmvHwR9wwIsCn1cP4srbX28e5SLIA==` | 3547369426          | identical                            |
+| `@infrabyx/connectors` | 1.0.7   | `12a5c3f309258cf27adc70c3046840d8cdae65a9` | `sha512-ziSo86/ysTcuNjylUzzOKMx1mJz4wMfDWsglvOpBnoOfhMHsW6ZyuK+qxqDgnmQo+ltHpml4jZBmnWjOhgTFuQ==` | 3547372347          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.6   | `6a4632a367111ba9a014411e7942ea0ddcab6bf6` | `sha512-gvrjZltUwb98KFvyqqaDLcVOl+RVaGRs2wg3YzfzXjKaJC+MxYUizijwpV77zWfn1pRA1gDv2+d31eUwa2EU3g==` | 3547374175          | `package.json` dependency order only |
+| `@infrabyx/export`     | 1.0.6   | `5b1369e3bd0a3a0c728ec3b52bfce6d836c657ac` | `sha512-NE3W7yIHUw9Mq1BKlnM0oIWRXWzY32donP0KrAjuP0q9xCpCCb4jZlYuSTlMKHpL1HHc+21fEYUcl4POIRKkrg==` | 3547376705          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.6   | `31059b2d0b1c8abceb2a49365f9263478486dbbe` | `sha512-piKppp9UddwS5vSFCg0vN0fetP13vDB0v7zJ3B6B5WEH+nHrKFQu8XgpvJcSHpKY4kxBCStCZzJHOVmI4+XXoA==` | 3547379714          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.0.6   | `f57c68b6eb1f15656848e8a0b44fcad7c3bd5d2c` | `sha512-npcUCQDkBTwf47feb/gj10lrMsscDPvkqjwIMSoZAhph4WMLje3heqreCSTDsE0EXRP0wy4JogV7yC6bGkkmQg==` | 3547382462          | identical                            |
+| `@infrabyx/rules`      | 1.0.7   | `b534dbd01aa1250c1b57a28d994cef33ec0218ac` | `sha512-l1n0Ko5wPNOp5lIEOrFPyvXJzA2FqQWZ59wmNIDiK09nEpju2RcZFf1BdiXXI+d78/6SMxRbpRwleUFD4bvg7A==` | 3547386206          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.6   | `09ec3800eebb8d11413888053f72f3470b3762e6` | `sha512-WuDYK3sdgdciMzqA/A0xUPeutpsm60Fx6cEeSLeyFNhRTBOdCzxU2ItfqFnJsDrVnDeIo8oAyrlEy0dp46Z2dA==` | 3547388612          | identical                            |
+| `@infrabyx/tenancy`    | 1.2.1   | `d209016ca897ea2342c75c5188a5359f3cc88e3c` | `sha512-NYrqat/+G1xjpg5zDkSk0HunevIuWQnlUx0BI22WfucMQaG9Q4Z/hp2UEmtxIYK7LEbrMOjgYjmeeYYL0UmU7w==` | 3547391063          | identical                            |
+| `@infrabyx/testing`    | 1.0.6   | `a6956d2bbcfc37ba1ef77fcbd9ae133208254c1f` | `sha512-aG4KvcOj+eeNqXff8Egvq6jERulwPE18ojNYOzsFh5vrsx79H3P+AxgPUFnCt+f2Fl9kjhcdIioiqhdM0vDI1A==` | 3547394489          | identical                            |
+| `@infrabyx/trust`      | 1.0.6   | `a15b01fad5b69872b52360654ca1d1ed220e8d58` | `sha512-DSKnpelXkzsNcVnnJIYe5q4R5LsxpvFk1Gkec5BszuNOL9WndTpN+C5imQY9PbjF85fVoFktdURtm0MmoR4ywA==` | 3547398387          | `package.json` dependency order only |
+| `@infrabyx/vidhi`      | 1.0.6   | `55be1563894fae109d8af2e993465b5e258f9a48` | `sha512-TjkfgY1qEjk3H0mghx0xD06jOIj3uQ6GDrGT45fX2Y6Hqz1QiBJ4pG3xUjEO+dXFWXlvsygECW9EIzpvYFHdiA==` | 3547401408          | `package.json` dependency order only |
+| `@infrabyx/workflow`   | 1.0.6   | `8b8bb42b8786f6f8813819bb16339beb13b397cc` | `sha512-Tap1I63pNBos6e1ZOtg2K71X1xKASajdcq/TR7azHFQB86pNoK0ZWPgujkpdylUenadYAESRajUZLpJz3nV0dQ==` | 3547405109          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`a11y` 1.0.2, `contracts` 1.2.0, `crypto` 1.0.2, `hlp` 1.0.0 and `ui` 1.1.1 are unchanged). A product scaffolded before this release adds `"infrabyx": { "product": "<code>" }` to its root `package.json`, so a seed refusal names it; `DB_URL` without a password plus `DB_PASSWORD` now works as documented. No migration, setting or environment variable.
+
 ### PR-FBX-08 (with PR-FBX-03's rest): reference apps and scaffold defects (no package change)
 
 Finbyx's platform request PR-FBX-08 and the console and public-site leftovers of PR-FBX-03 (R1-D-14).

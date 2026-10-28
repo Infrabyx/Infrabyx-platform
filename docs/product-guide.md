@@ -59,6 +59,17 @@ The bundles are attached to each package's GitHub release.
 - **Websites:** product editors will not edit JSON; the visual block editor for pages (PR-038) must be in place before the first product website goes live.
 - Run `pnpm exit-runbook --routing <your production routing file>` and keep the runbook younger than 180 days; generate the BOM with each release (IPB-01-38, IPB-01-40).
 
+## 7a. Consuming Ecosystem events
+
+A module that consumes Ecosystem events keeps its own inbox (Spec §3.5). Its migration calls `select tenancy.create_ecosystem_inbox('<schema>');`. The worker then uses `new EcosystemInbox({ kernel, audit, schema, environment: "live" })`:
+
+1. **Receive.** In the webhook handler, after the delivery signature verifies, call `inbox.receive(ctx, envelope, { businessKey })` in the consuming tenant's context, then answer 2xx. The business key is the event's idempotency key from Spec Part 6. A duplicate is acknowledged and never processed again.
+2. **Process.** Call `inbox.drain(ctx, handle)` from the worker. `handle(tx, event)` runs in the event's own transaction, in `seq` order per subject. Events ahead of a gap wait.
+3. **Sweep.** Call `inbox.sweep(ctx, { handle, replay, raiseBreak })` every few minutes:
+   - `replay` fetches the missing events from the producer's `GET /v1/events?after=…` and passes each to `receive`;
+   - `raiseBreak` publishes `ReconciliationBreakRaised` through the module's outbox in the transaction it is given.
+4. **Reconcile.** After a break, an operator reconciles the subject from the owner's snapshot (`GET /v1/[aggregate]/{id}`) and calls `inbox.setPosition(ctx, source, subject, lastSeq)`.
+
 ## 7c. Scheduled per-tenant jobs
 
 A job that must run for every tenant (the IPB-02-51 chain verification weekly, the anchor daily, or a product's own) lists the tenants through `TenantSweep` and runs once per tenant in that tenant's context:

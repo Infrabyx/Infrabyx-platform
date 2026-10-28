@@ -11,6 +11,7 @@ Tenant context, the transaction kernel, RLS tooling, outbox/inbox, the maker-che
 - `mutate()` refuses writes during impersonation (`IPB-SEC-003`), refuses `approve`/`sign`/`disburse`/`delete`/`grant` for agents (`IPB-SEC-004`), checks a break-glass grant is active (`IPB-SEC-009`), and fails the commit with `IPB-MOD-003` unless the audit ledger was written in the transaction.
 - `PgOutbox.publish(tx, schema, { envelope })` and `PgInbox.firstSeen(tx, schema, consumer, eventId)` (IPB-01 §01.4.3.3).
 - `TenantSweep` (`migrations/0005`, `SVC_TENANT_SWEEP`): list the tenants with a ledgered read and run a scheduled job once per tenant in its own context (`docs/product-guide.md` §7c).
+- `EcosystemInbox` and `tenancy.create_ecosystem_inbox('<schema>')` (`migrations/0006`): the Ecosystem inbox of Spec §3.5 (store first, de-duplicate by `(source, id)` and business key, `seq` order with parking, replay and reconciliation breaks; `docs/product-guide.md` §7a).
 
 ## Approvals, break-glass, impersonation
 

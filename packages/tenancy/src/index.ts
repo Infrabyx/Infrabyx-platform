@@ -8,6 +8,7 @@ export * from "./kernel.js";
 export * from "./service-reader.js";
 export * from "./outbox.js";
 export * from "./tenant-sweep.js";
+export * from "./eco-inbox.js";
 export * from "./approvals/index.js";
 export * from "./breakglass.js";
 export * from "./impersonation.js";
