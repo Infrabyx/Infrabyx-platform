@@ -532,6 +532,16 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **S and T (the CI registry):** Control: it listens on loopback only inside one job, serves only the `@infrabyx` scope from tarballs packed in that job, with SHA-256 integrity in each packument; nothing it serves leaves the job.
 - **Residual:** the scaffold copies the reference apps' fixture adapters and seed personas, which run only in local, dev, test and preview (PL1-D-06); a product wires its real adapters before staging. The template does not yet carry the git hooks (gitleaks, the env and credential guard, commitlint) or the secret-scanning job; the product copies them from this repository on day one.
 
+### 3.48 The outbox relay as a service reader (built, R1 item 1; R1-D-01)
+
+`OutboxRelay` in `@infrabyx/tenancy` relays module outboxes to the QUEUE as `SVC_OUTBOX_RELAY`, the one service reader that also writes.
+
+- **E (the relay reading or changing more than its outboxes):** Control: its database role starts with no grant; `tenancy.register_outbox()` grants select of the relayed columns and update of `dispatched_at` and `attempts` on one registered `<schema>.outbox`, and `audit/0002` the ledger append; any other table or column is refused by PostgreSQL (`42501`, proven in the integration tests). The kernel admits only `<schema>.outbox.dispatch` for this reader, in a tenant context.
+- **T (marking another tenant's events dispatched):** Control: there is no platform-scope update policy; every update runs in the row's own tenant context under the outbox's tenant policy, so a batch can only touch its tenant's rows.
+- **R (an unrecorded relay):** Control: the cross-tenant discovery read is ledgered per tenant (`platform.service_read`), and each batch writes `<schema>.outbox.dispatch` in its tenant's ledger in the same transaction.
+- **S (registering a table that is not an outbox):** Control: `register_outbox` is executable by `app_migrate` only, validates the schema name, the columns and forced RLS, and grants on that schema's `outbox` table only.
+- **Residual:** the event envelope is read by the relay (it must be, to deliver it); envelopes carry no secrets by the IPB-10 event contract.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

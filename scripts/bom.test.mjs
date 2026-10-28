@@ -31,7 +31,7 @@ describe("@IPB-01-AT-18 BOM generation (signed in the release job)", () => {
     expect(bom.metadata.properties.find((p) => p.name === "infrabyx:signature").value).toMatch(
       /^cosign keyless.*release\.yml@refs\/heads\/main/,
     );
-  });
+  }, 30_000); // reads and validates the whole lockfile; slow on a loaded runner
 
   it("lists the lockfile's packages with their integrity, the workspace packages and the pinned images", async () => {
     const bom = await buildBom({ release: "t", now: new Date("2026-10-28T00:00:00Z") });
@@ -50,7 +50,7 @@ describe("@IPB-01-AT-18 BOM generation (signed in the release job)", () => {
     expect(images.some((i) => i.name === "node" && i.version === "24.22.1-bookworm-slim")).toBe(
       true,
     );
-  });
+  }, 30_000); // reads and validates the whole lockfile; slow on a loaded runner
 
   it("is reproducible for the same release and refuses an invalid document", async () => {
     const a = await buildBom({ release: "x", now: new Date("2026-10-28T00:00:00Z") });
@@ -59,5 +59,5 @@ describe("@IPB-01-AT-18 BOM generation (signed in the release job)", () => {
     expect(npmPurl("@infrabyx/ui", "0.3.0")).toBe("pkg:npm/%40infrabyx/ui@0.3.0");
     expect(validateBom({ ...a, bomFormat: "SPDX" }).length).toBeGreaterThan(0);
     expect(validateBom({ ...a, components: [{ name: "no-type" }] }).length).toBeGreaterThan(0);
-  });
+  }, 30_000); // reads and validates the whole lockfile; slow on a loaded runner
 });

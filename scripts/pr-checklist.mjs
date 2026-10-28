@@ -1,5 +1,6 @@
 // pr-checklist (IPB-09-03 / IPB-09-04): every mandatory item in the PR body's IPB conformance
-// checklist is ticked, and a Claude-Code branch links its phase plan file.
+// checklist is ticked, and a Claude-Code branch links its plan file: a phase plan
+// (`docs/phases/PLn-plan.md`) or, after 1.0.0, a plan of the 1.x line (`docs/phases/Rn-plan.md`, R1-D-01).
 // Inputs via env (never interpolated into a shell): PR_BODY, HEAD_REF.
 const body = process.env.PR_BODY ?? "";
 const headRef = process.env.HEAD_REF ?? "";
@@ -23,9 +24,9 @@ else {
 }
 
 if (/^(cc|claude)\//.test(headRef)) {
-  if (!/docs\/(phases\/PL\d+-plan\.md|plans\/[\w./-]+\.md)/.test(body)) {
+  if (!/docs\/(phases\/(PL|R)\d+-plan\.md|plans\/[\w./-]+\.md)/.test(body)) {
     fail(
-      `branch ${headRef} is Claude-Code work; the PR body must link its plan file (docs/phases/PLn-plan.md) (IPB-09-04)`,
+      `branch ${headRef} is Claude-Code work; the PR body must link its plan file (docs/phases/PLn-plan.md or Rn-plan.md) (IPB-09-04)`,
     );
   }
   if (!/IPB files read/i.test(body))

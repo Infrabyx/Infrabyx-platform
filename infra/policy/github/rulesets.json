@@ -1,5 +1,5 @@
 {
-  "$comment": "IPB-09 \u00a709.4.1.4 target rulesets for Infrabyx/Infrabyx-platform. Policy file of record; the live GitHub ruleset is reconciled against it (nightly job, PL6). Deferred until the organisation is on GitHub Team (PL0-D-07): rulesets are not enforceable on private repositories under the Free plan; the owner is upgrading to Team (PL2-D-12).",
+  "$comment": "IPB-09 \u00a709.4.1.4 target rulesets for Infrabyx/Infrabyx-platform. Policy file of record; the live GitHub rulesets are reconciled against it nightly (.github/workflows/ruleset-reconcile.yml, scripts/ruleset-reconcile.mjs). Applied by the owner on 28 Oct 2026: main, release-branches and release-tags as written; branch-naming is not enforceable on the current plan. Deferred until the organisation is on GitHub Team (PL0-D-07): rulesets are not enforceable on private repositories under the Free plan; the owner is upgrading to Team (PL2-D-12).",
   "rulesets": [
     {
       "name": "main",
@@ -143,6 +143,8 @@
     },
     {
       "name": "branch-naming",
+      "$enforceable": false,
+      "$comment": "Not enforceable on the current plan: GitHub offers branch-name restrictions only on the Enterprise plan, so the owner did not apply this ruleset (28 Oct 2026; PL6-D-17). Kept as the naming policy of record; the reconcile job treats it as expected-missing, not drift. Apply it if the organisation moves to Enterprise.",
       "target": "branch",
       "enforcement": "active",
       "bypass_actors": [],
