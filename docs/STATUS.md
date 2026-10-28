@@ -28,6 +28,10 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### Customer identity: design note (no code)
+
+Udofin (PR-UDF-010), LawDocs and Equator need end-user sign-in with one-time codes and short-lived session tokens through the IDENTITY port, which neither adapter can issue today. `docs/phases/R1-customer-identity-note.md` sets out three options and recommends (b): per-product customer realms in Keycloak with an OTP authenticator delivering through NOTIFY, DPoP-bound tokens and refresh rotation, with Zitadel as the alternative. The owner decides (OWNER-QUESTIONS #84); nothing is built.
+
 ### PR-UDF-013: scheduled per-tenant jobs (minors of `contracts`, `tenancy` and `audit`)
 
 Udofin's platform request PR-UDF-013 (R1-D-12; product guide §7c).
