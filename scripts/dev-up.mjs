@@ -309,10 +309,10 @@ async function up(argv) {
       },
     },
   );
-  // The remaining profiles (the apps read the realm's secrets from .env.local).
-  const extra = profiles.filter((p) => p !== "core");
-  if (extra.length)
-    compose([...extra.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
+  // The remaining profiles, with core again so their dependencies resolve (the apps read the
+  // realm's secrets from .env.local).
+  if (profiles.length > 1)
+    compose([...profiles.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
   console.log(
     `dev:up ready (profiles: ${profiles.join(", ")}); database ${db.replace(/:[^:@]*@/, ":***@")}`,
   );
