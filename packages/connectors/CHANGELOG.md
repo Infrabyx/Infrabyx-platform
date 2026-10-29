@@ -1,5 +1,17 @@
 # @infrabyx/connectors
 
+## 1.3.3
+
+### Patch Changes
+
+- Updated dependencies [138ae44]
+- Updated dependencies [138ae44]
+- Updated dependencies [138ae44]
+  - @infrabyx/config@1.4.0
+  - @infrabyx/contracts@1.10.0
+  - @infrabyx/tenancy@1.6.0
+  - @infrabyx/crypto@1.2.5
+
 ## 1.3.2
 
 ### Patch Changes

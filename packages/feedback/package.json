@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/feedback",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "The feedback widget (server-rendered trigger, dialog and no-JavaScript form), feedback items with payload minimisation, the SUPPORT and BACKLOG hand-off and status loop, the accessibility SLA timers and the 3-year purge (IPB-04 §04.3.11, IPB-06-61/62)",
   "license": "UNLICENSED",
   "private": false,
