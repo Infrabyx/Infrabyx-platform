@@ -53,6 +53,8 @@ HANDOVER READY
 
 The owner approved PR-FBX-01 for the ports only (R1-D-20); built as R1-D-21 (product guide §7e, threat model §3.54).
 
+- **Owner answers #85 to #88** (R1-D-22): code delivery stays as built; the sign-in retention purge, the LiveKit adapter and the Digio adapter (behind a flag) follow as their own PRs. CI reserves the local stack's host ports (53120 to 53130) in `reference` and `compose`, which bind them in the ephemeral range under host networking (the version PR #146's worker hit `EADDRINUSE`).
+
 - **Built:**
   - `contracts`: `KycPort` (IPB-01's eleven methods with V-CIP status and webhook) and `VideoMeetPort` (rooms with `RoomPolicy`, joins checked against the origin, recordings as hash manifests). Both ports are now `interfaceDefined`.
   - `testing`: `FakeKyc` and `FakeVideoMeet`, with `kycContractCases(fixtures)` and `videoMeetContractCases()`.
