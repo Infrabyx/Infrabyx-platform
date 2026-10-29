@@ -672,6 +672,17 @@ A named external grantee (statutory auditor, inspector) reads one tenant's data 
 - **R (an unrecorded read):** Control: the kernel accepts an external principal's transaction only from `ExternalReads`, which ledgers each read (grant, table, row count), empty ones too, before it returns the rows.
 - **Residual:** the ledger names the table and row count, not the query text; a product's restrictive policy must cover the right columns (entity, branch, date) for each table it opens, which rls-lint checks for presence, not meaning.
 
+### 3.61 Saved table views and the shell's search (`config/0002`, `ui`; PR-FBX-09, R1-D-32)
+
+People save a table's filters, sort and columns for themselves or share them; the command palette searches what they may open.
+
+- **I (a personal view or layout read by someone else):** Control: forced RLS on `app.actor_id` keeps personal views and table layouts to their owner, in their tenant; `SavedViews` returns a shared view only to its audience (the team ids the product vouches for, the named tenant roles, or the tenant), and a view the caller cannot see answers 404.
+- **T (a shared view changed by its audience):** Control: only the owner edits or deletes a view, and an ORG_ADMIN or ORG_OWNER a roles or tenant one, in the service and in the update and delete policies; ownership never moves; updates carry the version read (409 on a stale one); every change, including a replaced default, is ledgered.
+- **E (sharing wider than allowed):** Control: roles and tenant views, and the tenant default, need ORG_ADMIN or ORG_OWNER; a team view needs membership; platform, agent and service roles are never an audience; `ux.tables.saved_views_shared` off refuses and hides shared views; agents and platform-scope contexts are refused.
+- **I (identifiers in search or stored filters):** Control: `searchRefusal` (`contracts`) refuses Aadhaar (any twelve digits, a Verhoeff VID), Luhn-valid card numbers and PANs in the browser, before any search provider runs, and in every saved filter value and view name; refusals and the palette's analytics event carry the pattern class only; the query goes by POST, never in a URL, and a refused one is not written back into the page.
+- **I (search results beyond the caller's rights):** Control: each `SearchProvider` trims at query time; a failing provider's error is dropped (it may echo the query) and only its id is reported.
+- **Residual:** shared views are visible to any tenant session at the database level (the audience trim is in `SavedViews`), and team membership is the product's claim; a view's name and filters are CONFIDENTIAL text a person chose, kept until they or an administrator delete it.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
