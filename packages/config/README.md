@@ -69,8 +69,13 @@ export const env = await loadAndValidate(envSchema, {
 - `infrabyx-routing check <file...> [--sandbox-status packages/connectors/sandbox-status.json]` runs the same checks in CI and prints problems only. Secrets are paths, never values.
 - PL2 registers the port keys of IPB-01 §01.4.4.2 for the thirteen PL2 ports (`int.<port>.*`, `eng.otel.*`, `eng.logs.*`, `eng.flags.*`). The registry now has 156 keys.
 
+## Saved views (`@infrabyx/config/views`)
+
+- `SavedViews` (Finbyx PR-FBX-09; IPB-07-13; R1-D-32) keeps each table's filters, sort and columns per person (`personal`) or shared with a `team` (the product passes the caller's verified `teamIds`), tenant `roles` or the whole `tenant`. `list`, `get`, `defaultView` (the person's default, else the tenant default), `save`, `update` (with the version read), `remove`; `layout` and `setLayout` hold the column chooser's state.
+- Sharing follows `ux.tables.saved_views_shared`; roles and tenant views and the tenant default need ORG_ADMIN or ORG_OWNER; only the owner edits (an ORG_ADMIN or ORG_OWNER also a roles or tenant view). Filter values and names that search refuses (`searchRefusal`) are refused with `IPB-UX-003`. Every change is ledgered.
+
 ## Migrations
 
-`migrations/0001_init.sql` creates schema `config`: `setting_value`, `flag_value`, `flag_snapshot`, `outbox`, `inbox`, all with RLS enabled and forced. Applied by `infrabyx-migrate` from `@infrabyx/tenancy` after the tenancy and audit migrations.
+`migrations/0001_init.sql` creates schema `config`: `setting_value`, `flag_value`, `flag_snapshot`, `outbox`, `inbox`, all with RLS enabled and forced. `0002_saved_views.sql` adds `saved_view` and `table_layout`, with RLS forced and personal rows on `app.actor_id`. Applied by `infrabyx-migrate` from `@infrabyx/tenancy` after the tenancy and audit migrations.
 
 `internalEvent()` (`@infrabyx/config/events`) builds internal CloudEvents envelopes for the outbox.

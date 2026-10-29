@@ -89,6 +89,48 @@ img { max-width: 100%; height: auto; }
 .ibx-chart__label, .ibx-chart__value { fill: var(--color-text); font-size: 14px; }
 .ibx-chart__bar { fill: var(--color-primary); }
 
+.ibx-table tbody tr { height: 2.75rem; }
+.ibx-table--compact tbody tr { height: 2.25rem; }
+.ibx-table--compact th, .ibx-table--compact td { padding-top: var(--space-1); padding-bottom: var(--space-1); }
+.ibx-table thead th { position: sticky; top: 0; background: var(--color-surface); }
+.ibx-kbd { font-family: var(--font-mono); padding: 0 var(--space-1); border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm); }
+
+.ibx-disclosure > summary { display: inline-flex; align-items: center; min-height: 2.75rem; cursor: pointer; font-weight: 600; }
+.ibx-palette__row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ibx-palette__row .ibx-field__input { flex: 1 1 18rem; }
+.ibx-palette__heading { font-size: var(--text-lg); margin-top: var(--space-4); }
+.ibx-palette__list, .ibx-workspace__list, .ibx-views__list, .ibx-chooser__list { list-style: none; margin: 0; padding: 0; }
+.ibx-palette__hit { display: flex; flex-direction: column; min-height: 2.75rem; padding: var(--space-2) 0; }
+.ibx-palette__detail { color: var(--color-text-muted); font-size: var(--text-sm); }
+.ibx-palette__code { font-weight: 400; }
+.ibx-workspace__list a, .ibx-views__list a { display: inline-block; min-height: 1.5rem; padding: var(--space-2) var(--space-1); }
+.ibx-workspace__list a[aria-current="true"], .ibx-views__list a[aria-current="true"] { font-weight: 700; }
+.ibx-chooser__item { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: var(--space-1) 0; }
+.ibx-chooser__set { border: 1px solid var(--color-border); padding: var(--space-3); margin: 0 0 var(--space-3); }
+
+.ibx-page__head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; margin: 0 0 var(--space-4); }
+.ibx-page__head h1 { flex: 1 1 20rem; }
+.ibx-page__actions, .ibx-state__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.ibx-page__toolbar { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: 0 0 var(--space-4); }
+.ibx-state { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-6); background: var(--color-surface); }
+.ibx-state__title { font-size: var(--text-lg); font-weight: 700; }
+.ibx-state--error, .ibx-state--denied { border-color: var(--color-danger); }
+.ibx-state__ref { color: var(--color-text-muted); font-size: var(--text-sm); }
+.ibx-skeleton { display: flex; flex-direction: column; gap: var(--space-2); }
+.ibx-skeleton--cards { flex-direction: row; flex-wrap: wrap; }
+.ibx-skeleton__line { display: block; height: 2.75rem; border-radius: var(--radius-sm); background: var(--color-border); }
+.ibx-skeleton--text .ibx-skeleton__line { height: 1rem; max-width: 60ch; }
+.ibx-skeleton--cards .ibx-skeleton__line { width: 16rem; height: 8rem; }
+.ibx-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: var(--space-3); margin: 0 0 var(--space-6); }
+.ibx-facts dt { font-weight: 600; color: var(--color-text-muted); }
+.ibx-facts dd { margin: 0; }
+.ibx-steps { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); list-style: decimal inside; margin: 0 0 var(--space-4); padding: 0; }
+.ibx-steps [aria-current="step"] { font-weight: 700; text-decoration: underline; text-decoration-thickness: 3px; }
+.ibx-widgets { display: grid; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); gap: var(--space-4); }
+.ibx-widget { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); background: var(--color-surface); }
+.ibx-widget__title { font-size: var(--text-lg); }
+.ibx-widget__evidence { font-size: var(--text-sm); margin: var(--space-3) 0 0; }
+
 .ibx-ctl { border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-4); margin: 0 0 var(--space-4); }
 .ibx-ctl__caption { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-2) 0; }
 .ibx-ctl__title { font-weight: 700; }

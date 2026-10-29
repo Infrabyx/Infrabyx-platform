@@ -21,16 +21,19 @@ export function DataTable({
   columns,
   rows,
   id,
+  density = "comfortable",
 }: {
   caption: string;
   columns: readonly Column[];
   /** Cell values: text, numbers, or links and buttons (a row's actions). */
   rows: readonly Readonly<Record<string, ReactNode>>[];
   id?: string;
+  /** Row height (IPB-07-13): compact 36 px, comfortable 44 px. */
+  density?: "compact" | "comfortable";
 }) {
   return (
     <div className="ibx-table-wrap" role="region" aria-label={caption} tabIndex={0} id={id}>
-      <table className="ibx-table">
+      <table className={density === "compact" ? "ibx-table ibx-table--compact" : "ibx-table"}>
         <caption>{caption}</caption>
         <thead>
           <tr>

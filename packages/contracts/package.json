@@ -67,6 +67,10 @@
     "./vidhi": {
       "types": "./dist/vidhi.d.ts",
       "default": "./dist/vidhi.js"
+    },
+    "./search-refusal": {
+      "types": "./dist/search-refusal.d.ts",
+      "default": "./dist/search-refusal.js"
     }
   },
   "files": [
