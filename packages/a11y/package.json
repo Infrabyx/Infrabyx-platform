@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/a11y",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Journey registry and lint, WCAG 2.2 to EN 301 549 mapping, release checklist, accessibility statement generator, hooks, Playwright gate helpers and overlay scan (IPB-06)",
   "license": "UNLICENSED",
   "private": false,
