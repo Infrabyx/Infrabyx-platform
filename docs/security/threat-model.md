@@ -623,6 +623,17 @@ DigiLocker documents and Aadhaar Offline e-KYC through Digio's KYC API. Off (`in
 - **S (credentials):** Control: HTTP Basic with the client id and secret from SECRETS; egress allows Digio's host only; 401 and 403 surface as credential errors, not retries.
 - **Residual:** the vendor facts are checked on a stub only until the sandbox leg runs (#147).
 
+### 3.56 Statutory audit capture (`audit/0003`; PR-FBX-10 item 2, R1-D-25)
+
+PostgreSQL captures every insert, update and delete on registered books-of-account tables, with values and context, in a per-tenant hash chain the daily anchor signs.
+
+- **T and R (a change to the books that leaves no trace):** Control: row triggers enabled ALWAYS on every registered table, TRUNCATE refused, and the capture written by a SECURITY DEFINER function whose owner role nobody holds. Event triggers refuse dropping or disabling any part. The chain, the head and `capture_problems()` are verified daily, and the anchor signs the head.
+- **T (the captured history edited):** Control: update, delete and truncate on `audit.capture` are refused always, for every role. A superuser who first disables the guard leaves a chain break and a reported problem.
+- **I (captured values are copies of REGULATED data):** Control: `audit.capture` has forced RLS by tenant (read only), its value columns are classed REGULATED, and columns encrypted by field crypto stay ciphertext in the copy. The rows are kept as the ledger is.
+- **E (the capture writer misused):** Control: `capture_writer` is NOLOGIN, NOINHERIT and granted to no role; the read-only-role check covers it. The capture function takes no argument and writes only what the trigger sees.
+- **D (a capture failure blocks the books):** Control: settings that do not fit a column are recorded as absent rather than refusing the write; a row without `tenant_id` is refused, which registration prevents.
+- **Residual:** superuser access to PostgreSQL, as for the ledger; event triggers do not fire in replica mode, so DDL done there is caught by the next daily verification instead.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

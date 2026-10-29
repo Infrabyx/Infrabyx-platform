@@ -1,4 +1,5 @@
 {
   "0001_init.sql": "05a5f62db690624fc1285750ebc95c6aca104cafcce171f80e686c3a57d287f5",
-  "0002_outbox_relay.sql": "36e1a3465197bda55b5bdd6a0fcad2d3b1769a822cad3b4453bcc8ef4248243e"
+  "0002_outbox_relay.sql": "36e1a3465197bda55b5bdd6a0fcad2d3b1769a822cad3b4453bcc8ef4248243e",
+  "0003_statutory_capture.sql": "dd72a370fefffd6f0afe23ed4cac289c97d89a47df86412798c556a569524610"
 }
