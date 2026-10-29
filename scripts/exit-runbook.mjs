@@ -40,7 +40,7 @@ export function renderRunbook({ catalogue, exits, routing, drills, sources, gene
   const rows = exits.map((e) => {
     const r = routing?.ports?.[e.port];
     const primary = r?.primary?.adapter ?? e.primary;
-    const target = r?.secondary?.adapter ?? e.exitTarget;
+    const target = r?.secondary?.adapter ?? (e.pending ? `None yet: ${e.pending}` : e.exitTarget);
     const tier = catalogue[e.port]?.tier;
     if (tier === undefined) throw new Error(`${e.port} is not in the port catalogue`);
     const d = latest.get(e.port);

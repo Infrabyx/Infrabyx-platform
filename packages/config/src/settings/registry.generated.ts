@@ -2975,6 +2975,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 ESIGN; PL3-D-23"
   },
   {
+    "key": "int.kyc.digio.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 KYC; R1-D-24 (off until the owner's Digio account exists)"
+  },
+  {
     "key": "rules.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -6660,6 +6673,7 @@ export type SettingValueMap = {
   "int.push.apns_topic": string | null;
   "int.esign.provider": "leegality" | "digio" | "memory";
   "int.esign.expire_in_days": number;
+  "int.kyc.digio.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;

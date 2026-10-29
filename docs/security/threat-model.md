@@ -613,6 +613,16 @@ The interfaces and their contract cases, with in-memory fakes. No adapter yet (O
 - **T and R (a forged vendor event or an altered recording):** Control: webhooks are triggers only; the session or room is read back from the vendor; the manifest lists every artefact by SHA-256 with its own hash, and the product ledgers it.
 - **Residual:** the cases prove the contract on the fakes only; each adapter must pass them on its vendor sandbox before routing selects it.
 
+### 3.55 The Digio KYC adapter (`digio-kyc`, built behind a flag; R1-D-24)
+
+DigiLocker documents and Aadhaar Offline e-KYC through Digio's KYC API. Off (`int.kyc.digio.enabled`) and `unproven` (#147) until the owner's account exists; V-CIP through Digio waits for #90.
+
+- **I (identity documents sent or kept where they should not be):** Control: the adapter is `IN` and REGULATED; files are read from STORAGE and checked against their SHA-256 before upload; downloaded files are written REGULATED under the call's tenant, so a pull without a tenant is refused; nothing goes to Digio while the flag is off.
+- **I (the Aadhaar number leaving the vendor):** Control: results carry the last four digits only; a reply carrying a twelve-digit run is refused as a vendor error.
+- **S and R (a consent session reused, or used for another customer):** Control: a session is claimed once in a replay store, and only after Digio reports it complete. The product binds the session id to its customer when it creates the KYC request.
+- **S (credentials):** Control: HTTP Basic with the client id and secret from SECRETS; egress allows Digio's host only; 401 and 403 surface as credential errors, not retries.
+- **Residual:** the vendor facts are checked on a stub only until the sandbox leg runs (#147).
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

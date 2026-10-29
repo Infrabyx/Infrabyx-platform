@@ -31,11 +31,20 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
   it("names adapters that exist in this package (their descriptor names)", () => {
     const text = sources(SRC).join("\n");
     for (const e of PORT_EXIT)
-      for (const name of [e.primary, e.exitTarget])
+      for (const name of e.pending ? [e.primary] : [e.primary, e.exitTarget])
         expect(
           text.includes(`"${name}"`) || text.includes(`"${name.replace(/-/g, "_")}"`),
           `${e.port}: adapter ${name}`,
         ).toBe(true);
+  });
+
+  it("an exit target is missing only with its reason, and never for the ports PL6 drilled", () => {
+    for (const e of PORT_EXIT)
+      if (e.pending) {
+        expect(e.exitTarget, e.port).toBe("none");
+        expect(e.pending.length, e.port).toBeGreaterThan(20);
+      } else expect(e.exitTarget, e.port).not.toBe("none");
+    expect(PORT_EXIT.filter((e) => e.pending).map((e) => e.port)).toEqual(["KYC"]);
   });
 
   it("states a data-move method and the lock-in residue for every port", () => {

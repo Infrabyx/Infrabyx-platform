@@ -2036,6 +2036,17 @@ keys:
       source: "IPB-01 §01.4.4.2 ESIGN; PL3-D-23",
     }
 
+  # ---------------------------------------------------------------- R1: KYC (IPB-01 KYC; R1-D-22, R1-D-24)
+  - {
+      key: int.kyc.digio.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 KYC; R1-D-24 (off until the owner's Digio account exists)",
+    }
+
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {
       key: rules.engine,

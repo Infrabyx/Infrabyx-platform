@@ -49,6 +49,23 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### #87: the Digio KYC adapter, behind its flag (minors of `connectors`, `config`, `testing`)
+
+The owner answered #87 on 29 Oct 2026 (R1-D-22). Built as R1-D-24 (R1-plan M16; threat model §3.55).
+
+- **Built:**
+  - `connectors/kyc`: `DigioKyc` (`digio-kyc`) for DigiLocker pulls and Aadhaar Offline e-KYC. Files are read from STORAGE and checked by SHA-256, results are written REGULATED under the call's tenant, and only the last four Aadhaar digits come back. A consent session is used once.
+  - Every other KYC method is `unsupported`, V-CIP included (OWNER-QUESTIONS #90).
+  - It is off behind `int.kyc.digio.enabled` (default false, R4) and `unproven` (#147) until the owner's Digio account exists.
+  - `PORT_EXIT` lists KYC with no exit target yet: the alternative waits for #91, and the exit runbook shows the gap.
+  - `testing`: `startDigioKycStub()`, and the KYC contract cases now call each method, so an `unsupported` one is checked to refuse with the typed error.
+- **Tests:** the hermetic `contract (KYC)` leg on the stub, 14 cases: the 10 contract cases and 4 adapter cases (flag off, storage and tenant, hash check, no tenant).
+- **Owner questions raised:**
+  - #89: C-26, HS256 for LiveKit only. It blocks M15, the LiveKit adapter.
+  - #90: how Digio's video KYC fits the port.
+  - #91: which KYC alternative, IDfy or HyperVerge.
+- **Products:** nothing to adopt until the owner's account and the sandbox leg; Finbyx keeps its KYC shim.
+
 ### #86: retention of customer sign-in state (minors of `connectors`, `contracts`, `config`)
 
 The owner answered #86 on 29 Oct 2026 (R1-D-22). Built as R1-D-23 (R1-plan M14; threat model §3.53).

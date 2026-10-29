@@ -85,6 +85,11 @@
       "needs": "Digio sandbox client id and secret (PL3-D-04)",
       "issue": 56
     },
+    "digio-kyc": {
+      "status": "unproven",
+      "needs": "the owner's Digio KYC sandbox client id and secret (OWNER-QUESTIONS #87); off behind int.kyc.digio.enabled",
+      "issue": 147
+    },
     "bedrock-claude-in": {
       "status": "unproven",
       "needs": "AWS Bedrock ap-south-1 model access; each paid run approved by the owner (PL4 plan §10)",
