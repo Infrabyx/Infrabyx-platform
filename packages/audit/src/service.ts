@@ -18,18 +18,29 @@ import {
   type SignatureRecord,
 } from "@infrabyx/crypto";
 import { GENESIS_HASH, verifyChain, type LedgerEntry, type VerifyResult } from "./chain.js";
+import {
+  StatutoryCapture,
+  verifyCaptureChain,
+  type CaptureEntry,
+  type CaptureVerifyResult,
+} from "./capture.js";
 import type { PgAuditSink } from "./sink.js";
 
 export const LEDGER_RETENTION_DAYS = 2922; // 8 years (IPB-02-52)
 export const ANCHOR_FORMAT = "infrabyx-audit-anchor/1";
+/** An anchor that also signs the statutory capture's head (R1-D-25); written once a tenant has one. */
+export const ANCHOR_FORMAT_CAPTURE = "infrabyx-audit-anchor/2";
 
 export interface AnchorBody {
-  format: typeof ANCHOR_FORMAT;
+  format: typeof ANCHOR_FORMAT | typeof ANCHOR_FORMAT_CAPTURE;
   tenant_id: string;
   anchor_date: string;
   seq: number;
   head_hash: string;
   head_entry_id: string | null;
+  /** Format 2: the last captured change of the anchor date (`audit.capture`) and its hash. */
+  capture_seq?: number;
+  capture_head_hash?: string;
   created_at: string;
 }
 
@@ -118,6 +129,36 @@ export class AuditService {
     return result;
   }
 
+  /**
+   * The statutory capture's gap detector for the context tenant (R1-D-25): the chain, its head and
+   * `audit.capture_problems()`. A break or a problem is ledgered and raises LedgerChainBroken.
+   */
+  async verifyCapture(ctx: KernelContext): Promise<CaptureVerifyResult> {
+    const result = await new StatutoryCapture({ kernel: this.o.kernel }).verify(ctx);
+    if (!result.ok) {
+      const reason = result.break ? `capture-${result.break.reason}` : "capture-incomplete";
+      await this.o.kernel.mutate(
+        ctx,
+        async (tx) => {
+          await this.o.sink.record(tx, {
+            action: "audit.capture.break_detected",
+            resourceType: "audit.capture",
+            resourceId: String(result.break?.seq ?? result.head.seq),
+            after: { reason, break: result.break ?? null, problems: result.problems },
+          });
+          await this.emit(tx, "LedgerChainBroken", {
+            tenant_id: ctx.tenantId,
+            seq: result.break?.seq ?? result.head.seq,
+            entry_id: `capture:${result.break?.seq ?? result.head.seq}`,
+            reason,
+          });
+        },
+        { action: "audit.capture.break_detected" },
+      );
+    }
+    return result;
+  }
+
   /** Build, sign and store the anchor for `date` (YYYY-MM-DD, UTC) for the context tenant. */
   async writeAnchor(ctx: KernelContext, date: string, now = new Date()): Promise<AnchorFile> {
     const { storage, kms, anchorKeyId } = this.o;
@@ -134,13 +175,23 @@ export class AuditService {
           [date],
         );
         const h = head.rows[0];
+        // The statutory capture's head at the end of the same day, where the tenant has one.
+        const cap = (
+          await tx.query<{ seq: string; entry_hash: string }>(
+            `select seq::text as seq, entry_hash from audit.capture
+              where occurred_at < ($1::date + 1)::timestamp at time zone 'UTC'
+              order by audit.capture.seq desc limit 1`,
+            [date],
+          )
+        ).rows[0];
         const body: AnchorBody = {
-          format: ANCHOR_FORMAT,
+          format: cap ? ANCHOR_FORMAT_CAPTURE : ANCHOR_FORMAT,
           tenant_id: ctx.tenantId,
           anchor_date: date,
           seq: h ? Number(h.seq) : 0,
           head_hash: h?.entry_hash ?? GENESIS_HASH,
           head_entry_id: h?.id ?? null,
+          ...(cap ? { capture_seq: Number(cap.seq), capture_head_hash: cap.entry_hash } : {}),
           created_at: now.toISOString(),
         };
         const signature = await signRecord(kms, anchorKeyId, canonicalize(body), { now });
@@ -256,5 +307,31 @@ export function verifyAgainstAnchor(
       break: { seq: file.seq, id: file.head_entry_id ?? "", reason: "head-mismatch" },
     };
   }
+  return { ...r, signatureValid };
+}
+
+/** A tenant or auditor verifies the exported capture up to a signed anchor (format 2). */
+export function verifyCaptureAgainstAnchor(
+  entries: readonly CaptureEntry[],
+  file: AnchorFile,
+  publicKeySpkiDer: Uint8Array,
+): Omit<CaptureVerifyResult, "problems"> & { signatureValid: boolean } {
+  const signatureValid = verifyAnchorFile(file, publicKeySpkiDer);
+  if (file.format !== ANCHOR_FORMAT_CAPTURE || file.capture_seq === undefined)
+    return {
+      ok: false,
+      checked: 0,
+      head: { seq: 0, hash: GENESIS_HASH },
+      break: { seq: 0, reason: "head-mismatch" },
+      signatureValid,
+    };
+  const r = verifyCaptureChain(entries.filter((e) => e.seq <= file.capture_seq!));
+  if (r.ok && (r.head.seq !== file.capture_seq || r.head.hash !== file.capture_head_hash))
+    return {
+      ...r,
+      ok: false,
+      break: { seq: file.capture_seq, reason: "head-mismatch" },
+      signatureValid,
+    };
   return { ...r, signatureValid };
 }

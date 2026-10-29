@@ -4,6 +4,7 @@
 // as SVC_TENANT_SWEEP (a ledgered read) and runs each job in the tenant's own context under RLS.
 // A break raises `LedgerChainBroken` through `AuditService.verify`, as for one tenant.
 import type { KernelContext } from "@infrabyx/contracts/kernel";
+import type { CaptureVerifyResult } from "./capture.js";
 import type { VerifyResult } from "./chain.js";
 import type { AnchorFile, AuditService } from "./service.js";
 
@@ -39,6 +40,12 @@ export class AuditSweep {
   /** Weekly: verify every tenant's chain; `broken` names the tenants whose chain broke. */
   async verifyAll(): Promise<SweepSummary<VerifyResult> & { broken: string[] }> {
     const s = summarise(await this.o.tenants.run((ctx) => this.o.service.verify(ctx)));
+    return { ...s, broken: s.results.filter((r) => !r.value.ok).map((r) => r.tenantId) };
+  }
+
+  /** Daily: the statutory capture's gap detector for every tenant; `broken` names the failures. */
+  async verifyCaptureAll(): Promise<SweepSummary<CaptureVerifyResult> & { broken: string[] }> {
+    const s = summarise(await this.o.tenants.run((ctx) => this.o.service.verifyCapture(ctx)));
     return { ...s, broken: s.results.filter((r) => !r.value.ok).map((r) => r.tenantId) };
   }
 

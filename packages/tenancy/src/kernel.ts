@@ -137,7 +137,9 @@ export class PgKernel implements MutationKernel {
       serviceReaderRole(ctx) === "SVC_OUTBOX_RELAY"
         ? SERVICE_READER_ROLES.SVC_OUTBOX_RELAY.dbRole
         : this.role;
-    return this.run(ctx, role, false, async (tx) => {
+    if (opts.reason !== undefined && (opts.reason.length < 1 || opts.reason.length > 500))
+      throw new RangeError("a mutation's reason has 1 to 500 characters");
+    return this.run(ctx, role, false, opts, async (tx) => {
       const r = await fn(tx);
       if (!tx.audited) {
         throw new IpbError("IPB-MOD-003", {
@@ -161,6 +163,7 @@ export class PgKernel implements MutationKernel {
       ctx,
       reader ? SERVICE_READER_ROLES[reader].dbRole : this.readRole,
       opts.snapshot ? "snapshot" : true,
+      {},
       fn,
     );
   }
@@ -169,6 +172,7 @@ export class PgKernel implements MutationKernel {
     ctx: KernelContext,
     role: string,
     readOnly: boolean | "snapshot",
+    m: MutateOptions,
     fn: (tx: Tx) => Promise<T>,
   ): Promise<T> {
     const client = await this.pool.connect();
@@ -184,7 +188,8 @@ export class PgKernel implements MutationKernel {
       await client.query(
         `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),
                 set_config('app.actor_id', $3, true), set_config('app.trace_id', $4, true),
-                set_config('app.scope', $5, true), set_config('app.breakglass', $6, true)`,
+                set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
+                set_config('app.action', $7, true), set_config('app.reason', $8, true)`,
         [
           ctx.tenantId,
           ctx.entityId ?? "",
@@ -192,6 +197,8 @@ export class PgKernel implements MutationKernel {
           ctx.traceId ?? "",
           ctx.scope ?? "tenant",
           ctx.breakGlassGrantId ?? "",
+          m.action ?? "",
+          m.reason ?? "",
         ],
       );
       if (ctx.breakGlassGrantId) {

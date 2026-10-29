@@ -51,6 +51,11 @@ export interface MutateOptions {
   action?: string;
   /** Set only for jobs that write no tenant data and are allowed to skip the ledger (none in PL1). */
   allowWithoutAudit?: false;
+  /**
+   * Why the change is made (1 to 500 characters), e.g. a correction's justification. The kernel sets
+   * it, with `action`, for the transaction, so the statutory capture records it (R1-D-25).
+   */
+  reason?: string;
 }
 
 export interface MutationKernel {

@@ -5,3 +5,4 @@ export * from "./chain.js";
 export * from "./sink.js";
 export * from "./service.js";
 export * from "./sweep.js";
+export * from "./capture.js";
