@@ -49,6 +49,18 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-10 (3): break-glass visible to the tenant (minors of `tenancy`, `contracts`)
+
+Finbyx platform request PR-FBX-10 item 3 (OUT 24, 70). Built as R1-D-28 (R1-plan M19; threat model §3.59).
+
+- **Built:**
+  - `tenancy/0009`: when a break-glass context runs in a tenant, by a read or a write, the kernel first records it there (`tenancy.breakglass_touch`, in a short transaction of its own). One `tenancy.breakglass_use` row per grant and tenant holds who asked, who approved, the reason, the expiry, the review ticket, the first and last use and the count.
+  - The tenant reads its own rows only; the application cannot write, change or delete one (two SECURITY DEFINER functions write them, allow-listed in rls-lint).
+  - `BreakGlassTenantNotices`: `list` for the tenant's page, and `notify` (per tenant, through `TenantSweep`) raising the new platform event `BreakGlassUsed` once per grant, with a ledger entry.
+  - The notice comes at first use, not at grant time: a grant names no tenant.
+- **Tests:** `breakglass-use.int.test.ts` on PostgreSQL (4 cases).
+- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0009`); schedule `notify` every few minutes and notify the tenant's administrators on `BreakGlassUsed`; show `list` on the tenant's security page.
+
 ### PR-FBX-10 (4): inbound idempotency (minors of `tenancy`, `contracts`, `config`)
 
 Finbyx platform request PR-FBX-10 item 4 (IPB-10-07). Built as R1-D-27 (R1-plan M20; threat model §3.58).
