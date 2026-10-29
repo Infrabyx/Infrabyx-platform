@@ -1,5 +1,17 @@
 # @infrabyx/connectors
 
+## 1.3.0
+
+### Minor Changes
+
+- 94b706e: `@infrabyx/connectors/kyc`: `DigioKyc` (`digio-kyc`), the KYC reference adapter for DigiLocker and Aadhaar Offline e-KYC (owner answer #87, R1-D-24). It is off behind `int.kyc.digio.enabled` and `unproven` (#147) until the owner's Digio account exists. Every other KYC method, V-CIP included (#90), is `unsupported`.
+
+### Patch Changes
+
+- Updated dependencies [94b706e]
+  - @infrabyx/config@1.3.0
+  - @infrabyx/tenancy@1.3.5
+
 ## 1.2.0
 
 ### Minor Changes
