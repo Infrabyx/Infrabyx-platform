@@ -168,6 +168,26 @@ export class PgKernel implements MutationKernel {
     );
   }
 
+  private async recordBreakGlassUse(ctx: KernelContext): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(`set local role ${quoteIdent(this.role)}`);
+      await client.query("select set_config('app.tenant_id', $1, true)", [ctx.tenantId]);
+      // An inactive grant records nothing; the transaction itself then refuses it (IPB-SEC-009).
+      await client.query("select tenancy.breakglass_touch($1, $2)", [
+        ctx.breakGlassGrantId,
+        ctx.principal.id,
+      ]);
+      await client.query("commit");
+    } catch (e) {
+      await client.query("rollback").catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
   private async run<T>(
     ctx: KernelContext,
     role: string,
@@ -175,6 +195,9 @@ export class PgKernel implements MutationKernel {
     m: MutateOptions,
     fn: (tx: Tx) => Promise<T>,
   ): Promise<T> {
+    // A break-glass context is recorded in the tenant it touches, read or write, in its own short
+    // transaction first: the tenant sees every grant used on its data (tenancy/0009, R1-D-28).
+    if (ctx.breakGlassGrantId && ctx.scope !== "platform") await this.recordBreakGlassUse(ctx);
     const client = await this.pool.connect();
     try {
       await client.query(

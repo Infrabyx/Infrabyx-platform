@@ -653,6 +653,15 @@ Product APIs store each POST and PATCH response under the client's key for 24 ho
 - **D (duplicate work under concurrency):** Control: one request per key at a time (advisory lock, 409 IPB-API-011); the key commits with the change.
 - **Residual:** a client that reuses a key after expiry starts a new request, as IPB-10 intends.
 
+### 3.59 Break-glass visible to the tenant (`tenancy/0009`; PR-FBX-10 item 3, R1-D-28)
+
+Each tenant sees every break-glass grant used on its data, and is notified on first use.
+
+- **R (staff access to a tenant's data unknown to the tenant):** Control: the kernel records each use of a grant in the tenant before the transaction runs, for reads as for writes; the tenant reads the record (who asked, who approved, why, until when, how often); a notice event is raised once per grant.
+- **T (the record hidden or altered):** Control: the application role can only read it; writes go through two SECURITY DEFINER functions that act on the transaction's own tenant and an active grant only.
+- **I (the grant's reason shown to the tenant):** Control: by design, the reason for touching the tenant's data is the tenant's to see; it is CONFIDENTIAL and readable only in that tenant.
+- **Residual:** a use is recorded when the kernel runs; direct database access by a superuser is outside it, as for the ledger.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
