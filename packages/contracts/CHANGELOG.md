@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.8.0
+
+### Minor Changes
+
+- cd25633: `MutateOptions.reason`: why a mutation is made, recorded by the statutory capture (R1-D-25).
+
 ## 1.7.0
 
 ### Minor Changes
