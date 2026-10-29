@@ -94,6 +94,7 @@ export const ID_PREFIXES = {
   nda: "NDA acceptance",
   vads: "vendor assurance subscription",
   fbs: "feedback status change",
+  svw: "saved table view (IPB-07-13)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 
