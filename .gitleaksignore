@@ -18,3 +18,11 @@ a621e1eaeb34464a830c39db17bcf53e26f0fe40:packages/config/src/settings/registry.g
 # {"alg":"ES256"} and {}, with the word "sig"), used as an access token to bind `ath`. It is not a
 # token of any issuer; the next commit replaced it with an opaque string.
 4f692c3222c1210fae8c990f5e73b72c885cac47:packages/crypto/src/dpop.test.ts:generic-api-key:68
+#
+# 2026-10-29: UUIDv7 idempotency-key fixtures ("01890a5d-…") in the inbound idempotency tests, read by
+# generic-api-key because the variables are named KEY/key. They are random test identifiers, not
+# credentials; the next commit builds them with a helper so no literal remains.
+374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.test.ts:generic-api-key:8
+374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:31
+374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:93
+374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:123
