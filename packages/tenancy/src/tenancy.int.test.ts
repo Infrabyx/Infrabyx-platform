@@ -425,6 +425,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0006_ecosystem_inbox.sql",
       "@infrabyx/tenancy/0007_branch_context.sql",
       "@infrabyx/tenancy/0008_api_idempotency.sql",
+      "@infrabyx/tenancy/0009_breakglass_visibility.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
