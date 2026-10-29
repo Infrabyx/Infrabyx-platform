@@ -2,13 +2,13 @@
 
 Updated: 2026-10-29
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                             |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                       |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                            |
-| Packages              | Published to GitHub Packages (release run 132, `24f4432`): **1.8.0** contracts; **1.4.0** tenancy; **1.3.1** config, connectors, testing; **1.3.0** audit; **1.2.3** crypto; **1.1.12** cms; **1.1.7** ui; **1.1.4** notify; **1.0.15** rules; **1.0.13** ai, brand, consent, export, feedback, seed, trust, vidhi, workflow; **1.0.8** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                 |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                     |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                 |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                      |
+| Packages              | Published to GitHub Packages (release run 134, `17fc069`): **1.9.0** contracts; **1.5.0** tenancy; **1.4.0** audit; **1.3.2** config, connectors, testing; **1.2.4** crypto; **1.1.13** cms; **1.1.8** ui; **1.1.5** notify; **1.1.0** export; **1.0.16** rules; **1.0.14** ai, brand, consent, feedback, seed, trust, vidhi, workflow; **1.0.9** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                           |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                               |
 
 ## Handover (2026-10-28, Udofin PR-UDF-013 and PR-UDF-016, Finbyx PR-FBX-06 to PR-FBX-08, G2 and G5)
 
@@ -48,6 +48,52 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### PR-FBX-10 (4): inbound idempotency (minors of `tenancy`, `contracts`, `config`)
+
+Finbyx platform request PR-FBX-10 item 4 (IPB-10-07). Built as R1-D-27 (R1-plan M20; threat model §3.58).
+
+- **Built:**
+  - `tenancy/0008`: `tenancy.idempotency_key` with IPB-10 §10.4's columns, forced RLS by tenant, the response body classed REGULATED, and a restrictive policy so only expired keys can be deleted.
+  - `idempotent(tx, request, work, { audit })` runs the work once per key in the change's own transaction. An identical replay returns the stored status and body with a ledger entry (`api.idempotency.replay`); another body under the key is 409 IPB-PORT-004; a key still running is 409 IPB-API-011; a failed request stores nothing.
+  - `IdempotencyKeyInterceptor` (`@infrabyx/tenancy/nest`) requires a UUIDv7 `Idempotency-Key` on POST and PATCH (400 IPB-API-010) and sets `Idempotent-Replayed` and `Idempotent-Original-Request-Id` on a replay.
+  - `IdempotencyExpiry` deletes expired keys per tenant through `TenantSweep`; setting `int.api.idempotency_ttl_hours` (24 to 168, default 24).
+- **Tests:** `idempotency.int.test.ts` on PostgreSQL (6 cases) and `idempotency.test.ts` (2).
+- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0008`); register the interceptor on mutating routes and wrap the handler's work in `idempotent`; schedule `IdempotencyExpiry` daily.
+
+### PR-FBX-10 (1) minor release (2026-10-29, version PR #157, release run 134)
+
+The branch context (#154): minors of `contracts` 1.9.0, `tenancy` 1.5.0, `audit` 1.4.0 and `export` 1.1.0 (`REF-EXPORT-1.3`), with patches of every package that depends on them. Released under OWNER-QUESTIONS #81(a). Version PR #157 merged as `17fc069` with every required check green, the full `port-contract` matrix included.
+
+- **Signed the BOM** keyless and verified it (`Verified OK`): Rekor log index 3559422244 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:d48ca372-f754-57e3-8785-15402fd78ed2`, 953 components, release `17fc0695142e`) has SHA-256 `21ea66489c62899edededed09a85611e7adfd87e9c7b8d0c58c2936c5bad7d15`.
+- **Published 21 packages** (`consumer-smoke` first: 22 packages, 105 exports, 0 failed; only `hlp` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; each attestation verified (`dsse` entries below, read from the bundles on each release).
+- **Registry checksums:** `registry-dist` run 40825596829 (job 123287798758) printed the registry's `dist` and rebuilt every package from `17fc069` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `17fc069`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/a11y`       | 1.0.9   | `38c4da6910f2affed715aa52805f3dfa9429b476` | `sha512-6uKM5P/xTneMrgfiQ2vYoSeD9Y7ZBaWESB6mG4JJkUYq3Vch2yFI4hdmDSovpzWxIE1fmVjFNiIm9zeIWRCbbQ==` | 3559465471          | identical                            |
+| `@infrabyx/ai`         | 1.0.14  | `141cd3d182456f89b5900c35d4fe7f097358a0dd` | `sha512-nJG7mKSXM8PSuTxEj/YpJU4RM6Sv84Mhwl9KWMFHZ7lKN0VBzpEfTWcBGYtY56Yf8BlnTs85KNK+XBo15A2A2w==` | 3559467205          | `package.json` dependency order only |
+| `@infrabyx/audit`      | 1.4.0   | `63340f7d171f85bdb2934de7480e9cc177e54ae9` | `sha512-c39WwksG/Fh0ZjTKOMdr3eDSUrR6U05DiXK2rozJTrh9NVWkdOqU2RLERkQSBPmSQaoEKuQhXXu5TjlDE3/K6A==` | 3559468708          | `package.json` dependency order only |
+| `@infrabyx/brand`      | 1.0.14  | `82f2a63aa6f4cde5e3ddc09e18f5805509b4dbef` | `sha512-rdBhMxmJI5FXU3pw57Hf/wuqxQ0OTr3lnjNcAEM9K0GOYca6W0M4WNgmKHS15Cg0OXUjfvtxJzCjR6P3Yqr0Dg==` | 3559470921          | `package.json` dependency order only |
+| `@infrabyx/cms`        | 1.1.13  | `7e039533bcb47b79c4531d3d0b53f25a6f9d683a` | `sha512-cCBiprzpbUPUrnYPqsxjMGM+g0VLnWjUPoLc1n4N8yGvrenGsQ+mFt4TWTpkNWGWD9bA8J0fBNZ4E/yrDjbU7w==` | 3559472708          | `package.json` dependency order only |
+| `@infrabyx/config`     | 1.3.2   | `9c147cea546f29349c6c2cd7fd875643601a1e79` | `sha512-LuVGof9ODT36bBpDgd8a9YqGjOgkU/JWZpfXgEWMdloG7dqBihMhbLjunex6H72QXzY8k235B4FmpDB6WXgaow==` | 3559474692          | identical                            |
+| `@infrabyx/connectors` | 1.3.2   | `002d043c270b05bd8c7b17bf29b795d050a3f53d` | `sha512-0PNi/OwaYmRJUJEHUOhKVhauADtFX//EVAIcSXWmI62AbpTLgqc8nh5HhO4nTiXsMSIqDg5PNly2p2apT7jhwQ==` | 3559476756          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.14  | `882ef89959a2a93680061be13bd3eb9856e39ac4` | `sha512-zDOpcyqCgj/YTm9RwtkbY8bEGzviogwU5eaE/pVRA0rJLe97YAvVSB4LQPwDg6XeJb5CJLmEmH7rIOjrJl7o0A==` | 3559478996          | `package.json` dependency order only |
+| `@infrabyx/contracts`  | 1.9.0   | `a4e6d4317a7b7ad6d842e3507512825265365178` | `sha512-SxLuqtuZ0RBEqpRajq89RNg63xgKlJo8mTNoBNbaIWYZSM/jqcv+s7y4gO3Fa+O9cJHG0DFmDa7/bFuNHXOhLA==` | 3559481669          | identical                            |
+| `@infrabyx/crypto`     | 1.2.4   | `4b44a9d59d5a25c8899a8f7818750cf855915c84` | `sha512-JKPcI6yRbulWFc3o9tfaImcO+hqzRLCpdfikcvBrR/VrP55jy+kr4PFRDuZXDVaKicyW/Qo164M8MTZkh6jEnA==` | 3559483417          | identical                            |
+| `@infrabyx/export`     | 1.1.0   | `193cf65b0e6c0fdefe444e94920e9af0316fa783` | `sha512-jGwOY4eNE/BR0ji1MAshXPtnWyPm4xzMgvuo8uoKBSYKTLaVGz1w9tRD8NUAwuf4wUy1rbhOUhHmV3j47iN7Bg==` | 3559485571          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.14  | `8f5bd9fe8cf2be0ac1244df00d77c682d525d1bc` | `sha512-UQeXw6GOuSd1P/4wYRc8MapDnH0s5uy1oVtXedfo/D5Q1TeSWRS1fnFwcZUNSFrrSUtmrDvP5Owe++5gfMizYA==` | 3559488505          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.1.5   | `899d39bb7744f160c1fd2f4e0f2dd5c804458d38` | `sha512-zkXR4W+Ad64FcNHmkDifsN4eC1ZRl4x9X3NUX94LoQ2Dlf4WjPCFt5cvmEhNDHa+YD9OLBQVKtS3t3EhZiQfpw==` | 3559490603          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.16  | `b15cb48398c2d972893493af1fe054c66080b647` | `sha512-R8tRPdTyIvkOrATMtWuWfqeTW3RfOrlP2HRna4Xbu8aDEhVfOCECRBjs+r3IlCSeUR7Qkx8+z/Bd274TUDQMGQ==` | 3559492779          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.14  | `0e9624f07541cccbbbead9aa462fce53deff207d` | `sha512-NlzGRogCdMfhY8XhQzKh1QkJamEImHw8VcPTsVsVr7j1Bi7Pelpy3CQp1eE0TVeMxEO+O5tnRx6YNrNClgTHkg==` | 3559495321          | `package.json` dependency order only |
+| `@infrabyx/tenancy`    | 1.5.0   | `d071f06d934da3a85cecfb14acfd9725390b53b2` | `sha512-CXtSiyf95wzRBee9OgwpbN5Xq/6hYK2vo54GKZrNAZpyiju15eoLL6dA4c+3NMqE61agZZtQ6DmW2PWQ5rka/A==` | 3559497120          | `package.json` dependency order only |
+| `@infrabyx/testing`    | 1.3.2   | `61caf97e4703a7f88707786a79a2d251030e3c39` | `sha512-i71wRKBwkQJK9+Sa4Kcp8gM6Lk0q7NfR0tu7YfAwPYZ207QCO+8A7+oTsBC07/WEmmsko2f31DIk7tYo7v7+Sw==` | 3559498624          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.14  | `d1dbfcff62773845137409ef14f528f1221e06b3` | `sha512-WffbPRNBk44votrJQhYiXDgMMfx2miDzuzGhqreIwDqus5TaD1b//UbZMfAixMT0jDj/PQf7n9FTVFEDHqrBMg==` | 3559500558          | identical                            |
+| `@infrabyx/ui`         | 1.1.8   | `38a3f1bf6ee8201dfe1ebf70baebbf8b39aeeb12` | `sha512-cv4Ab1uK0wlG1iVbbTcU/YFc2lVPEXSCYC5RkNyH6lhhGOFgCMRN66Wjp1cT3GV2tIzQv4J1cFn136Zc63cI6g==` | 3559502408          | identical                            |
+| `@infrabyx/vidhi`      | 1.0.14  | `61fda72cc20dbe9925d6703eedda0b7a7b2d2ef1` | `sha512-zlaXQoiV25wic+BvB5iclX6SnyNxa4ROe/ppiJas0r1ChL5ohe/Tre2lvJFZC7CAkBpn50RCaiN/WhAVTl+c0g==` | 3559504377          | identical                            |
+| `@infrabyx/workflow`   | 1.0.14  | `8557e6765c867a8efc5166e2c47d021c8ca592f2` | `sha512-e+67RImWaE+DaCkIgPVjUSrH6EOXlwI0Xuxg/nX7MlvcDQzc9eTwijrMBpfj+2rNKqdiqn//VjMrFs2j0HYRUg==` | 3559505473          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`hlp` 1.0.0 is unchanged), run `infrabyx-migrate` (`tenancy/0007`, `audit/0004`), and set the branch fields in the context (§ "PR-FBX-10 (1)" below). `REF_EXPORT_MAP` is now `REF-EXPORT-1.3`; `REF_EXPORT_MAP_1_2` stays exported for archives built under 1.2.
 
 ### The consumer smoke install follows the 7-day rule (security finding; no package change)
 
@@ -90,18 +136,6 @@ The statutory capture (#153): minors of `audit` 1.3.0, `tenancy` 1.4.0 and `cont
 | `@infrabyx/workflow`   | 1.0.13  | `ca59295de8e7aef850224b09fb2f4a0e48c0f072` | `sha512-ESGpFSXr8/B6eOry11OPYJ231nuetE2qL1gqjmeP6FHas0kCsrRo67Ki5xoC6jVSt8BzmR4Uwm4BmaLVx3ldyw==` | 3558977369          | `package.json` dependency order only |
 
 **Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`hlp` 1.0.0 is unchanged), run `infrabyx-migrate` as the database owner (`audit/0003`), then register the books-of-account tables and schedule `verifyCaptureAll` (§ "PR-FBX-10 (2)" below). Finbyx's AC7 is unblocked.
-
-### PR-FBX-10 (4): inbound idempotency (minors of `tenancy`, `contracts`, `config`)
-
-Finbyx platform request PR-FBX-10 item 4 (IPB-10-07). Built as R1-D-27 (R1-plan M20; threat model §3.58).
-
-- **Built:**
-  - `tenancy/0008`: `tenancy.idempotency_key` with IPB-10 §10.4's columns, forced RLS by tenant, the response body classed REGULATED, and a restrictive policy so only expired keys can be deleted.
-  - `idempotent(tx, request, work, { audit })` runs the work once per key in the change's own transaction. An identical replay returns the stored status and body with a ledger entry (`api.idempotency.replay`); another body under the key is 409 IPB-PORT-004; a key still running is 409 IPB-API-011; a failed request stores nothing.
-  - `IdempotencyKeyInterceptor` (`@infrabyx/tenancy/nest`) requires a UUIDv7 `Idempotency-Key` on POST and PATCH (400 IPB-API-010) and sets `Idempotent-Replayed` and `Idempotent-Original-Request-Id` on a replay.
-  - `IdempotencyExpiry` deletes expired keys per tenant through `TenantSweep`; setting `int.api.idempotency_ttl_hours` (24 to 168, default 24).
-- **Tests:** `idempotency.int.test.ts` on PostgreSQL (6 cases) and `idempotency.test.ts` (2).
-- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0008`); register the interceptor on mutating routes and wrap the handler's work in `idempotent`; schedule `IdempotencyExpiry` daily.
 
 ### PR-FBX-10 (1): branch context for row-level security (minors of `contracts`, `tenancy`, `audit`)
 
