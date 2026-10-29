@@ -18,6 +18,7 @@ import type {
 } from "@infrabyx/contracts/kernel";
 import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
 import { KernelGuardError } from "./errors.js";
+import { isExternalGated } from "./external-gate.js";
 
 /** Minimal pool surface (pg.Pool satisfies it). */
 export interface PoolLike {
@@ -78,11 +79,30 @@ class PgTx implements Tx {
 
 /** The only action a service reader may commit: the ledger entry for its cross-tenant read. */
 export const SERVICE_READ_ACTION = "platform.service_read";
+/** The only action an external principal commits: the ledger entry for its read (R1-D-29). */
+export const EXTERNAL_READ_ACTION = "platform.external_read";
+/** The SELECT-only role an external principal reads as (tenancy/0010). */
+export const EXTERNAL_DB_ROLE = "app_external";
+
+const isExternal = (ctx: KernelContext): boolean => ctx.principal.type === "external";
+
+function assertExternalGated(ctx: KernelContext, fn: object): void {
+  if (isExternal(ctx) && !isExternalGated(fn))
+    throw new IpbError("IPB-SEC-005", {
+      detail: "an external principal reads through ExternalReads, which ledgers every read",
+    });
+}
 
 /** Mutation guard (IPB-02-09, IPB-02-10): no writes while impersonating; agents never approve, sign, disburse, delete or grant. */
 export function assertMayMutate(ctx: KernelContext, opts: MutateOptions = {}): void {
   if (ctx.act) {
     throw new IpbError("IPB-SEC-003", { detail: "impersonation sessions are read-only" });
+  }
+  if (isExternal(ctx) && opts.action !== EXTERNAL_READ_ACTION) {
+    throw new IpbError("IPB-SEC-005", {
+      detail: "an external principal only reads",
+      meta: { action: opts.action ?? null },
+    });
   }
   const verb = opts.action?.split(".").at(-1);
   const reader = serviceReaderRole(ctx);
@@ -131,6 +151,7 @@ export class PgKernel implements MutationKernel {
   ): Promise<T> {
     assertValidContext(ctx);
     assertMayMutate(ctx, opts);
+    assertExternalGated(ctx, fn);
     // The outbox relay's dispatch runs as its own database role, granted only the registered
     // outbox tables and the ledger append (R1-D-01); every other mutation runs as the app role.
     const role =
@@ -156,12 +177,18 @@ export class PgKernel implements MutationKernel {
     opts: ReadOptions = {},
   ): Promise<T> {
     assertValidContext(ctx);
+    assertExternalGated(ctx, fn);
     // A service reader in platform scope runs as its own database role, which is granted only the
-    // columns it needs (PL3-D-21); RLS still applies.
+    // columns it needs (PL3-D-21); RLS still applies. An external principal reads as the
+    // SELECT-only app_external, under its grant's restrictive policies (R1-D-29).
     const reader = ctx.scope === "platform" ? serviceReaderRole(ctx) : undefined;
     return this.run(
       ctx,
-      reader ? SERVICE_READER_ROLES[reader].dbRole : this.readRole,
+      reader
+        ? SERVICE_READER_ROLES[reader].dbRole
+        : isExternal(ctx)
+          ? EXTERNAL_DB_ROLE
+          : this.readRole,
       opts.snapshot ? "snapshot" : true,
       {},
       fn,
@@ -214,7 +241,7 @@ export class PgKernel implements MutationKernel {
                 set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
                 set_config('app.action', $7, true), set_config('app.reason', $8, true),
                 set_config('app.branch_id', $9, true), set_config('app.branch_ids', $10, true),
-                set_config('app.branch_scope', $11, true)`,
+                set_config('app.branch_scope', $11, true), set_config('app.external_grant', $12, true)`,
         [
           ctx.tenantId,
           ctx.entityId ?? "",
@@ -227,6 +254,7 @@ export class PgKernel implements MutationKernel {
           ctx.branchId ?? "",
           (ctx.branchIds ?? []).join(","),
           ctx.allBranches ? "all" : ctx.branchIds?.length ? "listed" : "none",
+          ctx.externalGrantId ?? "",
         ],
       );
       if (ctx.breakGlassGrantId) {
@@ -236,6 +264,19 @@ export class PgKernel implements MutationKernel {
         );
         if (!r.rows[0]?.ok)
           throw new IpbError("IPB-SEC-009", { detail: "break-glass grant is not active" });
+      }
+      // An external read needs its grant active, the principal's own and in this tenant; the
+      // ledger write that follows it is not refused, so a read is recorded even if the grant
+      // was revoked in between.
+      if (role === EXTERNAL_DB_ROLE) {
+        const r = await client.query<{ ok: boolean }>(
+          "select tenancy.external_grant_active() as ok",
+        );
+        if (!r.rows[0]?.ok)
+          throw new IpbError("IPB-TRUST-003", {
+            detail: "external grant is not active",
+            meta: { grant_id: ctx.externalGrantId ?? null },
+          });
       }
       const result = await fn(new PgTx(client, ctx));
       await client.query("commit");

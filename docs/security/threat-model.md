@@ -662,6 +662,16 @@ Each tenant sees every break-glass grant used on its data, and is notified on fi
 - **I (the grant's reason shown to the tenant):** Control: by design, the reason for touching the tenant's data is the tenant's to see; it is CONFIDENTIAL and readable only in that tenant.
 - **Residual:** a use is recorded when the kernel runs; direct database access by a superuser is outside it, as for the ledger.
 
+### 3.60 External read role (`tenancy/0010`; PR-FBX-10 item 5, R1-D-29)
+
+A named external grantee (statutory auditor, inspector) reads one tenant's data under one grant, as the SELECT-only `app_external` role.
+
+- **E (an external grantee reading or changing more than granted):** Control: the role holds SELECT only and belongs to no role (rls-lint `external-read`); the kernel runs its reads read-only, as that role, only for an active grant that is the principal's own and in the tenant; every table it can read has forced RLS and a RESTRICTIVE policy calling `tenancy.external_allows`, which limits rows to the grant's entities, branches and period whatever the table's other policies; columns are the product's explicit grants.
+- **S (a grant used by someone else or in another tenant):** Control: the grant row must match the context's grant id, principal and tenant on every transaction (`IPB-TRUST-003`).
+- **E (a grant created or widened by one person):** Control: a second ORG_OWNER or ORG_ADMIN approves it (`IPB-TRUST-005` on self-approval); 90 days at most; revocation takes effect on the next transaction.
+- **R (an unrecorded read):** Control: the kernel accepts an external principal's transaction only from `ExternalReads`, which ledgers each read (grant, table, row count), empty ones too, before it returns the rows.
+- **Residual:** the ledger names the table and row count, not the query text; a product's restrictive policy must cover the right columns (entity, branch, date) for each table it opens, which rls-lint checks for presence, not meaning.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).

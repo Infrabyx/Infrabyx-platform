@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { ObjectMeta, StoragePort } from "@infrabyx/contracts/ports";
-import { LOCAL_KMS_KEYS, LocalKms, localDevKey } from "@infrabyx/crypto";
-import { PgKernel, PgOutbox } from "@infrabyx/tenancy";
+import { LOCAL_KMS_KEYS, LocalKms, localDevKey, newId } from "@infrabyx/crypto";
+import { ExternalReads, PgKernel, PgOutbox, externalContext } from "@infrabyx/tenancy";
 import { lintRls } from "@infrabyx/tenancy/rls-lint";
 import { verifyChain } from "./chain.js";
 import { AuditService, verifyAgainstAnchor, verifyAnchorFile, type AnchorFile } from "./service.js";
@@ -202,5 +202,46 @@ describe("signed anchors (IPB-02-51)", () => {
 describe("rls-lint", () => {
   it("is clean on the audit schema", async () => {
     expect(await lintRls(db.admin, { schemas: ["audit"] })).toEqual([]);
+  });
+});
+
+describe("external reads in the ledger (R1-D-29)", () => {
+  it("chains each external read as a user actor naming the grant", async () => {
+    const ent = newId("ent");
+    const grant = newId("xgr");
+    await db.admin.query(
+      "insert into tenancy.tenant (id, product, name) values ('tnt_x', 'FBX', 'X')",
+    );
+    await db.admin.query(
+      "insert into tenancy.legal_entity (id, tenant_id, name) values ($1, 'tnt_x', 'X Ltd')",
+      [ent],
+    );
+    await db.admin.query(
+      `insert into tenancy.external_grant (id, tenant_id, grantee_id, grantee_name, organisation, kind,
+         purpose, entity_ids, period_from, period_to, duration_days, state, requested_by, approved_by,
+         approved_at, expires_at)
+       values ($1, 'tnt_x', 'ext_aud', 'A. Auditor', 'Audit firm', 'statutory_auditor', 'statutory audit',
+         array[$2], '2026-04-01', '2027-03-31', 30, 'active', 'usr_a', 'usr_b', now(), now() + interval '30 days')`,
+      [grant, ent],
+    );
+    const rows = await new ExternalReads({ kernel, audit: sink }).read(
+      externalContext("tnt_x", "ext_aud", grant),
+      "tenancy.external_grant",
+      "select id from tenancy.external_grant",
+    );
+    expect(rows).toEqual([{ id: grant }]);
+    const led = await db.admin.query(
+      "select actor_id, actor_type, action, resource_type, resource_id from audit.ledger where tenant_id = 'tnt_x'",
+    );
+    expect(led.rows).toEqual([
+      {
+        actor_id: "ext_aud",
+        actor_type: "user",
+        action: "platform.external_read",
+        resource_type: "external_read",
+        resource_id: `${grant}/tenancy.external_grant`,
+      },
+    ]);
+    expect(verifyChain(await svc.query(ctx("tnt_x"))).ok).toBe(true);
   });
 });
