@@ -683,6 +683,42 @@ keys:
       source: "IPB-02-03; R1-D-19",
     }
   - {
+      key: int.identity.customer.retention.challenge_hours,
+      tier: "PLATFORM",
+      type: "int",
+      default: 24,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      min: 1,
+      max: 720,
+      note: "hours after expiry that a sign-in challenge is deleted",
+      source: "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    }
+  - {
+      key: int.identity.customer.retention.guard_grace_seconds,
+      tier: "PLATFORM",
+      type: "int",
+      default: 0,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      min: 0,
+      max: 86400,
+      note: "seconds after its lockout window ends that a guard row is deleted",
+      source: "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    }
+  - {
+      key: int.identity.customer.retention.device_unused_days,
+      tier: "PLATFORM",
+      type: "int",
+      default: 365,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      min: 30,
+      max: 730,
+      note: "days after its last use that a device is deleted",
+      source: "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    }
+  - {
       key: int.identity.customer.dpop.max_age_seconds,
       tier: "PLATFORM",
       type: "int",

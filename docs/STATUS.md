@@ -6,7 +6,7 @@ Updated: 2026-10-29
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                           |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                |
-| Packages              | Published to GitHub Packages (release run 121, `bc97bc7`): **1.4.0** contracts; **1.3.1** tenancy; **1.2.3** audit; **1.1.7** cms; **1.1.3** ui; **1.1.0** crypto; **1.0.10** connectors, rules; **1.0.8** ai, brand, consent, export, feedback, notify, seed, testing, trust, vidhi, workflow; **1.0.6** config; **1.0.4** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Packages              | Published to GitHub Packages (release run 124, `55e140e`): **1.5.0** contracts; **1.3.2** tenancy; **1.2.4** audit; **1.2.0** crypto; **1.1.8** cms; **1.1.4** ui; **1.1.0** config, connectors, notify, testing; **1.0.11** rules; **1.0.9** ai, brand, consent, export, feedback, seed, trust, vidhi, workflow; **1.0.5** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                     |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                         |
 
@@ -48,6 +48,52 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### #86: retention of customer sign-in state (minors of `connectors`, `contracts`, `config`)
+
+The owner answered #86 on 29 Oct 2026 (R1-D-22). Built as R1-D-23 (R1-plan M14; threat model §3.53).
+
+- **Built:**
+  - `connectors`: `CustomerSignInRetention`, a scheduled per-tenant job (`sweep(tenantSweep)`, daily from one worker). It deletes a challenge 24 hours after it expired, a guard row once its lockout window has ended, and a device 12 months after its last use. Batches roll back and ledger nothing when nothing is due; every deletion has an `identity.customer.purge` ledger entry.
+  - `revokeDevice` (the customer unbinding a device) now deletes the device after signing it out; `forgetDevices` (account closed) does the same for every device.
+  - Migration `connectors/0005` grants `app_rw` delete on the three tables, under restrictive policies that keep floors below the settings: a challenge one hour after expiry; a guard row neither locked nor inside the shortest window; a device revoked or unused for 30 days.
+  - `contracts`: `CustomerIdentityPort.forgetDevices`. `config`: `int.identity.customer.retention.challenge_hours` (24), `guard_grace_seconds` (0) and `device_unused_days` (365).
+- **Tests:** `customer.test.ts`, 4 new cases (settings, guard end, the job through a sweep, unbind and closure); `customer-store.int.test.ts`, 2 new cases on PostgreSQL (due rows only, per tenant, one ledger entry each; the floors hold whatever the caller asks) and the grant check; the shared IDENTITY case now covers unbind and closure on Keycloak and Zitadel.
+- **Products adopting it:** run `infrabyx-migrate` (`connectors/0005`), schedule `new CustomerSignInRetention({ store, settings }).sweep(tenantSweep)` daily, and call `forgetDevices` when a customer closes the account.
+
+### #84 minor release (2026-10-29, version PR #146, release run 124)
+
+#84 (#144): minors of `crypto` 1.2.0, `contracts` 1.5.0, `config` 1.1.0, `notify` 1.1.0, `connectors` 1.1.0 and `testing` 1.1.0, with patches of every package that depends on them. Released under OWNER-QUESTIONS #81(a). Version PR #146 merged as `55e140e` with every required check green, the full 20-port `port-contract` matrix included. The `reference` job had failed once on `EADDRINUSE`; the one re-run passed, and #145 reserves those host ports in CI. Release run 124 (`release` job 123230998461):
+
+- **Signed the BOM** keyless and verified it (`Verified OK`): Rekor log index 3556177541 (`hashedrekord`), identity `https://github.com/Infrabyx/Infrabyx-platform/.github/workflows/release.yml@refs/heads/main`. The BOM (`urn:uuid:3dbd3a5f-fc06-5d3f-8c76-0f21b1e08410`, 953 components, release `55e140ea3ec4`) has SHA-256 `4feb3277eaeb7857f33d450e0645483235345be0199cbba22730a7aa5ed7baab`.
+- **Published 21 packages** (`consumer-smoke` first: 22 packages, 103 exports, 0 failed; only `hlp` unchanged), one `@infrabyx/<name>@<version>` tag each, and **attested each published tarball** with the BOM as its predicate; each attestation verified (`dsse` entries below, read from the bundles on each release).
+- **Registry checksums:** `registry-dist` run 40809438495 (job 123236006483) printed the registry's `dist` and rebuilt every package from `55e140e` (result per package in the last column).
+
+| Package                | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `55e140e`               |
+| ---------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/a11y`       | 1.0.5   | `de17106108fc31221222d698398fd553ea7346c8` | `sha512-1/8yPyyDQU9KxxZoYwSlebwOyHdSn7r1UEYe+I9L4LxG3KlInEtAarQuJmKoDMp/6aREPWySc+S4bvZyiUiOlQ==` | 3556226708          | identical                            |
+| `@infrabyx/ai`         | 1.0.9   | `898ebb7c2668a8b06b367e82cb45bc7e59c2deed` | `sha512-0GQTOeRrXYBx/N4XM+Q8J5H87k6aVECUg0Szx3+3opUI8xxZSDmcVOCgC/h9gldzNBADk18lOtq0K7Ty+Kx11w==` | 3556233283          | `package.json` dependency order only |
+| `@infrabyx/audit`      | 1.2.4   | `5d903f50dd7b59119081c3c3d2c380d9d8a7a39d` | `sha512-zB+nWfkk+ZGTWxBPWByN4UcuNejzQF99rcCBnt7t5lYQXWVOvE+aCfILTNT76CGuzlU0HMWviXlrdEFm+p0LyA==` | 3556239498          | `package.json` dependency order only |
+| `@infrabyx/brand`      | 1.0.9   | `10189b8b9bb101889cd5f6fdec79f41b69b511ab` | `sha512-WuWcbRJZQxdA0T0RZmkyVt1w6+h+20NqOdDv1qMDs9xyqlStHi7LEi1Qb/wdVS9HwamZd5tDxid/HM0AwnTWJA==` | 3556244571          | `package.json` dependency order only |
+| `@infrabyx/cms`        | 1.1.8   | `2e3a42f204975d89351ba9f71b125fff73a6abd1` | `sha512-Akc8pf9WjkLoTx1Mpkh8XAGkJa+QMppX4ncr48gK8tMJAzCrUeVvLM9i+SGheBohvccEcSan5cGqk7VN75sChw==` | 3556250063          | identical                            |
+| `@infrabyx/config`     | 1.1.0   | `20881d923b0c24746ac5985b01c965af8252eb9d` | `sha512-jZI6G4bBoBTOCpL3FGvcV7ocrfhZhjygi22a+sK5GNFpZeMi00N4Fk1ESx/ZMf92QhXUcOKzPcT28CWzG7+eFQ==` | 3556257475          | identical                            |
+| `@infrabyx/connectors` | 1.1.0   | `9b12d67c920dff692690129116e69d776687bdcf` | `sha512-6a46JZqNfjQGgD7fwdlapMlN759kxZjOnOGFmuzY1GipJqEbczQqul/p9nBh0dgvlCaLdiCHoS6KBL9ZdnYIgg==` | 3556260855          | `package.json` dependency order only |
+| `@infrabyx/consent`    | 1.0.9   | `7b045f118c41144e94febf6d70c3cba202919957` | `sha512-X8GyVD1A8wnyL4O3lG+6i/cBK6nekxs/8n6XG7q4AgZB7TBW51a28H0GJqvCBmWSmDoyS0B6l2IaB+sMVo+aVQ==` | 3556264240          | `package.json` dependency order only |
+| `@infrabyx/contracts`  | 1.5.0   | `0364d6957bb36acab959df07788f4152406bbe7b` | `sha512-ATFRi9UUW419tWWvzKR6x8XhmX5C8KXDQa88gNPOfMiVtDuurcmVGZzrGDiIwfZHSIq88FWZILB0syFRTdB+2w==` | 3556268148          | identical                            |
+| `@infrabyx/crypto`     | 1.2.0   | `38ebedda74b1db52b1ada1c2e1bafe3b12a8ff4b` | `sha512-GjTZLjTSJDV/VqyGDNVBxaH1af2VdDm6ggtzNeeqDvosImgOVdkbP3vDxuFiT1QuzIt9WR2R2e6YImJjlNx7Nw==` | 3556271586          | identical                            |
+| `@infrabyx/export`     | 1.0.9   | `769613b66ad8470790e895174db360aa9111476a` | `sha512-uL3cX2lVFrLUilW3694iZ4t23kZgDKpQ44QjkWwiwetOGcwmHyameuO7ut4vnw2j6jGI530V8sh1p3Gg3jMPqA==` | 3556274352          | `package.json` dependency order only |
+| `@infrabyx/feedback`   | 1.0.9   | `467a49f51c82aa0b26bbf1a4ca885c8dd84bf0ab` | `sha512-Tyvtfqc5sYa0q6PjW7CNBxsTDHp8uo19tLvdLPRmIIqeFfl5Zz08L4r2Z3AqqsW4hHCz1axcwW0I5rUw9CBSNA==` | 3556279920          | `package.json` dependency order only |
+| `@infrabyx/notify`     | 1.1.0   | `9b4f983d8e735bbd4e04d2b30557264caf7d16fd` | `sha512-/OVNr8B2uEWTX8R2S3G5DgWCoTXkZJkt7gQRVQEcoZzG1sIbsG5FC/njbU+EFUFC41XC4+9IgQrIMxZcRXY5LQ==` | 3556282703          | `package.json` dependency order only |
+| `@infrabyx/rules`      | 1.0.11  | `169e4a9cb703d427b99a2224ffaa82054353a3df` | `sha512-8f3Y9La5+EmjD1SlzP0wpZINhc5hLvg3TwsvkIOrBVZi3vsm6k9w5qjgkG5r9JHaYTdqytZJnBc+CJB5ZzeJvw==` | 3556284349          | `package.json` dependency order only |
+| `@infrabyx/seed`       | 1.0.9   | `80ffb7e96d3606cb87a57aebacd941f38c29b19e` | `sha512-iIbIyVIcED2TasIEDXK8N6HJTFLcGoPpI2PQEflyKg2I4FFqVPdx3P5DhzeURRyrL9Bf432RFAdhn3leJLsDAw==` | 3556288499          | identical                            |
+| `@infrabyx/tenancy`    | 1.3.2   | `83e69be6f35d7cdcc1e186228285964e33fb88ac` | `sha512-rZUYms3HgJmCgjcEDJ7utx0fHQPm3uVoN/wRJEMBQJZk/N9uf7UxxcmUW+GDQDCnjevjp8ZIlAYTkow6p2qj1g==` | 3556294930          | identical                            |
+| `@infrabyx/testing`    | 1.1.0   | `13e961afc5cc6c7837d44c643427627d2dffd5db` | `sha512-z6ofH/AZ1HH7X40eaq9rU80hu6F8NggOWtrmnlVjnuOGGSJ7i7xx5qcJB9rQHIJjHRVRh6UZEkDLCcxyAvfLSA==` | 3556298170          | `package.json` dependency order only |
+| `@infrabyx/trust`      | 1.0.9   | `cc50b3af3dd9bd8e546d0aef303666edc1843d08` | `sha512-2B4f5r9ZgUrdLpZsokGmtKEBYmD3Dbkog851NioYRT/t9nOzzNo37wDQOdYwgpBQSUpngWC/Und1l5hG/pSHiA==` | 3556301559          | `package.json` dependency order only |
+| `@infrabyx/ui`         | 1.1.4   | `bbe29e4165b914ef45274a315357a9368ae1963a` | `sha512-qd2WfRGEvqfgvi0GqFUrxc+gBskZ3qRBPjQ3/+tXCqvL0J6yYdS8OuYgcva56Y+Z+pcxSNVX2EoXuzFJLhStXA==` | 3556306590          | identical                            |
+| `@infrabyx/vidhi`      | 1.0.9   | `9de23df157f731dc731f6789975b8ba1087fac30` | `sha512-Zqt2iL/3K6aSxxVlb99nZ3E1nmi0wcHZKegXXUhRZN0cqVpES2g+9JpTX8Am74N5hdGFopBlAUBkil6FvRsxPQ==` | 3556314575          | `package.json` dependency order only |
+| `@infrabyx/workflow`   | 1.0.9   | `97e99cd91f9d11700606746e235f27fcc17539c7` | `sha512-Zr7O7HzMLFqKUJ6Jt+kTG1DJMOrrU3wD3cJFzyL0htUHcFdFeQNdzNyb920Tf7UYusMkXCgJg7OGVJs/3PZX7A==` | 3556318847          | `package.json` dependency order only |
+
+**Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`hlp` 1.0.0 is unchanged), run `infrabyx-migrate` (`connectors/0004`), and follow product guide §7d for customer sign-in.
 
 ### PR-FBX-01: the `KYC` and `VIDEO_MEET` ports (minors of `contracts` and `testing`)
 

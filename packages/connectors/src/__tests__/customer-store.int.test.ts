@@ -3,7 +3,7 @@
 // the guard schedule holds across store instances (replicas), a refresh hash rotates once, and a
 // revoked device is refused by another replica within one cache refresh.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { newId, randomBytes, toBase64Url } from "@infrabyx/crypto";
+import { newId, randomBytes, sha256Hex, toBase64Url } from "@infrabyx/crypto";
 import { startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
 import {
   customerIdentitySettings,
@@ -118,7 +118,7 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
     expect(await writer.listDevices("tnt_b", "kc-dev-1")).toEqual([]);
   });
 
-  it("every mutation is ledgered; no table grants delete; RLS is forced", async () => {
+  it("every mutation is ledgered; only app_rw may delete, under the retention floors; RLS is forced", async () => {
     const actions = (
       await db.admin.query<{ action: string }>(
         "select distinct action from audit.ledger where action like 'identity.customer.%' order by action",
@@ -137,11 +137,26 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
       ]),
     );
     const grants = await db.admin.query<{ n: string }>(
-      `select count(*)::text as n from information_schema.role_table_grants
+      `select grantee || ':' || table_name as n from information_schema.role_table_grants
         where table_schema = 'connectors' and table_name like 'customer_%' and privilege_type = 'DELETE'
-          and grantee in ('app_rw', 'app_ro')`,
+          and grantee in ('app_rw', 'app_ro') order by 1`,
     );
-    expect(grants.rows[0]!.n).toBe("0");
+    expect(grants.rows.map((r) => r.n)).toEqual([
+      "app_rw:customer_device",
+      "app_rw:customer_otp_challenge",
+      "app_rw:customer_otp_guard",
+    ]);
+    const floors = await db.admin.query<{ tablename: string; permissive: string; cmd: string }>(
+      `select tablename, permissive, cmd from pg_policies
+        where schemaname = 'connectors' and policyname like 'customer_%_delete_retention' order by 1`,
+    );
+    expect(floors.rows).toEqual(
+      ["customer_device", "customer_otp_challenge", "customer_otp_guard"].map((tablename) => ({
+        tablename,
+        permissive: "RESTRICTIVE",
+        cmd: "DELETE",
+      })),
+    );
     const rls = await db.admin.query<{ relname: string; relforcerowsecurity: boolean }>(
       "select relname, relforcerowsecurity from pg_class where relname like 'customer_%' and relkind = 'r' order by relname",
     );
@@ -150,5 +165,118 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
       { relname: "customer_otp_challenge", relforcerowsecurity: true },
       { relname: "customer_otp_guard", relforcerowsecurity: true },
     ]);
+  });
+});
+
+describe("retention of customer sign-in state (connectors/0005; owner answer #86, R1-D-23)", () => {
+  const H = 3_600_000;
+  const cutoffs = (now: number) => ({
+    challengesExpiredBefore: now - 24 * H,
+    devicesUnusedSince: now - 365 * 24 * H,
+    guardsEndedBefore: now,
+    sendWindowMs: 600_000,
+    lockoutMs: 900_000,
+  });
+  const device = async (tenantId: string, userId: string, lastUsedAt: number) => {
+    const id = newId("dev");
+    await store().createDevice({
+      id,
+      tenantId,
+      userId,
+      jkt: JKT,
+      idpSession: `sess-${id}`,
+      refreshHash: sha256Hex(id),
+      createdAt: lastUsedAt,
+      lastUsedAt,
+    });
+    await db.admin.query(
+      "update connectors.customer_device set last_used_at = $2, created_at = $2 where id = $1",
+      [id, new Date(lastUsedAt).toISOString()],
+    );
+    return id;
+  };
+  const guard = (tenantId: string, hash: string, windowStart: number, lockedUntil?: number) =>
+    db.admin.query(
+      `insert into connectors.customer_otp_guard (tenant_id, account_hash, window_start, locked_until)
+       values ($1, $2, $3, $4)`,
+      [
+        tenantId,
+        hash,
+        new Date(windowStart).toISOString(),
+        lockedUntil ? new Date(lockedUntil).toISOString() : null,
+      ],
+    );
+  const exists = async (table: string, col: string, v: string) =>
+    (await db.admin.query(`select 1 from connectors.${table} where ${col} = $1`, [v])).rows
+      .length === 1;
+
+  it("the job deletes what is due in its tenant only, one ledger entry per row", async () => {
+    const now = Date.now();
+    const st = store();
+    const old = challenge({ userId: "kc-ret-1", expiresAt: now - 25 * H });
+    const recent = challenge({ userId: "kc-ret-1", expiresAt: now - 23 * H });
+    const otherTenant = challenge({
+      tenantId: "tnt_b",
+      userId: "kc-ret-1",
+      expiresAt: now - 25 * H,
+    });
+    for (const c of [old, recent, otherTenant]) await st.saveChallenge(c);
+    const ended = "e".repeat(64);
+    const locked = "f".repeat(64);
+    await guard("tnt_a", ended, now - 2 * H);
+    await guard("tnt_a", locked, now - 2 * H, now + H);
+    const stale = await device("tnt_a", "kc-ret-2", now - 366 * 24 * H);
+    const used = await device("tnt_a", "kc-ret-2", now - 300 * 24 * H);
+    const got = await st.purge("tnt_a", cutoffs(now), 100);
+    expect(got).toEqual({ challenges: 1, guards: 1, devices: 1 });
+    expect(await exists("customer_otp_challenge", "id", old.id)).toBe(false);
+    expect(await exists("customer_otp_challenge", "id", recent.id)).toBe(true);
+    expect(await exists("customer_otp_challenge", "id", otherTenant.id)).toBe(true);
+    expect(await exists("customer_otp_guard", "account_hash", ended)).toBe(false);
+    expect(await exists("customer_otp_guard", "account_hash", locked)).toBe(true);
+    expect(await exists("customer_device", "id", stale)).toBe(false);
+    expect(await exists("customer_device", "id", used)).toBe(true);
+    const ledger = await db.admin.query<{ resource_id: string; tenant_id: string }>(
+      "select resource_id, tenant_id from audit.ledger where action = 'identity.customer.purge'",
+    );
+    expect(ledger.rows.map((r) => r.resource_id).sort()).toEqual([old.id, ended, stale].sort());
+    expect(new Set(ledger.rows.map((r) => r.tenant_id))).toEqual(new Set(["tnt_a"]));
+    // Nothing more is due: nothing deleted, nothing ledgered.
+    expect(await st.purge("tnt_a", cutoffs(now), 100)).toEqual({
+      challenges: 0,
+      guards: 0,
+      devices: 0,
+    });
+    expect(
+      (await db.admin.query("select 1 from audit.ledger where action = 'identity.customer.purge'"))
+        .rows.length,
+    ).toBe(3);
+  });
+
+  it("PostgreSQL keeps the floors whatever the caller asks", async () => {
+    // A tenant of its own, so rows the other tests made old enough do not count here.
+    await db.admin.query(
+      "insert into tenancy.tenant (id, product, name) values ('tnt_c', 'LD', 'C')",
+    );
+    const now = Date.now();
+    const st = store();
+    const c = challenge({ tenantId: "tnt_c", userId: "kc-floor-1", expiresAt: now - 10 * 60_000 });
+    await st.saveChallenge(c);
+    const hash = "d".repeat(64);
+    await guard("tnt_c", hash, now - 2 * H, now + H);
+    const live = await device("tnt_c", "kc-floor-2", now - 24 * H);
+    // A caller that asks for everything gets only what the floors allow.
+    const all = { ...cutoffs(now), challengesExpiredBefore: now, devicesUnusedSince: now };
+    const got = await st.purge("tnt_c", { ...all, guardsEndedBefore: now + 2 * H }, 100);
+    expect(got).toEqual({ challenges: 0, guards: 0, devices: 0 });
+    expect(await exists("customer_otp_challenge", "id", c.id)).toBe(true);
+    expect(await exists("customer_otp_guard", "account_hash", hash)).toBe(true);
+    expect(await exists("customer_device", "id", live)).toBe(true);
+    // An unrevoked device is not deleted by the unbind path either; a revoked one is, at once.
+    expect(await st.deleteDevice("tnt_c", live, "unbound")).toBe(false);
+    await st.revokeDevice("tnt_c", live, "sign_out", now);
+    expect(await st.deleteDevice("tnt_c", live, "unbound")).toBe(true);
+    expect(await exists("customer_device", "id", live)).toBe(false);
+    expect(await st.listDevices("tnt_c", "kc-floor-2")).toEqual([]);
   });
 });
