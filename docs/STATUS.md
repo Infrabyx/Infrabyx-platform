@@ -49,6 +49,17 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-10 (1): branch context for row-level security (minors of `contracts`, `tenancy`, `audit`)
+
+Finbyx platform request PR-FBX-10 item 1, requested by the owner (29 Oct 2026). Built as R1-D-26 (R1-plan M18; threat model §3.57).
+
+- **Built:**
+  - `contracts`: `KernelContext.branchId` (the branch a change is made in), `branchIds` (the branches the principal may see, at most 1000) and `allBranches` (every branch, such as head office). A `branchId` outside `branchIds` is refused (IPB-SEC-005) unless `allBranches` is set.
+  - `tenancy`: the kernel sets `app.branch_id`, `app.branch_ids` and `app.branch_scope` with the other transaction settings; `tenancy/0007` adds `tenancy.branch_allowed(branch_id)`, which products add to a table's policy beside the tenant condition. It denies by default: no branch context, an unlisted branch and a row without a branch are refused, except under `all`.
+  - `audit/0004`: `audit.ledger.branch_id`. The chain covers it only when it is set, so every earlier entry hashes as before; the statutory capture records the branch too.
+- **Tests:** `branch.int.test.ts` on PostgreSQL (3 cases: reads by listed branch, every branch and none; writes checked the same way with the current branch set; a crafted or malformed branch list refused) and the ledger and capture case in `capture.int.test.ts`.
+- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0007`, `audit/0004`); set the branch fields when building the context from the principal's assignments; add `and tenancy.branch_allowed(branch_id)` to the policies of branch-scoped tables.
+
 ### PR-FBX-10 (2): database-level statutory audit capture (minors of `audit`, `tenancy`, `contracts`)
 
 Finbyx platform request PR-FBX-10, item 2, requested by the owner (29 Oct 2026) for the Companies Act audit trail (edit log) on books of account; queued first, as a minor with priority. Built as R1-D-25 (R1-plan M17; threat model §3.56).
