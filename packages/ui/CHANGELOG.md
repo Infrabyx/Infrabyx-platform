@@ -1,5 +1,12 @@
 # @infrabyx/ui
 
+## 1.1.8
+
+### Patch Changes
+
+- Updated dependencies [2b307e0]
+  - @infrabyx/contracts@1.9.0
+
 ## 1.1.7
 
 ### Patch Changes
