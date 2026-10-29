@@ -75,7 +75,7 @@ const post = (c: KernelContext, sql: string, params: unknown[], reason?: string)
         resourceId: "j1",
       });
     },
-    { action: "books.journal.post", ...(reason ? { reason } : {}) },
+    { action: "books.journal.post", ...(reason !== undefined ? { reason } : {}) },
   );
 
 describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
