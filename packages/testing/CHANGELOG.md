@@ -1,5 +1,18 @@
 # @infrabyx/testing
 
+## 1.3.5
+
+### Patch Changes
+
+- Updated dependencies [63c5ad2]
+- Updated dependencies [63c5ad2]
+  - @infrabyx/config@1.5.0
+  - @infrabyx/contracts@1.12.0
+  - @infrabyx/audit@1.4.3
+  - @infrabyx/seed@1.0.17
+  - @infrabyx/tenancy@1.7.1
+  - @infrabyx/crypto@1.2.7
+
 ## 1.3.4
 
 ### Patch Changes
