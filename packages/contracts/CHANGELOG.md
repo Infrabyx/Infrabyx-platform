@@ -1,5 +1,12 @@
 # @infrabyx/contracts
 
+## 1.11.0
+
+### Minor Changes
+
+- 2e3a2d3: The platform event `BreakGlassUsed` (module `security`): a break-glass grant was used in this tenant (R1-D-28).
+- 3f20011: The `external` principal type and `KernelContext.externalGrantId`, for a named external grantee reading one tenant under one grant (Finbyx PR-FBX-10 item 5; R1-D-29).
+
 ## 1.10.0
 
 ### Minor Changes

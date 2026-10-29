@@ -1,5 +1,22 @@
 # @infrabyx/testing
 
+## 1.3.4
+
+### Patch Changes
+
+- 3b74776: `startPostgres` migrates each fresh database under a server-wide advisory lock (`infrabyx:test-migrate`), so parallel test databases on one server never interleave their migrations. Roles are cluster-wide, and `tenancy/0003` grants `app_ro` a role that `0004` revokes: a test checking role grants could otherwise see another database's half-applied migration (R1-D-31).
+- Updated dependencies [2e3a2d3]
+- Updated dependencies [2e3a2d3]
+- Updated dependencies [3f20011]
+- Updated dependencies [3f20011]
+- Updated dependencies [3f20011]
+  - @infrabyx/contracts@1.11.0
+  - @infrabyx/tenancy@1.7.0
+  - @infrabyx/audit@1.4.2
+  - @infrabyx/config@1.4.1
+  - @infrabyx/crypto@1.2.6
+  - @infrabyx/seed@1.0.16
+
 ## 1.3.3
 
 ### Patch Changes

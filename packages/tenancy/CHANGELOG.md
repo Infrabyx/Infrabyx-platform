@@ -1,5 +1,20 @@
 # @infrabyx/tenancy
 
+## 1.7.0
+
+### Minor Changes
+
+- 2e3a2d3: Break-glass visible to the tenant (Finbyx PR-FBX-10 item 3; R1-D-28). The kernel records each use of a break-glass grant in the tenant it touches (migration `tenancy/0009`, `tenancy.breakglass_use`, readable by the tenant, written only by definer functions). `BreakGlassTenantNotices` lists the uses and raises `BreakGlassUsed` once per grant for the product to notify.
+- 3f20011: External read access (Finbyx PR-FBX-10 item 5; R1-D-29). Migration `tenancy/0010` adds the SELECT-only, switch-only `app_external` role, the `tenancy.external_grant` table and `tenancy.external_allows()` for products' restrictive policies. `ExternalGrants` requests, approves (a second ORG_OWNER or ORG_ADMIN), revokes and lists grants; `ExternalReads` is the one way an external grantee reads, with a ledger entry per read; `externalContext` builds its context. rls-lint gains the `external-read` rule.
+
+### Patch Changes
+
+- Updated dependencies [2e3a2d3]
+- Updated dependencies [3f20011]
+  - @infrabyx/contracts@1.11.0
+  - @infrabyx/config@1.4.1
+  - @infrabyx/crypto@1.2.6
+
 ## 1.6.0
 
 ### Minor Changes
