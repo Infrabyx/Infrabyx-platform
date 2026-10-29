@@ -1,6 +1,6 @@
 // @infrabyx/export on PostgreSQL 18 with every platform migration applied (PL3 plan §7, §12).
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -44,6 +44,18 @@ beforeAll(async () => {
     randomSeed: 20261025,
     runDate: new Date("2026-10-01T00:00:00Z"),
   } as never);
+  // One ledger entry made in a branch: the chain hashes its branch (audit/0004), so the exported
+  // trail must carry it and the offline verifier must hash it (REF-EXPORT-1.3, R1-D-26).
+  await db.kernel.mutate(
+    { ...owner, branchId: "br_north", branchIds: ["br_north"] },
+    async (tx) => {
+      await db.audit.record(tx, {
+        action: "test.branch.entry",
+        resourceType: "test",
+        resourceId: "t1",
+      });
+    },
+  );
   approvals = new ApprovalsEngine({ kernel: db.kernel, audit: db.audit, product: "REF" });
   svc = new ExportService({
     approvals,
@@ -130,6 +142,15 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
       { encoding: "utf8" },
     );
     expect(out).toMatch(/^OK: \d+ files, signature, control totals and \d+ audit events verified/);
+    // The branch entry is exported with its branch, and the verifier above re-hashed it.
+    const trailDir = join(dir, root, "02 Audit Trail");
+    const entries = readdirSync(trailDir).flatMap((f) =>
+      readFileSync(join(trailDir, f), "utf8")
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l) as { action: string; branch_id: string | null }),
+    );
+    expect(entries.find((e) => e.action === "test.branch.entry")?.branch_id).toBe("br_north");
   });
 
   it("@IPB-09-37 every download ledgers the archive SHA-256, and the hash never changes", async () => {
