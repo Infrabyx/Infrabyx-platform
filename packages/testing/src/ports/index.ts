@@ -6,3 +6,5 @@ export * from "./rules.js";
 export * from "./ai.js";
 export * from "../stubs/index.js";
 export * from "./media.js";
+export * from "./kyc.js";
+export * from "./video-meet.js";

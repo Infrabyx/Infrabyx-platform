@@ -50,7 +50,7 @@ export const PORT_CATALOGUE = {
   PAYOUTS: { tier: 1, configPrefix: "int.payouts.", ownerFile: "IPB-01", interfaceDefined: false },
   ESIGN: { tier: 2, configPrefix: "int.esign.", ownerFile: "IPB-01", interfaceDefined: true },
   ESTAMP: { tier: 2, configPrefix: "int.estamp.", ownerFile: "IPB-01", interfaceDefined: false },
-  KYC: { tier: 2, configPrefix: "int.kyc.", ownerFile: "IPB-01", interfaceDefined: false },
+  KYC: { tier: 2, configPrefix: "int.kyc.", ownerFile: "IPB-01", interfaceDefined: true },
   COMPANY_DATA: {
     tier: 3,
     configPrefix: "int.company_data.",
@@ -89,7 +89,7 @@ export const PORT_CATALOGUE = {
     tier: 2,
     configPrefix: "int.video_meet.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   CALENDAR: {
     tier: 3,
@@ -208,3 +208,6 @@ export const PORT_CATALOGUE = {
 
 export type PortName = keyof typeof PORT_CATALOGUE;
 export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[]];
+
+/** Ports whose interfaces the 1.x line defined (R1-D-21: PR-FBX-01, adapters to follow). */
+export const R1_PORTS = ["KYC", "VIDEO_MEET"] as const satisfies readonly PortName[];

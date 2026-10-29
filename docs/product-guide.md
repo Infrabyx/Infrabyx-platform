@@ -117,6 +117,14 @@ End users who are not staff (borrowers, clients, parties) sign in with a one-tim
 6. **Refresh and sign-out.** Call `refreshSession({ tenantId, refreshToken, dpopProof })`; each refresh token works once. A current refresh token sent with another key signs the device out. `listDevices` and `revokeDevice` back the app's "signed-in devices" screen. A revoked device is refused everywhere within 15 s.
 7. **Upgrade note.** Rebuild the image whenever the platform moves the Keycloak pin (it will move from 26.8.1 soon after 30 Oct 2026).
 
+## 7e. KYC and video calls (ports only)
+
+`KycPort` and `VideoMeetPort` are defined in `@infrabyx/contracts/ports` (R1-D-21). No adapter exists yet; the owner chooses the vendors (OWNER-QUESTIONS #87, #88). Build your flows on the interfaces now, and test them with `FakeKyc` and `FakeVideoMeet` from `@infrabyx/testing`:
+
+- Pass files as STORAGE references with their SHA-256. Store the evidence each result returns (`vendorRef`, `modelVersion`, `checkedAt`), and for V-CIP the manifest, in your ledgered records. Never store an Aadhaar number: results give its last four digits only.
+- Create a V-CIP room with a REGULATED `RoomPolicy` (see `VCIP_ROOM_POLICY`): `participantCountries: ["IN"]`, your tenant's official networks, recording on to the tenant's target, `providerRetention: "none"`. Resolve each joiner's country and proxy status with your GEO check, and pass it to `joinToken`.
+- Keep `kyc.vcip.enabled` off: per-tenant STORAGE routing to a tenant-owned bucket is deferred (#83).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

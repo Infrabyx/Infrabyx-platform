@@ -49,6 +49,19 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-01: the `KYC` and `VIDEO_MEET` ports (minors of `contracts` and `testing`)
+
+The owner approved PR-FBX-01 for the ports only (R1-D-20); built as R1-D-21 (product guide §7e, threat model §3.54).
+
+- **Owner answers #85 to #88** (R1-D-22): code delivery stays as built; the sign-in retention purge, the LiveKit adapter and the Digio adapter (behind a flag) follow as their own PRs. CI reserves the local stack's host ports (53120 to 53130) in `reference` and `compose`, which bind them in the ephemeral range under host networking (the version PR #146's worker hit `EADDRINUSE`).
+
+- **Built:**
+  - `contracts`: `KycPort` (IPB-01's eleven methods with V-CIP status and webhook) and `VideoMeetPort` (rooms with `RoomPolicy`, joins checked against the origin, recordings as hash manifests). Both ports are now `interfaceDefined`.
+  - `testing`: `FakeKyc` and `FakeVideoMeet`, with `kycContractCases(fixtures)` and `videoMeetContractCases()`.
+- **Tests:** `kyc-video-meet.test.ts`: 17 cases. Both contract suites run on the fakes, plus the fake's V-CIP manifest and webhook read-back. `ports.test.ts` counts the two new interfaces.
+- **No adapters:** the vendor choices wait for the owner (OWNER-QUESTIONS #87 KYC, #88 VIDEO_MEET). V-CIP stays off in products until per-tenant STORAGE routing (#83, deferred).
+- **Products can now:** build their KYC and V-CIP flows on the interfaces, test them with the fakes, and mark PR-FBX-01 met for the ports (adapters open). Finbyx keeps `kyc.vcip.enabled=false`.
+
 ### #84: customer sign-in with one-time codes and DPoP (minors of `crypto`, `contracts`, `config`, `notify`, `connectors`, `testing`)
 
 The owner answered #84 (b), with DPoP proof verification approved as a C-item (R1-D-18), and deferred #83 (R1-D-20). Built as R1-D-19 (product guide §7d, threat model §3.53).

@@ -240,6 +240,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: build
         run: pnpm build
+      # The api, worker and web listen on the host network on 53123-53127, inside Linux's ephemeral
+      # range: reserve them so no outgoing connection holds one when a service binds it.
+      - name: reserve the local stack's host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=53120-53130
       - name: dev:up (core and apps profiles)
         run: pnpm dev:up --profile apps
       - name: the seeded site, console, reference API, worker and web answer through their images
@@ -289,6 +293,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: build
         run: pnpm build
+      # The api, worker and web listen on the host network on 53123-53127, inside Linux's ephemeral
+      # range: reserve them so no outgoing connection holds one when a service binds it.
+      - name: reserve the local stack's host ports
+        run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=53120-53130
       - name: dev:up (core and apps profiles)
         run: pnpm dev:up --profile apps
       - name: the gate journey (Playwright, axe on every page)

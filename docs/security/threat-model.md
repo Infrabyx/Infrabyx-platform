@@ -602,6 +602,16 @@ The Studio page editor edits a page's blocks through forms (`@infrabyx/ui/studio
 - **D (code flooding or lockout of a victim):** Control: the per-account limits cap SMS cost and annoyance; a lockout is timed (15 minutes), never permanent; the product's edge limits per IP (IPB-02 §02.4.6.2) sit in front.
 - **Residual:** Zitadel does not bind tokens to the key, so a Zitadel access token is bearer at the IdP until it expires (300 s) and its refresh token survives the platform's sign-out at the IdP; both are refused by the platform. Keycloak's 1-second quick-login check can lock a customer for 60 s after two very fast tries. The upstream Keycloak 26.8.1 base carries findings waived until 6 Nov 2026 (`infra/docker/trivyignore.yaml`); the pin moves when the rebuilt base clears the 7-day policy. Retention of the sign-in tables is the owner's (OWNER-QUESTIONS #86).
 
+### 3.54 The `KYC` and `VIDEO_MEET` ports (interfaces and fakes, PR-FBX-01; R1-D-21)
+
+The interfaces and their contract cases, with in-memory fakes. No adapter yet (OWNER-QUESTIONS #87, #88), so no data leaves a product through these ports today.
+
+- **I (identity data leaking through the port):** Control: every KYC request schema is REGULATED; adapters must be `IN`; files move as STORAGE references with SHA-256, never inline; results never carry an Aadhaar number (last four digits only).
+- **I (a V-CIP recording kept by the vendor or in a shared bucket):** Control: a CONFIDENTIAL or REGULATED room must declare `providerRetention: "none"` and a recording target (the schema refuses otherwise); `fetchRecording` returns a hash manifest, never media; per-tenant target routing is deferred (#83), so V-CIP stays off.
+- **S (a V-CIP call from outside India or from an untrusted network):** Control: `joinToken` refuses (`IPB-SEC-002`) a country outside `participantCountries`, an anonymised origin, an official outside `officialNetworks`, and a participant in another role; the origin comes from the product's GEO check.
+- **T and R (a forged vendor event or an altered recording):** Control: webhooks are triggers only; the session or room is read back from the vendor; the manifest lists every artefact by SHA-256 with its own hash, and the product ledgers it.
+- **Residual:** the cases prove the contract on the fakes only; each adapter must pass them on its vendor sandbox before routing selects it.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
