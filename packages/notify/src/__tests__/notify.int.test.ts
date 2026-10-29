@@ -23,6 +23,7 @@ import {
 } from "../catalogue.js";
 import { notifyApprovalNotifier } from "../approval-notifier.js";
 import { PgPushTokenStore } from "../push-store.js";
+import { notifyOtpSender } from "../otp-sender.js";
 import { notifyContext, NotifyService } from "../service.js";
 
 let db: TestDatabase;
@@ -63,11 +64,13 @@ const email: EmailPort = {
   suppress: async () => undefined,
 };
 const smsSent: string[] = [];
+const smsVars: string[][] = [];
 const sms = {
   descriptor: { port: "SMS", adapter: "fake-sms", residency: "IN", maxDataClass: "INTERNAL" },
   health: email.health,
-  send: async (m: { to: string; templateId: string }) => {
+  send: async (m: { to: string; templateId: string; vars: string[] }) => {
     smsSent.push(m.templateId);
+    smsVars.push(m.vars);
     return { messageId: `sms-${smsSent.length}` };
   },
   getStatus: async () => ({ status: "sent" }),
@@ -126,6 +129,18 @@ const product = {
         email: { key: "loan.collection", locales: ["en"] },
         sms: { dlt_template_id: "1107161234567890123", header: "IBXLND" },
       },
+    },
+    {
+      id: "security.sign_in_code",
+      category: "security",
+      mandatory: true,
+      urgent: true,
+      bypass_quiet_hours: true,
+      resend: "hold",
+      default_channels: ["sms"],
+      help_key: "ntf.security.sign_in_code",
+      deep_link: "/sign-in",
+      templates: { sms: { dlt_template_id: "1107161234567890999", header: "IBXLND" } },
     },
   ],
 };
@@ -515,5 +530,77 @@ describe("idempotency, errors, reports and the approval notifier", () => {
       expect(ledger, a).toContain(a);
     expect(ledger).not.toMatch(/@example\.test/);
     expect(ledger).not.toContain("+9198");
+  });
+});
+
+describe("@IPB-02-23 one-time sign-in codes through NOTIFY (R1-D-19)", () => {
+  const ctx = withTenant("tnt_a", ["SVC_IDENTITY"], { principal: { id: "svc_identity" } });
+  const sender = () =>
+    notifyOtpSender({ notify: svc, classes: { sms: "security.sign_in_code" }, context: () => ctx });
+  const msg = (key: string, over: Record<string, unknown> = {}) => ({
+    tenantId: "tnt_a",
+    userId: "kc-user-1",
+    channel: "sms" as const,
+    to: "+919800000077",
+    code: "493817",
+    expiresAt: new Date(now.getTime() + 300_000),
+    idempotencyKey: key,
+    ...over,
+  });
+
+  it("sends the code at once, records the delivery, and stores neither the code nor the address", async () => {
+    await sender().send(msg("otp-key-0001"));
+    expect(smsVars.at(-1)).toEqual(["493817", "5"]);
+    const rows = await db.admin.query<{ vars: unknown; recipient_ref: string; state: string }>(
+      `select n.vars, d.recipient_ref, d.state from notify.notification n
+         join notify.delivery d on d.notification_id = n.id where n.idempotency_key = 'otp-key-0001'`,
+    );
+    expect(rows.rows).toEqual([
+      {
+        vars: { code: "[redacted]", expires_minutes: 5 },
+        recipient_ref: "cus:kc-user-1",
+        state: "sent",
+      },
+    ]);
+    const dump = JSON.stringify(
+      (
+        await db.admin.query(
+          "select * from notify.notification n join notify.delivery d on d.notification_id = n.id",
+        )
+      ).rows,
+    );
+    expect(dump).not.toContain("493817");
+    expect(dump).not.toContain("+919800000077");
+    const ledger = JSON.stringify((await db.admin.query("select * from audit.ledger")).rows);
+    expect(ledger).not.toContain("493817");
+    // The same key is the same message: nothing is sent again.
+    const before = smsVars.length;
+    await sender().send(msg("otp-key-0001"));
+    expect(smsVars.length).toBe(before);
+  });
+
+  it("refuses a channel without a class, a non-security class and a killed channel", async () => {
+    await expect(sender().send(msg("otp-key-0002", { channel: "email" }))).rejects.toMatchObject({
+      code: "IPB-NTF-003",
+    });
+    await expect(
+      svc.sendOneTimeCode(ctx, {
+        class: "loan.collection_reminder",
+        recipientRef: "cus:x",
+        channel: "sms",
+        address: "+919800000077",
+        code: "111111",
+        expiresAt: now,
+        idempotencyKey: "otp-key-0003",
+      }),
+    ).rejects.toMatchObject({ code: "IPB-NTF-003" });
+    killed.add("kill.msg.sms");
+    try {
+      await expect(sender().send(msg("otp-key-0004"))).rejects.toMatchObject({
+        code: "IPB-NTF-004",
+      });
+    } finally {
+      killed.delete("kill.msg.sms");
+    }
   });
 });

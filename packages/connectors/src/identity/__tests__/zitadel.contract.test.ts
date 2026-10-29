@@ -2,23 +2,31 @@
 // The image is published only on GHCR, so this leg runs in CI (port-contract.yml), not in the
 // build sandbox. Zitadel starts from init with a generated master key and a bootstrap machine
 // user whose PAT is written to a bind mount; `applyInstance` then applies the IPB settings, the
-// ES256 web key, the platform project, API app and service principal.
+// ES256 web key, the platform project, API app and service principal; `applyCustomerOrg` then
+// creates a customer organisation, and the shared customer sign-in cases run there (R1-D-19).
+// For a local run against an instance started by hand, set IPB_TEST_ZITADEL_URL and put its
+// bootstrap PAT at $TMPDIR/ipb-zitadel/admin.pat (the outage case is then skipped).
 import { chmod, mkdtemp, readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PLATFORM_ROLES, TENANT_ROLES } from "@infrabyx/contracts";
-import type { IdentityPort } from "@infrabyx/contracts/ports";
-import { generateSeedPassword, randomBytes, toHex } from "@infrabyx/crypto";
+import type { CustomerIdentityPort, IdentityPort } from "@infrabyx/contracts/ports";
+import { generateSeedPassword, MemoryReplayStore, randomBytes, toHex } from "@infrabyx/crypto";
 import {
   defineContractSuite,
+  existingServiceUrl,
   startNetwork,
   startService,
   type StartedService,
 } from "@infrabyx/testing";
 import { MemoryRevocationStore } from "../common.js";
+import { MemoryCustomerAuthStore } from "../customer.js";
 import { scimUserId, ZITADEL_IPB_SETTINGS, ZitadelIdentity } from "../zitadel.js";
+import { ZitadelCustomerIdentity } from "../zitadel-customer.js";
+import { customerCases } from "./customer.cases.js";
+import { capturingSender } from "./dpop-device.js";
 
 let net: { name: string; stop(): Promise<void> };
 let db: StartedService;
@@ -26,6 +34,11 @@ let z: StartedService;
 let base = "";
 let pat = "";
 let inst: Awaited<ReturnType<typeof ZitadelIdentity.applyInstance>>;
+let customer: Awaited<ReturnType<typeof ZitadelCustomerIdentity.applyCustomerOrg>>;
+const CUSTOMER_ROLES = ["IPB_CUSTOMER"] as const;
+const customerStore = new MemoryCustomerAuthStore();
+const customerReplay = new MemoryReplayStore();
+const mail = capturingSender();
 const revocations = new MemoryRevocationStore();
 
 const freePort = () =>
@@ -37,7 +50,17 @@ const freePort = () =>
     });
   });
 
+/** Local runs only: an instance started by hand (`IPB_TEST_ZITADEL_URL`), its PAT in the temp dir. */
+const LOCAL = await existingServiceUrl("zitadel");
+async function existingInstance(): Promise<boolean> {
+  if (!LOCAL) return false;
+  base = LOCAL.replace(/\/$/, "");
+  pat = (await readFile(join(tmpdir(), "ipb-zitadel", "admin.pat"), "utf8")).trim();
+  return true;
+}
+
 beforeAll(async () => {
+  if (await existingInstance()) return applyAll();
   const port = await freePort();
   const dbPassword = toHex(randomBytes(16));
   const patDir = await mkdtemp(join(tmpdir(), "ipb-zitadel-"));
@@ -100,6 +123,10 @@ beforeAll(async () => {
     await new Promise((r) => setTimeout(r, 1000));
   }
   if (!pat) throw new Error("Zitadel did not write the bootstrap PAT");
+  await applyAll();
+});
+
+async function applyAll(): Promise<void> {
   inst = await ZitadelIdentity.applyInstance({
     baseUrl: base,
     pat,
@@ -108,7 +135,16 @@ beforeAll(async () => {
     roles: [...PLATFORM_ROLES, ...TENANT_ROLES],
     allowLoopbackHttp: true,
   });
-});
+  customer = await ZitadelCustomerIdentity.applyCustomerOrg({
+    baseUrl: base,
+    pat,
+    orgName: `ipb-customers-${toHex(randomBytes(4))}`,
+    redirectUri: "http://localhost/ipb-customer-callback",
+    customerRoles: CUSTOMER_ROLES,
+    instanceSettings: true,
+    allowLoopbackHttp: true,
+  });
+}
 afterAll(async () => {
   await z?.stop();
   await db?.stop();
@@ -309,20 +345,46 @@ describe("@IPB-01-15 IDENTITY hermetic leg: zitadel v4.19.5", () => {
     { leg: "hermetic" },
   );
 
-  it("JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002", async () => {
-    const p = adapter();
-    const t = await svcToken(p);
-    await p.verifyToken(t.accessToken);
-    await z.stop();
-    expect((await p.verifyToken(t.accessToken)).typ).toBe("service");
-    expect((await p.health()).status).toBe("down");
-    await expect(
-      p.authenticate({
-        kind: "oidc_code",
-        value: "x",
-        redirectUri: "http://localhost/callback",
-        codeVerifier: "v",
+  // Customer sign-in on the same instance, in the product's customer organisation (R1-D-19).
+  defineContractSuite<CustomerIdentityPort>(
+    "IDENTITY",
+    () =>
+      new ZitadelCustomerIdentity({
+        baseUrl: base,
+        orgId: customer.orgId,
+        projectId: customer.projectId,
+        clientId: customer.clientId,
+        clientSecret: customer.clientSecret,
+        redirectUri: "http://localhost/ipb-customer-callback",
+        loginClient: customer.loginClient,
+        store: customerStore,
+        replay: customerReplay,
+        revocations,
+        sender: mail.sender,
+        customerRoles: CUSTOMER_ROLES,
+        allowLoopbackHttp: true,
       }),
-    ).rejects.toMatchObject({ code: "IPB-IDN-002" });
-  });
+    customerCases({ inbox: mail.inbox, nativeBinding: false, roles: CUSTOMER_ROLES, pauseMs: 0 }),
+    { leg: "hermetic" },
+  );
+
+  it.skipIf(Boolean(LOCAL))(
+    "JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002",
+    async () => {
+      const p = adapter();
+      const t = await svcToken(p);
+      await p.verifyToken(t.accessToken);
+      await z.stop();
+      expect((await p.verifyToken(t.accessToken)).typ).toBe("service");
+      expect((await p.health()).status).toBe("down");
+      await expect(
+        p.authenticate({
+          kind: "oidc_code",
+          value: "x",
+          redirectUri: "http://localhost/callback",
+          codeVerifier: "v",
+        }),
+      ).rejects.toMatchObject({ code: "IPB-IDN-002" });
+    },
+  );
 });

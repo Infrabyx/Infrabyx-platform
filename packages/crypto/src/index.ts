@@ -101,3 +101,17 @@ export {
   type RegulatedJwsFailure,
   type RegulatedJwsResult,
 } from "./regulated-jws.js";
+export {
+  verifyDpopProof,
+  jwkThumbprint,
+  accessTokenHash,
+  normaliseHtu,
+  DPOP_TYP,
+  DPOP_MAX_AGE_SECONDS,
+  DPOP_MAX_SKEW_SECONDS,
+  DPOP_MAX_AGE_LIMIT_SECONDS,
+  DPOP_MAX_SKEW_LIMIT_SECONDS,
+  type DpopJwk,
+  type DpopFailure,
+  type DpopResult,
+} from "./dpop.js";

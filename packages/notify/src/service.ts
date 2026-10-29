@@ -345,6 +345,111 @@ export class NotifyService implements NotifyPort {
     return { result: { notificationId: id, deliveries }, due, replay: false };
   }
 
+  /**
+   * Send a one-time sign-in code now, on one channel, to the login being proven (customer sign-in,
+   * R1-D-19). The class must be a `security` class with a template for the channel; its first
+   * template variable is the code. The notification and delivery are recorded and ledgered as for
+   * `send`, but the stored `vars` hold `[redacted]` in place of the code and the address is never
+   * stored: the code exists only in this call. `kill.msg.<channel>` and the platform suppression
+   * list apply. There is no resend and no hold: after an unknown outcome the customer asks for a
+   * new code. The same idempotency key returns the first delivery's state without sending again.
+   */
+  async sendOneTimeCode(
+    ctx: KernelContext,
+    m: {
+      class: string;
+      /** Principal reference the delivery is recorded against (`cus:<idp user id>`). */
+      recipientRef: string;
+      channel: "sms" | "whatsapp" | "email";
+      address: string;
+      code: string;
+      expiresAt: Date;
+      locale?: string;
+      idempotencyKey: string;
+    },
+  ): Promise<DeliveryState> {
+    const cls = this.o.catalogue.get(m.class);
+    if (cls.category !== "security" || !cls.templates[m.channel])
+      throw new IpbError("IPB-NTF-003", {
+        detail: "one-time codes go out through a security class with a template for the channel",
+        meta: { class: cls.id, channel: m.channel },
+      });
+    if (!/^[0-9]{4,10}$/.test(m.code)) throw new RangeError("a one-time code is 4 to 10 digits");
+    const minutes = Math.max(
+      1,
+      Math.round((m.expiresAt.getTime() - this.now().getTime()) / 60_000),
+    );
+    const stored = { code: "[redacted]", expires_minutes: minutes };
+    const res = await this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const prior = await tx.query<DeliveryRow>(
+          `select d.* from notify.notification n join notify.delivery d on d.notification_id = n.id
+            where n.idempotency_key = $1`,
+          [m.idempotencyKey],
+        );
+        if (prior.rows[0]) {
+          await this.o.audit.record(tx, {
+            action: "notify.notification.replay",
+            resourceType: "notification",
+            resourceId: prior.rows[0].notification_id,
+          });
+          return { d: prior.rows[0], replay: true };
+        }
+        const id = newId("ntf");
+        await tx.query(
+          `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by)
+           values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)`,
+          [
+            id,
+            tx.ctx.tenantId,
+            cls.id,
+            m.idempotencyKey,
+            cls.deep_link,
+            JSON.stringify(stored),
+            m.locale ?? null,
+            tx.ctx.principal.id,
+          ],
+        );
+        const d = (
+          await tx.query<DeliveryRow>(
+            `insert into notify.delivery (id, tenant_id, notification_id, recipient_ref, channel, state, resend_class, send_after)
+             values ($1, $2, $3, $4, $5, 'queued', 'hold', now()) returning *`,
+            [newId("dlv"), tx.ctx.tenantId, id, m.recipientRef, m.channel],
+          )
+        ).rows[0] as DeliveryRow;
+        await this.o.audit.record(tx, {
+          action: "notify.notification.create",
+          resourceType: "notification",
+          resourceId: id,
+          after: { class: cls.id, recipients: 1, deliveries: { queued: 1 }, one_time_code: true },
+        });
+        return { d, replay: false };
+      },
+      { action: "notify.notification.create" },
+    );
+    if (res.replay) return res.d.state;
+    const d = res.d;
+    if (await this.killed(m.channel))
+      return this.settle(ctx, d, "killed", { error: "IPB-NTF-004" });
+    const hash = addressHash(this.o.consentKey, KIND[m.channel], m.address);
+    if (await this.suppressed(ctx, m.channel, hash, cls))
+      return this.settle(ctx, d, "suppressed", { error: "suppressed" });
+    const n: NotificationRow = {
+      id: d.notification_id,
+      class_id: cls.id,
+      deep_link: cls.deep_link,
+      vars: { code: m.code, expires_minutes: minutes },
+      locale: m.locale ?? null,
+    };
+    try {
+      const sent = await this.callChannel(ctx, d, n, cls, m.address, d.attempt);
+      return await this.settle(ctx, d, sent.delivered ? "delivered" : "sent", sent);
+    } catch (e) {
+      return this.settle(ctx, d, "failed", { error: codeOf(e) });
+    }
+  }
+
   /** Deliver one queued delivery that is due (dispatcher, or right after `send`). */
   async deliver(ctx: KernelContext, deliveryId: string): Promise<DeliveryState | null> {
     const loaded = await this.o.kernel.read(ctx, async (tx) => {

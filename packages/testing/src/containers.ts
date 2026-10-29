@@ -129,6 +129,12 @@ export interface StartServiceOptions {
   files?: ReadonlyArray<{ content: string; target: string }>;
   /** Further container settings (bind mounts, networks, user). */
   configure?: (c: GenericContainer) => GenericContainer;
+  /**
+   * Build the image from a Dockerfile in the repository instead (e.g. Keycloak with the customer
+   * extension, `infra/keycloak/customer-otp`). The Dockerfile must start from the pinned image of
+   * `name`; the build is cached by Docker between runs.
+   */
+  build?: { context: string; dockerfile?: string };
 }
 
 /** Start a pinned image, or reuse the service named by IPB_TEST_<NAME>_URL. */
@@ -177,7 +183,17 @@ export async function startService(
     };
   }
   const { GenericContainer, Wait } = await import("testcontainers");
-  let c = new GenericContainer(TEST_IMAGES[name].image).withExposedPorts(...opts.ports);
+  let c = (
+    opts.build
+      ? await GenericContainer.fromDockerfile(
+          opts.build.context,
+          opts.build.dockerfile ?? "Dockerfile",
+        )
+          .withBuildkit()
+          .withCache(true)
+          .build(`ipb-test-${name}-built:local`, { deleteOnExit: false })
+      : new GenericContainer(TEST_IMAGES[name].image)
+  ).withExposedPorts(...opts.ports);
   if (opts.env) c = c.withEnvironment(opts.env);
   if (opts.command) c = c.withCommand([...opts.command]);
   if (opts.readyLog) c = c.withWaitStrategy(Wait.forLogMessage(opts.readyLog));
