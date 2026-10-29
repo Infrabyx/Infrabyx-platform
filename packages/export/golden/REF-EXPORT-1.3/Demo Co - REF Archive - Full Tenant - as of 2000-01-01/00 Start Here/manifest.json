@@ -2,7 +2,7 @@
   "archive_standard_version": "1.0",
   "archive_id": "arc_00000000000000000000000000",
   "folder_profile": "platform_reference_v1",
-  "map_version": "REF-EXPORT-1.2",
+  "map_version": "REF-EXPORT-1.3",
   "producer": {
     "product": "REF",
     "release": "normalised"
@@ -34,12 +34,12 @@
     {
       "path": "00 Start Here/README.md",
       "bytes": 3464,
-      "sha256": "5caeb89a550a811ab9b1c669f53ae9b3e31645295db1b01e445b9bc04cd49c20"
+      "sha256": "8cc0af346866fa7455fc649060a01f411112347aac47744b47858afdc499f2df"
     },
     {
       "path": "00 Start Here/README.txt",
       "bytes": 3460,
-      "sha256": "d2597d10a0fb68ce439d664db97195765d07cf6d597e633d7d04d850c9024383"
+      "sha256": "91862ab03d7b5aaaea1acf7dadff8daa24e2323e68aa19678d833f691b2f26ad"
     },
     {
       "path": "00 Start Here/code-tables/actor_type.csv",
@@ -68,8 +68,8 @@
     },
     {
       "path": "00 Start Here/data-dictionary.csv",
-      "bytes": 7484,
-      "sha256": "344d3847f4ee6c6adbcc7e28760f808875ef8239789034e6f7e1b1d880567595"
+      "bytes": 7547,
+      "sha256": "7480accaa5e22a8e1dd5986b15177600903b0ca9da1972ab59bafb534247e2fb"
     },
     {
       "path": "00 Start Here/relationships.csv",
@@ -79,57 +79,57 @@
     {
       "path": "00 Start Here/schemas/ai_runs.schema.json",
       "bytes": 2963,
-      "sha256": "1e25b3461c39470076d925acb74570091f82ab3eb74f4aae4a68421d620e6064"
+      "sha256": "17191891c130015792b6b252f866a2d35b2a0c2a5ec11e1f5cddb993dc1561cb"
     },
     {
       "path": "00 Start Here/schemas/approval_decision.schema.json",
       "bytes": 884,
-      "sha256": "0bf6786498258ff5cd55f346c6ecacb1300cb55c1c04da8fa453b6199390767f"
+      "sha256": "93e15630d41f789177bde215397f0fcce7f72ecfe1044340381a45cc24aec67c"
     },
     {
       "path": "00 Start Here/schemas/approval_request.schema.json",
       "bytes": 1579,
-      "sha256": "d9158ac43503ab8e1cad64ac64126a01ee3a527755b4e4ecbd842d7cd48b6fd1"
+      "sha256": "cbc5e2a69000a34cd8076b5d1ea9e68f358c58007d8b686f5e273aabe41ef8cc"
     },
     {
       "path": "00 Start Here/schemas/audit_event.schema.json",
-      "bytes": 2241,
-      "sha256": "65915824c96c5990d941dd4f684f81665c860d0ec11ef539c5326c02eaff3fe0"
+      "bytes": 2357,
+      "sha256": "13be3f72007364819ffcd0e08aa9020a304ba4da3d9c09c74ce7bdb617927f46"
     },
     {
       "path": "00 Start Here/schemas/inbox_item.schema.json",
       "bytes": 1615,
-      "sha256": "304a44c205bce59cc73cba9039f73c72bd91af1e4030d50748b57241b3610b41"
+      "sha256": "433e431af83561e6eec985eb6e1623be1e0951bec1104e9b4a8de59815df039d"
     },
     {
       "path": "00 Start Here/schemas/legal_entity.schema.json",
       "bytes": 1005,
-      "sha256": "b787b5e0398a37dfb653a580b6e10c7115b6238d2aea890236ee6f34ad879357"
+      "sha256": "c84b031a3f3c28ad1390d034426c72cfa309073a92d0f61d825501be2f99d20f"
     },
     {
       "path": "00 Start Here/schemas/membership.schema.json",
       "bytes": 836,
-      "sha256": "6addbca559d20f05812ddd82e478234237451542af14930b366559eec636a34c"
+      "sha256": "c955624b4148b0346cff88ecc3fbe2594752007c934bced48273923a64f29414"
     },
     {
       "path": "00 Start Here/schemas/notification.schema.json",
       "bytes": 848,
-      "sha256": "be74f1361029fbc37871bd10da7960d90cf221aef38a5df01365de42da090095"
+      "sha256": "61727dbb358234f7cf91132b903b3a8d524e014b3b0ece22cd742b63fb522eeb"
     },
     {
       "path": "00 Start Here/schemas/setting.schema.json",
       "bytes": 1089,
-      "sha256": "d69b52f8a2a5da31d221db6214841c8859fd68ae3e365117a366191f0d84b971"
+      "sha256": "172d266510dc3afefb44da61cba0a48c2297279807df3e411d015b6683d0477d"
     },
     {
       "path": "00 Start Here/schemas/tenant.schema.json",
       "bytes": 1018,
-      "sha256": "7bbc06760eba7c002ab22ac10a3d8d50d3df129bf1d22553285a9e843d3e8e22"
+      "sha256": "2a1910f48de152e6a9097359da663388c82ddddc54605fa1c769bb5ef22e5420"
     },
     {
       "path": "00 Start Here/schemas/vidhi_actions.schema.json",
       "bytes": 1074,
-      "sha256": "72a5c3e7ad231d9de9dc9539c43360c39440970717192516ca100a7acdd6048c"
+      "sha256": "a645fc22791ebf4c85527102d8059fdcf5e21030d72deab00f6c2e84c16555e2"
     },
     {
       "path": "00 Start Here/verify/LICENSE.txt",
@@ -148,8 +148,8 @@
     },
     {
       "path": "00 Start Here/verify/verify.mjs",
-      "bytes": 6987,
-      "sha256": "b6de1feb319368d8e9ed19b7d0b16c632cdbe79ac2bb746c17051d7af0f079af"
+      "bytes": 7177,
+      "sha256": "64da6122aa422c91a2ff64f3107e9c3598e1e9a9fcbcb69fe858575a7c91557f"
     },
     {
       "path": "01 Data/ai_runs.csv",
@@ -253,11 +253,11 @@
     },
     {
       "path": "02 Audit Trail/audit-events-2000-01.jsonl",
-      "bytes": 559,
-      "sha256": "d8a63f8ce9120551b7706e82aa5813ffd3848709a60bc76c0a7ea25f16c498ad"
+      "bytes": 576,
+      "sha256": "30e60cafd19bfaca648afd25f4bd8677905593b844ec89fada0a7a621c370c85"
     }
   ],
-  "pack_sha256": "62b1f673a3973e131f84d6c96b41245fe8094bb7b4417bc787ef20f60840db0d",
+  "pack_sha256": "183e415ab9337788f4e02a6a44d13e89302d85446042c9e39fc278c1daadccb3",
   "signature": {
     "file": "manifest.json.jws",
     "alg": "ES256",

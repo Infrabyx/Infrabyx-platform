@@ -641,6 +641,7 @@ Products scope rows by branch within a tenant through `tenancy.branch_allowed()`
 - **E (a user reads or writes another branch's rows):** Control: the policy's branch condition denies by default; the branches come only from the verified context, the kernel sets them, and a callback cannot change them. A comma cannot appear in an id, so a list cannot be widened.
 - **E (head-office scope granted by accident):** Control: `allBranches` is an explicit flag in the context, never inferred from an empty list (an empty list sees nothing).
 - **R (which branch a change was made in):** Control: the ledger entry and the statutory capture record the branch; the ledger chain covers it.
+- **T (an exported audit trail that cannot be re-verified):** Control: `REF-EXPORT-1.3` exports `branch_id`, and the offline verifier hashes it only when set, exactly as the ledger chain does.
 - **Residual:** branch scoping is as strong as the product's policies; `rls-lint` checks the tenant condition, not the branch one. Tenant isolation is unchanged.
 
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)

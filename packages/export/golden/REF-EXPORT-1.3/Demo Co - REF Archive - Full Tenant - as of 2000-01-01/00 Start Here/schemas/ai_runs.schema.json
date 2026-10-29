@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:ai_runs",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.3:ai_runs",
   "title": "ai_runs",
-  "description": "Rows of ai.run exported under REF-EXPORT-1.2",
+  "description": "Rows of ai.run exported under REF-EXPORT-1.3",
   "type": "object",
   "properties": {
     "id": {
