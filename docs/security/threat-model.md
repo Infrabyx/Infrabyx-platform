@@ -697,6 +697,7 @@ Each row: the main threats for the port, its controls, the class ceiling and the
 - **I (what signing discloses):** every signature writes the repository, workflow and ref to the public Rekor log, permanently. Accepted for this public repository; `docs/product-guide.md` §6 tells private product repositories to sign with a KMS key if their names and release cadence must not be public.
 - **I:** secrets in commits. Controls: gitleaks in CI with a reviewed baseline, the pre-commit env and credential guard, generated test tokens (no literal tokens in tests).
 - **T:** a published package that a product cannot load (the 0.1.0 `@temporalio/proto` import). Control: `consumer-smoke` installs the packed tarballs with plain npm and imports every export with plain Node, in CI and before every publish (PL3-D-02).
+- **T:** a third-party package published minutes before a release running its install scripts in the release job, beside its signing identity (found 29 Oct 2026: release run 130 resolved `@types/estree` two minutes after it was published). Control: `consumer-smoke` resolves with npm `--before` set 7 days back, the same rule pnpm's `minimumReleaseAge` applies to the workspace (PL2-D-32, R1-D-30).
 - **D:** CI minutes exhausted on GitHub Free. Control: CI budget (PL2-D-41, PL2-D-44); weekly full matrix, changed-ports nightly.
 
 ## 6. Open risks

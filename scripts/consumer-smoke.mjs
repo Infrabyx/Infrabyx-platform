@@ -64,7 +64,15 @@ writeFileSync(
   ),
 );
 writeFileSync(join(app, ".npmrc"), "registry=https://registry.npmjs.org/\n");
-run("npm", ["install", "--no-audit", "--no-fund", "--ignore-scripts=false"], app);
+// The 7-day rule (PL2-D-32), as pnpm's minimumReleaseAge applies it to the workspace: npm resolves
+// only versions published at least 7 days ago, so a package published minutes before a release
+// never runs its install scripts here, next to the release job's signing identity.
+const before = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+run(
+  "npm",
+  ["install", "--no-audit", "--no-fund", "--ignore-scripts=false", `--before=${before}`],
+  app,
+);
 
 // 3. Enumerate exports.
 const listFiles = (dir) =>
