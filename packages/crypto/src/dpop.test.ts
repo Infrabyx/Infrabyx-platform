@@ -65,7 +65,7 @@ describe("@IPB-02 DPoP proof verification (R1-D-18)", () => {
   });
 
   it("verifies a proof jose signs, with ath bound to the access token", async () => {
-    const token = "eyJhbGciOiJFUzI1NiJ9.e30.sig";
+    const token = "opaque-test-access-token";
     const jws = await new SignJWT({
       htm: "GET",
       htu: "https://api.example.test/v1/me",

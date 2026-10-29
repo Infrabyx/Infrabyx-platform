@@ -185,9 +185,11 @@ jobs:
             docker run --rm -i "$HADOLINT_IMAGE" hadolint - < "$f"
           done
       - name: trivy config (Dockerfiles)
-        run: >-
-          docker run --rm -v "$PWD:/src:ro" -v "$RUNNER_TEMP/trivy:/root/.cache/trivy"
-          "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL /src/infra/docker /src/infra/keycloak
+        run: |
+          for dir in infra/docker infra/keycloak; do
+            docker run --rm -v "$PWD:/src:ro" -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" \
+              "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL "/src/$dir"
+          done
       - name: build images
         run: |
           for app in $APPS; do
