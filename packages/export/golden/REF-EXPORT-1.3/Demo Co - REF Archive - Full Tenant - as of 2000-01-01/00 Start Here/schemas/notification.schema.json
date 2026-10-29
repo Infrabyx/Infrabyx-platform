@@ -1,40 +1,40 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:approval_decision",
-  "title": "approval_decision",
-  "description": "Rows of tenancy.approval_decision exported under REF-EXPORT-1.2",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.3:notification",
+  "title": "notification",
+  "description": "Rows of notify.notification exported under REF-EXPORT-1.3",
   "type": "object",
   "properties": {
-    "request_id": {
+    "id": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "maker_id": {
+    "class_id": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "decision": {
+    "deep_link": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "decision_label": {
+    "locale": {
       "type": [
         "string",
         "null"
       ],
-      "x-dataclass": "PUBLIC"
+      "x-dataclass": "INTERNAL"
     },
-    "decided_at": {
+    "created_at": {
       "type": "string",
       "format": "date-time",
       "x-dataclass": "INTERNAL"
     }
   },
   "required": [
-    "request_id",
-    "maker_id",
-    "decision",
-    "decided_at"
+    "id",
+    "class_id",
+    "deep_link",
+    "created_at"
   ],
   "additionalProperties": false
 }

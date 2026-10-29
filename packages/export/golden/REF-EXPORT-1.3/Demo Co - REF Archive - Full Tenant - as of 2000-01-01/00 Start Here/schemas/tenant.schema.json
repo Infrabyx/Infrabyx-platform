@@ -1,37 +1,36 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:vidhi_actions",
-  "title": "vidhi_actions",
-  "description": "Rows of vidhi.task_step exported under REF-EXPORT-1.2",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.3:tenant",
+  "title": "tenant",
+  "description": "Rows of tenancy.tenant exported under REF-EXPORT-1.3",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
-      "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
       "x-dataclass": "INTERNAL"
     },
-    "task_id": {
+    "product": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "tool": {
+    "name": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "outcome": {
+    "status": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "approval_id": {
+    "residency": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "residency_label": {
       "type": [
         "string",
         "null"
       ],
-      "x-dataclass": "INTERNAL"
-    },
-    "actor_id": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
+      "x-dataclass": "PUBLIC"
     },
     "created_at": {
       "type": "string",
@@ -41,10 +40,10 @@
   },
   "required": [
     "id",
-    "task_id",
-    "tool",
-    "outcome",
-    "actor_id",
+    "product",
+    "name",
+    "status",
+    "residency",
     "created_at"
   ],
   "additionalProperties": false

@@ -254,6 +254,25 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
     expect((await svc.writeAnchor(ctx("tnt_empty"), day)).format).toBe("infrabyx-audit-anchor/1");
   });
 
+  it("the ledger and the capture record the context's branch; the ledger chain covers it (audit/0004, R1-D-26)", async () => {
+    const c = ctx("tnt_branch", { branchId: "br_north", branchIds: ["br_north"] });
+    await post(c, "insert into books.journal_line values ('b1', 'tnt_branch', '4001', 7)", []);
+    const led = await svc.query(c);
+    expect(led.map((e) => e.branch_id)).toEqual(["br_north"]);
+    expect(await svc.verify(c)).toMatchObject({ ok: true, checked: 1 });
+    expect((await capture.query(c))[0]!.branch_id).toBe("br_north");
+    // A ledger entry's branch cannot be changed without breaking the chain.
+    await db.admin.query("alter table audit.ledger disable trigger ledger_no_update");
+    try {
+      await db.admin.query(
+        "update audit.ledger set branch_id = 'br_south' where tenant_id = 'tnt_branch'",
+      );
+    } finally {
+      await db.admin.query("alter table audit.ledger enable trigger ledger_no_update");
+    }
+    expect((await svc.verify(c)).break).toMatchObject({ seq: 1, reason: "hash-mismatch" });
+  });
+
   it("rls-lint passes with the capture tables", async () => {
     expect(await lintRls(db.admin, { schemas: ["audit", "books"] })).toEqual([]);
   });

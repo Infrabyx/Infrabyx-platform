@@ -52,6 +52,7 @@ audit_event,before_digest,text,Y,INTERNAL,,audit.ledger.before_digest
 audit_event,after_digest,text,Y,INTERNAL,,audit.ledger.after_digest
 audit_event,corrects_id,text,Y,INTERNAL,,audit.ledger.corrects_id
 audit_event,trace_id,text,Y,INTERNAL,,audit.ledger.trace_id
+audit_event,branch_id,text,Y,INTERNAL,,audit.ledger.branch_id
 audit_event,ip_hash,text,Y,INTERNAL,,audit.ledger.ip_hash
 audit_event,ua_hash,text,Y,INTERNAL,,audit.ledger.ua_hash
 audit_event,occurred_at,timestamp with time zone,N,INTERNAL,,audit.ledger.occurred_at

@@ -68,8 +68,23 @@ export function serviceReaderRole(ctx: KernelContext): ServiceReaderRole | undef
  * principal holding exactly one service reader role and nothing that widens it (PL3-D-21). A
  * service reader never impersonates and never uses break-glass, in any scope.
  */
+const BRANCH_ID = /^[A-Za-z0-9_.:-]{1,64}$/;
+
+/** A branch context is well formed and names its current branch among those it may see. */
+function assertBranchContext(ctx: KernelContext): void {
+  const ids = ctx.branchIds ?? [];
+  if (ids.length > 1000) throw new RangeError("a context lists at most 1000 branches");
+  for (const b of [...ids, ...(ctx.branchId ? [ctx.branchId] : [])])
+    if (!BRANCH_ID.test(b)) throw new RangeError(`invalid branch id ${JSON.stringify(b)}`);
+  if (ctx.branchId && !ctx.allBranches && !ids.includes(ctx.branchId))
+    throw new IpbError("IPB-SEC-005", {
+      detail: "the context's branch is not one of the branches it may see",
+    });
+}
+
 export function assertValidContext(ctx: KernelContext): void {
   if (!ctx.tenantId) throw new Error("context has no tenant");
+  assertBranchContext(ctx);
   const reader = serviceReaderRole(ctx);
   if (reader) {
     const readers = ctx.principal.roles.filter(isServiceReaderRole);

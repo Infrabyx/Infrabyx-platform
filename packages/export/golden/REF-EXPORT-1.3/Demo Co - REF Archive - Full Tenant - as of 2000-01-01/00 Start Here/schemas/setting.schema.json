@@ -1,50 +1,54 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:legal_entity",
-  "title": "legal_entity",
-  "description": "Rows of tenancy.legal_entity exported under REF-EXPORT-1.2",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.3:setting",
+  "title": "setting",
+  "description": "Rows of config.setting_value exported under REF-EXPORT-1.3",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "name": {
+    "key": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "cin": {
+    "tier": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "scope_id": {
       "type": [
         "string",
         "null"
       ],
+      "x-dataclass": "INTERNAL"
+    },
+    "value": {
       "x-dataclass": "CONFIDENTIAL"
     },
-    "gstin": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "x-dataclass": "CONFIDENTIAL"
+    "version": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
     },
-    "created_at": {
+    "updated_at": {
       "type": "string",
       "format": "date-time",
       "x-dataclass": "INTERNAL"
     },
-    "deleted_at": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date-time",
+    "updated_by": {
+      "type": "string",
       "x-dataclass": "INTERNAL"
     }
   },
   "required": [
     "id",
-    "name",
-    "created_at"
+    "key",
+    "tier",
+    "value",
+    "version",
+    "updated_at",
+    "updated_by"
   ],
   "additionalProperties": false
 }

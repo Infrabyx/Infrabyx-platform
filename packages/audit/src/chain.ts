@@ -21,6 +21,8 @@ export interface LedgerEntry {
   trace_id: string | null;
   ip_hash: string | null;
   ua_hash: string | null;
+  /** The context's branch (`audit/0004`, R1-D-26); hashed only when set. */
+  branch_id?: string | null;
   /** ISO-8601 UTC with milliseconds, e.g. 2026-10-26T12:15:39.373Z. */
   occurred_at: string;
   prev_hash: string;
@@ -49,6 +51,8 @@ export const HASHED_FIELDS = [
 export function canonicalEntry(e: Omit<LedgerEntry, "prev_hash" | "entry_hash">): string {
   const body: Record<string, unknown> = {};
   for (const f of HASHED_FIELDS) body[f] = e[f];
+  // The branch joins the hash only when set, so entries without one hash as before audit/0004.
+  if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
   return canonicalize(body);
 }
 

@@ -1,55 +1,54 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:infrabyx:export:REF-EXPORT-1.2:inbox_item",
-  "title": "inbox_item",
-  "description": "Rows of workflow.inbox_item exported under REF-EXPORT-1.2",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.3:approval_request",
+  "title": "approval_request",
+  "description": "Rows of tenancy.approval_request exported under REF-EXPORT-1.3",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "type": {
+    "action": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "product_module": {
+    "risk_class": {
       "type": "string",
       "x-dataclass": "INTERNAL"
     },
-    "record_ref": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "title": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "assignee_kind": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "assignee_id": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "severity": {
-      "type": "string",
-      "x-dataclass": "INTERNAL"
-    },
-    "severity_label": {
+    "risk_class_label": {
       "type": [
         "string",
         "null"
       ],
       "x-dataclass": "PUBLIC"
     },
+    "summary": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "maker_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "state": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "required_checkers": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
     "created_at": {
       "type": "string",
       "format": "date-time",
       "x-dataclass": "INTERNAL"
     },
-    "resolved_at": {
+    "approved_at": {
       "type": [
         "string",
         "null"
@@ -57,23 +56,22 @@
       "format": "date-time",
       "x-dataclass": "INTERNAL"
     },
-    "resolution": {
+    "executed_at": {
       "type": [
         "string",
         "null"
       ],
+      "format": "date-time",
       "x-dataclass": "INTERNAL"
     }
   },
   "required": [
     "id",
-    "type",
-    "product_module",
-    "record_ref",
-    "title",
-    "assignee_kind",
-    "assignee_id",
-    "severity",
+    "action",
+    "risk_class",
+    "maker_id",
+    "state",
+    "required_checkers",
     "created_at"
   ],
   "additionalProperties": false

@@ -2,7 +2,7 @@
 
 ## Purpose and scope
 
-- This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.2 and archive standard 1.0 (folder profile platform_reference_v1).
+- This archive holds the Full Tenant export of tenant tnt_demo from REF, release normalised, under export map REF-EXPORT-1.3 and archive standard 1.0 (folder profile platform_reference_v1).
 - Archive id: arc_00000000000000000000000000. Predecessor: none.
 
 ## As of

@@ -172,6 +172,8 @@ for (const p of audit) {
     if (prev && e.seq !== prev.seq + 1) fail(`audit sequence gap before seq ${e.seq}`);
     const body = {};
     for (const k of HASHED) body[k] = e[k];
+    // The branch joins the hash only when set (audit/0004, REF-EXPORT-1.3), as in the ledger chain.
+    if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
     if (sha256(Buffer.from(`${e.prev_hash}\n${jcs(body)}`, "utf8")) !== e.entry_hash)
       fail(`audit entry hash differs at seq ${e.seq}`);
     prev = e;

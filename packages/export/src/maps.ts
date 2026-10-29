@@ -1,4 +1,4 @@
-// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.2` for
+// Export maps (IPB-09 §09.4.7.1; PL3 plan §7.1): the reference map `REF-EXPORT-1.3` for
 // `apps/reference` and the demo seed, and a registry products add their `<PRODUCT>-EXPORT-x.y` maps
 // to. During the dual run (`eng.export.dual_run_days`, floor 90) the previous map is emitted as well.
 import { readFileSync } from "node:fs";
@@ -12,14 +12,19 @@ export function loadExportMap(path: string | URL): ExportMap {
 }
 
 /**
- * The current reference map. 1.2 (PL4-D-12) adds the AI run log (`ai_runs`, metadata only) and the
- * Vidhi action log (`vidhi_actions`), IPB-03-55 and 03-83; 1.1 (PL3-D-25) added the IST export time
- * to the README.
+ * The current reference map. 1.3 (R1-D-26) adds the ledger's `branch_id` to the audit trail, which
+ * the chain hashes when it is set; 1.2 (PL4-D-12) added the AI run log (`ai_runs`, metadata only)
+ * and the Vidhi action log (`vidhi_actions`), IPB-03-55 and 03-83; 1.1 (PL3-D-25) added the IST
+ * export time to the README.
  */
 export const REF_EXPORT_MAP: ExportMap = loadExportMap(
-  new URL("../maps/REF-EXPORT-1.2.json", import.meta.url),
+  new URL("../maps/REF-EXPORT-1.3.json", import.meta.url),
 );
 /** The previous reference map, still emitted during the dual run. */
+export const REF_EXPORT_MAP_1_2: ExportMap = loadExportMap(
+  new URL("../maps/REF-EXPORT-1.2.json", import.meta.url),
+);
+/** An earlier map (kept for archives built under it). */
 export const REF_EXPORT_MAP_1_1: ExportMap = loadExportMap(
   new URL("../maps/REF-EXPORT-1.1.json", import.meta.url),
 );

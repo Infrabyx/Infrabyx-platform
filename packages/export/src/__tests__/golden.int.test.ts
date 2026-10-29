@@ -14,7 +14,7 @@ import { goldenArchive } from "../golden.js";
 import { REF_EXPORT_MAP } from "../maps.js";
 import { kmsArchiveSigner } from "../service.js";
 
-const GOLDEN = fileURLToPath(new URL("../../golden/REF-EXPORT-1.2/", import.meta.url));
+const GOLDEN = fileURLToPath(new URL("../../golden/REF-EXPORT-1.3/", import.meta.url));
 const kms = new LocalKms();
 const KEY = "local:sign:export";
 let db: TestDatabase;

@@ -21,8 +21,9 @@ export class PgAuditSink implements AuditSink {
     await tx.query(
       `insert into audit.ledger
          (id, tenant_id, seq, actor_id, actor_type, action, resource_type, resource_id,
-          before_digest, after_digest, corrects_id, trace_id, ip_hash, ua_hash, occurred_at, prev_hash, entry_hash)
-       values ($1, $2, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), $14, $14)`,
+          before_digest, after_digest, corrects_id, trace_id, ip_hash, ua_hash, occurred_at, prev_hash, entry_hash,
+          branch_id)
+       values ($1, $2, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), $14, $14, $15)`,
       [
         id,
         ctx.tenantId,
@@ -38,6 +39,7 @@ export class PgAuditSink implements AuditSink {
         key && ctx.ip ? hmacSha256Hex(key, ctx.ip) : null,
         key && ctx.userAgent ? hmacSha256Hex(key, ctx.userAgent) : null,
         "0".repeat(64), // placeholder; the trigger sets prev_hash and entry_hash
+        ctx.branchId ?? null,
       ],
     );
     tx.markAudited();

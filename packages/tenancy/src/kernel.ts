@@ -189,7 +189,9 @@ export class PgKernel implements MutationKernel {
         `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),
                 set_config('app.actor_id', $3, true), set_config('app.trace_id', $4, true),
                 set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
-                set_config('app.action', $7, true), set_config('app.reason', $8, true)`,
+                set_config('app.action', $7, true), set_config('app.reason', $8, true),
+                set_config('app.branch_id', $9, true), set_config('app.branch_ids', $10, true),
+                set_config('app.branch_scope', $11, true)`,
         [
           ctx.tenantId,
           ctx.entityId ?? "",
@@ -199,6 +201,9 @@ export class PgKernel implements MutationKernel {
           ctx.breakGlassGrantId ?? "",
           m.action ?? "",
           m.reason ?? "",
+          ctx.branchId ?? "",
+          (ctx.branchIds ?? []).join(","),
+          ctx.allBranches ? "all" : ctx.branchIds?.length ? "listed" : "none",
         ],
       );
       if (ctx.breakGlassGrantId) {
