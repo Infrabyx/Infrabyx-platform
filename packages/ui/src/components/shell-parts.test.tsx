@@ -288,6 +288,9 @@ describe("@IPB-07-AT-08 column chooser and saved views", () => {
     expect(out).toContain('value="status:up"');
     expect(out).not.toContain('value="due_on:up"');
     expect(out).toMatch(/id="density-compact"[^>]*checked/);
+    // Each column once, the pinned one too when the layout leaves it out (ids stay unique).
+    const ids = [...out.matchAll(/id="(col-[a-z_]+)"/g)].map((m) => m[1]);
+    expect(ids).toEqual(["col-title", "col-due_on", "col-status", "col-owner"]);
     expect(html(<DataTable caption="c" columns={cols} rows={[]} density="compact" />)).toContain(
       "ibx-table--compact",
     );

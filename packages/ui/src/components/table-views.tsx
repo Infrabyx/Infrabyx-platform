@@ -56,10 +56,10 @@ export function ColumnChooser({
 }) {
   const pinned = columns.find((c) => c.rowHeader) ?? columns[0];
   const shown = new Set(visible ?? columns.map((c) => c.key));
-  const order = [
-    ...applyColumns(columns, visible).map((c) => c.key),
-    ...columns.filter((c) => !shown.has(c.key)).map((c) => c.key),
-  ];
+  // The visible columns in order (the pinned one first, even if the layout omits it), then the
+  // hidden ones; each key once.
+  const first = applyColumns(columns, visible).map((c) => c.key);
+  const order = [...first, ...columns.map((c) => c.key).filter((k) => !first.includes(k))];
   const byKey = new Map(columns.map((c) => [c.key, c]));
   return (
     <details className="ibx-disclosure ibx-chooser">
