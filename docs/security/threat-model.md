@@ -644,7 +644,7 @@ Products scope rows by branch within a tenant through `tenancy.branch_allowed()`
 - **T (an exported audit trail that cannot be re-verified):** Control: `REF-EXPORT-1.3` exports `branch_id`, and the offline verifier hashes it only when set, exactly as the ledger chain does.
 - **Residual:** branch scoping is as strong as the product's policies; `rls-lint` checks the tenant condition, not the branch one. Tenant isolation is unchanged.
 
-### 3.58 Inbound idempotency (; PR-FBX-10 item 4, R1-D-27)
+### 3.58 Inbound idempotency (`tenancy/0008`; PR-FBX-10 item 4, R1-D-27)
 
 Product APIs store each POST and PATCH response under the client's key for 24 hours and replay it for an identical retry.
 
