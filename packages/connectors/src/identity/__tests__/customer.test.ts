@@ -20,12 +20,18 @@ import {
   CustomerIdentityBase,
   customerIdentitySettings,
   freshGuard,
+  guardEnded,
   MemoryCustomerAuthStore,
   readCustomerIdentitySettings,
   RedisReplayStore,
   type ChallengeRecord,
   type IdpTokens,
 } from "../customer.js";
+import {
+  CUSTOMER_RETENTION_SETTINGS,
+  customerRetentionSettings,
+  CustomerSignInRetention,
+} from "../customer-retention.js";
 import { capturingSender, testDevice } from "./dpop-device.js";
 
 const s = customerIdentitySettings();
@@ -293,5 +299,124 @@ describe("the customer flow on a fake IdP", () => {
     expect(await r.claim("jti-1", new Date(T0 + 90_000))).toBe(false);
     expect([...kv.values()]).toEqual([90_000]);
     expect([...kv.keys()][0]).toMatch(/^ipb:dpop:[0-9a-f]{64}$/);
+  });
+});
+
+describe("retention of customer sign-in state (owner answer #86, R1-D-23)", () => {
+  const H = 3_600_000;
+  it("the defaults are the owner's and the registry's; values outside the bounds are refused", async () => {
+    expect(customerRetentionSettings()).toEqual({
+      challengeHours: 24,
+      guardGraceSeconds: 0,
+      deviceUnusedDays: 365,
+    });
+    const { SETTING_DEFS } = await import("@infrabyx/config/settings");
+    for (const b of Object.values(CUSTOMER_RETENTION_SETTINGS)) {
+      const def = (
+        SETTING_DEFS as ReadonlyArray<{ key: string; default: unknown; min?: number; max?: number }>
+      ).find((d) => d.key === b.key);
+      expect(def, b.key).toMatchObject({ default: b.default, min: b.min, max: b.max });
+    }
+    expect(() => customerRetentionSettings({ deviceUnusedDays: 29 })).toThrow(RangeError);
+    expect(() => customerRetentionSettings({ challengeHours: 0 })).toThrow(RangeError);
+  });
+
+  it("a guard row ends after its lock, its send window and a lockout after its last failure", () => {
+    const c = {
+      challengesExpiredBefore: 0,
+      devicesUnusedSince: 0,
+      guardsEndedBefore: T0,
+      sendWindowMs: 600_000,
+      lockoutMs: 900_000,
+    };
+    const g = { ...freshGuard(T0 - 700_000) };
+    expect(guardEnded(g, c)).toBe(true);
+    expect(guardEnded({ ...g, lockedUntil: T0 + 1 }, c)).toBe(false);
+    expect(guardEnded({ ...freshGuard(T0 - 500_000) }, c)).toBe(false);
+    expect(guardEnded({ ...g, failures: 3, lastFailureAt: T0 - 800_000 }, c)).toBe(false);
+    expect(guardEnded({ ...g, failures: 3, lastFailureAt: T0 - 901_000 }, c)).toBe(true);
+  });
+
+  it("the job purges each tenant through the sweep with the settings it reads", async () => {
+    const store = new MemoryCustomerAuthStore();
+    const now = T0;
+    const ch = (id: string, tenantId: string, expiresAt: number): ChallengeRecord => ({
+      id,
+      tenantId,
+      userId: "u-1",
+      channel: "sms",
+      jkt: "a".repeat(43),
+      idpRef: {},
+      attempts: 0,
+      expiresAt,
+    });
+    await store.saveChallenge(ch("c-old", "tnt_a", now - 25 * H));
+    await store.saveChallenge(ch("c-new", "tnt_a", now - 23 * H));
+    await store.saveChallenge(ch("c-b", "tnt_b", now - 47 * H));
+    const settings = async (k: string) =>
+      k === "int.identity.customer.retention.challenge_hours" ? 48 : undefined;
+    const job = new CustomerSignInRetention({ store, settings, now: () => now, batch: 1 });
+    const runs = await job.sweep({
+      run: async (fn) =>
+        Promise.all(
+          ["tnt_a", "tnt_b"].map(async (tenantId) => ({
+            tenantId,
+            ok: true,
+            value: await fn({ tenantId, principal: { id: "svc", type: "service", roles: [] } }),
+          })),
+        ),
+    });
+    // With 48 h, only tnt_a's 25 h challenge is too young as well; nothing in tnt_b is due.
+    expect(runs.map((r) => r.value)).toEqual([
+      { challenges: 0, guards: 0, devices: 0 },
+      { challenges: 0, guards: 0, devices: 0 },
+    ]);
+    const job24 = new CustomerSignInRetention({ store, now: () => now, batch: 1 });
+    expect(await job24.purgeTenant("tnt_a")).toEqual({ challenges: 1, guards: 0, devices: 0 });
+    expect(await store.getChallenge("tnt_a", "c-old")).toBeUndefined();
+    expect(await store.getChallenge("tnt_a", "c-new")).toBeDefined();
+    expect(await job24.purgeTenant("tnt_b")).toEqual({ challenges: 1, guards: 0, devices: 0 });
+  });
+
+  it("unbinding a device deletes it at once; closing the account deletes every device", async () => {
+    const now = { t: Date.now() };
+    const store = new MemoryCustomerAuthStore();
+    const mail = capturingSender();
+    const p = new FakeCustomerIdp({
+      store,
+      replay: new MemoryReplayStore(),
+      revocations: new MemoryRevocationStore(),
+      sender: mail.sender,
+      now: () => now.t,
+    });
+    const login = "+919800000002";
+    const signIn = async () => {
+      const d = testDevice();
+      const t = p.signInProofTarget;
+      const pf = () => d.proof(t.htm, t.htu, { iat: Math.floor(now.t / 1000) });
+      const ch = await p.startChallenge({
+        tenantId: "tnt_a",
+        channel: "sms",
+        login,
+        dpopProof: pf(),
+      });
+      await p.verifyChallenge({
+        tenantId: "tnt_a",
+        challengeId: ch.challengeId,
+        code: mail.inbox.get(login)!,
+        dpopProof: pf(),
+      });
+      now.t += 31_000;
+    };
+    await signIn();
+    await signIn();
+    await signIn();
+    const userId = `u-tnt_a-${login}`;
+    const [first, ...rest] = await p.listDevices("tnt_a", userId);
+    expect(rest).toHaveLength(2);
+    await p.revokeDevice("tnt_a", userId, first!.id);
+    expect((await p.listDevices("tnt_a", userId)).map((d) => d.id)).toEqual(rest.map((d) => d.id));
+    await p.forgetDevices("tnt_a", userId);
+    expect(await p.listDevices("tnt_a", userId)).toEqual([]);
   });
 });

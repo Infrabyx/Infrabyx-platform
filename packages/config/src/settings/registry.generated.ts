@@ -1028,6 +1028,54 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "customer session absolute lifetime"
   },
   {
+    "key": "int.identity.customer.retention.challenge_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "min": 1,
+    "max": 720,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    "note": "hours after expiry that a sign-in challenge is deleted"
+  },
+  {
+    "key": "int.identity.customer.retention.guard_grace_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 0,
+    "min": 0,
+    "max": 86400,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    "note": "seconds after its lockout window ends that a guard row is deleted"
+  },
+  {
+    "key": "int.identity.customer.retention.device_unused_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 365,
+    "min": 30,
+    "max": 730,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "OWNER-QUESTIONS #86; R1-D-22, R1-D-23",
+    "note": "days after its last use that a device is deleted"
+  },
+  {
     "key": "int.identity.customer.dpop.max_age_seconds",
     "tier": "PLATFORM",
     "type": "int",
@@ -6485,6 +6533,9 @@ export type SettingValueMap = {
   "int.identity.customer.otp.lockout_seconds": number;
   "int.identity.customer.session.idle_seconds": number;
   "int.identity.customer.session.max_seconds": number;
+  "int.identity.customer.retention.challenge_hours": number;
+  "int.identity.customer.retention.guard_grace_seconds": number;
+  "int.identity.customer.retention.device_unused_days": number;
   "int.identity.customer.dpop.max_age_seconds": number;
   "int.identity.customer.dpop.max_skew_seconds": number;
   "int.authz.pdp_url": string | null;

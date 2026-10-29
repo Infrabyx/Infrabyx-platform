@@ -283,6 +283,32 @@ export interface DeviceRecord {
 }
 
 export type DeviceRevocationReason = "sign_out" | "revoked" | "key_mismatch" | "security";
+/** Why a device is deleted at once, not by retention (owner answer #86, R1-D-23). */
+export type DeviceDeletionReason = "unbound" | "account_closed";
+
+/** What the retention job deletes (owner answer #86, R1-D-23); times in epoch milliseconds. */
+export interface CustomerRetentionCutoffs {
+  /** Challenges that expired before this. */
+  challengesExpiredBefore: number;
+  /** Devices last used before this. */
+  devicesUnusedSince: number;
+  /** Guard rows whose lock, send window and failure window all ended before this. */
+  guardsEndedBefore: number;
+  /** The guard's send window and lockout (`int.identity.customer.otp.*`), which end a guard row. */
+  sendWindowMs: number;
+  lockoutMs: number;
+}
+export interface CustomerPurgeCounts {
+  challenges: number;
+  guards: number;
+  devices: number;
+}
+
+/** A guard row is done once its lock, its send window and a lockout after its last failure ended. */
+export const guardEnded = (g: GuardState, c: CustomerRetentionCutoffs): boolean =>
+  (g.lockedUntil ?? 0) < c.guardsEndedBefore &&
+  g.windowStart + c.sendWindowMs < c.guardsEndedBefore &&
+  (g.lastFailureAt === undefined || g.lastFailureAt + c.lockoutMs < c.guardsEndedBefore);
 
 export interface CustomerAuthStore {
   /** Count one code for the account (guard), or throw IPB-SEC-019. */
@@ -330,9 +356,15 @@ export interface CustomerAuthStore {
     reason: DeviceRevocationReason,
     now: number,
   ): Promise<DeviceRecord | undefined>;
+  /** Delete a revoked device at once (unbound, or the account closed); false if none. Ledgered. */
+  deleteDevice(tenantId: string, deviceId: string, reason: DeviceDeletionReason): Promise<boolean>;
+  /** Delete what the cut-offs make due, at most `limit` rows per table; each deletion ledgered. */
+  purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number): Promise<CustomerPurgeCounts>;
 }
 
 const accountHash = (userId: string) => sha256Hex(`customer:${userId}`);
+/** Thrown inside a purge transaction that found nothing due, so it rolls back unledgered. */
+const NOTHING_DUE = Symbol("nothing due");
 
 function attemptChecks(
   c: ChallengeRecord | undefined,
@@ -445,6 +477,33 @@ export class MemoryCustomerAuthStore implements CustomerAuthStore {
     const next = d.revokedAt === undefined ? { ...d, revokedAt: now, revokedReason: reason } : d;
     this.devices.set(deviceId, next);
     return { ...next };
+  }
+  async deleteDevice(tenantId: string, deviceId: string) {
+    const d = this.devices.get(deviceId);
+    if (!d || d.tenantId !== tenantId || d.revokedAt === undefined) return false;
+    return this.devices.delete(deviceId);
+  }
+  async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
+    const take = <V>(m: Map<string, V>, due: (k: string, v: V) => boolean): number => {
+      let n = 0;
+      for (const [k, v] of m)
+        if (n < limit && due(k, v)) {
+          m.delete(k);
+          n++;
+        }
+      return n;
+    };
+    return {
+      challenges: take(
+        this.challenges,
+        (_k, x) => x.tenantId === tenantId && x.expiresAt < c.challengesExpiredBefore,
+      ),
+      guards: take(this.guards, (k, g) => k.startsWith(`${tenantId}|`) && guardEnded(g, c)),
+      devices: take(
+        this.devices,
+        (_k, d) => d.tenantId === tenantId && d.lastUsedAt < c.devicesUnusedSince,
+      ),
+    };
   }
 }
 
@@ -816,6 +875,80 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
     if (d) this.cache.delete(`${tenantId}|${d.userId}|${d.jkt}`);
     return d;
   }
+
+  async deleteDevice(tenantId: string, deviceId: string, reason: DeviceDeletionReason) {
+    const gone = await this.mutate(tenantId, "identity.customer.device.delete", async (tx) => {
+      // Only a revoked device (connectors/0005's policy refuses any other before 30 days unused).
+      const r = await tx.query<{ user_id: string; jkt: string }>(
+        `delete from connectors.customer_device where id = $1 and revoked_at is not null
+         returning user_id, jkt`,
+        [deviceId],
+      );
+      await this.o.audit.record(tx as never, {
+        action: "identity.customer.device.delete",
+        resourceType: "identity.customer_device",
+        resourceId: deviceId,
+        after: { reason, found: r.rows.length === 1 },
+      });
+      return r.rows[0];
+    });
+    if (gone) this.cache.delete(`${tenantId}|${gone.user_id}|${gone.jkt}`);
+    return gone !== undefined;
+  }
+
+  async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
+    try {
+      return await this.mutate(tenantId, "identity.customer.purge", async (tx) => {
+        const challenges = await tx.query<{ id: string }>(
+          `delete from connectors.customer_otp_challenge where id in (
+             select id from connectors.customer_otp_challenge where expires_at < $1
+              order by expires_at, id limit $2)
+           returning id`,
+          [iso(c.challengesExpiredBefore), limit],
+        );
+        const guards = await tx.query<{ id: string }>(
+          `delete from connectors.customer_otp_guard where account_hash in (
+             select account_hash from connectors.customer_otp_guard
+              where (locked_until is null or locked_until < $1)
+                and window_start + make_interval(secs => $2) < $1
+                and (last_failure_at is null or last_failure_at + make_interval(secs => $3) < $1)
+              order by window_start, account_hash limit $4)
+           returning account_hash as id`,
+          [iso(c.guardsEndedBefore), c.sendWindowMs / 1000, c.lockoutMs / 1000, limit],
+        );
+        const devices = await tx.query<{ id: string; user_id: string; jkt: string }>(
+          `delete from connectors.customer_device where id in (
+             select id from connectors.customer_device where last_used_at < $1
+              order by last_used_at, id limit $2)
+           returning id, user_id, jkt`,
+          [iso(c.devicesUnusedSince), limit],
+        );
+        const all = [
+          ...challenges.rows.map((x) => ["identity.customer_otp_challenge", x.id] as const),
+          ...guards.rows.map((x) => ["identity.customer_otp_guard", x.id] as const),
+          ...devices.rows.map((x) => ["identity.customer_device", x.id] as const),
+        ];
+        // Nothing due: roll back and ledger nothing.
+        if (!all.length) throw NOTHING_DUE;
+        for (const [resourceType, resourceId] of all)
+          await this.o.audit.record(tx as never, {
+            action: "identity.customer.purge",
+            resourceType,
+            resourceId,
+            after: { reason: "retention" },
+          });
+        for (const d of devices.rows) this.cache.delete(`${tenantId}|${d.user_id}|${d.jkt}`);
+        return {
+          challenges: challenges.rows.length,
+          guards: guards.rows.length,
+          devices: devices.rows.length,
+        };
+      });
+    } catch (e) {
+      if (e === NOTHING_DUE) return { challenges: 0, guards: 0, devices: 0 };
+      throw e;
+    }
+  }
 }
 
 // ---- replay store shared by replicas ------------------------------------------------------------
@@ -1110,6 +1243,15 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
         meta: { reason: "not_found", definite: true },
       });
     await this.revoke(d, "sign_out");
+    // Unbinding forgets the device at once (owner answer #86, R1-D-23).
+    await this.base.store.deleteDevice(d.tenantId, d.id, "unbound");
+  }
+
+  async forgetDevices(tenantId: string, userId: string): Promise<void> {
+    for (const d of await this.base.store.listDevices(tenantId, userId)) {
+      if (d.revokedAt === undefined) await this.revoke(d, "revoked");
+      await this.base.store.deleteDevice(tenantId, d.id, "account_closed");
+    }
   }
 
   private async revoke(d: DeviceRecord, reason: DeviceRevocationReason): Promise<void> {

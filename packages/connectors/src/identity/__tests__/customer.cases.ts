@@ -231,7 +231,7 @@ export function customerCases(ctx: CustomerCaseContext): Array<ContractCase<Cust
       },
     },
     {
-      name: "@IPB-02-05 signing a device out refuses its tokens and its refresh; the list shows it",
+      name: "@IPB-02-05 unbinding a device refuses its tokens and its refresh and forgets it; closing the account forgets every device",
       async run(p) {
         const a = await signIn(p, ctx);
         const sub = (await call(p, a.device, a.session.accessToken)).sub;
@@ -260,9 +260,15 @@ export function customerCases(ctx: CustomerCaseContext): Array<ContractCase<Cust
           }),
         ).rejects.toMatchObject({ meta: { reason: "refresh" } });
         await call(p, b.device, b.session.accessToken);
+        // Deleted at once (owner answer #86): only the other device is left.
         const list = await p.listDevices("tnt_a", sub);
-        expect(list.find((d) => d.id === a.session.device.id)?.revokedAt).toBeDefined();
-        expect(list.find((d) => d.id === b.session.device.id)?.revokedAt).toBeUndefined();
+        expect(list.map((d) => d.id)).toEqual([b.session.device.id]);
+        expect(list[0]?.revokedAt).toBeUndefined();
+        await p.forgetDevices("tnt_a", sub);
+        await expect(call(p, b.device, b.session.accessToken)).rejects.toMatchObject({
+          code: "IPB-IDN-001",
+        });
+        expect(await p.listDevices("tnt_a", sub)).toEqual([]);
       },
     },
     {

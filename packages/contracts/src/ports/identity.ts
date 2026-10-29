@@ -209,6 +209,11 @@ export interface CustomerIdentityPort extends Port {
     url: string;
   }): Promise<VerifiedCustomerClaims>;
   listDevices(tenantId: string, userId: string): Promise<CustomerDevice[]>;
-  /** Sign the device out: its tokens are refused within 60 s and its refresh token is dead. */
+  /**
+   * The customer unbinds the device: it is signed out (its tokens are refused within 60 s and its
+   * refresh token is dead) and deleted at once (owner answer #86).
+   */
   revokeDevice(tenantId: string, userId: string, deviceId: string): Promise<void>;
+  /** The customer closed the account: every device is signed out and deleted at once. */
+  forgetDevices(tenantId: string, userId: string): Promise<void>;
 }
