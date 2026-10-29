@@ -13,3 +13,8 @@ a784e5f61c0537441c3aaa11484fa51ae3e62040:packages/testing/src/stubs/sms.ts:gener
 # 2026-10-27: the settings key name "vidhi.sched.allow_l4" in the generated settings registry, read
 # by generic-api-key because it follows a "key" field. It is a setting name, not a credential.
 a621e1eaeb34464a830c39db17bcf53e26f0fe40:packages/config/src/settings/registry.generated.ts:generic-api-key:3551
+#
+# 2026-10-29: the test string "eyJhbGciOiJFUzI1NiJ9.e30.sig" in the DPoP test (base64url of
+# {"alg":"ES256"} and {}, with the word "sig"), used as an access token to bind `ath`. It is not a
+# token of any issuer; the next commit replaced it with an opaque string.
+4f692c3222c1210fae8c990f5e73b72c885cac47:packages/crypto/src/dpop.test.ts:generic-api-key:68
