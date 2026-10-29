@@ -1,5 +1,16 @@
 # @infrabyx/crypto
 
+## 1.2.0
+
+### Minor Changes
+
+- 849b8f9: DPoP proof verification for customer sessions (RFC 9449; owner answer #84, R1-D-18): `verifyDpopProof` (ES256 only, strict header, key and claim shapes, `htm`/`htu`/`ath` binding, a short `iat` window, the expected `jkt`, `jti` claimed once per key after the proof verifies), `jwkThumbprint` (RFC 7638), `accessTokenHash` and `normaliseHtu`.
+
+### Patch Changes
+
+- Updated dependencies [849b8f9]
+  - @infrabyx/contracts@1.5.0
+
 ## 1.1.0
 
 ### Minor Changes

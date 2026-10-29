@@ -1,5 +1,18 @@
 # @infrabyx/config
 
+## 1.1.0
+
+### Minor Changes
+
+- 849b8f9: Customer sign-in settings (R1-D-19): `int.identity.customer.otp.*` (code lifetime, tries per code, sends per window, resend interval, back-off and lockout, IPB-02 `auth.otp`), `int.identity.customer.session.*` (idle and absolute lifetime) and `int.identity.customer.dpop.*` (proof `iat` window), PLATFORM tier, tighten only.
+
+### Patch Changes
+
+- Updated dependencies [849b8f9]
+- Updated dependencies [849b8f9]
+  - @infrabyx/contracts@1.5.0
+  - @infrabyx/crypto@1.2.0
+
 ## 1.0.6
 
 ### Patch Changes
