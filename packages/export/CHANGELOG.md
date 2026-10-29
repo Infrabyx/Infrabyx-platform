@@ -1,5 +1,21 @@
 # @infrabyx/export
 
+## 1.1.0
+
+### Minor Changes
+
+- 2b307e0: Reference export map `REF-EXPORT-1.3` (R1-D-26): the audit trail (`audit_event`) gains the ledger's `branch_id` (`audit/0004`), which the ledger chain hashes when it is set, and the archive's `verify.mjs` hashes it the same way, so an exported chain with branch entries verifies. A minor bump: a field is only added. `REF-EXPORT-1.2` stays registered as `REF_EXPORT_MAP_1_2` for the dual run. The golden archive is regenerated as `golden/REF-EXPORT-1.3`.
+
+  export_map: REF-EXPORT-1.3
+
+### Patch Changes
+
+- Updated dependencies [2b307e0]
+- Updated dependencies [2b307e0]
+  - @infrabyx/contracts@1.9.0
+  - @infrabyx/tenancy@1.5.0
+  - @infrabyx/crypto@1.2.4
+
 ## 1.0.13
 
 ### Patch Changes

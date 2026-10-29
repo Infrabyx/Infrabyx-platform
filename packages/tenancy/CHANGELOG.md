@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.5.0
+
+### Minor Changes
+
+- 2b307e0: The branch context (R1-D-26). The kernel checks and sets `app.branch_id`, `app.branch_ids` and `app.branch_scope` for each transaction. Migration `tenancy/0007` adds `tenancy.branch_allowed(branch_id)` for branch-level RLS policies; it denies by default.
+
+### Patch Changes
+
+- Updated dependencies [2b307e0]
+  - @infrabyx/contracts@1.9.0
+  - @infrabyx/config@1.3.2
+  - @infrabyx/crypto@1.2.4
+
 ## 1.4.0
 
 ### Minor Changes

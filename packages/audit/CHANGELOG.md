@@ -1,5 +1,18 @@
 # @infrabyx/audit
 
+## 1.4.0
+
+### Minor Changes
+
+- 2b307e0: The ledger records the context's branch (`audit/0004`, `branch_id`, R1-D-26). The chain covers it only when it is set, so existing entries verify unchanged.
+
+### Patch Changes
+
+- Updated dependencies [2b307e0]
+  - @infrabyx/contracts@1.9.0
+  - @infrabyx/config@1.3.2
+  - @infrabyx/crypto@1.2.4
+
 ## 1.3.0
 
 ### Minor Changes
