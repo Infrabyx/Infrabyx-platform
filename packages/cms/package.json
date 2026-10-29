@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/cms",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Headless CMS: content items with immutable revisions, the publish state machine and approvals, the Claims Register, sanitiser, slugs and redirects, SEO and generated files, preview, scheduler, public read API and footer validator (IPB-04 §04.3.1)",
   "license": "UNLICENSED",
   "private": false,

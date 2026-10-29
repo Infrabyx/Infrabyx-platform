@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/trust",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "The vendor-assurance mirror (Operations Hub is the system of record), the tenant Vendor Assurance Room (list, NDA, acknowledgements, requests, subscriptions), the public Trust Centre data, security.txt and the acknowledgement purge (IPB-08; Ecosystem §6.34)",
   "license": "UNLICENSED",
   "private": false,

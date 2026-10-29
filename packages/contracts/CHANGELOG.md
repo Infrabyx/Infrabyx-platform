@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.7.0
+
+### Minor Changes
+
+- f5622c9: `CustomerIdentityPort.forgetDevices(tenantId, userId)`: when the customer closes the account, every device is signed out and deleted at once. `revokeDevice` (unbinding) now deletes the device as well as signing it out (owner answer #86, R1-D-23).
+
 ## 1.6.0
 
 ### Minor Changes
