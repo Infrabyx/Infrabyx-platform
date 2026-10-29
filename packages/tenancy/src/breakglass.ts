@@ -194,3 +194,112 @@ export class BreakGlass {
     await this.o.outbox.publish(tx, "tenancy", { envelope });
   }
 }
+
+/** A break-glass grant used in the context tenant, as the tenant sees it (tenancy/0009, R1-D-28). */
+export interface BreakGlassUse {
+  grantId: string;
+  requesterId: string;
+  approverId: string | null;
+  reason: string;
+  expiresAt: Date | null;
+  reviewTicketRef: string | null;
+  firstUsedAt: Date;
+  lastUsedAt: Date;
+  uses: number;
+  notifiedAt: Date | null;
+}
+
+interface UseRow {
+  grant_id: string;
+  requester_id: string;
+  approver_id: string | null;
+  reason: string;
+  expires_at: Date | null;
+  review_ticket_ref: string | null;
+  first_used_at: Date;
+  last_used_at: Date;
+  uses: number;
+  notified_at: Date | null;
+}
+const toUse = (r: UseRow): BreakGlassUse => ({
+  grantId: r.grant_id,
+  requesterId: r.requester_id,
+  approverId: r.approver_id,
+  reason: r.reason,
+  expiresAt: r.expires_at,
+  reviewTicketRef: r.review_ticket_ref,
+  firstUsedAt: r.first_used_at,
+  lastUsedAt: r.last_used_at,
+  uses: r.uses,
+  notifiedAt: r.notified_at,
+});
+
+const NOTHING_NEW = Symbol("nothing new");
+
+/**
+ * Break-glass visible to the tenant (Finbyx PR-FBX-10 item 3; OUT 24, 70; R1-D-28). The kernel
+ * records each grant's first and later uses in the tenant; `list` is the tenant's page, and
+ * `notify` (per tenant, through `TenantSweep`, every few minutes) raises BreakGlassUsed in the
+ * tenant once per grant, for the product to notify the tenant's administrators.
+ */
+export class BreakGlassTenantNotices {
+  constructor(private readonly o: Omit<BreakGlassOptions, "maxMinutes">) {}
+
+  list(ctx: KernelContext): Promise<BreakGlassUse[]> {
+    return this.o.kernel.read(ctx, async (tx) =>
+      (
+        await tx.query<UseRow>("select * from tenancy.breakglass_use order by first_used_at desc")
+      ).rows.map(toUse),
+    );
+  }
+
+  /** Raise BreakGlassUsed for each new use in the context tenant; returns how many. */
+  async notify(ctx: KernelContext): Promise<number> {
+    try {
+      return await this.o.kernel.mutate(
+        ctx,
+        async (tx) => {
+          const rows = (
+            await tx.query<UseRow>("select * from tenancy.breakglass_claim_notices(100)")
+          ).rows;
+          if (!rows.length) throw NOTHING_NEW;
+          for (const r of rows) {
+            await this.o.audit.record(tx, {
+              action: "security.breakglass.use_notified",
+              resourceType: "breakglass_grant",
+              resourceId: r.grant_id,
+              after: { first_used_at: r.first_used_at, uses: r.uses },
+            });
+            if (this.o.outbox)
+              await this.o.outbox.publish(tx, "tenancy", {
+                envelope: internalEvent({
+                  product: this.o.product,
+                  event: "BreakGlassUsed",
+                  tenantId: tx.ctx.tenantId,
+                  data: {
+                    grant_id: r.grant_id,
+                    requester_id: r.requester_id,
+                    approver_id: r.approver_id,
+                    expires_at: r.expires_at?.toISOString() ?? null,
+                    review_ticket_ref: r.review_ticket_ref,
+                    first_used_at: r.first_used_at.toISOString(),
+                  },
+                  actorId: tx.ctx.principal.id,
+                  ...(this.o.pseudonymKey ? { pseudonymKey: this.o.pseudonymKey } : {}),
+                }),
+              });
+          }
+          return rows.length;
+        },
+        { action: "security.breakglass.use_notified" },
+      );
+    } catch (e) {
+      if (e === NOTHING_NEW) return 0;
+      throw e;
+    }
+  }
+
+  sweep(sweep: { run<T>(job: (ctx: KernelContext) => Promise<T>): Promise<unknown> }) {
+    return sweep.run((ctx) => this.notify(ctx));
+  }
+}

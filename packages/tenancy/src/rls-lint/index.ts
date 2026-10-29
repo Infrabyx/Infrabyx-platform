@@ -34,7 +34,12 @@ export interface RlsLintOptions {
   allowPrivilegedRoles?: readonly string[];
 }
 
-export const DEFAULT_ALLOWED_DEFINERS = ["tenancy.breakglass_active"];
+export const DEFAULT_ALLOWED_DEFINERS = [
+  "tenancy.breakglass_active",
+  // Break-glass visible to the tenant (tenancy/0009, R1-D-28): they write only the tenant's own row.
+  "tenancy.breakglass_touch",
+  "tenancy.breakglass_claim_notices",
+];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 
 export async function lintRls(db: Queryable, o: RlsLintOptions = {}): Promise<RlsFinding[]> {
