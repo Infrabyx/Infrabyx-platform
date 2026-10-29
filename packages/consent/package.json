@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/consent",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "The cookie CMP (server-rendered banner and preference centre, first-party controller), consent texts, the consent ledger behind the CONSENT port, the acceptance ledger, script gating and the consent purge (IPB-04 §04.3.9)",
   "license": "UNLICENSED",
   "private": false,

@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.4.0
+
+### Minor Changes
+
+- cd25633: The kernel sets `app.action` and `app.reason` (`MutateOptions.reason`, 1 to 500 characters) for each mutation, so the statutory capture records why a change was made (R1-D-25).
+
+### Patch Changes
+
+- Updated dependencies [cd25633]
+  - @infrabyx/contracts@1.8.0
+  - @infrabyx/config@1.3.1
+  - @infrabyx/crypto@1.2.3
+
 ## 1.3.5
 
 ### Patch Changes
