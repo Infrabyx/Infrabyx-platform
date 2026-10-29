@@ -1,5 +1,21 @@
 # @infrabyx/notify
 
+## 1.1.0
+
+### Minor Changes
+
+- 849b8f9: One-time sign-in codes (R1-D-19): `NotifyService.sendOneTimeCode` sends at once on a `security` class, records and ledgers the delivery with `[redacted]` in place of the code and never stores the address; `notifyOtpSender` is the `CustomerOtpSender` the IDENTITY customer adapters call.
+
+### Patch Changes
+
+- Updated dependencies [849b8f9]
+- Updated dependencies [849b8f9]
+- Updated dependencies [849b8f9]
+  - @infrabyx/config@1.1.0
+  - @infrabyx/contracts@1.5.0
+  - @infrabyx/crypto@1.2.0
+  - @infrabyx/tenancy@1.3.2
+
 ## 1.0.8
 
 ### Patch Changes
