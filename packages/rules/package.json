@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/rules",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "RULES_PORT service: versioned decision tables published through maker-checker, evaluation with a decision log, simulation and explain",
   "license": "UNLICENSED",
   "private": false,

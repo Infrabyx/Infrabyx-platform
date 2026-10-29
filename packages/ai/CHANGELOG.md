@@ -1,5 +1,18 @@
 # @infrabyx/ai
 
+## 1.0.9
+
+### Patch Changes
+
+- Updated dependencies [849b8f9]
+- Updated dependencies [849b8f9]
+- Updated dependencies [849b8f9]
+  - @infrabyx/config@1.1.0
+  - @infrabyx/contracts@1.5.0
+  - @infrabyx/crypto@1.2.0
+  - @infrabyx/audit@1.2.4
+  - @infrabyx/tenancy@1.3.2
+
 ## 1.0.8
 
 ### Patch Changes

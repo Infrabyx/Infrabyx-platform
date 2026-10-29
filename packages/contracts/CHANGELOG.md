@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.5.0
+
+### Minor Changes
+
+- 849b8f9: Customer sign-in through the IDENTITY port (R1-D-19): `CustomerIdentityPort` (one-time-code challenges, DPoP-bound sessions, refresh, request verification, devices), `CustomerOtpSender`, `customerLogin` and the customer session types. A separate interface: `IdentityPort` is unchanged.
+
 ## 1.4.0
 
 ### Minor Changes
