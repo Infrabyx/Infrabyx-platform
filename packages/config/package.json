@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/config",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Settings registry, tiers, typed env schema loader (exit code 78 on failure)",
   "license": "UNLICENSED",
   "private": false,
