@@ -7,9 +7,9 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { platformSources } from "./migrate/index.js";
-import { freshDb, type TestDb } from "./__tests__/pg.js";
+import { freshDb, pauseMigrations, type TestDb } from "./__tests__/pg.js";
 
 let db: TestDb;
 const PASSWORD = "ro-probe-only-in-this-test";
@@ -71,6 +71,16 @@ const sqlstate = (c: pg.Client, sql: string) =>
   );
 
 describe("@IPB-02-12 PR-UDF-016 the read-only role writes nothing", () => {
+  // Role grants are cluster-wide: hold the test-migration lock so no other test database is between
+  // tenancy/0003 (which grants app_ro the relay role) and 0004 (which revokes it) during a check.
+  let paused: pg.Client | undefined;
+  beforeEach(async () => {
+    paused = await pauseMigrations();
+  });
+  afterEach(async () => {
+    await paused?.end();
+  });
+
   it("a login holding only app_ro is refused every write (42501), as itself and as app_ro", async () => {
     const writes = [
       `insert into audit.ledger (id) values ('led_x')`,
