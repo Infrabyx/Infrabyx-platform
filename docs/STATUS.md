@@ -91,6 +91,18 @@ The statutory capture (#153): minors of `audit` 1.3.0, `tenancy` 1.4.0 and `cont
 
 **Products adopting this release:** move every `@infrabyx/*` dependency together at the versions above (`hlp` 1.0.0 is unchanged), run `infrabyx-migrate` as the database owner (`audit/0003`), then register the books-of-account tables and schedule `verifyCaptureAll` (§ "PR-FBX-10 (2)" below). Finbyx's AC7 is unblocked.
 
+### PR-FBX-10 (4): inbound idempotency (minors of `tenancy`, `contracts`, `config`)
+
+Finbyx platform request PR-FBX-10 item 4 (IPB-10-07). Built as R1-D-27 (R1-plan M20; threat model §3.58).
+
+- **Built:**
+  - `tenancy/0008`: `tenancy.idempotency_key` with IPB-10 §10.4's columns, forced RLS by tenant, the response body classed REGULATED, and a restrictive policy so only expired keys can be deleted.
+  - `idempotent(tx, request, work, { audit })` runs the work once per key in the change's own transaction. An identical replay returns the stored status and body with a ledger entry (`api.idempotency.replay`); another body under the key is 409 IPB-PORT-004; a key still running is 409 IPB-API-011; a failed request stores nothing.
+  - `IdempotencyKeyInterceptor` (`@infrabyx/tenancy/nest`) requires a UUIDv7 `Idempotency-Key` on POST and PATCH (400 IPB-API-010) and sets `Idempotent-Replayed` and `Idempotent-Original-Request-Id` on a replay.
+  - `IdempotencyExpiry` deletes expired keys per tenant through `TenantSweep`; setting `int.api.idempotency_ttl_hours` (24 to 168, default 24).
+- **Tests:** `idempotency.int.test.ts` on PostgreSQL (6 cases) and `idempotency.test.ts` (2).
+- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0008`); register the interceptor on mutating routes and wrap the handler's work in `idempotent`; schedule `IdempotencyExpiry` daily.
+
 ### PR-FBX-10 (1): branch context for row-level security (minors of `contracts`, `tenancy`, `audit`)
 
 Finbyx platform request PR-FBX-10 item 1, requested by the owner (29 Oct 2026). Built as R1-D-26 (R1-plan M18; threat model §3.57).
