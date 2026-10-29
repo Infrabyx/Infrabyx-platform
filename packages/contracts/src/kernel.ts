@@ -27,6 +27,15 @@ export interface KernelContext {
   traceId?: string;
   ip?: string;
   userAgent?: string;
+  /**
+   * The branch the change is made in (Finbyx PR-FBX-10 item 1; R1-D-26), recorded in the ledger and
+   * the statutory capture. It must be one of `branchIds` unless `allBranches` is set.
+   */
+  branchId?: string;
+  /** Branches whose rows the principal may see; `tenancy.branch_allowed()` refuses any other. */
+  branchIds?: readonly string[];
+  /** Every branch of the tenant (for example head office); takes the place of `branchIds`. */
+  allBranches?: boolean;
 }
 
 export interface QueryResult<R> {
