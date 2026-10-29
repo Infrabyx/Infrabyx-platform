@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/notify",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "NOTIFY fan-out to in-app, email, SMS, WhatsApp and push: catalogue, routing, quiet hours and digest, resend classes, suppression, marketing consent, kill switches",
   "license": "UNLICENSED",
   "private": false,

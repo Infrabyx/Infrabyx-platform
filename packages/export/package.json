@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/export",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Tenant exports to the Ecosystem archive standard: export maps, signed archives, jobs and ledgered downloads, export-map-gate and golden-archive-diff",
   "license": "UNLICENSED",
   "private": false,

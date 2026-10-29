@@ -1,5 +1,17 @@
 # @infrabyx/config
 
+## 1.4.0
+
+### Minor Changes
+
+- 138ae44: Registers `int.api.idempotency_ttl_hours` (default 24, never below 24; IPB-10 §10.7) for the inbound idempotency store (R1-D-27).
+
+### Patch Changes
+
+- Updated dependencies [138ae44]
+  - @infrabyx/contracts@1.10.0
+  - @infrabyx/crypto@1.2.5
+
 ## 1.3.2
 
 ### Patch Changes

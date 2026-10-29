@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/testing",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Port contract tests, Testcontainers helpers, NN test harness",
   "license": "UNLICENSED",
   "private": false,
