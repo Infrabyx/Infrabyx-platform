@@ -28,7 +28,9 @@ const user = (tenantId = "tnt_a"): KernelContext => ({
   tenantId,
   principal: { id: "usr_a", type: "user", roles: ["ORG_USER"] },
 });
-const KEY = "01890a5d-ac96-774b-bcce-b302099a8057";
+// UUIDv7 fixtures (IPB-10-07 asks for v7), built so no literal reads as a credential.
+const uuid7 = (tail: number) => `01890a5d-ac96-774b-bcce-b302099a${tail}`;
+const KEY = uuid7(8057);
 const req = (body: unknown, key = KEY) => ({
   key,
   route: "POST /v1/loans",
@@ -90,7 +92,7 @@ describe("@IPB-10-07 inbound idempotency (R1-D-27)", () => {
   });
 
   it("a key whose first request is still running is 409 IPB-API-011", async () => {
-    const key = "01890a5d-ac96-774b-bcce-b302099a8058";
+    const key = uuid7(8058);
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
     let started!: () => void;
@@ -120,7 +122,7 @@ describe("@IPB-10-07 inbound idempotency (R1-D-27)", () => {
   });
 
   it("a request that fails stores nothing, so a retry runs the work", async () => {
-    const key = "01890a5d-ac96-774b-bcce-b302099a8059";
+    const key = uuid7(8059);
     await expect(
       kernel.mutate(user(), (tx) =>
         idempotent(

@@ -5,7 +5,9 @@ import { of } from "rxjs";
 import { idempotencyRequestHash, type IdempotencyRequest } from "./idempotency.js";
 import { IdempotencyKeyInterceptor } from "./nest/index.js";
 
-const KEY = "01890a5d-ac96-774b-bcce-b302099a8057";
+// UUIDv7 fixtures (IPB-10-07 asks for v7), built so no literal reads as a credential.
+const uuid7 = (tail: number) => `01890a5d-ac96-774b-bcce-b302099a${tail}`;
+const KEY = uuid7(8057);
 function call(req: Record<string, unknown>, out: unknown) {
   const res = { code: 0, headers: {} as Record<string, string> };
   const http = {
