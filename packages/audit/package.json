@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/audit",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Hash-chained audit ledger, correction entries, nightly anchor",
   "license": "UNLICENSED",
   "private": false,
