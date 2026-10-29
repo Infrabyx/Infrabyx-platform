@@ -14,6 +14,11 @@ export interface PortExit {
   primary: string;
   /** The alternative adapter an exit moves to; kept green in the port's contract leg. */
   exitTarget: string;
+  /**
+   * Set only while the port's alternative is not built yet (`exitTarget` is then "none"): why,
+   * and the decision it waits for. The runbook shows the gap instead of an exit target.
+   */
+  pending?: string;
   /** How the data (or the configuration) moves. */
   dataMove: string;
   /** S (< 100 GB), M (< 1 TB), L (> 1 TB) for the reference deployment. */
@@ -159,6 +164,18 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Configuration swap for new envelopes; signed documents and their audit trails are already held in STORAGE",
     volumeClass: "S",
     lockIn: "Envelopes in flight at cut-over complete at the source",
+  },
+  {
+    port: "KYC",
+    primary: "digio-kyc",
+    exitTarget: "none",
+    pending:
+      "The alternative (IDfy or HyperVerge, owner answer #87) is not built until the owner chooses one (OWNER-QUESTIONS #91)",
+    dataMove:
+      "Configuration swap per method for new checks; documents and results are already held in STORAGE and the product's records",
+    volumeClass: "S",
+    lockIn:
+      "KYC requests the customer has not completed at cut-over are started again at the target",
   },
   {
     port: "RULES",

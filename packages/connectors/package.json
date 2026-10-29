@@ -82,6 +82,10 @@
       "types": "./dist/esign/index.d.ts",
       "default": "./dist/esign/index.js"
     },
+    "./kyc": {
+      "types": "./dist/kyc/index.d.ts",
+      "default": "./dist/kyc/index.js"
+    },
     "./rules": {
       "types": "./dist/rules/index.d.ts",
       "default": "./dist/rules/index.js"

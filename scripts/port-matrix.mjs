@@ -4,7 +4,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
-/** Ports with adapters under packages/connectors/src/ (PL2's thirteen, then PL3's and PL4's as they land). */
+/** Ports with adapters under packages/connectors/src/ (PL2's thirteen, then PL3's, PL4's and R1's as they land). */
 export const PORTS = [
   "SECRETS",
   "KMS",
@@ -26,6 +26,7 @@ export const PORTS = [
   "EMBEDDING",
   "IMAGE_GEN",
   "MEDIA",
+  "KYC",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
