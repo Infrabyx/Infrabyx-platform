@@ -1,5 +1,21 @@
 # @infrabyx/testing
 
+## 1.2.0
+
+### Minor Changes
+
+- ceabe3b: `FakeKyc` and `FakeVideoMeet`, with `kycContractCases(fixtures)` and `videoMeetContractCases()`, the contract every KYC and VIDEO_MEET adapter will pass (PR-FBX-01, R1-D-21).
+
+### Patch Changes
+
+- Updated dependencies [ceabe3b]
+  - @infrabyx/contracts@1.6.0
+  - @infrabyx/audit@1.2.5
+  - @infrabyx/config@1.1.1
+  - @infrabyx/crypto@1.2.1
+  - @infrabyx/seed@1.0.10
+  - @infrabyx/tenancy@1.3.3
+
 ## 1.1.0
 
 ### Minor Changes

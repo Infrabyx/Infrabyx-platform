@@ -1,5 +1,16 @@
 # @infrabyx/rules
 
+## 1.0.12
+
+### Patch Changes
+
+- Updated dependencies [ceabe3b]
+  - @infrabyx/contracts@1.6.0
+  - @infrabyx/config@1.1.1
+  - @infrabyx/connectors@1.1.1
+  - @infrabyx/crypto@1.2.1
+  - @infrabyx/tenancy@1.3.3
+
 ## 1.0.11
 
 ### Patch Changes
