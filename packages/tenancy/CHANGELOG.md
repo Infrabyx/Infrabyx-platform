@@ -1,5 +1,12 @@
 # @infrabyx/tenancy
 
+## 1.3.5
+
+### Patch Changes
+
+- Updated dependencies [94b706e]
+  - @infrabyx/config@1.3.0
+
 ## 1.3.4
 
 ### Patch Changes

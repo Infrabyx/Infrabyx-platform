@@ -1,5 +1,19 @@
 # @infrabyx/testing
 
+## 1.3.0
+
+### Minor Changes
+
+- 94b706e: `startDigioKycStub()` for the Digio KYC adapter's hermetic leg. The KYC contract cases now name a minimal call for each method, so an adapter that declares a method `unsupported` is checked to refuse it with the typed error (R1-D-24).
+
+### Patch Changes
+
+- Updated dependencies [94b706e]
+  - @infrabyx/config@1.3.0
+  - @infrabyx/audit@1.2.7
+  - @infrabyx/seed@1.0.12
+  - @infrabyx/tenancy@1.3.5
+
 ## 1.2.1
 
 ### Patch Changes

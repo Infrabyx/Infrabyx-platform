@@ -1,5 +1,11 @@
 # @infrabyx/config
 
+## 1.3.0
+
+### Minor Changes
+
+- 94b706e: Registers `int.kyc.digio.enabled` (default false; PLT_SUPER_ADMIN, maker-checker R4): the Digio KYC adapter stays off until the owner's credentials exist (R1-D-24).
+
 ## 1.2.0
 
 ### Minor Changes
