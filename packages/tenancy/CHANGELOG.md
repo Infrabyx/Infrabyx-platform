@@ -1,5 +1,15 @@
 # @infrabyx/tenancy
 
+## 1.7.1
+
+### Patch Changes
+
+- Updated dependencies [63c5ad2]
+- Updated dependencies [63c5ad2]
+  - @infrabyx/config@1.5.0
+  - @infrabyx/contracts@1.12.0
+  - @infrabyx/crypto@1.2.7
+
 ## 1.7.0
 
 ### Minor Changes
