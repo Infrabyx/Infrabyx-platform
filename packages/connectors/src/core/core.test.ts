@@ -605,6 +605,10 @@ describe("egress client (IPB-02-43)", () => {
       code: "IPB-SEC-018",
     });
     await expect(egress()(`${base}/redirect`)).rejects.toMatchObject({ code: "IPB-SEC-018" });
+    // Read, never followed: a caller asking for `redirect: "manual"` gets the 3xx and its Location.
+    const r = await egress()(`${base}/redirect`, { redirect: "manual" });
+    expect(r.status).toBe(302);
+    expect(r.headers.get("location")).toBe("https://evil.example");
     expect(hostAllowed("a.api.example.com", ["*.example.com"])).toBe(true);
     expect(hostAllowed("example.com", ["*.example.com"])).toBe(false);
   });

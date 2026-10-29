@@ -697,7 +697,7 @@ export class ZitadelIdentity implements IdentityPort {
   }
 }
 
-function zitadelEgress(
+export function zitadelEgress(
   base: string,
   allowLoopbackHttp?: boolean,
   fetchImpl?: typeof fetch,
@@ -712,7 +712,7 @@ function zitadelEgress(
 }
 
 /** RFC 6749 §2.3.1 client_secret_basic. */
-function basicAuth(id: string, secret: string): string {
+export function basicAuth(id: string, secret: string): string {
   const enc = (s: string) => encodeURIComponent(s).replace(/%20/g, "+");
   return `Basic ${Buffer.from(`${enc(id)}:${enc(secret)}`).toString("base64")}`;
 }

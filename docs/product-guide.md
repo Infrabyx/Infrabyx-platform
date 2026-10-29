@@ -97,6 +97,26 @@ const own = await sweep.run((ctx) => myJob(ctx)); // ctx: tenant scope, svc_tena
 - A job runs as `svc_tenant_job`, or as your own service principal passed as `jobPrincipal`, never as the reader.
 - Schedule the calls in your worker (Temporal schedule or cron), and alert on `broken` and `failed`.
 
+## 7d. Customer sign-in (one-time codes and DPoP)
+
+End users who are not staff (borrowers, clients, parties) sign in with a one-time code in a **customer realm** of your product (R1-D-19). Never put customers in a staff realm.
+
+1. **Run Keycloak with the extension.** Build `infra/keycloak/customer-otp` (`docker build -t <you>/keycloak-customer:26.8.1 infra/keycloak/customer-otp`) and run that image instead of the stock one. Apply the realm in your deploy job: `KeycloakCustomerIdentity.applyCustomerRealm({ baseUrl, masterAdmin, spec: { realm: "<product>-customers", apiClientId, adminClientId, audience, customerRoles: ["<P>_CUSTOMER"] } })`. It refuses a Keycloak without the extension. Keep the two client secrets it returns in SECRETS. On Zitadel, `ZitadelCustomerIdentity.applyCustomerOrg(...)` creates the customer organisation, application and login client.
+2. **Wire the adapter.** Use `new KeycloakCustomerIdentity({ ..., store, replay, revocations, sender, customerRoles, settings })`:
+   - `store` is a `PgCustomerAuthStore` (`connectors/0004`, applied by `infrabyx-migrate`);
+   - `replay` is a `RedisReplayStore` on your Redis, so a proof replayed to another replica is refused;
+   - `sender` is `notifyOtpSender({ notify, classes: { sms: "security.sign_in_code", email: "security.sign_in_code" }, context })`. Add that class to your catalogue: category `security`, mandatory, urgent, with your DLT SMS template, the WhatsApp `authentication` template and an email template. Its first variable is the code.
+   - `settings` comes from `readCustomerIdentitySettings((k) => settings.get(ctx, k))`. The `int.identity.customer.*` keys hold the limits and lifetimes; they can only be tightened.
+3. **The app's device key.** On first launch the app makes a P-256 key pair in the platform keystore (Secure Enclave or StrongBox, not exportable). Every call carries a DPoP proof (RFC 9449, ES256) made with it:
+   - sign-in and refresh proofs target `port.signInProofTarget` (the IdP's token endpoint; publish it to the app);
+   - API proofs target the API URL and carry `ath`.
+4. **Sign-in.** The app sends the login and a proof to your API. Your API calls `startChallenge({ tenantId, channel, login, dpopProof })`, then `verifyChallenge({ tenantId, challengeId, code, dpopProof, deviceLabel })`. The code must be verified by the key that asked for it. Return the `CustomerSession` to the app.
+   - `IPB-SEC-019` carries `meta.retryAfterSeconds`; show it to the customer.
+   - `IPB-IDN-001` with `meta.reason` `code` or `challenge` means a wrong or expired code.
+5. **Requests.** The API guard calls `verifyRequest({ authorization, dpopProof, method, url })` and gets `VerifiedCustomerClaims` (`tid`, `sub`, product roles, `deviceId`, `mfa: false`). `url` must be the URL the app called, as the public sees it. A Bearer token is refused.
+6. **Refresh and sign-out.** Call `refreshSession({ tenantId, refreshToken, dpopProof })`; each refresh token works once. A current refresh token sent with another key signs the device out. `listDevices` and `revokeDevice` back the app's "signed-in devices" screen. A revoked device is refused everywhere within 15 s.
+7. **Upgrade note.** Rebuild the image whenever the platform moves the Keycloak pin (it will move from 26.8.1 soon after 30 Oct 2026).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

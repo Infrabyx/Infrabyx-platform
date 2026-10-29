@@ -187,7 +187,7 @@ jobs:
       - name: trivy config (Dockerfiles)
         run: >-
           docker run --rm -v "$PWD:/src:ro" -v "$RUNNER_TEMP/trivy:/root/.cache/trivy"
-          "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL /src/infra/docker
+          "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL /src/infra/docker /src/infra/keycloak
       - name: build images
         run: |
           for app in $APPS; do
@@ -198,9 +198,12 @@ jobs:
             docker build -f infra/docker/node/Dockerfile --build-arg APP="$app" \
               -t "infrabyx/${app//\//-}:ci-${GITHUB_SHA::12}" .
           done
+          # Keycloak with the customer one-time-code extension (R1-D-19): scanned, not hardened
+          # by the app test (it runs as Keycloak's own user 1000).
+          docker build -t "infrabyx/keycloak-customer:ci-${GITHUB_SHA::12}" infra/keycloak/customer-otp
       - name: trivy image
         run: |
-          for app in ${APPS//\//-} ${NODE_APPS//\//-}; do
+          for app in ${APPS//\//-} ${NODE_APPS//\//-} keycloak-customer; do
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" \
               -v "$RUNNER_TEMP/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 \
               --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret \

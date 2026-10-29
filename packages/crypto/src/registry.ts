@@ -68,6 +68,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "JWT ES256 verification (C-11)",
       "export manifest and ExportCompleted detached JWS through KMS sign (C-22)",
       "regulated Ecosystem messages, detached JWS with kid, iat and jti through KMS sign (C-22 profile, R1-D-08)",
+      "DPoP proof verification for customer sessions: ES256 only, jkt binding, iat window, jti replay (C-11, R1-D-18)",
     ],
   },
   {

@@ -9,3 +9,4 @@ export * from "./routing.js";
 export * from "./service.js";
 export * from "./push-store.js";
 export * from "./approval-notifier.js";
+export * from "./otp-sender.js";

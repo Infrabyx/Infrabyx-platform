@@ -209,6 +209,13 @@ export class TokenVerifier {
 
   /** Verify signature and claims (C-11), map to VerifiedClaims, refuse revoked sessions. */
   async verify(jwt: string): Promise<VerifiedClaims> {
+    return (await this.verifyWithRaw(jwt)).claims;
+  }
+
+  /** As `verify`, with the verified payload as the IdP issued it (e.g. its `cnf`). */
+  async verifyWithRaw(
+    jwt: string,
+  ): Promise<{ claims: VerifiedClaims; raw: Record<string, unknown> }> {
     const { claims } = await verifyJwt(
       jwt,
       {
@@ -222,7 +229,7 @@ export class TokenVerifier {
     const v = toVerifiedClaims(this.o.mapClaims ? this.o.mapClaims(claims) : claims);
     if (await this.o.revocations?.isRevoked(v))
       refused("revoked", "session or user has been revoked");
-    return v;
+    return { claims: v, raw: claims };
   }
 
   /** Verify an OIDC back-channel logout token (Back-Channel Logout 1.0 §2.6); `aud` is the client id. */

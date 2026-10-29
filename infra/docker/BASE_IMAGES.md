@@ -11,3 +11,12 @@ FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b34
 ```
 
 Rules (IPB-01-31): multi-stage, non-root UID 10001, read-only root filesystem, `HEALTHCHECK`; `hadolint`, `trivy config` and `trivy image` gate in the `containers` CI job (PL6, `README.md`).
+
+## The Keycloak customer image (R1-D-19)
+
+`infra/keycloak/customer-otp/Dockerfile` builds Keycloak with the customer one-time-code extension. Both stages are pinned by tag and digest, published at least 7 days before they were pinned (PL2-D-32).
+
+| Image               | Tag                   | Digest                                                                    | Pinned on  | Notes                                                                                                                                                                |
+| ------------------- | --------------------- | ------------------------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keycloak/keycloak` | `26.8.1`              | `sha256:79c623a22abacf3fe6c00a5fb30f5b7843d717b234033b80995891c06116d244` | 2026-10-29 | The runtime, and the jars the extension compiles against; the same digest as the IDENTITY test image. The rebuild `26.8.1-1` (23 Oct 2026) may be pinned from 30 Oct |
+| `eclipse-temurin`   | `21.0.12_8-jdk-noble` | `sha256:4d271cd5e0624598cf563342f47281b09cb364bc13acbbd7251f49f83470018d` | 2026-10-29 | Compile stage only (`javac --release 21`); nothing of it reaches the runtime image. Published 18 Sep 2026                                                            |

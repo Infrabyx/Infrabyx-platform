@@ -841,6 +841,227 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "staff and admin 15"
   },
   {
+    "key": "int.identity.customer.otp.code_ttl_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 300,
+    "min": 60,
+    "max": 600,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "lifetime of a one-time code"
+  },
+  {
+    "key": "int.identity.customer.otp.attempts_per_code",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 5,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "tries before a code is dead"
+  },
+  {
+    "key": "int.identity.customer.otp.max_sends",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10,
+    "min": 1,
+    "max": 10,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "codes sent per account per window (IPB-02: 10 per 10 min)"
+  },
+  {
+    "key": "int.identity.customer.otp.send_window_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 600,
+    "min": 600,
+    "max": 3600,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "window of otp.max_sends"
+  },
+  {
+    "key": "int.identity.customer.otp.resend_interval_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "max": 300,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "gap between two codes for one account"
+  },
+  {
+    "key": "int.identity.customer.otp.backoff_after_failures",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 1,
+    "max": 5,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "consecutive wrong codes before exponential back-off (IPB-02: 5)"
+  },
+  {
+    "key": "int.identity.customer.otp.backoff_base_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 30,
+    "max": 300,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "first back-off; doubles with each further failure"
+  },
+  {
+    "key": "int.identity.customer.otp.lockout_after_failures",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 10,
+    "min": 3,
+    "max": 10,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "consecutive wrong codes before the lockout (IPB-02: 10)"
+  },
+  {
+    "key": "int.identity.customer.otp.lockout_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 900,
+    "min": 900,
+    "max": 86400,
+    "locked": false,
+    "tighten": "min",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02 §02.4.6.2 auth.otp; R1-D-19",
+    "note": "lockout after otp.lockout_after_failures (IPB-02: 15 min)"
+  },
+  {
+    "key": "int.identity.customer.session.idle_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 1800,
+    "min": 300,
+    "max": 1800,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02-03; R1-D-19",
+    "note": "customer session idle timeout"
+  },
+  {
+    "key": "int.identity.customer.session.max_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 43200,
+    "min": 3600,
+    "max": 43200,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02-03; R1-D-19",
+    "note": "customer session absolute lifetime"
+  },
+  {
+    "key": "int.identity.customer.dpop.max_age_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 60,
+    "min": 10,
+    "max": 300,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02-03; R1-D-18",
+    "note": "oldest DPoP proof iat accepted"
+  },
+  {
+    "key": "int.identity.customer.dpop.max_skew_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 30,
+    "min": 0,
+    "max": 60,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "IPB-02-03; R1-D-18",
+    "note": "DPoP proof iat accepted ahead of the clock"
+  },
+  {
     "key": "int.authz.pdp_url",
     "tier": "PLATFORM",
     "type": "string",
@@ -6253,6 +6474,19 @@ export type SettingValueMap = {
   "int.identity.passkeys.enabled": boolean;
   "int.identity.scim.enabled": boolean;
   "int.identity.session.idle_minutes": number;
+  "int.identity.customer.otp.code_ttl_seconds": number;
+  "int.identity.customer.otp.attempts_per_code": number;
+  "int.identity.customer.otp.max_sends": number;
+  "int.identity.customer.otp.send_window_seconds": number;
+  "int.identity.customer.otp.resend_interval_seconds": number;
+  "int.identity.customer.otp.backoff_after_failures": number;
+  "int.identity.customer.otp.backoff_base_seconds": number;
+  "int.identity.customer.otp.lockout_after_failures": number;
+  "int.identity.customer.otp.lockout_seconds": number;
+  "int.identity.customer.session.idle_seconds": number;
+  "int.identity.customer.session.max_seconds": number;
+  "int.identity.customer.dpop.max_age_seconds": number;
+  "int.identity.customer.dpop.max_skew_seconds": number;
   "int.authz.pdp_url": string | null;
   "int.authz.bundle_version": string | null;
   "int.authz.decision_cache_seconds": number;

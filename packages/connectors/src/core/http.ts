@@ -1,5 +1,5 @@
 // Outbound HTTP for REST adapters (plan §3.7; IPB-02-43 SSRF guard). HTTPS only, hosts on the
-// adapter's allow-list, redirects refused, response size capped, timeouts and Retry-After honoured.
+// adapter's allow-list, redirects never followed (refused unless read), response size capped, timeouts and Retry-After honoured.
 // A host outside the list is IPB-SEC-018; transport failures and 5xx are IPB-PORT-002.
 import { PortError } from "@infrabyx/contracts/errors";
 
@@ -74,7 +74,9 @@ export function createEgress(o: EgressOptions) {
         if (i + 1 < attempts) await sleep((o.backoffMs ?? 400) * 2 ** i);
         continue;
       }
-      if (res.status >= 300 && res.status < 400)
+      // A redirect is never followed. A caller that reads one (an OIDC authorisation request's
+      // `Location`) asks with `redirect: "manual"` and gets the 3xx response; anyone else is refused.
+      if (res.status >= 300 && res.status < 400 && init.redirect !== "manual")
         throw err("IPB-SEC-018", `${o.adapter} answered with a redirect (refused)`);
       const body = await readCapped(res, o.maxBytes ?? 5 * 1024 * 1024).catch(() => {
         throw err("IPB-PORT-002", `${o.adapter} response exceeded the size cap`);

@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-10-28
+Updated: 2026-10-29
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -48,6 +48,33 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### #84: customer sign-in with one-time codes and DPoP (minors of `crypto`, `contracts`, `config`, `notify`, `connectors`, `testing`)
+
+The owner answered #84 (b), with DPoP proof verification approved as a C-item (R1-D-18), and deferred #83 (R1-D-20). Built as R1-D-19 (product guide §7d, threat model §3.53).
+
+- **Built:**
+  - `crypto`: `verifyDpopProof` under the R1-D-18 profile, with `jwkThumbprint`, `accessTokenHash` and `normaliseHtu`.
+  - `contracts`: `CustomerIdentityPort` and `CustomerOtpSender`, beside an unchanged `IdentityPort`.
+  - `config`: 13 `int.identity.customer.*` settings (the `auth.otp` limits, session lifetimes, the DPoP window).
+  - `notify`: `sendOneTimeCode` (the code is never stored) and `notifyOtpSender`.
+  - `connectors`: `KeycloakCustomerIdentity` and `ZitadelCustomerIdentity`, the guard, `PgCustomerAuthStore` (migration `connectors/0004`) and `RedisReplayStore`. The egress client can read a redirect without following it.
+  - `infra/keycloak/customer-otp`: the `ipb-customer-otp` extension and its image, compiled against the pinned Keycloak's own jars. The `containers` job lints and scans it.
+  - `testing`: `startService` builds an image from a repository Dockerfile.
+- **Tests:**
+  - `dpop.test.ts`: 17 cases, one per refusal, with differential checks against `jose`.
+  - `customer.test.ts`: 8 cases on a fake IdP and clock (the IPB-02 schedule, tries per code, bounds).
+  - `customer-store.int.test.ts`: 4 cases on PostgreSQL (replicas, RLS, ledger, no delete grant).
+  - `notify.int.test.ts`: +2 cases (the code is in neither the rows nor the ledger; kill switch).
+  - **IDENTITY leg:** the 8 shared customer cases run on Keycloak 26.8.1 with the extension (13 cases with the realm read-back, the extension's refusals and the stock image refused) and on Zitadel v4.19.5. Locally, Keycloak ran from the built image and Zitadel from its checksummed release binary of the same version.
+- **Assumptions for the owner:** #85 (the code is returned to the API client instead of a webhook) and #86 (retention of the sign-in tables).
+- **Products must** (Udofin, LawDocs and Equator):
+  - run the extension image and apply a customer realm (or a Zitadel customer organisation);
+  - run `infrabyx-migrate` (`connectors/0004`);
+  - add a `security` sign-in code class to their catalogue;
+  - wire `KeycloakCustomerIdentity` with `PgCustomerAuthStore`, `RedisReplayStore` and `notifyOtpSender`;
+  - give the app a non-exportable P-256 key and DPoP proofs, then drop their shims (Udofin `u03_identity`) and mark PR-UDF-010 met.
+- **Next security update:** pin Keycloak `26.8.1-1` (23 Oct 2026) from 30 Oct and drop the four base-image waivers (they expire on 6 Nov). The body-parser and multer waivers name fixes that clear the 7-day age today.
 
 ### G5 minor release (2026-10-28, version PR #142, release run 121)
 

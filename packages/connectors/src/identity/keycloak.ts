@@ -811,7 +811,7 @@ export class KeycloakIdentity implements IdentityPort {
   }
 }
 
-function keycloakEgress(base: string, allowLoopbackHttp?: boolean): Egress {
+export function keycloakEgress(base: string, allowLoopbackHttp?: boolean): Egress {
   return createEgress({
     port: "IDENTITY",
     adapter: "keycloak",

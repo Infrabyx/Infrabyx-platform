@@ -1,6 +1,6 @@
 # Customer identity through the IDENTITY port (design note, no code)
 
-Date: 2026-10-28 · Status: for the owner's decision (OWNER-QUESTIONS #84) · Raised by: Udofin (PR-UDF-010); LawDocs and Equator need the same
+Date: 2026-10-28 · Status: **decided (b)** by the owner on 29 Oct 2026 and built (R1-D-18, R1-D-19; product guide §7d) · Raised by: Udofin (PR-UDF-010); LawDocs and Equator need the same
 
 ## The gap
 

@@ -48,8 +48,10 @@ export const SHARED_PATHS = [
   "scripts/port-matrix.mjs",
 ];
 
-/** Extra paths per port: the AI ports share their adapters and contracts (PL4 plan §5). */
+/** Extra paths per port: the AI ports share their adapters and contracts (PL4 plan §5); IDENTITY its Keycloak image. */
 const EXTRA_PATHS = {
+  // The customer realms run on Keycloak with the one-time-code extension (R1-D-19).
+  IDENTITY: ["infra/keycloak/"],
   LLM: ["packages/contracts/src/ports/ai.ts"],
   EMBEDDING: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
   IMAGE_GEN: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
