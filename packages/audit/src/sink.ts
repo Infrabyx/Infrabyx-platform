@@ -16,7 +16,13 @@ export class PgAuditSink implements AuditSink {
   async record(tx: Tx, e: AuditEntryInput): Promise<{ id: string }> {
     const ctx = tx.ctx;
     const id = newId("led");
-    const actorType: ActorType = ctx.breakGlassGrantId ? "breakglass" : ctx.principal.type;
+    // An external grantee is a named person: a `user` actor (IPB-02 §02.4.7.1), whose entries name
+    // the grant they read under (R1-D-29).
+    const actorType: ActorType = ctx.breakGlassGrantId
+      ? "breakglass"
+      : ctx.principal.type === "external"
+        ? "user"
+        : ctx.principal.type;
     const key = this.o.pseudonymKey;
     await tx.query(
       `insert into audit.ledger

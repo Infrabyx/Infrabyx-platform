@@ -22,6 +22,12 @@ export interface KernelContext {
   act?: { sub: string; sessionId: string };
   /** Break-glass grant id when the token carries `bg:true` (IPB-02-06). */
   breakGlassGrantId?: string;
+  /**
+   * The external grant (`xgr_…`) an `external` principal reads under (R1-D-29); required for that
+   * principal type and refused on any other. The kernel checks it is active, the principal's own
+   * and in this tenant on every transaction.
+   */
+  externalGrantId?: string;
   /** Platform scope: only for PLT_* principals in the platform tenant. */
   scope?: "tenant" | "platform";
   traceId?: string;

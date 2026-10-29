@@ -10,6 +10,7 @@ import {
   isAgentRole,
   isPlatformRole,
   isServiceReaderRole,
+  isServiceRole,
   type ServiceReaderRole,
 } from "@infrabyx/contracts/roles";
 
@@ -23,6 +24,11 @@ export interface ContextExtras {
   userAgent?: string;
   /** Request a platform context; honoured only for PLT_* principals (see assertValidContext). */
   scope?: "tenant" | "platform";
+  /**
+   * The external grant an `external` principal reads under (R1-D-29), for example from the
+   * route. The kernel checks on every transaction that it is active and the principal's own.
+   */
+  externalGrantId?: string;
 }
 
 /** Build the context from claims the IDENTITY adapter has already verified. */
@@ -47,6 +53,7 @@ export function contextFromClaims(
     ...(c.act ? { act: { sub: c.act.sub, sessionId: c.act.sid } } : {}),
     ...(c.bg ? { breakGlassGrantId: c.bg } : {}),
     ...(extras.scope ? { scope: extras.scope } : {}),
+    ...(extras.externalGrantId ? { externalGrantId: extras.externalGrantId } : {}),
     ...(extras.traceId ? { traceId: extras.traceId } : {}),
     ...(extras.ip ? { ip: extras.ip } : {}),
     ...(extras.userAgent ? { userAgent: extras.userAgent } : {}),
@@ -85,6 +92,10 @@ function assertBranchContext(ctx: KernelContext): void {
 export function assertValidContext(ctx: KernelContext): void {
   if (!ctx.tenantId) throw new Error("context has no tenant");
   assertBranchContext(ctx);
+  if (ctx.principal.type === "external" || ctx.externalGrantId !== undefined) {
+    assertExternalContext(ctx);
+    return;
+  }
   const reader = serviceReaderRole(ctx);
   if (reader) {
     const readers = ctx.principal.roles.filter(isServiceReaderRole);
@@ -106,6 +117,49 @@ export function assertValidContext(ctx: KernelContext): void {
   ) {
     throw new IpbError("IPB-SEC-005", { detail: "a platform context needs a PLT_* role" });
   }
+}
+
+const EXTERNAL_GRANT_ID = /^xgr_[0-9A-HJKMNP-TV-Z]{26}$/;
+
+/**
+ * An external principal reads one tenant under one grant (R1-D-29): no platform scope or role, no
+ * agent, service or reader role, no impersonation and no break-glass.
+ */
+function assertExternalContext(ctx: KernelContext): void {
+  const r = ctx.principal.roles;
+  if (
+    ctx.principal.type !== "external" ||
+    !ctx.externalGrantId ||
+    !EXTERNAL_GRANT_ID.test(ctx.externalGrantId) ||
+    ctx.scope === "platform" ||
+    ctx.tenantId === PLATFORM_TENANT_ID ||
+    ctx.act ||
+    ctx.breakGlassGrantId ||
+    r.some((x) => isPlatformRole(x) || isAgentRole(x) || isServiceRole(x))
+  )
+    throw new IpbError("IPB-SEC-005", {
+      detail:
+        "an external principal reads one tenant under one external grant, with no platform, agent or service role, impersonation or break-glass",
+    });
+}
+
+/** The context of an external grantee reading a tenant under a grant (R1-D-29). */
+export function externalContext(
+  tenantId: string,
+  granteeId: string,
+  externalGrantId: string,
+  extras: Pick<ContextExtras, "traceId" | "ip" | "userAgent"> = {},
+): KernelContext {
+  const ctx: KernelContext = {
+    tenantId,
+    externalGrantId,
+    principal: { id: granteeId, type: "external", roles: [] },
+    ...(extras.traceId ? { traceId: extras.traceId } : {}),
+    ...(extras.ip ? { ip: extras.ip } : {}),
+    ...(extras.userAgent ? { userAgent: extras.userAgent } : {}),
+  };
+  assertValidContext(ctx);
+  return ctx;
 }
 
 /** The read-only platform context of a service reader (PL3-D-21). */

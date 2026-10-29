@@ -18,7 +18,8 @@ export interface RlsFinding {
     | "security-invoker-view"
     | "no-auth-schema"
     | "no-bypassrls"
-    | "definer-function";
+    | "definer-function"
+    | "external-read";
   object: string;
   message: string;
 }
@@ -145,12 +146,18 @@ export async function lintRls(db: Queryable, o: RlsLintOptions = {}): Promise<Rl
       message: "application roles never bypass RLS (IPB-02-12)",
     });
 
+  const external = (
+    await db.query<{ ok: boolean }>(
+      "select exists (select 1 from pg_roles where rolname = 'app_external') as ok",
+    )
+  ).rows[0]?.ok;
   const allowDef = new Set(o.allowDefiners ?? DEFAULT_ALLOWED_DEFINERS);
   const definers = await db.query<{ name: string }>(
     `select n.nspname || '.' || p.proname as name
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where p.prosecdef and ${schemaFilter}
-        and (has_function_privilege('app_rw', p.oid, 'execute') or has_function_privilege('app_ro', p.oid, 'execute'))`,
+        and (has_function_privilege('app_rw', p.oid, 'execute') or has_function_privilege('app_ro', p.oid, 'execute')
+             ${external ? "or has_function_privilege('app_external', p.oid, 'execute')" : ""})`,
     params,
   );
   for (const d of definers.rows) {
@@ -161,6 +168,70 @@ export async function lintRls(db: Queryable, o: RlsLintOptions = {}): Promise<Rl
         message: "SECURITY DEFINER function executable by app_rw/app_ro is not allow-listed",
       });
   }
+  if (external) findings.push(...(await lintExternal(db, schemaFilter, params)));
+  return findings;
+}
+
+/**
+ * The external read role (tenancy/0010, R1-D-29): app_external only SELECTs, belongs to no role,
+ * reads no view, and every table it may read has forced RLS and a RESTRICTIVE select policy for it
+ * calling `tenancy.external_allows(...)` or `tenancy.external_grant_active()`, so the grant's scope
+ * holds whatever permissive policies the table has.
+ */
+async function lintExternal(
+  db: Queryable,
+  schemaFilter: string,
+  params: unknown[],
+): Promise<RlsFinding[]> {
+  const findings: RlsFinding[] = [];
+  const add = (object: string, message: string) =>
+    findings.push({ rule: "external-read", object, message });
+  const writes = await db.query<{ name: string }>(
+    `select n.nspname || '.' || c.relname as name
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where c.relkind in ('r', 'p', 'v', 'm', 'f') and ${schemaFilter}
+        and (has_table_privilege('app_external', c.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+             or has_any_column_privilege('app_external', c.oid, 'INSERT, UPDATE, REFERENCES'))`,
+    params,
+  );
+  for (const w of writes.rows) add(w.name, "app_external may only SELECT");
+  const reads = await db.query<{
+    name: string;
+    kind: string;
+    rls: boolean;
+    force: boolean;
+    restrictive: boolean;
+  }>(
+    `select n.nspname || '.' || c.relname as name, c.relkind::text as kind,
+            c.relrowsecurity as rls, c.relforcerowsecurity as force,
+            exists (select 1 from pg_policy p
+                     where p.polrelid = c.oid and not p.polpermissive and p.polcmd in ('r', '*')
+                       and ((select oid from pg_roles where rolname = 'app_external') = any (p.polroles)
+                            or 0::oid = any (p.polroles))
+                       and coalesce(pg_get_expr(p.polqual, p.polrelid), '') ~ 'external_(allows|grant_active)\\(') as restrictive
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where c.relkind in ('r', 'p', 'v', 'm', 'f') and ${schemaFilter}
+        and has_any_column_privilege('app_external', c.oid, 'SELECT')
+        and not (n.nspname = 'tenancy' and c.relname = 'external_grant')`,
+    params,
+  );
+  for (const r of reads.rows) {
+    if (r.kind !== "r" && r.kind !== "p") {
+      add(r.name, "app_external reads tables under their restrictive policies, never a view");
+      continue;
+    }
+    if (!r.rls || !r.force) add(r.name, "a table app_external reads needs forced RLS");
+    if (!r.restrictive)
+      add(
+        r.name,
+        "a table app_external reads needs a RESTRICTIVE select policy calling tenancy.external_allows()",
+      );
+  }
+  const member = await db.query<{ rolname: string }>(
+    `select r.rolname from pg_auth_members a join pg_roles r on r.oid = a.roleid
+      where a.member = (select oid from pg_roles where rolname = 'app_external')`,
+  );
+  for (const m of member.rows) add("app_external", `app_external is a member of ${m.rolname}`);
   return findings;
 }
 

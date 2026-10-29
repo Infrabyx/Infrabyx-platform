@@ -119,7 +119,12 @@ export const isServiceRole = (r: string): boolean => SERVICE_ROLE_REGEX.test(r);
 export const isOpsRole = (r: string): boolean => OPS_ROLE_REGEX.test(r);
 
 /** Principal kinds (IPB-02 §02.2, §02.4.7.1 `actor_type`). */
-export const PRINCIPAL_TYPES = ["user", "service", "agent", "breakglass"] as const;
+/**
+ * `external`: a named external grantee (statutory auditor, inspector) reading one tenant under one
+ * active `tenancy.external_grant` (Finbyx PR-FBX-10 item 5; R1-D-29). It only reads, as the
+ * SELECT-only `app_external` role, and every read is ledgered.
+ */
+export const PRINCIPAL_TYPES = ["user", "service", "agent", "breakglass", "external"] as const;
 export const PrincipalType = z.enum(PRINCIPAL_TYPES);
 export type PrincipalType = z.infer<typeof PrincipalType>;
 
