@@ -116,14 +116,47 @@ End users who are not staff (borrowers, clients, parties) sign in with a one-tim
 5. **Requests.** The API guard calls `verifyRequest({ authorization, dpopProof, method, url })` and gets `VerifiedCustomerClaims` (`tid`, `sub`, product roles, `deviceId`, `mfa: false`). `url` must be the URL the app called, as the public sees it. A Bearer token is refused.
 6. **Refresh and sign-out.** Call `refreshSession({ tenantId, refreshToken, dpopProof })`; each refresh token works once. A current refresh token sent with another key signs the device out. `listDevices` and `revokeDevice` back the app's "signed-in devices" screen. A revoked device is refused everywhere within 15 s.
 7. **Upgrade note.** Rebuild the image whenever the platform moves the Keycloak pin (it will move from 26.8.1 soon after 30 Oct 2026).
+8. **Retention (#86).** Schedule `new CustomerSignInRetention({ store, settings }).sweep(tenantSweep)` daily (`connectors/0005`, R1-D-23). It deletes challenges 24 hours after they expire, guard counters once their lockout window ends, and devices 12 months after last use (`int.identity.customer.retention.*`). Call `forgetDevices` when a customer closes the account: it signs out and deletes every device at once. The database refuses to delete live state (restrictive policies keep a floor below the settings).
 
-## 7e. KYC and video calls (ports only)
+## 7e. KYC and video calls
 
-`KycPort` and `VideoMeetPort` are defined in `@infrabyx/contracts/ports` (R1-D-21). No adapter exists yet; the owner chooses the vendors (OWNER-QUESTIONS #87, #88). Build your flows on the interfaces now, and test them with `FakeKyc` and `FakeVideoMeet` from `@infrabyx/testing`:
+`KycPort` and `VideoMeetPort` are defined in `@infrabyx/contracts/ports` (R1-D-21). Build your flows on the interfaces, and test them with `FakeKyc` and `FakeVideoMeet` from `@infrabyx/testing`:
 
 - Pass files as STORAGE references with their SHA-256. Store the evidence each result returns (`vendorRef`, `modelVersion`, `checkedAt`), and for V-CIP the manifest, in your ledgered records. Never store an Aadhaar number: results give its last four digits only.
 - Create a V-CIP room with a REGULATED `RoomPolicy` (see `VCIP_ROOM_POLICY`): `participantCountries: ["IN"]`, your tenant's official networks, recording on to the tenant's target, `providerRetention: "none"`. Resolve each joiner's country and proxy status with your GEO check, and pass it to `joinToken`.
-- Keep `kyc.vcip.enabled` off: per-tenant STORAGE routing to a tenant-owned bucket is deferred (#83).
+- Keep `kyc.vcip.enabled` off: per-tenant STORAGE routing to a tenant-owned bucket is deferred (#83), and how Digio's video KYC fits the port waits for #90.
+- **Digio** (`@infrabyx/connectors/kyc`, `DigioKyc`, R1-D-24) provides `digilockerPull` and `verifyAadhaarOffline`; every other method is `unsupported`, so routing picks another adapter for it. It is off (`int.kyc.digio.enabled`) and `unproven` until the owner's Digio account exists (#147). There is no KYC alternative yet (#91).
+- **LiveKit** (the VIDEO_MEET reference, #88) waits for the owner's answer on HS256 (#89).
+
+## 7f. Books of account: statutory capture, branches and external auditors
+
+For the Companies Act audit trail on books of account (PR-FBX-10), use the database-level capture rather than an application log (R1-D-25):
+
+```sql
+-- in a product migration, run by the database owner after infrabyx-migrate (audit/0003)
+select audit.register_capture('books.journal_line');
+```
+
+- The table needs `tenant_id` and forced RLS. From then on every insert, update and delete is captured with its before and after values, the actor, branch, trace, action and reason from the kernel, the database login and role, the transaction id and the time, in a per-tenant hash chain. Nothing in the application can switch it off, and a registered table cannot be dropped or have its triggers removed.
+- Pass `{ action, reason }` to `kernel.mutate` for corrections, so the reason is captured.
+- Schedule `auditSweep.verifyCaptureAll()` daily with the other per-tenant jobs and alert on `broken`; auditors read the trail with `StatutoryCapture.query`, and the daily anchor signs its head.
+
+**Branches (R1-D-26).** Build the context with `branchId` (the branch of this change), `branchIds` (the branches the user may see) or `allBranches` (head office). Add `and tenancy.branch_allowed(branch_id)` beside the tenant condition in each branch-scoped table's policy (`tenancy/0007`). It denies by default. The ledger and the capture record the branch.
+
+**External auditors and inspectors (R1-D-29).** An ORG_OWNER or ORG_ADMIN requests an external grant with `ExternalGrants.request` (grantee, kind, purpose, entities, branches, period, days); a different one approves it. Then:
+
+```sql
+grant select (id, entity_id, branch_id, booked_on, amount) on books.journal_line to app_external;
+create policy journal_line_external on books.journal_line as restrictive for select to app_external
+  using (tenancy.external_allows(entity_id, branch_id, booked_on));
+```
+
+- Serve the grantee's requests with `new ExternalReads({ kernel, audit }).read(externalContext(tenantId, granteeId, grantId), "books.journal_line", sql)`. Each read is ledgered; a revoked or expired grant is refused (`IPB-TRUST-003`). rls-lint fails a table `app_external` can read without the restrictive policy.
+
+## 7g. Idempotent API calls and break-glass notices
+
+- **`Idempotency-Key` (IPB-10-07, R1-D-27).** Register `IdempotencyKeyInterceptor` (`@infrabyx/tenancy/nest`) on your API. In each POST or PATCH handler, wrap the change: `kernel.mutate(ctx, (tx) => idempotent(tx, req.idempotency, work, { audit }))`, where `work` returns `{ status, body }`. A replay returns the first response; another body under the key is 409. Schedule `new IdempotencyExpiry({ kernel, audit }).sweep(tenantSweep)` daily (`tenancy/0008`).
+- **Break-glass in your tenants (R1-D-28).** Every use of a platform break-glass grant on a tenant is recorded there (`tenancy/0009`). Schedule `new BreakGlassTenantNotices({ kernel, audit, outbox, product }).sweep(tenantSweep)` every few minutes; on `BreakGlassUsed`, notify the tenant's administrators. Show `list` on the tenant's security page.
 
 ## 8. Adopting 1.0.0
 
