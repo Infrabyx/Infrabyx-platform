@@ -1,5 +1,16 @@
 # @infrabyx/audit
 
+## 1.4.2
+
+### Patch Changes
+
+- 3f20011: An `external` principal is recorded as a `user` actor in the ledger (R1-D-29); its entries name the grant it reads under.
+- Updated dependencies [2e3a2d3]
+- Updated dependencies [3f20011]
+  - @infrabyx/contracts@1.11.0
+  - @infrabyx/config@1.4.1
+  - @infrabyx/crypto@1.2.6
+
 ## 1.4.1
 
 ### Patch Changes
