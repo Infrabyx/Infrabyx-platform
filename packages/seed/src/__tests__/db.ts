@@ -14,7 +14,6 @@ export async function freshDb() {
   const root = new pg.Client({ connectionString: base });
   await root.connect();
   await root.query(`create database ${name}`);
-  await root.end();
   const u = new URL(base);
   u.pathname = `/${name}`;
   const admin = new pg.Client({ connectionString: u.toString() });
@@ -23,7 +22,14 @@ export async function freshDb() {
     ...platformSources(pkgRoot, ["@infrabyx/tenancy", "@infrabyx/audit", "@infrabyx/config"]),
     { name: "@infrabyx/seed", dir: join(pkgRoot, "migrations") },
   ];
-  await migrate({ client: admin, sources });
+  // Roles are cluster-wide, and tenancy/0003 grants app_ro a role that 0004 revokes: fresh databases
+  // on one server migrate one at a time, so no test sees another database's half-applied grants.
+  await root.query("select pg_advisory_lock(hashtext('infrabyx:test-migrate'))");
+  try {
+    await migrate({ client: admin, sources });
+  } finally {
+    await root.end(); // the session's end releases the lock
+  }
   const pool = new pg.Pool({ connectionString: u.toString(), max: 10 });
   // As in @infrabyx/testing `startPostgres`: `drop database … with (force)` in `end()` can reach a
   // client whose socket is still closing; the server's 57P01 ("terminating connection due to

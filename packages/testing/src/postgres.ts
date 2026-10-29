@@ -91,13 +91,19 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
   const root = new pg.Client({ connectionString: server.url });
   await root.connect();
   await root.query(`create database ${name}`);
-  await root.end();
   const u = new URL(server.url);
   u.pathname = `/${name}`;
   const url = u.toString();
   const admin = new pg.Client({ connectionString: url });
   await admin.connect();
-  await migrate({ client: admin, sources });
+  // Roles are cluster-wide, and tenancy/0003 grants app_ro a role that 0004 revokes: fresh databases
+  // on one server migrate one at a time, so no test sees another database's half-applied grants.
+  await root.query("select pg_advisory_lock(hashtext('infrabyx:test-migrate'))");
+  try {
+    await migrate({ client: admin, sources });
+  } finally {
+    await root.end(); // the session's end releases the lock
+  }
   const pool = new pg.Pool({ connectionString: url, max: 25 });
   // `drop database … with (force)` in `end()` can reach a client whose socket is still closing; the
   // server's "terminating connection due to administrator command" (57P01) is then expected and
