@@ -2013,6 +2013,19 @@ keys:
       source: "IPB-01 §01.4.4.2 PUSH",
     }
 
+  # ---------------------------------------------------------------- R1: inbound idempotency (IPB-10-07; R1-D-27)
+  - {
+      key: int.api.idempotency_ttl_hours,
+      tier: PLATFORM,
+      type: int,
+      default: 24,
+      min: 24,
+      max: 168,
+      change: [PLT_RELEASE_MANAGER],
+      mc: false,
+      source: "IPB-10 §10.7; IPB-10-07",
+    }
+
   # ---------------------------------------------------------------- PL3: ESIGN (IPB-01 ESIGN)
   - {
       key: int.esign.provider,

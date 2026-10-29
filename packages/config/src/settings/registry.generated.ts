@@ -2942,6 +2942,21 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 PUSH"
   },
   {
+    "key": "int.api.idempotency_ttl_hours",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 24,
+    "min": 24,
+    "max": 168,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_RELEASE_MANAGER"
+    ],
+    "mc": false,
+    "source": "IPB-10 §10.7; IPB-10-07"
+  },
+  {
     "key": "int.esign.provider",
     "tier": "PLATFORM",
     "type": "enum",
@@ -6671,6 +6686,7 @@ export type SettingValueMap = {
   "int.push.provider": "expo" | "fcm" | "memory";
   "int.push.fcm_project_id": string | null;
   "int.push.apns_topic": string | null;
+  "int.api.idempotency_ttl_hours": number;
   "int.esign.provider": "leegality" | "digio" | "memory";
   "int.esign.expire_in_days": number;
   "int.kyc.digio.enabled": boolean;

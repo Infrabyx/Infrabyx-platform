@@ -700,6 +700,17 @@ export const ERROR_CATALOGUE = {
     title: "Key environment mismatch (test key on live host or vice versa)",
     source: "IPB-10 §10.6.3",
   },
+  // IPB-10 §10.6.3, added for the inbound idempotency store (IPB-10-07; PR-FBX-10, R1-D-27).
+  "IPB-API-010": {
+    status: 400,
+    title: "Idempotency-Key missing or not UUIDv7",
+    source: "IPB-10 §10.6.3",
+  },
+  "IPB-API-011": {
+    status: 409,
+    title: "Idempotent request in progress",
+    source: "IPB-10 §10.6.3",
+  },
   // IPB-10 §10.6.3, added for inbound vendor webhooks (PL2-D-64).
   "IPB-API-018": {
     status: 401,

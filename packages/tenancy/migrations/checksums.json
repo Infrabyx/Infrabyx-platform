@@ -5,5 +5,6 @@
   "0004_service_roles_switch_only.sql": "6323a13889dba5c72b7b873dc62493a5d75237f2791ec3492164fcd50b66fd33",
   "0005_tenant_sweep.sql": "ee9f53272d78ede9b16c5ec20d8b1d473e782cdfc1fe876bb1522ebe7ba4e9c4",
   "0006_ecosystem_inbox.sql": "84496bc9ebf8a7133441f9cde9324a9f7f0ba03da1a75677c4d59771c994aa14",
-  "0007_branch_context.sql": "2d7086d5602aeec0da69e689342a0bfdc08d1f5f7f04b3ee949199f0645b66b0"
+  "0007_branch_context.sql": "2d7086d5602aeec0da69e689342a0bfdc08d1f5f7f04b3ee949199f0645b66b0",
+  "0008_api_idempotency.sql": "c82825bb07acb6529bcadd3fd9a53e18d026cfd980c913c7dd44c2219adfd264"
 }

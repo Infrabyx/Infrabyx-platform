@@ -644,6 +644,15 @@ Products scope rows by branch within a tenant through `tenancy.branch_allowed()`
 - **T (an exported audit trail that cannot be re-verified):** Control: `REF-EXPORT-1.3` exports `branch_id`, and the offline verifier hashes it only when set, exactly as the ledger chain does.
 - **Residual:** branch scoping is as strong as the product's policies; `rls-lint` checks the tenant condition, not the branch one. Tenant isolation is unchanged.
 
+### 3.58 Inbound idempotency (; PR-FBX-10 item 4, R1-D-27)
+
+Product APIs store each POST and PATCH response under the client's key for 24 hours and replay it for an identical retry.
+
+- **T (a replay used to get another request's response):** Control: a replay must match the stored route and the canonical request hash, else 409; keys are per tenant under forced RLS.
+- **I (stored responses):** Control: response bodies are classed REGULATED, readable only in their tenant, and deleted after the TTL (only expired rows can be deleted).
+- **D (duplicate work under concurrency):** Control: one request per key at a time (advisory lock, 409 IPB-API-011); the key commits with the change.
+- **Residual:** a client that reuses a key after expiry starts a new request, as IPB-10 intends.
+
 ### 3.16 Cross-tenant service readers (owner answer #22, PL3-D-21)
 
 Background workers that must find due work across tenants (the workflow timer poller, the NOTIFY dispatcher, the one-click unsubscribe link, the export sweep) read through `ServiceReader` in `@infrabyx/tenancy` as one of the `SVC_` roles in `SERVICE_READER_ROLES` (`contracts/roles`).
