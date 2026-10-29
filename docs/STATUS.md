@@ -49,6 +49,19 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### PR-FBX-10 (5): the external read role (minors of `tenancy`, `contracts`; patch of `audit`)
+
+Finbyx platform request PR-FBX-10 item 5. Built as R1-D-29 (R1-plan M21; threat model §3.60); the approval rule is `[ASSUMED – owner review]` (OWNER-QUESTIONS #92).
+
+- **Built:**
+  - `contracts`: the `external` principal type and `KernelContext.externalGrantId`.
+  - `tenancy/0010`: the SELECT-only, switch-only `app_external` role; `tenancy.external_grant` (grantee, kind, purpose, entities, branches, period; 30 days by default, 90 at most); `tenancy.external_allows(entity, branch, date)` and `(entity, date)` for products' RESTRICTIVE policies.
+  - `ExternalGrants`: an ORG_OWNER or ORG_ADMIN requests, a different one approves (IPB-TRUST-005 on self-approval), either revokes at once. `ExternalReads` is the only way an external principal reads: as `app_external`, read-only, for an active grant that is its own in the tenant (IPB-TRUST-003 otherwise), with a `platform.external_read` ledger entry per read before the rows are returned. `externalContext` builds the context.
+  - rls-lint `external-read`: any table `app_external` can read needs forced RLS and a restrictive policy calling the helpers; the role may hold no write privilege, read no view and belong to no role.
+  - `audit`: an external principal is a `user` actor in the ledger (the ledger stays additive-only); its entries name the grant.
+- **Tests:** `external.int.test.ts` on PostgreSQL (7 cases) and the ledger case in `audit.int.test.ts`.
+- **Products adopting it:** run `infrabyx-migrate` (`tenancy/0010`); for each table an external grantee may see, grant `app_external` SELECT on the shown columns and add a restrictive select policy calling `tenancy.external_allows`; serve grantee requests through `ExternalReads` with `externalContext`. Finbyx can retire its `app_ro` shim (P2-D9).
+
 ### PR-FBX-10 (3): break-glass visible to the tenant (minors of `tenancy`, `contracts`)
 
 Finbyx platform request PR-FBX-10 item 3 (OUT 24, 70). Built as R1-D-28 (R1-plan M19; threat model §3.59).
