@@ -49,6 +49,18 @@ HANDOVER READY
 
 ## Releases after 1.0.0
 
+### #86: retention of customer sign-in state (minors of `connectors`, `contracts`, `config`)
+
+The owner answered #86 on 29 Oct 2026 (R1-D-22). Built as R1-D-23 (R1-plan M14; threat model §3.53).
+
+- **Built:**
+  - `connectors`: `CustomerSignInRetention`, a scheduled per-tenant job (`sweep(tenantSweep)`, daily from one worker). It deletes a challenge 24 hours after it expired, a guard row once its lockout window has ended, and a device 12 months after its last use. Batches roll back and ledger nothing when nothing is due; every deletion has an `identity.customer.purge` ledger entry.
+  - `revokeDevice` (the customer unbinding a device) now deletes the device after signing it out; `forgetDevices` (account closed) does the same for every device.
+  - Migration `connectors/0005` grants `app_rw` delete on the three tables, under restrictive policies that keep floors below the settings: a challenge one hour after expiry; a guard row neither locked nor inside the shortest window; a device revoked or unused for 30 days.
+  - `contracts`: `CustomerIdentityPort.forgetDevices`. `config`: `int.identity.customer.retention.challenge_hours` (24), `guard_grace_seconds` (0) and `device_unused_days` (365).
+- **Tests:** `customer.test.ts`, 4 new cases (settings, guard end, the job through a sweep, unbind and closure); `customer-store.int.test.ts`, 2 new cases on PostgreSQL (due rows only, per tenant, one ledger entry each; the floors hold whatever the caller asks) and the grant check; the shared IDENTITY case now covers unbind and closure on Keycloak and Zitadel.
+- **Products adopting it:** run `infrabyx-migrate` (`connectors/0005`), schedule `new CustomerSignInRetention({ store, settings }).sweep(tenantSweep)` daily, and call `forgetDevices` when a customer closes the account.
+
 ### PR-FBX-01: the `KYC` and `VIDEO_MEET` ports (minors of `contracts` and `testing`)
 
 The owner approved PR-FBX-01 for the ports only (R1-D-20); built as R1-D-21 (product guide §7e, threat model §3.54).
