@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isValidStorageKey, storageKey } from "./storage.js";
 import { parseSecretRef, isSecretRef } from "./secrets.js";
-import { PORT_CATALOGUE, PORT_NAMES } from "./catalogue.js";
+import { PORT_CATALOGUE, PORT_NAMES, R1_PORTS } from "./catalogue.js";
 import { VerifiedClaims } from "./identity.js";
 import { PL2_PORTS, PL3_PORTS, PL4_PORTS } from "./common.js";
 import { PL5_PORTS } from "./web.js";
@@ -27,10 +27,12 @@ describe("ports", () => {
     expect(isSecretRef("app")).toBe(false);
     expect(parseSecretRef("secret://aws-sm/no-key")).toBeNull();
   });
-  it("catalogues the 42 primary ports plus supplementary ports, with interfaces for the PL2, PL3, PL4 and PL5 ports", () => {
+  it("catalogues the 42 primary ports plus supplementary ports, with interfaces for the PL2, PL3, PL4, PL5 and R1 ports", () => {
     expect(PORT_NAMES.length).toBeGreaterThanOrEqual(55);
     const defined = PORT_NAMES.filter((p) => PORT_CATALOGUE[p].interfaceDefined).sort();
-    expect(defined).toEqual([...PL2_PORTS, ...PL3_PORTS, ...PL4_PORTS, ...PL5_PORTS].sort());
+    expect(defined).toEqual(
+      [...PL2_PORTS, ...PL3_PORTS, ...PL4_PORTS, ...PL5_PORTS, ...R1_PORTS].sort(),
+    );
   });
   it("parses verified claims with act and bg", () => {
     const c = VerifiedClaims.parse({
