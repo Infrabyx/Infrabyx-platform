@@ -12,13 +12,22 @@ import {
   ButtonLink,
   CheckboxField,
   ClickToLoad,
+  ColumnChooser,
+  CommandPalette,
   DataTable,
+  EmptyState,
   ErrorMessage,
+  ErrorState,
   ErrorSummary,
   Field,
   HelpButton,
+  KeyboardMap,
   LiveRegion,
   Notice,
+  PermissionDenied,
+  SavedViewPicker,
+  Skeleton,
+  WorkspaceSwitcher,
 } from "@infrabyx/ui";
 import { requestContext } from "../../server/request.ts";
 
@@ -144,6 +153,61 @@ export default async function Gallery() {
             { label: "A", value: 2 },
             { label: "B", value: 1 },
           ]}
+        />
+      </section>
+      <section aria-labelledby="g-shell">
+        <h2 id="g-shell">Application shell</h2>
+        <WorkspaceSwitcher
+          assigned={[
+            { key: "M", label: "Management", href: "/__gallery" },
+            { key: "N", label: "Tenant administration", href: "/__gallery" },
+          ]}
+          current={{ key: "N", label: "Tenant administration", href: "/__gallery" }}
+        />
+        <CommandPalette
+          action="/__gallery"
+          result={{
+            status: "ok",
+            groups: [{ id: "pages", label: "Pages", hits: [{ label: "Offices", href: "/" }] }],
+            failed: [],
+          }}
+          query="off"
+        />
+        <SavedViewPicker
+          personal={[{ id: "v1", name: "My offices", href: "/__gallery", isDefault: true }]}
+          shared={[{ id: "v2", name: "All offices", href: "/__gallery" }]}
+          currentId="v1"
+          saveAction="/__gallery"
+        />
+        <ColumnChooser
+          action="/__gallery"
+          columns={[
+            { key: "city", header: "City", rowHeader: true },
+            { key: "pin", header: "PIN" },
+            { key: "phone", header: "Phone" },
+          ]}
+          visible={["pin"]}
+        />
+        <EmptyState
+          purpose="Offices you add appear here."
+          action={{ label: "Add an office", href: "/__gallery" }}
+          tutorial={{ label: "How offices work", href: "/__gallery" }}
+        />
+        <Skeleton rows={2} />
+        <ErrorState
+          whatFailed="The office list could not be loaded."
+          saved="nothing_to_save"
+          correlationId="trc_gallery"
+          retry={{ label: "Try again", href: "/__gallery" }}
+        />
+        <PermissionDenied
+          code="IPB-SEC-005"
+          reason="Offices are open to administrators."
+          fix={{ label: "Ask an administrator", href: "/__gallery" }}
+        />
+        <KeyboardMap
+          groups={[{ id: "global", label: "Global shortcuts" }]}
+          shortcuts={[{ id: "palette", label: "Open search", combo: "Ctrl+K", group: "global" }]}
         />
       </section>
       <section aria-labelledby="g-media">

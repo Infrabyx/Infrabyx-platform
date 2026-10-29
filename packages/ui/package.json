@@ -24,6 +24,10 @@
       "types": "./dist/studio/index.d.ts",
       "default": "./dist/studio/index.js"
     },
+    "./search": {
+      "types": "./dist/search/index.d.ts",
+      "default": "./dist/search/index.js"
+    },
     "./styles.css": "./dist/styles.css",
     "./package.json": "./package.json",
     "./tokens/*.css": "./dist/tokens/*.css"
