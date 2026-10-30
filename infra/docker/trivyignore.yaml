@@ -57,4 +57,16 @@ vulnerabilities:
   - id: CVE-2026-115905
     statement: Rust zip 8.5.1 in @temporalio/core-bridge 1.24.0 (temporalio-sdk-core), used only to unpack the ephemeral Temporal dev/test server the SDK can download; the reference worker connects to a running Temporal server and never downloads or unpacks one. @temporalio 1.25.0 (27 Oct 2026) clears the 7-day age on 3 Nov; the SDK moves then if it carries zip 9.0.5 or later. Waived 2026-10-29
     expired_at: 2026-11-20
+  # Three more findings in the same zip 8.5.1 of @temporalio/core-bridge 1.24.0, published after
+  # 29 Oct; the same single use (unpacking the dev/test server the SDK can download, which the
+  # reference worker never does) and the same fix path (@temporalio 1.25.0 from 3 Nov, PL2-D-32).
+  - id: CVE-2026-115907
+    statement: Rust zip 8.5.1 in @temporalio/core-bridge 1.24.0, as CVE-2026-115905; reached only when the SDK unpacks the ephemeral Temporal dev/test server, which the reference worker never downloads. Waived 2026-10-30 until @temporalio 1.25.0 clears the 7-day age on 3 Nov
+    expired_at: 2026-11-20
+  - id: CVE-2026-115908
+    statement: Rust zip 8.5.1 symlink path traversal on extract in @temporalio/core-bridge 1.24.0, as CVE-2026-115905; the only extract is of the dev/test server the reference worker never downloads. Waived 2026-10-30 until @temporalio 1.25.0 clears the 7-day age on 3 Nov
+    expired_at: 2026-11-20
+  - id: CVE-2026-115909
+    statement: Rust zip 8.5.1 in @temporalio/core-bridge 1.24.0, as CVE-2026-115905; reached only when the SDK unpacks the ephemeral Temporal dev/test server, which the reference worker never downloads. Waived 2026-10-30 until @temporalio 1.25.0 clears the 7-day age on 3 Nov
+    expired_at: 2026-11-20
 secrets: []
