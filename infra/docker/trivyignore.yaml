@@ -54,21 +54,6 @@ vulnerabilities:
   - id: CVE-2026-113872
     statement: multer 2.4.0 (via @nestjs/platform-express 11.2.7) denial of service on an aborted multipart request during asynchronous file filtering; the API has no file-upload route and multer is never mounted; the fix (2.5.0) is under the minimum release age until 2026-10-29. Waived 2026-10-28
     expired_at: 2026-11-20
-  # The upstream Keycloak 26.8.1 base of infra/keycloak/customer-otp (UBI 9 and its jars), not the
-  # extension. Keycloak's rebuild 26.8.1-1 (23 Oct 2026) may be pinned from 30 Oct under the 7-day
-  # policy (PL2-D-32); these short waivers end soon after, so the pin must move.
-  - id: CVE-2026-114406
-    statement: ca-certificates eMudhra distrust in the Keycloak 26.8.1 base; the IdP makes outbound TLS calls only to configured brokers. Waived 2026-10-29 until the rebuilt base may be pinned
-    expired_at: 2026-11-06
-  - id: CVE-2026-91403
-    statement: OpenJDK eMudhra distrust in the Keycloak 26.8.1 base (same exposure as CVE-2026-114406). Waived 2026-10-29 until the rebuilt base may be pinned
-    expired_at: 2026-11-06
-  - id: CVE-2026-91415
-    statement: OpenJDK font rendering in the Keycloak 26.8.1 base; Keycloak renders no untrusted fonts. Waived 2026-10-29 until the rebuilt base may be pinned
-    expired_at: 2026-11-06
-  - id: CVE-2026-102554
-    statement: Guava deserialisation DoS in the Keycloak 26.8.1 base; Keycloak deserialises no Guava data from requests. Waived 2026-10-29 until the rebuilt base may be pinned
-    expired_at: 2026-11-06
   - id: CVE-2026-115905
     statement: Rust zip 8.5.1 in @temporalio/core-bridge 1.24.0 (temporalio-sdk-core), used only to unpack the ephemeral Temporal dev/test server the SDK can download; the reference worker connects to a running Temporal server and never downloads or unpacks one. @temporalio 1.25.0 (27 Oct 2026) clears the 7-day age on 3 Nov; the SDK moves then if it carries zip 9.0.5 or later. Waived 2026-10-29
     expired_at: 2026-11-20
