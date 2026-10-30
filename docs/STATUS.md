@@ -1,14 +1,24 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-10-29
+Updated: 2026-10-30
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                             |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                  |
-| Packages              | Published to GitHub Packages (release run 144, `767fce8`): **1.12.0** contracts; **1.7.1** tenancy; **1.5.0** config; **1.4.3** audit; **1.3.5** connectors, testing; **1.2.7** crypto; **1.2.0** ui; **1.1.16** cms; **1.1.8** notify; **1.1.3** export; **1.0.19** rules; **1.0.17** ai, brand, consent, feedback, seed, trust, vidhi, workflow; **1.0.12** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                       |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                           |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                              |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Packages              | Published to GitHub Packages (release run 144, `767fce8`; `testing` 1.3.6 by run 147, `229e5ee`): **1.12.0** contracts; **1.7.1** tenancy; **1.5.0** config; **1.4.3** audit; **1.3.6** testing; **1.3.5** connectors; **1.2.7** crypto; **1.2.0** ui; **1.1.16** cms; **1.1.8** notify; **1.1.3** export; **1.0.19** rules; **1.0.17** ai, brand, consent, feedback, seed, trust, vidhi, workflow; **1.0.12** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                        |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                            |
+
+## Handover (2026-10-30, the Keycloak 26.8.1-1 security update)
+
+- **Done (the owner's 30 Oct check-in):** #168 pinned Keycloak's 26.8.1-1 rebuild once 7 days old (pushed 23 Oct 09:47:48 UTC; pinned after 09:47:48 UTC on 30 Oct) in the customer-otp image, the Compose IdP and the IDENTITY test image (`testing` 1.3.6, version PR #169, run 147). The rebuild cleared only CVE-2026-114406; its waiver is gone. CVE-2026-91403 and CVE-2026-91415 (UBI 9 OpenJDK, no fixed build) and CVE-2026-102554 (Guava 33.6.0 in Keycloak's jars, fixed in 33.7.2, in no Keycloak release yet) keep their waivers, expiring 6 Nov. The same run's `containers` scan also found CVE-2026-115907, -115908 and -115909 in the reference app image's `@temporalio/core-bridge` (the same `zip` 8.5.1 as CVE-2026-115905), waived to 20 Nov (R1-D-35).
+- **Products:** move all `@infrabyx/*` to the run 147 versions (only `testing` changed), rebuild the customer image and run the IdP on `keycloak/keycloak@sha256:a78d6b79…` (guide §7d step 7); carry the same three Keycloak waivers in their own image scans.
+- **Open question:** **#93**, whether to extend the three Keycloak waivers past 6 Nov; without an answer every PR's `containers` job fails from 6 Nov until a fixed Keycloak image is 7 days old.
+- **Next:** the 3 Nov 09:17 UTC check-in moves `@temporalio/*` to 1.25.0 and drops all four `zip` waivers (its prompt was updated); then the queue below (M15, M24, M25).
+- **Branches and PRs:** `main` at the merge of this record PR; no other open PR.
+
+HANDOVER READY
 
 ## Handover (2026-10-29, Finbyx PR-FBX-09 and owner answers #89 to #92)
 
@@ -95,6 +105,18 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### Keycloak 26.8.1-1 patch release (2026-10-30, version PR #169, release run 147)
+
+The Keycloak pin (#168, R1-D-35) moved `TEST_IMAGES.keycloak`: a patch of `testing` 1.3.6 only. Released under OWNER-QUESTIONS #81(a). Version PR #169 merged as `229e5ee` with every required check green.
+
+- **Signed the BOM** keyless and verified it (`Verified OK`): Rekor log index 3591648892 (`hashedrekord`). The BOM (`urn:uuid:2d7306f3-1606-56ad-b684-cb0a7f4beedc`, 953 components, release `229e5eebe1f4`) has SHA-256 `fd68ac37e19b5ed7e03dfe3bf1ac2b69b24d61834e525f8c404b8766d9601e67`.
+- **Published 1 package** (`consumer-smoke` first: 22 packages, 108 exports, 0 failed) with its tag, and **attested** it with the BOM as its predicate (Rekor 3591666020, `dsse`).
+- **Registry checksum:** `registry-dist` run 41044641400 (job 124025638843) rebuilt it from `229e5ee`.
+
+| Package             | Version | shasum (SHA-1, registry)                   | integrity (SHA-512, registry)                                                                     | Attestation (Rekor) | Rebuilt from `229e5ee`               |
+| ------------------- | ------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------ |
+| `@infrabyx/testing` | 1.3.6   | `89c3c42996d338e3c9f2c0ff59e94d6d398804c6` | `sha512-4jWBYGW3rsl4iehjAKSrrTNNbNY5Gmnf5Vl3pP4kUFTjH+CbIJZClCeDDm/o3z0urC2gD6U327de53EVM7GdjQ==` | 3591666020          | `package.json` dependency order only |
 
 ### PR-FBX-09 minor release (2026-10-29, version PR #166, release run 144)
 
