@@ -27,6 +27,15 @@ export {
   type EnvelopeOptions,
 } from "./envelope.js";
 export { blindIndex, normaliseForIndex } from "./blind-index.js";
+export {
+  BlindIndexer,
+  blindIndexSecretPath,
+  loadBlindIndexRoot,
+  localBlindIndexRoot,
+  tenantBlindIndexKey,
+  type BlindIndexRoot,
+  type VersionedIndex,
+} from "./blind-index-keys.js";
 export { signRecord, verifyRecord, type SignatureRecord } from "./sign.js";
 export { ALGORITHMS, algorithmInfo, assertApproved, cbom, type AlgorithmInfo } from "./registry.js";
 export { generateSeedPassword, isValidSeedPassword, SEED_PASSWORD_LENGTH } from "./password.js";

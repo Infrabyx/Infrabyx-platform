@@ -69,6 +69,7 @@ Types, schemas and error codes only; no I/O.
 - **I:** joinable pseudonyms across purposes. Control: per-purpose HKDF sub-keys; telemetry hashes use `ipb/telemetry-id/v1` (PL2-D-36).
 - **S:** forged or confused tokens. Control: C-11 verifier (X-16); `jose` only as a test devDependency, refused at runtime by `ipb:check`.
 - **S:** forged vendor callbacks. Control: C-13 verifiers (X-17); webhook secrets we generate are 32 random bytes (C-19).
+- **I (blind indexes above staging, PR-FBX-25, R1-D-37):** a dictionary attack on a searchable index, or indexes joined across tenants. Control: one root HMAC-SHA-256 key per product and environment, at least 32 random bytes, read through the SECRETS port (`secrets/<env>/kms/blind-index/<product>`) and used only inside `@infrabyx/crypto` (the C-23 pattern); each tenant and scope gets an HKDF-SHA-256 sub-key labelled `<product>/<scope>/v<n>/<tenant>`, so values of two tenants or scopes never match; the public local key is refused when read from SECRETS. Rotation writes a new secret version: writes move to it at once, lookups try both versions and a batched re-index rewrites old rows (`needsReindex`). Residual: the root key is in application memory while the process runs (a KMS-held MAC key would avoid that at one KMS call per index; OWNER-QUESTIONS #94); a value with few possible inputs (a date of birth, a pincode) stays guessable by anyone holding the key, so products index only high-entropy identifiers.
 
 ### 3.3 `@infrabyx/config` (built)
 
