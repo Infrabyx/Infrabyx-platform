@@ -7,6 +7,7 @@ import type {
   EsignEnvelopeStore,
   IdentityProvisioning,
   ObjectMeta,
+  ObjectRetention,
   PortHealth,
   ProvisionUserSpec,
   SecretMeta,
@@ -157,6 +158,26 @@ export class MemoryStorage implements StoragePort {
     const o = this.objects.get(key);
     if (!o?.retainUntil || o.retainUntil <= this.now())
       throw new IpbError("IPB-STOR-003", { detail: "object is not under retention" });
+    if (o.meta.sha256 !== sha256Hex(o.body))
+      throw new IpbError("IPB-STOR-003", { detail: "object checksum does not match" });
+  }
+  /** Only ever later (PR-FBX-27). */
+  async extendRetention(key: string, retainUntil: Date): Promise<ObjectRetention> {
+    const o = this.objects.get(key);
+    if (!o || o.deleted) throw new IpbError("IPB-STOR-001", { meta: { key } });
+    if (!o.retainUntil || o.retainUntil <= this.now())
+      throw new IpbError("IPB-STOR-003", { detail: "object is not under retention" });
+    if (!(retainUntil > o.retainUntil))
+      throw new IpbError("IPB-STOR-003", { detail: "retention can only be extended" });
+    o.retainUntil = retainUntil;
+    return { mode: "COMPLIANCE", retainUntil: retainUntil.toISOString() };
+  }
+  async retentionOf(key: string): Promise<ObjectRetention> {
+    const o = this.objects.get(key);
+    if (!o || o.deleted) throw new IpbError("IPB-STOR-001", { meta: { key } });
+    return o.retainUntil
+      ? { mode: "COMPLIANCE", retainUntil: o.retainUntil.toISOString() }
+      : { mode: null, retainUntil: null };
   }
   async replicateTo(
     target: StoragePort,

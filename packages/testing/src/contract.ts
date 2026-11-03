@@ -84,6 +84,35 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
         ).rejects.toThrow();
       },
     },
+    {
+      name: "retention is only ever extended, and read back (PR-FBX-27)",
+      async run(p: StoragePort) {
+        if (!p.extendRetention || !p.retentionOf) throw new Error("adapter lacks extendRetention");
+        const key = `tenant/tnt_contract/vcip/${ULID.slice(0, 25)}X.webm`;
+        const first = new Date(Date.now() + 86_400_000);
+        await p.putWithRetention(key, new TextEncoder().encode("rec"), first, {
+          bucketClass: "REGULATED",
+        });
+        const before = await p.retentionOf(key);
+        expect(before.mode).toBe("COMPLIANCE");
+        expect(Math.abs(Date.parse(before.retainUntil ?? "") - first.getTime())).toBeLessThan(2000);
+        await expect(
+          p.extendRetention(key, new Date(first.getTime() - 3_600_000)),
+        ).rejects.toMatchObject({ code: "IPB-STOR-003" });
+        const later = new Date(first.getTime() + 30 * 86_400_000);
+        expect((await p.extendRetention(key, later)).mode).toBe("COMPLIANCE");
+        expect(Date.parse((await p.retentionOf(key)).retainUntil ?? "")).toBeGreaterThan(
+          first.getTime() + 29 * 86_400_000,
+        );
+        await p.assertImmutable(key);
+        const plain = `tenant/tnt_contract/vcip/${ULID.slice(0, 25)}Y.json`;
+        await p.put(plain, new TextEncoder().encode("{}"), { bucketClass: "GENERAL" });
+        expect(await p.retentionOf(plain)).toEqual({ mode: null, retainUntil: null });
+        await expect(p.extendRetention(plain, later)).rejects.toMatchObject({
+          code: "IPB-STOR-003",
+        });
+      },
+    },
   ] as Array<ContractCase<never>>,
   FEATURE_FLAG: [
     {

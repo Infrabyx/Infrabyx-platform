@@ -26,6 +26,12 @@ export interface StoredObject {
   retainUntil?: string;
 }
 
+/** An object's retention (IPB-01-29). */
+export interface ObjectRetention {
+  mode: "COMPLIANCE" | null;
+  retainUntil: string | null;
+}
+
 /** Options of `presign` (C-17, IPB-02-15). A PUT URL is bound to one bucket class and content type. */
 export interface PresignOptions {
   /** Required for `put`; for `get` the adapter finds the object. */
@@ -36,7 +42,11 @@ export interface PresignOptions {
 
 export interface StoragePort extends Port {
   put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void>;
-  /** Write-once with a compliance-mode retention date (IPB-01-29). */
+  /**
+   * Write-once with a compliance-mode retention date (IPB-01-29): one single-part write carrying
+   * the lock mode, the date and a SHA-256 checksum, never a multipart upload (which would need the
+   * decrypt permission on an encrypt-only tenant key).
+   */
   putWithRetention(
     key: string,
     body: Uint8Array,
@@ -54,8 +64,20 @@ export interface StoragePort extends Port {
   /** Soft delete (tombstone); refused with IPB-STOR-003 while retention applies. */
   delete(key: string): Promise<void>;
   list(prefix: string, cursor?: string): Promise<{ keys: string[]; cursor?: string }>;
-  /** Throws IPB-STOR-003-compatible proof failure if the object is not immutable. */
+  /**
+   * Throws IPB-STOR-003-compatible proof failure if the object is not immutable: the current
+   * version is in COMPLIANCE mode with a future date and its stored SHA-256 checksum equals the
+   * hash recorded at write. Reads attributes only, never the body, so no decrypt is needed.
+   */
   assertImmutable(key: string): Promise<void>;
+  /**
+   * Extend an object's COMPLIANCE retention (Finbyx PR-FBX-27, R1-D-42). Only ever later: an
+   * earlier or equal date, or an object without retention, is refused with IPB-STOR-003. Optional
+   * on the interface; every platform adapter provides it.
+   */
+  extendRetention?(key: string, retainUntil: Date): Promise<ObjectRetention>;
+  /** The object's retention, or `{ mode: null, retainUntil: null }` when it has none. */
+  retentionOf?(key: string): Promise<ObjectRetention>;
   replicateTo(target: StoragePort, prefix: string): Promise<{ copied: number; verified: number }>;
 }
 

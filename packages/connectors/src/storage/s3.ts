@@ -18,6 +18,7 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
+  PutObjectRetentionCommand,
   DeleteObjectCommand,
   S3Client,
   type HeadObjectCommandOutput,
@@ -31,6 +32,7 @@ import {
   type AdapterDescriptor,
   type BucketClass,
   type ObjectMeta,
+  type ObjectRetention,
   type PortHealth,
   type PresignOptions,
   type StoragePort,
@@ -403,7 +405,11 @@ export class S3Storage implements StoragePort {
     return { keys: [] };
   }
 
-  /** Proof of immutability: the current version is in COMPLIANCE mode with a future date. */
+  /**
+   * Proof of immutability: the current version is in COMPLIANCE mode with a future date, and its
+   * stored SHA-256 checksum equals the hash recorded at write. A HEAD with checksum mode reads
+   * attributes only, so an encrypt-only key suffices (PR-FBX-27).
+   */
   async assertImmutable(key: string): Promise<void> {
     this.checkKey(key);
     const found = await this.locate(key);
@@ -412,6 +418,61 @@ export class S3Storage implements StoragePort {
       throw new IpbError("IPB-STOR-003", {
         detail: "object is not under compliance-mode retention",
       });
+    let head: HeadObjectCommandOutput;
+    try {
+      head = await this.client.send(
+        new HeadObjectCommand({
+          Bucket: this.bucket(found!.cls),
+          Key: key,
+          ChecksumMode: "ENABLED",
+        }),
+      );
+    } catch (e) {
+      this.unavailable("read", e);
+    }
+    const recorded = head!.Metadata?.sha256;
+    const stored = head!.ChecksumSHA256;
+    if (!recorded || !stored || Buffer.from(stored, "base64").toString("hex") !== recorded)
+      throw new IpbError("IPB-STOR-003", {
+        detail: "object checksum is missing or does not match the hash recorded at write",
+      });
+  }
+
+  /** Extend COMPLIANCE retention; only ever to a later date (PR-FBX-27, R1-D-42). */
+  async extendRetention(key: string, retainUntil: Date): Promise<ObjectRetention> {
+    this.checkKey(key);
+    const found = await this.locate(key, "write");
+    if (!found) this.notFound(key);
+    const current = this.retained(found!.head);
+    if (found!.head.ObjectLockMode !== "COMPLIANCE" || !current)
+      throw new IpbError("IPB-STOR-003", {
+        detail: "object is not under compliance-mode retention",
+      });
+    if (!(retainUntil > current))
+      throw new IpbError("IPB-STOR-003", { detail: "retention can only be extended" });
+    try {
+      await this.client.send(
+        new PutObjectRetentionCommand({
+          Bucket: this.bucket(found!.cls),
+          Key: key,
+          Retention: { Mode: "COMPLIANCE", RetainUntilDate: retainUntil },
+        }),
+      );
+    } catch (e) {
+      this.unavailable("write", e);
+    }
+    return { mode: "COMPLIANCE", retainUntil: retainUntil.toISOString() };
+  }
+
+  /** From the current version's HEAD, which carries the lock mode and date. */
+  async retentionOf(key: string): Promise<ObjectRetention> {
+    this.checkKey(key);
+    const found = await this.locate(key);
+    if (!found) this.notFound(key);
+    const until = found!.head.ObjectLockRetainUntilDate;
+    return found!.head.ObjectLockMode === "COMPLIANCE" && until
+      ? { mode: "COMPLIANCE", retainUntil: new Date(until).toISOString() }
+      : { mode: null, retainUntil: null };
   }
 
   /**
