@@ -23,3 +23,8 @@ export * from "./web.js";
 export * from "./media.js";
 export * from "./kyc.js";
 export * from "./video-meet.js";
+export * from "./money.js";
+export * from "./doc-file.js";
+export * from "./estamp.js";
+export * from "./payouts.js";
+export * from "./docgen.js";
