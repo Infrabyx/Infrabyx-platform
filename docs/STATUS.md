@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-10-30
+Updated: 2026-11-02
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -14,7 +14,7 @@ Updated: 2026-10-30
 
 - **Done (the owner's 30 Oct check-in):** #168 pinned Keycloak's 26.8.1-1 rebuild once 7 days old (pushed 23 Oct 09:47:48 UTC; pinned after 09:47:48 UTC on 30 Oct) in the customer-otp image, the Compose IdP and the IDENTITY test image (`testing` 1.3.6, version PR #169, run 147). The rebuild cleared only CVE-2026-114406; its waiver is gone. CVE-2026-91403 and CVE-2026-91415 (UBI 9 OpenJDK, no fixed build) and CVE-2026-102554 (Guava 33.6.0 in Keycloak's jars, fixed in 33.7.2, in no Keycloak release yet) keep their waivers, expiring 6 Nov. The same run's `containers` scan also found CVE-2026-115907, -115908 and -115909 in the reference app image's `@temporalio/core-bridge` (the same `zip` 8.5.1 as CVE-2026-115905), waived to 20 Nov (R1-D-35).
 - **Products:** move all `@infrabyx/*` to the run 147 versions (only `testing` changed), rebuild the customer image and run the IdP on `keycloak/keycloak@sha256:a78d6b79…` (guide §7d step 7); carry the same three Keycloak waivers in their own image scans.
-- **Open question:** **#93**, whether to extend the three Keycloak waivers past 6 Nov; without an answer every PR's `containers` job fails from 6 Nov until a fixed Keycloak image is 7 days old.
+- **Open question:** **#93**, answered 2 Nov 2026 (R1-D-36): the three Keycloak waivers are extended to 20 Nov, with a re-scan check-in on 6 Nov 2026 09:23 UTC (`trig_015GkkMV5C4Yc5TBZY4iRki1`); a fixed image is pinned once 7 days old.
 - **Next:** the 3 Nov 09:17 UTC check-in moves `@temporalio/*` to 1.25.0 and drops all four `zip` waivers (its prompt was updated); then the queue below (M15, M24, M25).
 - **Branches and PRs:** `main` at the merge of this record PR; no other open PR.
 
