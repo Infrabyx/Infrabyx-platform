@@ -1,8 +1,10 @@
 name: ci
 on:
   pull_request:
-    # labeled/unlabeled: the export:unchanged and no-changeset labels change what passes.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+    # A PR runs only when the `ci:run` label is added, at release gates (owner, 4 Nov 2026; R1-D-64):
+    # never on opened, ready_for_review or synchronize. Add export:unchanged or no-changeset first,
+    # then ci:run; to run again after a push, remove ci:run and add it back.
+    types: [labeled]
   push:
     branches: [main]
 permissions:
@@ -18,8 +20,28 @@ env:
   # Git hooks are a local guard (PL1-D-17); CI enforces the same checks as steps.
   LEFTHOOK: "0"
 jobs:
+  gate:
+    # Any label other than ci:run cancels the run instead of skipping it: a job skipped by a
+    # condition reports success to the required checks, a cancelled one does not (R1-D-64).
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: ci:run label
+        if: github.event_name == 'pull_request' && github.event.label.name != 'ci:run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          LABEL: ${{ github.event.label.name }}
+        run: |
+          echo "label '$LABEL' is not ci:run: cancelling this run"
+          gh run cancel "$RUN_ID" -R "$REPO" || true
+          sleep 300
+          exit 1
   changes:
     # Docs-only PRs (docs/** and Markdown files) skip the heavy legs; `verify` always runs.
+    needs: gate
     runs-on: ubuntu-24.04
     outputs:
       code: ${{ steps.diff.outputs.code }}
@@ -53,6 +75,7 @@ jobs:
     # PL5 adds hlp-lint and journeys-lint here and the `a11y` job (the group site's gate).
     # Still to add: sbom, semgrep, zap-baseline, bundle-budget, lighthouse,
     # change-class.
+    needs: gate
     runs-on: ubuntu-24.04
     strategy:
       matrix:
