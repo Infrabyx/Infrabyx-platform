@@ -25,3 +25,5 @@ export * from "./kyc.js";
 export * from "./video-meet.js";
 export * from "./credit-bureau.js";
 export * from "./account-aggregator.js";
+export * from "./captcha.js";
+export * from "./device-attestation.js";
