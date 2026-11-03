@@ -1,5 +1,15 @@
 # @infrabyx/consent
 
+## 1.1.3
+
+### Patch Changes
+
+- Updated dependencies [2a95100]
+- Updated dependencies [2a95100]
+  - @infrabyx/config@1.7.0
+  - @infrabyx/crypto@1.5.0
+  - @infrabyx/tenancy@1.9.1
+
 ## 1.1.2
 
 ### Patch Changes
