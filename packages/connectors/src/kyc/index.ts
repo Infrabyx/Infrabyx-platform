@@ -6,3 +6,4 @@
 export * from "./digio.js";
 export * from "./idfy.js";
 export * from "./routing.js";
+export * from "./vcip.js";
