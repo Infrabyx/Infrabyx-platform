@@ -1,5 +1,21 @@
 # @infrabyx/consent
 
+## 1.1.0
+
+### Minor Changes
+
+- cff2a02: Consent to a product's own purposes (Finbyx PR-FBX-26; IPB-04-78; DPDP Act 2023 s.5–6; R1-D-38). Migration `consent/0003` adds `consent.purpose_notice` (a tenant's notice per purpose and language, versioned, approved by a person other than its maker, immutable once approved, SHA-256 computed by the database) and `consent.purpose_record` (append-only grants and withdrawals, each grant naming the exact notice version, language and SHA-256). `PurposeConsents` takes the product's purposes (`<product>.<area>[.<detail>]`), drafts, approves, retires and serves notices (`currentNotice`), records `grant` and `withdraw`, and reads `consentState(subject, purpose)`; each change is ledgered, and with an outbox emits `PurposeConsentChanged`. Run `infrabyx-migrate`.
+
+### Patch Changes
+
+- Updated dependencies [32b53ee]
+- Updated dependencies [cff2a02]
+  - @infrabyx/crypto@1.3.0
+  - @infrabyx/contracts@1.13.0
+  - @infrabyx/config@1.5.1
+  - @infrabyx/tenancy@1.7.2
+  - @infrabyx/ui@1.2.1
+
 ## 1.0.17
 
 ### Patch Changes
