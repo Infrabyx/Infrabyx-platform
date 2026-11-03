@@ -16,7 +16,33 @@ export const TIMER_KINDS = [
   "approval.expire",
   "inbox.escalate",
 ] as const;
-export type TimerKind = (typeof TIMER_KINDS)[number];
+export type PlatformTimerKind = (typeof TIMER_KINDS)[number];
+/**
+ * A product's own timer kind, `<product>.<area>.<name>` in lower case, e.g. `udf.journey.abandon`
+ * (Udofin PR-UDF-035, Finbyx PR-FBX-13 (1); R1-D-49). Registered with `WorkflowTimers.on`.
+ */
+export type ProductTimerKind = `${string}.${string}.${string}`;
+export type TimerKind = PlatformTimerKind | ProductTimerKind;
+
+/** `<product>.<area>.<name>`: a product code of 2 to 4 letters, then two lower-case words. */
+export const PRODUCT_TIMER_KIND_REGEX = /^[a-z]{2,4}\.[a-z][a-z0-9_]{0,31}\.[a-z][a-z0-9_]{0,31}$/;
+/** A product timer's record reference: 1 to 64 letters, digits, `_` or `-`. */
+export const PRODUCT_TIMER_REF_REGEX = /^[A-Za-z0-9_-]{1,64}$/;
+const PLATFORM_REF_REGEX = /^(apr|sca|ibx)_[0-9A-HJKMNP-TV-Z]{26}$/;
+
+export const isPlatformTimerKind = (k: string): k is PlatformTimerKind =>
+  (TIMER_KINDS as readonly string[]).includes(k);
+
+function assertKindAndRef(kind: string, ref: string): void {
+  if (isPlatformTimerKind(kind)) {
+    if (!PLATFORM_REF_REGEX.test(ref)) throw new RangeError(`not a ${kind} reference`);
+    return;
+  }
+  if (!PRODUCT_TIMER_KIND_REGEX.test(kind))
+    throw new RangeError(`timer kind ${kind} must be a platform kind or <product>.<area>.<name>`);
+  if (!PRODUCT_TIMER_REF_REGEX.test(ref))
+    throw new RangeError("a product timer's reference has 1 to 64 letters, digits, _ or -");
+}
 
 /** Attempts before a failing timer is given up and reported (`job_failed`). */
 export const MAX_TIMER_ATTEMPTS = 5;
@@ -47,12 +73,18 @@ export const timerId = (tenantId: string, kind: TimerKind, ref: string): string 
 /** Parse a `timerId` back into its parts (for the Temporal activity). */
 export function parseTimerId(id: string): { tenantId: string; kind: TimerKind; ref: string } {
   const m =
-    /^ipb-timer\.(tnt_[a-z0-9_]+|tnt_[0-9A-HJKMNP-TV-Z]{26})\.((?:approval|inbox)\.[a-z]+)\.((apr|sca|ibx)_[0-9A-HJKMNP-TV-Z]{26})$/.exec(
+    /^ipb-timer\.(tnt_[a-z0-9_]+|tnt_[0-9A-HJKMNP-TV-Z]{26})\.((?:approval|inbox)\.[a-z]+|[a-z]{2,4}\.[a-z][a-z0-9_]{0,31}\.[a-z][a-z0-9_]{0,31})\.([A-Za-z0-9_-]{1,64})$/.exec(
       id,
     );
-  if (!m || !(TIMER_KINDS as readonly string[]).includes(m[2] as string))
+  if (!m) throw new Error("not a timer id");
+  const kind = m[2] as string;
+  const ref = m[3] as string;
+  try {
+    assertKindAndRef(kind, ref);
+  } catch {
     throw new Error("not a timer id");
-  return { tenantId: m[1] as string, kind: m[2] as TimerKind, ref: m[3] as string };
+  }
+  return { tenantId: m[1] as string, kind: kind as TimerKind, ref };
 }
 
 /** The PostgreSQL engine: the rows are the schedule, so there is nothing else to arrange. */
@@ -88,13 +120,22 @@ export class WorkflowTimers {
     });
   }
 
+  /**
+   * Handle a kind: a platform kind, or a product's own `<product>.<area>.<name>` (PR-UDF-035). A
+   * product kind can be scheduled only once its handler is registered, so no timer is orphaned.
+   */
   on(kind: TimerKind, handler: TimerHandler): this {
+    if (!isPlatformTimerKind(kind) && !PRODUCT_TIMER_KIND_REGEX.test(kind))
+      throw new RangeError(`timer kind ${kind} must be a platform kind or <product>.<area>.<name>`);
     this.handlers.set(kind, handler);
     return this;
   }
 
   /** Write (or move) a timer inside the caller's transaction. */
   async schedule(tx: Tx, kind: TimerKind, ref: string, at: Date): Promise<void> {
+    assertKindAndRef(kind, ref);
+    if (!isPlatformTimerKind(kind) && !this.handlers.has(kind))
+      throw new RangeError(`register a handler for ${kind} before scheduling it`);
     await tx.query(
       `insert into workflow.timer (tenant_id, kind, ref, fire_at) values ($1, $2, $3, $4)
        on conflict (tenant_id, kind, ref) do update
