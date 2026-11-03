@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-10-27 (PL5 session 5c: `@infrabyx/consent` — the CMP, consent texts, the consent and acceptance ledgers, script gating and the consent purge).
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-58, §3.66: chain lanes for the ledger and the statutory capture, PR-FBX-32). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
