@@ -28,6 +28,7 @@ export const PORTS = [
   "MEDIA",
   "KYC",
   "CAPTCHA",
+  "VIDEO_MEET",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

@@ -98,6 +98,12 @@ export const TEST_IMAGES = {
     version: "v4.19.5",
     role: "Zitadel with PostgreSQL (IDENTITY alternative; GHCR, so CI only)",
   },
+  livekit: {
+    image:
+      "livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20",
+    version: "v1.13.11",
+    role: "LiveKit server, single node, no egress worker (VIDEO_MEET)",
+  },
   unleash: {
     image:
       "unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050",
