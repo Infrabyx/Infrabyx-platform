@@ -15,6 +15,7 @@ Updated: 2026-11-03
 - **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
 - **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
 - **PR-FBX-29** (R1-D-52; OWNER-QUESTIONS #100): the ESTAMP, PAYOUTS, DOCGEN and PDF interfaces, NeSL DDE and the mandate lifecycle, with fakes (guide §7r; `contracts`, `testing` minors). No money-moving adapter.
+- **PR-UDF-032** (R1-D-47): `RedisReplayStore.fromUrl`, the DPoP replay store on the platform's own Redis client, failing closed (guide §7d; `connectors` minor).
 - **PR-UDF-034** (R1-D-51): changing a customer's login with both numbers verified, and retiring a login, on Keycloak and Zitadel (guide §7d step 9; `contracts`, `connectors` minors).
 - **PR-FBX-31** (R1-D-46): officer functions per legal entity, one holder each, ended through an approved request (`tenancy/0013`, `0014`; guide §7k; `tenancy` minor). Only the per-entity seat is new; PR-FBX-20's functions were #175.
 
