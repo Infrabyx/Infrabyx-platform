@@ -274,6 +274,14 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Temporal.** `@infrabyx/connectors` now pins `@temporalio/*` 1.25.0 (core-bridge with Rust `zip` 9.0.5). Move every `@infrabyx/*` together and drop any SEC-01 override of your own that raised Temporal (Finbyx PR-FBX-14); your image scan then clears CVE-2026-115905, -115907, -115908 and -115909.
 - **body-parser and multer.** express 5.2.1 still resolves body-parser 2.3.0, and `@nestjs/platform-express` 11.2.x pins multer 2.4.0. Add the same overrides as the platform's `pnpm-workspace.yaml` (`body-parser@2.3.0: 2.4.0`, `multer@2.4.0: 2.5.0`) until their parents carry the fixes, then drop the waivers for CVE-2026-111181 and CVE-2026-113872.
 
+## 7w. The first bureau and AA adapters (owner answer #97)
+
+- **What exists (R1-D-61).** `CibilBureau` from `@infrabyx/connectors/bureau` (TransUnion CIBIL) and `SetuAccountAggregator` from `@infrabyx/connectors/aa-fiu` (Setu FIU). Both are built against stubs, off behind `int.bureau.cibil.enabled` and `int.aa_fiu.setu.enabled`, and `unproven` until the owner's sandboxes exist. Keep using the fakes (§7o) until then.
+- **Wiring.** Pass your tenant's STORAGE, the credentials from SECRETS (`secrets/<env>/bureau/cibil/member_id` and `api_key`; `secrets/<env>/aa_fiu/setu/client_id`, `client_secret` and `product_instance_id`) and a small durable store: CIBIL's `pulls` (keyed by the pull id) and Setu's `consents` (keyed by the consent id). Read the flags on every call, as the adapters do.
+- **CIBIL.** A pull for another CIC is refused; route Experian, Equifax and CRIF to their adapters when they come. A `pending` pull completes through `status` or the webhook; route CIBIL's event to `handleWebhook` with the raw body, and keep the result, not the event.
+- **Setu.** Show the customer the page from `approvalUrl(consentId)` after `requestConsent`. `fetch` polls the data session a few times and may answer `PENDING`; ask again later under the same consent. Revoking some FI types stops the platform fetching them; revoking all revokes at Setu.
+- **Finbyx.** Swap `FakeCreditBureau` and `FakeAccountAggregator` for these only above test environments, once the owner turns the flags on after the sandbox legs pass.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

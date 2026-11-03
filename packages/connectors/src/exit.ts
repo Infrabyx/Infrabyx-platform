@@ -176,6 +176,30 @@ export const PORT_EXIT: readonly PortExit[] = [
       "KYC requests the customer has not completed at cut-over are started again at the target",
   },
   {
+    port: "BUREAU",
+    primary: "cibil",
+    exitTarget: "none",
+    pending:
+      "The other credit information companies (Experian, Equifax, CRIF) follow CIBIL in the owner's order once their sandboxes exist (owner answer #97, R1-D-61)",
+    dataMove:
+      "Configuration swap per CIC for new pulls; raw reports and their summaries are already in the tenant's STORAGE and the product's records",
+    volumeClass: "S",
+    lockIn:
+      "Each CIC holds its own data: a pull at another CIC is a new enquiry, not a copy; pending reports finish at the source",
+  },
+  {
+    port: "AA_FIU",
+    primary: "setu-aa",
+    exitTarget: "none",
+    pending:
+      "A second Account Aggregator technology service provider follows Setu once its sandbox exists (owner answer #97, R1-D-61)",
+    dataMove:
+      "Configuration swap for new consents; fetched FI payloads are already in the tenant's STORAGE",
+    volumeClass: "S",
+    lockIn:
+      "Consents live at the AA and the FIU's provider: customers approve again through the target; open consents are revoked at the source",
+  },
+  {
     port: "VIDEO_MEET",
     primary: "livekit",
     exitTarget: "none",

@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-58, §3.66: chain lanes for the ledger and the statutory capture, PR-FBX-32). Earlier sections carry their own decision references.
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -838,3 +838,13 @@ Each tenant's ledger and statutory capture are N hash chains (lanes) instead of 
 - **D (deadlock between two transactions holding a ledger lane and a capture lane in opposite orders):** Control: PostgreSQL aborts one, as with the single heads. Writing the change before its ledger entry keeps the order.
 - **D (the upgrade blocks writes):** Control: `audit/0006` locks the two tables for its few statements with a 5 s `lock_timeout`; `audit/0007` builds its indexes concurrently.
 - **Residual:** superuser access to PostgreSQL, as for the ledger and the capture (§3.56). Between two anchors, a superuser who rewrites a lane and its head together is caught at the next anchor, not by the head comparison.
+
+### 3.67 BUREAU `cibil` and AA_FIU `setu-aa` against stubs (owner answer #97; R1-D-61)
+
+The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Data flows: the subject's identifiers to CIBIL and the raw report back into the tenant's STORAGE; the consent template to Setu and FI payloads back into the tenant's STORAGE.
+
+- **I (personal and financial data leaving):** Control: only the subject's identifiers go to CIBIL (never the product's subject reference or consent receipt; a test checks the body), and only the consent template with the customer's AA handle goes to Setu; both over HTTPS to allow-listed hosts in India (`IN`, REGULATED). Raw reports and FI payloads land in REGULATED STORAGE with their SHA-256; results carry no PAN (a PAN-like summary is refused) and only masked accounts (a full number is masked).
+- **S (credentials):** Control: CIBIL's member id and API key and Setu's client id, secret and product instance id come from SECRETS; stubs use random values per run.
+- **S/T (forged events):** Control: an event is parsed only for our pull id (`bpl_` + ULID) or a consent id the product holds a record of; the state is always read back from the vendor, and an unknown pull or consent is refused.
+- **E (pulling or fetching beyond consent):** Control: a pull needs the consent receipt; `cibil` refuses any other CIC; `setu-aa` reads the consent back before every fetch and refuses one that is not ACTIVE, past its expiry, outside its range or for an FI type outside it or revoked here.
+- **Residual:** the vendor shapes are stub-shaped until the owner's sandboxes exist, so both adapters are off and `unproven`; webhook signatures and the AA's JWS detached signatures are added with the sandbox documents (the read-back means a forged event only triggers a read). Revoking some FI types is kept by the platform, which stops fetching them, while the consent stays ACTIVE at the AA until it ends or is revoked in full.

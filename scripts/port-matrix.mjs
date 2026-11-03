@@ -30,6 +30,8 @@ export const PORTS = [
   "CAPTCHA",
   "DEVICE_ATTESTATION",
   "VIDEO_MEET",
+  "BUREAU",
+  "AA_FIU",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
