@@ -1,5 +1,12 @@
 # @infrabyx/ai
 
+## 1.0.21
+
+### Patch Changes
+
+- Updated dependencies [bdcdbe4]
+  - @infrabyx/audit@1.6.0
+
 ## 1.0.20
 
 ### Patch Changes
