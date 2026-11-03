@@ -47,9 +47,9 @@ export const PORT_CATALOGUE = {
     ownerFile: "IPB-01",
     interfaceDefined: true,
   },
-  PAYOUTS: { tier: 1, configPrefix: "int.payouts.", ownerFile: "IPB-01", interfaceDefined: false },
+  PAYOUTS: { tier: 1, configPrefix: "int.payouts.", ownerFile: "IPB-01", interfaceDefined: true },
   ESIGN: { tier: 2, configPrefix: "int.esign.", ownerFile: "IPB-01", interfaceDefined: true },
-  ESTAMP: { tier: 2, configPrefix: "int.estamp.", ownerFile: "IPB-01", interfaceDefined: false },
+  ESTAMP: { tier: 2, configPrefix: "int.estamp.", ownerFile: "IPB-01", interfaceDefined: true },
   KYC: { tier: 2, configPrefix: "int.kyc.", ownerFile: "IPB-01", interfaceDefined: true },
   COMPANY_DATA: {
     tier: 3,
@@ -83,8 +83,8 @@ export const PORT_CATALOGUE = {
     interfaceDefined: false,
   },
   OCR: { tier: 2, configPrefix: "ai.ocr.", ownerFile: "IPB-01", interfaceDefined: false },
-  DOCGEN: { tier: 2, configPrefix: "int.docgen.", ownerFile: "IPB-01", interfaceDefined: false },
-  PDF: { tier: 2, configPrefix: "int.pdf.", ownerFile: "IPB-01", interfaceDefined: false },
+  DOCGEN: { tier: 2, configPrefix: "int.docgen.", ownerFile: "IPB-01", interfaceDefined: true },
+  PDF: { tier: 2, configPrefix: "int.pdf.", ownerFile: "IPB-01", interfaceDefined: true },
   VIDEO_MEET: {
     tier: 2,
     configPrefix: "int.video_meet.",
@@ -223,11 +223,16 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
 
 /**
  * Ports whose interfaces the 1.x line defined, adapters to follow (R1-D-21: PR-FBX-01; R1-D-43:
- * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003).
+ * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003; R1-D-52: PR-FBX-29's
+ * ESTAMP, PAYOUTS, DOCGEN and PDF).
  */
 export const R1_PORTS = [
   "KYC",
   "VIDEO_MEET",
   "BUREAU",
   "AA_FIU",
+  "ESTAMP",
+  "PAYOUTS",
+  "DOCGEN",
+  "PDF",
 ] as const satisfies readonly PortName[];
