@@ -216,6 +216,18 @@ export const PORT_CATALOGUE = {
     ownerFile: "FBX v1.6",
     interfaceDefined: true,
   },
+  CAPTCHA: {
+    tier: 3,
+    configPrefix: "int.captcha.",
+    ownerFile: "ADR-0004 (Udofin PR-UDF-029)",
+    interfaceDefined: true,
+  },
+  DEVICE_ATTESTATION: {
+    tier: 2,
+    configPrefix: "int.device_attestation.",
+    ownerFile: "ADR-0004 (Udofin PR-UDF-028)",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
@@ -224,7 +236,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
 /**
  * Ports whose interfaces the 1.x line defined, adapters to follow (R1-D-21: PR-FBX-01; R1-D-43:
  * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003; R1-D-52: PR-FBX-29's
- * ESTAMP, PAYOUTS, DOCGEN and PDF).
+ * ESTAMP, PAYOUTS, DOCGEN and PDF; R1-D-50: Udofin PR-UDF-028 and PR-UDF-029's DEVICE_ATTESTATION
+ * and CAPTCHA, ADR-0004).
  */
 export const R1_PORTS = [
   "KYC",
@@ -235,4 +248,6 @@ export const R1_PORTS = [
   "PAYOUTS",
   "DOCGEN",
   "PDF",
+  "CAPTCHA",
+  "DEVICE_ATTESTATION",
 ] as const satisfies readonly PortName[];

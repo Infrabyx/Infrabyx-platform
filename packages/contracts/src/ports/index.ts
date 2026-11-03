@@ -30,3 +30,5 @@ export * from "./doc-file.js";
 export * from "./estamp.js";
 export * from "./payouts.js";
 export * from "./docgen.js";
+export * from "./captcha.js";
+export * from "./device-attestation.js";

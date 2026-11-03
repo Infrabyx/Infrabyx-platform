@@ -227,4 +227,14 @@ export const PORT_EXIT: readonly PortExit[] = [
     lockIn:
       "Without an image library new uploads are served as uploaded (no re-encoding) until another MEDIA adapter is wired",
   },
+  {
+    port: "CAPTCHA",
+    primary: "turnstile",
+    exitTarget: "hcaptcha",
+    dataMove:
+      "Configuration swap: the public forms load the target's widget and the API verifies with its secret; nothing is stored",
+    volumeClass: "S",
+    lockIn:
+      "Tokens issued by the source in the last few minutes fail at the target; the forms ask again (R1-D-50)",
+  },
 ];

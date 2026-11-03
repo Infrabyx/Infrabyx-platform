@@ -788,6 +788,16 @@ Each row: the main threats for the port, its controls, the class ceiling and the
 - **S (forged callbacks):** every webhook is parsed for an id only and the state is read back.
 - **Residual:** no adapter exists, so vendor webhook signatures, the sponsor bank's file formats and the payout rails' transport rules are specified when the owner approves the vendors and provides their sandboxes (OWNER-QUESTIONS #100); until then products refuse these calls above staging (`IPB-PORT-001`).
 
+### 3.62 CAPTCHA and device attestation (ADR-0004; Udofin PR-UDF-028, PR-UDF-029; R1-D-50)
+
+Public forms can ask for a CAPTCHA while the site is under attack; the app's device evidence has a port, with no vendor adapter yet.
+
+- **I (personal data to a CAPTCHA vendor abroad):** Control: the Turnstile and hCaptcha adapters post only `secret` and `response` to `siteverify` (a test checks the form keys); no `remoteip`, login, name or device id; residency GLOBAL, max INTERNAL.
+- **S and D (bots on public forms):** Control: `int.captcha.under_attack` turns the gate on at once (PLT_SECURITY_OFFICER, no maker-checker); while on, a missing, refused, reused or unverifiable token is refused (429), and an unreachable vendor refuses too (fail closed). Rate limits stay in place either way.
+- **T (a misconfigured secret read as a customer failure):** Control: `invalid-input-secret` and similar codes are errors (IPB-PORT-002) that operations see, never a verdict that blames the customer.
+- **S (a fake app or a rooted device registering, PR-UDF-028):** the port binds every verdict to a server nonce or the DPoP key and never returns a device identifier; the vendor adapters are not built (OWNER-QUESTIONS #99). Residual: until they are, a product's server cannot tell a genuine app, so registration relies on the one-time code, the DPoP key binding and rate limits.
+- **Residual:** while the gate is off, bots meet only the rate limits; turning it on blocks a customer whose browser cannot run the widget, so the widget must use the vendor's accessible, non-puzzle mode (IPB-06-40).
+
 ### 3.65 V-CIP in our VIDEO_MEET room (M24; R1-D-55)
 
 - **E (a decision by someone other than the official):** Control: `assess` and `complete` accept only the session's `officialRef`; the product authenticates the official (MFA) before calling.
