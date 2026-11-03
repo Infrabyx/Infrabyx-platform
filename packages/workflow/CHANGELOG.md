@@ -1,5 +1,24 @@
 # @infrabyx/workflow
 
+## 1.1.0
+
+### Minor Changes
+
+- d66ffad: Named tenant functions under maker-checker (Finbyx PR-FBX-20; IPB-02-33; R1-D-39). Migration `tenancy/0011` adds `tenancy.function_assignment`. `TenantFunctions` assigns `FN:CRO`, `FN:CCO`, `FN:COMPLIANCE_OFFICER` and a product's own functions through an approved R3 `tenancy.function.assign` request (an ORG_OWNER or ORG_ADMIN asks, a different one approves, never the assignee), revokes at once with a reason, and `withFunctions(ctx)` adds the person's active functions to the session's roles (dropping any a token claimed). `ApprovalsEngine` honours an action's `checkerFunctions` and the tenant's `FN:` entries in `mc.checker_roles.<action>` (tighten-only; `checkerFunctionsFor`), and `ApprovalWorkflow` sends inbox items to the function holders. `contracts`: `FUNCTION_ROLE_REGEX`, `PLATFORM_FUNCTIONS`, `isFunctionRole`, and `FN:` roles in `RoleSchema`. Run `infrabyx-migrate`.
+
+### Patch Changes
+
+- Updated dependencies [97e8524]
+- Updated dependencies [e41c3bd]
+- Updated dependencies [92706c4]
+- Updated dependencies [92706c4]
+- Updated dependencies [4a87754]
+- Updated dependencies [d66ffad]
+  - @infrabyx/contracts@1.14.0
+  - @infrabyx/tenancy@1.8.0
+  - @infrabyx/config@1.5.2
+  - @infrabyx/crypto@1.3.1
+
 ## 1.0.18
 
 ### Patch Changes

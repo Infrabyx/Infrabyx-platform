@@ -1,5 +1,28 @@
 # @infrabyx/testing
 
+## 1.4.0
+
+### Minor Changes
+
+- 97e8524: The `BUREAU` and `AA_FIU` product ports of IPB-01 §01.4.4.3 (owned by FBX v1.6), with fakes and contract cases (Finbyx PR-FBX-28; R1-D-43; ADR-0003). `contracts`: `CreditBureauPort` (`pull` with a soft or hard enquiry to CIBIL, Experian, Equifax or CRIF, refused without the product's consent receipt; the raw report by STORAGE reference with its SHA-256, the CIC's format version and a normalised summary in integer paise; `status`; `handleWebhook` reads the pull back) and `AccountAggregatorPort`, the FIU side (`requestConsent` with the ReBIT template, `consentStatus`, `revoke` in full or by FI type, `fetch` only under an ACTIVE consent within its range and FI types, each payload by STORAGE reference with its ReBIT schema version and SHA-256, `handleWebhook`); both catalogued (tier 2, owner FBX v1.6, `int.bureau.`, `int.aa_fiu.`) and in `R1_PORTS`. `testing`: `FakeCreditBureau`, `FakeAccountAggregator`, `creditBureauContractCases` and `accountAggregatorContractCases`. Vendor adapters wait for the owner's sandbox documents and accounts.
+- 4a87754: Per-object retention that is only ever extended (Finbyx PR-FBX-27; IPB-01-29; R1-D-42). `StoragePort.extendRetention(key, retainUntil)` (S3 `PutObjectRetention` in COMPLIANCE mode; an earlier or equal date, or an object without retention, is refused with `IPB-STOR-003`) and `retentionOf(key)`, on the `s3` and `minio` adapters and `MemoryStorage`, with a shared contract case. `assertImmutable` now also checks the stored SHA-256 checksum against the hash recorded at write, from a HEAD with checksum mode, so no decrypt permission is needed. `putWithRetention` stays one single-part write with the lock mode, the date and a SHA-256 checksum.
+
+### Patch Changes
+
+- Updated dependencies [92706c4]
+- Updated dependencies [97e8524]
+- Updated dependencies [e41c3bd]
+- Updated dependencies [92706c4]
+- Updated dependencies [92706c4]
+- Updated dependencies [4a87754]
+- Updated dependencies [d66ffad]
+  - @infrabyx/audit@1.5.0
+  - @infrabyx/contracts@1.14.0
+  - @infrabyx/tenancy@1.8.0
+  - @infrabyx/seed@1.0.19
+  - @infrabyx/config@1.5.2
+  - @infrabyx/crypto@1.3.1
+
 ## 1.3.7
 
 ### Patch Changes
