@@ -2069,6 +2069,17 @@ keys:
       source: "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)",
     }
 
+  # ---------------------------------------------------------------- R1: VIDEO_MEET (IPB-01 VIDEO_MEET; #88, C-26, R1-D-53)
+  - {
+      key: int.video_meet.livekit.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)",
+    }
+
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {
       key: rules.engine,
