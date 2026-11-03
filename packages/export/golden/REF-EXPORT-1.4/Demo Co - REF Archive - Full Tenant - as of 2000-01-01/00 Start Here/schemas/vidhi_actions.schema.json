@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.4:vidhi_actions",
+  "title": "vidhi_actions",
+  "description": "Rows of vidhi.task_step exported under REF-EXPORT-1.4",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^-?[0-9]+(\\.[0-9]+)?$",
+      "x-dataclass": "INTERNAL"
+    },
+    "task_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "tool": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "outcome": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "approval_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "actor_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "task_id",
+    "tool",
+    "outcome",
+    "actor_id",
+    "created_at"
+  ],
+  "additionalProperties": false
+}
