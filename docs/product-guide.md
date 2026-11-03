@@ -168,6 +168,13 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Pages.** Build list, detail, wizard, approval-queue and dashboard screens on `ListPage`, `DetailPage`, `WizardPage`, `ApprovalQueuePage` and `DashboardPage`, with a `PageState`: `empty` (the purpose sentence from your `hlp.` entry, the first action, a tutorial), `loading` (a skeleton), `error` (what failed, whether it saved, the trace id, a retry) and `denied` (the code, the reason, the screen that fixes it). Every dashboard widget names its evidence class and source.
 - **Keyboard map (IPB-06-29).** Render `KeyboardMap` at `Settings › Accessibility › Keyboard shortcuts` from `registry.list()`, each entry tagged with its group.
 
+## 7i. Searchable sealed values: blind-index keys (PR-FBX-25)
+
+- **The key (R1-D-37).** Put one root key per environment in SECRETS at `blindIndexSecretPath(appEnv, product)` (`secrets/<env>/kms/blind-index/<product>`): 32 random bytes, hex or base64url (`generateWebhookSecret()` makes one), with integer versions (`1`, `2`, …). At start-up, `loadBlindIndexRoot(secrets, { appEnv, product })`; below staging use `localBlindIndexRoot()` instead. Build one `BlindIndexer({ product, scope, current })` per indexed field (`scope` such as `cif` or `pan`).
+- **Writing and searching.** Store `index(tenantId, value)` as two columns: the value and its version. Search with `candidates(tenantId, value)` (`where (bi, bi_v) in (…)`). Index only high-entropy identifiers (PAN, Aadhaar reference, account numbers), never a date of birth or a pincode.
+- **Rotation.** Write a new version of the secret, then build the indexer with `current` the new root and `previous` the old one. Run a batched, idempotent re-index over rows where `needsReindex(row)` (decrypt, `index`, update), then drop `previous`.
+- **Finbyx.** The label `<product>/<scope>/v<n>/<tenant>` equals the shim's `fbx/cif/v1/<tenant>`, so existing local indexes stay valid. Replace the shim with `BlindIndexer`, and lift the refusal above staging once the secret exists.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
