@@ -791,6 +791,13 @@ Public forms can ask for a CAPTCHA while the site is under attack; the app's dev
 - **S (a fake app or a rooted device registering, PR-UDF-028):** the port binds every verdict to a server nonce or the DPoP key and never returns a device identifier; the vendor adapters are not built (OWNER-QUESTIONS #99). Residual: until they are, a product's server cannot tell a genuine app, so registration relies on the one-time code, the DPoP key binding and rate limits.
 - **Residual:** while the gate is off, bots meet only the rate limits; turning it on blocks a customer whose browser cannot run the widget, so the widget must use the vendor's accessible, non-puzzle mode (IPB-06-40).
 
+### 3.65 V-CIP in our VIDEO_MEET room (M24; R1-D-55)
+
+- **E (a decision by someone other than the official):** Control: `assess` and `complete` accept only the session's `officialRef`; the product authenticates the official (MFA) before calling.
+- **I (customer media leaving the tenant):** Control: only frames and the document photo go to the scorer; the recording and all artefacts stay in the tenant's STORAGE by hash; an approval is refused when the room's provider keeps a copy.
+- **T (an approval without the checks):** Control: approval needs passed liveness and face match and the customer's geo-tag in India; a decided or dropped session takes no further decision (compare-and-set on its state).
+- **Residual:** the geo-tag is what the customer's device reports; the official must also check it on the call. Digio's frame methods and the tenant-owned bucket (#83) are not in place, so V-CIP stays off.
+
 ### 3.64 VIDEO_MEET on self-hosted LiveKit with C-26 (M15; R1-D-53)
 
 - **S (forged or widened tokens):** Control: HS256 only in `livekit-token.ts`, only for LiveKit; join tokens are one room, one identity, join grants, ≤ 300 s; server tokens one grant, ≤ 60 s; the secret encodes ≥ 32 random bytes from SECRETS and dev keys are refused; no other HS256 path (a test).
