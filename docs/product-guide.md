@@ -229,6 +229,10 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Device attestation.** Build your device registration on `DeviceAttestationPort` from `@infrabyx/contracts/ports`, with `FakeDeviceAttestation` from `@infrabyx/testing` below staging. Bind each check to a nonce your server issued or to the DPoP key's `jkt`. Keep the `AppAttestKeyRecord` with the device and store the returned counter. The Google and Apple adapters wait for OWNER-QUESTIONS #99; until then, keep failing closed above test fixtures.
 - **Udofin.** Replace the product-local CAPTCHA port of UDF-D-111 and UDF-D-124 with these, and mark PR-UDF-029 met. PR-UDF-028 stays open until #99.
 
+## 7t. SMS and WhatsApp template variables (PR-UDF-025)
+
+- **Name the order (R1-D-54).** In your notification catalogue, list each SMS template's variables in the DLT template's order: `templates.sms.vars: ["reference", "re_name", "help_link"]`; do the same for `templates.whatsapp.vars`. A notification missing one of them fails its delivery instead of sending the wrong text. Without a list, names sort naturally, so `v01`, `v02` (Udofin's UDF-D-97 shim) keep working; Udofin can return to named variables.
+
 ## 7s. Video calls on LiveKit (M15)
 
 - **Running it (R1-D-53).** Run LiveKit self-hosted in India with its egress worker. Keep its API key and secret (≥ 32 random bytes) in SECRETS, one per deployment. Locally, `pnpm dev:up -- --profile video` starts it on loopback. Turn on `int.video_meet.livekit.enabled` only once your server runs.
