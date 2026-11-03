@@ -17,4 +17,19 @@ describe("timer ids", () => {
     ])
       expect(() => parseTimerId(bad), bad).toThrow();
   });
+
+  it("round-trip a product kind (PR-UDF-035) and refuse a malformed one", () => {
+    const id = timerId("tnt_a", "udf.journey.abandon", "jrn_01M5XQT0PRXMKBEGFFSHNHTA61");
+    expect(parseTimerId(id)).toEqual({
+      tenantId: "tnt_a",
+      kind: "udf.journey.abandon",
+      ref: "jrn_01M5XQT0PRXMKBEGFFSHNHTA61",
+    });
+    for (const bad of [
+      "ipb-timer.tnt_a.udofin.journey.abandon.jrn_1",
+      "ipb-timer.tnt_a.udf.Journey.abandon.jrn_1",
+      "ipb-timer.tnt_a.udf.journey.abandon.jrn.1",
+    ])
+      expect(() => parseTimerId(bad), bad).toThrow();
+  });
 });

@@ -96,6 +96,7 @@ const own = await sweep.run((ctx) => myJob(ctx)); // ctx: tenant scope, svc_tena
 - The list is a ledgered `SVC_TENANT_SWEEP` read (`id`, `status` only); every tenant's ledger shows it.
 - A job runs as `svc_tenant_job`, or as your own service principal passed as `jobPrincipal`, never as the reader.
 - Schedule the calls in your worker (Temporal schedule or cron), and alert on `broken` and `failed`.
+- **A timer per record (PR-UDF-035, PR-FBX-13 (1); R1-D-49).** Run `infrabyx-migrate` (`workflow/0003`). Register your kind with its handler first: `timers.on("udf.journey.abandon", async (ctx, t) => …)`. Kinds are `<product>.<area>.<name>` in lower case. Then, in the transaction that opens the record, call `timers.schedule(tx, "udf.journey.abandon", journeyId, at)`; cancel it with `timers.cancel(tx, journeyId, ["udf.journey.abandon"])`. References have 1 to 64 letters, digits, `_` or `-`. The handler runs as `svc_workflow_timers` in the timer's tenant, is retried with back-off up to 5 times, and must re-check the record's state and return `"stale"` when it moved on. Udofin can retire the daily idle-journey sweep (UDF-D-125); Finbyx can expire an external-access grant at its `valid_to` (AU7.2).
 
 ## 7d. Customer sign-in (one-time codes and DPoP)
 
