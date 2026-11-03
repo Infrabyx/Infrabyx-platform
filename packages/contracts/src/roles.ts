@@ -94,6 +94,15 @@ export const isServiceReaderRole = (r: string): r is ServiceReaderRole =>
 /** Product-defined roles extend the floor with their own upper-case prefix (e.g. FBX_CREDIT_HEAD). */
 export const PRODUCT_ROLE_REGEX = /^[A-Z]{2,4}_[A-Z][A-Z0-9_]*$/;
 
+/**
+ * A named tenant function a person holds in their own right (Finbyx PR-FBX-20, R1-D-39): assigned
+ * by the tenant under maker-checker and added to the session's roles by `TenantFunctions`.
+ */
+export const FUNCTION_ROLE_REGEX = /^FN:[A-Z][A-Z0-9_]{1,31}$/;
+/** The platform's three regulated functions; products add their own (`FN:PRINCIPAL_OFFICER`, …). */
+export const PLATFORM_FUNCTIONS = ["FN:CRO", "FN:CCO", "FN:COMPLIANCE_OFFICER"] as const;
+export const isFunctionRole = (r: string): boolean => FUNCTION_ROLE_REGEX.test(r);
+
 export type Role =
   PlatformRole | TenantRole | `OPS_${string}` | `AGT_${string}` | `SVC_${string}` | (string & {});
 
@@ -106,7 +115,8 @@ export const RoleSchema = z
       OPS_ROLE_REGEX.test(r) ||
       AGENT_ROLE_REGEX.test(r) ||
       SERVICE_ROLE_REGEX.test(r) ||
-      PRODUCT_ROLE_REGEX.test(r),
+      PRODUCT_ROLE_REGEX.test(r) ||
+      FUNCTION_ROLE_REGEX.test(r),
     { message: "unknown role format" },
   );
 
