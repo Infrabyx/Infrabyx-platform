@@ -44,7 +44,7 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
         expect(e.exitTarget, e.port).toBe("none");
         expect(e.pending.length, e.port).toBeGreaterThan(20);
       } else expect(e.exitTarget, e.port).not.toBe("none");
-    expect(PORT_EXIT.filter((e) => e.pending).map((e) => e.port)).toEqual(["KYC"]);
+    expect(PORT_EXIT.filter((e) => e.pending).map((e) => e.port)).toEqual([]);
   });
 
   it("states a data-move method and the lock-in residue for every port", () => {
