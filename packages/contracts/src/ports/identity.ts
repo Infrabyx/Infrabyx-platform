@@ -216,4 +216,37 @@ export interface CustomerIdentityPort extends Port {
   revokeDevice(tenantId: string, userId: string, deviceId: string): Promise<void>;
   /** The customer closed the account: every device is signed out and deleted at once. */
   forgetDevices(tenantId: string, userId: string): Promise<void>;
+  /**
+   * Start moving the account's login to a new one (Udofin PR-UDF-034; REQ-KYC-44): one code to
+   * the current login and one to the new, which must belong to no account. Optional: an adapter
+   * without it refuses with IPB-PORT-001 `unsupported`.
+   */
+  startLoginChange?(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    currentLogin: string;
+    newLogin: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge>;
+  /** Finish it with both codes from the same device key; the account keeps its id and devices. */
+  confirmLoginChange?(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    challengeId: string;
+    currentLogin: string;
+    newLogin: string;
+    oldCode: string;
+    newCode: string;
+    dpopProof: string;
+  }): Promise<void>;
+  /** Free a login for a new account: devices forgotten, the account disabled, its id kept. */
+  retireLogin?(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+  }): Promise<void>;
 }
