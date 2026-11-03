@@ -1,5 +1,13 @@
 # @infrabyx/testing
 
+## 1.5.1
+
+### Patch Changes
+
+- Updated dependencies [bdcdbe4]
+  - @infrabyx/audit@1.6.0
+  - @infrabyx/seed@1.0.21
+
 ## 1.5.0
 
 ### Minor Changes
