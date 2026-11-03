@@ -128,6 +128,10 @@ End users who are not staff (borrowers, clients, parties) sign in with a one-tim
 - **Digio** (`@infrabyx/connectors/kyc`, `DigioKyc`, R1-D-24) provides `digilockerPull` and `verifyAadhaarOffline`; every other method is `unsupported`, so routing picks another adapter for it. It is off (`int.kyc.digio.enabled`) and `unproven` until the owner's Digio account exists (#147). There is no KYC alternative yet (#91).
 - **LiveKit** (the VIDEO_MEET reference, #88) waits for the owner's answer on HS256 (#89).
 
+- **IDfy as the second KYC source (R1-D-45).** `IdfyKyc` provides `verifyPan`, `faceMatch` and `livenessCheck`; it is off (`int.kyc.idfy.enabled`) and `unproven` until the owner's IDfy sandbox exists. Give it the account id and API key from SECRETS and your tenant's face-match and liveness pass marks.
+- **One KYC port, several vendors.** Wrap your adapters in `kycMethodRouter({ adapters: [digio, idfy], order: { pan: ["idfy-kyc"], digilocker: ["digio-kyc", "idfy-kyc"] } })` and use the result as your `KycPort`. A method goes to the first adapter in its order that has it; the next one is tried only when the first is off, unavailable or lacks the method. A customer-level refusal is final.
+- **Finbyx (PR-FBX-24).** Replace the "missing methods are refused above staging" shim with the router: Digio first for DigiLocker and Aadhaar offline, IDfy for PAN, face match and liveness. Keep both vendor flags off until the owner's accounts exist.
+
 ## 7f. Books of account: statutory capture, branches and external auditors
 
 For the Companies Act audit trail on books of account (PR-FBX-10), use the database-level capture rather than an application log (R1-D-25):
