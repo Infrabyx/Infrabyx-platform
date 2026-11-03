@@ -148,8 +148,8 @@
     },
     {
       "path": "00 Start Here/verify/verify.mjs",
-      "bytes": 7918,
-      "sha256": "b3901d4784999447e732ec6d1daf786bd55ba0e22af5d4632ae9bdc2a9df4727"
+      "bytes": 7922,
+      "sha256": "42861e4436b646dfcf31a7fddff9552131db7da16ce5f30365f34c4ebf84c1d3"
     },
     {
       "path": "01 Data/ai_runs.csv",
@@ -257,7 +257,7 @@
       "sha256": "f4bccd9fa0dc1bc39bba8a9f1188fe38bb3db563bf13da32e1a766249c948bef"
     }
   ],
-  "pack_sha256": "c67fa509494acc98f7605a74167ee209a13ed6fcf4d8ea12500391daeb368811",
+  "pack_sha256": "341437acfe61637f53af4dad36793b569638fd0077279406f544417199a115fd",
   "signature": {
     "file": "manifest.json.jws",
     "alg": "ES256",

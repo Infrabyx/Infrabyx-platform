@@ -179,7 +179,8 @@ for (const e of entries) {
   const lane = laned ? Number(e.lane) : 0;
   const pos = laned ? Number(e.lane_seq) : Number(e.seq);
   const prev = lanes.get(lane);
-  if (prev && e.prev_hash !== prev.hash) fail(`audit chain broken before seq ${e.seq} (lane ${lane})`);
+  if (prev && e.prev_hash !== prev.hash)
+    fail(`audit chain broken before seq ${e.seq} (lane ${lane})`);
   if (prev && pos !== prev.pos + 1) fail(`audit sequence gap before seq ${e.seq} (lane ${lane})`);
   const body = {};
   for (const k of HASHED) body[k] = e[k];
