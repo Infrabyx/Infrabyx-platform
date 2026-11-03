@@ -1,20 +1,18 @@
 // The DPoP replay store on its own Redis connection (Udofin PR-UDF-032): a `jti` is claimed once
 // across every store on the same Redis, the key carries a TTL, and an unreachable Redis fails the
-// claim instead of allowing it. Runs on Redis 7.4 (Testcontainers), or on IPB_TEST_REDIS_URL.
+// claim instead of allowing it. Runs on Redis 7.4 (Testcontainers).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomBytes, toHex } from "@infrabyx/crypto";
 import { startService, type StartedService } from "@infrabyx/testing";
 import { RedisReplayStore } from "../customer.js";
 
 let redis: StartedService | undefined;
-let url = process.env.IPB_TEST_REDIS_URL ?? "";
+let url = "";
 const open: RedisReplayStore[] = [];
 
 beforeAll(async () => {
-  if (!url) {
-    redis = await startService("redis", { ports: [6379], readyLog: /Ready to accept connections/ });
-    url = `redis://${redis.host}:${redis.ports[6379]}`;
-  }
+  redis = await startService("redis", { ports: [6379], readyLog: /Ready to accept connections/ });
+  url = `redis://${redis.host}:${redis.ports[6379]}`;
 }, 120_000);
 afterAll(async () => {
   await Promise.all(open.map((s) => s.close()));
