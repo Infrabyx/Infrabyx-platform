@@ -585,7 +585,7 @@ export class NotifyService implements NotifyPort {
           {
             to: address as string,
             templateId: cls.templates.sms.dlt_template_id,
-            vars: Object.values(vars)
+            vars: positional(vars, cls.templates.sms.vars, cls.id)
               .map((v) => String(v).slice(0, 30))
               .slice(0, 10),
             senderId: s.senderId,
@@ -607,7 +607,10 @@ export class NotifyService implements NotifyPort {
             components: [
               {
                 type: "body",
-                parameters: Object.values(vars).map((v) => ({ type: "text", text: String(v) })),
+                parameters: positional(vars, t.vars, cls.id).map((v) => ({
+                  type: "text",
+                  text: String(v),
+                })),
               },
             ],
           },
@@ -1387,3 +1390,28 @@ const notConfigured = (port: string) =>
     adapter: "notify",
     detail: `NOTIFY has no ${port} channel configured`,
   });
+
+/**
+ * Positional values for a DLT or WhatsApp template (PR-UDF-025; R1-D-54). The stored `vars` went
+ * through `jsonb`, which reorders keys (by length, then bytes), so their insertion order is lost.
+ * The template's `vars` list names the order; without one, names sort naturally (`v2` before
+ * `v10`). A named variable that is missing fails the delivery rather than sending the wrong text.
+ */
+export function positional(
+  vars: Readonly<Record<string, unknown>>,
+  order: readonly string[] | undefined,
+  classId: string,
+): unknown[] {
+  if (!order)
+    return Object.keys(vars)
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
+      .map((k) => vars[k]);
+  return order.map((k) => {
+    if (!(k in vars))
+      throw new IpbError("IPB-PORT-001", {
+        detail: `notification ${classId} lacks the template variable ${k}`,
+        meta: { reason: "template_variable_missing", definite: true },
+      });
+    return vars[k];
+  });
+}
