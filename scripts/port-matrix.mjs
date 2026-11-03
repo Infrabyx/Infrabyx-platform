@@ -27,6 +27,7 @@ export const PORTS = [
   "IMAGE_GEN",
   "MEDIA",
   "KYC",
+  "CAPTCHA",
   "VIDEO_MEET",
 ];
 

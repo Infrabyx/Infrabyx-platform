@@ -14,6 +14,7 @@ Updated: 2026-11-03
 
 - **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
 - **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
+- **PR-UDF-029 and PR-UDF-028** (R1-D-50, ADR-0004): the CAPTCHA port with Turnstile (the owner's choice) and hCaptcha adapters and the under-attack gate; the DEVICE_ATTESTATION port as interfaces and a fake, its adapters waiting for OWNER-QUESTIONS #99 (cryptography); IPB-01 catalogue rows requested as PR-039 (guide §7q).
 - **M24** (R1-D-55): `VcipConductor`, V-CIP in our VIDEO_MEET room with a KYC scorer on frames; off behind the product's `kyc.vcip.enabled` (guide §7e; `connectors` minor). Live use needs the owner's Digio account and #83.
 - **PR-UDF-025** (R1-D-54, a defect): SMS and WhatsApp values in the template's order (guide §7t; `contracts` minor, `notify` patch).
 - **PR-UDF-035 and PR-FBX-13 (1)** (R1-D-49): a product's own timer kinds on `WorkflowTimers` (`workflow/0003`; guide §7c; `workflow` minor).

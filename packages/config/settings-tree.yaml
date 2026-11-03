@@ -2080,6 +2080,35 @@ keys:
       source: "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)",
     }
 
+  # ---------------------------------------------------------------- R1: CAPTCHA (ADR-0004; R1-D-50)
+  - {
+      key: int.captcha.under_attack,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      source: "ADR-0004; R1-D-50 (public forms ask for a CAPTCHA only while on; Udofin PR-UDF-029)",
+    }
+  - {
+      key: int.captcha.turnstile.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "ADR-0004; R1-D-50 (off until the owner's Turnstile site key exists)",
+    }
+  - {
+      key: int.captcha.hcaptcha.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)",
+    }
+
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {
       key: rules.engine,

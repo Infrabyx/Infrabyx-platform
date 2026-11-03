@@ -10,4 +10,5 @@ export * from "./push.js";
 export * from "./esign.js";
 export * from "./ai.js";
 export * from "./kyc.js";
+export * from "./captcha.js";
 export * from "./idfy.js";

@@ -3029,6 +3029,45 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)"
   },
   {
+    "key": "int.captcha.under_attack",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "ADR-0004; R1-D-50 (public forms ask for a CAPTCHA only while on; Udofin PR-UDF-029)"
+  },
+  {
+    "key": "int.captcha.turnstile.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0004; R1-D-50 (off until the owner's Turnstile site key exists)"
+  },
+  {
+    "key": "int.captcha.hcaptcha.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)"
+  },
+  {
     "key": "rules.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -6718,6 +6757,9 @@ export type SettingValueMap = {
   "int.kyc.digio.enabled": boolean;
   "int.kyc.idfy.enabled": boolean;
   "int.video_meet.livekit.enabled": boolean;
+  "int.captcha.under_attack": boolean;
+  "int.captcha.turnstile.enabled": boolean;
+  "int.captcha.hcaptcha.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;
