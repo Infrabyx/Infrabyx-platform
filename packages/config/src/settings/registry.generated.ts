@@ -3068,6 +3068,32 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)"
   },
   {
+    "key": "int.device_attestation.play_integrity.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0004; R1-D-59 (Play Integrity off until the owner's Google Cloud project exists)"
+  },
+  {
+    "key": "int.device_attestation.app_attest.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0004; R1-D-59 (App Attest off until the owner's Apple developer account exists)"
+  },
+  {
     "key": "rules.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -6760,6 +6786,8 @@ export type SettingValueMap = {
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;
+  "int.device_attestation.play_integrity.enabled": boolean;
+  "int.device_attestation.app_attest.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;

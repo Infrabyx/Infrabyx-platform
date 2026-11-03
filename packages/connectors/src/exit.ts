@@ -237,4 +237,14 @@ export const PORT_EXIT: readonly PortExit[] = [
     lockIn:
       "Tokens issued by the source in the last few minutes fail at the target; the forms ask again (R1-D-50)",
   },
+  {
+    port: "DEVICE_ATTESTATION",
+    primary: "native",
+    exitTarget: "fake-device-attestation",
+    dataMove:
+      "Configuration swap; App Attest keys stay with the product's devices (public keys and counters), Play Integrity holds nothing",
+    volumeClass: "S",
+    lockIn:
+      "Without Google or Apple there is no genuine-device signal: the product fails closed above test environments until another adapter is wired (R1-D-59)",
+  },
 ];

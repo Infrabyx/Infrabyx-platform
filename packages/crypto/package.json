@@ -15,6 +15,10 @@
     "./local-kms": {
       "types": "./dist/local-kms.d.ts",
       "default": "./dist/local-kms.js"
+    },
+    "./app-attest-test": {
+      "types": "./dist/app-attest-test.d.ts",
+      "default": "./dist/app-attest-test.js"
     }
   },
   "files": [

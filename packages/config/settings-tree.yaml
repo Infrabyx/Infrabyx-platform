@@ -2108,6 +2108,25 @@ keys:
       mc: R4,
       source: "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)",
     }
+  # ---------------------------------------------------------------- R1: DEVICE_ATTESTATION (ADR-0004; #99, R1-D-59)
+  - {
+      key: int.device_attestation.play_integrity.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "ADR-0004; R1-D-59 (Play Integrity off until the owner's Google Cloud project exists)",
+    }
+  - {
+      key: int.device_attestation.app_attest.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "ADR-0004; R1-D-59 (App Attest off until the owner's Apple developer account exists)",
+    }
 
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {

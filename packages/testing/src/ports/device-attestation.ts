@@ -1,8 +1,8 @@
-// DEVICE_ATTESTATION fake and contract cases (Udofin PR-UDF-028; ADR-0004; R1-D-50). The Google
-// and Apple adapters wait for the owner's cryptography decision (OWNER-QUESTIONS #99); the fake is
-// the in-memory implementation products test against meanwhile. It keeps the port's rules: a
-// verdict must match its binding and app, an App Attest key is registered once and its counter
-// only grows, and nothing identifying the device is returned.
+// DEVICE_ATTESTATION fake, evidence minters and contract cases (Udofin PR-UDF-028; ADR-0004;
+// R1-D-50, R1-D-59). The cases take a minter of device evidence, so the same rules run on the fake
+// and on the `native` adapter (the Play Integrity stub and an App Attest test authority): a verdict
+// must match its binding and app, a Play Integrity token counts once, an App Attest key registers
+// once and its counter only grows, and nothing identifying the device is returned.
 import { expect } from "vitest";
 import {
   AppAttestAssertion,
@@ -16,7 +16,56 @@ import {
   type PortHealth,
 } from "@infrabyx/contracts/ports";
 import { randomBytes, toBase64Url, toHex } from "@infrabyx/crypto";
+import {
+  appAttestTestAuthority,
+  type AppAttestTestAuthority,
+  type TestAppKey,
+} from "@infrabyx/crypto/app-attest-test";
 import type { ContractCase } from "../contract.js";
+import type { PlayIntegrityStub } from "../stubs/play-integrity.js";
+
+/** Makes device evidence for the contract cases: the fake's own, or real formats for `native`. */
+export interface DeviceEvidence {
+  playToken(o: {
+    packageName: string;
+    binding: AttestationBinding;
+    verdicts?: string[];
+    licensed?: boolean;
+  }): string;
+  attestation(o: { appId: string; binding: AttestationBinding }): {
+    keyId: string;
+    attestation: string;
+  };
+  assertion(o: { keyId: string; binding: AttestationBinding; counter: number }): string;
+}
+
+/** Evidence the `native` adapter accepts: Play Integrity stub tokens and App Attest objects. */
+export function nativeDeviceEvidence(
+  play: PlayIntegrityStub,
+  authority: AppAttestTestAuthority = appAttestTestAuthority(),
+): DeviceEvidence & { authority: AppAttestTestAuthority } {
+  const keys = new Map<string, { appId: string; key: TestAppKey }>();
+  return {
+    authority,
+    playToken: (o) =>
+      play.mint({
+        packageName: o.packageName,
+        requestHash: o.binding.value,
+        ...(o.verdicts ? { verdicts: o.verdicts } : {}),
+        ...(o.licensed === false ? { licensed: false } : {}),
+      }),
+    attestation(o) {
+      const { attestation, key } = authority.attest(o.appId, o.binding.value);
+      keys.set(key.keyId, { appId: o.appId, key });
+      return { keyId: key.keyId, attestation };
+    },
+    assertion(o) {
+      const k = keys.get(o.keyId);
+      if (!k) throw new Error("no such test key");
+      return authority.assert(k.appId, o.binding.value, k.key, o.counter);
+    },
+  };
+}
 
 const sameBinding = (a: AttestationBinding, b: AttestationBinding) =>
   a.kind === b.kind && a.value === b.value;
@@ -29,7 +78,7 @@ interface FakeToken {
 }
 
 /** Mints fake device evidence the fake port accepts. */
-export class FakeDeviceAttestation implements DeviceAttestationPort {
+export class FakeDeviceAttestation implements DeviceAttestationPort, DeviceEvidence {
   readonly descriptor: AdapterDescriptor = {
     port: "DEVICE_ATTESTATION",
     adapter: "fake-device-attestation",
@@ -147,7 +196,7 @@ const APP = "ABCDE12345.in.example.borrower";
 const nonce = (): AttestationBinding => ({ kind: "nonce", value: toHex(randomBytes(16)) });
 
 export function deviceAttestationContractCases(
-  f: FakeDeviceAttestation,
+  f: DeviceEvidence,
 ): ContractCase<DeviceAttestationPort>[] {
   return [
     {

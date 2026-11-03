@@ -70,6 +70,18 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "export manifest and ExportCompleted detached JWS through KMS sign (C-22)",
       "regulated Ecosystem messages, detached JWS with kid, iat and jti through KMS sign (C-22 profile, R1-D-08)",
       "DPoP proof verification for customer sessions: ES256 only, jkt binding, iat window, jti replay (C-11, R1-D-18)",
+      "Apple App Attest assertion and credential-certificate verification, with the counter (C-27, R1-D-59); verify only",
+    ],
+  },
+  {
+    id: "ecdsa-p384-sha384",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "P-384",
+    oid: "1.2.840.10045.4.3.3",
+    usedFor: [
+      "Apple App Attest certificate chain to the pinned Apple App Attestation root only (C-27, R1-D-59); verify only",
     ],
   },
   {
@@ -90,7 +102,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     oid: "1.2.840.113549.1.1.11",
     usedFor: [
       "Amazon SNS SignatureVersion 2 verification only (C-13)",
-      "Google service-account assertion for FCM and Vertex AI OAuth only (C-24, PL4-C-01); never for platform tokens",
+      "Google service-account assertion for FCM, Vertex AI and Play Integrity OAuth only (C-24, PL4-C-01, R1-D-59); never for platform tokens",
     ],
   },
   {

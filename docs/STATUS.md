@@ -17,6 +17,7 @@ Updated: 2026-11-03
 - **Check-ins:** `trig_017kWdyDm3yioGbpRrMnu5Zi` (3 Nov 18:35 UTC, Temporal) and `trig_01Mz6fkEQN7m9vZx96eREqX4` (6 Nov 09:23 UTC, Keycloak) were already on this session and had not fired; nothing re-created.
 - **Owner answers #94 to #100** recorded (R1-D-57); OWNER-QUESTIONS has no open question. Guide §7i gives #94's AWS layout. Follow-ups: the consent purge sweep of #95 (a `consent` minor), #97's and #100's stub adapters, and #99's C-24 widening and C-27 with both adapters.
 - **PR-FBX-32** (R1-D-58, ADR-0005; pilot-critical): chain lanes for the ledger and the capture. 32 lanes per tenant and chain, each the same SHA-256 chain, sealed by the format-3 anchor; `seq` becomes global; existing chains continue as lane 0 (`audit/0006`, `0007`; guide §7u; threat model §3.66; `audit` minor). Load test in CI: 16 writers at 20 ms each, 39 tx/s on one lane against 360 tx/s with lanes. Finbyx adoption note §4. Export map `REF-EXPORT-1.4` (the ledger's lanes in `audit_event`; `export` minor).
+- **#99's adapters** (R1-D-59; Udofin PR-UDF-028): C-24 widened to Play Integrity, C-27 for App Attest in `@infrabyx/crypto`, and the `native` DEVICE_ATTESTATION adapter, off until the owner's Google Cloud project and Apple account exist (guide §7q; threat model §3.62; `crypto`, `connectors`, `testing`, `config` minors). The pinned Apple root is to be confirmed by the owner against apple.com.
 
 ## Handover (2026-11-03, third session: the owner's order of 3 Nov)
 

@@ -4,7 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-None.
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 101 | R1-D-59  | Apple App Attest root (C-27): apple.com is not reachable from the build environment, so the pinned "Apple App Attestation Root CA" was taken from two independent public npm packages with identical bytes, SHA-256 fingerprint `1cb9823ba28ba6ad2d33a006941de2ae4f513ef1d4e831b9f7e0fa7b6242c932`, valid 2020-03-18 to 2045-03-15. Please confirm it against `https://www.apple.com/certificateauthority/Apple_App_Attestation_Root_CA.pem` before App Attest is turned on. Default taken: pinned as is, adapter off. If it differs: replace `APPLE_APP_ATTEST_ROOT_PEM` and its fingerprint (a `crypto` patch); nothing else changes. |
 
 ## Answered
 

@@ -28,6 +28,7 @@ export const PORTS = [
   "MEDIA",
   "KYC",
   "CAPTCHA",
+  "DEVICE_ATTESTATION",
   "VIDEO_MEET",
 ];
 

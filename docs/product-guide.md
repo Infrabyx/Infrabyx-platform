@@ -231,7 +231,15 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 
 - **CAPTCHA (R1-D-50, ADR-0004).** Build `new TurnstileCaptcha({ enabled, secret })` from `@infrabyx/connectors/captcha`, with the secret from SECRETS (`secrets/<env>/captcha/turnstile/secret_key`). Wrap it in `new CaptchaGate({ captcha, underAttack })`, reading `int.captcha.under_attack`. Render the widget when `gate.required()` is true, in Turnstile's managed or invisible mode (no puzzle, IPB-06-40). In the handler, call `await gate.check({ token, expectedAction, expectedHostname })`; it refuses with 429 IPB-SEC-019 while the switch is on. Send the vendor nothing but the token. Turn on `int.captcha.turnstile.enabled` once the owner's site key and secret exist; `HCaptchaCaptcha` is the alternative.
 - **Device attestation.** Build your device registration on `DeviceAttestationPort` from `@infrabyx/contracts/ports`, with `FakeDeviceAttestation` from `@infrabyx/testing` below staging. Bind each check to a nonce your server issued or to the DPoP key's `jkt`. Keep the `AppAttestKeyRecord` with the device and store the returned counter. The Google and Apple adapters wait for OWNER-QUESTIONS #99; until then, keep failing closed above test fixtures.
-- **Udofin.** Replace the product-local CAPTCHA port of UDF-D-111 and UDF-D-124 with these, and mark PR-UDF-029 met. PR-UDF-028 stays open until #99.
+- **The `native` adapter (#99, R1-D-59).** Build `new NativeDeviceAttestation({ replay, keys, playIntegrity, appAttest })` from `@infrabyx/connectors/device-attestation`. Its options:
+  - `replay`: a shared `ReplayStore` such as `RedisReplayStore`;
+  - `keys`: your device table's `has` and `add` for App Attest key ids;
+  - Play Integrity: the service-account key from SECRETS (`secrets/<env>/device_attestation/play_integrity/service_account_key`, scope Play Integrity only) and your signing-certificate digests per package;
+  - App Attest: nothing to configure. Apple's root is pinned.
+
+  The app passes your nonce or DPoP `jkt` as Play Integrity's `requestHash`, and as the App Attest challenge (the client data it hashes). Turn on `int.device_attestation.play_integrity.enabled` and `int.device_attestation.app_attest.enabled` once the owner's Google Cloud project and Apple account exist. Keep the returned `AppAttestKeyRecord` and store each new counter.
+
+- **Udofin.** Replace the product-local CAPTCHA port of UDF-D-111 and UDF-D-124 with these, and mark PR-UDF-029 met. PR-UDF-028 is met by the `native` adapter (R1-D-59): replace UDF-D-124's product-local port with it, off until the owner's accounts exist.
 
 ## 7r. Stamps, documents, payouts and mandates (PR-FBX-29)
 
