@@ -3120,6 +3120,32 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "ADR-0004; R1-D-59 (App Attest off until the owner's Apple developer account exists)"
   },
   {
+    "key": "int.payments.digio_mandate.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 PAYMENTS; R1-D-52, R1-D-62 (eNACH and UPI AutoPay mandates, off until the owner's Digio mandate account exists)"
+  },
+  {
+    "key": "int.estamp.nesl_dde.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 ESTAMP; R1-D-52, R1-D-62 (NeSL Digital Document Execution, off until the owner's NeSL account exists)"
+  },
+  {
     "key": "rules.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -6816,6 +6842,8 @@ export type SettingValueMap = {
   "int.captcha.hcaptcha.enabled": boolean;
   "int.device_attestation.play_integrity.enabled": boolean;
   "int.device_attestation.app_attest.enabled": boolean;
+  "int.payments.digio_mandate.enabled": boolean;
+  "int.estamp.nesl_dde.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;

@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -848,3 +848,11 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 - **S/T (forged events):** Control: an event is parsed only for our pull id (`bpl_` + ULID) or a consent id the product holds a record of; the state is always read back from the vendor, and an unknown pull or consent is refused.
 - **E (pulling or fetching beyond consent):** Control: a pull needs the consent receipt; `cibil` refuses any other CIC; `setu-aa` reads the consent back before every fetch and refuses one that is not ACTIVE, past its expiry, outside its range or for an FI type outside it or revoked here.
 - **Residual:** the vendor shapes are stub-shaped until the owner's sandboxes exist, so both adapters are off and `unproven`; webhook signatures and the AA's JWS detached signatures are added with the sandbox documents (the read-back means a forged event only triggers a read). Revoking some FI types is kept by the platform, which stops fetching them, while the consent stays ACTIVE at the AA until it ends or is revoked in full.
+
+### 3.68 Digio mandates and NeSL DDE (owner answer #100; R1-D-62), against stubs and off
+
+- **E and T (a mandate registered or cancelled without authority, or twice):** Control: `assertMoneyCall` before anything else (approved maker-checker reference, user or service initiator, never an agent, idempotency key); the key is claimed in the product's store before Digio is called, a retry reads the first mandate back, another mandate under the key is refused, and after an unknown outcome Digio is searched for the key-derived reference before a second create. `kill.payments` pauses both calls; a production credential is refused outside prod/dr.
+- **T (a different ceiling at the bank):** Control: integer paise, sent as an exact decimal; the amount Digio reports is checked back exactly (P-04) on every read with a known request.
+- **I (debtor account data):** Control: the account number, IFSC and contact come from the product's resolver per call, go only to Digio (`IN`, REGULATED) and are neither returned nor stored; the approval reference is not sent. DDE documents leave only after their SHA-256 matches, and the executed PDF goes to the tenant's STORAGE with its hash.
+- **S (forged callbacks):** Control: our C-19 URL secret; the body is used only for the id, and the mandate or DDE record is read back from the vendor.
+- **Residual:** vendor shapes are stub-shaped until the owner's Digio mandate and NeSL accounts exist, so the adapters stay off and `unproven`; Digio documents no webhook signature here, so the URL secret must stay out of ingress logs. Two concurrent first calls with one DDE key can both register before either is found (the product serialises a key, as for every idempotent call).

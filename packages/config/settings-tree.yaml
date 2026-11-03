@@ -2147,6 +2147,25 @@ keys:
       mc: R4,
       source: "ADR-0004; R1-D-59 (App Attest off until the owner's Apple developer account exists)",
     }
+  # ---------------------------------------------------------------- R1: mandates and DDE (#100, R1-D-62)
+  - {
+      key: int.payments.digio_mandate.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 PAYMENTS; R1-D-52, R1-D-62 (eNACH and UPI AutoPay mandates, off until the owner's Digio mandate account exists)",
+    }
+  - {
+      key: int.estamp.nesl_dde.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 ESTAMP; R1-D-52, R1-D-62 (NeSL Digital Document Execution, off until the owner's NeSL account exists)",
+    }
 
   # ---------------------------------------------------------------- PL3: RULES (IPB-01 RULES)
   - {

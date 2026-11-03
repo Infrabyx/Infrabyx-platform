@@ -15,3 +15,5 @@ export * from "./idfy.js";
 export * from "./play-integrity.js";
 export * from "./cibil.js";
 export * from "./setu-aa.js";
+export * from "./digio-mandate.js";
+export * from "./nesl-dde.js";

@@ -102,6 +102,10 @@
       "types": "./dist/aa-fiu/index.d.ts",
       "default": "./dist/aa-fiu/index.js"
     },
+    "./estamp": {
+      "types": "./dist/estamp/index.d.ts",
+      "default": "./dist/estamp/index.js"
+    },
     "./video-meet": {
       "types": "./dist/video-meet/index.d.ts",
       "default": "./dist/video-meet/index.js"

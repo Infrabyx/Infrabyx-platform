@@ -12,12 +12,21 @@ import {
   docgenContractCases,
   esignFakeCases,
   estampContractCases,
+  estampDdeContractCases,
+  ESTAMP_DDE_FAKE_FIXTURES,
   mandateContractCases,
   payoutsContractCases,
   pdfContractCases,
 } from "./documents-money.js";
 
 defineContractSuite("ESTAMP", () => new FakeEstamp(), estampContractCases());
+describe("ESTAMP DDE on the fake (R1-D-62)", () => {
+  defineContractSuite(
+    "ESTAMP",
+    () => new FakeEstamp(),
+    estampDdeContractCases(ESTAMP_DDE_FAKE_FIXTURES),
+  );
+});
 defineContractSuite("PAYOUTS", () => new FakePayouts(), payoutsContractCases());
 defineContractSuite("DOCGEN", () => new FakeDocgen(), docgenContractCases());
 defineContractSuite("PDF", () => new FakePdf(), pdfContractCases());
