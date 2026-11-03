@@ -86,6 +86,10 @@
       "types": "./dist/kyc/index.d.ts",
       "default": "./dist/kyc/index.js"
     },
+    "./video-meet": {
+      "types": "./dist/video-meet/index.d.ts",
+      "default": "./dist/video-meet/index.js"
+    },
     "./rules": {
       "types": "./dist/rules/index.d.ts",
       "default": "./dist/rules/index.js"

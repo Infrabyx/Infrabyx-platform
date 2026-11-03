@@ -178,6 +178,17 @@ export const PORT_EXIT: readonly PortExit[] = [
       "KYC requests the customer has not completed at cut-over are started again at the target",
   },
   {
+    port: "VIDEO_MEET",
+    primary: "livekit",
+    exitTarget: "none",
+    pending:
+      "The alternative (100ms, owner answer #88) is built when a product needs it; LiveKit is self-hosted, so leaving it is a hosting change rather than a vendor exit",
+    dataMove:
+      "Configuration swap for new rooms; recordings and their manifests are already in the tenant's STORAGE, and no provider copy exists",
+    volumeClass: "S",
+    lockIn: "Calls in progress at cut-over finish on the source",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",
