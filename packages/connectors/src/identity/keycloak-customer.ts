@@ -411,6 +411,58 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     await this.api("DELETE", `/sessions/${encodeURIComponent(session)}`);
   }
 
+  protected async idpFindUser(
+    tenantId: string,
+    _channel: CustomerOtpChannel,
+    login: string,
+  ): Promise<string | undefined> {
+    return (await this.byUsername(keycloakCustomerUsername(tenantId, login)))?.id;
+  }
+
+  private async userById(userId: string): Promise<KcUser> {
+    const r = await this.api<KcUser>("GET", `/users/${encodeURIComponent(userId)}`);
+    if (r.status === 404 || !r.data) this.fail(404, "customer account");
+    return r.data;
+  }
+
+  /** PR-UDF-034: the username follows the login; the id, devices and subject stay. */
+  protected async idpChangeLogin(a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    from: string;
+    to: string;
+  }): Promise<void> {
+    const u = await this.userById(a.userId);
+    const r = await this.api("PUT", `/users/${encodeURIComponent(a.userId)}`, {
+      username: keycloakCustomerUsername(a.tenantId, a.to),
+      enabled: u.enabled,
+      attributes: { ...(u.attributes ?? {}), customer_login: [a.to] },
+    });
+    if (r.status === 409) this.fail(409, "the new login is taken");
+    const moved = await this.userById(a.userId);
+    if (moved.username !== keycloakCustomerUsername(a.tenantId, a.to))
+      this.fail(409, "Keycloak kept the old username");
+  }
+
+  /** PR-UDF-034: the account is disabled under a username no login maps to; its id stays. */
+  protected async idpRetireLogin(a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+  }): Promise<void> {
+    const u = await this.userById(a.userId);
+    const attributes = { ...(u.attributes ?? {}) };
+    delete attributes.customer_login;
+    await this.api("PUT", `/users/${encodeURIComponent(a.userId)}`, {
+      username: `ret${sha256Hex(`retired:${a.userId}`).slice(0, 40)}`,
+      enabled: false,
+      attributes,
+    });
+    await this.api("POST", `/users/${encodeURIComponent(a.userId)}/logout`);
+  }
+
   async health(): Promise<PortHealth> {
     const t0 = Date.now();
     let status: PortHealth["status"];
