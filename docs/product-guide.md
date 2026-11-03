@@ -229,6 +229,13 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Documents.** Every input and output is a STORAGE key with its SHA-256 under your tenant prefix. `renderHtml` replaces an HTML-to-PDF shim, and `PdfPort.toPdfA` gives archival copies. NeSL DDE runs after the stamp: `purchase`, then `ddeRegister` with the certificate, then `ddeDownloadExecuted` once every executant has signed.
 - **Finbyx.** Replace `dms/ports.ts` and `dsb/ports.ts` (`EstampPort`, `DdePort`, `PayoutPort`, `MandatePort`, `DocumentRenderPort`) and the `FakeEsign` shim with these interfaces and fakes. The signing evidence of P8-D5 reads `espTransactionId` and `signerIp` from `SignatureRecord`.
 
+## 7s. Video calls on LiveKit (M15)
+
+- **Running it (R1-D-53).** Run LiveKit self-hosted in India with its egress worker. Keep its API key and secret (≥ 32 random bytes) in SECRETS, one per deployment. Locally, `pnpm dev:up -- --profile video` starts it on loopback. Turn on `int.video_meet.livekit.enabled` only once your server runs.
+- **Rooms and joins.** Create rooms through the VIDEO_MEET port from `@infrabyx/connectors/video-meet` with a `RoomPolicy`, and provide a durable `LiveKitRoomStore`. Pass the caller's resolved origin to `join`. Tokens last at most 300 s for one room and one identity, so issue one per join.
+- **Recordings.** Give REGULATED rooms a recording target in the tenant's STORAGE. Each recording is written once, locked and checksummed, and the egress disk copy is removed; keep the manifest with the case.
+- **Webhooks.** Route LiveKit webhooks to `handleWebhook` with the raw body and the `Authorization` header; anything unsigned or foreign is refused.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

@@ -124,3 +124,17 @@ export {
   type DpopFailure,
   type DpopResult,
 } from "./dpop.js";
+export {
+  LiveKitCredentials,
+  signLiveKitJoinToken,
+  signLiveKitServerToken,
+  verifyLiveKitWebhook,
+  signLiveKitWebhookForTest,
+  LIVEKIT_JOIN_TOKEN_MAX_SECONDS,
+  LIVEKIT_SERVER_TOKEN_MAX_SECONDS,
+  LIVEKIT_WEBHOOK_SKEW_SECONDS,
+  LIVEKIT_SERVER_IDENTITY,
+  type LiveKitJoinGrants,
+  type LiveKitServerGrant,
+  type LiveKitWebhookFailure,
+} from "./livekit-token.js";
