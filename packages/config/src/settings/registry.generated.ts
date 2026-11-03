@@ -3003,6 +3003,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 KYC; R1-D-24 (off until the owner's Digio account exists)"
   },
   {
+    "key": "int.kyc.idfy.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)"
+  },
+  {
     "key": "int.captcha.under_attack",
     "tier": "PLATFORM",
     "type": "bool",
@@ -3017,7 +3030,6 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   },
   {
     "key": "int.captcha.turnstile.enabled",
-    "key": "int.kyc.idfy.enabled",
     "tier": "PLATFORM",
     "type": "bool",
     "default": false,
@@ -3041,7 +3053,6 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R4",
     "source": "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)"
-    "source": "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)"
   },
   {
     "key": "rules.engine",
@@ -6731,10 +6742,10 @@ export type SettingValueMap = {
   "int.esign.provider": "leegality" | "digio" | "memory";
   "int.esign.expire_in_days": number;
   "int.kyc.digio.enabled": boolean;
+  "int.kyc.idfy.enabled": boolean;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;
-  "int.kyc.idfy.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;
