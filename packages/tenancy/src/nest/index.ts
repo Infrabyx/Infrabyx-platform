@@ -51,6 +51,8 @@ export interface RequestWithIdempotency extends RequestWithClaims {
   body?: unknown;
   /** The matched route template (Express `route.path`), e.g. `/v1/loans`. */
   route?: { path?: string };
+  /** The route's parameters (Express `params`), hashed with the body (PR-FBX-21 (2)). */
+  params?: Record<string, string>;
   /** Set by `IdempotencyKeyInterceptor` on POST and PATCH; pass it to `idempotent()`. */
   idempotency?: IdempotencyRequest;
 }
@@ -85,7 +87,9 @@ export class IdempotencyKeyInterceptor implements NestInterceptor {
       req.idempotency = {
         key,
         route,
-        requestHash: idempotencyRequestHash(method, route, req.body),
+        requestHash: idempotencyRequestHash(method, route, req.body, {
+          ...(req.params ? { params: req.params } : {}),
+        }),
         ...(requestId ? { requestId } : {}),
       };
     }

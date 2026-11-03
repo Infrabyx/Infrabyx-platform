@@ -23,6 +23,7 @@ Updated: 2026-11-03
 - **PR-UDF-032** (R1-D-47): `RedisReplayStore.fromUrl`, the DPoP replay store on the platform's own Redis client, failing closed (guide §7d; `connectors` minor).
 - **PR-UDF-034** (R1-D-51): changing a customer's login with both numbers verified, and retiring a login, on Keycloak and Zitadel (guide §7d step 9; `contracts`, `connectors` minors).
 - **PR-FBX-31** (R1-D-46): officer functions per legal entity, one holder each, ended through an approved request (`tenancy/0013`, `0014`; guide §7k; `tenancy` minor). Only the per-entity seat is new; PR-FBX-20's functions were #175.
+- **PR-UDF-033 and PR-FBX-21** (R1-D-48): `kernel.ambient`, so services' own mutations join the handler's transaction; idempotency keys bound to their principal (`tenancy/0015`) and hashed with the route parameters (guide §7g; `tenancy` minor).
 
 ## Handover (2026-11-03, the owner's orders of 2 Nov: #93, Finbyx PR-FBX-20 to PR-FBX-30, M15, M24, M25)
 
