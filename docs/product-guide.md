@@ -214,6 +214,11 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Storage, not payloads.** Pass a `reportPrefix` or `dataPrefix` under the tenant's own prefix. Keep the returned STORAGE reference and SHA-256 with the application, and read the normalised summary (amounts in integer paise) for the BRE. Read a `pending` pull back with `status` or through its webhook.
 - **Finbyx.** Replace `los/ports.ts`'s shim ports and fixture adapters with these interfaces and fakes; run `creditBureauContractCases` and `accountAggregatorContractCases` against any adapter you build meanwhile.
 
+## 7p. An index on an existing table (PR-UDF-031)
+
+- **No-transaction files (R1-D-44).** Put `-- infrabyx:no-transaction` on the first line, then `SET lock_timeout` and a `statement_timeout` long enough for the build, then `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS …`. `infrabyx-migrate` sends each statement on its own. The file is not atomic: keep it to the index builds, and if a run fails, check `pg_index.indisvalid` and drop an invalid index with `DROP INDEX CONCURRENTLY IF EXISTS` before the next run.
+- **Udofin.** Uniqueness can move back onto the existing table; `u03_identity.borrower_idp_link` (UDF-D-113) may stay as it is.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

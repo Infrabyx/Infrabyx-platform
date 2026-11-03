@@ -10,6 +10,11 @@ Updated: 2026-11-03
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                        |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                            |
 
+## Session log (2026-11-03, second session; in progress, handover follows at the end)
+
+- **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
+- **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
+
 ## Handover (2026-11-03, the owner's orders of 2 Nov: #93, Finbyx PR-FBX-20 to PR-FBX-30, M15, M24, M25)
 
 - **Check-ins (this session):** `trig_01LU4M6td9YBGvQLHvBohkqU` (3 Nov 09:17 UTC: `@temporalio/*` 1.25.0 and the four `zip` waivers; the old `trig_01LrR3ViziZTh7sY6BSGaEUX` is disabled) and `trig_015GkkMV5C4Yc5TBZY4iRki1` (6 Nov 09:23 UTC: re-scan of the five waived Keycloak base findings; any newer finding is not waived without the owner's word).

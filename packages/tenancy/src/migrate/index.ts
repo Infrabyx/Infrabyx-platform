@@ -194,9 +194,16 @@ export async function migrate(o: MigrateOptions): Promise<MigrateResult> {
         continue;
       }
       const inTx = !f.sql.startsWith(NO_TRANSACTION_MARKER);
+      // A multi-statement query is one implicit transaction in PostgreSQL, so a no-transaction
+      // file (CREATE INDEX CONCURRENTLY) is sent one statement at a time (PR-UDF-031).
+      const statements = inTx ? [f.sql] : splitStatements(f.sql);
+      let done = 0;
       try {
         if (inTx) await c.query("begin");
-        await c.query(f.sql);
+        for (const sql of statements) {
+          await c.query(sql);
+          done++;
+        }
         await c.query(
           "insert into meta.migration_checksums (source, file, sha256) values ($1, $2, $3)",
           [f.source, f.file, f.sha256],
@@ -204,7 +211,10 @@ export async function migrate(o: MigrateOptions): Promise<MigrateResult> {
         if (inTx) await c.query("commit");
       } catch (e) {
         if (inTx) await c.query("rollback").catch(() => undefined);
-        throw new Error(`migration ${id} failed: ${(e as Error).message}`, { cause: e });
+        const partial = inTx
+          ? ""
+          : ` (no-transaction file: ${done} of ${statements.length} statements applied; it is not recorded, so the next run repeats it from the start)`;
+        throw new Error(`migration ${id} failed: ${(e as Error).message}${partial}`, { cause: e });
       }
       log(`applied ${id}`);
       result.applied.push(id);
@@ -213,4 +223,84 @@ export async function migrate(o: MigrateOptions): Promise<MigrateResult> {
   } finally {
     await c.query("select pg_advisory_unlock($1)", [LOCK_KEY]).catch(() => undefined);
   }
+}
+
+/**
+ * Split a SQL script into its statements, keeping each statement's text as written. Semicolons
+ * inside quotes ('…', "…"), dollar-quoted bodies ($$…$$, $tag$…$tag$) and comments do not split.
+ * Comment-only and empty pieces are dropped. Used for no-transaction migrations (PR-UDF-031).
+ */
+export function splitStatements(sql: string): string[] {
+  const out: string[] = [];
+  let start = 0;
+  let i = 0;
+  let meaningful = false;
+  const n = sql.length;
+  const push = (end: number) => {
+    const text = sql.slice(start, end).trim();
+    if (meaningful && text) out.push(text);
+    meaningful = false;
+  };
+  while (i < n) {
+    const ch = sql[i] as string;
+    const next = sql[i + 1];
+    if (ch === "-" && next === "-") {
+      const nl = sql.indexOf("\n", i);
+      i = nl === -1 ? n : nl + 1;
+      continue;
+    }
+    if (ch === "/" && next === "*") {
+      let depth = 1;
+      i += 2;
+      while (i < n && depth > 0) {
+        if (sql[i] === "/" && sql[i + 1] === "*") {
+          depth++;
+          i += 2;
+        } else if (sql[i] === "*" && sql[i + 1] === "/") {
+          depth--;
+          i += 2;
+        } else i++;
+      }
+      if (depth > 0) throw new SyntaxError("unterminated block comment");
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      meaningful = true;
+      i++;
+      for (;;) {
+        if (i >= n) throw new SyntaxError(`unterminated ${ch === "'" ? "string" : "identifier"}`);
+        if (sql[i] === ch) {
+          if (sql[i + 1] === ch)
+            i += 2; // doubled quote
+          else {
+            i++;
+            break;
+          }
+        } else i++;
+      }
+      continue;
+    }
+    if (ch === "$") {
+      const m = /^\$([A-Za-z_][A-Za-z0-9_]*)?\$/.exec(sql.slice(i));
+      const prev = i > 0 ? (sql[i - 1] as string) : "";
+      if (m && !/[A-Za-z0-9_]/.test(prev)) {
+        meaningful = true;
+        const tag = m[0];
+        const end = sql.indexOf(tag, i + tag.length);
+        if (end === -1) throw new SyntaxError(`unterminated dollar-quoted body ${tag}`);
+        i = end + tag.length;
+        continue;
+      }
+    }
+    if (ch === ";") {
+      push(i);
+      i++;
+      start = i;
+      continue;
+    }
+    if (!/\s/.test(ch)) meaningful = true;
+    i++;
+  }
+  push(n);
+  return out;
 }
