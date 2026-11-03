@@ -67,8 +67,97 @@ const call = (
     url: o.url ?? API,
   });
 
+/** Run `fn`; if the account's resend interval refuses it, wait the interval out once and retry. */
+async function afterResendInterval<T>(fn: () => Promise<T>): Promise<T> {
+  return fn().catch(async (e: unknown) => {
+    if ((e as { code?: string }).code !== "IPB-SEC-019") throw e;
+    const wait = Number(
+      (e as { meta?: { retryAfterSeconds?: number } }).meta?.retryAfterSeconds ?? 30,
+    );
+    await new Promise((r) => setTimeout(r, wait * 1000 + 200));
+    return fn();
+  });
+}
+
 export function customerCases(ctx: CustomerCaseContext): Array<ContractCase<CustomerIdentityPort>> {
   return [
+    {
+      name: "PR-UDF-034 a login moves with both codes and keeps the account and its devices; the old login, and a retired one, open new accounts",
+      async run(p) {
+        if (!p.startLoginChange || !p.confirmLoginChange || !p.retireLogin) return;
+        const t = p.signInProofTarget;
+        const a = await signIn(p, ctx);
+        const userId = (await call(p, a.device, a.session.accessToken)).sub;
+        const to = phone();
+        const change = {
+          tenantId: "tnt_a",
+          userId,
+          channel: "sms" as const,
+          currentLogin: a.login,
+          newLogin: to,
+        };
+        const ch = await afterResendInterval(() =>
+          p.startLoginChange!({ ...change, dpopProof: a.device.proof(t.htm, t.htu) }),
+        );
+        const oldCode = ctx.inbox.get(a.login)!;
+        const newCode = ctx.inbox.get(to)!;
+        expect(oldCode).toMatch(/^[0-9]{6}$/);
+        expect(newCode).toMatch(/^[0-9]{6}$/);
+        const confirm = (o: { oldCode: string; newCode: string }, device = a.device) =>
+          p.confirmLoginChange!({
+            ...change,
+            ...o,
+            challengeId: ch.challengeId,
+            dpopProof: device.proof(t.htm, t.htu),
+          });
+        // Another device key, or one wrong code, is refused; the code is not a sign-in code.
+        await expect(confirm({ oldCode, newCode }, testDevice())).rejects.toMatchObject({
+          code: "IPB-IDN-001",
+        });
+        const wrong = newCode === "000000" ? "000001" : "000000";
+        await expect(confirm({ oldCode, newCode: wrong })).rejects.toMatchObject({
+          meta: { reason: "code" },
+        });
+        await expect(
+          p.verifyChallenge({
+            tenantId: "tnt_a",
+            challengeId: ch.challengeId,
+            code: newCode,
+            dpopProof: a.device.proof(t.htm, t.htu),
+          }),
+        ).rejects.toMatchObject({ meta: { reason: "challenge" } });
+        await confirm({ oldCode, newCode });
+        // The device stays signed in to the same account.
+        expect((await call(p, a.device, a.session.accessToken)).sub).toBe(userId);
+        // The new login now belongs to it: nobody else can move to it.
+        const b = await signIn(p, ctx);
+        const bId = (await call(p, b.device, b.session.accessToken)).sub;
+        await expect(
+          afterResendInterval(() =>
+            p.startLoginChange!({
+              tenantId: "tnt_a",
+              userId: bId,
+              channel: "sms",
+              currentLogin: b.login,
+              newLogin: to,
+              dpopProof: b.device.proof(t.htm, t.htu),
+            }),
+          ),
+        ).rejects.toMatchObject({ meta: { reason: "login_taken" } });
+        // The old login opens a new account.
+        const c = await signIn(p, ctx, { login: a.login });
+        const cId = (await call(p, c.device, c.session.accessToken)).sub;
+        expect(cId).not.toBe(userId);
+        // Retiring it signs that account out and frees the login again.
+        await p.retireLogin!({ tenantId: "tnt_a", userId: cId, channel: "sms", login: a.login });
+        await expect(call(p, c.device, c.session.accessToken)).rejects.toMatchObject({
+          code: "IPB-IDN-001",
+        });
+        const d = await signIn(p, ctx, { login: a.login });
+        const dId = (await call(p, d.device, d.session.accessToken)).sub;
+        expect([userId, cId]).not.toContain(dId);
+      },
+    },
     {
       name: "@IPB-02-01 a one-time code by SMS gives a DPoP session bound to the device key",
       async run(p) {
