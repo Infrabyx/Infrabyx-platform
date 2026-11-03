@@ -136,6 +136,8 @@ Types, schemas and error codes only; no I/O.
 - **I:** decrypted workflow failures in worker logs. Control: worker logs go through the OBSERVABILITY scrubber (X-09); failures should carry codes, not personal data.
 - **D:** a store outage. Control: writes fail fast (`IPB-STOR-002`) and the caller's outbox retries; reads fail over to the DR replica; queue enqueue failures go to the outbox; Temporal outages pause timers.
 
+- **T (retention shortened, or a recording altered, PR-FBX-27, R1-D-42):** Control: `extendRetention` refuses any date not later than the current one and objects without COMPLIANCE retention; S3 Object Lock itself refuses shortening; `assertImmutable` compares the stored SHA-256 checksum with the hash recorded at write. Residual: a checksum proves the bytes stored match the bytes sent, not what the egress worker captured; the V-CIP manifest (M24) carries the chain from capture.
+
 ### 3.11 `@infrabyx/connectors` EMAIL, SMS and WHATSAPP (built)
 
 - **S:** forged delivery, bounce or status webhooks. Controls:

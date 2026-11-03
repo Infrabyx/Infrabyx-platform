@@ -191,6 +191,12 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **External grants from your register (R1-D-40).** Run `infrabyx-migrate` (`tenancy/0012`). In the executor of your own approved access request, call `grants.fromApproved(tx, { …grantee, kind, entityIds, branchIds, periodFrom, periodTo, days, piiLevel, exportAllowed, sourceApprovalId, makerId, checkerId })`, and `revokeFromApproved(tx, sourceApprovalId, by)` when your register revokes. Map your grantee types onto the six kinds. In restrictive policies or views, read `tenancy.external_pii_level()` to choose masked or clear columns. Gate exports on `tenancy.external_export_allowed()`. External reads still go only through `ExternalReads`.
 - **Finbyx.** AU7 (P2-D9) can move from `app_ro` to `app_external`, keeping its CCO-or-nominee maker, its CISO or MD & CEO checker and its second approval for full PII or export. That closes PR-FBX-22 and Finbyx OWNER-QUESTIONS #24.
 
+## 7m. Retention you can only extend (PR-FBX-27)
+
+- **Writing (R1-D-42).** Write a recording or any record under a retention date with `storage.putWithRetention(key, body, retainUntil, meta)`. That is one single-part write with the COMPLIANCE lock and a SHA-256 checksum, so an encrypt-only tenant key is enough.
+- **Extending.** Call `storage.extendRetention(key, laterDate)` when a hold or a longer floor applies; an earlier date is refused (`IPB-STOR-003`). Read the current date with `retentionOf(key)`.
+- **Proving.** `assertImmutable(key)` checks the lock and the stored checksum without reading the body. Finbyx can replace `kyc/retention.ts`'s write path with these calls.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
