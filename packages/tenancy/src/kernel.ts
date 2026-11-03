@@ -1,6 +1,7 @@
 // Transaction kernel (PL1 plan §3.2): every mutation runs in one transaction with the verified
 // context applied through SET LOCAL (IPB-01 §01.4.6, IPB-02-13), and the commit fails unless the
 // audit ledger was written in that transaction (IPB-02-51, IPB-MOD-003).
+import { AsyncLocalStorage } from "node:async_hooks";
 import type pg from "pg";
 import {
   AGENT_FORBIDDEN_VERBS,
@@ -106,6 +107,82 @@ class PgTx implements Tx {
   get audited(): boolean {
     return this._audited;
   }
+  /** Kernel only: apply a context's `app.*` settings to this transaction. */
+  async applyContext(ctx: KernelContext, m: MutateOptions): Promise<void> {
+    await applySettings(this.client, ctx, m);
+  }
+}
+
+/**
+ * A mutation joined to an ambient one (PR-UDF-033 (1), PR-FBX-21 (1); R1-D-48): its own context and
+ * ledger check, on the ambient transaction's connection, inside a kernel unit.
+ */
+class JoinedTx implements Tx {
+  private _audited = false;
+  constructor(
+    private readonly parent: PgTx,
+    readonly ctx: KernelContext,
+  ) {}
+  query<R = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<QueryResult<R>> {
+    return this.parent.query<R>(text, params);
+  }
+  markAudited(): void {
+    this._audited = true;
+    this.parent.markAudited();
+  }
+  get audited(): boolean {
+    return this._audited;
+  }
+  async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+    const before = this._audited;
+    const out = await this.parent.unit(() => fn(this));
+    if (!out.ok) this._audited = before;
+    return out;
+  }
+}
+
+interface AmbientScope {
+  tx: PgTx;
+  ctx: KernelContext;
+  opts: MutateOptions;
+  /** Tokens of the open joined calls, innermost last; the first is the ambient call's own. */
+  stack: symbol[];
+}
+interface AmbientFrame {
+  scope: AmbientScope;
+  token: symbol;
+}
+
+async function applySettings(
+  client: pg.PoolClient,
+  ctx: KernelContext,
+  m: MutateOptions,
+): Promise<void> {
+  await client.query(
+    `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),
+            set_config('app.actor_id', $3, true), set_config('app.trace_id', $4, true),
+            set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
+            set_config('app.action', $7, true), set_config('app.reason', $8, true),
+            set_config('app.branch_id', $9, true), set_config('app.branch_ids', $10, true),
+            set_config('app.branch_scope', $11, true), set_config('app.external_grant', $12, true)`,
+    [
+      ctx.tenantId,
+      ctx.entityId ?? "",
+      ctx.principal.id,
+      ctx.traceId ?? "",
+      ctx.scope ?? "tenant",
+      ctx.breakGlassGrantId ?? "",
+      m.action ?? "",
+      m.reason ?? "",
+      ctx.branchId ?? "",
+      (ctx.branchIds ?? []).join(","),
+      ctx.allBranches ? "all" : ctx.branchIds?.length ? "listed" : "none",
+      ctx.externalGrantId ?? "",
+    ],
+  );
 }
 
 /** The only action a service reader may commit: the ledger entry for its cross-tenant read. */
@@ -168,6 +245,7 @@ export class PgKernel implements MutationKernel {
   private readonly pool: PoolLike;
   private readonly role: string;
   private readonly readRole: string;
+  private readonly ambientFrame = new AsyncLocalStorage<AmbientFrame>();
 
   constructor(opts: PgKernelOptions) {
     this.pool = opts.pool;
@@ -191,6 +269,8 @@ export class PgKernel implements MutationKernel {
         : this.role;
     if (opts.reason !== undefined && (opts.reason.length < 1 || opts.reason.length > 500))
       throw new RangeError("a mutation's reason has 1 to 500 characters");
+    const frame = this.ambientFrame.getStore();
+    if (frame) return this.joined(frame, ctx, role, fn, opts);
     return this.run(ctx, role, false, opts, async (tx) => {
       const r = await fn(tx);
       if (!tx.audited) {
@@ -200,6 +280,82 @@ export class PgKernel implements MutationKernel {
       }
       return r;
     });
+  }
+
+  /**
+   * A mutation that every `mutate` on this kernel made within `fn` joins (Udofin PR-UDF-033 (1),
+   * Finbyx PR-FBX-21 (1); R1-D-48): a service that opens its own mutation then runs in the caller's
+   * transaction, so `idempotent(tx, …)` can wrap a handler whose services each call `mutate`. Each
+   * joined call runs in a kernel unit (a savepoint) with its own `app.*` settings and its own ledger
+   * check: when it throws, only its writes roll back and the error reaches its caller; the ambient
+   * settings are restored after it. A joined call must be the ambient one's tenant, principal,
+   * scope and break-glass grant, runs as the app role, and joined calls run one at a time. Reads
+   * are not joined: `read` keeps its own read-only transaction.
+   */
+  async ambient<T>(
+    ctx: KernelContext,
+    fn: (tx: Tx) => Promise<T>,
+    opts: MutateOptions = {},
+  ): Promise<T> {
+    if (this.ambientFrame.getStore())
+      throw new KernelGuardError("an ambient mutation is already open");
+    if (isExternal(ctx) || serviceReaderRole(ctx))
+      throw new IpbError("IPB-SEC-005", {
+        detail: "external principals and service readers do not open ambient mutations",
+      });
+    return this.mutate(
+      ctx,
+      async (tx) => {
+        const token = Symbol("ambient");
+        const scope: AmbientScope = { tx: tx as PgTx, ctx, opts, stack: [token] };
+        return this.ambientFrame.run({ scope, token }, () => fn(tx));
+      },
+      opts,
+    );
+  }
+
+  private async joined<T>(
+    frame: AmbientFrame,
+    ctx: KernelContext,
+    role: string,
+    fn: (tx: Tx) => Promise<T>,
+    opts: MutateOptions,
+  ): Promise<T> {
+    const { scope } = frame;
+    if (scope.stack.at(-1) !== frame.token)
+      throw new KernelGuardError("mutations joined to an ambient one run one at a time");
+    const a = scope.ctx;
+    if (
+      ctx.tenantId !== a.tenantId ||
+      ctx.principal.id !== a.principal.id ||
+      (ctx.scope ?? "tenant") !== (a.scope ?? "tenant") ||
+      (ctx.breakGlassGrantId ?? "") !== (a.breakGlassGrantId ?? "") ||
+      role !== this.role
+    )
+      throw new KernelGuardError(
+        "a joined mutation must have the ambient mutation's tenant, principal, scope and grant",
+      );
+    const token = Symbol("joined");
+    scope.stack.push(token);
+    let out: UnitOutcome<T>;
+    try {
+      out = await scope.tx.unit(async () => {
+        await scope.tx.applyContext(ctx, opts);
+        const child = new JoinedTx(scope.tx, ctx);
+        const r = await this.ambientFrame.run({ scope, token }, () => fn(child));
+        if (!child.audited)
+          throw new IpbError("IPB-MOD-003", {
+            detail: `mutation${opts.action ? ` ${opts.action}` : ""} wrote no audit ledger entry`,
+          });
+        return r;
+      });
+    } finally {
+      scope.stack.pop();
+    }
+    // A released savepoint keeps the joined call's settings; put the ambient ones back.
+    await scope.tx.applyContext(a, scope.opts);
+    if (!out.ok) throw out.error;
+    return out.value;
   }
 
   async read<T>(
@@ -266,28 +422,7 @@ export class PgKernel implements MutationKernel {
             : "begin",
       );
       await client.query(`set local role ${quoteIdent(role)}`);
-      await client.query(
-        `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),
-                set_config('app.actor_id', $3, true), set_config('app.trace_id', $4, true),
-                set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
-                set_config('app.action', $7, true), set_config('app.reason', $8, true),
-                set_config('app.branch_id', $9, true), set_config('app.branch_ids', $10, true),
-                set_config('app.branch_scope', $11, true), set_config('app.external_grant', $12, true)`,
-        [
-          ctx.tenantId,
-          ctx.entityId ?? "",
-          ctx.principal.id,
-          ctx.traceId ?? "",
-          ctx.scope ?? "tenant",
-          ctx.breakGlassGrantId ?? "",
-          m.action ?? "",
-          m.reason ?? "",
-          ctx.branchId ?? "",
-          (ctx.branchIds ?? []).join(","),
-          ctx.allBranches ? "all" : ctx.branchIds?.length ? "listed" : "none",
-          ctx.externalGrantId ?? "",
-        ],
-      );
+      await applySettings(client, ctx, m);
       if (ctx.breakGlassGrantId) {
         const r = await client.query<{ ok: boolean }>(
           "select tenancy.breakglass_active($1, $2) as ok",
