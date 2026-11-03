@@ -32,6 +32,7 @@ import {
 import {
   newId,
   randomBytes,
+  randomInt,
   sha256Hex,
   toBase64Url,
   verifyDpopProof,
@@ -360,6 +361,11 @@ export interface CustomerAuthStore {
   deleteDevice(tenantId: string, deviceId: string, reason: DeviceDeletionReason): Promise<boolean>;
   /** Delete what the cut-offs make due, at most `limit` rows per table; each deletion ledgered. */
   purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number): Promise<CustomerPurgeCounts>;
+  /**
+   * Ledger an account event without personal data (PR-UDF-034: `identity.customer.login.change`,
+   * `identity.customer.login.retire`). Optional for stores written before 1.x of this method.
+   */
+  recordAccountEvent?(tenantId: string, userId: string, action: string): Promise<void>;
 }
 
 const accountHash = (userId: string) => sha256Hex(`customer:${userId}`);
@@ -389,6 +395,12 @@ export class MemoryCustomerAuthStore implements CustomerAuthStore {
   private readonly guards = new Map<string, GuardState>();
   private readonly challenges = new Map<string, ChallengeRecord>();
   private readonly devices = new Map<string, DeviceRecord>();
+  /** Account events recorded (PR-UDF-034), for tests. */
+  readonly events: Array<{ tenantId: string; userId: string; action: string }> = [];
+
+  async recordAccountEvent(tenantId: string, userId: string, action: string): Promise<void> {
+    this.events.push({ tenantId, userId, action });
+  }
 
   private guard(tenantId: string, userId: string, now: number): GuardState {
     return this.guards.get(`${tenantId}|${accountHash(userId)}`) ?? freshGuard(now);
@@ -896,6 +908,20 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
     return gone !== undefined;
   }
 
+  /** A login change or retirement in the ledger, by the account's hash (no login, PR-UDF-034). */
+  async recordAccountEvent(tenantId: string, userId: string, action: string): Promise<void> {
+    await this.mutate(tenantId, action, async (tx) => {
+      await this.o.audit.record(tx as never, {
+        action,
+        resourceType: "identity.customer_account",
+        resourceId: accountHash(userId),
+      });
+    });
+    // Devices may now belong to another login's story; drop any cached answers for the account.
+    for (const k of [...this.cache.keys()])
+      if (k.startsWith(`${tenantId}|${userId}|`)) this.cache.delete(k);
+  }
+
   async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
     try {
       return await this.mutate(tenantId, "identity.customer.purge", async (tx) => {
@@ -995,6 +1021,19 @@ export interface CustomerIdentityBaseOptions {
 }
 
 const DPOP_SCHEME = /^DPoP\s+([A-Za-z0-9._~+/-]+=*)$/i;
+/** `idpRef.purpose` of a login-change challenge (PR-UDF-034); sign-in challenges have none. */
+const LOGIN_CHANGE = "login_change";
+const sixDigits = () => String(randomInt(1_000_000)).padStart(6, "0");
+const codeHash = (salt: string, code: string) => sha256Hex(`ipb-login-change:${salt}:${code}`);
+const loginHash = (tenantId: string, login: string) => sha256Hex(`ipb-login:${tenantId}:${login}`);
+/** Digests of salted codes are compared, never the codes, so a plain comparison leaks nothing useful. */
+const sameHash = (a: string | undefined, b: string): boolean => a !== undefined && a === b;
+const loginChangeUnsupported = (adapter: string): PortError =>
+  new PortError("IPB-PORT-001", "IDENTITY", {
+    adapter,
+    detail: `${adapter} cannot change or retire a customer login`,
+    meta: { reason: "unsupported" },
+  });
 
 export abstract class CustomerIdentityBase implements CustomerIdentityPort {
   abstract readonly descriptor: AdapterDescriptor;
@@ -1037,6 +1076,33 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
   protected abstract idpRefresh(refreshToken: string, dpopProof: string): Promise<IdpTokens | null>;
   /** End the IdP session of a device (best effort; the platform refusal does not depend on it). */
   protected abstract idpEndSession(userId: string, session: string): Promise<void>;
+  /** The account that holds `login` in the tenant, without creating one (PR-UDF-034). */
+  protected idpFindUser(
+    _tenantId: string,
+    _channel: CustomerOtpChannel,
+    _login: string,
+  ): Promise<string | undefined> {
+    return Promise.reject(loginChangeUnsupported(this.descriptor.adapter));
+  }
+  /** Move the account's login from `from` to `to`, keeping its id, devices and subject. */
+  protected idpChangeLogin(_a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    from: string;
+    to: string;
+  }): Promise<void> {
+    return Promise.reject(loginChangeUnsupported(this.descriptor.adapter));
+  }
+  /** Free the account's login for a new account and disable the old one. */
+  protected idpRetireLogin(_a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+  }): Promise<void> {
+    return Promise.reject(loginChangeUnsupported(this.descriptor.adapter));
+  }
 
   private async proof(
     proof: string,
@@ -1143,7 +1209,12 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
     deviceLabel?: string;
   }): Promise<CustomerSession> {
     const pending = await this.base.store.getChallenge(req.tenantId, req.challengeId);
-    if (!pending || pending.consumedAt !== undefined || pending.expiresAt <= this.now)
+    if (
+      !pending ||
+      pending.consumedAt !== undefined ||
+      pending.expiresAt <= this.now ||
+      pending.idpRef.purpose === LOGIN_CHANGE
+    )
       throw customerRefused(
         "challenge",
         "the sign-in code has expired or was used; ask for a new one",
@@ -1245,6 +1316,180 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
     await this.revoke(d, "sign_out");
     // Unbinding forgets the device at once (owner answer #86, R1-D-23).
     await this.base.store.deleteDevice(d.tenantId, d.id, "unbound");
+  }
+
+  /**
+   * Start moving a signed-in customer's login to a new one (Udofin PR-UDF-034; REQ-KYC-44: both
+   * numbers verified). The current login must be this account's and the new one nobody's. One
+   * code goes to each; the platform makes them (CSPRNG) and keeps only salted SHA-256 hashes and
+   * the new login's hash, never the codes or the new login. Guarded like a sign-in code.
+   */
+  async startLoginChange(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    currentLogin: string;
+    newLogin: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge> {
+    const { from, to } = this.loginPair(req);
+    const jkt = await this.signInProof(req.dpopProof);
+    if ((await this.idpFindUser(req.tenantId, req.channel, from)) !== req.userId)
+      throw customerRefused("login", "the current login is not this account's");
+    if ((await this.idpFindUser(req.tenantId, req.channel, to)) !== undefined)
+      throw customerRefused("login_taken", "the new login belongs to another account");
+    const { resendAfter } = await this.base.store.reserveSend(
+      req.tenantId,
+      req.userId,
+      this.s,
+      this.now,
+    );
+    const salt = toBase64Url(randomBytes(16));
+    const oldCode = sixDigits();
+    const newCode = sixDigits();
+    const id = toBase64Url(randomBytes(16));
+    const expiresAt = this.now + this.s.codeTtlSeconds * 1000;
+    await this.base.store.saveChallenge({
+      id,
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: req.channel,
+      jkt,
+      idpRef: {
+        purpose: LOGIN_CHANGE,
+        salt,
+        old: codeHash(salt, oldCode),
+        new: codeHash(salt, newCode),
+        to: loginHash(req.tenantId, to),
+      },
+      attempts: 0,
+      expiresAt,
+    });
+    for (const [where, code, part] of [
+      [from, oldCode, "old"],
+      [to, newCode, "new"],
+    ] as const)
+      await this.base.sender.send({
+        tenantId: req.tenantId,
+        userId: req.userId,
+        channel: req.channel,
+        to: where,
+        code,
+        expiresAt: new Date(expiresAt),
+        ...(req.locale ? { locale: req.locale } : {}),
+        idempotencyKey: `otp:${id}:${part}`,
+      });
+    return {
+      challengeId: id,
+      expiresAt: new Date(expiresAt).toISOString(),
+      resendAfter: new Date(resendAfter).toISOString(),
+    };
+  }
+
+  /**
+   * Finish the change with both codes, from the device key that started it. The account keeps
+   * its id, devices and subject; the old login no longer signs in to it and is free for a new
+   * account. Ledgered without the logins.
+   */
+  async confirmLoginChange(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    challengeId: string;
+    currentLogin: string;
+    newLogin: string;
+    oldCode: string;
+    newCode: string;
+    dpopProof: string;
+  }): Promise<void> {
+    const { from, to } = this.loginPair(req);
+    const pending = await this.base.store.getChallenge(req.tenantId, req.challengeId);
+    if (
+      !pending ||
+      pending.idpRef.purpose !== LOGIN_CHANGE ||
+      pending.userId !== req.userId ||
+      pending.consumedAt !== undefined ||
+      pending.expiresAt <= this.now
+    )
+      throw customerRefused("challenge", "the codes have expired or were used; ask for new ones");
+    await this.signInProof(req.dpopProof, pending.jkt);
+    const c = await this.base.store.attempt(req.tenantId, req.challengeId, this.s, this.now);
+    const ref = c.idpRef;
+    const ok =
+      /^[0-9]{6}$/.test(req.oldCode) &&
+      /^[0-9]{6}$/.test(req.newCode) &&
+      sameHash(ref.old, codeHash(ref.salt ?? "", req.oldCode)) &&
+      sameHash(ref.new, codeHash(ref.salt ?? "", req.newCode)) &&
+      sameHash(ref.to, loginHash(req.tenantId, to));
+    await this.base.store.settle(req.tenantId, c.id, ok, this.s, this.now);
+    if (!ok) throw customerRefused("code", "a code is wrong");
+    if ((await this.idpFindUser(req.tenantId, req.channel, to)) !== undefined)
+      throw customerRefused("login_taken", "the new login belongs to another account");
+    await this.idpChangeLogin({
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: req.channel,
+      from,
+      to,
+    });
+    await this.base.store.recordAccountEvent?.(
+      req.tenantId,
+      req.userId,
+      "identity.customer.login.change",
+    );
+  }
+
+  /**
+   * Retire an account's login (account closed, or a number the operator reports recycled): every
+   * device is signed out and forgotten, the account is disabled, and the login is free for a new
+   * account. The account's id and its records stay.
+   */
+  async retireLogin(req: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+  }): Promise<void> {
+    let login: string;
+    try {
+      login = customerLogin(req.channel, req.login);
+    } catch {
+      throw customerRefused("login", "a valid login is needed");
+    }
+    if ((await this.idpFindUser(req.tenantId, req.channel, login)) !== req.userId)
+      throw customerRefused("login", "the login is not this account's");
+    await this.forgetDevices(req.tenantId, req.userId);
+    await this.idpRetireLogin({
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: req.channel,
+      login,
+    });
+    await this.base.store.recordAccountEvent?.(
+      req.tenantId,
+      req.userId,
+      "identity.customer.login.retire",
+    );
+  }
+
+  private loginPair(req: { channel: CustomerOtpChannel; currentLogin: string; newLogin: string }): {
+    from: string;
+    to: string;
+  } {
+    let from: string;
+    let to: string;
+    try {
+      from = customerLogin(req.channel, req.currentLogin);
+      to = customerLogin(req.channel, req.newLogin);
+    } catch {
+      throw customerRefused(
+        "login",
+        req.channel === "email" ? "an email address is needed" : "an E.164 mobile number is needed",
+      );
+    }
+    if (from === to) throw customerRefused("login", "the new login is the current one");
+    return { from, to };
   }
 
   async forgetDevices(tenantId: string, userId: string): Promise<void> {
