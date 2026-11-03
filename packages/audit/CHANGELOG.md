@@ -1,5 +1,21 @@
 # @infrabyx/audit
 
+## 1.5.0
+
+### Minor Changes
+
+- 92706c4: One ledger entry for a job step over many resources (Finbyx PR-FBX-30; IPB-02-51; R1-D-41). Migration `audit/0005` adds `audit.batch_member`, append-only for every role. `PgAuditSink.recordBatch(tx, { action, run, step, resourceType, resourceIds })` writes one `job_step` entry (`<run>/<step>/<type>`) whose digest covers the full id list (1 to 100,000), and lists the ids in order; `verifyBatch(tx, ledgerId)` recomputes it. Run `infrabyx-migrate`.
+
+### Patch Changes
+
+- Updated dependencies [97e8524]
+- Updated dependencies [92706c4]
+- Updated dependencies [4a87754]
+- Updated dependencies [d66ffad]
+  - @infrabyx/contracts@1.14.0
+  - @infrabyx/config@1.5.2
+  - @infrabyx/crypto@1.3.1
+
 ## 1.4.4
 
 ### Patch Changes
