@@ -204,10 +204,30 @@ export const PORT_CATALOGUE = {
     interfaceDefined: false,
   },
   PAYROLL: { tier: 2, configPrefix: "int.payroll.", ownerFile: "OH v1.1", interfaceDefined: false },
+  BUREAU: {
+    tier: 2,
+    configPrefix: "int.bureau.",
+    ownerFile: "FBX v1.6",
+    interfaceDefined: true,
+  },
+  AA_FIU: {
+    tier: 2,
+    configPrefix: "int.aa_fiu.",
+    ownerFile: "FBX v1.6",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
 export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[]];
 
-/** Ports whose interfaces the 1.x line defined (R1-D-21: PR-FBX-01, adapters to follow). */
-export const R1_PORTS = ["KYC", "VIDEO_MEET"] as const satisfies readonly PortName[];
+/**
+ * Ports whose interfaces the 1.x line defined, adapters to follow (R1-D-21: PR-FBX-01; R1-D-43:
+ * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003).
+ */
+export const R1_PORTS = [
+  "KYC",
+  "VIDEO_MEET",
+  "BUREAU",
+  "AA_FIU",
+] as const satisfies readonly PortName[];

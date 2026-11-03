@@ -8,3 +8,4 @@ export * from "../stubs/index.js";
 export * from "./media.js";
 export * from "./kyc.js";
 export * from "./video-meet.js";
+export * from "./bureau-aa.js";
