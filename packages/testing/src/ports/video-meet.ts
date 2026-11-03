@@ -177,7 +177,15 @@ export const VCIP_ROOM_POLICY: RoomPolicy = {
   maxMinutes: 60,
 };
 
-export function videoMeetContractCases(): Array<ContractCase<VideoMeetPort>> {
+export interface VideoMeetContractOptions {
+  /** Signs a webhook body as the vendor would (the headers to send); fakes need none. */
+  signWebhook?: (rawBody: Uint8Array) => Record<string, string>;
+}
+
+export function videoMeetContractCases(
+  opts: VideoMeetContractOptions = {},
+): Array<ContractCase<VideoMeetPort>> {
+  const signed = (body: Uint8Array) => opts.signWebhook?.(body) ?? {};
   const IN_CUSTOMER: JoinOrigin = { ip: "49.36.10.10", country: "IN", anonymised: false };
   const OFFICE: JoinOrigin = { ip: "10.20.4.7", country: "IN", anonymised: false };
   const room = (p: VideoMeetPort) =>
@@ -265,10 +273,10 @@ export function videoMeetContractCases(): Array<ContractCase<VideoMeetPort>> {
         await expect(
           p.joinToken(r.roomId, "cus:contract", "participant", IN_CUSTOMER),
         ).rejects.toMatchObject({ code: "IPB-PORT-001" });
-        const events = await p.handleWebhook(
-          new TextEncoder().encode(JSON.stringify({ roomId: r.roomId, type: "anything" })),
-          {},
+        const event = new TextEncoder().encode(
+          JSON.stringify({ roomId: r.roomId, type: "anything" }),
         );
+        const events = await p.handleWebhook(event, signed(event));
         expect(events.map((e) => e.type)).toContain("room_ended");
         const quiet = await p.createRoom("case_quiet", [{ ref: "usr_a", role: "host" }], {
           ...VCIP_ROOM_POLICY,
@@ -277,9 +285,10 @@ export function videoMeetContractCases(): Array<ContractCase<VideoMeetPort>> {
         await expect(p.startRecording(quiet.roomId)).rejects.toMatchObject({
           code: "IPB-PORT-001",
         });
-        await expect(
-          p.handleWebhook(new TextEncoder().encode("not json"), {}),
-        ).rejects.toMatchObject({ code: "IPB-PORT-001" });
+        const junk = new TextEncoder().encode("not json");
+        await expect(p.handleWebhook(junk, signed(junk))).rejects.toMatchObject({
+          code: "IPB-PORT-001",
+        });
       },
     },
   ];
