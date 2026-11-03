@@ -1,5 +1,26 @@
 # @infrabyx/tenancy
 
+## 1.9.0
+
+### Minor Changes
+
+- 7910610: Ambient mutations and principal-bound idempotency keys (Udofin PR-UDF-033; Finbyx PR-FBX-21; IPB-10-07; R1-D-48). `PgKernel.ambient(ctx, fn, opts)` opens a mutation that every `mutate` on the same kernel joins in a kernel savepoint with its own settings and ledger check, so `idempotent()` covers handlers whose services open their own mutations; a joined call must be the same tenant, principal, scope and grant, and joined calls run one at a time. Migration `tenancy/0015` adds `principal_id` to `tenancy.idempotency_key`: another principal presenting a key gets 409 IPB-PORT-004. `idempotencyRequestHash(method, route, body, { params })` and `IdempotencyKeyInterceptor` hash the route parameters. Run `infrabyx-migrate`.
+- 05c3122: Officer functions per legal entity (Finbyx PR-FBX-31; IPB-02-33; R1-D-46). Migrations `tenancy/0013` (`entity_ref`, `register_ref`, `single_holder` and `revoke_request_id` on `tenancy.function_assignment`) and `tenancy/0014` (a unique partial index built concurrently: one active single-holder row per tenant, function and entity). `TenantFunctions` takes `policies` per function (`FunctionPolicy`: `perEntity`, `singleHolder`, `checkedRevocation`, `registerRequired`; `OFFICER_POLICY` sets all four). `requestAssign` takes `entityRef` and `registerRef`; `requestRevoke` raises an R3 `tenancy.function.revoke` request, and `revoke` refuses a function with `checkedRevocation`; `withFunctions` counts a per-entity function only in `ctx.entityId`; `authzAttributes(ctx)` lists each function's entities for AUTHZ. Without a policy a function behaves as before. Run `infrabyx-migrate`.
+
+### Patch Changes
+
+- 0da0398: `infrabyx-migrate` runs a file marked `-- infrabyx:no-transaction` one statement at a time (Udofin PR-UDF-031; R1-D-44). PostgreSQL runs a multi-statement query as one implicit transaction, so a lint-clean `CREATE INDEX CONCURRENTLY` on an existing table failed with "cannot run inside a transaction block". A failure part-way names how many statements ran; the file stays unrecorded and the next run repeats it from the start, so write such files to be re-runnable. `splitStatements(sql)` is exported from `@infrabyx/tenancy/migrate`.
+- Updated dependencies [1b99d7a]
+- Updated dependencies [c83e9e0]
+- Updated dependencies [af2ae98]
+- Updated dependencies [c4117e4]
+- Updated dependencies [1e721cd]
+- Updated dependencies [854e309]
+- Updated dependencies [854e309]
+  - @infrabyx/contracts@1.15.0
+  - @infrabyx/config@1.6.0
+  - @infrabyx/crypto@1.4.0
+
 ## 1.8.0
 
 ### Minor Changes

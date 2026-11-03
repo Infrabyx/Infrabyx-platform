@@ -1,5 +1,33 @@
 # @infrabyx/connectors
 
+## 1.5.0
+
+### Minor Changes
+
+- 1b99d7a: The CAPTCHA and DEVICE_ATTESTATION ports (Udofin PR-UDF-029 and PR-UDF-028; ADR-0004; R1-D-50). `contracts`: `CaptchaPort` (`verify` returns a verdict: `invalid`, `expired`, `duplicate`, `action_mismatch`, `hostname_mismatch`) and `DeviceAttestationPort` (Play Integrity, App Attest registration and assertions, bound to a nonce or the DPoP key), both catalogued in `R1_PORTS`. `connectors` (`@infrabyx/connectors/captcha`): `TurnstileCaptcha` (reference) and `HCaptchaCaptcha` (alternative), which send only the token and the secret, and `CaptchaGate`, which asks for a token only while `int.captcha.under_attack` is on and then fails closed with 429 IPB-SEC-019. `config`: `int.captcha.under_attack`, `int.captcha.turnstile.enabled`, `int.captcha.hcaptcha.enabled` (both adapters off by default). `testing`: `FakeCaptcha`, `startCaptchaStub`, `captchaContractCases`, `FakeDeviceAttestation`, `deviceAttestationContractCases`. The device-attestation vendor adapters wait for the owner (OWNER-QUESTIONS #99).
+- c83e9e0: Changing and retiring a customer's login (Udofin PR-UDF-034; R1-D-51). `CustomerIdentityPort` gains optional `startLoginChange`, `confirmLoginChange` and `retireLogin`. `KeycloakCustomerIdentity` and `ZitadelCustomerIdentity` implement them: a change needs one code to each login, from the same device key, and keeps the account's id, devices and subject; retiring forgets the devices, disables the account and frees the login for a new account. Zitadel accounts are now found by username, so a changed or recycled login maps to the right account. `CustomerAuthStore.recordAccountEvent` (optional) ledgers both events by the account's hash; `PgCustomerAuthStore` implements it.
+- 1e721cd: The IDfy KYC adapter on a stub (owner answer #91; R1-plan M25; R1-D-45). `idfy-kyc` provides PAN verification, face match and photo liveness, the methods the Digio reference lacks, over the egress client with no SDK; images are read from STORAGE and checked against their SHA-256 before they leave, and nothing the vendor returns is stored. Its request and result shapes are stub-shaped until the owner's IDfy sandbox exists (`mapIdfyPan`, `mapIdfyScore`), so it stays off behind `int.kyc.idfy.enabled` and `unproven`. `kycMethodRouter` routes each KYC method to the first adapter in its order that provides it (Digio first, IDfy second; Finbyx PR-FBX-24) and moves on only when an adapter is off, unavailable or lacks the method, never on an answer about the customer. `PORT_EXIT` names `idfy-kyc` as KYC's exit target.
+- 854e309: The `livekit` VIDEO_MEET reference adapter (`@infrabyx/connectors/video-meet`; owner answer #88, R1-D-53): a self-hosted LiveKit server called over its HTTP server API with C-26 tokens, the room's policy (India only, no anonymised origin, the official from the official network) enforced before a token is issued, webhooks verified and read back, and recordings moved from the egress disk to the room's STORAGE target with one locked single-part write each before the disk copy is removed. Off behind `int.video_meet.livekit.enabled` (`config`); the egress path is `unproven` until a deployment runs the egress worker. `testing`: the `livekit` test image and `videoMeetContractCases({ signWebhook })`. Compose: the `video` profile.
+- 3d8dfd6: `RedisReplayStore.fromUrl(url, { prefix, password, timeoutMs })` opens the platform's own Redis or Valkey connection for the DPoP replay store, so a product needs no Redis client of its own (Udofin PR-UDF-032; IPB-01-14; R1-D-47). `redis://` or `rediss://` (TLS) only; commands are not queued while disconnected and time out (2 s), so a claim during an outage throws and sign-in fails closed. `close()` ends the connection.
+- 0a33a67: V-CIP through our own VIDEO_MEET room (R1-plan M24; owner answer #90 (b); R1-D-55). `VcipConductor` in `@infrabyx/connectors/kyc` starts the recording in the tenant's room, sends only frames and the document photo to a KYC scorer for liveness and face match, takes the decision only from the session's official, refuses an approval without passed checks, a geo-tag in India and a recording the provider does not keep, and keeps every artefact in the tenant's STORAGE by hash. `MemoryVcipStore` for tests. Off behind the product's `kyc.vcip.enabled`.
+
+### Patch Changes
+
+- Updated dependencies [7910610]
+- Updated dependencies [1b99d7a]
+- Updated dependencies [c83e9e0]
+- Updated dependencies [af2ae98]
+- Updated dependencies [c4117e4]
+- Updated dependencies [1e721cd]
+- Updated dependencies [854e309]
+- Updated dependencies [854e309]
+- Updated dependencies [0da0398]
+- Updated dependencies [05c3122]
+  - @infrabyx/tenancy@1.9.0
+  - @infrabyx/contracts@1.15.0
+  - @infrabyx/config@1.6.0
+  - @infrabyx/crypto@1.4.0
+
 ## 1.4.0
 
 ### Minor Changes
