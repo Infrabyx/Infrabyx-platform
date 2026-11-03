@@ -32,6 +32,7 @@ export const PORTS = [
   "VIDEO_MEET",
   "BUREAU",
   "AA_FIU",
+  "ESTAMP",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

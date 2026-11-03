@@ -958,6 +958,99 @@ export function mandateContractCases(): Array<ContractCase<MandateLifecycle>> {
   ];
 }
 
+/** Inputs an ESTAMP adapter's DDE contract run needs (owner answer #100, R1-D-62). */
+export interface DdeFixtures {
+  /** A stamped PDF in the adapter's STORAGE, and another one. */
+  document: DocFileRef;
+  otherDocument: DocFileRef;
+  /** The certificate the document was stamped with (the fake needs one it issued). */
+  certificateId: (p: EstampPort) => Promise<string>;
+  outputPrefix: string;
+  /** Plays an executant signing at the information utility (the stub's or the fake's hook). */
+  execute: (p: EstampPort, ddeId: string, partyRef: string) => Promise<void> | void;
+}
+
+/** Contract cases of ESTAMP's optional NeSL Digital Document Execution (`capabilities.dde*`). */
+export function estampDdeContractCases(fx: DdeFixtures): Array<ContractCase<EstampPort>> {
+  const executants = [
+    { partyRef: "p1", name: "Party p1" },
+    { partyRef: "p2", name: "Party p2" },
+  ];
+  const reg = async (p: EstampPort, document = fx.document) => ({
+    document,
+    certificateId: await fx.certificateId(p),
+    executants,
+    outputPrefix: fx.outputPrefix,
+  });
+  return [
+    {
+      name: "classes the executants REGULATED; DDE is declared and stays IN",
+      async run(p) {
+        expect(payloadClass(DdeRegistration).bodyHighest).toBe("REGULATED");
+        expect(p.descriptor.residency).toBe("IN");
+        expect(p.descriptor.capabilities?.ddeRegister).toBeDefined();
+      },
+    },
+    {
+      name: "registers a stamped document once per key, pending its executants; another document under the key is refused",
+      method: "ddeRegister",
+      async run(p) {
+        const r = await reg(p);
+        const a = await p.ddeRegister!(r, "contract-dde-0001");
+        expect((await p.ddeRegister!(r, "contract-dde-0001")).ddeId).toBe(a.ddeId);
+        expect(["registered", "pending_execution"]).toContain(a.state);
+        expect(a.executed).toEqual([]);
+        expect(
+          await code(p.ddeRegister!(await reg(p, fx.otherDocument), "contract-dde-0001")),
+        ).toBe("IPB-PORT-004");
+        expect((await p.ddeStatus!(a.ddeId)).ddeId).toBe(a.ddeId);
+      },
+    },
+    {
+      name: "the executed document is released only once every executant has signed, under the output prefix with its hash",
+      method: "ddeDownloadExecuted",
+      async run(p) {
+        const a = await p.ddeRegister!(await reg(p), "contract-dde-0002");
+        await fx.execute(p, a.ddeId, "p1");
+        const half = await p.ddeStatus!(a.ddeId);
+        expect(half.state).toBe("pending_execution");
+        expect(half.executed).toEqual(["p1"]);
+        expect(await code(p.ddeDownloadExecuted!(a.ddeId))).toBe("IPB-PORT-001");
+        await fx.execute(p, a.ddeId, "p2");
+        expect((await p.ddeStatus!(a.ddeId)).state).toBe("executed");
+        const f = await p.ddeDownloadExecuted!(a.ddeId);
+        expect(f.storageKey.startsWith(fx.outputPrefix)).toBe(true);
+        expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
+      },
+    },
+  ];
+}
+
+/** DDE fixtures for `FakeEstamp`: a certificate it issues, and its `execute` hook. */
+export const ESTAMP_DDE_FAKE_FIXTURES: DdeFixtures = {
+  document: { storageKey: `${PREFIX}/DOC1.pdf`, sha256: sha256Hex("dde-doc-1") },
+  otherDocument: { storageKey: `${PREFIX}/DOC2.pdf`, sha256: sha256Hex("dde-doc-2") },
+  certificateId: async (p) =>
+    (
+      await p.purchase(
+        {
+          state: "MH",
+          instrument: "loan_agreement",
+          dutyMinor: 50_000,
+          considerationMinor: 50_000_000,
+          firstParty: { partyRef: "p1", name: "Party p1" },
+          secondParty: { partyRef: "p2", name: "Party p2" },
+          purchaser: { partyRef: "p1", name: "Party p1" },
+          outputPrefix: PREFIX,
+          authorisation: CONTRACT_AUTH,
+        },
+        "contract-dde-stamp-0001",
+      )
+    ).certificateId,
+  outputPrefix: PREFIX,
+  execute: (p, ddeId, partyRef) => (p as FakeEstamp).execute(ddeId, partyRef),
+};
+
 export function esignFakeCases(): Array<ContractCase<FakeEsign>> {
   return [
     {

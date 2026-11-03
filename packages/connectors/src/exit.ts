@@ -200,6 +200,16 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Consents live at the AA and the FIU's provider: customers approve again through the target; open consents are revoked at the source",
   },
   {
+    port: "ESTAMP",
+    primary: "nesl-dde",
+    exitTarget: "fake-estamp",
+    dataMove:
+      "Configuration swap for new executions; executed documents with the information utility's record are already held in STORAGE",
+    volumeClass: "S",
+    lockIn:
+      "NeSL is the information utility that offers Digital Document Execution: documents in execution at cut-over finish at NeSL, and without it products fall back to eSign on the stamped document (R1-D-62)",
+  },
+  {
     port: "VIDEO_MEET",
     primary: "livekit",
     exitTarget: "none",
