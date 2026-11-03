@@ -15,6 +15,7 @@ Updated: 2026-11-03
 - **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
 - **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
 - **M24** (R1-D-55): `VcipConductor`, V-CIP in our VIDEO_MEET room with a KYC scorer on frames; off behind the product's `kyc.vcip.enabled` (guide §7e; `connectors` minor). Live use needs the owner's Digio account and #83.
+- **PR-UDF-034** (R1-D-51): changing a customer's login with both numbers verified, and retiring a login, on Keycloak and Zitadel (guide §7d step 9; `contracts`, `connectors` minors).
 - **PR-FBX-31** (R1-D-46): officer functions per legal entity, one holder each, ended through an approved request (`tenancy/0013`, `0014`; guide §7k; `tenancy` minor). Only the per-entity seat is new; PR-FBX-20's functions were #175.
 
 ## Handover (2026-11-03, the owner's orders of 2 Nov: #93, Finbyx PR-FBX-20 to PR-FBX-30, M15, M24, M25)
