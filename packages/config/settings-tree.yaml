@@ -2059,6 +2059,15 @@ keys:
       mc: R4,
       source: "IPB-01 §01.4.4.2 KYC; R1-D-24 (off until the owner's Digio account exists)",
     }
+  - {
+      key: int.kyc.idfy.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)",
+    }
 
   # ---------------------------------------------------------------- R1: CAPTCHA (ADR-0004; R1-D-50)
   - {

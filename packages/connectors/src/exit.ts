@@ -168,11 +168,9 @@ export const PORT_EXIT: readonly PortExit[] = [
   {
     port: "KYC",
     primary: "digio-kyc",
-    exitTarget: "none",
-    pending:
-      "The alternative (IDfy or HyperVerge, owner answer #87) is not built until the owner chooses one (OWNER-QUESTIONS #91)",
+    exitTarget: "idfy-kyc",
     dataMove:
-      "Configuration swap per method for new checks; documents and results are already held in STORAGE and the product's records",
+      "Configuration swap per method for new checks (`kycMethodRouter` order); documents and results are already held in STORAGE and the product's records. IDfy covers PAN, face match and liveness today; DigiLocker and Aadhaar offline at IDfy are added when its sandbox confirms them",
     volumeClass: "S",
     lockIn:
       "KYC requests the customer has not completed at cut-over are started again at the target",

@@ -3017,6 +3017,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
   },
   {
     "key": "int.captcha.turnstile.enabled",
+    "key": "int.kyc.idfy.enabled",
     "tier": "PLATFORM",
     "type": "bool",
     "default": false,
@@ -3040,6 +3041,7 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R4",
     "source": "ADR-0004; R1-D-50 (the alternative; off until an hCaptcha site key exists)"
+    "source": "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)"
   },
   {
     "key": "rules.engine",
@@ -6732,6 +6734,7 @@ export type SettingValueMap = {
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;
+  "int.kyc.idfy.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;
