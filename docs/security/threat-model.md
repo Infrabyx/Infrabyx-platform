@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-04 (R1-D-66, §3.69: the approvals engine consumes each mandate approval; R1-D-64, §3.70: CI runs on pull requests only with the `ci:run` label; R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-04 (R1-D-67, §3.71: tenant creation for a provisional id; R1-D-66, §3.69: the approvals engine consumes each mandate approval; R1-D-64, §3.70: CI runs on pull requests only with the `ci:run` label; R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -867,3 +867,9 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 
 - **E (a required check satisfied without running):** pull-request CI starts only when a label is added. A job skipped by a condition reports success to the required checks, so any label other than `ci:run` cancels the run (its jobs report cancelled, which never satisfies a required check) instead of skipping it; the required checks and the ruleset are unchanged, and pushes to `main` and the release run as before. A cancelled run does not replace an earlier green or red result on the same commit with a pass.
 - **Residual:** a push after the label leaves the PR's checks pending until `ci:run` is removed and added again, which blocks the merge (fail-safe).
+
+### 3.71 Tenant creation for a provisional id (`TenantBootstrap`; PR-LDC-12, R1-D-67)
+
+- **E (a tenant created outside provisioning in production):** Control: `bootstrap` is refused in `prod`, `dr` and `pre-prod` (`SEED_REFUSED_ENVS`); there only `provision` runs, called by the Operations Hub adapter after it verifies the signed `TenantProvisioned` (§3.72), and its ledger entry names the provisioning request. Both need a platform context with a PLT_* role, which the kernel validates; the tenant row's insert policy already requires platform scope.
+- **T (a provisional id reused for another tenant, or a partial tenant):** Control: idempotent per id (a different request under the id is refused); the tenant row, its settings, the product's own rows and the ledger entry commit or roll back together (integration test). Initial settings go through `SettingsService.setInitial`, which keeps `set`'s validation, tighten check and ledger entry, is refused outside a tenant's creation, and refuses settings under maker-checker.
+- **Residual:** `provision` trusts its caller to have verified the event; it is a library call, so a product that calls it from anywhere else bypasses the Hub's maker-checker. The guide names the adapter as its only caller.
