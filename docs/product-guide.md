@@ -251,6 +251,16 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 
 - **Name the order (R1-D-54).** In your notification catalogue, list each SMS template's variables in the DLT template's order: `templates.sms.vars: ["reference", "re_name", "help_link"]`; do the same for `templates.whatsapp.vars`. A notification missing one of them fails its delivery instead of sending the wrong text. Without a list, names sort naturally, so `v01`, `v02` (Udofin's UDF-D-97 shim) keep working; Udofin can return to named variables.
 
+## 7u. Many writers per tenant: chain lanes (PR-FBX-32)
+
+- **What changes (ADR-0005, R1-D-58).** Run `infrabyx-migrate`: `audit/0006` (briefly locks `audit.ledger` and `audit.capture`; run it in a quiet window), then the no-transaction `audit/0007`. A tenant's ledger and statutory capture become 32 lanes each. Up to 32 of a tenant's transactions now append at once, so more workers raise throughput. Each tenant's existing chains continue as lane 0 at its first write after the upgrade.
+- **`seq` is no longer a count.** It is a global sequence: unique, increasing within a lane, with gaps. Count entries with `count(*)`. Page with a snapshot read (`kernel.read(ctx, fn, { snapshot: true })`), not by `afterSeq` across transactions. Order a lane by `lane_seq`.
+- **Verifying.** `verify`, `verifyCapture` and the sweeps follow each lane and compare its end with the stored lane head. A break names its `lane` and `laneSeq`. Anchors are format 3: every lane head of both chains, under `head_hash` and `capture_head_hash` as roots. `verifyAgainstAnchor` and `verifyCaptureAgainstAnchor` accept formats 1 to 3.
+- **Exports.** The reference map is `REF-EXPORT-1.4`: `audit_event` carries `lane` and `lane_seq`, and the archive's `verify.mjs` checks the trail lane by lane. A product map that exports `audit.ledger` adds both fields in its own minor bump.
+- **Keep each transaction's writes in one order.** Write the change first, then its ledger entry. A transaction holds one ledger lane and one capture lane until it ends.
+- **More lanes.** If you run more concurrent writers than lanes, raise them in your own migration: `select audit.set_chain_lanes('ledger', 64); select audit.set_chain_lanes('capture', 64);`. Lanes are never lowered.
+- **Finbyx.** COB can claim partitions with several workers and batch loans per transaction with `tx.unit` and `recordBatch` (§7n). See `docs/adoption/finbyx.md`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

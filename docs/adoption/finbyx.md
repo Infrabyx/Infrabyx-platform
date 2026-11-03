@@ -49,3 +49,13 @@ Then mark PR-FBX-13 (1), 20, 21, 22, 25 to 28, 30 and 31 met in `docs/platform-r
 - the COB load test: PR-FBX-30 is now met.
 
 Stays product-local: your workspace catalogue, AU7's grantee types, the executor's three-different-people rule, the COB rules, the KYC date rules and the Gotenberg renderer until the platform's `DOCGEN` adapter exists.
+
+## 4. PR-FBX-32: many COB writers per tenant (the release after `audit` 1.5.1)
+
+What the close of business gains, and what Finbyx changes, once `@infrabyx/audit` carries chain lanes (ADR-0005, R1-D-58, guide §7u).
+
+1. **Bump and migrate.** Move every `@infrabyx/*` together to that release and run `infrabyx-migrate --require-all`. `audit/0006` briefly locks the ledger and the capture, so run it outside the COB window. `audit/0007` builds two indexes concurrently. Nothing already written changes: each tenant's chains continue as lane 0.
+2. **Use more workers.** A tenant's writing transactions no longer queue on one head row. Up to 32 COB transactions of a tenant append at once, so the partitions claimed by several workers (COB-PERF) now add throughput. If COB runs more than 32 concurrent writers per tenant, raise the lanes in a Finbyx migration: `select audit.set_chain_lanes('ledger', 64); select audit.set_chain_lanes('capture', 64);`.
+3. **Batch per transaction.** Group loans into transactions of a few thousand `tx.unit` each, with one `recordBatch` per step (§7n), and drop the per-loan `update cob.run set loans = loans + 1` hot row (set the count at the step's end). In each transaction, write the loan's rows before its ledger entry.
+4. **`seq` is not a count any more.** Anything that counts ledger or capture entries by `seq`, or pages by `afterSeq` expecting commit order, uses `count(*)` or a snapshot read instead. The Rule 11(g) pack and the auditor export verify with `verifyAgainstAnchor` and `verifyCaptureAgainstAnchor`, which accept the new format-3 anchors and the old ones.
+5. **Prove it.** Re-run `load:cob-db` with several workers, then the 1,000,000-loan staging run (#38) with `FBX_COB_ASSERT_WINDOW=1`. Mark PR-FBX-32 met once the window holds.

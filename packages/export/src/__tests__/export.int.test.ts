@@ -88,7 +88,7 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
     const job = await svc.request(owner, { scope: { type: "FULL_TENANT" } });
     expect(job.state).toBe("requested");
     const done = await svc.run("tnt_demo", job.id);
-    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.3" });
+    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.4" });
     const arc = (
       await db.admin.query<{
         id: string;
@@ -151,6 +151,10 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
         .map((l) => JSON.parse(l) as { action: string; branch_id: string | null }),
     );
     expect(entries.find((e) => e.action === "test.branch.entry")?.branch_id).toBe("br_north");
+    // Every entry carries its lane and position (audit/0006, REF-EXPORT-1.4), which the verifier
+    // above hashed lane by lane.
+    const laned = entries as unknown as Array<{ lane: number | null; lane_seq: number | null }>;
+    expect(laned.every((e) => typeof e.lane === "number" && Number(e.lane_seq) > 0)).toBe(true);
   });
 
   it("@IPB-09-37 every download ledgers the archive SHA-256, and the hash never changes", async () => {

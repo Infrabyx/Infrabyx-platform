@@ -170,6 +170,13 @@ function normaliseRows(d: DatasetInput, rows: Array<Record<string, unknown>>) {
     for (const c of times) if (o[c] !== null && o[c] !== undefined) o[c] = NORMALISED.instant;
     if (d.name === AUDIT_ENTITY) {
       o.id = `led_normalised_${String(i + 1).padStart(6, "0")}`;
+      // Since audit/0006 `seq` comes from a database-wide sequence and the lane from the
+      // transaction id, so both are run-time values (REF-EXPORT-1.4).
+      if ("seq" in o) o.seq = i + 1;
+      if (o.lane !== undefined && o.lane !== null) {
+        o.lane = 0;
+        o.lane_seq = i + 1;
+      }
       for (const h of ["prev_hash", "entry_hash", "before_digest", "after_digest"])
         if (o[h]) o[h] = NORMALISED.hash;
       if (o.trace_id) o.trace_id = "normalised";

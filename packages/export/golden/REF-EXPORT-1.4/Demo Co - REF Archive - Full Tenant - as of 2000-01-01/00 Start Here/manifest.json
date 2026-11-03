@@ -1,0 +1,266 @@
+{
+  "archive_standard_version": "1.0",
+  "archive_id": "arc_00000000000000000000000000",
+  "folder_profile": "platform_reference_v1",
+  "map_version": "REF-EXPORT-1.4",
+  "producer": {
+    "product": "REF",
+    "release": "normalised"
+  },
+  "tenant_id": "tnt_demo",
+  "scope": {
+    "type": "FULL_TENANT",
+    "ref": null
+  },
+  "requester": "normalised",
+  "approvers": [],
+  "as_of": "2000-01-01T00:00:00.000Z",
+  "control_totals": {
+    "ai_runs": 0,
+    "approval_decision": 0,
+    "approval_request": 0,
+    "audit_event": 1,
+    "audit_event.last_seq": 1,
+    "inbox_item": 0,
+    "legal_entity": 0,
+    "membership": 8,
+    "notification": 0,
+    "setting": 0,
+    "tenant": 1,
+    "vidhi_actions": 0
+  },
+  "predecessor_archive_id": null,
+  "files": [
+    {
+      "path": "00 Start Here/README.md",
+      "bytes": 3464,
+      "sha256": "e125d394acf1d2e4979e398dc7e0fa12d0d8b03ca02a310f3dd624aefa2c5dc0"
+    },
+    {
+      "path": "00 Start Here/README.txt",
+      "bytes": 3460,
+      "sha256": "494dbb63a344118a32b231f7a544ddc1802953cbc7e355fcc56d8edd3a549f9a"
+    },
+    {
+      "path": "00 Start Here/code-tables/actor_type.csv",
+      "bytes": 115,
+      "sha256": "fc9d9946103cccd32ff90e522997796875f0520725b5870699107ca5fce96093"
+    },
+    {
+      "path": "00 Start Here/code-tables/decision.csv",
+      "bytes": 50,
+      "sha256": "a22e21a8b2fa07fe794180ec1527126b23d83d7ea8955cc91628d60f3564f286"
+    },
+    {
+      "path": "00 Start Here/code-tables/residency.csv",
+      "bytes": 84,
+      "sha256": "82aa885dd3f034129332e80ce64a51728a79911b55807392bafce544a54ae90f"
+    },
+    {
+      "path": "00 Start Here/code-tables/risk_class.csv",
+      "bytes": 218,
+      "sha256": "d5c5bfb388bca975e7e78e78193c560790c823258f78e3264ef22433ffe75c48"
+    },
+    {
+      "path": "00 Start Here/code-tables/severity.csv",
+      "bytes": 69,
+      "sha256": "86fd155169d617ef44626452e0b2629f005d7d6947a0467b5e2cad8e429012f9"
+    },
+    {
+      "path": "00 Start Here/data-dictionary.csv",
+      "bytes": 7667,
+      "sha256": "b7ba1fc5586f22765af36f0fe69b2a7bca699d4e453f2ad389eb92b731500f8d"
+    },
+    {
+      "path": "00 Start Here/relationships.csv",
+      "bytes": 48,
+      "sha256": "9f77c883ae594b52fa8e4043ef2b16f26890bd96eae75a6c8aa1a0496c3ca424"
+    },
+    {
+      "path": "00 Start Here/schemas/ai_runs.schema.json",
+      "bytes": 2963,
+      "sha256": "0357c3d851e76ab209196346249ea2a2680ed6681d4bacfcf363494340c6072f"
+    },
+    {
+      "path": "00 Start Here/schemas/approval_decision.schema.json",
+      "bytes": 884,
+      "sha256": "4e47a766738b2e62fe89f028b1b42369d63cdf35fcc74a1b6231c908f16f9dce"
+    },
+    {
+      "path": "00 Start Here/schemas/approval_request.schema.json",
+      "bytes": 1579,
+      "sha256": "df8f0bff8d6e45f2fc23230b2fe556bf29e3b40ea8c01a6f9cea8452267ff227"
+    },
+    {
+      "path": "00 Start Here/schemas/audit_event.schema.json",
+      "bytes": 2627,
+      "sha256": "a79323a667798e938716e67d06c4f1e3561e8561c1aa99fe29a42084de913506"
+    },
+    {
+      "path": "00 Start Here/schemas/inbox_item.schema.json",
+      "bytes": 1615,
+      "sha256": "9808a393902c3fbebc1e1f935d5525b7de7ed981743da7e52db69d7aad45c83f"
+    },
+    {
+      "path": "00 Start Here/schemas/legal_entity.schema.json",
+      "bytes": 1005,
+      "sha256": "9215dc8357d5fd664c5426411dd2d7fc38e3f5ba90fdfbc91f22178435cfc155"
+    },
+    {
+      "path": "00 Start Here/schemas/membership.schema.json",
+      "bytes": 836,
+      "sha256": "4d1672e16cb1657ebe3909f406e412fe5bdf930faf49308232a871406c5efd85"
+    },
+    {
+      "path": "00 Start Here/schemas/notification.schema.json",
+      "bytes": 848,
+      "sha256": "c14b432408b48a30ec4889b58eaa823c9fc6b5b2a5ad7b3cc3cb350a2995ea23"
+    },
+    {
+      "path": "00 Start Here/schemas/setting.schema.json",
+      "bytes": 1089,
+      "sha256": "6e8e870b68f0bd83e3ba809c91b39b708a5e6d013981a1a443616331aa2d368a"
+    },
+    {
+      "path": "00 Start Here/schemas/tenant.schema.json",
+      "bytes": 1018,
+      "sha256": "b75ab8522c015a3401782ab3fc893a57118381ace9ed1d3998dae966ba973f97"
+    },
+    {
+      "path": "00 Start Here/schemas/vidhi_actions.schema.json",
+      "bytes": 1074,
+      "sha256": "688e6e5605eb294a0ba9494ff8ce270b68a1f76e5a4394f585908436a7251325"
+    },
+    {
+      "path": "00 Start Here/verify/LICENSE.txt",
+      "bytes": 641,
+      "sha256": "2f5267944d5e19d53a4d68e3a0866e1b17eb10b027b66e5b90a6ee0c381ab7b5"
+    },
+    {
+      "path": "00 Start Here/verify/README.txt",
+      "bytes": 507,
+      "sha256": "1d63da1a4efdfe8160ca10af3e83cef2a6fa247cb26154e7607d60870a030ee9"
+    },
+    {
+      "path": "00 Start Here/verify/export-signing-key.jwk.json",
+      "bytes": 208,
+      "sha256": "dd9fec0116eb842dc4b3e6a9a7c3838bfc2613f44ec0dbe7ac21894f7ed88bc8"
+    },
+    {
+      "path": "00 Start Here/verify/verify.mjs",
+      "bytes": 7922,
+      "sha256": "42861e4436b646dfcf31a7fddff9552131db7da16ce5f30365f34c4ebf84c1d3"
+    },
+    {
+      "path": "01 Data/ai_runs.csv",
+      "bytes": 262,
+      "sha256": "41eee4f7f06e9f147bf650a34c5f909a1134fc5abaeefd6e1ecb72a76da3e432"
+    },
+    {
+      "path": "01 Data/ai_runs.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/approval_decision.csv",
+      "bytes": 59,
+      "sha256": "95663d9072f5e9417ab0a73a33125ef4a557d8e0b7d012e7f8edfed271dc0c1e"
+    },
+    {
+      "path": "01 Data/approval_decision.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/approval_request.csv",
+      "bytes": 118,
+      "sha256": "3428dedd87906088108047c69d12dd1b5c5600562c711f0e33e790a29017bc72"
+    },
+    {
+      "path": "01 Data/approval_request.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/inbox_item.csv",
+      "bytes": 128,
+      "sha256": "3bd3772b3fe050e3d25179572bf3131d38308efb40b2027d6e1eedce7cc2d926"
+    },
+    {
+      "path": "01 Data/inbox_item.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/legal_entity.csv",
+      "bytes": 44,
+      "sha256": "62f037615b88064b246921514769840495d9943a4b851c67f810b0f7a9d5358d"
+    },
+    {
+      "path": "01 Data/legal_entity.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/membership.csv",
+      "bytes": 671,
+      "sha256": "6b3f1a57cece2482f5eee718b3e986b8c3911ee253653ca66314e03c66ca9307"
+    },
+    {
+      "path": "01 Data/membership.jsonl",
+      "bytes": 991,
+      "sha256": "139a7ffc734308218476987ae5ab5e1625634a6958b202ba9d3a3c2cb2589955"
+    },
+    {
+      "path": "01 Data/notification.csv",
+      "bytes": 44,
+      "sha256": "fcb22566487171a218b9d0a1b6c94954cfd5d0b40152a81fbad16da784fb10b0"
+    },
+    {
+      "path": "01 Data/notification.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/setting.csv",
+      "bytes": 61,
+      "sha256": "a677690d8c79e8810a02783a6669e797218860b37e057ea3b6321f0f925da288"
+    },
+    {
+      "path": "01 Data/setting.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "01 Data/tenant.csv",
+      "bytes": 126,
+      "sha256": "f057f7d3ed0c5d12df9ef72acca3469e8940e1afb1f4535a824c3d5c61e9e624"
+    },
+    {
+      "path": "01 Data/tenant.jsonl",
+      "bytes": 151,
+      "sha256": "56396c53642a074400a6a183d6a34d4bf032138ac6cf77eedd595f9d2b97cf81"
+    },
+    {
+      "path": "01 Data/vidhi_actions.csv",
+      "bytes": 60,
+      "sha256": "803f0e1d38226e1727968152e49056e0909fb445424cabb437a63cdadcd1b59d"
+    },
+    {
+      "path": "01 Data/vidhi_actions.jsonl",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02 Audit Trail/audit-events-2000-01.jsonl",
+      "bytes": 598,
+      "sha256": "f4bccd9fa0dc1bc39bba8a9f1188fe38bb3db563bf13da32e1a766249c948bef"
+    }
+  ],
+  "pack_sha256": "341437acfe61637f53af4dad36793b569638fd0077279406f544417199a115fd",
+  "signature": {
+    "file": "manifest.json.jws",
+    "alg": "ES256",
+    "kid": "local:sign:export"
+  }
+}

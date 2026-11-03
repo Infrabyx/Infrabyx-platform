@@ -12,7 +12,7 @@
 //      one printed in README.txt);
 //   4. each dataset CSV's header against its JSON Schema, and its row count against the control
 //      totals;
-//   5. the audit trail hash chain (entry_hash = sha256(prev_hash "\n" JCS(entry))), month by month.
+//   5. the audit trail hash chains (entry_hash = sha256(prev_hash "\n" JCS(entry))), lane by lane.
 //
 // Usage: node verify.mjs [path to the archive folder]   (default: two folders up from this file)
 // Exit code 0 when every check passes, 1 otherwise.
@@ -161,23 +161,39 @@ const audit = manifest.files
   .map((f) => f.path)
   .filter((p) => /^02 Audit Trail\/audit-events-\d{4}-\d{2}\.jsonl$/.test(p))
   .sort();
-let prev = null;
-let count = 0;
+// Since audit/0006 (REF-EXPORT-1.4) a tenant's ledger is a set of lanes, each its own chain; an
+// entry without a lane is lane 0 at its seq. The monthly files split by time, so every entry is
+// read first and each lane checked in seq order, which is its order in the lane.
+const entries = [];
 for (const p of audit) {
   for (const line of readFileSync(join(root, ...p.split("/")), "utf8").split("\n")) {
-    if (!line) continue;
-    const e = JSON.parse(line);
-    count += 1;
-    if (prev && e.prev_hash !== prev.entry_hash) fail(`audit chain broken before seq ${e.seq}`);
-    if (prev && e.seq !== prev.seq + 1) fail(`audit sequence gap before seq ${e.seq}`);
-    const body = {};
-    for (const k of HASHED) body[k] = e[k];
-    // The branch joins the hash only when set (audit/0004, REF-EXPORT-1.3), as in the ledger chain.
-    if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
-    if (sha256(Buffer.from(`${e.prev_hash}\n${jcs(body)}`, "utf8")) !== e.entry_hash)
-      fail(`audit entry hash differs at seq ${e.seq}`);
-    prev = e;
+    if (line) entries.push(JSON.parse(line));
   }
+}
+entries.sort((a, b) => Number(a.seq) - Number(b.seq));
+const lanes = new Map();
+let count = 0;
+for (const e of entries) {
+  count += 1;
+  const laned = e.lane !== undefined && e.lane !== null;
+  const lane = laned ? Number(e.lane) : 0;
+  const pos = laned ? Number(e.lane_seq) : Number(e.seq);
+  const prev = lanes.get(lane);
+  if (prev && e.prev_hash !== prev.hash)
+    fail(`audit chain broken before seq ${e.seq} (lane ${lane})`);
+  if (prev && pos !== prev.pos + 1) fail(`audit sequence gap before seq ${e.seq} (lane ${lane})`);
+  const body = {};
+  for (const k of HASHED) body[k] = e[k];
+  // The branch joins the hash only when set (audit/0004, REF-EXPORT-1.3), as in the ledger chain,
+  // and so do the lane and its position (audit/0006, REF-EXPORT-1.4).
+  if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
+  if (laned) {
+    body.lane = lane;
+    body.lane_seq = pos;
+  }
+  if (sha256(Buffer.from(`${e.prev_hash}\n${jcs(body)}`, "utf8")) !== e.entry_hash)
+    fail(`audit entry hash differs at seq ${e.seq}`);
+  lanes.set(lane, { pos, hash: e.entry_hash });
 }
 if (
   manifest.control_totals.audit_event !== undefined &&
