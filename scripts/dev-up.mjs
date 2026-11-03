@@ -3,7 +3,7 @@
 //       place env-var secrets are allowed, IPB-02-28; `*.local` is never committed), starts the
 //       `core` profile and waits for every health check, then runs `infrabyx-migrate` and the `dev`
 //       seed (platform and public-site modules) against the stack's database. Extra profiles:
-//       `pnpm dev:up -- --profile apps --profile observability`.
+//       `pnpm dev:up -- --profile apps --profile observability` (also `search`, `ai`, `video`).
 // down: stops the stack and removes its volumes (local data only).
 // Needs Docker and a built workspace (`pnpm build`).
 import { execFileSync } from "node:child_process";
@@ -59,6 +59,8 @@ function ensureEnv() {
     MINIO_ROOT_PASSWORD: () => secret(),
     MINIO_KMS_SECRET_KEY: () => `ipb-local-key:${Buffer.from(randomBytes(32)).toString("base64")}`,
     OPENSEARCH_ADMIN_PASSWORD: () => `Ipb-${secret(12)}`,
+    // C-26: the LiveKit API secret encodes 32 random bytes (the `video` profile).
+    LIVEKIT_API_SECRET: () => secret(32),
   };
   let changed = false;
   for (const [k, gen] of Object.entries(want)) {
@@ -328,7 +330,7 @@ async function up(argv) {
 function down() {
   if (!existsSync(ENV_FILE)) return console.log("dev:down: nothing to stop (no .env.local)");
   compose([
-    ...["core", "apps", "search", "ai", "observability"].flatMap((p) => ["--profile", p]),
+    ...["core", "apps", "search", "ai", "observability", "video"].flatMap((p) => ["--profile", p]),
     "down",
     "--volumes",
     "--remove-orphans",

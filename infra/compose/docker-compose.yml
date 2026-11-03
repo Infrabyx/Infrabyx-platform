@@ -320,6 +320,19 @@ services:
       APP_API_URL: http://127.0.0.1:${API_PORT:-53125}
       PORT: ${WEB_PORT:-53127}
 
+  livekit:
+    # VIDEO_MEET (M15, C-26): the LiveKit server for local video calls, single node, no egress
+    # worker. `pnpm dev:up --profile video`. Loopback only; media over TCP 7881 locally.
+    profiles: [video]
+    <<: *hardened
+    image: livekit/livekit-server:v1.13.11@sha256:25cd902de7cacbd5f1f779f6a6ac1eae20ba8f56b0935934ce6b0ab80d1e3d20
+    environment:
+      LIVEKIT_KEYS: "APIipblocal: ${LIVEKIT_API_SECRET:?run pnpm dev:up}"
+    command: ["--bind", "0.0.0.0", "--node-ip", "127.0.0.1"]
+    ports:
+      - "127.0.0.1:${LIVEKIT_PORT:-57880}:7880"
+      - "127.0.0.1:${LIVEKIT_RTC_TCP_PORT:-57881}:7881"
+
   opensearch:
     profiles: [search]
     image: opensearchproject/opensearch:3.8.0@sha256:fafe3fc3587088674669235575aa166228c48bdb940294a8cdbbc1da75236a40
