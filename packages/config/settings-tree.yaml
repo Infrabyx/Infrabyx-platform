@@ -2069,6 +2069,26 @@ keys:
       source: "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)",
     }
 
+  # ---------------------------------------------------------------- R1: BUREAU and AA_FIU (IPB-01 §01.4.4.3; #97, R1-D-43, R1-D-61)
+  - {
+      key: int.bureau.cibil.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.3 BUREAU; R1-D-61 (TransUnion CIBIL, off until the owner's CIBIL sandbox exists)",
+    }
+  - {
+      key: int.aa_fiu.setu.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 §01.4.4.3 AA_FIU; R1-D-61 (Setu FIU, off until the owner's Setu sandbox exists)",
+    }
+
   # ---------------------------------------------------------------- R1: VIDEO_MEET (IPB-01 VIDEO_MEET; #88, C-26, R1-D-53)
   - {
       key: int.video_meet.livekit.enabled,

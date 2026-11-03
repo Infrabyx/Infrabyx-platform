@@ -94,6 +94,14 @@
       "types": "./dist/kyc/index.d.ts",
       "default": "./dist/kyc/index.js"
     },
+    "./bureau": {
+      "types": "./dist/bureau/index.d.ts",
+      "default": "./dist/bureau/index.js"
+    },
+    "./aa-fiu": {
+      "types": "./dist/aa-fiu/index.d.ts",
+      "default": "./dist/aa-fiu/index.js"
+    },
     "./video-meet": {
       "types": "./dist/video-meet/index.d.ts",
       "default": "./dist/video-meet/index.js"

@@ -13,3 +13,5 @@ export * from "./kyc.js";
 export * from "./captcha.js";
 export * from "./idfy.js";
 export * from "./play-integrity.js";
+export * from "./cibil.js";
+export * from "./setu-aa.js";

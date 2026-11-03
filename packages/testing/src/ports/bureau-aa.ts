@@ -1,9 +1,8 @@
-// BUREAU and AA_FIU contract cases and in-memory fakes (IPB-01-15; Finbyx
-// PR-FBX-28, R1-D-43). No vendor adapter exists yet (the owner's CIC and AA sandbox documents and
-// accounts come first); a future adapter runs `creditBureauContractCases(itsSandboxFixtures)` or
-// `accountAggregatorContractCases(…)` with defineContractSuite. The fakes let products build their
-// loan-origination flows now: deterministic fixtures, files as STORAGE references, no raw PAN in
-// any result.
+// BUREAU and AA_FIU contract cases and in-memory fakes (IPB-01-15; Finbyx PR-FBX-28, R1-D-43).
+// The first vendor adapters, `cibil` and `setu-aa` (R1-D-61), run these cases against their stubs
+// until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
+// or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
+// flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
 import { expect } from "vitest";
 import { PortError } from "@infrabyx/contracts/errors";
 import {

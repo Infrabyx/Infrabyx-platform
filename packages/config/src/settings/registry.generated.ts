@@ -3016,6 +3016,32 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 KYC; R1-D-45 (the IDfy alternative, off until the owner's IDfy sandbox exists)"
   },
   {
+    "key": "int.bureau.cibil.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.3 BUREAU; R1-D-61 (TransUnion CIBIL, off until the owner's CIBIL sandbox exists)"
+  },
+  {
+    "key": "int.aa_fiu.setu.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.3 AA_FIU; R1-D-61 (Setu FIU, off until the owner's Setu sandbox exists)"
+  },
+  {
     "key": "int.video_meet.livekit.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -6782,6 +6808,8 @@ export type SettingValueMap = {
   "int.esign.expire_in_days": number;
   "int.kyc.digio.enabled": boolean;
   "int.kyc.idfy.enabled": boolean;
+  "int.bureau.cibil.enabled": boolean;
+  "int.aa_fiu.setu.enabled": boolean;
   "int.video_meet.livekit.enabled": boolean;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
