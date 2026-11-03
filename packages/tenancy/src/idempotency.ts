@@ -5,6 +5,11 @@
 // (`replayed: true`); a replay with another body is refused (409 IPB-PORT-004); a key whose first
 // request is still running is refused (409 IPB-API-011). The key, the hash and the response commit
 // together with the change, so a request that fails stores nothing and may be retried.
+//
+// A key belongs to the principal that first used it (Udofin PR-UDF-033 (2); R1-D-48): another
+// principal of the same tenant presenting it is refused, never served the stored response. The
+// hash covers the route parameters when given (Finbyx PR-FBX-21 (2)), so one key cannot replay
+// across two resources of one route template.
 import { IpbError } from "@infrabyx/contracts/errors";
 import { UUIDV7_REGEX } from "@infrabyx/contracts/events";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
@@ -18,7 +23,7 @@ export interface IdempotencyRequest {
   key: string;
   /** Method and route template, e.g. `POST /v1/loans`. */
   route: string;
-  /** `idempotencyRequestHash(method, route, body)`. */
+  /** `idempotencyRequestHash(method, route, body, { params })`. */
   requestHash: string;
   /** This request's `X-Request-Id`, returned to replays as `Idempotent-Original-Request-Id`. */
   requestId?: string;
@@ -40,13 +45,26 @@ export function parseIdempotencyKey(value: string | undefined): string {
   return v;
 }
 
-/** SHA-256 over the canonical method, route and body (key order does not matter). */
-export function idempotencyRequestHash(method: string, route: string, body: unknown): string {
-  return sha256Hex(canonicalize({ method: method.toUpperCase(), route, body: body ?? null }));
+/**
+ * SHA-256 over the canonical method, route and body (key order does not matter), and the route's
+ * parameters when there are any (`/v1/branches/:id/change` for two branches hashes differently;
+ * PR-FBX-21 (2)). Without parameters the hash is the one earlier releases computed.
+ */
+export function idempotencyRequestHash(
+  method: string,
+  route: string,
+  body: unknown,
+  o: { params?: Readonly<Record<string, string>> } = {},
+): string {
+  const params = o.params && Object.keys(o.params).length ? { params: o.params } : {};
+  return sha256Hex(
+    canonicalize({ method: method.toUpperCase(), route, body: body ?? null, ...params }),
+  );
 }
 
 interface Row {
   route: string;
+  principal_id: string | null;
   request_hash: string;
   request_id: string | null;
   response_status: number;
@@ -83,14 +101,18 @@ export async function idempotent<T>(
     });
   const found = (
     await tx.query<Row>(
-      `select route, request_hash, request_id, response_status, response_body,
+      `select route, principal_id, request_hash, request_id, response_status, response_body,
               expires_at < now() as expired
          from tenancy.idempotency_key where key = $1`,
       [key],
     )
   ).rows[0];
   if (found && !found.expired) {
-    if (found.request_hash !== req.requestHash || found.route !== req.route)
+    if (
+      found.request_hash !== req.requestHash ||
+      found.route !== req.route ||
+      (found.principal_id !== null && found.principal_id !== tx.ctx.principal.id)
+    )
       throw new IpbError("IPB-PORT-004", {
         detail: "this Idempotency-Key was used with another request",
       });
@@ -111,8 +133,9 @@ export async function idempotent<T>(
   const out = await work();
   await tx.query(
     `insert into tenancy.idempotency_key
-       (tenant_id, key, route, request_hash, request_id, response_status, response_body, expires_at)
-     values ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(hours => $8))`,
+       (tenant_id, key, route, request_hash, request_id, response_status, response_body, expires_at,
+        principal_id)
+     values ($1, $2, $3, $4, $5, $6, $7, now() + make_interval(hours => $8), $9)`,
     [
       tx.ctx.tenantId,
       key,
@@ -122,6 +145,7 @@ export async function idempotent<T>(
       out.status,
       out.body === undefined ? null : JSON.stringify(out.body),
       ttl,
+      tx.ctx.principal.id,
     ],
   );
   return { ...out, replayed: false };
