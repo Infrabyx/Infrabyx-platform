@@ -318,3 +318,132 @@ describe("@IPB-02-12 external read access (R1-D-29)", () => {
     await db.admin.query("drop table fbx.open_book");
   });
 });
+
+describe("external grants from a product's own approvals (PR-FBX-22, R1-D-40)", () => {
+  const approved = (over: Partial<Parameters<ExternalGrants["fromApproved"]>[1]> = {}) => ({
+    granteeId: "ext_inspector_1",
+    granteeName: "R. Inspector",
+    organisation: "Supervisor",
+    kind: "rbi_inspector" as const,
+    purpose: "inspection under section 45N",
+    entityIds: [ENT_1],
+    periodFrom: "2026-04-01",
+    periodTo: "2027-03-31",
+    sourceApprovalId: "fbx_au7_0001",
+    makerId: "usr_cco",
+    checkerId: "usr_ciso",
+    days: 14,
+    piiLevel: "masked" as const,
+    exportAllowed: false,
+    ...over,
+  });
+  // The product's executor: a service principal in the tenant, inside its approval's transaction.
+  const executor: KernelContext = {
+    tenantId: "tnt_a",
+    principal: { id: "svc_fbx_extaccess", type: "service", roles: ["SVC_FBX_EXTACCESS"] },
+  };
+  const open = (over = {}) =>
+    kernel.mutate(
+      executor,
+      async (tx) => {
+        await audit.record(tx, { action: "fbx.au7.execute", resourceType: "au7", resourceId: "x" });
+        return grants().fromApproved(tx, approved(over));
+      },
+      {
+        action: "security.external_grant.from_approved",
+      },
+    );
+
+  it("opens an active grant with the product's approval id, maker, checker and levels, once", async () => {
+    const g = await open();
+    expect(g).toMatchObject({
+      state: "active",
+      source: "product",
+      sourceApprovalId: "fbx_au7_0001",
+      requestedBy: "usr_cco",
+      approvedBy: "usr_ciso",
+      piiLevel: "masked",
+      exportAllowed: false,
+      durationDays: 14,
+    });
+    expect((await open()).id).toBe(g.id);
+    expect(audit.entries.some((e) => e.action === "security.external_grant.from_approved")).toBe(
+      true,
+    );
+    const ctx = externalContext("tnt_a", "ext_inspector_1", g.id);
+    const rows = await reads().read<{ id: string; pii: string; export: boolean }>(
+      ctx,
+      "fbx.journal",
+      "select id, tenancy.external_pii_level() as pii, tenancy.external_export_allowed() as export from fbx.journal order by id",
+    );
+    expect(rows.map((r) => [r.id, r.pii, r.export])).toEqual([
+      ["j1", "masked", false],
+      ["j2", "masked", false],
+    ]);
+  });
+
+  it("refuses the same maker and checker, more than 90 days, and an agent executor", async () => {
+    await expect(
+      open({ sourceApprovalId: "fbx_au7_0002", checkerId: "usr_cco" }),
+    ).rejects.toMatchObject({ code: "IPB-TRUST-005" });
+    await expect(open({ sourceApprovalId: "fbx_au7_0003", days: 91 })).rejects.toThrow(/1–90 days/);
+    const agent: KernelContext = {
+      tenantId: "tnt_a",
+      principal: { id: "agt_vidhi", type: "agent", roles: ["AGT_VIDHI"] },
+    };
+    await expect(
+      kernel.mutate(
+        agent,
+        (tx) => grants().fromApproved(tx, approved({ sourceApprovalId: "fbx_au7_0004" })),
+        {
+          action: "security.external_grant.from_approved",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "IPB-SEC-005" });
+  });
+
+  it("platform grants default to masked and no export; the product revokes its own grant at once", async () => {
+    const p = await activeGrant();
+    expect(p).toMatchObject({ source: "platform", piiLevel: "masked", exportAllowed: false });
+    const full = await open({
+      sourceApprovalId: "fbx_au7_0005",
+      piiLevel: "full",
+      exportAllowed: true,
+    });
+    const ctx = externalContext("tnt_a", "ext_inspector_1", full.id);
+    const [row] = await reads().read<{ pii: string; export: boolean }>(
+      ctx,
+      "fbx.journal",
+      "select tenancy.external_pii_level() as pii, tenancy.external_export_allowed() as export from fbx.journal limit 1",
+    );
+    expect(row).toEqual({ pii: "full", export: true });
+    const revoked = await kernel.mutate(
+      executor,
+      async (tx) => {
+        await audit.record(tx, { action: "fbx.au7.revoke", resourceType: "au7", resourceId: "x" });
+        return grants().revokeFromApproved(tx, "fbx_au7_0005", "usr_ciso");
+      },
+      { action: "security.external_grant.revoke" },
+    );
+    expect(revoked?.state).toBe("revoked");
+    await expect(
+      reads().read(ctx, "fbx.journal", "select id from fbx.journal"),
+    ).rejects.toMatchObject({ code: "IPB-TRUST-003" });
+    expect(
+      await kernel.mutate(
+        executor,
+        async (tx) => {
+          await audit.record(tx, {
+            action: "fbx.au7.revoke",
+            resourceType: "au7",
+            resourceId: "x",
+          });
+          return grants().revokeFromApproved(tx, "fbx_au7_0005", "usr_ciso");
+        },
+        {
+          action: "security.external_grant.revoke",
+        },
+      ),
+    ).toBeNull();
+  });
+});

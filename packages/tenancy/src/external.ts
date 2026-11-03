@@ -47,6 +47,22 @@ export interface ExternalGrantRequest {
   days?: number;
 }
 
+/** How much personal data an external grantee may see (R1-D-40). */
+export type ExternalPiiLevel = "none" | "masked" | "full";
+
+/** A grant a product opens from its own approved register (Finbyx PR-FBX-22, R1-D-40). */
+export interface ApprovedExternalGrant extends Omit<ExternalGrantRequest, "days"> {
+  /** The product's own approval or register id; one grant per id in a tenant. */
+  sourceApprovalId: string;
+  /** The product's maker and the checker who approved (different people). */
+  makerId: string;
+  checkerId: string;
+  /** Days the grant lasts from now (1 to 90). */
+  days: number;
+  piiLevel: ExternalPiiLevel;
+  exportAllowed: boolean;
+}
+
 export interface ExternalGrant {
   id: string;
   granteeId: string;
@@ -64,6 +80,10 @@ export interface ExternalGrant {
   approvedBy: string | null;
   expiresAt: Date | null;
   revokedAt: Date | null;
+  source: "platform" | "product";
+  sourceApprovalId: string | null;
+  piiLevel: ExternalPiiLevel;
+  exportAllowed: boolean;
 }
 
 interface Row {
@@ -83,10 +103,15 @@ interface Row {
   approved_by: string | null;
   expires_at: Date | null;
   revoked_at: Date | null;
+  source: "platform" | "product";
+  source_approval_id: string | null;
+  pii_level: ExternalPiiLevel;
+  export_allowed: boolean;
 }
 const COLUMNS = `id, grantee_id, grantee_name, organisation, kind, purpose, entity_ids, branch_ids,
   to_char(period_from, 'YYYY-MM-DD') as period_from, to_char(period_to, 'YYYY-MM-DD') as period_to,
-  duration_days, state, requested_by, approved_by, expires_at, revoked_at`;
+  duration_days, state, requested_by, approved_by, expires_at, revoked_at,
+  source, source_approval_id, pii_level, export_allowed`;
 const toGrant = (r: Row): ExternalGrant => ({
   id: r.id,
   granteeId: r.grantee_id,
@@ -104,6 +129,10 @@ const toGrant = (r: Row): ExternalGrant => ({
   approvedBy: r.approved_by,
   expiresAt: r.expires_at,
   revokedAt: r.revoked_at,
+  source: r.source,
+  sourceApprovalId: r.source_approval_id,
+  piiLevel: r.pii_level,
+  exportAllowed: r.export_allowed,
 });
 
 function assertManager(ctx: KernelContext): void {
@@ -240,6 +269,123 @@ export class ExternalGrants {
       },
       { action: "security.external_grant.revoke" },
     );
+  }
+
+  /**
+   * Open an active grant from the product's own approved register, inside the transaction of the
+   * product's executor (Finbyx PR-FBX-22, R1-D-40). The product's maker-checker replaces the
+   * platform's ORG_OWNER/ORG_ADMIN pair: `makerId` and `checkerId` must differ, and the product's
+   * approval id is kept, once per tenant (a second call with it returns the first grant).
+   */
+  async fromApproved(tx: Tx, g: ApprovedExternalGrant): Promise<ExternalGrant> {
+    const ctx = tx.ctx;
+    if (
+      ctx.scope === "platform" ||
+      ctx.principal.type === "agent" ||
+      ctx.principal.type === "external"
+    )
+      throw new IpbError("IPB-SEC-005", {
+        detail: "a product opens external grants in its tenant",
+      });
+    if (!(Number.isInteger(g.days) && g.days >= 1 && g.days <= EXTERNAL_GRANT_MAX_DAYS))
+      throw new RangeError(`an external grant lasts 1–${EXTERNAL_GRANT_MAX_DAYS} days`);
+    if (!EXTERNAL_GRANTEE_KINDS.includes(g.kind))
+      throw new RangeError(`unknown grantee kind ${g.kind}`);
+    if (!["none", "masked", "full"].includes(g.piiLevel)) throw new RangeError("invalid PII level");
+    if (!DATE.test(g.periodFrom) || !DATE.test(g.periodTo) || g.periodFrom > g.periodTo)
+      throw new RangeError("the grant's period is two dates, from no later than to");
+    if (!g.makerId || g.makerId === g.checkerId)
+      throw new IpbError("IPB-TRUST-005", {
+        detail: "the product's maker and checker must differ",
+      });
+    const prior = await tx.query<Row>(
+      `select ${COLUMNS} from tenancy.external_grant where tenant_id = $1 and source_approval_id = $2`,
+      [ctx.tenantId, g.sourceApprovalId],
+    );
+    if (prior.rows[0]) return toGrant(prior.rows[0]);
+    const entities = [...new Set(g.entityIds)];
+    const known = await tx.query<{ n: number }>(
+      "select count(*)::int as n from tenancy.legal_entity where id = any($1::text[])",
+      [entities],
+    );
+    if (entities.length === 0 || known.rows[0]?.n !== entities.length)
+      throw new NotFoundError("legal entity");
+    const id = newId("xgr");
+    const r = await tx.query<Row>(
+      `insert into tenancy.external_grant
+         (id, tenant_id, grantee_id, grantee_name, organisation, kind, purpose, entity_ids, branch_ids,
+          period_from, period_to, duration_days, state, requested_by, approved_by, approved_at, expires_at,
+          source, source_approval_id, pii_level, export_allowed)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'active', $13, $14, now(),
+               now() + make_interval(days => $12), 'product', $15, $16, $17)
+       returning ${COLUMNS}`,
+      [
+        id,
+        ctx.tenantId,
+        g.granteeId,
+        g.granteeName,
+        g.organisation,
+        g.kind,
+        g.purpose,
+        entities,
+        g.branchIds?.length ? [...new Set(g.branchIds)] : null,
+        g.periodFrom,
+        g.periodTo,
+        g.days,
+        g.makerId,
+        g.checkerId,
+        g.sourceApprovalId,
+        g.piiLevel,
+        g.exportAllowed,
+      ],
+    );
+    const out = toGrant(r.rows[0] as Row);
+    await tx.query(
+      `insert into tenancy.external_grant_source (tenant_id, source_approval_id, grant_id)
+       values ($1, $2, $3)`,
+      [ctx.tenantId, g.sourceApprovalId, id],
+    );
+    await this.o.audit.record(tx, {
+      action: "security.external_grant.from_approved",
+      resourceType: "external_grant",
+      resourceId: id,
+      after: {
+        source_approval_id: g.sourceApprovalId,
+        grantee_id: g.granteeId,
+        kind: g.kind,
+        entity_ids: entities,
+        branch_ids: g.branchIds ?? null,
+        period: [g.periodFrom, g.periodTo],
+        days: g.days,
+        pii_level: g.piiLevel,
+        export_allowed: g.exportAllowed,
+        maker_id: g.makerId,
+        checker_id: g.checkerId,
+      },
+    });
+    return out;
+  }
+
+  /** Revoke the grant a product opened for one of its approvals, in the product's transaction. */
+  async revokeFromApproved(
+    tx: Tx,
+    sourceApprovalId: string,
+    revokedBy: string,
+  ): Promise<ExternalGrant | null> {
+    const r = await tx.query<Row>(
+      `update tenancy.external_grant set state = 'revoked', revoked_by = $3, revoked_at = now()
+        where tenant_id = $1 and source_approval_id = $2 and state <> 'revoked' returning ${COLUMNS}`,
+      [tx.ctx.tenantId, sourceApprovalId, revokedBy],
+    );
+    const row = r.rows[0];
+    if (!row) return null;
+    await this.o.audit.record(tx, {
+      action: "security.external_grant.revoke",
+      resourceType: "external_grant",
+      resourceId: row.id,
+      after: { state: "revoked", source_approval_id: sourceApprovalId },
+    });
+    return toGrant(row);
   }
 
   async list(ctx: KernelContext): Promise<ExternalGrant[]> {
