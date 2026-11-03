@@ -27,6 +27,7 @@ export const PORTS = [
   "IMAGE_GEN",
   "MEDIA",
   "KYC",
+  "VIDEO_MEET",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
