@@ -7,7 +7,7 @@
 // into the daily anchor (format 2), and `AuditService.verifyCapture` reports a break.
 import type { KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
 import { canonicalize, sha256Hex } from "@infrabyx/crypto";
-import { GENESIS_HASH } from "./chain.js";
+import { GENESIS_HASH, laneHeadMismatch, lanePosition, lanesRoot, type LaneHead } from "./chain.js";
 
 export type CaptureOp = "insert" | "update" | "delete";
 
@@ -34,13 +34,22 @@ export interface CaptureEntry {
   occurred_at: string;
   prev_hash: string;
   entry_hash: string;
+  /** The entry's lane and its position there (`audit/0006`, PR-FBX-32); null before it. */
+  lane?: number | null;
+  lane_seq?: string | number | null;
 }
 
 const digest = (v: string | null): string | null => (v === null ? null : sha256Hex(v));
 
 /** The hashed form of an entry, field for field as `audit.capture_row()` builds it. */
 export function canonicalCapture(e: Omit<CaptureEntry, "prev_hash" | "entry_hash">): string {
+  // The lane and its position are hashed only when set, so entries before audit/0006 hash as before.
+  const lane =
+    e.lane === undefined || e.lane === null
+      ? {}
+      : { lane: Number(e.lane), lane_seq: Number(e.lane_seq) };
   return canonicalize({
+    ...lane,
     action: e.action,
     actor_id: e.actor_id,
     after_digest: digest(e.after_values),
@@ -67,42 +76,60 @@ export const captureHash = (prev: string, e: Omit<CaptureEntry, "prev_hash" | "e
 
 export interface CaptureBreak {
   seq: number;
+  lane?: number;
+  laneSeq?: number;
   reason: "hash-mismatch" | "prev-hash-mismatch" | "sequence-gap" | "head-mismatch";
 }
 
 export interface CaptureVerifyResult {
   ok: boolean;
   checked: number;
+  /** The highest `seq` checked, and the root over every lane's head. */
   head: { seq: number; hash: string };
+  /** Each lane's head after the check, by lane. */
+  lanes: LaneHead[];
   break?: CaptureBreak;
   /** What makes the capture incomplete (`audit.capture_problems()`); empty when it is whole. */
   problems: string[];
 }
 
-/** Verify a run of entries from `start` (genesis by default); stops at the first break. */
+/** Where verification starts: genesis by default, a lane-0 point, or every lane's known head. */
+export type CaptureVerifyStart = { seq: number; hash: string } | { lanes: readonly LaneHead[] };
+
+/** Verify a run of entries lane by lane from `start` (genesis by default); stops at the first break. */
 export function verifyCaptureChain(
   entries: readonly CaptureEntry[],
-  start: { seq: number; hash: string } = { seq: 0, hash: GENESIS_HASH },
+  start?: CaptureVerifyStart,
 ): Omit<CaptureVerifyResult, "problems"> {
-  let prev = start.hash;
-  let seq = start.seq;
+  const lanes = new Map<number, LaneHead>();
+  if (start && "lanes" in start) for (const l of start.lanes) lanes.set(l.lane, { ...l });
+  else if (start) lanes.set(0, { lane: 0, seq: start.seq, hash: start.hash });
   let checked = 0;
-  for (const e of [...entries].sort((a, b) => a.seq - b.seq)) {
-    if (e.seq <= start.seq) continue;
-    const fail = (reason: CaptureBreak["reason"]) => ({
-      ok: false,
+  let top = 0;
+  const result = (ok: boolean, brk?: CaptureBreak) => {
+    const all = [...lanes.values()].sort((a, b) => a.lane - b.lane);
+    return {
+      ok,
       checked,
-      head: { seq, hash: prev },
-      break: { seq: e.seq, reason },
-    });
-    if (e.seq !== seq + 1) return fail("sequence-gap");
-    if (e.prev_hash !== prev) return fail("prev-hash-mismatch");
-    if (captureHash(prev, e) !== e.entry_hash) return fail("hash-mismatch");
-    prev = e.entry_hash;
-    seq = e.seq;
+      head: { seq: top, hash: lanesRoot(all) },
+      lanes: all,
+      ...(brk ? { break: brk } : {}),
+    };
+  };
+  for (const e of [...entries].sort((a, b) => Number(a.seq) - Number(b.seq))) {
+    const { lane, pos } = lanePosition(e);
+    const h = lanes.get(lane) ?? { lane, seq: 0, hash: GENESIS_HASH };
+    if (pos <= h.seq) continue;
+    const fail = (reason: CaptureBreak["reason"]) =>
+      result(false, { seq: Number(e.seq), lane, laneSeq: pos, reason });
+    if (pos !== h.seq + 1) return fail("sequence-gap");
+    if (e.prev_hash !== h.hash) return fail("prev-hash-mismatch");
+    if (captureHash(h.hash, e) !== e.entry_hash) return fail("hash-mismatch");
+    lanes.set(lane, { lane, seq: pos, hash: e.entry_hash });
+    top = Math.max(top, Number(e.seq));
     checked++;
   }
-  return { ok: true, checked, head: { seq, hash: prev } };
+  return result(true);
 }
 
 export interface CaptureFilter {
@@ -119,10 +146,15 @@ const COLUMNS = `tenant_id, seq::text as seq, table_name, op, row_key::text as r
   before_values::text as before_values, after_values::text as after_values, actor_id, entity_id,
   branch_id, breakglass_id, trace_id, action, reason, db_user, db_role, txid::text as txid,
   to_char(occurred_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') as occurred_at,
-  prev_hash, entry_hash`;
+  prev_hash, entry_hash, lane, lane_seq::text as lane_seq`;
 
 type Row = Omit<CaptureEntry, "seq"> & { seq: string };
-const toEntry = (r: Row): CaptureEntry => ({ ...r, seq: Number(r.seq) });
+const toEntry = (r: Row): CaptureEntry => ({
+  ...r,
+  seq: Number(r.seq),
+  lane: r.lane ?? null,
+  lane_seq: r.lane_seq === null || r.lane_seq === undefined ? null : Number(r.lane_seq),
+});
 
 export async function selectCapture(tx: Tx, f: CaptureFilter = {}): Promise<CaptureEntry[]> {
   const where: string[] = [];
@@ -145,13 +177,21 @@ export async function selectCapture(tx: Tx, f: CaptureFilter = {}): Promise<Capt
   return r.rows.map(toEntry);
 }
 
-/** The tenant's capture head as PostgreSQL holds it (genesis when nothing was captured). */
-export async function captureHead(tx: Tx): Promise<{ seq: number; hash: string }> {
-  const r = await tx.query<{ seq: string; entry_hash: string }>(
-    "select seq::text as seq, entry_hash from audit.capture_head",
+/** The tenant's capture lane heads as PostgreSQL holds them (none when nothing was captured). */
+export async function captureLanes(tx: Tx): Promise<LaneHead[]> {
+  const r = await tx.query<{ lane: number; lane_seq: string; entry_hash: string }>(
+    "select lane, lane_seq::text as lane_seq, entry_hash from audit.capture_lane order by lane",
   );
-  const h = r.rows[0];
-  return h ? { seq: Number(h.seq), hash: h.entry_hash } : { seq: 0, hash: GENESIS_HASH };
+  return r.rows.map((h) => ({ lane: Number(h.lane), seq: Number(h.lane_seq), hash: h.entry_hash }));
+}
+
+/** The highest `seq` captured for the tenant and the root over its lane heads. */
+export async function captureHead(tx: Tx): Promise<{ seq: number; hash: string }> {
+  const lanes = await captureLanes(tx);
+  const r = await tx.query<{ seq: string | null }>(
+    "select max(seq)::text as seq from audit.capture",
+  );
+  return { seq: Number(r.rows[0]?.seq ?? 0), hash: lanesRoot(lanes) };
 }
 
 export class StatutoryCapture {
@@ -174,26 +214,32 @@ export class StatutoryCapture {
         const problems = (
           await tx.query<{ p: string }>("select audit.capture_problems() as p")
         ).rows.map((r) => r.p);
-        let start = { seq: 0, hash: GENESIS_HASH };
+        let lanes: LaneHead[] = [];
+        let afterSeq = 0;
+        let top = 0;
         let checked = 0;
         for (;;) {
-          const rows = await selectCapture(tx, { afterSeq: start.seq, limit: batch });
-          const r = verifyCaptureChain(rows, start);
+          const rows = await selectCapture(tx, { afterSeq, limit: batch });
+          const r = verifyCaptureChain(rows, { lanes });
           checked += r.checked;
           if (!r.ok) return { ...r, checked, problems };
-          start = r.head;
+          lanes = r.lanes;
+          top = Math.max(top, r.head.seq);
           if (rows.length < batch) break;
+          afterSeq = Number(rows[rows.length - 1]!.seq);
         }
-        const head = await captureHead(tx);
-        if (head.seq !== start.seq || head.hash !== start.hash)
+        const done = { seq: top, hash: lanesRoot(lanes) };
+        const off = laneHeadMismatch(lanes, await captureLanes(tx));
+        if (off)
           return {
             ok: false,
             checked,
-            head: start,
-            break: { seq: head.seq, reason: "head-mismatch" as const },
+            head: done,
+            lanes,
+            break: { seq: top, lane: off.lane, laneSeq: off.seq, reason: "head-mismatch" as const },
             problems,
           };
-        return { ok: problems.length === 0, checked, head: start, problems };
+        return { ok: problems.length === 0, checked, head: done, lanes, problems };
       },
       { snapshot: true },
     );

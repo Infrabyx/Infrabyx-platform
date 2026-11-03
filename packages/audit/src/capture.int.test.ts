@@ -119,7 +119,10 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
         [`m${i}`, i],
       );
     const r = await capture.verify(ctx("tnt_two"));
-    expect(r).toMatchObject({ ok: true, checked: 20, head: { seq: 20 } });
+    const all = await capture.query(ctx("tnt_two"), { limit: 50 });
+    expect(r).toMatchObject({ ok: true, checked: 20, head: { seq: all.at(-1)!.seq } });
+    // Twenty transactions one after another, spread over lanes; positions sum to the entries.
+    expect(r.lanes.reduce((n, l) => n + l.seq, 0)).toBe(20);
     expect((await capture.query(ctx("tnt_books"))).every((x) => x.tenant_id === "tnt_books")).toBe(
       true,
     );
@@ -133,6 +136,7 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
       "update audit.capture set reason = 'x'",
       "delete from audit.capture",
       "update audit.capture_head set seq = 0",
+      "update audit.capture_lane set lane_seq = 0",
       "set local role capture_writer",
     ])
       await expect(
@@ -216,13 +220,19 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
     try {
       await db.admin.query("alter table audit.capture disable trigger capture_no_update");
       await db.admin.query(
-        "update audit.capture set after_values = jsonb_set(after_values, '{amount}', '9') where tenant_id = 'tnt_tamper' and seq = 3",
+        "update audit.capture set after_values = jsonb_set(after_values, '{amount}', '9') where tenant_id = 'tnt_tamper' and seq = (select seq from audit.capture where tenant_id = 'tnt_tamper' order by seq offset 2 limit 1)",
       );
       await db.admin.query("alter table audit.capture enable always trigger capture_no_update");
     } finally {
       await db.admin.query("alter event trigger ipb_capture_guard_ddl enable");
     }
-    expect((await svc.verifyCapture(c)).break).toEqual({ seq: 3, reason: "hash-mismatch" });
+    const third = (await capture.query(c))[2]!;
+    expect((await svc.verifyCapture(c)).break).toEqual({
+      seq: third.seq,
+      lane: third.lane,
+      laneSeq: Number(third.lane_seq),
+      reason: "hash-mismatch",
+    });
     const ledger = await db.admin.query(
       "select count(*)::int as n from audit.ledger where tenant_id = 'tnt_tamper' and action = 'audit.capture.break_detected'",
     );
@@ -237,21 +247,37 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
     }
   });
 
-  it("the daily anchor signs the capture head of the day (format 2), and an auditor verifies against it", async () => {
+  it("the daily anchor signs every capture lane head of the day (format 3), and an auditor verifies against it", async () => {
     const c = ctx("tnt_two");
     const day = new Date().toISOString().slice(0, 10);
     const file: AnchorFile = await svc.writeAnchor(c, day);
-    expect(file).toMatchObject({ format: "infrabyx-audit-anchor/2", capture_seq: 20 });
+    const captured = await capture.query(c, { limit: 100 });
+    expect(file).toMatchObject({
+      format: "infrabyx-audit-anchor/3",
+      capture_seq: captured.at(-1)!.seq,
+    });
+    expect(file.capture_lanes!.reduce((n, l) => n + l.seq, 0)).toBe(20);
     const pub = await kms.getPublicKey(LOCAL_KMS_KEYS.anchorSigning);
     const entries = await capture.query(c, { limit: 100 });
     expect(verifyCaptureAgainstAnchor(entries, file, pub)).toMatchObject({
       ok: true,
       signatureValid: true,
     });
-    const forged = entries.map((e) => (e.seq === 4 ? { ...e, reason: "edited" } : e));
+    const forged = entries.map((e) => (e.seq === entries[3]!.seq ? { ...e, reason: "edited" } : e));
     expect(verifyCaptureAgainstAnchor(forged, file, pub).ok).toBe(false);
-    // A tenant with nothing captured keeps format 1.
-    expect((await svc.writeAnchor(ctx("tnt_empty"), day)).format).toBe("infrabyx-audit-anchor/1");
+    // Dropping a lane's last entry is caught against the signed lane heads.
+    const lastOfLane = entries.filter((e) => e.lane === file.capture_lanes![0]!.lane).at(-1)!;
+    expect(
+      verifyCaptureAgainstAnchor(
+        entries.filter((e) => e.seq !== lastOfLane.seq),
+        file,
+        pub,
+      ),
+    ).toMatchObject({ ok: false, break: { reason: "head-mismatch" } });
+    // A tenant with nothing captured signs no capture lanes.
+    const empty = await svc.writeAnchor(ctx("tnt_empty"), day);
+    expect(empty.format).toBe("infrabyx-audit-anchor/3");
+    expect(empty.capture_lanes).toBeUndefined();
   });
 
   it("the ledger and the capture record the context's branch; the ledger chain covers it (audit/0004, R1-D-26)", async () => {
@@ -270,7 +296,11 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
     } finally {
       await db.admin.query("alter table audit.ledger enable trigger ledger_no_update");
     }
-    expect((await svc.verify(c)).break).toMatchObject({ seq: 1, reason: "hash-mismatch" });
+    expect((await svc.verify(c)).break).toMatchObject({
+      seq: led[0]!.seq,
+      laneSeq: 1,
+      reason: "hash-mismatch",
+    });
   });
 
   it("rls-lint passes with the capture tables", async () => {

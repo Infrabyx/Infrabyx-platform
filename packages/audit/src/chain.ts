@@ -1,5 +1,7 @@
-// The ledger hash chain (PL1-C-01), reproduced exactly as the audit.ledger_chain() trigger
-// computes it: entry_hash = sha256_hex(prev_hash ‖ "\n" ‖ JCS(entry)).
+// The ledger hash chains (PL1-C-01), reproduced exactly as the audit.ledger_chain() trigger
+// computes them: entry_hash = sha256_hex(prev_hash ‖ "\n" ‖ JCS(entry)). Since `audit/0006`
+// (PR-FBX-32, ADR-0005) a tenant's ledger is a set of lanes, each its own chain; entries written
+// before it have no lane and are lane 0, positioned by their `seq`.
 import { canonicalize, sha256Hex } from "@infrabyx/crypto";
 
 export const GENESIS_HASH = "0".repeat(64);
@@ -23,6 +25,9 @@ export interface LedgerEntry {
   ua_hash: string | null;
   /** The context's branch (`audit/0004`, R1-D-26); hashed only when set. */
   branch_id?: string | null;
+  /** The entry's lane and its position there (`audit/0006`); hashed only when set. */
+  lane?: number | null;
+  lane_seq?: number | string | null;
   /** ISO-8601 UTC with milliseconds, e.g. 2026-10-26T12:15:39.373Z. */
   occurred_at: string;
   prev_hash: string;
@@ -53,6 +58,11 @@ export function canonicalEntry(e: Omit<LedgerEntry, "prev_hash" | "entry_hash">)
   for (const f of HASHED_FIELDS) body[f] = e[f];
   // The branch joins the hash only when set, so entries without one hash as before audit/0004.
   if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
+  // So do the lane and the position, so every entry before audit/0006 hashes as before.
+  if (e.lane !== undefined && e.lane !== null) {
+    body.lane = Number(e.lane);
+    body.lane_seq = Number(e.lane_seq);
+  }
   return canonicalize(body);
 }
 
@@ -64,43 +74,110 @@ export function entryHash(
 }
 
 export interface ChainBreak {
+  /** The entry's `seq`, and its lane and position in that lane. */
   seq: number;
   id: string;
+  lane?: number;
+  laneSeq?: number;
   reason: "hash-mismatch" | "prev-hash-mismatch" | "sequence-gap" | "head-mismatch";
+}
+
+/** A lane's last entry: its position in the lane and its hash (genesis: 0 and 64 zeros). */
+export interface LaneHead {
+  lane: number;
+  seq: number;
+  hash: string;
 }
 
 export interface VerifyResult {
   ok: boolean;
   checked: number;
+  /** The highest `seq` checked, and the root over every lane's head (`lanesRoot`). */
   head: { seq: number; hash: string };
+  /** Each lane's head after the check, by lane. */
+  lanes: LaneHead[];
   break?: ChainBreak;
 }
 
+/** An entry's lane and position: lane 0 at its `seq` for entries written before `audit/0006`. */
+export function lanePosition(e: {
+  seq: number | string;
+  lane?: number | null;
+  lane_seq?: number | string | null;
+}): { lane: number; pos: number } {
+  return e.lane === undefined || e.lane === null
+    ? { lane: 0, pos: Number(e.seq) }
+    : { lane: Number(e.lane), pos: Number(e.lane_seq) };
+}
+
+/** The root over lane heads that anchors sign (format 3): SHA-256 of their canonical list. */
+export function lanesRoot(lanes: readonly LaneHead[]): string {
+  const sorted = [...lanes]
+    .filter((l) => l.seq > 0)
+    .sort((a, b) => a.lane - b.lane)
+    .map((l) => ({ lane: l.lane, seq: l.seq, hash: l.hash }));
+  return sha256Hex(canonicalize(sorted));
+}
+
+/** Where verification starts: genesis by default, a lane-0 point, or every lane's known head. */
+export type VerifyStart = { seq: number; hash: string } | { lanes: readonly LaneHead[] };
+
+const startLanes = (start: VerifyStart | undefined): Map<number, LaneHead> => {
+  const m = new Map<number, LaneHead>();
+  if (!start) return m;
+  if ("lanes" in start) for (const l of start.lanes) m.set(l.lane, { ...l });
+  else m.set(0, { lane: 0, seq: start.seq, hash: start.hash });
+  return m;
+};
+
 /**
- * Verify one tenant's chain. `start` continues from a known point (an anchor or an earlier
- * verification); by default the chain starts at genesis.
+ * Verify one tenant's chains, lane by lane: each lane's positions run without a gap from its start
+ * and each entry links to the one before it in its lane. `start` continues from a known point (an
+ * anchor or an earlier verification); by default every lane starts at genesis.
  */
-export function verifyChain(
-  entries: readonly LedgerEntry[],
-  start: { seq: number; hash: string } = { seq: 0, hash: GENESIS_HASH },
-): VerifyResult {
-  let prev = start.hash;
-  let seq = start.seq;
+export function verifyChain(entries: readonly LedgerEntry[], start?: VerifyStart): VerifyResult {
+  const lanes = startLanes(start);
+  const head = (lane: number) => lanes.get(lane) ?? { lane, seq: 0, hash: GENESIS_HASH };
   let checked = 0;
-  for (const e of [...entries].sort((a, b) => a.seq - b.seq)) {
-    if (e.seq <= start.seq) continue;
-    const fail = (reason: ChainBreak["reason"]): VerifyResult => ({
-      ok: false,
+  let top = 0;
+  const result = (ok: boolean, brk?: ChainBreak): VerifyResult => {
+    const all = [...lanes.values()].sort((a, b) => a.lane - b.lane);
+    return {
+      ok,
       checked,
-      head: { seq, hash: prev },
-      break: { seq: e.seq, id: e.id, reason },
-    });
-    if (e.seq !== seq + 1) return fail("sequence-gap");
-    if (e.prev_hash !== prev) return fail("prev-hash-mismatch");
-    if (entryHash(prev, e) !== e.entry_hash) return fail("hash-mismatch");
-    prev = e.entry_hash;
-    seq = e.seq;
+      head: { seq: top, hash: lanesRoot(all) },
+      lanes: all,
+      ...(brk ? { break: brk } : {}),
+    };
+  };
+  for (const e of [...entries].sort((a, b) => Number(a.seq) - Number(b.seq))) {
+    const { lane, pos } = lanePosition(e);
+    const h = head(lane);
+    if (pos <= h.seq) continue;
+    const fail = (reason: ChainBreak["reason"]) =>
+      result(false, { seq: Number(e.seq), id: e.id, lane, laneSeq: pos, reason });
+    if (pos !== h.seq + 1) return fail("sequence-gap");
+    if (e.prev_hash !== h.hash) return fail("prev-hash-mismatch");
+    if (entryHash(h.hash, e) !== e.entry_hash) return fail("hash-mismatch");
+    lanes.set(lane, { lane, seq: pos, hash: e.entry_hash });
+    top = Math.max(top, Number(e.seq));
     checked++;
   }
-  return { ok: true, checked, head: { seq, hash: prev } };
+  return result(true);
+}
+
+/**
+ * Compare the lanes a verification ended on with the lane heads the database holds (a deleted tail
+ * shows here); the first lane that differs, or undefined.
+ */
+export function laneHeadMismatch(
+  verified: readonly LaneHead[],
+  stored: readonly LaneHead[],
+): LaneHead | undefined {
+  const v = new Map(verified.map((l) => [l.lane, l]));
+  for (const s of stored) {
+    const got = v.get(s.lane) ?? { lane: s.lane, seq: 0, hash: GENESIS_HASH };
+    if (got.seq !== s.seq || got.hash !== s.hash) return s;
+  }
+  return undefined;
 }

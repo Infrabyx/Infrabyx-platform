@@ -3,5 +3,7 @@
   "0002_outbox_relay.sql": "36e1a3465197bda55b5bdd6a0fcad2d3b1769a822cad3b4453bcc8ef4248243e",
   "0003_statutory_capture.sql": "dd72a370fefffd6f0afe23ed4cac289c97d89a47df86412798c556a569524610",
   "0004_ledger_branch.sql": "49151329a5d4262e4e33ae05142d18576d75c788945a5f9fcbf78fa386f2c2d3",
-  "0005_batch_entry.sql": "3ea135eb78eb6687ae44d4b0f3482caf85b312444f27b5083eabac9a0899ec20"
+  "0005_batch_entry.sql": "3ea135eb78eb6687ae44d4b0f3482caf85b312444f27b5083eabac9a0899ec20",
+  "0006_chain_lanes.sql": "9aac26ca9cee53182dd69c2cc125d026f945f426f95ef7767c13f68f27ff4d8d",
+  "0007_lane_indexes.sql": "b6ac51301562e1e9eb67a37afadfa963ef1d361a5a0c89ce8a3597a3352f0bd0"
 }

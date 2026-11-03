@@ -46,14 +46,31 @@ describe("@IPB-02-51 statutory capture chain (R1-D-25)", () => {
   it("reports an edited value, an edited reason, a removed entry and a re-linked entry", () => {
     const c = chain(5);
     const value = c.map((e) => (e.seq === 3 ? { ...e, after_values: `{"amount": 99}` } : e));
-    expect(verifyCaptureChain(value).break).toEqual({ seq: 3, reason: "hash-mismatch" });
+    expect(verifyCaptureChain(value).break).toEqual({
+      seq: 3,
+      lane: 0,
+      laneSeq: 3,
+      reason: "hash-mismatch",
+    });
     const reason = c.map((e) => (e.seq === 2 ? { ...e, reason: "other" } : e));
-    expect(verifyCaptureChain(reason).break).toEqual({ seq: 2, reason: "hash-mismatch" });
+    expect(verifyCaptureChain(reason).break).toEqual({
+      seq: 2,
+      lane: 0,
+      laneSeq: 2,
+      reason: "hash-mismatch",
+    });
     expect(verifyCaptureChain(c.filter((e) => e.seq !== 4)).break).toEqual({
       seq: 5,
+      lane: 0,
+      laneSeq: 5,
       reason: "sequence-gap",
     });
     const relinked = c.map((e) => (e.seq === 4 ? { ...e, prev_hash: GENESIS_HASH } : e));
-    expect(verifyCaptureChain(relinked).break).toEqual({ seq: 4, reason: "prev-hash-mismatch" });
+    expect(verifyCaptureChain(relinked).break).toEqual({
+      seq: 4,
+      lane: 0,
+      laneSeq: 4,
+      reason: "prev-hash-mismatch",
+    });
   });
 });

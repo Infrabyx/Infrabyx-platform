@@ -814,3 +814,15 @@ Public forms can ask for a CAPTCHA while the site is under attack; the app's dev
 - **I (recordings leaving the tenant):** Control: recordings go only to the room's STORAGE target in one locked single-part write; the egress disk copy is removed after a verified upload; REGULATED rooms keep no provider copy.
 - **E (joins from outside policy):** Control: country, anonymised origin, the official's network and the role are checked before a token is issued.
 - **Residual:** HS256 is a shared-secret scheme, so anyone holding the deployment secret can mint tokens (kept in SECRETS, one per deployment, rotated with the deployment); the egress worker is unproven until it runs in a deployment.
+
+### 3.66 Chain lanes for the ledger and the capture (`audit/0006`, `0007`; Finbyx PR-FBX-32, ADR-0005, R1-D-58)
+
+Each tenant's ledger and statutory capture are N hash chains (lanes) instead of one, so a tenant's writers no longer queue on one head row. The daily signed anchor seals every lane head.
+
+- **T (an entry edited, removed or inserted):** Control: each lane is the same SHA-256 chain as before (PL1-C-01), and the entry's lane and position are hashed. An edit, a gap, a relinked entry or an entry moved to another lane breaks its lane. Lane heads are written only by the chain owners (`app_migrate`'s trigger, `capture_writer`), and deletes and truncates of them are refused. The verifiers compare each lane's end with its head, so a deleted tail is reported. The format-3 anchor signs every lane head of both chains in KMS and write-once STORAGE.
+- **T (history rewritten across lanes after the day's anchor):** Control: the anchor's root over all lane heads no longer matches; formats 1 and 2 still verify.
+- **T (a caller steers lanes):** Control: a transaction may pin its lane (`audit.ledger_lane`, `audit.capture_lane`, transaction-local only). That only chooses which lane it waits for: the trigger still locks the lane head and chains the entry.
+- **R (ordering across lanes):** Control: no hash links the lanes within a day. Each entry carries its global `seq` and its `occurred_at`, both hashed, and the anchor seals the lanes daily.
+- **D (deadlock between two transactions holding a ledger lane and a capture lane in opposite orders):** Control: PostgreSQL aborts one, as with the single heads. Writing the change before its ledger entry keeps the order.
+- **D (the upgrade blocks writes):** Control: `audit/0006` locks the two tables for its few statements with a 5 s `lock_timeout`; `audit/0007` builds its indexes concurrently.
+- **Residual:** superuser access to PostgreSQL, as for the ledger and the capture (§3.56). Between two anchors, a superuser who rewrites a lane and its head together is caught at the next anchor, not by the head comparison.

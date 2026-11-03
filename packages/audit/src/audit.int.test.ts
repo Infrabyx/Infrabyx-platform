@@ -4,7 +4,7 @@ import type { ObjectMeta, StoragePort } from "@infrabyx/contracts/ports";
 import { LOCAL_KMS_KEYS, LocalKms, localDevKey, newId } from "@infrabyx/crypto";
 import { ExternalReads, PgKernel, PgOutbox, externalContext } from "@infrabyx/tenancy";
 import { lintRls } from "@infrabyx/tenancy/rls-lint";
-import { verifyChain } from "./chain.js";
+import { laneHeadMismatch, lanePosition, verifyChain } from "./chain.js";
 import { AuditService, verifyAgainstAnchor, verifyAnchorFile, type AnchorFile } from "./service.js";
 import { PgAuditSink } from "./sink.js";
 import { freshDb } from "./__tests__/db.js";
@@ -121,13 +121,37 @@ describe("append-only, for every role (NN-02)", () => {
 });
 
 describe("@NN-45 concurrency and corrections", () => {
-  it("20 concurrent transactions keep one gap-free chain per tenant", async () => {
+  it("20 concurrent transactions keep gap-free lanes, one transaction's entries together (PR-FBX-32)", async () => {
     await Promise.all(
       Array.from({ length: 20 }, (_, i) => write(ctx("tnt_c", `usr_${i}`), 5, `t${i}-`)),
     );
     const rows = await svc.query(ctx("tnt_c"));
-    expect(rows.map((r) => r.seq)).toEqual(Array.from({ length: 100 }, (_, i) => i + 1));
-    expect(verifyChain(rows).ok).toBe(true);
+    expect(rows).toHaveLength(100);
+    expect(new Set(rows.map((r) => r.seq)).size).toBe(100);
+    // Each lane runs 1, 2, 3, … without a gap, and a transaction's five entries sit together in one lane.
+    const byLane = new Map<number, typeof rows>();
+    for (const r of rows) byLane.set(r.lane!, [...(byLane.get(r.lane!) ?? []), r]);
+    for (const lane of byLane.values())
+      expect(lane.map((r) => lanePosition(r).pos)).toEqual(lane.map((_, i) => i + 1));
+    for (const actor of new Set(rows.map((r) => r.actor_id))) {
+      const mine = rows.filter((r) => r.actor_id === actor);
+      expect(new Set(mine.map((r) => r.lane)).size).toBe(1);
+      const pos = mine.map((r) => lanePosition(r).pos);
+      expect(pos).toEqual(pos.map((_, i) => pos[0]! + i));
+    }
+    const result = verifyChain(rows);
+    expect(result.ok).toBe(true);
+    expect(await svc.verify(ctx("tnt_c"))).toMatchObject({ ok: true, checked: 100 });
+    const stored = await db.admin.query<{ lane: number; lane_seq: string; entry_hash: string }>(
+      "select lane, lane_seq, entry_hash from audit.ledger_lane where tenant_id = 'tnt_c'",
+    );
+    expect(stored.rows).toHaveLength(32);
+    expect(
+      laneHeadMismatch(
+        result.lanes,
+        stored.rows.map((h) => ({ lane: h.lane, seq: Number(h.lane_seq), hash: h.entry_hash })),
+      ),
+    ).toBeUndefined();
   });
   it("corrections are new entries referencing the original and the chain still verifies", async () => {
     const c = ctx("tnt_k");
@@ -148,7 +172,8 @@ describe("@NN-45 concurrency and corrections", () => {
       }),
     );
     const rows = await svc.query(c);
-    expect(rows[1]).toMatchObject({ corrects_id: id, seq: 2 });
+    expect(rows[1]).toMatchObject({ corrects_id: id });
+    expect(rows[1]!.seq).toBeGreaterThan(rows[0]!.seq);
     expect(rows[0]?.ip_hash).toMatch(/^[0-9a-f]{64}$/);
     expect(verifyChain(rows).ok).toBe(true);
     await expect(
@@ -167,14 +192,17 @@ describe("signed anchors (IPB-02-51)", () => {
   it("are written with retention, verify with the public key alone, and let a tenant verify its chain", async () => {
     const c = ctx("tnt_n");
     await write(c, 25);
+    const written = await svc.query(c);
     const today = new Date().toISOString().slice(0, 10);
     const file = await svc.writeAnchor(
       { ...c, principal: { id: "svc_audit", type: "service", roles: ["SVC_AUDIT"] } },
       today,
     );
     expect(file).toMatchObject({
+      format: "infrabyx-audit-anchor/3",
       tenant_id: "tnt_n",
-      seq: 25,
+      seq: written.at(-1)!.seq,
+      lanes: [{ lane: written[0]!.lane, seq: 25, hash: written.at(-1)!.entry_hash }],
       signature: { alg: "ecdsa-p256-sha256" },
     });
     const stored = [...storage.objects.values()].at(-1);
@@ -190,10 +218,16 @@ describe("signed anchors (IPB-02-51)", () => {
       signatureValid: true,
       checked: 25,
     });
-    const forged = slice.map((e) => (e.seq === 3 ? { ...e, resource_id: "other" } : e));
+    const third = slice[2]!;
+    const forged = slice.map((e) => (e.seq === third.seq ? { ...e, resource_id: "other" } : e));
     expect(verifyAgainstAnchor(forged, parsed, pub)).toMatchObject({
       ok: false,
-      break: { seq: 3 },
+      break: { seq: third.seq, laneSeq: 3, reason: "hash-mismatch" },
+    });
+    // A dropped tail is caught against the anchor's lane heads.
+    expect(verifyAgainstAnchor(slice.slice(0, 24), parsed, pub)).toMatchObject({
+      ok: false,
+      break: { reason: "head-mismatch" },
     });
     await expect(db.admin.query("delete from audit.anchor")).rejects.toThrow(/append-only/);
   });

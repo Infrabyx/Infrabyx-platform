@@ -17,9 +17,19 @@ import {
   type SecretKey,
   type SignatureRecord,
 } from "@infrabyx/crypto";
-import { GENESIS_HASH, verifyChain, type LedgerEntry, type VerifyResult } from "./chain.js";
+import {
+  GENESIS_HASH,
+  laneHeadMismatch,
+  lanePosition,
+  lanesRoot,
+  verifyChain,
+  type LaneHead,
+  type LedgerEntry,
+  type VerifyResult,
+} from "./chain.js";
 import {
   StatutoryCapture,
+  captureLanes,
   verifyCaptureChain,
   type CaptureEntry,
   type CaptureVerifyResult,
@@ -30,9 +40,14 @@ export const LEDGER_RETENTION_DAYS = 2922; // 8 years (IPB-02-52)
 export const ANCHOR_FORMAT = "infrabyx-audit-anchor/1";
 /** An anchor that also signs the statutory capture's head (R1-D-25); written once a tenant has one. */
 export const ANCHOR_FORMAT_CAPTURE = "infrabyx-audit-anchor/2";
+/**
+ * An anchor over chain lanes (PR-FBX-32, ADR-0005): every lane head of the ledger and of the
+ * capture at the end of the day; `head_hash` and `capture_head_hash` are `lanesRoot` of each list.
+ */
+export const ANCHOR_FORMAT_LANES = "infrabyx-audit-anchor/3";
 
 export interface AnchorBody {
-  format: typeof ANCHOR_FORMAT | typeof ANCHOR_FORMAT_CAPTURE;
+  format: typeof ANCHOR_FORMAT | typeof ANCHOR_FORMAT_CAPTURE | typeof ANCHOR_FORMAT_LANES;
   tenant_id: string;
   anchor_date: string;
   seq: number;
@@ -41,6 +56,10 @@ export interface AnchorBody {
   /** Format 2: the last captured change of the anchor date (`audit.capture`) and its hash. */
   capture_seq?: number;
   capture_head_hash?: string;
+  /** Format 3: each ledger lane's head at the end of the day (`seq` is the position in the lane). */
+  lanes?: LaneHead[];
+  /** Format 3: each capture lane's head at the end of the day. */
+  capture_lanes?: LaneHead[];
   created_at: string;
 }
 
@@ -72,15 +91,73 @@ export interface AuditServiceOptions {
   retentionDays?: number;
 }
 
-interface Row extends Omit<LedgerEntry, "seq" | "occurred_at"> {
+interface Row extends Omit<LedgerEntry, "seq" | "occurred_at" | "lane_seq"> {
   seq: string | number;
+  lane_seq?: string | number | null;
   occurred_at: Date;
 }
 const toEntry = (r: Row): LedgerEntry => ({
   ...r,
   seq: Number(r.seq),
+  lane: r.lane ?? null,
+  lane_seq: r.lane_seq === null || r.lane_seq === undefined ? null : Number(r.lane_seq),
   occurred_at: r.occurred_at.toISOString(),
 });
+
+/** The ledger lane heads as PostgreSQL holds them for the context tenant. */
+async function ledgerLanes(tx: Tx): Promise<LaneHead[]> {
+  const r = await tx.query<{ lane: number; lane_seq: string; entry_hash: string }>(
+    "select lane, lane_seq::text as lane_seq, entry_hash from audit.ledger_lane order by lane",
+  );
+  return r.rows.map((h) => ({ lane: Number(h.lane), seq: Number(h.lane_seq), hash: h.entry_hash }));
+}
+
+interface DayHead extends LaneHead {
+  entrySeq: number;
+  id?: string;
+}
+
+/**
+ * Each lane's last entry stamped before `before` (the anchor's day end), for `audit.ledger` or
+ * `audit.capture`; lane 0 falls back to the entries written before `audit/0006`.
+ */
+async function dayHeads(
+  tx: Tx,
+  table: "ledger" | "capture",
+  lanes: readonly number[],
+  before: string,
+): Promise<DayHead[]> {
+  const idCol = table === "ledger" ? "id" : "null::text as id";
+  const out: DayHead[] = [];
+  for (const lane of lanes) {
+    let r = await tx.query<{ id: string | null; seq: string; pos: string; entry_hash: string }>(
+      `select ${idCol}, seq::text as seq, lane_seq::text as pos, entry_hash from audit.${table}
+        where lane = $1 and occurred_at < ($2::date + 1)::timestamp at time zone 'UTC'
+        order by lane_seq desc limit 1`,
+      [lane, before],
+    );
+    if (!r.rows[0] && lane === 0)
+      r = await tx.query(
+        `select ${idCol}, seq::text as seq, seq::text as pos, entry_hash from audit.${table}
+          where lane is null and occurred_at < ($1::date + 1)::timestamp at time zone 'UTC'
+          order by audit.${table}.seq desc limit 1`,
+        [before],
+      );
+    const h = r.rows[0];
+    if (h)
+      out.push({
+        lane,
+        seq: Number(h.pos),
+        hash: h.entry_hash,
+        entrySeq: Number(h.seq),
+        ...(h.id ? { id: h.id } : {}),
+      });
+  }
+  return out;
+}
+
+const plain = (h: readonly DayHead[]): LaneHead[] =>
+  h.map(({ lane, seq, hash }) => ({ lane, seq, hash }));
 
 export class AuditService {
   constructor(private readonly o: AuditServiceOptions) {}
@@ -103,8 +180,29 @@ export class AuditService {
 
   /** Recompute the tenant's chain; on a break, emit LedgerChainBroken (weekly verifier job). */
   async verify(ctx: KernelContext): Promise<VerifyResult> {
-    const entries = await this.o.kernel.read(ctx, (tx) => this.select(tx, {}));
-    const result = verifyChain(entries);
+    const result = await this.o.kernel.read(
+      ctx,
+      async (tx) => {
+        const r = verifyChain(await this.select(tx, {}));
+        if (!r.ok) return r;
+        // A deleted tail leaves its lane head ahead of the entries (PR-FBX-32).
+        const off = laneHeadMismatch(r.lanes, await ledgerLanes(tx));
+        return off
+          ? {
+              ...r,
+              ok: false,
+              break: {
+                seq: r.head.seq,
+                id: `lane:${off.lane}`,
+                lane: off.lane,
+                laneSeq: off.seq,
+                reason: "head-mismatch" as const,
+              },
+            }
+          : r;
+      },
+      { snapshot: true },
+    );
     if (!result.ok && result.break) {
       const brk = result.break;
       await this.o.kernel.mutate(
@@ -168,30 +266,35 @@ export class AuditService {
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
-        const head = await tx.query<{ seq: string; entry_hash: string; id: string }>(
-          `select seq, entry_hash, id from audit.ledger
-          where occurred_at < ($1::date + 1)::timestamp at time zone 'UTC'
-          order by seq desc limit 1`,
-          [date],
+        // Every lane head of both chains at the end of the day (format 3, PR-FBX-32).
+        const ledger = await dayHeads(
+          tx,
+          "ledger",
+          (await ledgerLanes(tx)).map((l) => l.lane),
+          date,
         );
-        const h = head.rows[0];
-        // The statutory capture's head at the end of the same day, where the tenant has one.
-        const cap = (
-          await tx.query<{ seq: string; entry_hash: string }>(
-            `select seq::text as seq, entry_hash from audit.capture
-              where occurred_at < ($1::date + 1)::timestamp at time zone 'UTC'
-              order by audit.capture.seq desc limit 1`,
-            [date],
-          )
-        ).rows[0];
+        const capture = await dayHeads(
+          tx,
+          "capture",
+          (await captureLanes(tx)).map((l) => l.lane),
+          date,
+        );
+        const last = [...ledger].sort((a, b) => b.entrySeq - a.entrySeq)[0];
         const body: AnchorBody = {
-          format: cap ? ANCHOR_FORMAT_CAPTURE : ANCHOR_FORMAT,
+          format: ANCHOR_FORMAT_LANES,
           tenant_id: ctx.tenantId,
           anchor_date: date,
-          seq: h ? Number(h.seq) : 0,
-          head_hash: h?.entry_hash ?? GENESIS_HASH,
-          head_entry_id: h?.id ?? null,
-          ...(cap ? { capture_seq: Number(cap.seq), capture_head_hash: cap.entry_hash } : {}),
+          seq: last?.entrySeq ?? 0,
+          head_hash: lanesRoot(plain(ledger)),
+          head_entry_id: last?.id ?? null,
+          lanes: plain(ledger),
+          ...(capture.length
+            ? {
+                capture_seq: Math.max(...capture.map((c) => c.entrySeq)),
+                capture_head_hash: lanesRoot(plain(capture)),
+                capture_lanes: plain(capture),
+              }
+            : {}),
           created_at: now.toISOString(),
         };
         const signature = await signRecord(kms, anchorKeyId, canonicalize(body), { now });
@@ -298,8 +401,40 @@ export function verifyAgainstAnchor(
   publicKeySpkiDer: Uint8Array,
 ): VerifyResult & { signatureValid: boolean } {
   const signatureValid = verifyAnchorFile(file, publicKeySpkiDer);
+  if (file.format === ANCHOR_FORMAT_LANES) {
+    const heads = file.lanes ?? [];
+    const upTo = new Map(heads.map((l) => [l.lane, l.seq]));
+    const r = verifyChain(
+      entries.filter((e) => {
+        const { lane, pos } = lanePosition(e);
+        return pos <= (upTo.get(lane) ?? 0);
+      }),
+    );
+    const off = r.ok
+      ? (laneHeadMismatch(r.lanes, heads) ??
+        (lanesRoot(heads) === file.head_hash ? undefined : heads[0]))
+      : undefined;
+    if (off)
+      return {
+        ...r,
+        ok: false,
+        signatureValid,
+        break: {
+          seq: file.seq,
+          id: file.head_entry_id ?? "",
+          lane: off.lane,
+          laneSeq: off.seq,
+          reason: "head-mismatch",
+        },
+      };
+    return { ...r, signatureValid };
+  }
   const r = verifyChain(entries.filter((e) => e.seq <= file.seq));
-  if (r.ok && (r.head.seq !== file.seq || r.head.hash !== file.head_hash)) {
+  if (
+    r.ok &&
+    (r.head.seq !== file.seq ||
+      (r.lanes.find((l) => l.lane === 0)?.hash ?? GENESIS_HASH) !== file.head_hash)
+  ) {
     return {
       ...r,
       ok: false,
@@ -317,16 +452,49 @@ export function verifyCaptureAgainstAnchor(
   publicKeySpkiDer: Uint8Array,
 ): Omit<CaptureVerifyResult, "problems"> & { signatureValid: boolean } {
   const signatureValid = verifyAnchorFile(file, publicKeySpkiDer);
+  const none = { seq: 0, hash: GENESIS_HASH };
+  if (file.format === ANCHOR_FORMAT_LANES && file.capture_lanes) {
+    const heads = file.capture_lanes;
+    const upTo = new Map(heads.map((l) => [l.lane, l.seq]));
+    const r = verifyCaptureChain(
+      entries.filter((e) => {
+        const { lane, pos } = lanePosition(e);
+        return pos <= (upTo.get(lane) ?? 0);
+      }),
+    );
+    const off = r.ok
+      ? (laneHeadMismatch(r.lanes, heads) ??
+        (lanesRoot(heads) === file.capture_head_hash ? undefined : heads[0]))
+      : undefined;
+    if (off)
+      return {
+        ...r,
+        ok: false,
+        break: {
+          seq: file.capture_seq ?? 0,
+          lane: off.lane,
+          laneSeq: off.seq,
+          reason: "head-mismatch",
+        },
+        signatureValid,
+      };
+    return { ...r, signatureValid };
+  }
   if (file.format !== ANCHOR_FORMAT_CAPTURE || file.capture_seq === undefined)
     return {
       ok: false,
       checked: 0,
-      head: { seq: 0, hash: GENESIS_HASH },
+      head: none,
+      lanes: [],
       break: { seq: 0, reason: "head-mismatch" },
       signatureValid,
     };
   const r = verifyCaptureChain(entries.filter((e) => e.seq <= file.capture_seq!));
-  if (r.ok && (r.head.seq !== file.capture_seq || r.head.hash !== file.capture_head_hash))
+  if (
+    r.ok &&
+    (r.head.seq !== file.capture_seq ||
+      (r.lanes.find((l) => l.lane === 0)?.hash ?? GENESIS_HASH) !== file.capture_head_hash)
+  )
     return {
       ...r,
       ok: false,
