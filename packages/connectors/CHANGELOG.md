@@ -1,5 +1,24 @@
 # @infrabyx/connectors
 
+## 1.4.0
+
+### Minor Changes
+
+- 4a87754: Per-object retention that is only ever extended (Finbyx PR-FBX-27; IPB-01-29; R1-D-42). `StoragePort.extendRetention(key, retainUntil)` (S3 `PutObjectRetention` in COMPLIANCE mode; an earlier or equal date, or an object without retention, is refused with `IPB-STOR-003`) and `retentionOf(key)`, on the `s3` and `minio` adapters and `MemoryStorage`, with a shared contract case. `assertImmutable` now also checks the stored SHA-256 checksum against the hash recorded at write, from a HEAD with checksum mode, so no decrypt permission is needed. `putWithRetention` stays one single-part write with the lock mode, the date and a SHA-256 checksum.
+
+### Patch Changes
+
+- Updated dependencies [97e8524]
+- Updated dependencies [e41c3bd]
+- Updated dependencies [92706c4]
+- Updated dependencies [92706c4]
+- Updated dependencies [4a87754]
+- Updated dependencies [d66ffad]
+  - @infrabyx/contracts@1.14.0
+  - @infrabyx/tenancy@1.8.0
+  - @infrabyx/config@1.5.2
+  - @infrabyx/crypto@1.3.1
+
 ## 1.3.6
 
 ### Patch Changes
