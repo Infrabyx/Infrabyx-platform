@@ -85,6 +85,10 @@ export interface SignatureRecord {
   certChainRef: string;
   signerRef: string;
   signedAt: string;
+  /** The ESP's transaction id from its audit trail, where it gives one (PR-FBX-29 item 7). */
+  espTransactionId?: string;
+  /** The signer's IP address as the ESP recorded it (CONFIDENTIAL; signing evidence only). */
+  signerIp?: string;
 }
 
 export interface EsignPort extends Port {

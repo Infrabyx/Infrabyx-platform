@@ -783,6 +783,13 @@ Each row: the main threats for the port, its controls, the class ceiling and the
 | R-07 | Unleash and OTel Collector run self-hosted with tokens; a leaked client token exposes flag state (INTERNAL)                                                                      | Tokens from SECRETS; client tokens are environment-scoped and read-only                                                                                                                                                                                               | Rotation runbook in PL6                                                                                                                |
 | R-18 | libvips (MEDIA `sharp`) decodes untrusted uploads in the web process, not in a separate worker as IPB-01 suggests                                                                | Header type and pixel checks before decoding, libvips limit and `failOn`, cache off, sanitised SVG only; uploads are platform-scope Studio actions                                                                                                                    | A product that re-encodes at volume runs `MediaLibrary.upload` in its worker; revisit with the first product media pipeline (PL5-D-11) |
 
+### 3.63 Stamps, payouts, documents and mandates (Finbyx PR-FBX-29; R1-D-52), interfaces and fakes only
+
+- **E and T (money moved without authority, or twice):** Control: every money-moving call needs an idempotency key, an amount in integer paise, an approved maker-checker reference and a user or service initiator; agents are refused by the port check and by the kernel's verb guard; a replayed key returns the first result and another payload under it is refused; payouts never fail over automatically and "accepted" is never final, so a product waits for `settled` (UTR, value date) before booking.
+- **I:** account numbers, VPAs, party names and amounts are REGULATED and `IN`; documents and certificates go to the tenant's STORAGE by key and SHA-256 and never sit in the call arguments; the signer IP on a signature record is CONFIDENTIAL evidence only.
+- **S (forged callbacks):** every webhook is parsed for an id only and the state is read back.
+- **Residual:** no adapter exists, so vendor webhook signatures, the sponsor bank's file formats and the payout rails' transport rules are specified when the owner approves the vendors and provides their sandboxes (OWNER-QUESTIONS #100); until then products refuse these calls above staging (`IPB-PORT-001`).
+
 ### 3.62 CAPTCHA and device attestation (ADR-0004; Udofin PR-UDF-028, PR-UDF-029; R1-D-50)
 
 Public forms can ask for a CAPTCHA while the site is under attack; the app's device evidence has a port, with no vendor adapter yet.

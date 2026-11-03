@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { PortError } from "../errors.js";
 import type { IdempotencyLookup, Port, PortCall } from "./common.js";
+import { MoneyAuthorisation } from "./money.js";
 import { classed } from "./payload-class.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
@@ -95,7 +96,82 @@ export interface ReconcileReport {
   differences: Array<{ ref: string; kind: string; ours?: number; theirs?: number }>;
 }
 
-export interface PaymentsPort extends Port, IdempotencyLookup {
+/**
+ * Mandate channels (Finbyx PR-FBX-29, R1-D-52): eNACH by net banking, debit card or Aadhaar, UPI
+ * AutoPay, and physical NACH through the sponsor bank. IPB-01 puts mandates on PAYMENTS
+ * (`createMandate`); the lifecycle below is optional on the port and no adapter provides it until
+ * the owner approves one (locked list: money movement).
+ */
+export const MANDATE_CHANNELS = [
+  "ENACH_NETBANKING",
+  "ENACH_DEBIT_CARD",
+  "ENACH_AADHAAR",
+  "UPI_AUTOPAY",
+  "PHYSICAL_NACH",
+] as const;
+export type MandateChannel = (typeof MANDATE_CHANNELS)[number];
+
+export const MandateRegistration = z
+  .object({
+    customerRef: regulated(z.string().min(1).max(120)),
+    channel: internal(z.enum(MANDATE_CHANNELS)),
+    /** The debit ceiling per presentation, in paise. */
+    maxAmountMinor: regulated(AmountMinor),
+    frequency: internal(z.enum(["ADHOC", "MONTHLY", "QUARTERLY", "HALF_YEARLY", "YEARLY"])),
+    startDate: internal(z.iso.date()),
+    endDate: internal(z.iso.date()).optional(),
+    /** The debtor account by reference (the product's verified bank account id). */
+    debtorAccountRef: regulated(z.string().min(1).max(120)),
+    /** For physical NACH: the signed mandate form in STORAGE. */
+    formRef: regulated(z.string().min(1).max(1024)).optional(),
+    authorisation: MoneyAuthorisation,
+  })
+  .strict()
+  .refine((m) => m.channel !== "PHYSICAL_NACH" || m.formRef, "physical NACH needs the signed form")
+  .refine((m) => !m.endDate || m.endDate > m.startDate, "the end date is after the start date");
+
+export type MandateState =
+  | "initiated"
+  | "pending_customer"
+  | "pending_bank"
+  | "active"
+  | "rejected"
+  | "paused"
+  | "cancelled"
+  | "expired";
+
+export interface Mandate {
+  mandateId: string;
+  channel: MandateChannel;
+  state: MandateState;
+  /** NPCI's Unique Mandate Reference Number, once the bank registers it. */
+  umrn: string | null;
+  maxAmountMinor: number;
+  /** Where the customer authorises (eNACH, UPI AutoPay); null for physical NACH. */
+  authorisationUrl: string | null;
+  rejectionReason: string | null;
+  vendorRef: string;
+  adapter: string;
+}
+
+/** The mandate lifecycle a PAYMENTS adapter may add (`capabilities.registerMandate`). */
+export interface MandateLifecycle {
+  /** Authorises future debits: a money-moving call (`assertMoneyCall` first). */
+  registerMandate(
+    spec: z.infer<typeof MandateRegistration>,
+    idempotencyKey: string,
+    call?: PortCall,
+  ): Promise<Mandate>;
+  mandateStatus(mandateId: string): Promise<Mandate>;
+  cancelMandate(
+    mandateId: string,
+    reason: string,
+    authorisation: z.infer<typeof MoneyAuthorisation>,
+    idempotencyKey: string,
+  ): Promise<Mandate>;
+}
+
+export interface PaymentsPort extends Port, IdempotencyLookup, Partial<MandateLifecycle> {
   createOrder(spec: OrderSpec, idempotencyKey: string, call?: PortCall): Promise<Order>;
   createCheckoutSession(
     orderId: string,
