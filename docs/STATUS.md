@@ -10,6 +10,12 @@ Updated: 2026-11-03
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                         |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                             |
 
+## Product requests of 3 Nov (fifth session; R1-D-63)
+
+- **Logged and answered:** LawDocsComply PR-LDC-01 to 16 and Finbyx PR-FBX-32 and 33, in `docs/platform-requests.md` ("Product package requests"); PR-040 raised for `ProvisioningRequested` and `ProvisioningFailed`. Planned as R1-plan M37 to M48 in four waves: (1) `bootstrapTenant` and the OH provisioning adapter; (2) per-tenant SMS and WhatsApp templates and delivery-report routing; (3) CEL string functions, platform purpose notices with #95's sweep, FieldCrypto over KMS; (4) identity, external access, audit summary, COMPANY_DATA and the realm's password list.
+- **Open questions:** #101 to #104.
+- **Next:** wave 1 (M37, then M38).
+
 ## Handover (2026-11-03, fourth session: owner answers #94 to #100, PR-FBX-32 and the stub adapters)
 
 - **Temporal 1.25.0** (check-in `trig_017kWdyDm3yioGbpRrMnu5Zi` at 18:36 UTC; R1-D-60): every `@temporalio` package 1.25.0 (published 27 Oct 18:28 UTC; core-bridge ships `zip` 9.0.5). The four `zip` waivers are dropped. body-parser 2.4.0 and multer 2.5.0 come in by overrides, and their two waivers are dropped (`connectors` patch; guide §7v; threat model §3.45).
