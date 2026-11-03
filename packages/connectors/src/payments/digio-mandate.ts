@@ -27,6 +27,16 @@
 //   `{ id, state, umrn?, authentication_url? }`;
 // - status: `GET /v3/client/mandate/{id}`; cancel: `POST /v3/client/mandate/{id}/cancel` with
 //   `{ reason }`.
+// The approvals engine (owner answer #100's gap, 4 Nov 2026; R1-D-66): before Digio is called to
+// register or cancel, the adapter has the approvals engine consume the call's approval reference:
+// a `payments.mandate.change` request, approved, not yet consumed, in the same tenant, for the same
+// mandate (the registration's idempotency key, or the mandate id to cancel) and the same ceiling in
+// integer paise. Refused, nothing reaches Digio; consumed, it can never be used again, so a call
+// that must be made again after an unknown outcome or a vendor failure needs a fresh approval. A
+// retry that only reads the first call's mandate back consumes nothing. The product's own
+// maker-checker still runs first (defence in depth). Amendment has no port method yet: when it
+// comes, it consumes an `amend` approval the same way.
+//
 // Digio documents no webhook signature here, so the callback URL carries our C-19 secret as
 // `ipb_token` (as for Digio eSign) and the mandate is always read back from the API.
 import type { AppEnv } from "@infrabyx/contracts/env";
@@ -39,6 +49,8 @@ import {
   type AdapterDescriptor,
   type Mandate,
   type MandateChannel,
+  type MandateApprovalSubject,
+  type MandateApprovalVerifier,
   type MandateLifecycle,
   type MandateState,
   type MoneyAuthorisation,
@@ -107,6 +119,13 @@ export interface DigioMandateOptions {
   /** `int.payments.digio_mandate.enabled`, read on every call; off until the owner's account exists. */
   enabled: () => Promise<boolean> | boolean;
   keys: MandateKeyStore;
+  /**
+   * The approvals engine (`ApprovalsEngine.mandateVerifier` in `@infrabyx/tenancy`), which consumes
+   * each call's approval before Digio is called (R1-D-66).
+   */
+  approvals: MandateApprovalVerifier;
+  /** The tenant this adapter instance serves (the call's tenancy context). */
+  tenantId: () => Promise<string> | string;
   /** Resolves the customer and the verified debtor account the registration names by reference. */
   debtor: (customerRef: string, debtorAccountRef: string) => Promise<DigioMandateDebtor>;
   /** `secrets/<env>/payments/digio_mandate/client_id` and `client_secret`. */
@@ -343,6 +362,11 @@ export class DigioMandates implements Port, MandateLifecycle {
     }
     let created: DigioMandate;
     try {
+      await this.consume(m.authorisation.approvalRef, {
+        operation: "register",
+        mandate: idempotencyKey,
+        maxAmountMinor: m.maxAmountMinor,
+      });
       const debtor = await this.o.debtor(m.customerRef, m.debtorAccountRef);
       const res = await this.egress(`${this.base}/v3/client/mandate/create_form`, {
         method: "POST",
@@ -385,6 +409,11 @@ export class DigioMandates implements Port, MandateLifecycle {
     return out;
   }
 
+  /** The approvals engine consumes the approval, or refuses before anything reaches Digio. */
+  private async consume(approvalRef: string, subject: MandateApprovalSubject): Promise<void> {
+    await this.o.approvals.consume({ tenantId: await this.o.tenantId(), approvalRef, subject });
+  }
+
   /** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: the mandate created with our reference, if any. */
   private async findByRef(ref: string): Promise<DigioMandate | null> {
     const res = await this.egress(
@@ -417,6 +446,11 @@ export class DigioMandates implements Port, MandateLifecycle {
     if (now.state === "cancelled") return now;
     if (now.state === "rejected" || now.state === "expired")
       throw refused(`the mandate is ${now.state}`, "invalid_state");
+    await this.consume(authorisation.approvalRef, {
+      operation: "cancel",
+      mandate: mandateId,
+      maxAmountMinor: now.maxAmountMinor,
+    });
     const res = await this.egress(
       `${this.base}/v3/client/mandate/${encodeURIComponent(mandateId)}/cancel`,
       {

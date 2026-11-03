@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-03 (R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-04 (R1-D-66, §3.69: the approvals engine consumes each mandate approval; R1-D-64, §3.70: CI runs on pull requests only with the `ci:run` label; R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -856,3 +856,14 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 - **I (debtor account data):** Control: the account number, IFSC and contact come from the product's resolver per call, go only to Digio (`IN`, REGULATED) and are neither returned nor stored; the approval reference is not sent. DDE documents leave only after their SHA-256 matches, and the executed PDF goes to the tenant's STORAGE with its hash.
 - **S (forged callbacks):** Control: our C-19 URL secret; the body is used only for the id, and the mandate or DDE record is read back from the vendor.
 - **Residual:** vendor shapes are stub-shaped until the owner's Digio mandate and NeSL accounts exist, so the adapters stay off and `unproven`; Digio documents no webhook signature here, so the URL secret must stay out of ingress logs. Two concurrent first calls with one DDE key can both register before either is found (the product serialises a key, as for every idempotent call).
+
+### 3.69 The mandate approval consumed by the approvals engine (owner answer #100's gap; R1-D-66)
+
+- **E (an approval reference forged, reused, or taken from another tenant, mandate or amount):** Control: `digio-mandate` calls the approvals engine's `consumeMandateApproval` before Digio is called to register or cancel. It refuses unless the request is on `payments.mandate.change` at R3 or above, approved and past its delay, not yet consumed, visible in the caller's tenant under RLS (and its `tenant_id` equal), and its payload is exactly the call's subject: the operation, the mandate (the registration's idempotency key, or the mandate id to cancel) and the ceiling in integer paise (with its canonical digest). It then marks the request executed and ledgers `approvals.request.consume` in the same transaction under the row lock, so two concurrent calls cannot both consume it (integration test). An agent caller is refused. The product's own maker-checker still runs first.
+- **T (the action executed without a vendor call, or by an executor):** Control: the engine registers `payments.mandate.change` itself, never executed on approval; `execute()` refuses it, and registering it with an executor or auto-execution throws.
+- **Residual:** once consumed, an approval cannot cover a second vendor call, so a registration or cancellation that must be made again after an unknown outcome or a vendor failure needs a fresh approval (fail-safe). Amendment has no port method yet; when it comes it consumes an `amend` approval the same way.
+
+### 3.70 CI only on the `ci:run` label (R1-D-64)
+
+- **E (a required check satisfied without running):** pull-request CI starts only when a label is added. A job skipped by a condition reports success to the required checks, so any label other than `ci:run` cancels the run (its jobs report cancelled, which never satisfies a required check) instead of skipping it; the required checks and the ruleset are unchanged, and pushes to `main` and the release run as before. A cancelled run does not replace an earlier green or red result on the same commit with a pass.
+- **Residual:** a push after the label leaves the PR's checks pending until `ci:run` is removed and added again, which blocks the merge (fail-safe).

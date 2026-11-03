@@ -4,6 +4,11 @@
 // keeps its timers, scheduled actions and Work Inbox in step (PL3-D-19). Escalation never decides.
 import type { DataClass } from "@infrabyx/contracts/data-class";
 import { IpbError } from "@infrabyx/contracts/errors";
+import {
+  MANDATE_APPROVAL_ACTION,
+  MandateApprovalSubject,
+  type MandateApprovalVerifier,
+} from "@infrabyx/contracts/ports";
 import { isFunctionRole } from "@infrabyx/contracts/roles";
 import type {
   ApprovalGateway,
@@ -201,12 +206,33 @@ export function riskPolicyFor(action: string, risk: Risk): RiskPolicy {
   return action === TENANT_DELETE_ACTION ? TENANT_DELETE_POLICY : RISK_POLICY[risk];
 }
 
+/** What every mandate approval keeps whatever the product registers (R1-D-66). */
+const MANDATE_POLICY_FIXED = {
+  autoExecute: false,
+  financial: true,
+  amountOf: (p: Record<string, unknown>) =>
+    typeof p.maxAmountMinor === "number" ? p.maxAmountMinor : undefined,
+} satisfies ActionPolicy;
+const MANDATE_POLICY: ActionPolicy = { ...MANDATE_POLICY_FIXED };
+
 export class ApprovalsEngine implements ApprovalGateway {
   private readonly policies = new Map<string, ActionPolicy>();
-  constructor(private readonly o: ApprovalsEngineOptions) {}
+  constructor(private readonly o: ApprovalsEngineOptions) {
+    this.policies.set(MANDATE_APPROVAL_ACTION, MANDATE_POLICY);
+  }
 
-  /** Register checker roles and the executor for an action. */
+  /**
+   * Register checker roles and the executor for an action. The mandate action (R1-D-66) is
+   * registered already; a product may narrow its checkers or lengthen its delay, but it is never
+   * executed on approval and has no executor: only `consumeMandateApproval` uses it.
+   */
   register(action: string, policy: ActionPolicy): this {
+    if (action === MANDATE_APPROVAL_ACTION) {
+      if (policy.execute || policy.autoExecute)
+        throw new Error(`${action} is consumed by the mandate adapter, never executed`);
+      this.policies.set(action, { ...policy, ...MANDATE_POLICY_FIXED });
+      return this;
+    }
     this.policies.set(action, policy);
     return this;
   }
@@ -382,6 +408,8 @@ export class ApprovalsEngine implements ApprovalGateway {
         const row = await this.load(tx, id, true);
         if (row.expired_at) throw new IpbError("IPB-UX-012", { meta: { request_id: id } });
         if (row.state !== "approved") throw new ConflictError(`approval ${id} is ${row.state}`);
+        if (row.action === MANDATE_APPROVAL_ACTION)
+          throw new ConflictError(`approval ${id} is consumed only by the mandate adapter`);
         const now = await tx.query<{ now: Date }>("select now() as now");
         if (row.delay_until && row.delay_until > (now.rows[0]?.now as Date)) {
           throw new IpbError("IPB-SEC-008", {
@@ -432,6 +460,89 @@ export class ApprovalsEngine implements ApprovalGateway {
       },
       { action: "approvals.request.cancel" },
     );
+  }
+
+  /**
+   * Consume an approved mandate request once (owner answer #100's gap; R1-D-66). The mandate
+   * adapter calls this before any vendor call. Refused unless the request is on
+   * `MANDATE_APPROVAL_ACTION` at R3 or above, approved and past its delay, not yet consumed, in
+   * `ctx`'s tenant, and its payload is exactly `subject`. Then it is marked executed (consumed) and
+   * ledgered in the same transaction, under the row lock, so two calls cannot both consume it.
+   */
+  async consumeMandateApproval(
+    ctx: KernelContext,
+    approvalRef: string,
+    subject: MandateApprovalSubject,
+  ): Promise<ApprovalRecord> {
+    const want = MandateApprovalSubject.parse(subject);
+    function refuse(reason: string, detail: string): never {
+      throw new IpbError("IPB-UX-004", {
+        detail: `mandate approval refused: ${detail}`,
+        meta: { reason, request_id: approvalRef },
+      });
+    }
+    if (isAgentPrincipal(ctx)) refuse("agent", "agents never move money (IPB-02-10)");
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        let row: Row;
+        try {
+          row = await this.load(tx, approvalRef, true);
+        } catch (e) {
+          // Row-level security hides another tenant's request: the same answer as no request.
+          if (e instanceof NotFoundError) refuse("not_found", "no such request in this tenant");
+          throw e;
+        }
+        if (row.tenant_id !== ctx.tenantId) refuse("other_tenant", "another tenant's request");
+        if (row.action !== MANDATE_APPROVAL_ACTION)
+          refuse("other_action", `the request is not on ${MANDATE_APPROVAL_ACTION}`);
+        if (!["R3", "R4", "R5"].includes(row.risk_class))
+          refuse("risk_class", "a mandate approval is R3 or above");
+        if (row.expired_at) refuse("expired", "the request expired");
+        if (row.state === "executed") refuse("consumed", "the approval was already used");
+        if (row.state !== "approved") refuse("not_approved", `the request is ${row.state}`);
+        const now = await tx.query<{ now: Date }>("select now() as now");
+        if (row.delay_until && row.delay_until > (now.rows[0]?.now as Date))
+          throw new IpbError("IPB-SEC-008", {
+            meta: { request_id: approvalRef, delay_until: row.delay_until.toISOString() },
+          });
+        const got = MandateApprovalSubject.safeParse(await this.payloadOf(tx, row));
+        if (!got.success)
+          refuse("subject_invalid", "the request's payload is not a mandate subject");
+        const have = got.data;
+        if (have.operation !== want.operation)
+          refuse("other_operation", `approved for ${have.operation}, not ${want.operation}`);
+        if (have.mandate !== want.mandate) refuse("other_mandate", "approved for another mandate");
+        if (have.maxAmountMinor !== want.maxAmountMinor)
+          refuse("other_amount", "approved for another amount");
+        if (canonicalDigest(want) !== row.payload_digest)
+          refuse("subject_mismatch", "the approved payload differs");
+        await this.o.audit.record(tx, {
+          action: "approvals.request.consume",
+          resourceType: "approval_request",
+          resourceId: row.id,
+          after: {
+            action: row.action,
+            operation: want.operation,
+            payload_digest: row.payload_digest,
+          },
+        });
+        return toRecord(await this.runExecutor(tx, row));
+      },
+      { action: "approvals.request.consume" },
+    );
+  }
+
+  /**
+   * The `MandateApprovalVerifier` the mandate adapter takes: `ctxFor` gives the kernel context of
+   * the service principal that makes the call in the named tenant.
+   */
+  mandateVerifier(ctxFor: (tenantId: string) => KernelContext): MandateApprovalVerifier {
+    return {
+      consume: async ({ tenantId, approvalRef, subject }) => {
+        await this.consumeMandateApproval(ctxFor(tenantId), approvalRef, subject);
+      },
+    };
   }
 
   /**
