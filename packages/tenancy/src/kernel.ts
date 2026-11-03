@@ -15,6 +15,7 @@ import type {
   QueryResult,
   ReadOptions,
   Tx,
+  UnitOutcome,
 } from "@infrabyx/contracts/kernel";
 import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
 import { KernelGuardError } from "./errors.js";
@@ -55,12 +56,42 @@ export function assertAllowedStatement(text: string): void {
     if (re.test(text)) throw new KernelGuardError(`refused statement: ${why}`);
 }
 
+/** Most units one transaction may open (a batch is cut into transactions of at most this). */
+export const MAX_UNITS_PER_TX = 100_000;
+
 class PgTx implements Tx {
   private _audited = false;
+  private units = 0;
+  private depth = 0;
   constructor(
     private readonly client: pg.PoolClient,
     readonly ctx: KernelContext,
+    private readonly readOnly = false,
   ) {}
+
+  async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+    if (this.readOnly) throw new KernelGuardError("units are for mutations");
+    if (++this.units > MAX_UNITS_PER_TX)
+      throw new KernelGuardError(`a transaction opens at most ${MAX_UNITS_PER_TX} units`);
+    const name = `ipb_unit_${this.depth}`;
+    const auditedBefore = this._audited;
+    this.depth++;
+    await this.client.query(`savepoint ${name}`);
+    try {
+      const value = await fn(this);
+      await this.client.query(`release savepoint ${name}`);
+      return { ok: true, value };
+    } catch (error) {
+      // A failed rollback (a broken connection) fails the whole transaction.
+      await this.client.query(`rollback to savepoint ${name}`);
+      await this.client.query(`release savepoint ${name}`);
+      // The unit's ledger entries are gone with it; the commit check must not count them.
+      this._audited = auditedBefore;
+      return { ok: false, error };
+    } finally {
+      this.depth--;
+    }
+  }
   async query<R = Record<string, unknown>>(
     text: string,
     params?: readonly unknown[],
@@ -278,7 +309,7 @@ export class PgKernel implements MutationKernel {
             meta: { grant_id: ctx.externalGrantId ?? null },
           });
       }
-      const result = await fn(new PgTx(client, ctx));
+      const result = await fn(new PgTx(client, ctx, readOnly !== false));
       await client.query("commit");
       return result;
     } catch (e) {

@@ -94,6 +94,8 @@ Types, schemas and error codes only; no I/O.
 - **T:** history rewritten. Control: append-only for every role (X-03); weekly verifier emits `LedgerChainBroken`; signed daily anchors on write-once storage (PL1 C-03).
 - **I:** payloads in the ledger. Control: before/after stored only as canonical digests; IP and user agent as keyed pseudonyms (PL1 C-02).
 
+- **R/T (batches and units, PR-FBX-30, R1-D-41):** a failed item's changes surviving, or a step's member list altered. Control: savepoints only through the kernel's `unit` (callers' `SAVEPOINT`/`RELEASE` stay refused); a rolled-back unit's entries do not satisfy the commit check; the batch entry's digest covers every member id and `audit.batch_member` is append-only for every role, checked by `verifyBatch`. Residual: a batch entry names resources, not their before and after states; a product that needs per-resource evidence keeps per-resource entries.
+
 ### 3.6 `@infrabyx/seed` (built)
 
 - **E/I:** seeds or seed credentials in production. Control: refusal first in `prod`, `dr`, `pre-prod` (`SEED_REFUSED_ENVS`, PL1-D-06); generated passwords; `SEED_CREDENTIALS.md` ignored and checked by `ipb:check`; forced rotation and MFA on first production login (IPB-D-04).

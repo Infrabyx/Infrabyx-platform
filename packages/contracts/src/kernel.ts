@@ -59,7 +59,17 @@ export interface Tx {
   /** Called by the audit sink after it writes a ledger row in this transaction. */
   markAudited(): void;
   readonly audited: boolean;
+  /**
+   * A kernel-owned nested unit (Finbyx PR-FBX-30, R1-D-41): the kernel opens a savepoint, runs
+   * `fn`, and releases it, or rolls back to it when `fn` throws, so one failed item of a batch rolls
+   * back alone (its ledger entries and outbox rows with it) and the transaction carries on. Units
+   * nest. The kernel's own transactions provide it; a handle without it cannot run units.
+   */
+  unit?<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>>;
 }
+
+/** The outcome of `Tx.unit`: the value, or the error after its savepoint was rolled back. */
+export type UnitOutcome<T> = { ok: true; value: T } | { ok: false; error: unknown };
 
 export interface MutateOptions {
   /** Action verb checked against agent-forbidden verbs (IPB-02-10), e.g. "approvals.request.approve". */
