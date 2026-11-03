@@ -133,8 +133,34 @@ class FakeCustomerIdp extends CustomerIdentityBase {
   async health(): Promise<PortHealth> {
     return { status: "up", latency_ms: 0, checked_at: new Date().toISOString() };
   }
+  private readonly owners = new Map<string, string>();
+  private readonly taken = new Set<string>();
+  private moved = 0;
   protected async resolveUser(tenantId: string, _c: string, login: string) {
-    return `u-${tenantId}-${login}`;
+    const k = `${tenantId}|${login}`;
+    let id = this.owners.get(k);
+    if (!id) {
+      id = `u-${tenantId}-${login}`;
+      if (this.taken.has(id)) id = `${id}-${++this.moved}`;
+      this.owners.set(k, id);
+      this.taken.add(id);
+    }
+    return id;
+  }
+  protected async idpFindUser(tenantId: string, _c: string, login: string) {
+    return this.owners.get(`${tenantId}|${login}`);
+  }
+  protected async idpChangeLogin(a: {
+    tenantId: string;
+    userId: string;
+    from: string;
+    to: string;
+  }) {
+    this.owners.delete(`${a.tenantId}|${a.from}`);
+    this.owners.set(`${a.tenantId}|${a.to}`, a.userId);
+  }
+  protected async idpRetireLogin(a: { tenantId: string; login: string }) {
+    this.owners.delete(`${a.tenantId}|${a.login}`);
   }
   protected async idpSend() {
     this.calls.send++;
@@ -418,5 +444,114 @@ describe("retention of customer sign-in state (owner answer #86, R1-D-23)", () =
     expect((await p.listDevices("tnt_a", userId)).map((d) => d.id)).toEqual(rest.map((d) => d.id));
     await p.forgetDevices("tnt_a", userId);
     expect(await p.listDevices("tnt_a", userId)).toEqual([]);
+  });
+});
+
+describe("PR-UDF-034 changing and retiring a customer login on a fake IdP", () => {
+  const now = { t: Date.now() };
+  const mail = capturingSender();
+  const store = new MemoryCustomerAuthStore();
+  const p = new FakeCustomerIdp({
+    store,
+    replay: new MemoryReplayStore(),
+    revocations: new MemoryRevocationStore(),
+    sender: mail.sender,
+    now: () => now.t,
+  });
+  const t = p.signInProofTarget;
+  const d = testDevice();
+  const pf = (dev = d) => dev.proof(t.htm, t.htu, { iat: Math.floor(now.t / 1000) });
+  const from = "+919800000101";
+  const to = "+919800000102";
+  const ids = [
+    `u-tnt_a-${"+919800000101"}`,
+    `u-tnt_a-${"+919800000101"}-1`,
+    `u-tnt_a-${"+919800000101"}-2`,
+  ];
+  /** The account a session's device belongs to. */
+  const sub = async (s: { device: { id: string } }, _dev?: unknown) => {
+    for (const id of ids)
+      if ((await p.listDevices("tnt_a", id)).some((x) => x.id === s.device.id)) return id;
+    return undefined;
+  };
+  const signIn = async (login: string, dev = d) => {
+    now.t += 31_000;
+    const ch = await p.startChallenge({
+      tenantId: "tnt_a",
+      channel: "sms",
+      login,
+      dpopProof: pf(dev),
+    });
+    return p.verifyChallenge({
+      tenantId: "tnt_a",
+      challengeId: ch.challengeId,
+      code: mail.inbox.get(login)!,
+      dpopProof: pf(dev),
+    });
+  };
+
+  it("needs both codes from the same key, keeps the account and frees the old login", async () => {
+    const s = await signIn(from);
+    const userId = (await sub(s))!;
+    expect(userId).toBe(`u-tnt_a-${from}`);
+    now.t += 31_000;
+    const req = {
+      tenantId: "tnt_a",
+      userId,
+      channel: "sms" as const,
+      currentLogin: from,
+      newLogin: to,
+    };
+    await expect(
+      p.startLoginChange({ ...req, currentLogin: "+919800000199", dpopProof: pf() }),
+    ).rejects.toMatchObject({ meta: { reason: "login" } });
+    await expect(
+      p.startLoginChange({ ...req, newLogin: from, dpopProof: pf() }),
+    ).rejects.toMatchObject({ meta: { reason: "login" } });
+    const ch = await p.startLoginChange({ ...req, dpopProof: pf() });
+    const oldCode = mail.inbox.get(from)!;
+    const newCode = mail.inbox.get(to)!;
+    expect(JSON.stringify(ch)).not.toContain(newCode);
+    expect(JSON.stringify(await store.getChallenge("tnt_a", ch.challengeId))).not.toContain(to);
+    const confirm = (o: { oldCode: string; newCode: string; newLogin?: string }, dev = d) =>
+      p.confirmLoginChange({ ...req, ...o, challengeId: ch.challengeId, dpopProof: pf(dev) });
+    await expect(confirm({ oldCode, newCode }, testDevice())).rejects.toMatchObject({
+      code: "IPB-IDN-001",
+    });
+    await expect(confirm({ oldCode: newCode, newCode: oldCode })).rejects.toMatchObject({
+      meta: { reason: "code" },
+    });
+    await expect(confirm({ oldCode, newCode, newLogin: "+919800000103" })).rejects.toMatchObject({
+      meta: { reason: "code" },
+    });
+    await confirm({ oldCode, newCode });
+    await expect(confirm({ oldCode, newCode })).rejects.toMatchObject({
+      meta: { reason: "challenge" },
+    });
+    expect(store.events).toEqual([
+      { tenantId: "tnt_a", userId, action: "identity.customer.login.change" },
+    ]);
+    // The new login signs in to the same account; the old one opens a new account.
+    expect(await sub(s)).toBe(userId);
+    const fresh = testDevice();
+    expect(await sub(await signIn(from, fresh), fresh)).toBe(`u-tnt_a-${from}-1`);
+  });
+
+  it("retires a login: devices forgotten, the login free for a new account", async () => {
+    const other = (await p.listDevices("tnt_a", `u-tnt_a-${from}-1`)).length;
+    expect(other).toBeGreaterThan(0);
+    await expect(
+      p.retireLogin({ tenantId: "tnt_a", userId: `u-tnt_a-${to}`, channel: "sms", login: from }),
+    ).rejects.toMatchObject({ meta: { reason: "login" } });
+    await p.retireLogin({
+      tenantId: "tnt_a",
+      userId: `u-tnt_a-${from}-1`,
+      channel: "sms",
+      login: from,
+    });
+    expect(await p.listDevices("tnt_a", `u-tnt_a-${from}-1`)).toHaveLength(0);
+    expect(store.events.at(-1)?.action).toBe("identity.customer.login.retire");
+    const dev = testDevice();
+    expect(await sub(await signIn(from, dev), dev)).toBe(`u-tnt_a-${from}-2`);
   });
 });
