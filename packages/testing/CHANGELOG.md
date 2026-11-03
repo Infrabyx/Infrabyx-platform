@@ -1,5 +1,33 @@
 # @infrabyx/testing
 
+## 1.5.0
+
+### Minor Changes
+
+- 1b99d7a: The CAPTCHA and DEVICE_ATTESTATION ports (Udofin PR-UDF-029 and PR-UDF-028; ADR-0004; R1-D-50). `contracts`: `CaptchaPort` (`verify` returns a verdict: `invalid`, `expired`, `duplicate`, `action_mismatch`, `hostname_mismatch`) and `DeviceAttestationPort` (Play Integrity, App Attest registration and assertions, bound to a nonce or the DPoP key), both catalogued in `R1_PORTS`. `connectors` (`@infrabyx/connectors/captcha`): `TurnstileCaptcha` (reference) and `HCaptchaCaptcha` (alternative), which send only the token and the secret, and `CaptchaGate`, which asks for a token only while `int.captcha.under_attack` is on and then fails closed with 429 IPB-SEC-019. `config`: `int.captcha.under_attack`, `int.captcha.turnstile.enabled`, `int.captcha.hcaptcha.enabled` (both adapters off by default). `testing`: `FakeCaptcha`, `startCaptchaStub`, `captchaContractCases`, `FakeDeviceAttestation`, `deviceAttestationContractCases`. The device-attestation vendor adapters wait for the owner (OWNER-QUESTIONS #99).
+- c4117e4: The `ESTAMP`, `PAYOUTS`, `DOCGEN` and `PDF` port interfaces and the PAYMENTS mandate lifecycle (Finbyx PR-FBX-29; IPB-01; R1-D-52), interfaces, fakes and contract cases only. `EstampPort` (`covers`, `quoteDuty`, `purchase`, `attach`, `verify`, `handleWebhook`) with NeSL Digital Document Execution as optional methods (`ddeRegister`, `ddeStatus`, `ddeDownloadExecuted`); `PayoutsPort` (`createBeneficiary`, `validateAccount` with the holder's name, `payout`, `getStatus` with the UTR and value date, `handleWebhook`, `balance`; "accepted" is never final); `DocgenPort` (`render`, `renderBatch`, `renderHtml` to PDF or PDF/A, `previewHtml`, `listTemplates`, `validateTemplate`) and `PdfPort` (IPB-01's operations over STORAGE references); `MandateLifecycle` (`registerMandate` for eNACH, UPI AutoPay and physical NACH with the UMRN, `mandateStatus`, `cancelMandate`), optional on `PaymentsPort`. Every money-moving call carries an idempotency key, an amount in integer paise and a `MoneyAuthorisation` (an approved request and a user or service initiator); `assertMoneyCall` refuses an agent (`IPB-SEC-004`) and a missing approval or key (`IPB-UX-004`). `SignatureRecord` gains the optional `espTransactionId` and `signerIp`. `@infrabyx/testing`: `FakeEstamp`, `FakePayouts`, `FakeMandates`, `FakeDocgen`, `FakePdf`, `FakeEsign` and their contract cases. No vendor adapter: payout and mandate adapters wait for the owner (money movement).
+- 1e721cd: `startIdfyKycStub`: a hermetic stub of IDfy's task API (PAN, face compare, photo liveness) in its stub-shaped form, for the `idfy-kyc` contract leg (R1-D-45).
+- 854e309: The `livekit` VIDEO_MEET reference adapter (`@infrabyx/connectors/video-meet`; owner answer #88, R1-D-53): a self-hosted LiveKit server called over its HTTP server API with C-26 tokens, the room's policy (India only, no anonymised origin, the official from the official network) enforced before a token is issued, webhooks verified and read back, and recordings moved from the egress disk to the room's STORAGE target with one locked single-part write each before the disk copy is removed. Off behind `int.video_meet.livekit.enabled` (`config`); the egress path is `unproven` until a deployment runs the egress worker. `testing`: the `livekit` test image and `videoMeetContractCases({ signWebhook })`. Compose: the `video` profile.
+
+### Patch Changes
+
+- Updated dependencies [7910610]
+- Updated dependencies [1b99d7a]
+- Updated dependencies [c83e9e0]
+- Updated dependencies [af2ae98]
+- Updated dependencies [c4117e4]
+- Updated dependencies [1e721cd]
+- Updated dependencies [854e309]
+- Updated dependencies [854e309]
+- Updated dependencies [0da0398]
+- Updated dependencies [05c3122]
+  - @infrabyx/tenancy@1.9.0
+  - @infrabyx/contracts@1.15.0
+  - @infrabyx/config@1.6.0
+  - @infrabyx/crypto@1.4.0
+  - @infrabyx/audit@1.5.1
+  - @infrabyx/seed@1.0.20
+
 ## 1.4.0
 
 ### Minor Changes
