@@ -1,5 +1,14 @@
 # @infrabyx/notify
 
+## 1.1.13
+
+### Patch Changes
+
+- Updated dependencies [fdd1f1a]
+- Updated dependencies [ed143e3]
+  - @infrabyx/config@1.8.0
+  - @infrabyx/tenancy@1.9.2
+
 ## 1.1.12
 
 ### Patch Changes

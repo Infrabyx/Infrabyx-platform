@@ -1,5 +1,12 @@
 # @infrabyx/config
 
+## 1.8.0
+
+### Minor Changes
+
+- fdd1f1a: `int.bureau.cibil.enabled` and `int.aa_fiu.setu.enabled` (default false): the switches of the `cibil` and `setu-aa` adapters (owner answer #97; R1-D-61).
+- ed143e3: Two settings keys for the Digio mandate adapter and NeSL DDE, both off by default (owner answer #100; R1-D-62): `int.payments.digio_mandate.enabled` and `int.estamp.nesl_dde.enabled`.
+
 ## 1.7.0
 
 ### Minor Changes
