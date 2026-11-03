@@ -203,6 +203,13 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **One entry per step.** After the step, call `sink.recordBatch(tx, { action, run, step, resourceType, resourceIds })` with the ids that succeeded, up to 100,000. Run `infrabyx-migrate` (`audit/0005`). `verifyBatch(tx, ledgerId)` proves the member list later.
 - **Finbyx.** COB pass A can group loans into transactions of a few thousand units each, instead of one transaction per loan. Keep a per-loan entry where the loan's own history needs one; use the batch entry for the step.
 
+## 7o. Credit bureaus and Account Aggregators (PR-FBX-28)
+
+- **Interfaces now, adapters later (R1-D-43, ADR-0003).** The ports are IPB-01's `BUREAU` and `AA_FIU`. Build your bureau and AA flows on `CreditBureauPort` and `AccountAggregatorPort` from `@infrabyx/contracts/ports`, with `FakeCreditBureau` and `FakeAccountAggregator` from `@infrabyx/testing` below staging. Above staging, refuse with `IPB-PORT-001` until a platform adapter lands; vendor adapters wait for the owner's sandbox accounts.
+- **Consent first.** Record the customer's consent with `PurposeConsents` (§7j) before every pull or AA consent request, and pass its receipt id as `consentRef`; a pull without one is refused. Choose `soft` for pre-qualification and `hard` only for an application.
+- **Storage, not payloads.** Pass a `reportPrefix` or `dataPrefix` under the tenant's own prefix. Keep the returned STORAGE reference and SHA-256 with the application, and read the normalised summary (amounts in integer paise) for the BRE. Read a `pending` pull back with `status` or through its webhook.
+- **Finbyx.** Replace `los/ports.ts`'s shim ports and fixture adapters with these interfaces and fakes; run `creditBureauContractCases` and `accountAggregatorContractCases` against any adapter you build meanwhile.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
