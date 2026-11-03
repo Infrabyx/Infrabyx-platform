@@ -44,6 +44,8 @@ export const BRAND_EVENTS = {
 
 export const CONSENT_EVENTS = {
   ConsentRecorded: { module: "web", name: "ConsentRecorded" },
+  /** A product purpose granted or withdrawn (`PurposeConsents`, PR-FBX-26; R1-D-38). */
+  PurposeConsentChanged: { module: "web", name: "PurposeConsentChanged" },
   AcceptanceRecorded: { module: "pol", name: "AcceptanceRecorded" },
   AcknowledgementRecorded: { module: "pol", name: "AcknowledgementRecorded" },
   AcceptanceRefused: { module: "pol", name: "AcceptanceRefused" },
@@ -189,6 +191,16 @@ export const ConsentRecordedData = z
     region: z.enum(CONSENT_REGIONS),
     text_version: z.string(),
     gpc: z.boolean(),
+  })
+  .strict();
+
+/** No subject and no notice text: the receipt, the purpose code and the notice version only. */
+export const PurposeConsentChangedData = z
+  .object({
+    receipt_id: Id("cpr"),
+    purpose: z.string().regex(/^[a-z]{2,5}\.[a-z0-9_]+(\.[a-z0-9_]+){0,3}$/),
+    granted: z.boolean(),
+    notice_version: z.number().int().positive().nullable(),
   })
   .strict();
 
