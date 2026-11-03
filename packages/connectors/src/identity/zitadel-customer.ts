@@ -125,8 +125,33 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
 
   private async api<T>(method: string, path: string, body?: unknown): Promise<T> {
     const r = await this.call(method, path, body);
-    if (r.status >= 300) this.fail(r.status, `${method} ${path.split("/").slice(0, 4).join("/")}`);
+    if (r.status >= 300)
+      throw new PortError(
+        r.status === 401 || r.status === 403 ? "IPB-PORT-001" : "IPB-PORT-002",
+        "IDENTITY",
+        {
+          adapter: "zitadel-customer",
+          detail: `${method} ${path.split("/").slice(0, 4).join("/")} answered ${r.status}: ${r.text().slice(0, 200)}`,
+          meta: { status: r.status },
+        },
+      );
     return (r.body.byteLength ? r.json<T>() : {}) as T;
+  }
+
+  /** The account whose username is `username` in the customer organisation (PR-UDF-034). */
+  private async userByName(username: string): Promise<string | undefined> {
+    const r = await this.api<{ result?: Array<{ userId: string; username?: string }> }>(
+      "POST",
+      "/v2/users",
+      {
+        queries: [
+          { userNameQuery: { userName: username, method: "TEXT_QUERY_METHOD_EQUALS" } },
+          { organizationIdQuery: { organizationId: this.o.orgId } },
+        ],
+      },
+    );
+    return (r.result ?? []).find((u) => u.username === undefined || u.username === username)
+      ?.userId;
   }
 
   protected async resolveUser(
@@ -134,37 +159,91 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     channel: CustomerOtpChannel,
     login: string,
   ): Promise<string> {
-    const userId = zitadelCustomerUserId(this.o.orgId, tenantId, login);
-    const found = await this.call("GET", `/v2/users/${userId}`);
-    if (found.status === 200) return userId;
-    if (found.status !== 404) this.fail(found.status, "GET /v2/users");
-    const email = channel === "email" ? login : `${userId}@customer.invalid`;
-    const created = await this.call("POST", "/v2/users/human", {
-      userId,
-      username: userId,
-      organization: { orgId: this.o.orgId },
-      profile: { givenName: "Customer", familyName: "Customer" },
-      email: { email, isVerified: true },
-      ...(channel === "email" ? {} : { phone: { phone: login, isVerified: true } }),
-      metadata: [
-        { key: "tenant_id", value: b64(tenantId) },
-        { key: "principal_type", value: b64("user") },
-      ],
-    });
-    // 409: a concurrent request created the account first.
-    if (created.status === 409) return userId;
-    if (created.status >= 300) this.fail(created.status, "POST /v2/users/human");
-    await this.api(
-      "POST",
-      `/v2/users/${userId}/${channel === "email" ? "otp_email" : "otp_sms"}`,
-      {},
-    );
-    if (this.base.customerRoles?.length)
-      await this.api("POST", `/management/v1/users/${userId}/grants`, {
-        projectId: this.o.projectId,
-        roleKeys: [...this.base.customerRoles],
+    // The username follows the login; the user id is fixed at creation (PR-UDF-034), so an
+    // account whose login changed keeps its id, and a recycled login gets a new account.
+    const username = zitadelCustomerUserId(this.o.orgId, tenantId, login);
+    const found = await this.userByName(username);
+    if (found) return found;
+    for (let n = 0; n < 5; n++) {
+      const userId =
+        n === 0 ? username : zitadelCustomerUserId(this.o.orgId, tenantId, `${login}#${n}`);
+      // An id held by an account whose login moved on is skipped before trying to create it.
+      const held = await this.call("GET", `/v2/users/${userId}`);
+      if (held.status === 200) continue;
+      const email = channel === "email" ? login : `${userId}@customer.invalid`;
+      const created = await this.call("POST", "/v2/users/human", {
+        userId,
+        username,
+        organization: { orgId: this.o.orgId },
+        profile: { givenName: "Customer", familyName: "Customer" },
+        email: { email, isVerified: true },
+        ...(channel === "email" ? {} : { phone: { phone: login, isVerified: true } }),
+        metadata: [
+          { key: "tenant_id", value: b64(tenantId) },
+          { key: "principal_type", value: b64("user") },
+        ],
       });
-    return userId;
+      if (created.status >= 300) {
+        // A concurrent request created the account first; otherwise report Zitadel's reason.
+        const now = await this.userByName(username);
+        if (now) return now;
+        if (created.status === 409) continue;
+        throw new PortError("IPB-PORT-002", "IDENTITY", {
+          adapter: "zitadel-customer",
+          detail: `POST /v2/users/human answered ${created.status}: ${created.text().slice(0, 200)}`,
+          meta: { status: created.status },
+        });
+      }
+      await this.api(
+        "POST",
+        `/v2/users/${userId}/${channel === "email" ? "otp_email" : "otp_sms"}`,
+        {},
+      );
+      if (this.base.customerRoles?.length)
+        await this.api("POST", `/management/v1/users/${userId}/grants`, {
+          projectId: this.o.projectId,
+          roleKeys: [...this.base.customerRoles],
+        });
+      return userId;
+    }
+    this.fail(409, "no free account id for this login");
+  }
+
+  protected async idpFindUser(
+    tenantId: string,
+    _channel: CustomerOtpChannel,
+    login: string,
+  ): Promise<string | undefined> {
+    return this.userByName(zitadelCustomerUserId(this.o.orgId, tenantId, login));
+  }
+
+  /** PR-UDF-034: username, and the verified phone or email, follow the new login. */
+  protected async idpChangeLogin(a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    from: string;
+    to: string;
+  }): Promise<void> {
+    await this.api("PUT", `/v2/users/human/${a.userId}`, {
+      username: zitadelCustomerUserId(this.o.orgId, a.tenantId, a.to),
+      ...(a.channel === "email"
+        ? { email: { email: a.to, isVerified: true } }
+        : { phone: { phone: a.to, isVerified: true } }),
+    });
+  }
+
+  /** PR-UDF-034: the account is deactivated under a username no login maps to; its id stays. */
+  protected async idpRetireLogin(a: {
+    tenantId: string;
+    userId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+  }): Promise<void> {
+    await this.api("PUT", `/v2/users/human/${a.userId}`, {
+      username: `ret${sha256Hex(`retired:${a.userId}`).slice(0, 40)}`,
+    });
+    await this.api("POST", `/v2/users/${a.userId}/deactivate`, {});
   }
 
   protected async idpSend(a: {
