@@ -2,15 +2,39 @@
 
 Updated: 2026-11-03
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                              |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Packages              | Published to GitHub Packages (release run 144, `767fce8`; `testing` 1.3.6 by run 147, `229e5ee`): **1.12.0** contracts; **1.7.1** tenancy; **1.5.0** config; **1.4.3** audit; **1.3.6** testing; **1.3.5** connectors; **1.2.7** crypto; **1.2.0** ui; **1.1.16** cms; **1.1.8** notify; **1.1.3** export; **1.0.19** rules; **1.0.17** ai, brand, consent, feedback, seed, trust, vidhi, workflow; **1.0.12** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                        |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                            |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                              |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                   |
+| Packages              | Published to GitHub Packages (release run 171, `aa5e446`, 3 Nov 2026): **1.15.0** contracts; **1.9.0** tenancy; **1.6.0** config; **1.5.1** audit; **1.5.0** testing, connectors; **1.4.0** crypto; **1.2.3** ui; **1.2.0** workflow; **1.1.19** cms; **1.1.11** notify; **1.1.6** export; **1.1.2** consent; **1.0.22** rules; **1.0.20** ai, brand, feedback, seed, trust, vidhi; **1.0.15** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                        |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                            |
 
-## Session log (2026-11-03, second session; in progress, handover follows at the end)
+## Handover (2026-11-03, third session: the owner's order of 3 Nov)
+
+- **Check-ins (this session, branch `claude/inspiring-cray-bfr9s9`; R1-D-56):**
+  - `trig_017kWdyDm3yioGbpRrMnu5Zi`, 3 Nov 18:35 UTC: `@temporalio/*` 1.25.0 and the four `zip` waivers. It was moved from 09:17 because 1.25.0 was published at 18:25:35 UTC on 27 Oct, so pnpm's 7-day gate refuses it until 18:26 UTC;
+  - `trig_01Mz6fkEQN7m9vZx96eREqX4`, 6 Nov 09:23 UTC: the Keycloak re-scan of #93.
+  - The second session's `trig_01PPAoaTPum73NDBdGCwDKCN` and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` are disabled. Finbyx's own Temporal check-in, in its repository's environment, is that product's and keeps running.
+- **#93:** already recorded by #171 (R1-D-36, threat model §3.53, `trivyignore` to 20 Nov). Nothing new.
+- **Merged this session:**
+  - #194, PR-UDF-033 and PR-FBX-21 (R1-D-48; `tenancy/0015`);
+  - version PR #184, released by run 171 (record below);
+  - this PR: the guide pass, the adoption notes in `docs/adoption/`, the OWNER-QUESTIONS clean-up and R1-D-56.
+- **The owner's list, items 3 (a) to (f) and 4:** all merged and released in runs 158 and 171. Only PR-UDF-028's Google and Apple adapters remain; they wait for #99.
+- **Item 3 (g):** no open request blocks Finbyx Phase P. Product-local items and the recommended order are in R1-D-56 and the adoption notes.
+- **Products can now:** move every `@infrabyx/*` dependency to the run 171 versions, run `infrabyx-migrate --require-all` and follow their note:
+  - Finbyx: `docs/adoption/finbyx.md`;
+  - Udofin: `docs/adoption/udofin.md`;
+  - LawDocsComply: `docs/adoption/lawdocscomply.md` (a first install).
+- **Next:** the 18:35 UTC Temporal check-in (a `connectors` patch release), then the 6 Nov re-scan. After that, only new product requests; R1-D-56 (4) lists the smallest open ones first if the owner wants them taken.
+- **Open questions:** #94 to #100, none new.
+- **Owner tasks:** the Digio and IDfy sandboxes; the CIC and AA sandbox documents; Turnstile's site key and secret; a word on #99 (device-attestation cryptography) and #100 (money movement).
+- **Branches and PRs:** `main` at the merge of this PR; nothing else open.
+
+HANDOVER READY
+
+## Session log (2026-11-03, second session)
 
 - **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
 - **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
@@ -146,6 +170,14 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### The 3 November minor release (2026-11-03, version PR #184, release run 171)
+
+Version PR #184 merged as `aa5e446` with every required check green (34 checks), under OWNER-QUESTIONS #81(a). Release run 171 published the minors `contracts` 1.15.0, `tenancy` 1.9.0, `connectors` 1.5.0, `crypto` 1.4.0, `config` 1.6.0, `workflow` 1.2.0 and `testing` 1.5.0, a `notify` 1.1.11 patch, and patches of the packages that depend on them. They carry PR-UDF-025, 028 (interfaces), 029, 031 to 035, PR-FBX-13 (1), 21, 29 and 31, and M15, M24 and M25. The run signs the BOM keyless and attests each package; its Rekor indexes and registry checksums are in that run's log and were not copied here.
+
+### PR-FBX-20, 22, 27, 28 and 30 minor release (2026-11-03, version PR #177, release run 158)
+
+Version PR #177 merged as `5ce18b1` with every required check green, under OWNER-QUESTIONS #81(a). Release run 158 published `contracts` 1.14.0, `tenancy` 1.8.0, `audit` 1.5.0, `connectors` 1.4.0, `testing` 1.4.0 and `workflow` 1.1.0 (minors), with patches of their dependants. This record was missing until this session; the BOM signature, attestations and checksums are in run 158's log.
 
 ### PR-FBX-25 and PR-FBX-26 minor release (2026-11-03, version PR #174, release run 152)
 
