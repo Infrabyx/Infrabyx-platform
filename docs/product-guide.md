@@ -226,6 +226,12 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **No-transaction files (R1-D-44).** Put `-- infrabyx:no-transaction` on the first line, then `SET lock_timeout` and a `statement_timeout` long enough for the build, then `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS …`. `infrabyx-migrate` sends each statement on its own. The file is not atomic: keep it to the index builds, and if a run fails, check `pg_index.indisvalid` and drop an invalid index with `DROP INDEX CONCURRENTLY IF EXISTS` before the next run.
 - **Udofin.** Uniqueness can move back onto the existing table; `u03_identity.borrower_idp_link` (UDF-D-113) may stay as it is.
 
+## 7q. CAPTCHA and device attestation (PR-UDF-029, PR-UDF-028)
+
+- **CAPTCHA (R1-D-50, ADR-0004).** Build `new TurnstileCaptcha({ enabled, secret })` from `@infrabyx/connectors/captcha`, with the secret from SECRETS (`secrets/<env>/captcha/turnstile/secret_key`). Wrap it in `new CaptchaGate({ captcha, underAttack })`, reading `int.captcha.under_attack`. Render the widget when `gate.required()` is true, in Turnstile's managed or invisible mode (no puzzle, IPB-06-40). In the handler, call `await gate.check({ token, expectedAction, expectedHostname })`; it refuses with 429 IPB-SEC-019 while the switch is on. Send the vendor nothing but the token. Turn on `int.captcha.turnstile.enabled` once the owner's site key and secret exist; `HCaptchaCaptcha` is the alternative.
+- **Device attestation.** Build your device registration on `DeviceAttestationPort` from `@infrabyx/contracts/ports`, with `FakeDeviceAttestation` from `@infrabyx/testing` below staging. Bind each check to a nonce your server issued or to the DPoP key's `jkt`. Keep the `AppAttestKeyRecord` with the device and store the returned counter. The Google and Apple adapters wait for OWNER-QUESTIONS #99; until then, keep failing closed above test fixtures.
+- **Udofin.** Replace the product-local CAPTCHA port of UDF-D-111 and UDF-D-124 with these, and mark PR-UDF-029 met. PR-UDF-028 stays open until #99.
+
 ## 7r. Stamps, documents, payouts and mandates (PR-FBX-29)
 
 - **Interfaces now, adapters later (R1-D-52).** Build on `EstampPort`, `PayoutsPort`, `DocgenPort`, `PdfPort` and `MandateLifecycle` from `@infrabyx/contracts/ports`. Use `FakeEstamp`, `FakePayouts`, `FakeMandates`, `FakeDocgen`, `FakePdf` and `FakeEsign` from `@infrabyx/testing` below staging. Above staging, refuse with `IPB-PORT-001` until a platform adapter lands. Payout and mandate adapters wait for the owner (money movement, OWNER-QUESTIONS #100).
@@ -233,22 +239,16 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Documents.** Every input and output is a STORAGE key with its SHA-256 under your tenant prefix. `renderHtml` replaces an HTML-to-PDF shim, and `PdfPort.toPdfA` gives archival copies. NeSL DDE runs after the stamp: `purchase`, then `ddeRegister` with the certificate, then `ddeDownloadExecuted` once every executant has signed.
 - **Finbyx.** Replace `dms/ports.ts` and `dsb/ports.ts` (`EstampPort`, `DdePort`, `PayoutPort`, `MandatePort`, `DocumentRenderPort`) and the `FakeEsign` shim with these interfaces and fakes. The signing evidence of P8-D5 reads `espTransactionId` and `signerIp` from `SignatureRecord`.
 
-## 7q. CAPTCHA and device attestation (PR-UDF-029, PR-UDF-028)
-
-- **CAPTCHA (R1-D-50, ADR-0004).** Build `new TurnstileCaptcha({ enabled, secret })` from `@infrabyx/connectors/captcha`, with the secret from SECRETS (`secrets/<env>/captcha/turnstile/secret_key`). Wrap it in `new CaptchaGate({ captcha, underAttack })`, reading `int.captcha.under_attack`. Render the widget when `gate.required()` is true, in Turnstile's managed or invisible mode (no puzzle, IPB-06-40). In the handler, call `await gate.check({ token, expectedAction, expectedHostname })`; it refuses with 429 IPB-SEC-019 while the switch is on. Send the vendor nothing but the token. Turn on `int.captcha.turnstile.enabled` once the owner's site key and secret exist; `HCaptchaCaptcha` is the alternative.
-- **Device attestation.** Build your device registration on `DeviceAttestationPort` from `@infrabyx/contracts/ports`, with `FakeDeviceAttestation` from `@infrabyx/testing` below staging. Bind each check to a nonce your server issued or to the DPoP key's `jkt`. Keep the `AppAttestKeyRecord` with the device and store the returned counter. The Google and Apple adapters wait for OWNER-QUESTIONS #99; until then, keep failing closed above test fixtures.
-- **Udofin.** Replace the product-local CAPTCHA port of UDF-D-111 and UDF-D-124 with these, and mark PR-UDF-029 met. PR-UDF-028 stays open until #99.
-
-## 7t. SMS and WhatsApp template variables (PR-UDF-025)
-
-- **Name the order (R1-D-54).** In your notification catalogue, list each SMS template's variables in the DLT template's order: `templates.sms.vars: ["reference", "re_name", "help_link"]`; do the same for `templates.whatsapp.vars`. A notification missing one of them fails its delivery instead of sending the wrong text. Without a list, names sort naturally, so `v01`, `v02` (Udofin's UDF-D-97 shim) keep working; Udofin can return to named variables.
-
 ## 7s. Video calls on LiveKit (M15)
 
 - **Running it (R1-D-53).** Run LiveKit self-hosted in India with its egress worker. Keep its API key and secret (≥ 32 random bytes) in SECRETS, one per deployment. Locally, `pnpm dev:up -- --profile video` starts it on loopback. Turn on `int.video_meet.livekit.enabled` only once your server runs.
 - **Rooms and joins.** Create rooms through the VIDEO_MEET port from `@infrabyx/connectors/video-meet` with a `RoomPolicy`, and provide a durable `LiveKitRoomStore`. Pass the caller's resolved origin to `join`. Tokens last at most 300 s for one room and one identity, so issue one per join.
 - **Recordings.** Give REGULATED rooms a recording target in the tenant's STORAGE. Each recording is written once, locked and checksummed, and the egress disk copy is removed; keep the manifest with the case.
 - **Webhooks.** Route LiveKit webhooks to `handleWebhook` with the raw body and the `Authorization` header; anything unsigned or foreign is refused.
+
+## 7t. SMS and WhatsApp template variables (PR-UDF-025)
+
+- **Name the order (R1-D-54).** In your notification catalogue, list each SMS template's variables in the DLT template's order: `templates.sms.vars: ["reference", "re_name", "help_link"]`; do the same for `templates.whatsapp.vars`. A notification missing one of them fails its delivery instead of sending the wrong text. Without a list, names sort naturally, so `v01`, `v02` (Udofin's UDF-D-97 shim) keep working; Udofin can return to named variables.
 
 ## 8. Adopting 1.0.0
 
@@ -273,3 +273,16 @@ pnpm add --save-exact --save-dev @infrabyx/testing@1.0.0
 3. Settings and environment: nothing new since PL6. The only key added in PL6 is `hello.greeting.max_length`, which only the reference module reads.
 4. Verify what you installed, as in section 6: `npm pack @infrabyx/<name>@1.0.0`, then `cosign verify-blob-attestation --type cyclonedx --bundle infrabyx-<name>-1.0.0.tgz.cdx.sigstore.json …`, with the bundle from that package's GitHub release.
 5. Run your CI (the nine required checks) and deploy through your normal promotion. Renovate proposes later 1.x versions within the 7-day rule.
+
+## 9. Adopting the 3 November 2026 release
+
+The release after version PR "chore: version packages" of 3 November 2026 carries §7c to §7t's latest steps, and §7g's `kernel.ambient`. Its versions are `contracts` 1.15.0, `tenancy` 1.9.0, `connectors` 1.5.0, `crypto` 1.4.0, `config` 1.6.0, `workflow` 1.2.0 and `testing` 1.5.0, with patches for the rest; STATUS keeps the release record.
+
+1. Move every `@infrabyx/*` dependency together.
+2. Run `infrabyx-migrate --require-all`. The new migrations are `workflow/0003` and `tenancy/0013` to `0015`; `0014` is a no-transaction file (§7p). Products further behind also take `consent/0003`, `audit/0005` and `tenancy/0011` and `0012`.
+3. Retire the shims your adoption note lists:
+   - Finbyx: `docs/adoption/finbyx.md`;
+   - Udofin: `docs/adoption/udofin.md`;
+   - LawDocsComply, which installs for the first time: `docs/adoption/lawdocscomply.md`.
+
+New settings keys, all off by default: `int.captcha.under_attack`, `int.captcha.turnstile.enabled`, `int.captcha.hcaptcha.enabled`, `int.kyc.idfy.enabled` and `int.video_meet.livekit.enabled`. No new environment variable.
