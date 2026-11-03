@@ -86,6 +86,8 @@ Types, schemas and error codes only; no I/O.
 
 - **E (named functions, PR-FBX-20, R1-D-39):** a person claiming a statutory function, or approving their own appointment. Control: `FN:` roles come only from `tenancy.function_assignment` (token claims are dropped by `withFunctions`), written only by the executor of an approved R3 request whose approver is not the assignee (also a table check); rows are never edited or deleted, revocation is immediate and ledgered. Residual: a product that skips `withFunctions` leaves function-gated actions undecidable, never wider.
 
+- **E/I (external grants from a product's approvals, PR-FBX-22, R1-D-40):** a product opening a wider grant than its approval allowed. Control: `fromApproved` runs only in a tenant transaction of a non-agent, non-external principal, refuses an identical maker and checker and more than 90 days, keeps the product's approval id once per tenant, and ledgers every field; the PII and export levels default to the most restrictive; reads still go only through `ExternalReads` as `app_external`. Residual: the platform trusts the product's own maker-checker for these grants; its approval record is the product's.
+
 ### 3.5 `@infrabyx/audit` (built)
 
 - **R:** an action without a trace. Control: ledger-required commit (X-02); trigger-computed chain so no application path writes an unchained row.

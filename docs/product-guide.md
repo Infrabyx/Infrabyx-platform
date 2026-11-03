@@ -186,6 +186,11 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Functions (R1-D-39).** Run `infrabyx-migrate` (`tenancy/0011`). Build `new TenantFunctions({ kernel, audit, approvals, functions: ["FN:PRINCIPAL_OFFICER", …] }).register()`. After verifying the token, call `ctx = await functions.withFunctions(ctx)` once per request. Assign through `requestAssign` (an ORG_OWNER or ORG_ADMIN; a different one approves in the approvals queue), list with `assignments` and end with `revoke`. Require a function on an action with `engine.register(action, { checkerFunctions: ["FN:CRO"] })`; a tenant can add `FN:` entries to `mc.checker_roles.<action>`.
 - **Finbyx.** The CRO vets a product (`checkerFunctions: ["FN:CRO"]`) and the CCO approves it (`["FN:CCO"]`). This replaces the "any checker" shim of OWNER-QUESTIONS #20. The executor's three-different-people rule stays in Finbyx.
 
+## 7l. External grants from your own approvals (PR-FBX-22)
+
+- **External grants from your register (R1-D-40).** Run `infrabyx-migrate` (`tenancy/0012`). In the executor of your own approved access request, call `grants.fromApproved(tx, { …grantee, kind, entityIds, branchIds, periodFrom, periodTo, days, piiLevel, exportAllowed, sourceApprovalId, makerId, checkerId })`, and `revokeFromApproved(tx, sourceApprovalId, by)` when your register revokes. Map your grantee types onto the six kinds. In restrictive policies or views, read `tenancy.external_pii_level()` to choose masked or clear columns. Gate exports on `tenancy.external_export_allowed()`. External reads still go only through `ExternalReads`.
+- **Finbyx.** AU7 (P2-D9) can move from `app_ro` to `app_external`, keeping its CCO-or-nominee maker, its CISO or MD & CEO checker and its second approval for full PII or export. That closes PR-FBX-22 and Finbyx OWNER-QUESTIONS #24.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

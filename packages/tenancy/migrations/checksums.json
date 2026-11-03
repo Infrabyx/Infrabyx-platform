@@ -9,5 +9,6 @@
   "0008_api_idempotency.sql": "c82825bb07acb6529bcadd3fd9a53e18d026cfd980c913c7dd44c2219adfd264",
   "0009_breakglass_visibility.sql": "3230cfc3dabbe1c8a8e614474738e5a318b9aef1a775829e384bc9d347dd64d7",
   "0010_external_read.sql": "28672f045d9d65309352759c5711b5d7982b46554e467ea6d838af17f31ce03a",
-  "0011_tenant_functions.sql": "023563eacb414ea6812ab1831d33740281f2ed531f9289aa8565b9020f10da6f"
+  "0011_tenant_functions.sql": "023563eacb414ea6812ab1831d33740281f2ed531f9289aa8565b9020f10da6f",
+  "0012_external_grant_from_product.sql": "54a86f5992bc57d0ae5d890d635a39e74e0e748f52fa64db9dc27dbd72e00f44"
 }
