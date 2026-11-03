@@ -117,10 +117,19 @@ export class ApprovalWorkflow implements ApprovalObserver {
     return this.engine;
   }
 
+  /**
+   * Whom an approval's inbox items go to: the holders of the named functions the action requires
+   * (`FN:CRO`, …; R1-D-39), or else its checker roles.
+   */
+  private async recipients(tx: Tx, action: string): Promise<readonly string[]> {
+    const fns = await this.approvals.checkerFunctionsFor(tx.ctx, action);
+    return fns.length ? fns : this.approvals.checkerRolesFor(tx.ctx, action);
+  }
+
   // ------------------------------------------------------------------ observer (same transaction)
 
   async onRequested(tx: Tx, r: ApprovalRecord): Promise<void> {
-    for (const role of await this.approvals.checkerRolesFor(tx.ctx, r.action))
+    for (const role of await this.recipients(tx, r.action))
       await this.o.inbox.raise(
         tx,
         {
@@ -175,7 +184,7 @@ export class ApprovalWorkflow implements ApprovalObserver {
     });
     await this.o.timers.schedule(tx, "approval.execute", id, r.delayUntil);
     // Checkers and the owner see what will run, and when, until it runs (@IPB-07-AT-07).
-    for (const role of await this.approvals.checkerRolesFor(tx.ctx, r.action))
+    for (const role of await this.recipients(tx, r.action))
       await this.o.inbox.raise(tx, {
         type: "due",
         productModule: "approvals",
@@ -224,7 +233,7 @@ export class ApprovalWorkflow implements ApprovalObserver {
   }
 
   async onReminded(tx: Tx, r: ApprovalRecord): Promise<void> {
-    const roles = await this.approvals.checkerRolesFor(tx.ctx, r.action);
+    const roles = await this.recipients(tx, r.action);
     for (const role of roles)
       await this.o.inbox.raise(
         tx,
@@ -396,7 +405,7 @@ export class ApprovalWorkflow implements ApprovalObserver {
     );
     const sca = r.rows[0];
     if (!sca) return;
-    for (const role of await this.approvals.checkerRolesFor(tx.ctx, sca.action))
+    for (const role of await this.recipients(tx, sca.action))
       await this.o.inbox.raise(tx, {
         type: "job_failed",
         productModule: "approvals",

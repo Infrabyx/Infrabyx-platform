@@ -181,6 +181,11 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Recording.** Show `currentNotice(ctx, purpose, language)`, then `grant(ctx, { subjectRef, purpose, noticeId, method })` with the id of the notice shown. `withdraw` must be as easy as giving consent. Gate every processing step on `consentState(ctx, subjectRef, purpose)?.granted`. Use your customer id as `subjectRef`, never a PAN or Aadhaar number.
 - **Finbyx.** Replace `kyc.consent` and the draft notices in `kyc/notices.ts`. Existing rows can be imported with `method: "IMPORT"` once each notice text is approved in the tenant.
 
+## 7k. Named tenant functions (PR-FBX-20)
+
+- **Functions (R1-D-39).** Run `infrabyx-migrate` (`tenancy/0011`). Build `new TenantFunctions({ kernel, audit, approvals, functions: ["FN:PRINCIPAL_OFFICER", …] }).register()`. After verifying the token, call `ctx = await functions.withFunctions(ctx)` once per request. Assign through `requestAssign` (an ORG_OWNER or ORG_ADMIN; a different one approves in the approvals queue), list with `assignments` and end with `revoke`. Require a function on an action with `engine.register(action, { checkerFunctions: ["FN:CRO"] })`; a tenant can add `FN:` entries to `mc.checker_roles.<action>`.
+- **Finbyx.** The CRO vets a product (`checkerFunctions: ["FN:CRO"]`) and the CCO approves it (`["FN:CCO"]`). This replaces the "any checker" shim of OWNER-QUESTIONS #20. The executor's three-different-people rule stays in Finbyx.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

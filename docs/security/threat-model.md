@@ -84,6 +84,8 @@ Types, schemas and error codes only; no I/O.
 - **I:** REGULATED fields in plaintext. Control: field envelope encryption with per-tenant keys (PL1 C-04, C-15) and server-side masking; format v2 binds each data key to its tenant and purpose (X-18).
 - **T:** a shipped migration edited. Control: checksums in `meta.migration_checksums`; migration-lint `--record-checksums`; CLAUDE.md "never edit a migration that has shipped".
 
+- **E (named functions, PR-FBX-20, R1-D-39):** a person claiming a statutory function, or approving their own appointment. Control: `FN:` roles come only from `tenancy.function_assignment` (token claims are dropped by `withFunctions`), written only by the executor of an approved R3 request whose approver is not the assignee (also a table check); rows are never edited or deleted, revocation is immediate and ledgered. Residual: a product that skips `withFunctions` leaves function-gated actions undecidable, never wider.
+
 ### 3.5 `@infrabyx/audit` (built)
 
 - **R:** an action without a trace. Control: ledger-required commit (X-02); trigger-computed chain so no application path writes an unchained row.

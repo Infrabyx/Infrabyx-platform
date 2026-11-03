@@ -4,6 +4,7 @@
 // keeps its timers, scheduled actions and Work Inbox in step (PL3-D-19). Escalation never decides.
 import type { DataClass } from "@infrabyx/contracts/data-class";
 import { IpbError } from "@infrabyx/contracts/errors";
+import { isFunctionRole } from "@infrabyx/contracts/roles";
 import type {
   ApprovalGateway,
   ApprovalRequestInput,
@@ -57,6 +58,11 @@ export interface ApprovalRecord {
 export interface ActionPolicy {
   /** Roles that may check. Default: ORG_CHECKER, ORG_ADMIN, ORG_OWNER in a tenant; PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN in a platform context. */
   checkerRoles?: readonly string[];
+  /**
+   * Named tenant functions (`FN:CRO`, …) a checker must also hold, any one of them (PR-FBX-20,
+   * R1-D-39). The checker still needs one of `checkerRoles`; a function never replaces a role.
+   */
+  checkerFunctions?: readonly string[];
   /** Runs in the executing transaction with the decrypted payload. */
   execute?: (tx: Tx, payload: Record<string, unknown>, request: ApprovalRecord) => Promise<void>;
   /** Execute in the approving transaction when no delay applies (default true). */
@@ -74,7 +80,10 @@ export interface ActionPolicy {
  * reads them from settings; the engine only ever tightens with them.
  */
 export interface TenantApprovalPolicy {
-  /** `mc.checker_roles.<action>`: narrows the action's checker roles; never widens them. */
+  /**
+   * `mc.checker_roles.<action>`: narrows the action's checker roles; never widens them. Entries
+   * `FN:<code>` require the checker to hold one of those named functions as well (R1-D-39).
+   */
   checkerRoles?: readonly string[] | null;
   /** `mc.dual_checker_above.<action>`: above this amount two distinct checkers decide. */
   dualCheckerAbove?: number | null;
@@ -536,6 +545,23 @@ export class ApprovalsEngine implements ApprovalGateway {
     return subset.length ? subset : allowed;
   }
 
+  /**
+   * Named functions a checker must also hold (any one), or none (R1-D-39). The action's own
+   * `checkerFunctions` apply first; the tenant's `FN:` entries in `mc.checker_roles.<action>` add a
+   * requirement where the action names none, and otherwise narrow the action's list (never wider).
+   */
+  async checkerFunctionsFor(ctx: KernelContext, action: string): Promise<readonly string[]> {
+    const own = this.policies.get(action)?.checkerFunctions ?? [];
+    if (ctx.scope === "platform" || !this.o.tenantPolicy) return own;
+    const named = ((await this.o.tenantPolicy(ctx, action)).checkerRoles ?? []).filter((r) =>
+      isFunctionRole(r),
+    );
+    if (!named.length) return own;
+    if (!own.length) return named;
+    const subset = own.filter((f) => named.includes(f));
+    return subset.length ? subset : own;
+  }
+
   private async assertNotExpired(tx: Tx, row: Row): Promise<void> {
     if (row.expired_at || (row.state === "pending" && (await this.isDue(tx, expiresAtOf(row)))))
       throw new IpbError("IPB-UX-012", {
@@ -552,6 +578,12 @@ export class ApprovalsEngine implements ApprovalGateway {
     const allowed = await this.checkerRolesFor(ctx, action);
     if (!ctx.principal.roles.some((r) => allowed.includes(r))) {
       throw new IpbError("IPB-UX-011", { detail: `checker needs one of ${allowed.join(", ")}` });
+    }
+    const fns = await this.checkerFunctionsFor(ctx, action);
+    if (fns.length && !ctx.principal.roles.some((r) => fns.includes(r))) {
+      throw new IpbError("IPB-UX-011", {
+        detail: `checker must hold the function ${fns.join(" or ")}`,
+      });
     }
   }
 
