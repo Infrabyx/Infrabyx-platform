@@ -219,6 +219,10 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **No-transaction files (R1-D-44).** Put `-- infrabyx:no-transaction` on the first line, then `SET lock_timeout` and a `statement_timeout` long enough for the build, then `CREATE [UNIQUE] INDEX CONCURRENTLY IF NOT EXISTS …`. `infrabyx-migrate` sends each statement on its own. The file is not atomic: keep it to the index builds, and if a run fails, check `pg_index.indisvalid` and drop an invalid index with `DROP INDEX CONCURRENTLY IF EXISTS` before the next run.
 - **Udofin.** Uniqueness can move back onto the existing table; `u03_identity.borrower_idp_link` (UDF-D-113) may stay as it is.
 
+## 7t. SMS and WhatsApp template variables (PR-UDF-025)
+
+- **Name the order (R1-D-54).** In your notification catalogue, list each SMS template's variables in the DLT template's order: `templates.sms.vars: ["reference", "re_name", "help_link"]`; do the same for `templates.whatsapp.vars`. A notification missing one of them fails its delivery instead of sending the wrong text. Without a list, names sort naturally, so `v01`, `v02` (Udofin's UDF-D-97 shim) keep working; Udofin can return to named variables.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
