@@ -291,12 +291,23 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     };
   }
 
-  private async byUsername(username: string): Promise<KcUser | undefined> {
+  /**
+   * The enabled account holding `login` in the tenant, by its `customer_login` attribute (the
+   * username is fixed at creation, so a changed login is found here; PR-UDF-034). Accounts made
+   * before 1.x of this method carry the attribute too.
+   */
+  private async byLogin(tenantId: string, login: string): Promise<KcUser | undefined> {
+    const q = encodeURIComponent(`tenant_id:${tenantId} customer_login:${login}`);
     const { data } = await this.api<KcUser[]>(
       "GET",
-      `/users?exact=true&briefRepresentation=false&username=${username}`,
+      `/users?exact=true&briefRepresentation=false&q=${q}`,
     );
-    return data.find((u) => u.username === username);
+    return (data ?? []).find(
+      (u) =>
+        u.enabled &&
+        u.attributes?.customer_login?.[0] === login &&
+        u.attributes?.tenant_id?.[0] === tenantId,
+    );
   }
 
   protected async resolveUser(
@@ -304,44 +315,51 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     _channel: CustomerOtpChannel,
     login: string,
   ): Promise<string> {
-    const username = keycloakCustomerUsername(tenantId, login);
-    const found = await this.byUsername(username);
+    const found = await this.byLogin(tenantId, login);
     if (found) return found.id;
-    const created = await this.api("POST", "/users", {
-      username,
-      enabled: true,
-      attributes: {
-        tenant_id: [tenantId],
-        principal_type: ["user"],
-        customer_login: [login],
-      },
-    });
-    const id =
-      created.status === 201
-        ? created.headers.get("location")?.split("/").pop()
-        : (await this.byUsername(username))?.id; // 409: created by a concurrent request
-    if (!id) this.fail(created.status, "create customer");
-    if (created.status === 201 && this.base.customerRoles?.length) {
-      const roles = [];
-      for (const name of this.base.customerRoles)
-        roles.push(
-          (
-            await this.api<{ id: string; name: string }>(
-              "GET",
-              `/roles/${encodeURIComponent(name)}`,
-            )
-          ).data,
-        );
-      await this.api("POST", `/users/${id}/role-mappings/realm`, roles);
+    // The login's own username may belong to an account whose login moved on; then the next.
+    for (let n = 0; n < 5; n++) {
+      const username = keycloakCustomerUsername(tenantId, n === 0 ? login : `${login}#${n}`);
+      const created = await this.api("POST", "/users", {
+        username,
+        enabled: true,
+        attributes: {
+          tenant_id: [tenantId],
+          principal_type: ["user"],
+          customer_login: [login],
+        },
+      });
+      if (created.status === 409) {
+        const now = await this.byLogin(tenantId, login); // a concurrent request created it
+        if (now) return now.id;
+        continue;
+      }
+      const id = created.headers.get("location")?.split("/").pop();
+      if (created.status !== 201 || !id) this.fail(created.status, "create customer");
+      if (this.base.customerRoles?.length) {
+        const roles = [];
+        for (const name of this.base.customerRoles)
+          roles.push(
+            (
+              await this.api<{ id: string; name: string }>(
+                "GET",
+                `/roles/${encodeURIComponent(name)}`,
+              )
+            ).data,
+          );
+        await this.api("POST", `/users/${id}/role-mappings/realm`, roles);
+      }
+      return id;
     }
-    return id!;
+    this.fail(409, "no free username for this login");
   }
 
   protected async idpSend(
     a: { tenantId: string; userId: string; login: string; channel: CustomerOtpChannel },
     dpopProof: string,
   ): Promise<{ ref: Record<string, string>; code: string }> {
-    const username = keycloakCustomerUsername(a.tenantId, a.login);
+    // The account's own username: fixed at creation, so it may be another login's hash.
+    const username = (await this.userById(a.userId)).username;
     const r = await this.token(
       { grant_type: "password", username, ipb_otp_step: "send" },
       dpopProof,
@@ -416,7 +434,7 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     _channel: CustomerOtpChannel,
     login: string,
   ): Promise<string | undefined> {
-    return (await this.byUsername(keycloakCustomerUsername(tenantId, login)))?.id;
+    return (await this.byLogin(tenantId, login))?.id;
   }
 
   private async userById(userId: string): Promise<KcUser> {
@@ -425,7 +443,27 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     return r.data;
   }
 
-  /** PR-UDF-034: the username follows the login; the id, devices and subject stay. */
+  private async update(userId: string, rep: Record<string, unknown>, what: string): Promise<void> {
+    const r = await this.egress(
+      `${this.o.baseUrl.replace(/\/$/, "")}/admin/realms/${this.o.realm}/users/${encodeURIComponent(userId)}`,
+      {
+        method: "PUT",
+        headers: {
+          authorization: `Bearer ${await this.admin()}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(rep),
+      },
+    );
+    if (r.status >= 300)
+      throw new PortError("IPB-PORT-002", "IDENTITY", {
+        adapter: "keycloak-customer",
+        detail: `${what} answered ${r.status}: ${r.text().slice(0, 200)}`,
+        meta: { status: r.status },
+      });
+  }
+
+  /** PR-UDF-034: `customer_login` follows the new login; the username, id and devices stay. */
   protected async idpChangeLogin(a: {
     tenantId: string;
     userId: string;
@@ -434,18 +472,18 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     to: string;
   }): Promise<void> {
     const u = await this.userById(a.userId);
-    const r = await this.api("PUT", `/users/${encodeURIComponent(a.userId)}`, {
-      username: keycloakCustomerUsername(a.tenantId, a.to),
-      enabled: u.enabled,
-      attributes: { ...(u.attributes ?? {}), customer_login: [a.to] },
-    });
-    if (r.status === 409) this.fail(409, "the new login is taken");
-    const moved = await this.userById(a.userId);
-    if (moved.username !== keycloakCustomerUsername(a.tenantId, a.to))
-      this.fail(409, "Keycloak kept the old username");
+    await this.update(
+      a.userId,
+      {
+        username: u.username,
+        enabled: u.enabled,
+        attributes: { ...(u.attributes ?? {}), customer_login: [a.to] },
+      },
+      "change login",
+    );
   }
 
-  /** PR-UDF-034: the account is disabled under a username no login maps to; its id stays. */
+  /** PR-UDF-034: the account is disabled and its login cleared; its id and username stay. */
   protected async idpRetireLogin(a: {
     tenantId: string;
     userId: string;
@@ -455,11 +493,11 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
     const u = await this.userById(a.userId);
     const attributes = { ...(u.attributes ?? {}) };
     delete attributes.customer_login;
-    await this.api("PUT", `/users/${encodeURIComponent(a.userId)}`, {
-      username: `ret${sha256Hex(`retired:${a.userId}`).slice(0, 40)}`,
-      enabled: false,
-      attributes,
-    });
+    await this.update(
+      a.userId,
+      { username: u.username, enabled: false, attributes },
+      "retire login",
+    );
     await this.api("POST", `/users/${encodeURIComponent(a.userId)}/logout`);
   }
 

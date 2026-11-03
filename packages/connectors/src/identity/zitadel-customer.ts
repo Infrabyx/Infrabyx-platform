@@ -125,7 +125,16 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
 
   private async api<T>(method: string, path: string, body?: unknown): Promise<T> {
     const r = await this.call(method, path, body);
-    if (r.status >= 300) this.fail(r.status, `${method} ${path.split("/").slice(0, 4).join("/")}`);
+    if (r.status >= 300)
+      throw new PortError(
+        r.status === 401 || r.status === 403 ? "IPB-PORT-001" : "IPB-PORT-002",
+        "IDENTITY",
+        {
+          adapter: "zitadel-customer",
+          detail: `${method} ${path.split("/").slice(0, 4).join("/")} answered ${r.status}: ${r.text().slice(0, 200)}`,
+          meta: { status: r.status },
+        },
+      );
     return (r.body.byteLength ? r.json<T>() : {}) as T;
   }
 
@@ -158,6 +167,9 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     for (let n = 0; n < 5; n++) {
       const userId =
         n === 0 ? username : zitadelCustomerUserId(this.o.orgId, tenantId, `${login}#${n}`);
+      // An id held by an account whose login moved on is skipped before trying to create it.
+      const held = await this.call("GET", `/v2/users/${userId}`);
+      if (held.status === 200) continue;
       const email = channel === "email" ? login : `${userId}@customer.invalid`;
       const created = await this.call("POST", "/v2/users/human", {
         userId,
@@ -171,14 +183,17 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
           { key: "principal_type", value: b64("user") },
         ],
       });
-      if (created.status === 409) {
-        // A concurrent request created the account first, or the id belongs to an account whose
-        // login moved on (then try the next id).
+      if (created.status >= 300) {
+        // A concurrent request created the account first; otherwise report Zitadel's reason.
         const now = await this.userByName(username);
         if (now) return now;
-        continue;
+        if (created.status === 409) continue;
+        throw new PortError("IPB-PORT-002", "IDENTITY", {
+          adapter: "zitadel-customer",
+          detail: `POST /v2/users/human answered ${created.status}: ${created.text().slice(0, 200)}`,
+          meta: { status: created.status },
+        });
       }
-      if (created.status >= 300) this.fail(created.status, "POST /v2/users/human");
       await this.api(
         "POST",
         `/v2/users/${userId}/${channel === "email" ? "otp_email" : "otp_sms"}`,
