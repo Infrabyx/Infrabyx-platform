@@ -1,5 +1,21 @@
 # @infrabyx/testing
 
+## 1.7.0
+
+### Minor Changes
+
+- fdd1f1a: `startCibilStub` and `startSetuAaStub`: stub-shaped TransUnion CIBIL and Setu FIU servers for the `cibil` and `setu-aa` adapters' hermetic contract legs (owner answer #97; R1-D-61).
+- ed143e3: Stubs and contract cases for the Digio mandate adapter and NeSL DDE (owner answer #100; R1-D-62): `startDigioMandateStub`, `startNeslDdeStub`, `estampDdeContractCases` and `ESTAMP_DDE_FAKE_FIXTURES`.
+
+### Patch Changes
+
+- Updated dependencies [fdd1f1a]
+- Updated dependencies [ed143e3]
+  - @infrabyx/config@1.8.0
+  - @infrabyx/audit@1.6.2
+  - @infrabyx/seed@1.0.23
+  - @infrabyx/tenancy@1.9.2
+
 ## 1.6.0
 
 ### Minor Changes

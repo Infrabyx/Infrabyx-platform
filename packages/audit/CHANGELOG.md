@@ -1,5 +1,13 @@
 # @infrabyx/audit
 
+## 1.6.2
+
+### Patch Changes
+
+- Updated dependencies [fdd1f1a]
+- Updated dependencies [ed143e3]
+  - @infrabyx/config@1.8.0
+
 ## 1.6.1
 
 ### Patch Changes

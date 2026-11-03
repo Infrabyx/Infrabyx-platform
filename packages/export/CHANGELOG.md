@@ -1,5 +1,11 @@
 # @infrabyx/export
 
+## 1.2.2
+
+### Patch Changes
+
+- @infrabyx/tenancy@1.9.2
+
 ## 1.2.1
 
 ### Patch Changes
