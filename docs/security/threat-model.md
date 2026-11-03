@@ -798,7 +798,18 @@ Public forms can ask for a CAPTCHA while the site is under attack; the app's dev
 - **I (personal data to a CAPTCHA vendor abroad):** Control: the Turnstile and hCaptcha adapters post only `secret` and `response` to `siteverify` (a test checks the form keys); no `remoteip`, login, name or device id; residency GLOBAL, max INTERNAL.
 - **S and D (bots on public forms):** Control: `int.captcha.under_attack` turns the gate on at once (PLT_SECURITY_OFFICER, no maker-checker); while on, a missing, refused, reused or unverifiable token is refused (429), and an unreachable vendor refuses too (fail closed). Rate limits stay in place either way.
 - **T (a misconfigured secret read as a customer failure):** Control: `invalid-input-secret` and similar codes are errors (IPB-PORT-002) that operations see, never a verdict that blames the customer.
-- **S (a fake app or a rooted device registering, PR-UDF-028):** the port binds every verdict to a server nonce or the DPoP key and never returns a device identifier; the vendor adapters are not built (OWNER-QUESTIONS #99). Residual: until they are, a product's server cannot tell a genuine app, so registration relies on the one-time code, the DPoP key binding and rate limits.
+- **S (a fake app or a rooted device registering, PR-UDF-028; adapters R1-D-59):** Control: the `native` adapter, off behind `int.device_attestation.play_integrity.enabled` and `int.device_attestation.app_attest.enabled`. Play Integrity: Google decodes the standard-request token, then the adapter requires all of the following, and refuses a used token (a replay store keyed by its SHA-256):
+  - the request hash equal to the server's nonce or DPoP `jkt`;
+  - our package and one of our signing-certificate digests;
+  - PLAY_RECOGNIZED and LICENSED;
+  - at least MEETS_DEVICE_INTEGRITY;
+  - a token at most 5 minutes old.
+
+  App Attest is verified locally under C-27: the `x5c` chain to Apple's pinned App Attestation root, the nonce in the credential certificate, the App ID hash, the key id, production only unless allowed, a key registered once, and for every assertion an ES256 signature over this challenge with a growing counter. Every verdict is bound to a server nonce or the DPoP key and never returns a device identifier.
+
+- **I (device data to Google):** Control: only the integrity token is sent (a test checks the body); the service-account assertion is C-24, now widened to the Play Integrity scope only; residency GLOBAL, max INTERNAL. Apple is never called.
+- **T (a forged attestation chain):** Control: the root is pinned by its SHA-256 fingerprint, checked at load. A test root can be passed only as `testRoots`, which production wiring never sets.
+- **Residual (device attestation):** until the owner's Google Cloud project and Apple account exist, the adapter is off and products fail closed above test environments. The pinned root was taken from two independent public copies with the same fingerprint (`1cb9823b…c932`); the owner confirms it against apple.com before turning App Attest on.
 - **Residual:** while the gate is off, bots meet only the rate limits; turning it on blocks a customer whose browser cannot run the widget, so the widget must use the vendor's accessible, non-puzzle mode (IPB-06-40).
 
 ### 3.65 V-CIP in our VIDEO_MEET room (M24; R1-D-55)

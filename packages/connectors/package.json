@@ -54,6 +54,10 @@
       "types": "./dist/captcha/index.d.ts",
       "default": "./dist/captcha/index.js"
     },
+    "./device-attestation": {
+      "types": "./dist/device-attestation/index.d.ts",
+      "default": "./dist/device-attestation/index.js"
+    },
     "./exit": {
       "types": "./dist/exit.d.ts",
       "default": "./dist/exit.js"

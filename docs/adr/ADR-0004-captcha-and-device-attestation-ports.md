@@ -35,3 +35,7 @@ Register both ports in the platform.
 - Udofin keeps its fail-closed device-attestation port until #99 is answered, building against `DeviceAttestationPort` and the fake meanwhile.
 - Play Integrity needs a Google service-account assertion (RS256, the C-24 pattern, today limited to FCM and Vertex AI) or workload identity federation; App Attest needs CBOR decoding, an X.509 chain check to Apple's App Attestation root, and ES256 assertion checks. Both are cryptography beyond the approved items, so they wait for the owner (CLAUDE.md stop list).
 - IPB-01-15 (two alternatives, one green in CI) holds for CAPTCHA with hCaptcha and the fake; DEVICE_ATTESTATION has only the fake until #99.
+
+## Update (2026-11-03, owner answer #99; R1-D-59)
+
+The DEVICE_ATTESTATION reference adapter is built: `native` (Google Play Integrity through C-24, widened to the Play Integrity scope; Apple App Attest verified locally under C-27). Both halves are off behind `int.device_attestation.play_integrity.enabled` and `int.device_attestation.app_attest.enabled` until the owner's accounts exist. The fake stays the in-memory alternative, and the port's contract cases run on both (`port-contract` leg `DEVICE_ATTESTATION`). The exit map names the fake as the exit target.

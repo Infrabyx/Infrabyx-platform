@@ -84,6 +84,7 @@ export {
   GOOGLE_TOKEN_URL,
   FCM_SCOPE,
   VERTEX_SCOPE,
+  PLAY_INTEGRITY_SCOPE,
   GOOGLE_ASSERTION_SCOPES,
   type ServiceAccountAssertionInput,
 } from "./google-assertion.js";
@@ -138,3 +139,16 @@ export {
   type LiveKitServerGrant,
   type LiveKitWebhookFailure,
 } from "./livekit-token.js";
+export {
+  APPLE_APP_ATTEST_ROOT_PEM,
+  APPLE_APP_ATTEST_ROOT_SHA256,
+  AppAttestError,
+  appleNonceOf,
+  decodeCbor,
+  verifyAppAttestAssertion,
+  verifyAppAttestAttestation,
+  type AppAttestAssertionInput,
+  type AppAttestAttestationInput,
+  type AppAttestFailure,
+  type AppAttestKey,
+} from "./app-attest.js";

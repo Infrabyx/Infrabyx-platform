@@ -1,6 +1,6 @@
-// C-24 (PL3-C-01, widened by PL4-C-01): RS256 only to sign the Google service-account JWT
-// assertion that Google's OAuth 2.0 token exchange requires (RFC 7523), for FCM HTTP v1 and for
-// Vertex AI. Never used for platform tokens; C-12 (ES256) stays the rule. The scope must be one
+// C-24 (PL3-C-01, widened by PL4-C-01 and by owner answer #99, R1-D-59): RS256 only to sign the
+// Google service-account JWT assertion that Google's OAuth 2.0 token exchange requires (RFC 7523),
+// for FCM HTTP v1, Vertex AI and the Play Integrity API. Never used for platform tokens; C-12 (ES256) stays the rule. The scope must be one
 // of the approved Google scopes and the audience Google's token endpoint, so the signer cannot
 // mint anything else. The key comes from SECRETS and never leaves this function; it is never
 // logged. Keyless workload identity federation replaces it once the platform runs on a cloud that
@@ -12,8 +12,14 @@ export const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 export const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 /** Vertex AI (Gemini, embeddings, Imagen) accepts the cloud-platform scope (PL4-C-01). */
 export const VERTEX_SCOPE = "https://www.googleapis.com/auth/cloud-platform";
-/** The only scopes C-24 may sign for (owner approvals PL3-C-01 and PL4-C-01). */
-export const GOOGLE_ASSERTION_SCOPES: readonly string[] = [FCM_SCOPE, VERTEX_SCOPE];
+/** Play Integrity's `decodeIntegrityToken` (owner answer #99, R1-D-59). */
+export const PLAY_INTEGRITY_SCOPE = "https://www.googleapis.com/auth/playintegrity";
+/** The only scopes C-24 may sign for (owner approvals PL3-C-01, PL4-C-01 and #99). */
+export const GOOGLE_ASSERTION_SCOPES: readonly string[] = [
+  FCM_SCOPE,
+  VERTEX_SCOPE,
+  PLAY_INTEGRITY_SCOPE,
+];
 
 export interface ServiceAccountAssertionInput {
   /** `client_email` of the service account. */
