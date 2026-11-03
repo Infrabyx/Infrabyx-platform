@@ -175,6 +175,12 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Rotation.** Write a new version of the secret, then build the indexer with `current` the new root and `previous` the old one. Run a batched, idempotent re-index over rows where `needsReindex(row)` (decrypt, `index`, update), then drop `previous`.
 - **Finbyx.** The label `<product>/<scope>/v<n>/<tenant>` equals the shim's `fbx/cif/v1/<tenant>`, so existing local indexes stay valid. Replace the shim with `BlindIndexer`, and lift the refusal above staging once the secret exists.
 
+## 7j. Consent to your own purposes (PR-FBX-26)
+
+- **Purposes and notices (R1-D-38).** Run `infrabyx-migrate` (`consent/0003`). Build `new PurposeConsents({ kernel, audit, product, outbox, purposes })` with your purposes in code (`fbx.kyc.processing`, `fbx.kyc.ckyc_download`, …). Each tenant writes its notice per purpose and language: an ORG_OWNER, ORG_ADMIN or ORG_MAKER calls `draftNotice`, and a different ORG_OWNER, ORG_ADMIN or ORG_CHECKER calls `approveNotice`. A change is a new version; `retireNotice` stops offering one.
+- **Recording.** Show `currentNotice(ctx, purpose, language)`, then `grant(ctx, { subjectRef, purpose, noticeId, method })` with the id of the notice shown. `withdraw` must be as easy as giving consent. Gate every processing step on `consentState(ctx, subjectRef, purpose)?.granted`. Use your customer id as `subjectRef`, never a PAN or Aadhaar number.
+- **Finbyx.** Replace `kyc.consent` and the draft notices in `kyc/notices.ts`. Existing rows can be imported with `method: "IMPORT"` once each notice text is approved in the tenant.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

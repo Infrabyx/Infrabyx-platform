@@ -86,6 +86,8 @@ export const ID_PREFIXES = {
   pol: "policy set (IPB-05)",
   pin: "policy instance (IPB-05)",
   cns: "consent receipt (Ecosystem entity 29)",
+  cpn: "a tenant's notice for a product consent purpose (PR-FBX-26)",
+  cpr: "a product-purpose consent record (PR-FBX-26)",
   ctx: "consent text version",
   acc: "policy acceptance record",
   vad: "vendor assurance document (IPB-08, mirrored)",
