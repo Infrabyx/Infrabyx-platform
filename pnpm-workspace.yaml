@@ -17,3 +17,10 @@ minimumReleaseAgeExclude:
   - "@infrabyx/*"
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
+
+# Security fixes for transitive pins (R1-D-60): express 5.2.1's body-parser 2.3.0 and
+# @nestjs/platform-express 11.2.7's exact multer 2.4.0 carry CVE-2026-111181 and CVE-2026-113872;
+# the fixed versions (22 Oct 2026) are past the 7-day age. Drop each once its parent carries it.
+overrides:
+  body-parser@2.3.0: 2.4.0
+  multer@2.4.0: 2.5.0

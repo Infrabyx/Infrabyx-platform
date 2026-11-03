@@ -531,6 +531,7 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **T (plain gRPC in the local stack):** Control: the connection is plain only to the loopback address of the Compose stack; a deployment sets mTLS or an API key through `TemporalAuth` (Temporal Cloud takes INTERNAL inputs only, PL2-D-16).
 - **D (Temporal down):** Control: the readiness probe reports WORKFLOW `degraded`, never `down`; timers still fire through the poller within a minute; the worker's Temporal loop logs and ends without taking the queue consumers with it.
 - **Residual:** the local dev server keeps its state in memory, so timers started before a restart fire through the poller only; the deployed engine (session 6 onwards) is durable.
+- **Supply chain (R1-D-60):** the SDK is `@temporalio/*` 1.25.0, whose `core-bridge` ships Rust `zip` 9.0.5. The four `zip` 8.5.1 findings of 1.24.0 (CVE-2026-115905, -115907, -115908, -115909) and their waivers are gone. The API image's body-parser 2.4.0 and multer 2.5.0, set by overrides, close CVE-2026-111181 and CVE-2026-113872 and their waivers.
 
 ### 3.46 The reference web app, a backend-for-frontend (built, PL6 session 5; PL6-D-12)
 

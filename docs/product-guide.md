@@ -261,6 +261,11 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **More lanes.** If you run more concurrent writers than lanes, raise them in your own migration: `select audit.set_chain_lanes('ledger', 64); select audit.set_chain_lanes('capture', 64);`. Lanes are never lowered.
 - **Finbyx.** COB can claim partitions with several workers and batch loans per transaction with `tx.unit` and `recordBatch` (§7n). See `docs/adoption/finbyx.md`.
 
+## 7v. Temporal 1.25.0 and two transitive fixes (R1-D-60)
+
+- **Temporal.** `@infrabyx/connectors` now pins `@temporalio/*` 1.25.0 (core-bridge with Rust `zip` 9.0.5). Move every `@infrabyx/*` together and drop any SEC-01 override of your own that raised Temporal (Finbyx PR-FBX-14); your image scan then clears CVE-2026-115905, -115907, -115908 and -115909.
+- **body-parser and multer.** express 5.2.1 still resolves body-parser 2.3.0, and `@nestjs/platform-express` 11.2.x pins multer 2.4.0. Add the same overrides as the platform's `pnpm-workspace.yaml` (`body-parser@2.3.0: 2.4.0`, `multer@2.4.0: 2.5.0`) until their parents carry the fixes, then drop the waivers for CVE-2026-111181 and CVE-2026-113872.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
