@@ -11,6 +11,7 @@
 //     the IdP binds natively, by the key in the token's `cnf.jkt`);
 //   * DPoP proofs verified by `verifyDpopProof` (R1-D-18) with a replay store shared by replicas.
 // Codes are delivered by the `CustomerOtpSender` (NOTIFY) and never stored or logged here.
+import { Redis } from "ioredis";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import {
@@ -958,16 +959,90 @@ export interface RedisSetNx {
   set(key: string, value: string, px: "PX", ttlMs: number, nx: "NX"): Promise<"OK" | null>;
 }
 
+/** Options of `RedisReplayStore.fromUrl` (Udofin PR-UDF-032). */
+export interface RedisReplayStoreUrlOptions {
+  /** Key prefix, so several products or ports can share one cluster (default `ipb:dpop:`). */
+  prefix?: string;
+  /** The AUTH token from SECRETS; keep it out of the URL above development. */
+  password?: string;
+  /** Connect and command timeout in ms (default 2000); a slow Redis fails the claim, never allows it. */
+  timeoutMs?: number;
+}
+
 /** DPoP `jti`s claimed in Redis, so a proof replayed to another replica is refused too. */
 export class RedisReplayStore implements ReplayStore {
+  private closer: (() => Promise<void>) | undefined;
+
   constructor(
     private readonly redis: RedisSetNx,
     private readonly prefix = "ipb:dpop:",
     private readonly now: () => number = Date.now,
   ) {}
+
+  /**
+   * A store on its own Redis or Valkey connection, so a product needs no Redis client of its own
+   * (PR-UDF-032; IPB-01-14). `url` is `redis://` or `rediss://` (TLS); the connection does not
+   * queue commands while it is down, so a claim then throws and the proof is refused (fail closed).
+   * Call `close()` on shutdown.
+   */
+  static fromUrl(url: string, o: RedisReplayStoreUrlOptions = {}): RedisReplayStore {
+    const u = new URL(url);
+    if (u.protocol !== "redis:" && u.protocol !== "rediss:")
+      throw new PortError("IPB-PORT-005", "IDENTITY", {
+        adapter: "redis-replay",
+        detail: "the replay store URL must be redis:// or rediss://",
+      });
+    const timeout = o.timeoutMs ?? 2000;
+    const client = new Redis(url, {
+      ...(o.password ? { password: o.password } : {}),
+      ...(u.protocol === "rediss:" ? { tls: {} } : {}),
+      connectTimeout: timeout,
+      commandTimeout: timeout,
+      enableOfflineQueue: false,
+      maxRetriesPerRequest: 1,
+      lazyConnect: false,
+    });
+    // Connection errors surface on the next claim; without a listener they would crash the process.
+    client.on("error", () => undefined);
+    // Commands are not queued while disconnected, so the first claim waits (up to the timeout)
+    // for the connection to be ready; a Redis that never answers fails the claim.
+    const ready = (): Promise<void> =>
+      client.status === "ready"
+        ? Promise.resolve()
+        : new Promise((resolve, reject) => {
+            const t = setTimeout(() => {
+              client.off("ready", onReady);
+              reject(new Error("the replay store's Redis is not reachable"));
+            }, timeout);
+            const onReady = () => {
+              clearTimeout(t);
+              resolve();
+            };
+            client.once("ready", onReady);
+          });
+    const store = new RedisReplayStore(
+      {
+        set: async (k, v, px, ttl, nx) => {
+          await ready();
+          return client.set(k, v, px, ttl, nx);
+        },
+      },
+      o.prefix ?? "ipb:dpop:",
+    );
+    store.closer = async () => {
+      await client.quit().catch(() => client.disconnect());
+    };
+    return store;
+  }
+
   async claim(jti: string, expiresAt: Date): Promise<boolean> {
     const ttl = Math.max(1000, expiresAt.getTime() - this.now());
     return (await this.redis.set(`${this.prefix}${sha256Hex(jti)}`, "1", "PX", ttl, "NX")) === "OK";
+  }
+
+  /** Close the connection `fromUrl` opened (no-op for a store built on a caller's client). */
+  async close(): Promise<void> {
+    await this.closer?.();
   }
 }
 
