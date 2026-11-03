@@ -64,12 +64,28 @@ export const NotificationClass = z
           .object({ key: z.string(), locales: z.array(z.string()).min(1) })
           .strict()
           .optional(),
-        sms: z.object({ dlt_template_id: z.string(), header: z.string() }).strict().optional(),
+        sms: z
+          .object({
+            dlt_template_id: z.string(),
+            header: z.string(),
+            /**
+             * The notification's variables in the DLT template's positional order (PR-UDF-025).
+             * Without it the values go in the natural order of their names (`v1`, `v2`, … `v10`).
+             */
+            vars: z
+              .array(z.string().regex(/^[a-z][a-zA-Z0-9_]*$/))
+              .max(10)
+              .optional(),
+          })
+          .strict()
+          .optional(),
         whatsapp: z
           .object({
             name: z.string(),
             category: z.enum(["utility", "authentication", "marketing"]),
             lang: z.array(z.string()).min(1),
+            /** Body parameters in the approved template's order (PR-UDF-025). */
+            vars: z.array(z.string().regex(/^[a-z][a-zA-Z0-9_]*$/)).optional(),
           })
           .strict()
           .optional(),
