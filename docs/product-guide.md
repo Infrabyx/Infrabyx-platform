@@ -197,6 +197,12 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Extending.** Call `storage.extendRetention(key, laterDate)` when a hold or a longer floor applies; an earlier date is refused (`IPB-STOR-003`). Read the current date with `retentionOf(key)`.
 - **Proving.** `assertImmutable(key)` checks the lock and the stored checksum without reading the body. Finbyx can replace `kyc/retention.ts`'s write path with these calls.
 
+## 7n. Batches in one transaction (PR-FBX-30)
+
+- **Units (R1-D-41).** Inside `kernel.mutate`, run each item as `await tx.unit!(async (u) => { …; await audit.record(u, …) })`. A failed item returns `{ ok: false, error }` and rolls back alone, with its ledger entries and outbox rows; the others stay. Do not issue `SAVEPOINT` yourself.
+- **One entry per step.** After the step, call `sink.recordBatch(tx, { action, run, step, resourceType, resourceIds })` with the ids that succeeded, up to 100,000. Run `infrabyx-migrate` (`audit/0005`). `verifyBatch(tx, ledgerId)` proves the member list later.
+- **Finbyx.** COB pass A can group loans into transactions of a few thousand units each, instead of one transaction per loan. Keep a per-loan entry where the loan's own history needs one; use the batch entry for the step.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

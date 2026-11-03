@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-02
+Updated: 2026-11-03
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -9,6 +9,32 @@ Updated: 2026-11-02
 | Packages              | Published to GitHub Packages (release run 144, `767fce8`; `testing` 1.3.6 by run 147, `229e5ee`): **1.12.0** contracts; **1.7.1** tenancy; **1.5.0** config; **1.4.3** audit; **1.3.6** testing; **1.3.5** connectors; **1.2.7** crypto; **1.2.0** ui; **1.1.16** cms; **1.1.8** notify; **1.1.3** export; **1.0.19** rules; **1.0.17** ai, brand, consent, feedback, seed, trust, vidhi, workflow; **1.0.12** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                        |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                            |
+
+## Handover (2026-11-03, the owner's orders of 2 Nov: #93, Finbyx PR-FBX-20 to PR-FBX-30, M15, M24, M25)
+
+- **Check-ins (this session):** `trig_01LU4M6td9YBGvQLHvBohkqU` (3 Nov 09:17 UTC: `@temporalio/*` 1.25.0 and the four `zip` waivers; the old `trig_01LrR3ViziZTh7sY6BSGaEUX` is disabled) and `trig_015GkkMV5C4Yc5TBZY4iRki1` (6 Nov 09:23 UTC: re-scan of the five waived Keycloak base findings; any newer finding is not waived without the owner's word).
+- **Merged, in the owner's order (records under "Releases after 1.0.0"):**
+  - #171, #93 answered (R1-D-36): the three Keycloak waivers extended to 20 Nov. The owner also approved waiving two new UBI 9 `sqlite-libs` findings on the same terms;
+  - #172, PR-FBX-25, blind-index keys above staging (`crypto` 1.3.0; R1-D-37; OWNER-QUESTIONS #94);
+  - #173, PR-FBX-26, product purposes in the consent ledger (`consent` 1.1.0, `consent/0003`; R1-D-38; #95). Both were released by version PR #174, release run 152;
+  - #175, PR-FBX-20, named tenant functions under maker-checker (`tenancy/0011`; R1-D-39; #96);
+  - #176, PR-FBX-22, external grants from a product's own approvals (`tenancy/0012`; R1-D-40);
+  - #178, PR-FBX-27, retention only ever extended (R1-D-42);
+  - this PR, PR-FBX-30, kernel units and a batched ledger entry (`audit/0005`; R1-D-41). PR-FBX-20, -22, -27 and -30 are released by the open version PR (`chore: version packages`), merged once green.
+- **Built and tested, not yet PRs (each one commit on a local branch of this session's container; lost if the container is reclaimed, so the next session rebuilds from this list if they are gone):**
+  - `wip-28`: PR-FBX-28, the `BUREAU` and `AA_FIU` product ports. They are IPB-01 §01.4.4.3's names, registered per §01.4.4.0. The commit holds interfaces, fakes, contract cases and ADR-0003; vendor adapters wait for sandbox accounts. Its ADR is OWNER-QUESTIONS #97;
+  - `wip-m25`: M25, the IDfy KYC adapter on a stub, with PAN, face match and liveness. It is off and `unproven`, and adds a per-method KYC router (Digio first, IDfy second, for PR-FBX-24);
+  - `wip-m15`: M15, C-26 (HS256 for LiveKit only, under R1-D-33's limits, with a test that fails on any other HS256) and the `livekit` VIDEO_MEET adapter. Its contract leg runs on `livekit/livekit-server:v1.13.11@sha256:25cd902d…` (pushed 25 Oct). It conflicts with M25 in `exit.ts` and the exit runbook (VIDEO_MEET pending against KYC no longer pending); reconcile at the second merge;
+  - `wip-fbx29`: PR-FBX-29's platform side. It adds the `ESTAMP`, `PAYOUTS`, `DOCGEN` and `PDF` interfaces with fakes, NeSL DDE as optional ESTAMP methods, NACH mandates as optional PAYMENTS methods, and the ESIGN ESP transaction id and signer IP. Every money-moving call carries an idempotency key, integer paise and an approval reference, and agents are refused. No payout or mandate adapter will be built without the owner's approval (money movement).
+- **Next:** open those four as PRs in this order (28, M25, M15, PR-FBX-29), each with its docs, and release them. Then M24, V-CIP through Digio in the LiveKit room, built on M15 and M25; live use needs the owner's Digio account. Then the product requests the triage ranks first: Udofin UDF-025 (SMS DLT values reordered by `jsonb`, so a borrower can receive the wrong text), Finbyx PR-FBX-21 item 2 (the idempotency hash ignores the path, so a key replays across resources) and Udofin UDF-031 (a no-transaction migration runs as one implicit transaction, so the lint and the migrator contradict each other; met while building `tenancy/0012`).
+- **Products can now:**
+  - every product moves all `@infrabyx/*` together to the run 152 versions, then to the next release's, and runs `infrabyx-migrate` (`consent/0003`, `tenancy/0011` and `0012`, `audit/0005`);
+  - Finbyx follows guide §7i to §7n. It replaces its blind-index shim (§7i), `kyc.consent` (§7j), the "any checker" shim of its OWNER-QUESTIONS #20 (§7k), AU7's `app_ro` reads (§7l, closing its #24), `kyc/retention.ts`'s write path (§7m) and COB pass A's one transaction per loan (§7n), then marks PR-FBX-20, 22, 25, 26, 27 and 30 met.
+- **Open questions:** #94 (blind-index root in KMS?), #95 (retention of purpose-consent records), #96 (risk class and revocation of named functions). #97 (the ports ADR) is raised with its PR.
+- **Owner tasks:** Digio and IDfy sandbox accounts; the CIC and AA sandbox documents; the word before any payout or mandate adapter.
+- **Branches and PRs:** `main` at the merge of this PR; the version PR open; nothing else open.
+
+HANDOVER READY
 
 ## Handover (2026-10-30, the Keycloak 26.8.1-1 security update)
 
@@ -105,6 +131,10 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### PR-FBX-25 and PR-FBX-26 minor release (2026-11-03, version PR #174, release run 152)
+
+Version PR #174 merged as `b162f47` with every required check green, under OWNER-QUESTIONS #81(a). Release run 152 published 21 packages (all but `hlp`): `contracts` 1.13.0, `crypto` 1.3.0, `consent` 1.1.0 (minors), and patches of the packages that depend on them, among them `tenancy` 1.7.2, `audit` 1.4.4, `connectors` 1.3.6, `testing` 1.3.7, `config` 1.5.1 and `workflow` 1.0.18. The BOM was signed keyless and verified (`Verified OK`), and each package attested, in the same run; the Rekor indexes and registry checksums are in that run's log (job 125659435073) and were not copied here this session.
 
 ### Keycloak 26.8.1-1 patch release (2026-10-30, version PR #169, release run 147)
 
