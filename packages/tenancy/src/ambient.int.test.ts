@@ -127,8 +127,14 @@ describe("ambient mutations (PR-UDF-033 (1), PR-FBX-21 (1))", () => {
     await expect(run(() => addNote(user("usr_a", "tnt_b"), "five"))).rejects.toThrow(
       /ambient mutation's/,
     );
+    // Both siblings are awaited, so the one that runs ends before the ambient transaction does
+    // (a sibling still running on a released connection would reach the next transaction).
     await expect(
-      run(() => Promise.all([addNote(user(), "six"), addNote(user(), "seven")])),
+      run(async () => {
+        const r = await Promise.allSettled([addNote(user(), "six"), addNote(user(), "seven")]);
+        const refused = r.find((x) => x.status === "rejected");
+        if (refused) throw refused.reason;
+      }),
     ).rejects.toThrow(/one at a time/);
     await expect(run(() => kernel.ambient(user(), async () => 1))).rejects.toThrow(/already open/);
     // A joined call still needs its own ledger entry.

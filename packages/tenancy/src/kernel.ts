@@ -218,6 +218,21 @@ async function applySettings(
   );
 }
 
+/**
+ * The context a transaction's code sees (R1-D-87): the caller's, with `sandbox` replaced by what
+ * the kernel read from the tenant row, or removed when it read nothing (the ports then fail closed).
+ * A caller-supplied `sandbox` never survives into `tx.ctx`.
+ */
+export function withKernelSandbox(
+  ctx: KernelContext,
+  sandbox: boolean | null | undefined,
+): KernelContext {
+  const out: KernelContext = { ...ctx };
+  delete out.sandbox;
+  if (typeof sandbox === "boolean") out.sandbox = sandbox;
+  return out;
+}
+
 /** The only action a service reader may commit: the ledger entry for its cross-tenant read. */
 export const SERVICE_READ_ACTION = "platform.service_read";
 /** The only action an external principal commits: the ledger entry for its read (R1-D-29). */
@@ -383,7 +398,8 @@ export class PgKernel implements MutationKernel {
     try {
       out = await scope.tx.unit(async () => {
         await scope.tx.applyContext(ctx, opts);
-        const child = new JoinedTx(scope.tx, ctx);
+        // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
+        const child = new JoinedTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
         const r = await this.ambientFrame.run({ scope, token }, () => fn(child));
         if (!child.audited)
           throw new IpbError("IPB-MOD-003", {
@@ -506,7 +522,7 @@ export class PgKernel implements MutationKernel {
       await client.query("begin");
       await client.query(`set local role ${quoteIdent(this.role)}`);
       await applySettings(client, ctx, { action: ledgerAction });
-      await audit.record(new PgTx(client, ctx), {
+      await audit.record(new PgTx(client, withKernelSandbox(ctx, undefined)), {
         action: ledgerAction,
         resourceType: support ? "support_grant" : "breakglass_grant",
         resourceId: r.scope.grantId,
@@ -620,7 +636,17 @@ export class PgKernel implements MutationKernel {
           }
         };
       }
-      const tx = new PgTx(client, ctx, readOnly !== false, guard);
+      // The tenant's sandbox flag, read once per transaction, replaces whatever the caller passed
+      // (R1-D-87). The service readers' and the outbox relay's own roles are not granted the lookup
+      // and never send or call a model: their transactions carry no flag (fail closed).
+      let sandbox: boolean | null = null;
+      if (role === this.role || role === this.readRole || role === EXTERNAL_DB_ROLE) {
+        const sb = await client.query<{ sandbox: boolean | null }>(
+          "select tenancy.tenant_sandbox() as sandbox",
+        );
+        sandbox = sb.rows[0]?.sandbox ?? null;
+      }
+      const tx = new PgTx(client, withKernelSandbox(ctx, sandbox), readOnly !== false, guard);
       if (live) bindSupportGrant(tx, live);
       const result = await fn(tx);
       await client.query("commit");

@@ -20,3 +20,4 @@ export * from "./mask.js";
 export { assertManifestsRls, lintRls, type RlsFinding } from "./rls-lint/index.js";
 export * from "./functions.js";
 export * from "./bootstrap.js";
+export * from "./sandbox.js";
