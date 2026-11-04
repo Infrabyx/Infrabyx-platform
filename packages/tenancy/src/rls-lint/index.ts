@@ -40,6 +40,8 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   // Break-glass visible to the tenant (tenancy/0009, R1-D-28): they write only the tenant's own row.
   "tenancy.breakglass_touch",
   "tenancy.breakglass_claim_notices",
+  // A scoped break-glass (tenancy/0016, R1-D-75): an active grant's own scope, nothing else.
+  "tenancy.breakglass_scope",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

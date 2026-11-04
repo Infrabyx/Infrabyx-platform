@@ -1,11 +1,12 @@
 // External read access (Finbyx PR-FBX-10 item 5; IPB-02-12; IPB-08-19 for the grant's shape;
 // R1-D-29; tenancy/0010). A named external grantee (statutory auditor, IS auditor, RBI inspector,
-// SEBI, IRDAI, internal auditor) reads one tenant's data under one grant: the entities, the branches
-// and the period it covers, time-boxed to at most 90 days. An ORG_OWNER or ORG_ADMIN requests the
-// grant and a second one approves it before it is active (maker-checker; R1-D-29, OWNER-QUESTIONS
-// #92); either may revoke it at once. The grantee reads only through `ExternalReads`, as the
-// SELECT-only `app_external` role under the products' restrictive policies, and every read is
-// ledgered in the tenant.
+// SEBI, IRDAI, internal auditor; since tenancy/0016 also the kinds of LawDocsComply PR-LDC-07,
+// R1-D-75) reads one tenant's data under one grant: the entities, the branches and the period it
+// covers, time-boxed to at most 90 days. An ORG_OWNER or ORG_ADMIN requests the grant and a second
+// one approves it before it is active (maker-checker; R1-D-29, OWNER-QUESTIONS #92); either may
+// revoke it at once. The grantee reads only through `ExternalReads`, as the SELECT-only
+// `app_external` role under the products' restrictive policies, and every read is ledgered in the
+// tenant.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
 import { newId } from "@infrabyx/crypto";
@@ -22,6 +23,18 @@ export const EXTERNAL_GRANTEE_KINDS = [
   "rbi_inspector",
   "sebi",
   "irdai",
+  // LawDocsComply PR-LDC-07 (R1-D-75; tenancy/0016): other regulators and inspectors, and the
+  // auditors of companies and co-operatives. Same ceiling, approval and read-only rules.
+  "nhb",
+  "nabard",
+  "ifsca",
+  "roc_inspector",
+  "rcs_inspector",
+  "crcs_inspector",
+  "secretarial_auditor",
+  "tax_auditor",
+  "concurrent_auditor",
+  "cooperative_auditor",
 ] as const;
 export type ExternalGranteeKind = (typeof EXTERNAL_GRANTEE_KINDS)[number];
 

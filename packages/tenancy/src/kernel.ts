@@ -10,6 +10,7 @@ import {
 } from "@infrabyx/contracts/roles";
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
+  AuditSink,
   KernelContext,
   MutateOptions,
   MutationKernel,
@@ -21,6 +22,13 @@ import type {
 import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
 import { KernelGuardError } from "./errors.js";
 import { isExternalGated } from "./external-gate.js";
+import {
+  moduleGuard,
+  refusalOf,
+  scopeRefusal,
+  type GrantScope,
+  type ScopeRefusal,
+} from "./scope-guard.js";
 
 /** Minimal pool surface (pg.Pool satisfies it). */
 export interface PoolLike {
@@ -32,7 +40,16 @@ export interface PgKernelOptions {
   /** Role assumed with SET LOCAL ROLE for every transaction; RLS-subject (IPB-01 §01.4.6). */
   role?: string;
   readRole?: string;
+  /**
+   * The ledger the kernel writes its own refusals to (LawDocsComply PR-LDC-08 (c); R1-D-75): a
+   * scoped break-glass context that leaves its scope is refused and ledgered in the tenant it
+   * touched. Without it, a scoped grant's context is refused outright.
+   */
+  audit?: AuditSink;
 }
+
+/** Ledger actions of the kernel's scope refusals (R1-D-75). */
+export const BREAKGLASS_SCOPE_REFUSED_ACTION = "security.breakglass.scope_refused";
 
 // Statements the callback may not run: session-level SET/RESET, role switches, set_config with
 // is_local = false, writes to the kernel's own settings, and trigger bypass (IPB-09 §09.4.6.3).
@@ -68,6 +85,8 @@ class PgTx implements Tx {
     private readonly client: pg.PoolClient,
     readonly ctx: KernelContext,
     private readonly readOnly = false,
+    /** A scoped grant's module guard (R1-D-75), run on every statement. */
+    private readonly guard?: (text: string) => void,
   ) {}
 
   async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
@@ -98,6 +117,7 @@ class PgTx implements Tx {
     params?: readonly unknown[],
   ): Promise<QueryResult<R>> {
     assertAllowedStatement(text);
+    this.guard?.(text);
     const r = await this.client.query(text, params as unknown[] | undefined);
     return { rows: r.rows as R[], rowCount: r.rowCount };
   }
@@ -245,12 +265,14 @@ export class PgKernel implements MutationKernel {
   private readonly pool: PoolLike;
   private readonly role: string;
   private readonly readRole: string;
+  private readonly audit: AuditSink | undefined;
   private readonly ambientFrame = new AsyncLocalStorage<AmbientFrame>();
 
   constructor(opts: PgKernelOptions) {
     this.pool = opts.pool;
     this.role = opts.role ?? "app_rw";
     this.readRole = opts.readRole ?? this.role;
+    this.audit = opts.audit;
   }
 
   async mutate<T>(
@@ -382,17 +404,92 @@ export class PgKernel implements MutationKernel {
     );
   }
 
-  private async recordBreakGlassUse(ctx: KernelContext): Promise<void> {
+  /**
+   * Before a break-glass context's transaction, in its own short one: the grant's scope (R1-D-75),
+   * then the use, recorded in the tenant it touches, read or write, so the tenant sees every grant
+   * used on its data (tenancy/0009, R1-D-28). A scoped grant used in another tenant, in a platform
+   * context or for a write under `read` is refused (IPB-SEC-005) and ledgered there, and not
+   * recorded as a use. An inactive grant records nothing; the transaction then refuses it
+   * (IPB-SEC-009).
+   */
+  private async breakGlassPreflight(
+    ctx: KernelContext,
+    write: boolean,
+    m: MutateOptions,
+  ): Promise<GrantScope | undefined> {
     const client = await this.pool.connect();
+    let scope: GrantScope | undefined;
+    let refusal: ScopeRefusal | undefined;
     try {
       await client.query("begin");
       await client.query(`set local role ${quoteIdent(this.role)}`);
       await client.query("select set_config('app.tenant_id', $1, true)", [ctx.tenantId]);
-      // An inactive grant records nothing; the transaction itself then refuses it (IPB-SEC-009).
-      await client.query("select tenancy.breakglass_touch($1, $2)", [
+      const r = await client.query<{
+        scope_tenant_id: string | null;
+        scope_modules: string[] | null;
+        scope_access: "read" | "read_write" | null;
+      }>("select * from tenancy.breakglass_scope($1, $2)", [
         ctx.breakGlassGrantId,
         ctx.principal.id,
       ]);
+      const row = r.rows[0];
+      if (row?.scope_access) {
+        scope = {
+          kind: "breakglass",
+          grantId: ctx.breakGlassGrantId as string,
+          tenantId: row.scope_tenant_id,
+          modules: row.scope_modules,
+          access: row.scope_access,
+        };
+        if (ctx.scope === "platform" || row.scope_tenant_id !== ctx.tenantId)
+          refusal = { scope, reason: "tenant" };
+        else if (write && row.scope_access === "read") refusal = { scope, reason: "write" };
+        if (!this.audit)
+          throw new KernelGuardError(
+            "a scoped grant needs the kernel's audit sink (PgKernelOptions.audit)",
+          );
+      }
+      if (!refusal && ctx.scope !== "platform")
+        await client.query("select tenancy.breakglass_touch($1, $2)", [
+          ctx.breakGlassGrantId,
+          ctx.principal.id,
+        ]);
+      await client.query("commit");
+    } catch (e) {
+      await client.query("rollback").catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
+    if (refusal) {
+      await this.ledgerRefusal(ctx, refusal, m.action);
+      throw scopeRefusal(refusal, m.action);
+    }
+    return scope;
+  }
+
+  /** Ledger a scope refusal in the context's tenant, in its own transaction (R1-D-75). */
+  private async ledgerRefusal(ctx: KernelContext, r: ScopeRefusal, action?: string): Promise<void> {
+    const audit = this.audit;
+    if (!audit) throw new KernelGuardError("a scoped grant needs the kernel's audit sink");
+    const ledgerAction = BREAKGLASS_SCOPE_REFUSED_ACTION;
+    const client = await this.pool.connect();
+    try {
+      await client.query("begin");
+      await client.query(`set local role ${quoteIdent(this.role)}`);
+      await applySettings(client, ctx, { action: ledgerAction });
+      await audit.record(new PgTx(client, ctx), {
+        action: ledgerAction,
+        resourceType: "breakglass_grant",
+        resourceId: r.scope.grantId,
+        after: {
+          reason: r.reason,
+          tenant_id: ctx.tenantId,
+          scope: { tenant_id: r.scope.tenantId, modules: r.scope.modules, access: r.scope.access },
+          ...(r.module ? { module: r.module } : {}),
+          ...(action ? { action } : {}),
+        },
+      });
       await client.query("commit");
     } catch (e) {
       await client.query("rollback").catch(() => undefined);
@@ -409,10 +506,11 @@ export class PgKernel implements MutationKernel {
     m: MutateOptions,
     fn: (tx: Tx) => Promise<T>,
   ): Promise<T> {
-    // A break-glass context is recorded in the tenant it touches, read or write, in its own short
-    // transaction first: the tenant sees every grant used on its data (tenancy/0009, R1-D-28).
-    if (ctx.breakGlassGrantId && ctx.scope !== "platform") await this.recordBreakGlassUse(ctx);
+    const scope = ctx.breakGlassGrantId
+      ? await this.breakGlassPreflight(ctx, readOnly === false, m)
+      : undefined;
     const client = await this.pool.connect();
+    const refused: ScopeRefusal[] = [];
     try {
       await client.query(
         readOnly === "snapshot"
@@ -444,14 +542,42 @@ export class PgKernel implements MutationKernel {
             meta: { grant_id: ctx.externalGrantId ?? null },
           });
       }
-      const result = await fn(new PgTx(client, ctx, readOnly !== false));
+      // A scoped grant's statements name only its modules (R1-D-75); a module is a schema. Each
+      // refusal is kept, so it is ledgered even when the caller catches it (a unit, a retry).
+      let guard: ((text: string) => void) | undefined;
+      if (scope?.modules) {
+        const ns = await client.query<{ nspname: string }>(
+          "select nspname from pg_catalog.pg_namespace",
+        );
+        const check = moduleGuard(scope, new Set(ns.rows.map((r) => r.nspname)));
+        guard = (text) => {
+          try {
+            check(text);
+          } catch (e) {
+            const r = refusalOf(e);
+            if (r) refused.push(r);
+            throw e;
+          }
+        };
+      }
+      const result = await fn(new PgTx(client, ctx, readOnly !== false, guard));
       await client.query("commit");
       return result;
     } catch (e) {
       await client.query("rollback").catch(() => undefined);
+      const r = refusalOf(e);
+      if (r && !refused.includes(r)) refused.push(r);
       throw e;
     } finally {
       client.release();
+      // Ledgered on their own, after the transaction (which may have rolled back) has ended.
+      const seen = new Set<string>();
+      for (const r of refused) {
+        const key = `${r.reason}:${r.module ?? ""}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        await this.ledgerRefusal(ctx, r, m.action);
+      }
     }
   }
 }

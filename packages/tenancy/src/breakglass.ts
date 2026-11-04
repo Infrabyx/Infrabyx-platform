@@ -2,6 +2,12 @@
 // PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER, ≤ 4 h, with a reason, an alert event and a mandatory
 // post-use review ticket. Its own table rather than an approval request: R4's 60-minute delay
 // would defeat an emergency grant (PL1-D-13).
+//
+// A grant may carry a scope that only narrows it (LawDocsComply PR-LDC-08 (c); R1-D-75; tenancy/0016):
+// one tenant, optionally a list of modules (schemas), and read or read-write. The kernel enforces it
+// on every transaction: another tenant, a write under `read`, or a statement naming a module outside
+// the list is refused (IPB-SEC-005) and ledgered in the tenant touched. No scope keeps IPB-02-06's
+// behaviour.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
   AuditSink,
@@ -14,10 +20,21 @@ import { internalEvent } from "@infrabyx/config/events";
 import { newId, type SecretKey } from "@infrabyx/crypto";
 import { PLATFORM_TENANT_ID } from "./context.js";
 import { ConflictError, NotFoundError } from "./errors.js";
+import { scopeModules } from "./scope-guard.js";
 
 export const BREAKGLASS_MAX_MINUTES = 240;
 const REQUESTER_ROLE = "PLT_SUPER_ADMIN";
 const APPROVER_ROLES = ["PLT_SUPER_ADMIN", "PLT_SECURITY_OFFICER"];
+
+/** What a scoped break-glass grant may touch (R1-D-75). */
+export interface BreakGlassScope {
+  /** The one tenant. */
+  tenantId: string;
+  /** The modules (PostgreSQL schemas) it may touch, 1 to 50; omitted, every module. */
+  modules?: readonly string[];
+  /** Default `read`. */
+  access?: "read" | "read_write";
+}
 
 export interface BreakGlassGrant {
   id: string;
@@ -27,6 +44,8 @@ export interface BreakGlassGrant {
   durationMinutes: number;
   expiresAt: Date | null;
   reviewTicketRef: string | null;
+  /** Null: unscoped (IPB-02-06 as before). */
+  scope: { tenantId: string; modules: string[] | null; access: "read" | "read_write" } | null;
 }
 
 export interface BreakGlassOptions {
@@ -47,6 +66,9 @@ interface Row {
   duration_minutes: number;
   expires_at: Date | null;
   review_ticket_ref: string | null;
+  scope_tenant_id: string | null;
+  scope_modules: string[] | null;
+  scope_access: "read" | "read_write" | null;
 }
 const toGrant = (r: Row): BreakGlassGrant => ({
   id: r.id,
@@ -56,7 +78,15 @@ const toGrant = (r: Row): BreakGlassGrant => ({
   durationMinutes: r.duration_minutes,
   expiresAt: r.expires_at,
   reviewTicketRef: r.review_ticket_ref,
+  scope:
+    r.scope_tenant_id && r.scope_access
+      ? { tenantId: r.scope_tenant_id, modules: r.scope_modules, access: r.scope_access }
+      : null,
 });
+const scopeData = (g: BreakGlassGrant) =>
+  g.scope
+    ? { tenant_id: g.scope.tenantId, modules: g.scope.modules, access: g.scope.access }
+    : null;
 
 function assertPlatform(ctx: KernelContext, roles: readonly string[]): void {
   if (
@@ -75,31 +105,52 @@ function assertPlatform(ctx: KernelContext, roles: readonly string[]): void {
 export class BreakGlass {
   constructor(private readonly o: BreakGlassOptions) {}
 
+  /** `scope` narrows the grant to one tenant, its modules and read or read-write (R1-D-75). */
   async request(
     ctx: KernelContext,
     reason: string,
     durationMinutes: number,
+    scope?: BreakGlassScope,
   ): Promise<BreakGlassGrant> {
     assertPlatform(ctx, [REQUESTER_ROLE]);
     const max = Math.min(this.o.maxMinutes ?? BREAKGLASS_MAX_MINUTES, BREAKGLASS_MAX_MINUTES);
     if (!(durationMinutes >= 1 && durationMinutes <= max))
       throw new RangeError(`break-glass lasts 1–${max} minutes`);
+    const modules = scope?.modules ? scopeModules(scope.modules) : null;
+    const access = scope ? (scope.access ?? "read") : null;
+    if (access !== null && access !== "read" && access !== "read_write")
+      throw new RangeError("a break-glass scope is read or read_write");
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
+        if (scope) {
+          const t = await tx.query("select 1 from tenancy.tenant where id = $1", [scope.tenantId]);
+          if (!t.rows[0]) throw new NotFoundError("tenant");
+        }
         const id = newId("bgr");
         const r = await tx.query<Row>(
-          `insert into tenancy.breakglass_grant (id, tenant_id, requester_id, reason, duration_minutes)
-         values ($1, $2, $3, $4, $5) returning *`,
-          [id, PLATFORM_TENANT_ID, ctx.principal.id, reason, durationMinutes],
+          `insert into tenancy.breakglass_grant
+             (id, tenant_id, requester_id, reason, duration_minutes, scope_tenant_id, scope_modules, scope_access)
+         values ($1, $2, $3, $4, $5, $6, $7, $8) returning *`,
+          [
+            id,
+            PLATFORM_TENANT_ID,
+            ctx.principal.id,
+            reason,
+            durationMinutes,
+            scope?.tenantId ?? null,
+            modules,
+            access,
+          ],
         );
+        const g = toGrant(r.rows[0] as Row);
         await this.o.audit.record(tx, {
           action: "security.breakglass.request",
           resourceType: "breakglass_grant",
           resourceId: id,
-          after: { duration_minutes: durationMinutes },
+          after: { duration_minutes: durationMinutes, scope: scopeData(g) },
         });
-        return toGrant(r.rows[0] as Row);
+        return g;
       },
       { action: "security.breakglass.request" },
     );
@@ -128,7 +179,11 @@ export class BreakGlass {
           action: "security.breakglass.approve",
           resourceType: "breakglass_grant",
           resourceId: id,
-          after: { expires_at: g.expiresAt?.toISOString(), review_ticket_ref: ticket },
+          after: {
+            expires_at: g.expiresAt?.toISOString(),
+            review_ticket_ref: ticket,
+            scope: scopeData(g),
+          },
         });
         await this.emit(tx, "BreakGlassGranted", {
           grant_id: id,
@@ -136,6 +191,7 @@ export class BreakGlass {
           approver_id: ctx.principal.id,
           expires_at: g.expiresAt?.toISOString(),
           review_ticket_ref: ticket,
+          scope: scopeData(g),
         });
         return g;
       },
@@ -207,6 +263,8 @@ export interface BreakGlassUse {
   lastUsedAt: Date;
   uses: number;
   notifiedAt: Date | null;
+  /** The grant's scope in this tenant (R1-D-75); null when unscoped. */
+  scope: { modules: string[] | null; access: "read" | "read_write" } | null;
 }
 
 interface UseRow {
@@ -220,6 +278,8 @@ interface UseRow {
   last_used_at: Date;
   uses: number;
   notified_at: Date | null;
+  scope_modules: string[] | null;
+  scope_access: "read" | "read_write" | null;
 }
 const toUse = (r: UseRow): BreakGlassUse => ({
   grantId: r.grant_id,
@@ -232,6 +292,7 @@ const toUse = (r: UseRow): BreakGlassUse => ({
   lastUsedAt: r.last_used_at,
   uses: r.uses,
   notifiedAt: r.notified_at,
+  scope: r.scope_access ? { modules: r.scope_modules, access: r.scope_access } : null,
 });
 
 const NOTHING_NEW = Symbol("nothing new");

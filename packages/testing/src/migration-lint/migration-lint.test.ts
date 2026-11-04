@@ -146,11 +146,25 @@ describe("@IPB-09-AT-12 released migration immutability", () => {
   });
 });
 
+// Reviewed exceptions: a CHECK dropped and re-added wider in the same migration accepts every
+// existing row (expand-only; as workflow/0002 and 0003, PL3-D-21). Only this exact warning is let
+// through, and it must still be raised.
+const WIDENED_CHECKS: Record<string, string[]> = {
+  // LawDocsComply PR-LDC-07 (R1-D-75): the external grantee kinds.
+  tenancy: ["0016_grantee_kinds_breakglass_scope.sql"],
+};
+
 describe("PL1 migrations", () => {
   for (const p of ["tenancy", "audit", "config", "seed"]) {
     it(`${p} migrations lint clean and match their checksums`, async () => {
       const r = await lintDir(join(import.meta.dirname, "../../..", p, "migrations"));
-      expect(r.findings).toEqual([]);
+      const widened = WIDENED_CHECKS[p] ?? [];
+      const reviewed = (f: (typeof r.findings)[number]) =>
+        f.rule === "drop-requires-contract-label" &&
+        f.severity === "warn" &&
+        widened.some((w) => f.file.endsWith(w));
+      expect(r.findings.filter((f) => !reviewed(f))).toEqual([]);
+      expect(r.findings.filter(reviewed).length).toBe(widened.length);
       expect(r.files.length).toBeGreaterThan(0);
     });
   }
