@@ -1,5 +1,23 @@
 # @infrabyx/testing
 
+## 1.11.0
+
+### Minor Changes
+
+- 1dda4b2: EMAIL stubs (R1-plan M58; R1-D-90): the SES v2 stub accepts simple-content sends and records them (`simple`); the Brevo stub accepts sends without a template (`subject` and `htmlContent` required, `textContent` optional) and records them, so `BrevoStubMessage.templateId` is now optional.
+
+### Patch Changes
+
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+  - @infrabyx/tenancy@1.14.0
+  - @infrabyx/config@1.11.0
+  - @infrabyx/contracts@1.21.0
+  - @infrabyx/audit@1.7.2
+  - @infrabyx/seed@1.0.29
+  - @infrabyx/crypto@1.5.6
+
 ## 1.10.1
 
 ### Patch Changes
