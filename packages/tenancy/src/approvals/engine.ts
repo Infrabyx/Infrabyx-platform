@@ -64,6 +64,12 @@ export interface ActionPolicy {
   /** Roles that may check. Default: ORG_CHECKER, ORG_ADMIN, ORG_OWNER in a tenant; PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN in a platform context. */
   checkerRoles?: readonly string[];
   /**
+   * Roles that may check in a platform context, when they differ from `checkerRoles` (R1-D-86):
+   * an action that adds product roles to its tenant checkers keeps the platform's own here.
+   * Omitted: `checkerRoles`, else PLT_SECURITY_OFFICER and PLT_SUPER_ADMIN.
+   */
+  platformCheckerRoles?: readonly string[];
+  /**
    * Named tenant functions (`FN:CRO`, …) a checker must also hold, any one of them (PR-FBX-20,
    * R1-D-39). The checker still needs one of `checkerRoles`; a function never replaces a role.
    */
@@ -130,8 +136,12 @@ export interface ApprovalsEngineOptions {
   observers?: readonly ApprovalObserver[];
 }
 
-const DEFAULT_TENANT_CHECKERS = ["ORG_CHECKER", "ORG_ADMIN", "ORG_OWNER"];
-const DEFAULT_PLATFORM_CHECKERS = ["PLT_SECURITY_OFFICER", "PLT_SUPER_ADMIN"];
+/** Who checks an action that names no checker roles, in a tenant and in a platform context. */
+export const DEFAULT_TENANT_CHECKERS: readonly string[] = ["ORG_CHECKER", "ORG_ADMIN", "ORG_OWNER"];
+export const DEFAULT_PLATFORM_CHECKERS: readonly string[] = [
+  "PLT_SECURITY_OFFICER",
+  "PLT_SUPER_ADMIN",
+];
 /** The maker, the tenant's ORG_OWNER, or a PLT_SECURITY_OFFICER (IPB-02-80, A-04). */
 const CANCEL_ROLES = ["ORG_OWNER", "PLT_SECURITY_OFFICER"];
 
@@ -647,9 +657,10 @@ export class ApprovalsEngine implements ApprovalGateway {
   /** Checker roles for an action after the tenant's `mc.checker_roles.<action>` (never wider). */
   async checkerRolesFor(ctx: KernelContext, action: string): Promise<readonly string[]> {
     const platform = ctx.scope === "platform";
-    const allowed =
-      this.policies.get(action)?.checkerRoles ??
-      (platform ? DEFAULT_PLATFORM_CHECKERS : DEFAULT_TENANT_CHECKERS);
+    const policy = this.policies.get(action);
+    const allowed = platform
+      ? (policy?.platformCheckerRoles ?? policy?.checkerRoles ?? DEFAULT_PLATFORM_CHECKERS)
+      : (policy?.checkerRoles ?? DEFAULT_TENANT_CHECKERS);
     if (platform || !this.o.tenantPolicy) return allowed;
     const narrowed = (await this.o.tenantPolicy(ctx, action)).checkerRoles;
     const subset = narrowed ? allowed.filter((r) => narrowed.includes(r)) : [];
