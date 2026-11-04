@@ -10,10 +10,12 @@ export class MemoryRuleEngine extends InProcessRuleEngine {
   readonly name = "memory";
 
   protected async compilePrepared(t: PreparedTable): Promise<CompiledRuleSet> {
-    const env = celEnvironment(t.body.inputs, t.limits);
+    const env = celEnvironment([...t.body.inputs, ...t.parameterFields.values()], t.limits);
     const programs = t.rows.map((r) => env.parse(r.when));
+    // Parameters (R1-D-88) are bound into every row's context as the CEL values they stand for.
+    const bound = celInput(t.parameterFields, t.parameterValues);
     return compiled(t, (values) => {
-      const ctx = celInput(t.fields, values);
+      const ctx = { ...celInput(t.fields, values), ...bound };
       const hit: number[] = [];
       for (const [i, p] of programs.entries()) {
         const v: unknown = p(ctx);

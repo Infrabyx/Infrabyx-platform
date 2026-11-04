@@ -10,7 +10,10 @@ import type {
   RuleField,
   RuleSetBody,
 } from "@infrabyx/contracts/ports";
-import { RuleSetBody as RuleSetBodySchema } from "@infrabyx/contracts/ports";
+import {
+  RuleSetBody as RuleSetBodySchema,
+  ruleParameterValueError,
+} from "@infrabyx/contracts/ports";
 import {
   celEnvironment,
   DEFAULT_CEL_LIMITS,
@@ -20,6 +23,7 @@ import {
   RuleCompileError,
   type CelLimits,
   type Cond,
+  type Literal,
   wellFormed,
 } from "./cel.js";
 import { MAX_MATCH_INPUT } from "./pattern.js";
@@ -40,6 +44,9 @@ export interface PreparedRow {
 export interface PreparedTable {
   body: RuleSetBody;
   fields: ReadonlyMap<string, RuleField>;
+  /** The rule set's parameters as fields, and the values bound to them (R1-D-88). */
+  parameterFields: ReadonlyMap<string, RuleField>;
+  parameterValues: Readonly<Record<string, Literal>>;
   rows: readonly PreparedRow[];
   limits: CelLimits;
 }
@@ -50,12 +57,31 @@ export type EvalResult = Awaited<ReturnType<CompiledRuleSet["evaluate"]>>;
 export function prepareTable(
   raw: RuleSetBody,
   limits: CelLimits = DEFAULT_CEL_LIMITS,
+  parameters?: Readonly<Record<string, unknown>>,
 ): PreparedTable {
   const parsed = RuleSetBodySchema.safeParse(raw);
   if (!parsed.success)
     throw new RuleCompileError(null, "schema", parsed.error.issues[0]?.message ?? "invalid body");
   const body = parsed.data;
   const fields = new Map<string, RuleField>();
+  // Parameters (R1-D-88) are constants bound here, to the tenant's values or else their defaults:
+  // declared to the type checker as variables, lowered as literals. They are never inputs.
+  const consts = new Map<string, Literal>();
+  for (const p of body.parameters ?? []) {
+    if (RESERVED_FIELD_NAMES.has(p.name))
+      throw new RuleCompileError(null, "reserved_name", `parameter name ${p.name} is reserved`);
+    const v = parameters && p.name in parameters ? parameters[p.name] : p.default;
+    const why = ruleParameterValueError(p, v);
+    if (why) throw new RuleCompileError(null, "parameter", `parameter ${p.name}: ${why}`);
+    consts.set(p.name, v as Literal);
+  }
+  const parameterFields = new Map<string, RuleField>(
+    (body.parameters ?? []).map((p) => [
+      p.name,
+      { name: p.name, type: p.type, dataClass: "INTERNAL" as const },
+    ]),
+  );
+  const declared: RuleField[] = [...body.inputs, ...parameterFields.values()];
   for (const f of body.inputs) {
     if (RESERVED_FIELD_NAMES.has(f.name))
       throw new RuleCompileError(null, "reserved_name", `input name ${f.name} is reserved`);
@@ -63,14 +89,21 @@ export function prepareTable(
       throw new RuleCompileError(null, "duplicate_input", `duplicate input ${f.name}`);
     fields.set(f.name, f);
   }
-  const env = celEnvironment(body.inputs, limits);
+  const env = celEnvironment(declared, limits);
   const rows = body.rows.map((r, index) => ({
     index,
     id: r.id,
     when: r.when,
-    cond: lowerWhen(r.id, r.when, fields, env),
+    cond: lowerWhen(r.id, r.when, fields, env, consts),
   }));
-  return { body, fields, rows, limits };
+  return {
+    body,
+    fields,
+    parameterFields,
+    parameterValues: Object.fromEntries(consts),
+    rows,
+    limits,
+  };
 }
 
 export type InputCheck =
@@ -218,8 +251,12 @@ export abstract class InProcessRuleEngine implements RuleEngine {
     return { port: "RULES", adapter: this.name, residency: "IN", maxDataClass: "REGULATED" };
   }
 
-  async compile(body: RuleSetBody): Promise<CompiledRuleSet> {
-    return this.compilePrepared(prepareTable(body, this.limits));
+  /** Compile a table; `parameters` binds the rule set's parameters (default: their defaults). */
+  async compile(
+    body: RuleSetBody,
+    parameters?: Readonly<Record<string, unknown>>,
+  ): Promise<CompiledRuleSet> {
+    return this.compilePrepared(prepareTable(body, this.limits, parameters));
   }
 
   protected abstract compilePrepared(t: PreparedTable): Promise<CompiledRuleSet>;

@@ -1,3 +1,4 @@
 {
-  "0001_init.sql": "4cbe3f3377fcea1509a761f1cda34af6f379c91edd5eb8137604e7716d280ddf"
+  "0001_init.sql": "4cbe3f3377fcea1509a761f1cda34af6f379c91edd5eb8137604e7716d280ddf",
+  "0002_decision_parameters.sql": "8302cfd848251cb77979ecd544b8ffc1e8454152ca57c6961b70e11d146d029c"
 }

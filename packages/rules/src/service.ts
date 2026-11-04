@@ -17,6 +17,7 @@ import type { DataClass } from "@infrabyx/contracts/data-class";
 import type {
   AdapterDescriptor,
   CelResult,
+  RuleParameter,
   CompiledRuleSet,
   Decision,
   DecisionOutcome,
@@ -29,11 +30,14 @@ import type {
   RulesPort,
   SimulationReport,
 } from "@infrabyx/contracts/ports";
-import { RuleSetKey } from "@infrabyx/contracts/ports";
+import { RuleSetKey, ruleParameterValueError } from "@infrabyx/contracts/ports";
+import { PRODUCT_ROLE_REGEX, TENANT_ROLES } from "@infrabyx/contracts/roles";
 import { internalEvent } from "@infrabyx/config/events";
 import { canonicalDigest, newId, type SecretKey } from "@infrabyx/crypto";
 import {
   APPROVAL_ESCALATION_HOURS,
+  DEFAULT_PLATFORM_CHECKERS,
+  DEFAULT_TENANT_CHECKERS,
   NotFoundError,
   tenantHasRoleHolder,
   type ApprovalsEngine,
@@ -52,6 +56,13 @@ export const PUBLISH_ACTION = "rules.ruleset.publish";
 /** Most inputs one simulation may run (PL3 plan §4.4). */
 export const MAX_SIMULATION_INPUTS = 1000;
 const CACHE_SIZE = 256;
+/** Prefixes a product's publish checker role may never carry (R1-D-86). */
+const NON_TENANT_ROLE = /^(PLT|AGT|SVC|OPS)_/;
+
+/** Reads the tenant's value of a parameter's setting (a `SettingsService` fits). */
+export interface RuleParameterSettings {
+  explain(ctx: KernelContext, key: string): Promise<{ value: unknown }>;
+}
 const CLEAR_CLASSES: readonly DataClass[] = ["PUBLIC", "INTERNAL"];
 const CLASS_RANK: Record<DataClass, number> = {
   PUBLIC: 0,
@@ -89,6 +100,17 @@ export interface RulesServiceOptions {
   /** Whether a member of the tenant holds the role (default: `tenancy.membership`). */
   hasRoleHolder?: (tx: Tx, role: string) => Promise<boolean>;
   pseudonymKey?: SecretKey;
+  /**
+   * Where parameter values come from (R1-D-88): the product's `SettingsService`, whose registry
+   * holds each parameter's `setting` key. Required when a rule set declares parameters.
+   */
+  settings?: RuleParameterSettings;
+  /**
+   * The product's own tenant roles that may also check `rules.ruleset.publish` (OWNER-QUESTIONS
+   * #109, R1-D-86), beside ORG_CHECKER, ORG_ADMIN and ORG_OWNER; e.g. `["TEN_CCO", "TEN_ADMIN"]`.
+   * Platform, agent, service and operations roles are refused. Maker ≠ checker is unchanged.
+   */
+  publishCheckerRoles?: readonly string[];
 }
 
 interface VersionRow {
@@ -100,6 +122,13 @@ interface VersionRow {
   digest: string;
   approval_id: string | null;
   effective_from: Date | null;
+}
+
+interface ResolvedParameters {
+  values: Record<string, unknown>;
+  trace: Record<string, { value: unknown; source: "setting" | "default" }>;
+  /** The first parameter whose value is invalid, if any. */
+  invalid: string | null;
 }
 
 interface RuleSetRow {
@@ -134,7 +163,20 @@ export class RulesService implements RulesPort {
     this.validators =
       opts.engines?.validators ??
       RULE_ENGINES.map((n) => (n === this.primary.name ? this.primary : ruleEngine(n, { limits })));
+    const extra = opts.publishCheckerRoles ?? [];
+    for (const r of extra)
+      if (
+        NON_TENANT_ROLE.test(r) ||
+        !((TENANT_ROLES as readonly string[]).includes(r) || PRODUCT_ROLE_REGEX.test(r))
+      )
+        throw new Error(`publishCheckerRoles: ${r} is not a tenant or product role`);
     opts.approvals.register(PUBLISH_ACTION, {
+      ...(extra.length
+        ? {
+            checkerRoles: [...new Set([...DEFAULT_TENANT_CHECKERS, ...extra])],
+            platformCheckerRoles: DEFAULT_PLATFORM_CHECKERS,
+          }
+        : {}),
       execute: (tx, payload, request) => this.executePublish(tx, payload, request.id),
     });
   }
@@ -189,6 +231,7 @@ export class RulesService implements RulesPort {
   ): Promise<{ version: number; digest: string }> {
     const set = await this.o.kernel.read(ctx, (tx) => this.loadSet(tx, ruleSetId));
     await this.validate(body, set);
+    await this.checkParameterSettings(ctx, body);
     const digest = canonicalDigest(body);
     return this.o.kernel.mutate(
       ctx,
@@ -343,6 +386,12 @@ export class RulesService implements RulesPort {
       [ruleSetId, version],
     );
     const effectiveFrom = (pub.rows[0]?.effective_from as Date).toISOString();
+    // Compile the new version for this tenant now, outside any evaluation's budget (PR-LDC-25,
+    // R1-D-88); a failure is dropped from the cache and retried by the first evaluation.
+    const ctx = tx.ctx;
+    void this.resolveParameters(ctx, v.body)
+      .then((p) => (p.invalid ? undefined : this.compiledFor(v, p.values)))
+      .catch(() => undefined);
     await this.o.audit.record(tx, {
       action: "rules.ruleset.publish",
       resourceType: "rule_set_version",
@@ -372,17 +421,25 @@ export class RulesService implements RulesPort {
   }
 
   async evaluate(ctx: KernelContext, ref: RuleSetRef, input: unknown): Promise<Decision> {
+    const asOf = ref.asOf === undefined ? null : asOfInstant(ref);
     const { set, v } = await this.o.kernel.read(ctx, async (tx) => {
       const set = await this.loadSet(tx, ref.ruleSetId);
       const v =
-        ref.version === undefined
-          ? await this.publishedRow(tx, ref.ruleSetId)
-          : await this.loadVersion(tx, ref.ruleSetId, ref.version, false).catch(() => null);
+        asOf !== null
+          ? await this.versionAt(tx, ref.ruleSetId, asOf)
+          : ref.version === undefined
+            ? await this.publishedRow(tx, ref.ruleSetId)
+            : await this.loadVersion(tx, ref.ruleSetId, ref.version, false).catch(() => null);
       if (!v || (ref.version !== undefined && !["published", "retired"].includes(v.state)))
-        throw new IpbError("IPB-RULE-002", { meta: { rule_set_id: ref.ruleSetId } });
+        throw new IpbError("IPB-RULE-002", {
+          meta: { rule_set_id: ref.ruleSetId, ...(asOf ? { as_of: asOf.toISOString() } : {}) },
+        });
       return { set, v };
     });
-    const result = await this.run(v, input);
+    const params = await this.resolveParameters(ctx, v.body);
+    const result = params.invalid
+      ? undetermined("parameter_invalid")
+      : await this.run(v, input, params.values);
     const id = newId("dcs");
     const inputs = result.reason === "input_invalid" ? null : splitInputs(v.body, input);
     return this.o.kernel.mutate(
@@ -424,8 +481,10 @@ export class RulesService implements RulesPort {
         await tx.query(
           `insert into rules.decision_log
              (id, tenant_id, rule_set_id, version, engine, outcome, reason, rule_ids, inputs_digest,
-              inputs, inputs_enc, inputs_key_id, inbox_item_id, actor_id, actor_type)
-           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13, $14, $15)`,
+              inputs, inputs_enc, inputs_key_id, inbox_item_id, actor_id, actor_type, parameters,
+              as_of)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13, $14, $15,
+                   $16::jsonb, $17)`,
           [
             id,
             ctx.tenantId,
@@ -442,6 +501,8 @@ export class RulesService implements RulesPort {
             inboxId,
             ctx.principal.id,
             ctx.principal.type,
+            Object.keys(params.trace).length ? JSON.stringify(params.trace) : null,
+            asOf,
           ],
         );
         await this.o.audit.record(tx, {
@@ -454,6 +515,8 @@ export class RulesService implements RulesPort {
             outcome: result.outcome,
             reason: result.reason,
             rule_ids: result.ruleIds,
+            ...(params.invalid ? { parameter: params.invalid } : {}),
+            ...(asOf ? { as_of: asOf.toISOString() } : {}),
           },
         });
         return {
@@ -464,6 +527,8 @@ export class RulesService implements RulesPort {
           ruleSetId: set.id,
           version: v.version,
           reason: result.reason,
+          ...(Object.keys(params.trace).length ? { parameters: params.values } : {}),
+          ...(asOf ? { asOf: asOf.toISOString() } : {}),
         };
       },
       { action: "rules.decision.record" },
@@ -516,7 +581,7 @@ export class RulesService implements RulesPort {
   /** Run inputs on a version and on the published one; report what changes. Inputs are not stored. */
   async simulate(
     ctx: KernelContext,
-    ref: Required<RuleSetRef>,
+    ref: Required<Pick<RuleSetRef, "ruleSetId" | "version">>,
     inputs: unknown[],
   ): Promise<SimulationReport> {
     if (inputs.length > MAX_SIMULATION_INPUTS)
@@ -527,10 +592,20 @@ export class RulesService implements RulesPort {
       const base = await this.publishedRow(tx, ref.ruleSetId);
       return { v, base: base && base.version !== v.version ? base : null };
     });
+    // Both versions run with the tenant's current parameter values (R1-D-88).
+    const pv = await this.resolveParameters(ctx, v.body);
+    const pb = base ? await this.resolveParameters(ctx, base.body) : null;
     const changed: SimulationReport["changed"] = [];
     for (const [index, input] of inputs.entries()) {
-      const after = await this.run(v, input);
-      const before = base ? await this.run(base, input) : null;
+      const after = pv.invalid
+        ? undetermined("parameter_invalid")
+        : await this.run(v, input, pv.values);
+      const before =
+        base && pb
+          ? pb.invalid
+            ? undetermined("parameter_invalid")
+            : await this.run(base, input, pb.values)
+          : null;
       if (before && sameResult(before, after)) continue;
       changed.push({
         index,
@@ -586,8 +661,11 @@ export class RulesService implements RulesPort {
         outcome: DecisionOutcome;
         rule_ids: string[];
         inputs: Record<string, unknown> | null;
+        parameters: Record<string, { value: unknown; source: "setting" | "default" }> | null;
+        as_of: Date | null;
       }>(
-        "select rule_set_id, version, outcome, rule_ids, inputs from rules.decision_log where id = $1",
+        `select rule_set_id, version, outcome, rule_ids, inputs, parameters, as_of
+           from rules.decision_log where id = $1`,
         [decisionId],
       );
       const d = r.rows[0];
@@ -605,15 +683,104 @@ export class RulesService implements RulesPort {
             : { name: f.name },
         ),
         help_keys: rows.flatMap((x) => (x.help_key ? [x.help_key] : [])),
+        ...(d.parameters
+          ? {
+              parameters: Object.entries(d.parameters).map(([name, p]) => ({
+                name,
+                value: p.value,
+                source: p.source,
+              })),
+            }
+          : {}),
+        ...(d.as_of ? { asOf: new Date(d.as_of).toISOString() } : {}),
         source: "rules",
       };
     });
   }
 
-  private async run(v: VersionRow, input: unknown): Promise<Evaluated> {
+  /**
+   * Compile ahead of traffic (PR-LDC-25, R1-D-88): warms the engine once, then compiles the
+   * version in force now of each rule set given (default: every rule set the caller can read),
+   * so no evaluation pays for compilation. Call it at start-up and when `RuleSetPublished`
+   * arrives from another instance.
+   */
+  async prepare(
+    ctx: KernelContext,
+    ruleSetIds?: readonly string[],
+  ): Promise<{ compiled: number; failed: string[] }> {
+    await this.primary.health();
+    const versions = await this.o.kernel.read(ctx, async (tx) => {
+      const ids =
+        ruleSetIds ??
+        (await tx.query<{ id: string }>("select id from rules.rule_set order by id")).rows.map(
+          (r) => r.id,
+        );
+      const out: VersionRow[] = [];
+      for (const id of ids) {
+        const v = await this.publishedRow(tx, id);
+        if (v) out.push(v);
+      }
+      return out;
+    });
+    const failed: string[] = [];
+    for (const v of versions) {
+      const ok = await this.resolveParameters(ctx, v.body)
+        .then((p) => (p.invalid ? false : this.compiledFor(v, p.values).then(() => true)))
+        .catch(() => false);
+      if (!ok) failed.push(`${v.rule_set_id}@${v.version}`);
+    }
+    return { compiled: versions.length - failed.length, failed };
+  }
+
+  /** Each parameter's tenant value from settings, else its default; checked against its type. */
+  private async resolveParameters(
+    ctx: KernelContext,
+    body: RuleSetBody,
+  ): Promise<ResolvedParameters> {
+    const out: ResolvedParameters = { values: {}, trace: {}, invalid: null };
+    const params: readonly RuleParameter[] = body.parameters ?? [];
+    if (!params.length) return out;
+    const settings = this.o.settings;
+    if (!settings) throw new Error("a rule set with parameters needs the settings option");
+    for (const p of params) {
+      const read = (await settings.explain(ctx, p.setting)).value;
+      const fromSetting = read !== null && read !== undefined;
+      const value = fromSetting ? read : p.default;
+      out.values[p.name] = value;
+      out.trace[p.name] = { value, source: fromSetting ? "setting" : "default" };
+      if (!out.invalid && ruleParameterValueError(p, value)) out.invalid = p.name;
+    }
+    return out;
+  }
+
+  /** A draft's parameters must name registered settings (IPB-07: registered before read). */
+  private async checkParameterSettings(ctx: KernelContext, body: RuleSetBody): Promise<void> {
+    const params = body.parameters ?? [];
+    if (!params.length) return;
+    if (!this.o.settings)
+      throw new IpbError("IPB-RULE-001", {
+        detail: "rule parameters need the settings option on the RULES service",
+      });
+    for (const p of params) {
+      try {
+        await this.o.settings.explain(ctx, p.setting);
+      } catch {
+        throw new IpbError("IPB-RULE-001", {
+          detail: `parameter ${p.name}: setting ${p.setting} is not registered`,
+          meta: { parameter: p.name, setting: p.setting },
+        });
+      }
+    }
+  }
+
+  private async run(
+    v: VersionRow,
+    input: unknown,
+    parameters: Record<string, unknown> = {},
+  ): Promise<Evaluated> {
     let compiled: CompiledRuleSet;
     try {
-      compiled = await this.compiledFor(v);
+      compiled = await this.compiledFor(v, parameters);
     } catch {
       return { outcome: "UNDETERMINED", outputs: {}, ruleIds: [], reason: "engine_error" };
     }
@@ -634,13 +801,18 @@ export class RulesService implements RulesPort {
     return r;
   }
 
-  private compiledFor(v: VersionRow): Promise<CompiledRuleSet> {
-    const key = `${v.rule_set_id}@${v.version}:${v.digest}`;
+  /** One compiled table per version and parameter values (R1-D-88), least recently built out. */
+  private compiledFor(
+    v: VersionRow,
+    parameters: Record<string, unknown> = {},
+  ): Promise<CompiledRuleSet> {
+    const bound = Object.keys(parameters).length ? `:${canonicalDigest(parameters)}` : "";
+    const key = `${v.rule_set_id}@${v.version}:${v.digest}${bound}`;
     let c = this.cache.get(key);
     if (!c) {
       if (this.cache.size >= CACHE_SIZE)
         this.cache.delete(this.cache.keys().next().value as string);
-      c = this.primary.compile(v.body);
+      c = this.primary.compile(v.body, parameters);
       c.catch(() => this.cache.delete(key));
       this.cache.set(key, c);
     }
@@ -689,6 +861,21 @@ export class RulesService implements RulesPort {
     return row;
   }
 
+  /** The version in force at `at`: published or since retired, effective then (PR-LDC-22 (b)). */
+  private async versionAt(tx: Tx, id: string, at: Date): Promise<VersionRow | null> {
+    const now = await tx.query<{ ok: boolean }>("select $1::timestamptz <= now() as ok", [at]);
+    if (!now.rows[0]?.ok)
+      throw new IpbError("IPB-RULE-001", { detail: "asOf must not be in the future" });
+    const r = await tx.query<VersionRow>(
+      `select * from rules.rule_set_version
+        where rule_set_id = $1 and state in ('published', 'retired')
+          and effective_from <= $2 and (effective_to is null or effective_to > $2)
+        order by version desc limit 1`,
+      [id, at],
+    );
+    return r.rows[0] ?? null;
+  }
+
   private async publishedRow(tx: Tx, id: string): Promise<VersionRow | null> {
     const r = await tx.query<VersionRow>(
       `select * from rules.rule_set_version
@@ -697,6 +884,22 @@ export class RulesService implements RulesPort {
     );
     return r.rows[0] ?? null;
   }
+}
+
+const undetermined = (reason: string): Evaluated => ({
+  outcome: "UNDETERMINED",
+  outputs: {},
+  ruleIds: [],
+  reason,
+});
+
+function asOfInstant(ref: RuleSetRef): Date {
+  if (ref.version !== undefined)
+    throw new IpbError("IPB-RULE-001", { detail: "asOf and version are exclusive" });
+  const at = ref.asOf instanceof Date ? ref.asOf : new Date(String(ref.asOf));
+  if (Number.isNaN(at.getTime()))
+    throw new IpbError("IPB-RULE-001", { detail: "asOf is not a valid instant" });
+  return at;
 }
 
 function publishSummary(key: string, v: VersionRow, current: VersionRow | null): string {
