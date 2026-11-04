@@ -1,5 +1,0 @@
----
-"@infrabyx/tenancy": minor
----
-
-Tenant-consented support access, a grant separate from break-glass (PR-LDC-08 (a), (b), PR-LDC-20; owner answer #104; R1-D-76): `SupportAccess` (`request` by a `PLT_SUPPORT` principal in the tenant; `consent` by the tenant's ORG_OWNER or ORG_ADMIN; `approve` by a second, different one for `read_write`; `refuse`, `revoke` at once; `list`; `reads`, every read made under a grant), `SupportReads.read` (each read ledgered as `platform.support_read` and recorded for the tenant) and `supportContext(tenantId, principalId)`, onto which a product maps its own support role. Grants list modules, are read-only by default and last at most 24 hours (`tenancy/0017`: `tenancy.support_grant`, `tenancy.support_read`, `tenancy.support_read_record`). The kernel refuses a support principal without a live grant in the tenant (`IPB-TRUST-003`), any read outside `SupportReads`, any write under a read grant and any module outside the grant (`IPB-SEC-005`, ledgered as `security.support_access.scope_refused`), and any `PLT_SUPPORT` context with another role, a platform context, impersonation or break-glass.
