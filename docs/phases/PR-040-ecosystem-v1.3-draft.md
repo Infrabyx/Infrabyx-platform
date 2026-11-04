@@ -1,6 +1,6 @@
 # PR-040: draft amendment to the Ecosystem Specification, v1.3
 
-**Status:** draft for the owner's sign-off. The owner approved PR-040 for v1.3 on 4 Nov 2026 (R1-D-65). The repository never edits `docs/ecosystem/` (CLAUDE.md), so the text below is what the owner (or the spec's editor) would paste into the specification once it is signed off. Nothing here binds a product until v1.3 is published. **Raised by:** LawDocsComply PR-LDC-11, through the platform (R1-D-63).
+**Status:** signed off by the owner on 4 Nov 2026, with a retention rule added to §3 (OWNER-QUESTIONS #105, R1-D-70), and applied to the Ecosystem Specification as v1.3 in its own owner-authorised docs-only PR (#210). The text below is the draft as it was signed off; the retention rule is in the Specification's §6.29. **Raised by:** LawDocsComply PR-LDC-11, through the platform (R1-D-63).
 
 ## 1. What changes and why
 
