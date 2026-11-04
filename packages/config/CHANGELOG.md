@@ -1,5 +1,18 @@
 # @infrabyx/config
 
+## 1.9.0
+
+### Minor Changes
+
+- b3edda2: `SettingsService.setInitial(tx, key, value)`: a new tenant's initial tenant-tier value inside `TenantBootstrap`'s transaction, with `set`'s validation, tighten check and ledger entry; refused outside a tenant's creation and for settings under maker-checker (R1-D-67).
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/crypto@1.5.1
+
 ## 1.8.0
 
 ### Minor Changes

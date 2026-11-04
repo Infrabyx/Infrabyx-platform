@@ -1,5 +1,20 @@
 # @infrabyx/vidhi
 
+## 1.0.24
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/config@1.9.0
+  - @infrabyx/tenancy@1.10.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/ai@1.0.24
+  - @infrabyx/crypto@1.5.1
+
 ## 1.0.23
 
 ### Patch Changes

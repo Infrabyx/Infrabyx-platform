@@ -1,5 +1,21 @@
 # @infrabyx/tenancy
 
+## 1.10.0
+
+### Minor Changes
+
+- b3edda2: `TenantBootstrap` (PR-LDC-12, R1-D-67): creates a tenant for a provisional id with its initial settings, the product's first rows and its first ledger entry in one transaction; idempotent per id; `bootstrap` refused in prod, dr and pre-prod, `provision` for the Operations Hub adapter in every environment.
+- b3edda2: `ApprovalsEngine.consumeMandateApproval` and `mandateVerifier` (R1-D-66): an approved `payments.mandate.change` request at R3 or above is consumed once, under the row lock and with a ledger entry, only for the same tenant, operation, mandate and amount; the action is registered by the engine and never executed on approval or by hand.
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/config@1.9.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/crypto@1.5.1
+
 ## 1.9.2
 
 ### Patch Changes

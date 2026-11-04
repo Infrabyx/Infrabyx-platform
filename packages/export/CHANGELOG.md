@@ -1,5 +1,17 @@
 # @infrabyx/export
 
+## 1.2.3
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/tenancy@1.10.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/crypto@1.5.1
+
 ## 1.2.2
 
 ### Patch Changes
