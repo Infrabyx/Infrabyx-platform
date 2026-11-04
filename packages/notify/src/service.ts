@@ -30,6 +30,7 @@ import {
   type DeliveryState,
   type DomainCheck,
   type EmailEvent,
+  type EmailMessage,
   type EmailPort,
   type NotificationClass,
   type NotifyChannel,
@@ -41,11 +42,13 @@ import {
   type ResolvedTemplate,
   type SendResult,
   type SmsDeliveryReport,
+  type SmsMessage,
   type SmsPort,
   type SuppressionInput,
   type TemplateResolver,
   type WhatsappEvent,
   type WhatsappPort,
+  type WhatsappTemplateMessage,
 } from "@infrabyx/contracts/ports";
 import { internalEvent } from "@infrabyx/config/events";
 import {
@@ -60,6 +63,7 @@ import {
 import { NotFoundError, ServiceReader, type ServiceReadRecord } from "@infrabyx/tenancy";
 import type { Catalogue } from "./catalogue.js";
 import { assertPreferences, effectiveChannels, isCollectionClass, timing } from "./routing.js";
+import { renderEmailTemplate } from "./template-lint.js";
 
 /** The context a push token store runs in while NOTIFY delivers (see `PgPushTokenStore`). */
 export const notifyContext = new AsyncLocalStorage<KernelContext>();
@@ -133,7 +137,8 @@ export interface NotifyServiceOptions {
   onConsentChanged?: (tx: Tx, data: Record<string, unknown>) => Promise<void>;
   /**
    * The tenant's own templates (PR-FBX-33; R1-D-69), consulted at every delivery: an object is
-   * used, `undefined` falls back to the catalogue, `null` fails the delivery closed.
+   * used, `undefined` falls back to the catalogue, `null` fails the delivery closed. The platform's
+   * store is `TenantTemplateStore` (`store.resolver.resolve`; PR-LDC-27, R1-D-90).
    */
   templates?: TemplateResolver;
   /** Leave due deliveries for `dispatchDue` (a worker) instead of delivering after `send`. */
@@ -523,7 +528,6 @@ export class NotifyService implements NotifyPort {
     attempt: number,
   ): Promise<{ adapter?: string; vendorRef?: string; delivered?: boolean }> {
     const call: PortCall = { idempotencyKey: `${d.id}:${attempt}` };
-    const vars = n.vars ?? {};
     switch (d.channel) {
       case "inapp": {
         await this.o.kernel.mutate(
@@ -580,84 +584,142 @@ export class NotifyService implements NotifyPort {
         };
       }
       case "email": {
-        const e = this.o.channels.email;
-        const own = await this.template(ctx, cls, "email", n.locale);
-        const key = own ? own.key : cls.templates.email?.key;
-        if (!e || !key) throw notConfigured("EMAIL");
-        const r = await e.port.send(
-          {
-            to: [address as string],
-            template: key,
-            vars,
-            brand: e.brand,
-            tags: { ipb_class: cls.id },
-          },
-          call,
-        );
-        return { adapter: e.port.descriptor.adapter, vendorRef: r.messageId };
+        const { port, message } = await this.emailMessage(ctx, cls, n);
+        const r = await port.send({ to: [address as string], ...message }, call);
+        return { adapter: port.descriptor.adapter, vendorRef: r.messageId };
       }
       case "sms": {
-        const s = this.o.channels.sms;
-        const own = await this.template(ctx, cls, "sms", n.locale);
-        const t = own
-          ? { id: own.dltTemplateId, vars: own.vars, sender: own.senderId, entity: own.dltEntityId }
-          : cls.templates.sms && s
-            ? {
-                id: cls.templates.sms.dlt_template_id,
-                vars: cls.templates.sms.vars,
-                sender: s.senderId,
-                entity: s.dltEntityId,
-              }
-            : null;
-        if (!s || !t) throw notConfigured("SMS");
-        const r = await s.port.send(
-          {
-            to: address as string,
-            templateId: t.id,
-            vars: positional(vars, t.vars, cls.id)
-              .map((v) => String(v).slice(0, 30))
-              .slice(0, 10),
-            senderId: t.sender,
-            dltEntityId: t.entity,
-          },
-          call,
-        );
-        return { adapter: s.port.descriptor.adapter, vendorRef: r.messageId };
+        const { port, message } = await this.smsMessage(ctx, cls, n);
+        const r = await port.send({ to: address as string, ...message }, call);
+        return { adapter: port.descriptor.adapter, vendorRef: r.messageId };
       }
       case "whatsapp": {
-        const w = this.o.channels.whatsapp;
-        const own = await this.template(ctx, cls, "whatsapp", n.locale);
-        const c = cls.templates.whatsapp;
-        const t = own
-          ? { name: own.name, lang: own.lang, vars: own.vars }
-          : c
-            ? {
-                name: c.name,
-                lang: n.locale && c.lang.includes(n.locale) ? n.locale : (c.lang[0] as string),
-                vars: c.vars,
-              }
-            : null;
-        if (!w || !t) throw notConfigured("WHATSAPP");
-        const r = await w.port.sendTemplate(
-          {
-            to: address as string,
-            templateName: t.name,
-            lang: t.lang,
-            components: [
-              {
-                type: "body",
-                parameters: positional(vars, t.vars, cls.id).map((v) => ({
-                  type: "text",
-                  text: String(v),
-                })),
-              },
-            ],
-          },
-          call,
-        );
-        return { adapter: w.port.descriptor.adapter, vendorRef: r.messageId };
+        const { port, message } = await this.whatsappMessage(ctx, cls, n);
+        const r = await port.sendTemplate({ to: address as string, ...message }, call);
+        return { adapter: port.descriptor.adapter, vendorRef: r.messageId };
       }
     }
+  }
+
+  // The message each channel's port is handed, without the address: built once for delivery and
+  // for `previewTemplate`, so a preview is exactly what delivery sends (PR-LDC-27; R1-D-90).
+
+  private async emailMessage(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    n: NotificationRow,
+    given: Given = RESOLVE,
+  ): Promise<{
+    port: EmailPort;
+    source: TemplateSource;
+    message: Omit<EmailMessage, "to">;
+  }> {
+    const e = this.o.channels.email;
+    const own =
+      given === RESOLVE
+        ? await this.template(ctx, cls, "email", n.locale)
+        : checked(cls, "email", given);
+    const key = own ? own.key : cls.templates.email?.key;
+    if (!e || !key) throw notConfigured("EMAIL");
+    const content = own?.content ? renderEmailTemplate(cls, own.content, n.vars ?? {}) : undefined;
+    if (content && e.port.descriptor.capabilities?.content !== "native")
+      throw new PortError("IPB-PORT-001", "EMAIL", {
+        adapter: e.port.descriptor.adapter,
+        detail: "the EMAIL adapter cannot send a tenant's own content",
+        meta: { reason: "content_unsupported", definite: true },
+      });
+    return {
+      port: e.port,
+      source: own ? "tenant" : "catalogue",
+      message: {
+        template: key,
+        vars: n.vars ?? {},
+        brand: e.brand,
+        tags: { ipb_class: cls.id },
+        ...(content ? { content } : {}),
+      },
+    };
+  }
+
+  private async smsMessage(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    n: NotificationRow,
+    given: Given = RESOLVE,
+  ): Promise<{ port: SmsPort; source: TemplateSource; message: Omit<SmsMessage, "to"> }> {
+    const s = this.o.channels.sms;
+    const own =
+      given === RESOLVE
+        ? await this.template(ctx, cls, "sms", n.locale)
+        : checked(cls, "sms", given);
+    const t = own
+      ? { id: own.dltTemplateId, vars: own.vars, sender: own.senderId, entity: own.dltEntityId }
+      : cls.templates.sms && s
+        ? {
+            id: cls.templates.sms.dlt_template_id,
+            vars: cls.templates.sms.vars,
+            sender: s.senderId,
+            entity: s.dltEntityId,
+          }
+        : null;
+    if (!s || !t) throw notConfigured("SMS");
+    return {
+      port: s.port,
+      source: own ? "tenant" : "catalogue",
+      message: {
+        templateId: t.id,
+        vars: positional(n.vars ?? {}, t.vars, cls.id)
+          .map((v) => String(v).slice(0, 30))
+          .slice(0, 10),
+        senderId: t.sender,
+        dltEntityId: t.entity,
+      },
+    };
+  }
+
+  private async whatsappMessage(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    n: NotificationRow,
+    given: Given = RESOLVE,
+  ): Promise<{
+    port: WhatsappPort;
+    source: TemplateSource;
+    message: Omit<WhatsappTemplateMessage, "to">;
+  }> {
+    const w = this.o.channels.whatsapp;
+    const own =
+      given === RESOLVE
+        ? await this.template(ctx, cls, "whatsapp", n.locale)
+        : checked(cls, "whatsapp", given);
+    const c = cls.templates.whatsapp;
+    const t = own
+      ? { name: own.name, lang: own.lang, vars: own.vars }
+      : c
+        ? {
+            name: c.name,
+            lang: n.locale && c.lang.includes(n.locale) ? n.locale : (c.lang[0] as string),
+            vars: c.vars,
+          }
+        : null;
+    if (!w || !t) throw notConfigured("WHATSAPP");
+    return {
+      port: w.port,
+      source: own ? "tenant" : "catalogue",
+      message: {
+        templateName: t.name,
+        lang: t.lang,
+        components: [
+          {
+            type: "body",
+            parameters: positional(n.vars ?? {}, t.vars, cls.id).map((v) => ({
+              type: "text",
+              text: String(v),
+            })),
+          },
+        ],
+      },
+    };
   }
 
   /**
@@ -671,15 +733,43 @@ export class NotifyService implements NotifyPort {
     locale: string | null,
   ): Promise<Extract<ResolvedTemplate, { channel: C }> | undefined> {
     if (!this.o.templates) return undefined;
-    const t = await this.o.templates(ctx, cls, channel, locale);
-    if (t === undefined) return undefined;
-    if (t === null || t.channel !== channel)
-      throw new PortError("IPB-PORT-001", channel.toUpperCase(), {
-        adapter: "notify",
-        detail: `no ${channel} template for ${cls.id} in this tenant`,
-        meta: { reason: "template_missing", definite: true },
-      });
-    return t as Extract<ResolvedTemplate, { channel: C }>;
+    return checked(cls, channel, await this.o.templates(ctx, cls, channel, locale));
+  }
+
+  /**
+   * Preview one channel for the caller's tenant exactly as delivery would send it (PR-LDC-27;
+   * R1-D-90): the tenant's template through the resolver (or `template`, for example a proposed
+   * version from `TenantTemplateStore.resolvedOf`), rendered by the same code, with the same
+   * refusals (a template that fails the lint, a missing variable, `null`). Nothing is sent or
+   * recorded; the message carries no address.
+   */
+  async previewTemplate(
+    ctx: KernelContext,
+    classId: string,
+    channel: "email" | "sms" | "whatsapp",
+    locale: string | null,
+    vars: Readonly<Record<string, string | number | boolean>>,
+    opts: { template?: ResolvedTemplate | null | undefined } = {},
+  ): Promise<ChannelPreview> {
+    const cls = this.o.catalogue.get(classId);
+    const n: NotificationRow = {
+      id: "preview",
+      class_id: cls.id,
+      deep_link: cls.deep_link,
+      vars: { ...vars },
+      locale,
+    };
+    const given: Given = "template" in opts ? opts.template : RESOLVE;
+    if (channel === "email") {
+      const { source, message } = await this.emailMessage(ctx, cls, n, given);
+      return { channel, source, message };
+    }
+    if (channel === "sms") {
+      const { source, message } = await this.smsMessage(ctx, cls, n, given);
+      return { channel, source, message };
+    }
+    const { source, message } = await this.whatsappMessage(ctx, cls, n, given);
+    return { channel, source, message };
   }
 
   private async settle(
@@ -1531,6 +1621,39 @@ export class NotifyService implements NotifyPort {
 }
 
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+
+/** Where a channel's template came from in a preview. */
+export type TemplateSource = "tenant" | "catalogue";
+
+/** One channel as delivery would hand it to the port, without the address (PR-LDC-27). */
+export type ChannelPreview =
+  | { channel: "email"; source: TemplateSource; message: Omit<EmailMessage, "to"> }
+  | { channel: "sms"; source: TemplateSource; message: Omit<SmsMessage, "to"> }
+  | { channel: "whatsapp"; source: TemplateSource; message: Omit<WhatsappTemplateMessage, "to"> };
+
+/** "Ask the resolver", as opposed to a template given to a preview (which may be `undefined`). */
+const RESOLVE: unique symbol = Symbol("resolve");
+type Given = ResolvedTemplate | null | undefined | typeof RESOLVE;
+
+/**
+ * A resolver's answer for one channel (R1-D-69): `undefined` defers to the catalogue; `null` or a
+ * template of another channel fails the delivery closed (IPB-04-28).
+ */
+function checked<C extends "email" | "sms" | "whatsapp">(
+  cls: NotificationClass,
+  channel: C,
+  t: ResolvedTemplate | null | undefined,
+): Extract<ResolvedTemplate, { channel: C }> | undefined {
+  if (t === undefined) return undefined;
+  if (t === null || t.channel !== channel)
+    throw new PortError("IPB-PORT-001", channel.toUpperCase(), {
+      adapter: "notify",
+      detail: `no ${channel} template for ${cls.id} in this tenant`,
+      meta: { reason: "template_missing", definite: true },
+    });
+  return t as Extract<ResolvedTemplate, { channel: C }>;
+}
+
 const notConfigured = (port: string) =>
   new PortError("IPB-PORT-001", port, {
     adapter: "notify",

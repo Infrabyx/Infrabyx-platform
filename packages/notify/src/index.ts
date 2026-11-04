@@ -2,7 +2,8 @@
 // notification catalogue and its lint (`infrabyx-notify-lint`), routing, quiet hours and digest,
 // resend classes, the platform suppression list (C-23), marketing consent, `kill.msg.*`, sealed
 // push tokens and the workflow `ApprovalNotifier`.
-// Migration: `notify/0001_init.sql`, applied by `infrabyx-migrate` when this package is installed.
+// Tenant notification templates behind `TemplateResolver` (`TenantTemplateStore`, PR-LDC-27).
+// Migrations: `notify/0001`–`0004`, applied by `infrabyx-migrate` when this package is installed.
 export const PACKAGE_NAME = "@infrabyx/notify" as const;
 export * from "./catalogue.js";
 export * from "./routing.js";
@@ -10,3 +11,5 @@ export * from "./service.js";
 export * from "./push-store.js";
 export * from "./approval-notifier.js";
 export * from "./otp-sender.js";
+export * from "./template-lint.js";
+export * from "./template-store.js";

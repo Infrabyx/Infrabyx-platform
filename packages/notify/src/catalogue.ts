@@ -68,6 +68,18 @@ export function lintCatalogues(
         at("whatsapp channel without a template");
       if (c.templates.whatsapp?.category === "marketing" && c.category !== "marketing")
         at("a WhatsApp marketing template on a non-marketing class");
+      // A declared variable whitelist (PR-LDC-27) covers what the class's own templates take.
+      if (c.variables) {
+        const declared = new Set(c.variables);
+        if (declared.size !== c.variables.length) at("variables lists a name twice");
+        for (const [ch, vars] of [
+          ["sms", c.templates.sms?.vars],
+          ["whatsapp", c.templates.whatsapp?.vars],
+        ] as const)
+          for (const v of vars ?? [])
+            if (!declared.has(v))
+              at(`the ${ch} template takes ${v}, which variables does not list`);
+      }
     }
   }
   return out;
