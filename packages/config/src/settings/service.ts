@@ -15,7 +15,14 @@ import type { SecretKey } from "@infrabyx/crypto";
 import { internalEvent } from "../events.js";
 import { defaultRegistry, type SettingsRegistry } from "./registry.js";
 import type { SettingKey, SettingValueMap } from "./registry.generated.js";
-import { resolve, scopeChain, tierAllowed, type Resolution } from "./resolve.js";
+import {
+  inChainOrder,
+  resolve,
+  scopeChain,
+  tierAllowed,
+  unitChain,
+  type Resolution,
+} from "./resolve.js";
 import { MAX_HISTORY_PAGE, historyCursor, type SettingsStore } from "./store.js";
 import type { ResolutionScope, SettingDef, SettingHistoryPage, SettingScopeRef } from "./types.js";
 import { assertValid, tightenError } from "./validate.js";
@@ -74,13 +81,15 @@ export class SettingsService {
     scope: ResolutionScope = {},
   ): Promise<Resolution & { def: SettingDef }> {
     const def = this.registry.require(key);
+    const units = unitChain(scope.unitIds ?? ctx.unitIds);
     const refs = scopeChain({
       tenantId: ctx.tenantId,
       ...(ctx.entityId ? { entityId: ctx.entityId } : {}),
       ...scope,
+      unitIds: units,
     });
     const rows = await this.o.kernel.read(ctx, (tx) => this.o.store.read(tx, key, refs));
-    return { ...resolve(def, rows), def };
+    return { ...resolve(def, inChainOrder(rows, refs)), def };
   }
 
   /**
@@ -292,7 +301,10 @@ export class SettingsService {
   ): Promise<number> {
     const key = def.key;
     const tenantId =
-      target.tier === "TENANT" || target.tier === "ENTITY" || target.tier === "USER"
+      target.tier === "TENANT" ||
+      target.tier === "ENTITY" ||
+      target.tier === "UNIT" ||
+      target.tier === "USER"
         ? ctx.tenantId
         : null;
     const { old, version } = await this.o.store.write(tx, {
@@ -381,10 +393,13 @@ export class SettingsService {
         return;
       case "TENANT":
       case "ENTITY":
+      case "UNIT":
         if (target.tier === "TENANT" && target.scopeId !== ctx.tenantId)
           throw deny("outside the caller's tenant");
         if (target.tier === "ENTITY" && target.scopeId !== ctx.entityId)
           throw deny("outside the caller's legal entity");
+        if (target.tier === "UNIT" && !unitChain(ctx.unitIds).includes(target.scopeId ?? ""))
+          throw deny("outside the caller's organisation units");
         break;
       default:
         if (ctx.scope !== "platform" || !p.roles.some(isPlatformRole))
@@ -408,7 +423,8 @@ export class SettingsService {
         if (scope.scopeId !== p.id) throw deny("a user reads only their own preferences' history");
         return;
       case "TENANT":
-      case "ENTITY": {
+      case "ENTITY":
+      case "UNIT": {
         if (scope.tier === "TENANT" && scope.scopeId !== ctx.tenantId)
           throw deny("outside the caller's tenant");
         if (p.type === "service") return;
@@ -431,13 +447,24 @@ export class SettingsService {
     value: unknown,
   ): Promise<void> {
     if (def.tighten === undefined || target.tier === "PLATFORM") return;
+    const units = unitChain(ctx.unitIds);
+    // A UNIT write inherits from the units outside it (the chain before it), not from itself.
+    const outer =
+      target.tier === "UNIT" ? units.slice(0, units.indexOf(target.scopeId ?? "")) : units;
     const refs = scopeChain({
       tenantId: ctx.tenantId,
       ...(ctx.entityId ? { entityId: ctx.entityId } : {}),
+      unitIds: outer,
       userId: ctx.principal.id,
     });
-    const rows = await this.o.store.read(tx, def.key, refs);
-    const inherited = resolve(def, rows, target.tier).value;
+    const rows = inChainOrder(await this.o.store.read(tx, def.key, refs), refs);
+    const inherited =
+      target.tier === "UNIT"
+        ? resolve(
+            def,
+            rows.filter((r) => r.tier !== "USER"),
+          ).value
+        : resolve(def, rows, target.tier).value;
     const why = tightenError(def, inherited, value);
     if (why)
       throw new IpbError("IPB-UX-008", {

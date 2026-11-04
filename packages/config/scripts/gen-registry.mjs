@@ -102,6 +102,7 @@ const defs = doc.keys.map((k) => {
     locked: Boolean(k.locked),
     ...(k.tighten !== undefined ? { tighten: k.tighten } : {}),
     userOverride: Boolean(k.user_override),
+    ...(k.unit_override ? { unitOverride: true } : {}),
     change: k.change ?? [],
     mc: k.mc ?? false,
     ...(k.mc_deactivate ? { mcDeactivate: k.mc_deactivate } : {}),
