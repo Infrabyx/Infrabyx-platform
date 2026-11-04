@@ -82,6 +82,10 @@
       "types": "./dist/payments/index.d.ts",
       "default": "./dist/payments/index.js"
     },
+    "./provisioning": {
+      "types": "./dist/provisioning/index.d.ts",
+      "default": "./dist/provisioning/index.js"
+    },
     "./push": {
       "types": "./dist/push/index.d.ts",
       "default": "./dist/push/index.js"

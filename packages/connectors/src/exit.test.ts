@@ -6,8 +6,11 @@ import { PORT_CATALOGUE } from "@infrabyx/contracts/ports";
 import { PORT_EXIT } from "./exit.js";
 
 const SRC = fileURLToPath(new URL(".", import.meta.url));
-/** Adapter folders under src/ and their ports (`llm` is LLM; shared folders have no port). */
-const NOT_PORTS = new Set(["__tests__", "ai", "core", "messaging"]);
+/**
+ * Adapter folders under src/ and their ports (`llm` is LLM; shared folders have no port;
+ * `provisioning` consumes an Ecosystem event and is not an IPB-01 port, R1-D-68).
+ */
+const NOT_PORTS = new Set(["__tests__", "ai", "core", "messaging", "provisioning"]);
 const portFolders = readdirSync(SRC).filter(
   (d) => statSync(join(SRC, d)).isDirectory() && !NOT_PORTS.has(d),
 );
