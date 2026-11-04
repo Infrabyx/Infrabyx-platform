@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.17.0
+
+### Minor Changes
+
+- 714ad01: `ResolvedTemplate` and `TemplateResolver`: a tenant's own SMS, WhatsApp or email template, consulted by NOTIFY at delivery (PR-FBX-33, R1-D-69).
+
 ## 1.16.0
 
 ### Minor Changes

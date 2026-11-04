@@ -1,5 +1,19 @@
 # @infrabyx/notify
 
+## 1.2.0
+
+### Minor Changes
+
+- 714ad01: Per-tenant templates (`templates` option; `null` fails closed) and delivery reports routed by vendor reference (`routeEmailEvents`, `routeSmsReports`, `routeWhatsappEvents`) through the dispatcher's ledgered service reader; migration `notify/0003` (PR-FBX-33, PR-LDC-15; R1-D-69).
+
+### Patch Changes
+
+- Updated dependencies [714ad01]
+  - @infrabyx/contracts@1.17.0
+  - @infrabyx/config@1.9.1
+  - @infrabyx/crypto@1.5.2
+  - @infrabyx/tenancy@1.10.1
+
 ## 1.1.14
 
 ### Patch Changes
