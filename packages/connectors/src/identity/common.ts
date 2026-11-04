@@ -2,9 +2,21 @@
 // @infrabyx/crypto under the issuer's own allow-list (ES256 for both IdPs, C-12); claims are mapped
 // to the PL1 VerifiedClaims schema; revoked sessions and users are refused on every replica within
 // 60 s (IPB-02-05, PL2-D-53); privileged roles without MFA are refused at the API (IPB-02-02).
-import { IpbError } from "@infrabyx/contracts/errors";
+import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
-import { VerifiedClaims, mfaRequired, RoleSchema } from "@infrabyx/contracts";
+import {
+  VerifiedClaims,
+  emailDomainOf,
+  IdentityProviderSpec,
+  idpUrlAllowed,
+  mfaRequired,
+  parseSecretRef,
+  RoleSchema,
+  type IdentityProviderConfig,
+  type IdentityProviderInfo,
+  type RefreshRefusalReason,
+  type SecretRef,
+} from "@infrabyx/contracts";
 import { JwksCache, newId, sha256Hex, verifyJwt, type JwsAlgorithm } from "@infrabyx/crypto";
 import type { createEgress } from "../core/http.js";
 
@@ -174,6 +186,222 @@ export class PgRevocationStore implements RevocationStore {
     if (user !== undefined && c.iat * 1000 < user) return true;
     return c.sid !== undefined && s.sessions.has(subjectHash("session", c.sid));
   }
+}
+
+// ---- refresh-token grant (PR-LDC-03, R1-D-77) ----------------------------------------------------
+
+/** IPB-IDN-001 from `refreshSession`; the detail never carries the token. */
+export const refreshRefused = (reason: RefreshRefusalReason, detail: string): IpbError =>
+  new IpbError("IPB-IDN-001", { detail, meta: { reason } });
+
+/** The RFC 6749 §5.2 error of a refused token request: its `error` and `error_description` only. */
+export function oauthError(r: { body: Uint8Array; json<T>(): T }): {
+  error: string;
+  description: string;
+} {
+  if (!r.body.byteLength) return { error: "", description: "" };
+  try {
+    const b = r.json<{ error?: unknown; error_description?: unknown }>();
+    return {
+      error: typeof b.error === "string" ? b.error : "",
+      description: typeof b.error_description === "string" ? b.error_description : "",
+    };
+  } catch {
+    return { error: "", description: "" };
+  }
+}
+
+/**
+ * The payload of a JWT, unverified. Used only to name the session to revoke after the IdP has
+ * verified a refresh token and reported its reuse; never to authorise anything. `{}` when the
+ * token is not a JWT.
+ */
+export function unverifiedJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return {};
+  try {
+    const p = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as unknown;
+    return p && typeof p === "object" && !Array.isArray(p) ? (p as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The session a refresh token belongs to. */
+export interface RefreshFamily {
+  tenantId: string;
+  userId: string;
+  /** IdP session id, when the access tokens carry one (`sid`). */
+  sid?: string;
+}
+
+/**
+ * What an adapter that detects reuse itself remembers of refresh tokens: SHA-256 hashes only,
+ * never a token. Used where the IdP rotates refresh tokens but does not report a reused one as
+ * such (Zitadel). One family per session; a family is revoked as a whole.
+ */
+export interface RefreshTokenLedger {
+  /** `fromHash` was spent for `toHash`; `toHash` joins `fromHash`'s family, or starts one. */
+  rotated(fromHash: string, toHash: string, family: RefreshFamily, expiresAt: Date): Promise<void>;
+  /** A hash's state; undefined when the ledger has never seen it (or it has expired). */
+  lookup(
+    hash: string,
+  ): Promise<{ spent: boolean; revoked: boolean; family: RefreshFamily } | undefined>;
+  /** Revoke the family of `hash`: every token in it is refused from now on. */
+  revokeFamily(hash: string): Promise<void>;
+}
+
+/**
+ * Single-process ledger for one API replica, tests and local development. Entries expire with
+ * the IdP's absolute refresh lifetime. Several replicas need a shared ledger: on another replica a
+ * reused token is still refused by the IdP, as `refresh_invalid`, without revoking the session.
+ */
+export class MemoryRefreshTokenLedger implements RefreshTokenLedger {
+  private readonly hashes = new Map<string, { familyId: string; spent: boolean; until: number }>();
+  private readonly families = new Map<
+    string,
+    { family: RefreshFamily; revoked: boolean; until: number }
+  >();
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  private prune(): void {
+    const t = this.now();
+    for (const [k, v] of this.hashes) if (v.until <= t) this.hashes.delete(k);
+    for (const [k, v] of this.families) if (v.until <= t) this.families.delete(k);
+  }
+
+  async rotated(
+    fromHash: string,
+    toHash: string,
+    family: RefreshFamily,
+    expiresAt: Date,
+  ): Promise<void> {
+    this.prune();
+    const until = expiresAt.getTime();
+    const from = this.hashes.get(fromHash);
+    const familyId = from?.familyId ?? newId("rtf");
+    const f = this.families.get(familyId);
+    this.families.set(familyId, {
+      family: { ...family },
+      revoked: f?.revoked ?? false,
+      until: Math.max(until, f?.until ?? 0),
+    });
+    this.hashes.set(fromHash, { familyId, spent: true, until: Math.max(until, from?.until ?? 0) });
+    this.hashes.set(toHash, { familyId, spent: false, until });
+  }
+
+  async lookup(hash: string) {
+    const h = this.hashes.get(hash);
+    if (!h || h.until <= this.now()) return undefined;
+    const f = this.families.get(h.familyId);
+    if (!f) return undefined;
+    return { spent: h.spent, revoked: f.revoked, family: { ...f.family } };
+  }
+
+  async revokeFamily(hash: string): Promise<void> {
+    const h = this.hashes.get(hash);
+    const f = h && this.families.get(h.familyId);
+    if (f) f.revoked = true;
+  }
+}
+
+// ---- identity-provider brokers (PR-LDC-09, R1-D-78) ---------------------------------------------
+
+/** Resolves a SECRETS reference (`secretsResolver` from `@infrabyx/config` fits). */
+export type BrokerSecretResolver = (ref: SecretRef, name: string) => Promise<string>;
+
+/** A broker as an adapter reads it back; `managed` is false for one configured by hand. */
+export interface BrokerRecord extends IdentityProviderInfo {
+  managed: boolean;
+  /** The IdP's own id where it differs from the alias (Zitadel). */
+  idpId?: string;
+}
+
+/** Validate a broker spec (schema, then the adapter's URL rule) before any call. */
+export function parseBrokerSpec(
+  raw: unknown,
+  adapter: string,
+  allowLoopbackHttp = false,
+): IdentityProviderConfig {
+  const spec = IdentityProviderSpec.parse(raw);
+  const url = spec.protocol === "oidc" ? spec.discoveryUrl : spec.metadataUrl;
+  if (!idpUrlAllowed(url, allowLoopbackHttp))
+    throw new PortError("IPB-SEC-018", "IDENTITY", {
+      adapter,
+      detail: "an identity provider's discovery or metadata URL must be https",
+    });
+  return spec;
+}
+
+/**
+ * Check an upsert against the brokers there are: the alias must be free or this tenant's own
+ * managed broker, and no domain may already route to another broker. Returns the one updated.
+ */
+export function claimBroker(
+  spec: IdentityProviderConfig,
+  existing: readonly BrokerRecord[],
+  adapter: string,
+): BrokerRecord | undefined {
+  const conflict = (reason: "alias_taken" | "domain_taken", detail: string): never => {
+    throw new PortError("IPB-PORT-004", "IDENTITY", {
+      adapter,
+      detail,
+      meta: { reason, definite: true },
+    });
+  };
+  const same = existing.find((b) => b.alias === spec.alias);
+  if (same && (!same.managed || same.tenantId !== spec.tenantId))
+    conflict("alias_taken", "the alias belongs to another tenant or was configured by hand");
+  const wanted = new Set(spec.domains.map((d) => d.domain));
+  for (const b of existing)
+    if (b.alias !== spec.alias && b.domains.some((d) => wanted.has(d.domain)))
+      conflict("domain_taken", "a domain already routes to another identity provider");
+  return same;
+}
+
+/** The enabled managed broker a sign-in email routes to, by verified domain. */
+export function discoverBroker(
+  existing: readonly BrokerRecord[],
+  email: string,
+): { tenantId: string; alias: string } | null {
+  const domain = emailDomainOf(email);
+  if (!domain) return null;
+  const hit = existing.find(
+    (b) => b.managed && b.enabled && b.domains.some((d) => d.domain === domain),
+  );
+  return hit ? { tenantId: hit.tenantId, alias: hit.alias } : null;
+}
+
+/** The secret behind an OIDC broker's reference; IPB-PORT-001 without a resolver. */
+export async function resolveBrokerSecret(
+  spec: IdentityProviderConfig & { protocol: "oidc" },
+  resolver: BrokerSecretResolver | undefined,
+  adapter: string,
+): Promise<string> {
+  const ref = parseSecretRef(spec.clientSecretRef);
+  if (!resolver || !ref)
+    throw new PortError("IPB-PORT-001", "IDENTITY", {
+      adapter,
+      detail: "no SECRETS resolver is configured for identity-provider client secrets",
+      meta: { reason: "not_configured" },
+    });
+  return resolver(ref, `idp:${spec.alias}`);
+}
+
+/** The broker fields reported back: never a secret. */
+export function brokerInfo(b: BrokerRecord): IdentityProviderInfo {
+  return {
+    tenantId: b.tenantId,
+    alias: b.alias,
+    protocol: b.protocol,
+    displayName: b.displayName,
+    enabled: b.enabled,
+    domains: b.domains.map((d) => ({ ...d })),
+    ...(b.discoveryUrl ? { discoveryUrl: b.discoveryUrl } : {}),
+    ...(b.clientId ? { clientId: b.clientId } : {}),
+    ...(b.metadataUrl ? { metadataUrl: b.metadataUrl } : {}),
+  };
 }
 
 // ---- verifier -----------------------------------------------------------------------------------

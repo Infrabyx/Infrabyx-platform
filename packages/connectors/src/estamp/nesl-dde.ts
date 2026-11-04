@@ -5,7 +5,9 @@
 // money-moving and is not built here (no ESTAMP purchase adapter is approved): `covers` answers
 // false, and `quoteDuty`, `purchase`, `attach`, `verify` and `handleWebhook` are `unsupported`. A
 // document is registered with the stamp certificate another ESTAMP adapter (or the product's
-// physical stamping) procured.
+// physical stamping) procured, or, when it bears no duty, as not stampable with a reason code and
+// no certificate (PR-FBX-35 (c), R1-D-84). Each record carries the signed executants' evidence
+// (time, method, the ESP's transaction id, IP), in the shape of ESIGN's signer trail.
 //
 // Vendor facts below are STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX ([VERIFY]); each lives in one
 // small mapping function so the sandbox can correct it in one place:
@@ -13,17 +15,26 @@
 // - register: `POST /dde/v1/documents` with `{ client_ref, stamp_ref, document (base64 PDF),
 //   document_sha256, executants: [{ ref, name }] }`, answered `{ dde_id, status, executants }`;
 //   `GET /dde/v1/documents?client_ref=…` finds a registration by our reference;
+// - a document that bears no stamp duty (PR-FBX-35 (c), R1-D-84): `non_stampable: { reason_code
+//   NOT_AN_INSTRUMENT | ACKNOWLEDGEMENT | OTHERS, remarks (OTHERS only) }` in place of `stamp_ref`,
+//   echoed on the record as `non_stampable: { reason_code }`;
 // - status: `GET /dde/v1/documents/{dde_id}` with `status` REGISTERED | PENDING_EXECUTION |
-//   EXECUTED | EXPIRED | REJECTED and each executant's `status` SIGNED | PENDING;
+//   EXECUTED | EXPIRED | REJECTED and each executant's `status` SIGNED | PENDING; a signed
+//   executant's evidence (PR-FBX-35 (b)) as `signed_at` (ISO 8601), `sign_mode` AADHAAR_OTP |
+//   AADHAAR_BIO | DSC, `esp_txn_id` and `ip_address`;
 // - executed document: `GET /dde/v1/documents/{dde_id}/executed` (a PDF with the IU's record);
 // - callback: our C-19 secret as `ipb_token` on the URL; the record is always read back.
+import { isIP } from "node:net";
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   DdeRegistration,
   isValidStorageKey,
   type AdapterDescriptor,
+  type DdeNotStampableReason,
   type DdeRecord,
+  type DdeSignerEvidence,
   type DdeState,
+  type SigningMethod,
   type DocFileRef,
   type EstampPort,
   type PortCall,
@@ -77,7 +88,16 @@ interface NeslDocument {
   client_ref?: string;
   status?: string;
   document_sha256?: string;
-  executants?: Array<{ ref?: string; status?: string }>;
+  stamp_ref?: string;
+  non_stampable?: { reason_code?: string };
+  executants?: Array<{
+    ref?: string;
+    status?: string;
+    signed_at?: string;
+    sign_mode?: string;
+    esp_txn_id?: string;
+    ip_address?: string;
+  }>;
 }
 
 // ---- stub-shaped mappings (to confirm against the sandbox) -------------------------------------
@@ -106,6 +126,79 @@ export function neslExecuted(d: NeslDocument): string[] {
   return (d.executants ?? [])
     .filter((e) => (e.status ?? "").toUpperCase() === "SIGNED" && typeof e.ref === "string")
     .map((e) => e.ref as string);
+}
+
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: NeSL's signing mode to ESIGN's signing method. */
+const NESL_SIGN_MODE: Record<string, SigningMethod> = {
+  AADHAAR_OTP: "AADHAAR_OTP_ESIGN",
+  AADHAAR_BIO: "AADHAAR_BIO_ESIGN",
+  DSC: "DSC",
+};
+
+const PRINTABLE_ID = /^[\x21-\x7e]{1,128}$/;
+
+/**
+ * STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: each signed executant's evidence, in the order of
+ * `neslExecuted`. Fails closed: a signed executant without its time, a known signing mode, and an
+ * ESP transaction id or an IP address, or with a malformed one, is a vendor error, never a partial
+ * trail (PR-FBX-35 (b)). Only our party reference, the time, the mode, the ESP's id and the IP are
+ * kept; anything else NeSL sends about the signer is dropped.
+ */
+export function neslSigners(d: NeslDocument): DdeSignerEvidence[] {
+  const bad = (detail: string) => vendorError(ESTAMP, ADAPTER, 502, detail);
+  return (d.executants ?? [])
+    .filter((e) => (e.status ?? "").toUpperCase() === "SIGNED" && typeof e.ref === "string")
+    .map((e): DdeSignerEvidence => {
+      const at = typeof e.signed_at === "string" ? Date.parse(e.signed_at) : NaN;
+      if (!Number.isFinite(at)) throw bad("a signed executant without its signing time");
+      const method = NESL_SIGN_MODE[(e.sign_mode ?? "").toUpperCase()];
+      if (!method) throw bad(`unknown DDE signing mode ${e.sign_mode ?? "(none)"}`);
+      if (e.esp_txn_id !== undefined && !PRINTABLE_ID.test(e.esp_txn_id))
+        throw bad("a malformed ESP transaction id");
+      if (e.ip_address !== undefined && isIP(e.ip_address) === 0)
+        throw bad("a malformed signer IP address");
+      if (e.esp_txn_id === undefined && e.ip_address === undefined)
+        throw bad("a signed executant without an ESP transaction id or an IP address");
+      return {
+        signerRef: e.ref as string,
+        signedAt: new Date(at).toISOString(),
+        method,
+        ...(e.esp_txn_id !== undefined ? { espTransactionId: e.esp_txn_id } : {}),
+        ...(e.ip_address !== undefined ? { signerIp: e.ip_address } : {}),
+      };
+    });
+}
+
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: the port's not-stampable reasons to NeSL's codes. */
+const NESL_NON_STAMPABLE: Record<DdeNotStampableReason, string> = {
+  NOT_AN_INSTRUMENT: "NOT_AN_INSTRUMENT",
+  ACKNOWLEDGEMENT: "ACKNOWLEDGEMENT",
+  OTHER: "OTHERS",
+};
+
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: what NeSL is told about a not-stampable document. */
+export function neslNonStampable(n: { reason: DdeNotStampableReason; note?: string | undefined }): {
+  reason_code: string;
+  remarks?: string;
+} {
+  // The note leaves only where NeSL needs one (OTHERS); the reason code alone otherwise.
+  return {
+    reason_code: NESL_NON_STAMPABLE[n.reason],
+    ...(n.reason === "OTHER" && n.note !== undefined ? { remarks: n.note } : {}),
+  };
+}
+
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: a record's not-stampable reason, or null. */
+export function mapNeslNotStampable(d: NeslDocument): DdeNotStampableReason | null {
+  if (d.non_stampable === undefined) return null;
+  if (d.stamp_ref !== undefined)
+    throw vendorError(ESTAMP, ADAPTER, 502, "a DDE record both stamped and not stampable");
+  const code = (d.non_stampable.reason_code ?? "").toUpperCase();
+  const reason = (Object.keys(NESL_NON_STAMPABLE) as DdeNotStampableReason[]).find(
+    (k) => NESL_NON_STAMPABLE[k] === code,
+  );
+  if (!reason) throw vendorError(ESTAMP, ADAPTER, 502, `unknown non-stampable code ${code}`);
+  return reason;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -170,6 +263,8 @@ export class NeslDde implements EstampPort {
       ddeId: d.dde_id,
       state: mapNeslDdeState(d.status),
       executed: neslExecuted(d),
+      signers: neslSigners(d),
+      notStampableReason: mapNeslNotStampable(d),
       vendorRef: d.dde_id,
       adapter: ADAPTER,
     };
@@ -218,6 +313,12 @@ export class NeslDde implements EstampPort {
           detail: "idempotency key reused with a different document",
         });
       const out = this.record(prior);
+      // Nor is a stamped registration replayed as a not-stampable one, or under another reason.
+      if (out.notStampableReason !== (r.notStampable?.reason ?? null))
+        throw new PortError("IPB-PORT-004", ESTAMP, {
+          adapter: ADAPTER,
+          detail: "idempotency key reused with a different stamping",
+        });
       // The first call may have ended before it recorded where the executed document goes.
       if (!(await this.o.records.get(out.ddeId)))
         await this.o.records.put(out.ddeId, {
@@ -236,7 +337,10 @@ export class NeslDde implements EstampPort {
       headers: await this.headers(),
       body: JSON.stringify({
         client_ref: ref,
-        stamp_ref: r.certificateId,
+        // A stamped document names its certificate; one that bears no duty, NeSL's reason code.
+        ...(r.notStampable
+          ? { non_stampable: neslNonStampable(r.notStampable) }
+          : { stamp_ref: r.certificateId }),
         document: Buffer.from(o.body).toString("base64"),
         document_sha256: r.document.sha256,
         executants: r.executants.map((e) => ({ ref: e.partyRef, name: e.name })),
@@ -247,6 +351,8 @@ export class NeslDde implements EstampPort {
     if (res.status !== 200 && res.status !== 201)
       throw vendorError(ESTAMP, ADAPTER, res.status, "NeSL DDE register");
     const out = this.record(res.json<NeslDocument>());
+    if (out.notStampableReason !== (r.notStampable?.reason ?? null))
+      throw vendorError(ESTAMP, ADAPTER, 502, "NeSL recorded another stamping than was sent");
     await this.o.records.put(out.ddeId, {
       outputPrefix: r.outputPrefix,
       documentSha256: r.document.sha256,

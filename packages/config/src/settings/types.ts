@@ -61,6 +61,35 @@ export interface ResolutionScope {
   userId?: string;
 }
 
+/** One change of a setting at one scope (config/0003; PR-LDC-17, R1-D-82). */
+export interface SettingChange {
+  id: string;
+  /** The `settings.setting.change` ledger entry written in the same transaction. */
+  ledgerId: string;
+  key: string;
+  tier: SettingTier;
+  scopeId: string | null;
+  /** Who made the change (the principal of the transaction that applied it). */
+  actorId: string;
+  /** When it was applied (ISO 8601, UTC). */
+  at: string;
+  /** The value at this scope before, or null when none was set there. */
+  old: unknown;
+  /** The value after, or null when the value at this scope was cleared. */
+  new: unknown;
+  /** The stored row's version after the change. */
+  version: number;
+  /** The approval request that carried it, when it was applied through maker-checker. */
+  approvalRequestId: string | null;
+}
+
+export interface SettingHistoryPage {
+  /** Newest first. */
+  items: SettingChange[];
+  /** Pass as `cursor` for the next (older) page; null when there is none. */
+  nextCursor: string | null;
+}
+
 export interface StoredSetting {
   key: string;
   tier: SettingTier;

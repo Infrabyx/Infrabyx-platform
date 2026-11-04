@@ -1,5 +1,40 @@
 # @infrabyx/tenancy
 
+## 1.12.0
+
+### Minor Changes
+
+- c8b8f88: External grantee kinds `nhb`, `nabard`, `ifsca`, `roc_inspector`, `rcs_inspector`, `crcs_inspector`, `secretarial_auditor`, `tax_auditor`, `concurrent_auditor` and `cooperative_auditor` (PR-LDC-07), with `tenancy.external_grant`'s kind check widened in `tenancy/0016`. A scoped break-glass (PR-LDC-08 (c)): `BreakGlass.request(ctx, reason, minutes, { tenantId, modules?, access? })` narrows a grant to one tenant, its modules (schemas) and `read` (default) or `read_write`; the kernel refuses another tenant, a platform context, a write under `read` and a statement naming another module (`IPB-SEC-005`), and ledgers each refusal (`security.breakglass.scope_refused`) in the tenant touched through the new `PgKernelOptions.audit`, without which a scoped grant is refused. No scope keeps IPB-02-06's behaviour. `BreakGlassGrant.scope` and `BreakGlassUse.scope` show it (R1-D-75).
+- c8b8f88: Tenant-consented support access, a grant separate from break-glass (PR-LDC-08 (a), (b), PR-LDC-20; owner answer #104; R1-D-76): `SupportAccess` (`request` by a `PLT_SUPPORT` principal in the tenant; `consent` by the tenant's ORG_OWNER or ORG_ADMIN; `approve` by a second, different one for `read_write`; `refuse`, `revoke` at once; `list`; `reads`, every read made under a grant), `SupportReads.read` (each read ledgered as `platform.support_read` and recorded for the tenant) and `supportContext(tenantId, principalId)`, onto which a product maps its own support role. Grants list modules, are read-only by default and last at most 24 hours (`tenancy/0017`: `tenancy.support_grant`, `tenancy.support_read`, `tenancy.support_read_record`). The kernel refuses a support principal without a live grant in the tenant (`IPB-TRUST-003`), any read outside `SupportReads`, any write under a read grant and any module outside the grant (`IPB-SEC-005`, ledgered as `security.support_access.scope_refused`), and any `PLT_SUPPORT` context with another role, a platform context, impersonation or break-glass.
+
+### Patch Changes
+
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+  - @infrabyx/contracts@1.19.0
+  - @infrabyx/config@1.10.0
+  - @infrabyx/crypto@1.5.4
+
+## 1.11.0
+
+### Minor Changes
+
+- 9c368c7: `fieldCryptoForTenant(kms, tenantId, opts?)` returns a `TenantFieldCrypto`, a FieldCrypto bound to one validated tenant id (`tnt_` and a ULID) with the tenant key-id convention of the KMS adapter (`tenantFieldKeyId`: LocalKms `local:tenant:<id>`, AWS KMS `alias/ipb/tenant/<id>`, Vault Transit `tenant-<id>`); calls for another tenant and unknown adapters are refused (PR-LDC-16; R1-D-73).
+- 9c368c7: `EcosystemInbox.receive` takes `exclusiveWith`: event types sharing a business key of which only the first stored is processed, as Ecosystem Spec v1.3 requires for one provisioning request (R1-D-70).
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.10.1
 
 ### Patch Changes

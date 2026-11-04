@@ -46,6 +46,8 @@ export async function startCibilStub(): Promise<CibilStub> {
         highCreditAmount: "100000",
         currentBalance: "25000",
         amountOverdue: "0",
+        // A card reports no instalment (stub-shaped [VERIFY], PR-FBX-35).
+        emiAmount: "",
         paymentHistory: "000000000000000000000000000000000000",
         accountStatus: "ACTIVE",
         dateOpened: "01042021",
@@ -57,6 +59,7 @@ export async function startCibilStub(): Promise<CibilStub> {
         highCreditAmount: "500000",
         currentBalance: "0",
         amountOverdue: "0",
+        emiAmount: "15000",
         paymentHistory: "000000015000000000000000000000000000",
         accountStatus: "CLOSED",
         dateOpened: "15012022",

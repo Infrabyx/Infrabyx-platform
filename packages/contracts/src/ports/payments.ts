@@ -87,6 +87,44 @@ export interface PaymentEvent {
 /** Technical outcome counted by the failover success rate (P-08); customer and issuer declines are not. */
 export type PaTechnicalOutcome = "ok" | "api_error" | "timeout" | "gateway_failure";
 
+/** Where a settlement comes from: the payment gateway's payout to us, or an NPCI settlement. */
+export const SETTLEMENT_SOURCES = ["gateway", "npci"] as const;
+export type SettlementSource = (typeof SETTLEMENT_SOURCES)[number];
+
+const PaiseAmount = z
+  .number()
+  .int()
+  .nonnegative()
+  .refine(Number.isSafeInteger, "amount must be a safe integer");
+
+/**
+ * One settlement credited to the settlement account (Finbyx PR-FBX-34 (2), R1-D-80), for three-way
+ * reconciliation against the bank statement (DISBURSEMENT_RAIL `statementLines`) and our ledger.
+ * All amounts are integer paise; `netMinor` is `grossMinor - feesMinor - taxMinor +
+ * adjustmentsMinor` exactly.
+ */
+export const SettlementLine = z
+  .object({
+    settlementId: regulated(z.string().min(1).max(120)),
+    source: internal(z.enum(SETTLEMENT_SOURCES)),
+    /** The bank transfer's UTR, once the settlement is paid out to the account. */
+    utr: regulated(z.string().min(1).max(64).nullable()),
+    grossMinor: regulated(PaiseAmount),
+    feesMinor: regulated(PaiseAmount),
+    /** GST on the fees. */
+    taxMinor: regulated(PaiseAmount),
+    /** Refunds, chargebacks, reserves or other adjustments, signed; absent when none. */
+    adjustmentsMinor: regulated(z.number().int().refine(Number.isSafeInteger)).optional(),
+    netMinor: regulated(z.number().int().refine(Number.isSafeInteger)),
+    settledOn: internal(z.iso.date()),
+  })
+  .strict()
+  .refine(
+    (l) => l.netMinor === l.grossMinor - l.feesMinor - l.taxMinor + (l.adjustmentsMinor ?? 0),
+    "net is gross less fees and tax, plus adjustments",
+  );
+export type SettlementLine = z.infer<typeof SettlementLine>;
+
 export interface ReconcileReport {
   from: string;
   to: string;
@@ -94,6 +132,11 @@ export interface ReconcileReport {
   refunds: number;
   settlements: number;
   differences: Array<{ ref: string; kind: string; ours?: number; theirs?: number }>;
+  /**
+   * The settlements in the range as typed lines (PR-FBX-34 (2)); optional, so adapters that only
+   * count settlements stay valid. When present, `settlements` is its length.
+   */
+  settlementLines?: SettlementLine[];
 }
 
 /**

@@ -1,5 +1,23 @@
 # @infrabyx/contracts
 
+## 1.19.0
+
+### Minor Changes
+
+- c8b8f88: BUREAU: `Tradeline.emiPaise` (the reported instalment in integer paise, `null` when the CIC reports none). ESTAMP DDE: `DdeRecord.signers` (`DdeSignerEvidence`: signer reference, signed at, signing method, ESP transaction id or signer IP, the shape of ESIGN's signer trail) and `DdeRecord.notStampableReason`; `DdeRegistration.notStampable` with the `DDE_NOT_STAMPABLE_REASONS` code table (`NOT_AN_INSTRUMENT`, `ACKNOWLEDGEMENT`, `OTHER` with a note), refused with a certificate or a duty; `certificateId` is now required only on the stamped path (PR-FBX-35; R1-D-84).
+- c8b8f88: The DISBURSEMENT_RAIL product port (IPB-01 §01.4.4.3, ADR-0006), collection half: `DisbursementRailPort` with `presentDebitBatch` (NACH and UPI AutoPay debits against registered mandates; each item a money call checked by `assertDebitBatch`: `assertMoneyCall` per item, integer paise, one key per item, the whole batch refused on any failure; a key presented at most once), `readPresentationResponse` (per-item results with NPCI return codes classed by `NPCI_RETURN_CODES` and `classifyReturnCode`: re-presentable or final, unknown codes final) and `statementLines(range)`; catalogued at tier 1 and listed in `R1_PORTS`. PAYMENTS: optional typed `ReconcileReport.settlementLines` (`SettlementLine`: gross, fees, tax, adjustments and net in integer paise, UTR, date), backwards compatible. No adapter (PR-FBX-34 (1), (2); R1-D-80).
+- c8b8f88: The COMPANY_DATA port interface (IPB-01 §01.4.4.2): `CompanyDataPort` with `lookupCin`, `lookupLlpin`, `getDirectors` and `getCharges`; company master data, directors (DIN, designation, appointment and cessation dates) and charges (holder, amount in integer paise, open or satisfied, dates), each result labelled with the register date (`asOf`) and `stale`; `CIN`, `LLPIN` and `DIN` patterns and the INTERNAL lookup schemas. COMPANY_DATA is now `interfaceDefined` and listed in `R1_PORTS`. No adapter until the owner chooses a data source (PR-LDC-02, OWNER-QUESTIONS #102; R1-D-79).
+- c8b8f88: Identity-provider brokers on the IDENTITY port (optional, `IPB-PORT-001` `unsupported` where absent): `upsertIdentityProvider`, `removeIdentityProvider`, `listIdentityProviders` and `discoverIdentityProvider` (`IdentityBrokerAdmin`). `IdentityProviderSpec` is a strict OIDC or SAML broker for one tenant: `IdpAlias`, display name, discovery or metadata URL, client id and `clientSecretRef` (a `secret://` reference only; a literal secret is refused), scopes, `enabled` and `VerifiedDomain`s; `IdentityProviderInfo` never carries a secret. `emailDomainOf` and `idpUrlAllowed` helpers (PR-LDC-09; R1-D-78).
+- c8b8f88: `refreshSession` on the IDENTITY port (optional, `IPB-PORT-001` `unsupported` where absent): the refresh-token grant with rotation, returning `RefreshedTokens` with a new refresh token every time; a spent token presented again revokes its session and raises `IPB-IDN-001` with `meta.reason: "refresh_reused"`, any other refused token `"refresh_invalid"` (`REFRESH_REFUSAL_REASONS`); `IdentitySessionRefresh` names the grant with `verifyToken` for contract cases and fakes (PR-LDC-03; R1-D-77).
+- c8b8f88: `PLT_SUPPORT` joins the platform roles (with `SUPPORT_ROLE`; MFA required as for every `PLT_*` role), the id prefixes `sgr` and `srd`, and the internal events `SupportAccessRequested`, `SupportAccessGranted` and `SupportAccessRevoked`, for tenant-consented support access (PR-LDC-08 (a), (b), PR-LDC-20; owner answer #104; R1-D-76).
+
+## 1.18.0
+
+### Minor Changes
+
+- 9c368c7: `PrincipalPurposeConsent` and the optional `ConsentPort.latestByPrincipal(principalRef, call?)`: the latest record per purpose for a principal, in the caller's tenant only (PR-LDC-14; R1-D-72).
+- 9c368c7: Ecosystem Spec v1.3 provisioning events (PR-040, owner sign-off #105): `PROVISIONING_REQUESTED_TYPE`, `PROVISIONING_FAILED_TYPE`, `ProvisioningRequestedData`, `ProvisioningFailedData`, the `provisioning_failure_reason` code table with its retryable set and `PROVISIONAL_TENANT_PURGE_DAYS`; both events added to the regulated-message list (R1-D-70).
+
 ## 1.17.0
 
 ### Minor Changes

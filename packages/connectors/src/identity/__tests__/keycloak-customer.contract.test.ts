@@ -2,7 +2,8 @@
 // (R1-D-19): the image is built from infra/keycloak/customer-otp (the pinned Keycloak plus the
 // extension compiled against its own jars), the customer realm is applied with
 // `applyCustomerRealm`, and the shared customer cases run against it. Then the realm read-back,
-// the extension's own refusals, and the refusal of a realm without the extension.
+// the extension's own refusals, the image's breached-password list (PR-LDC-04, R1-D-83), and the
+// refusal of a realm without the extension.
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CustomerIdentityPort } from "@infrabyx/contracts/ports";
@@ -10,6 +11,11 @@ import { generateSeedPassword, MemoryReplayStore } from "@infrabyx/crypto";
 import { defineContractSuite, startService, type StartedService } from "@infrabyx/testing";
 import { MemoryRevocationStore } from "../common.js";
 import { customerIdentitySettings, MemoryCustomerAuthStore } from "../customer.js";
+import {
+  KEYCLOAK_PASSWORD_BLACKLIST,
+  KeycloakIdentity,
+  keycloakPasswordPolicy,
+} from "../keycloak.js";
 import {
   KeycloakCustomerIdentity,
   keycloakCustomerRealmSettings,
@@ -149,6 +155,54 @@ describe("@IPB-01-15 IDENTITY hermetic leg: customer sign-in on keycloak 26.8.1 
     );
     expect(r3.status).toBe(401);
     expect(await r3.text()).not.toMatch(/access_token/);
+  });
+
+  it("the image carries the breached-password list: a realm applied with it refuses a listed password (PR-LDC-04)", async () => {
+    const realm = "ipb-blacklist";
+    const s = await KeycloakIdentity.applyRealm({
+      baseUrl: base,
+      masterAdmin: admin,
+      allowLoopbackHttp: true,
+      spec: {
+        realm,
+        profile: "tenant",
+        apiClient: { clientId: "ipb-bl-api", redirectUris: ["http://127.0.0.1/callback"] },
+        adminClientId: "ipb-bl-admin",
+        audience: "ipb-bl-api",
+        passkeys: false,
+        passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST,
+      },
+    });
+    const p = new KeycloakIdentity({
+      baseUrl: base,
+      realm,
+      clientId: "ipb-bl-api",
+      clientSecret: s.clientSecret,
+      adminClientId: "ipb-bl-admin",
+      adminClientSecret: s.adminClientSecret,
+      audience: "ipb-bl-api",
+      revocations,
+      allowLoopbackHttp: true,
+    });
+    expect((await p.readRealmSettings()).passwordPolicy).toBe(
+      keycloakPasswordPolicy(KEYCLOAK_PASSWORD_BLACKLIST),
+    );
+    const user = `bl.${Date.now()}@example.test`;
+    await p.provisionUser({
+      email: user,
+      displayName: "Blacklist Check",
+      tenantId: "tnt_a",
+      roles: ["ORG_MEMBER"],
+      password: { value: generateSeedPassword(), temporary: false },
+      mfaRequired: false,
+    });
+    // On the list (12+ characters, so only the list refuses it), and in another case.
+    for (const listed of ["123qweasdzxc", "QwertyQwerty"])
+      await expect(p.setPassword(user, listed, false)).rejects.toMatchObject({
+        code: "IPB-PORT-002",
+        meta: { status: 400 },
+      });
+    await expect(p.setPassword(user, generateSeedPassword(), false)).resolves.toBeUndefined();
   });
 
   it("the stock image is refused: applyCustomerRealm needs the extension", async () => {

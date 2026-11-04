@@ -74,3 +74,19 @@ What changes for Finbyx with the wave 2 release (R1-plan M39; R1-D-69). Move eve
 1. **PR-FBX-33, per-tenant templates (guide §7aa).** Pass `templates: (ctx, cls, channel, locale) => …` to `NotifyService`. Return the tenant's DLT entity id, sender id, DLT template id and positional `vars` for SMS, or the template name and language for WhatsApp; `undefined` uses the catalogue's; `null` fails that delivery closed (nothing is sent; `IPB-PORT-001`, `template_missing`). NOTIFY calls it at every delivery, so `dispatchDue` sends each tenant's own template too. **Shim removed:** the AsyncLocalStorage `TenantSms` and `TenantEmail` wrappers. WhatsApp can now be turned on per tenant.
 2. **Delivery reports.** If your SMS or WhatsApp vendor's webhook carries no tenant, call `routeSmsReports(adapter, reports)` or `routeWhatsappEvents(adapter, events)` after verifying the webhook, instead of resolving the tenant yourself.
 3. **Mark met** PR-FBX-33 in your `docs/platform-requests.md`.
+
+## 7. Wave 3 (version PR #212, release run 188: `contracts` 1.18.0, `connectors` 1.9.0, `consent` 1.2.0, `tenancy` 1.11.0, `testing` 1.9.0, patches of the rest)
+
+What changes for Finbyx with the wave 3 release (R1-D-72, R1-D-73). Move every `@infrabyx/*` dependency to the run 188 versions together and run `infrabyx-migrate --require-all` (`consent/0004`).
+
+1. **#95, the purpose-consent purge (guide §7ac).** Schedule `ConsentPurge.sweepPurposes()` daily beside `sweep()`, and call `ConsentSubjects.endRelationship(ctx, subjectRef, closedAt)` when a loan relationship ends. Records go only once that end and any later withdrawal are both 8 years past, never under a legal hold (`ConsentSubjects.legalHold`); the reading of the two clocks is OWNER-QUESTIONS #108. No setting to change. **Shim removed:** none; this adds the approved retention sweep.
+2. **Optional:** `fieldCryptoForTenant` (guide §7ad) if you seal fields per tenant; `latestByPrincipal` (guide §7ac) to read a borrower's latest consent per purpose.
+3. **No change needed** for the v1.3 provisioning events (Finbyx is provisioned by the Operations Hub) or the CEL string functions.
+
+## 8. Wave 4 (version PR #214: `contracts` 1.19.0, `connectors` 1.10.0, `testing` 1.10.0, patches and minors of the rest)
+
+What changes for Finbyx with the wave 4 release (R1-D-80, R1-D-84). Move every `@infrabyx/*` dependency to that release together and run `infrabyx-migrate --require-all` (`tenancy/0016`, `0017`, `config/0003`; none is Finbyx-specific).
+
+1. **PR-FBX-34 (1), (2), collection ports (guide §7ak).** Replace your product-local collection ports (presentation, response file, statement lines, settlement lines) with `DisbursementRailPort` and PAYMENTS `ReconcileReport.settlementLines`, using `FakeDisbursementRail` and `FakeSettlements`; keep the port refused above staging until a sponsor-bank adapter exists (the owner's word, money movement). Each debit item is a money call with its approval reference, idempotency key and integer paise. (3) is deferred until after the pilot.
+2. **PR-FBX-35, bureau EMI, DDE signer trail and not-stampable DDE (guide §7ao).** (a) Use `Tradeline.emiPaise` in FOIR; impute or refer when it is `null`, never count it as 0. (b) Store `DdeRecord.signers` with your ESIGN evidence. (c) Register sanction letters and KFS acknowledgements with `ddeRegister({ …, notStampable: { reason } })` from your RULES' stampability decision. If you implement `EstampPort` yourself, add `signers` and `notStampableReason` to its `DdeRecord`. **Shims removed:** the fail-closed handling of each.
+3. **Mark met** PR-FBX-34 (1), (2) (interfaces) and PR-FBX-35.

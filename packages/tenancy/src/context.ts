@@ -7,6 +7,7 @@ import type { KernelContext } from "@infrabyx/contracts/kernel";
 import { VerifiedClaims } from "@infrabyx/contracts/ports";
 import {
   SERVICE_READER_ROLES,
+  SUPPORT_ROLE,
   isAgentRole,
   isPlatformRole,
   isServiceReaderRole,
@@ -62,6 +63,10 @@ export function contextFromClaims(
   return ctx;
 }
 
+/** A support principal (R1-D-76): its context holds `PLT_SUPPORT`. */
+export const isSupportContext = (ctx: KernelContext): boolean =>
+  ctx.principal.roles.includes(SUPPORT_ROLE);
+
 export const isAgentPrincipal = (ctx: KernelContext): boolean =>
   ctx.principal.type === "agent" || ctx.principal.roles.some(isAgentRole);
 
@@ -96,6 +101,10 @@ export function assertValidContext(ctx: KernelContext): void {
     assertExternalContext(ctx);
     return;
   }
+  if (isSupportContext(ctx)) {
+    assertSupportContext(ctx);
+    return;
+  }
   const reader = serviceReaderRole(ctx);
   if (reader) {
     const readers = ctx.principal.roles.filter(isServiceReaderRole);
@@ -117,6 +126,27 @@ export function assertValidContext(ctx: KernelContext): void {
   ) {
     throw new IpbError("IPB-SEC-005", { detail: "a platform context needs a PLT_* role" });
   }
+}
+
+/**
+ * A support principal (LawDocsComply PR-LDC-08 (a), PR-LDC-20; #104; R1-D-76) is a named user
+ * holding `PLT_SUPPORT` and no other role, in one customer tenant's context: never a platform
+ * context, the platform tenant, impersonation, break-glass or an external grant. What it may see
+ * there is its live, tenant-consented grant, which the kernel checks on every transaction.
+ */
+function assertSupportContext(ctx: KernelContext): void {
+  if (
+    ctx.principal.type !== "user" ||
+    ctx.principal.roles.length !== 1 ||
+    ctx.scope === "platform" ||
+    ctx.tenantId === PLATFORM_TENANT_ID ||
+    ctx.act ||
+    ctx.breakGlassGrantId ||
+    ctx.externalGrantId !== undefined
+  )
+    throw new IpbError("IPB-SEC-005", {
+      detail: `${SUPPORT_ROLE} is a named user with no other role, in one tenant's context`,
+    });
 }
 
 const EXTERNAL_GRANT_ID = /^xgr_[0-9A-HJKMNP-TV-Z]{26}$/;

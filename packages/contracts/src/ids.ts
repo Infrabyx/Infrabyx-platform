@@ -15,6 +15,8 @@ export const ID_PREFIXES = {
   apr: "approval request",
   apd: "approval decision",
   bgr: "break-glass grant",
+  sgr: "support access grant (tenant-consented, R1-D-76)",
+  srd: "read made under a support access grant (R1-D-76)",
   imp: "impersonation session",
   led: "audit ledger entry",
   anc: "audit anchor",

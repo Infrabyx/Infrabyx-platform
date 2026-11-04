@@ -1,5 +1,34 @@
 # @infrabyx/audit
 
+## 1.7.0
+
+### Minor Changes
+
+- c8b8f88: `AuditService.externalReadSummary(ctx, day)` summarises one tenant's external reads on one UTC day from the `platform.external_read` ledger entries that `ExternalReads` writes: reads per grant and table, per grantee and per table, each with the first and last read time. It reads in the tenant's context under the ledger's RLS, refuses an external principal (IPB-SEC-005) and returns ids, counts and times only, never the grantee's name, IP or user-agent hashes, trace ids or digests. The entries keep the row count only inside a digest, so reads are counted, not rows (PR-LDC-10; R1-D-81).
+
+### Patch Changes
+
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+  - @infrabyx/contracts@1.19.0
+  - @infrabyx/config@1.10.0
+  - @infrabyx/crypto@1.5.4
+
+## 1.6.5
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.6.4
 
 ### Patch Changes

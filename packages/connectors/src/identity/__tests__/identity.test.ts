@@ -6,7 +6,14 @@
 // eslint-disable-next-line ipb/no-direct-crypto
 import { generateKeyPairSync, sign, type KeyObject } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { keycloakPersonName } from "../keycloak.js";
+import {
+  ipbRealm,
+  KEYCLOAK_IPB_SETTINGS,
+  KEYCLOAK_PASSWORD_BLACKLIST,
+  keycloakPasswordPolicy,
+  keycloakPersonName,
+  type KeycloakRealmSpec,
+} from "../keycloak.js";
 import {
   assertMfaForRoles,
   MemoryRevocationStore,
@@ -233,5 +240,31 @@ describe("keycloakPersonName", () => {
     expect(keycloakPersonName("Tenant Admin")).toBe("Tenant Admin");
     expect(keycloakPersonName("Ærø O'Brien-Søren")).toBe("Ærø O'Brien-Søren");
     expect(keycloakPersonName('<b>&"$%!#?;*~/\\|^=[]{}')).toBe("b");
+  });
+});
+
+describe("Keycloak breached-password list (PR-LDC-04, R1-D-83)", () => {
+  const spec: KeycloakRealmSpec = {
+    realm: "ipb",
+    profile: "tenant",
+    apiClient: { clientId: "api", redirectUris: ["https://app.example.test/cb"] },
+    adminClientId: "admin",
+    audience: "api",
+    passkeys: true,
+  };
+  it("adds passwordBlacklist over the bundled list to the IPB floor when the realm names it", () => {
+    expect(ipbRealm(spec).passwordPolicy).toBe(KEYCLOAK_IPB_SETTINGS.passwordPolicy);
+    expect(
+      ipbRealm({ ...spec, passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST }).passwordPolicy,
+    ).toBe(
+      "length(12) and notUsername and notEmail and passwordHistory(5) and passwordBlacklist(ipb-common-passwords.txt)",
+    );
+    expect(keycloakPasswordPolicy(KEYCLOAK_PASSWORD_BLACKLIST)).toMatch(
+      /^length\(12\) and .* and passwordBlacklist\(ipb-common-passwords\.txt\)$/,
+    );
+  });
+  it("refuses a list name that is not a plain file name", () => {
+    for (const bad of ["", "../etc/passwd", "a/b.txt", "x) and length(1", ".hidden", "a..b"])
+      expect(() => keycloakPasswordPolicy(bad), bad).toThrow(RangeError);
   });
 });

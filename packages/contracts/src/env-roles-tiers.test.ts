@@ -33,7 +33,10 @@ describe("environment catalogue (IPB-09-15) and guard groups (IPB-11 §11.2)", (
 describe("roles (PL1-D-05)", () => {
   it("contains the owner-approved platform and tenant floor", () => {
     expect(PLATFORM_ROLES).toContain("PLT_ACCESSIBILITY_LEAD");
-    expect(PLATFORM_ROLES).toHaveLength(9);
+    // PLT_SUPPORT: tenant-consented support access (owner answer #104; R1-D-76).
+    expect(PLATFORM_ROLES).toContain("PLT_SUPPORT");
+    expect(PLATFORM_ROLES).toHaveLength(10);
+    expect(mfaRequired(["PLT_SUPPORT"])).toBe(true);
     expect(TENANT_ROLES).toEqual([
       "ORG_OWNER",
       "ORG_ADMIN",

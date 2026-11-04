@@ -20,6 +20,11 @@ RUN mkdir classes \
 
 FROM keycloak
 COPY --from=compile --chown=1000:0 /build/ipb-customer-otp.jar /opt/keycloak/providers/ipb-customer-otp.jar
+# The bundled breached-password list for the `passwordBlacklist` policy (PR-LDC-04, R1-D-83): a
+# realm applied with `passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST` refuses its passwords. Read
+# from the image only; Keycloak calls no third party. Source and licence: password-blacklists/.
+COPY --chown=1000:0 --chmod=0444 password-blacklists/ipb-common-passwords.txt /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt
+COPY --chown=1000:0 --chmod=0444 password-blacklists/LICENSE.SecLists /opt/keycloak/data/password-blacklists/LICENSE.SecLists
 RUN /opt/keycloak/bin/kc.sh build --db=postgres --health-enabled=true
 USER 1000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

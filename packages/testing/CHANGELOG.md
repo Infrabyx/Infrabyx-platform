@@ -1,5 +1,55 @@
 # @infrabyx/testing
 
+## 1.10.0
+
+### Minor Changes
+
+- c8b8f88: BUREAU and ESTAMP DDE for PR-FBX-35 (R1-D-84): the bureau fake and the CIBIL stub report an EMI on one tradeline and none on another, with a contract case for both; the ESTAMP fake keeps each signer's evidence and takes a not-stampable registration; the NeSL DDE stub records signing evidence (`execute(ddeId, ref, evidence?)`) and non-stampable registrations; `estampDdeContractCases` gains the signer-trail and not-stampable cases.
+- c8b8f88: `FakeDisbursementRail` (a fake sponsor bank with a `respond()` response-file hook and statement lines) with `disbursementRailContractCases(fixtures)` and `DISBURSEMENT_RAIL_FAKE_FIXTURES`, and `FakeSettlements` with `settlementLineContractCases()`: replayed, repeated and reused idempotency keys, a missing approval, an agent principal, non-integer paise, return codes classed re-presentable or final, statement lines and settlements within the range (PR-FBX-34 (1), (2); R1-D-80).
+- c8b8f88: `FakeCompanyData` with a fictional register (`FAKE_COMPANY_REGISTER`, `COMPANY_DATA_FAKE_FIXTURES`: a private company, a listed company and an LLP) and `companyDataContractCases(fixtures)`: malformed identifiers refused before the source, unknown CIN, master data, directors and charges in integer paise, and the register date on every result (PR-LDC-02; R1-D-79).
+- c8b8f88: IDENTITY contract cases for identity-provider brokers, `identityBrokerContractCases(fixtures)` (create and update in place without a secret in any answer; a literal secret, a plain string for the reference, a bad alias or URL refused; another tenant can neither take over nor remove a broker; discovery by verified domain to enabled brokers only, one broker per domain; linking only: an unknown user signing in through a broker is refused and an existing account of the broker's tenant is linked, through the `brokerSignIn` fixture; a session of another tenant's account through the broker refused, where the leg provides `brokeredSession`; SAML when the leg serves metadata; removal frees the domain), and `FakeIdentityBrokers` with `FAKE_BROKER_SIGN_IN`, a fake that passes them (PR-LDC-09; R1-D-78).
+- c8b8f88: IDENTITY contract cases for the refresh-token grant, `identityRefreshContractCases(fixtures, { pauseMs })` (rotation; a reused token is `refresh_reused` and revokes the session, its successor and access tokens then fail; an unknown token is `refresh_invalid`; no token in any error), and `FakeIdentitySessions`, a fake that passes them (PR-LDC-03; R1-D-77).
+
+### Patch Changes
+
+- c8b8f88: The BUREAU and COMPANY_DATA contract cases match a PAN only as a whole word, so a PAN-shaped run inside a random ULID (a consent id) no longer fails the "known subject" case at random.
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+  - @infrabyx/tenancy@1.12.0
+  - @infrabyx/contracts@1.19.0
+  - @infrabyx/audit@1.7.0
+  - @infrabyx/config@1.10.0
+  - @infrabyx/seed@1.0.27
+  - @infrabyx/crypto@1.5.4
+
+## 1.9.0
+
+### Minor Changes
+
+- 9c368c7: RULES contract cases for the CEL string functions and a refused `matches` pattern, with `RULES_STRING_FIXTURE` and `stringFixtureInput` (PR-LDC-13; R1-D-71).
+- 9c368c7: `FakeConsentLedger.latestByPrincipal` and `recordPurposeConsent` (tenant-scoped by `call.tenantId`), and a CONSENT contract case for `latestByPrincipal` (PR-LDC-14; R1-D-72).
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/tenancy@1.11.0
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/audit@1.6.5
+  - @infrabyx/seed@1.0.26
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.8.1
 
 ### Patch Changes
