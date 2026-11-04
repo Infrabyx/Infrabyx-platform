@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-03
+Updated: 2026-11-04
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,6 +9,15 @@ Updated: 2026-11-03
 | Packages              | Published to GitHub Packages (release run 186, `8769f71`, 4 Nov 2026): **1.17.0** contracts; **1.10.1** tenancy; **1.9.1** config; **1.8.1** testing, connectors; **1.6.4** audit; **1.5.2** crypto; **1.2.5** ui; **1.2.4** workflow, export; **1.2.0** notify; **1.1.23** cms; **1.1.6** consent; **1.0.26** rules; **1.0.25** ai, feedback, seed, trust, vidhi; **1.0.24** brand; **1.0.17** a11y; **1.0.0** hlp. Records under "Releases after 1.0.0" |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                         |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                             |
+
+## Session of 4 Nov (seventh session): v1.3 signed off, wave 3, the 4 Nov requests
+
+- **Start:** `main` at `8769f71`; wave 2 released by run 186 (record below); no other open PR or session branch. Check-ins moved to this chat: `trig_01RwGiJr881dHumgKNtW9mUc` (daily 17:41 IST) and `trig_01UaveHeQh5ffNPXRpMTX2XG` (6 Nov 09:23 UTC, Keycloak re-scan); the old chat's `trig_01WMBtiosKaKjefu4yWvhr6J` and `trig_0184SooqR9dM7WJKU3ULF5Re` are disabled.
+- **Owner answer #105 (R1-D-70):** PR-040 signed off with a retention rule; the v1.3 text is applied to `docs/ecosystem/` in its own owner-authorised docs-only PR #210, which the owner merges (CI's `spec-readonly` step refuses it by design).
+- **Wave 3 (one PR, one gate):** M38's request half and failure path (R1-D-70; `contracts`, `tenancy`, `connectors` minors); M40 CEL string functions (R1-D-71; `connectors`, `testing` minors); M41 platform purpose notices, `latestByPrincipal` and #95's purge (R1-D-72; `consent/0004`; `contracts`, `consent`, `testing` minors); M42 `fieldCryptoForTenant` (R1-D-73; `tenancy` minor). Local checks: build, lint, typecheck and unit over every package; integration for tenancy, connectors, rules, testing, vidhi and consent; migration-lint; format; ipb-check. Not runnable here: the `ai` retrieval tests (PostgreSQL 18) and the reference worker's Temporal suite (no container runtime).
+- **Product requests of 4 Nov (R1-D-74):** PR-FBX-34 (1) and (2) accepted as M51, (3) deferred; PR-LDC-17 history accepted as M52, scopes below ENTITY raised as PR-042; PR-LDC-18 answered (no change, guide §7ae); PR-LDC-19 deferred to #106; PR-LDC-20 folded into M50.
+- **Open questions:** #106 (approval expiry from a product setting), #107 (the platform-key path for CONFIDENTIAL-only tenants), #108 (#95's retention clock; default the later of the two).
+- **Next:** the wave 3 gate (`ci:run`), its version PR and release record and the wave 3 adoption notes; then wave 4 (M43 to M48, M50, M51, M52), one gate.
 
 ## Handover (2026-11-04, sixth session: owner answers #101 to #104, waves 1 and 2)
 
