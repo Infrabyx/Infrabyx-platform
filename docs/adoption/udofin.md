@@ -2,6 +2,15 @@
 
 What Udofin bumps, migrates and retires to take the platform's answers to PR-UDF-025 and PR-UDF-028 to PR-UDF-035. The detail of each step is in the product guide section named.
 
+## 0. First item when Udofin resumes: the ambient check and `tenancy` 1.14.1 (R1-D-92, R1-D-94)
+
+Udofin is paused. When it resumes, do this before anything else in this note, and before the next exit gate.
+
+1. **Check.** Find every `kernel.ambient` call (PR-UDF-033) and every mutation it joins. Each joined call must be awaited inside the ambient callback: no fire-and-forget, no `Promise.all` or `Promise.race` over joined mutations that can leave one running when another is refused, and no `tx` kept beyond its callback. Record what you found (call sites, any unawaited call) in Udofin's STATUS.
+2. **Upgrade.** Move every `@infrabyx/*` dependency together to the release that carries `tenancy` 1.14.1 or later (STATUS, "Releases after 1.0.0"); this supersedes the versions in §1 below. Run the test suite: a call the check missed now fails loudly (`KernelGuardError`, "has ended" or "still running") instead of running in another transaction.
+
+**Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.
+
 ## 1. Bump
 
 Move every `@infrabyx/*` dependency together, in one change, to the versions of the release that follows version PR "chore: version packages" of 3 November 2026 (STATUS, "Releases after 1.0.0"): `contracts` 1.15.0, `tenancy` 1.9.0, `connectors` 1.5.0, `crypto` 1.4.0, `config` 1.6.0, `workflow` 1.2.0, `testing` 1.5.0, `notify` 1.1.11, and the rest at their patch.
@@ -42,7 +51,3 @@ Then mark PR-UDF-025, 029, 031, 032, 033, 034 and 035 met in `docs/platform-requ
 | PR-UDF-036 (a browser and React Native entry of `crypto`)                                                                                                                              | Needs a plan and an owner question (cryptography in the browser)                                                                                                                 |
 
 Stays product-local: `LENDER_CONNECTOR` and the mapping packs (owner answer #82), the journey states themselves, and Udofin's contact policy until PR-UDF-023 is planned.
-
-## Security patch: `tenancy` 1.14.1 (R1-D-92)
-
-**Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

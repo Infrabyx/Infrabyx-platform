@@ -15,7 +15,9 @@ Updated: 2026-11-04
 - **Owner answers (R1-D-91):** #114 yes, #115 yes (sandbox maker-checker in wave 7), PR-042 yes (lower setting scopes in wave 7), PR-043 `X-Infrabyx-JWS` (v1.4 text as a docs PR for sign-off). The race goes first.
 - **Fix (R1-D-92, `tenancy` patch):** a joined call left running when its ambient mutation ended could run in the next transaction on the returned connection, another tenant's (reproduced by `ambient-race.int.test.ts`, one-connection pool: the statement read `app.tenant_id = tnt_b`; four tests failing before the fix, passing after). The kernel now refuses any statement on an ended transaction, an ambient mutation waits for its joined calls and fails when one was still running, and a late joined call is refused. Threat model §3.94.
 - **Products:** upgrade to the patched `tenancy` before the next exit gate (`finbyx.md`, `lawdocscomply.md`, `udofin.md`). Exposure: Finbyx's searchable code does not call `kernel.ambient`; Udofin and LawDocsComply could not be searched from here; no product logs are reachable.
-- **Next:** the patch gate (`ci:run`), its version PR and release record; then wave 7 (M63, lower scopes after PR-042, sandbox maker-checker, PDF after the dependency review; the spec v1.4 draft; M61 after sign-off).
+- **Merged:** #222 (`bc2c301`) after one green `ci:run` gate; the version PR (`tenancy` 1.14.1) follows, then its release record.
+- **Owner answers (R1-D-94):** the JWS stays C-22 (RFC 7515 Appendix F, no `b64: false`; PR-043's log entry corrected); the spec v1.4 draft (`docs/phases/PR-043-ecosystem-v1.4-draft.md`) goes up as a docs PR for sign-off (#116), merged later by the owner's one-off bypass; LawDocsComply self-checks its exposure; Udofin is paused, so the ambient check and the 1.14.1 upgrade are §0 of `udofin.md`.
+- **Next:** the 1.14.1 version PR and release record; then wave 7 in order (M63, lower scopes after PR-042, sandbox maker-checker #115, PDF after the dependency review); M61 after #116.
 
 ## Wave 6 (seventh session, 4 Nov): released (run 197)
 

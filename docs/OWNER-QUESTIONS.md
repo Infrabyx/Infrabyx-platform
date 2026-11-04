@@ -4,8 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question |
-| --- | -------- | -------- |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 116 | R1-D-93  | Sign off the Ecosystem Spec v1.4 draft, `docs/phases/PR-043-ecosystem-v1.4-draft.md`: a regulated message's detached JWS travels in `X-Infrabyx-JWS` (your name), one per delivery, verified before the `2xx` and stored byte for byte, in the C-22 form you confirmed (R1-D-94). Recommended: sign off as drafted. Default taken: nothing applied to `docs/ecosystem/` and M61 not built until you sign; the merge applying it needs your one-off bypass, as for v1.3. Impact if you change the text: the draft is edited first. Reverse: n/a until applied |
 
 ## Answered
 
