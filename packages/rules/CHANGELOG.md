@@ -1,5 +1,22 @@
 # @infrabyx/rules
 
+## 1.0.25
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/config@1.9.0
+  - @infrabyx/tenancy@1.10.0
+  - @infrabyx/connectors@1.8.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/crypto@1.5.1
+
 ## 1.0.24
 
 ### Patch Changes

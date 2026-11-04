@@ -1,5 +1,25 @@
 # @infrabyx/testing
 
+## 1.8.0
+
+### Minor Changes
+
+- b3edda2: `MemoryMandateApprovals`: an in-memory mandate approval verifier with the engine's refusals, for adapter tests (`acceptAny` only for the shared contract cases).
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/config@1.9.0
+  - @infrabyx/tenancy@1.10.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/audit@1.6.3
+  - @infrabyx/seed@1.0.24
+  - @infrabyx/crypto@1.5.1
+
 ## 1.7.0
 
 ### Minor Changes
