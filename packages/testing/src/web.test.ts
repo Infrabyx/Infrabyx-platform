@@ -35,6 +35,40 @@ describe("website fakes", () => {
     await expect(l.recordConsent({ ...base, cid: undefined })).rejects.toThrow();
   });
 
+  it("latestByPrincipal folds in purpose-consent records; a withdrawal is the latest (PR-LDC-14)", async () => {
+    const l = new FakeConsentLedger();
+    const t = { tenantId: "tnt_a" };
+    l.recordPurposeConsent({
+      tenantId: "tnt_a",
+      principalRef: "per_1",
+      purpose: "ldc.account.terms",
+      granted: true,
+      shown: "cpn_x@1",
+      platformNotice: true,
+    });
+    expect(await l.latestByPrincipal("per_1", t)).toMatchObject([
+      { purpose: "ldc.account.terms", granted: true, platformNotice: true, shown: "cpn_x@1" },
+    ]);
+    const w = l.recordPurposeConsent({
+      tenantId: "tnt_a",
+      principalRef: "per_1",
+      purpose: "ldc.account.terms",
+      granted: false,
+    });
+    expect(await l.latestByPrincipal("per_1", t)).toEqual([
+      {
+        purpose: "ldc.account.terms",
+        granted: false,
+        receiptId: w.receiptId,
+        recordedAt: w.recordedAt,
+        shown: null,
+        noticeSha256: null,
+        platformNotice: false,
+      },
+    ]);
+    expect(await l.latestByPrincipal("per_1", { tenantId: "tnt_b" })).toEqual([]);
+  });
+
   it("fixtures parse against the contracts and claim no certification", async () => {
     expect(Catalogue.parse(fixtureCatalogue()).plans).toHaveLength(2);
     for (const d of fixtureTrustDocuments()) VadDocument.parse(d);

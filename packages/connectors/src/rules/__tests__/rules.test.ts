@@ -2,7 +2,12 @@
 // agree on generated inputs), health, fault handling and the CEL size limit.
 import { afterAll, describe, expect, it } from "vitest";
 import type { RuleSetBody } from "@infrabyx/contracts/ports";
-import { fixtureInput, RULES_FIXTURE } from "@infrabyx/testing";
+import {
+  fixtureInput,
+  RULES_FIXTURE,
+  RULES_STRING_FIXTURE,
+  stringFixtureInput,
+} from "@infrabyx/testing";
 import {
   compiled,
   JsonRulesEngine,
@@ -76,6 +81,57 @@ describe("RULES differential: zen, json-rules and the CEL walk agree (PL3 plan �
       const rows = new Set([...seen].flatMap((s) => s.split(",")));
       for (const r of RULES_FIXTURE.rows.filter((x) => x.id !== "never"))
         expect(rows.has(r.id), r.id).toBe(true);
+    });
+  }
+});
+
+describe("RULES differential: the CEL string functions agree on every engine (PR-LDC-13)", () => {
+  const pick = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length)] as T;
+  const parts = ["Acme", "NBFC", "Test", "Co-op", "co-op", "Cooperative", "Coopers", "सहकारी"];
+  const tails = ["", " Ltd", " Limited", " Ltd.", "😀", " ", "\n"];
+  const codes = [
+    "L65910MH1995PLC012345",
+    "U12345MH2020PTC123456",
+    "L65910MH1995PLC0123456",
+    "XL65910MH1995PLC012345",
+    "L6591",
+    "",
+    "L😀",
+  ];
+  const inputs = (() => {
+    const r = rng(20261104);
+    const out: Record<string, unknown>[] = [];
+    for (let i = 0; i < 600; i++) {
+      const words = Array.from({ length: Math.floor(r() * 4) }, () => pick(r, parts));
+      const code = pick(r, codes);
+      out.push(
+        stringFixtureInput({
+          name: `${pick(r, ["", "The ", "Shree "])}${words.join(pick(r, [" ", "-", ""]))}${pick(r, tails)}`,
+          code,
+          // Sliced by code point, so a prefix never ends in half a surrogate pair.
+          prefix: pick(r, ["", [...code].slice(0, 1 + Math.floor(r() * 4)).join(""), "U2", "😀"]),
+          amount: pick(r, [0, 99, 100, 1000]),
+        }),
+      );
+    }
+    return out;
+  })();
+
+  for (const policy of ["first", "collect"] as const) {
+    it(`gives the same decision for 600 generated inputs (${policy})`, async () => {
+      const body: RuleSetBody = { ...RULES_STRING_FIXTURE, hit_policy: policy };
+      const compiled = await Promise.all(RULE_ENGINES.map((n) => engines[n]().compile(body)));
+      const seen = new Set<string>();
+      for (const input of inputs) {
+        const [a, ...rest] = await Promise.all(
+          compiled.map((c) => c.evaluate(input, { timeoutMs: 2000 })),
+        );
+        expect(a?.outcome, JSON.stringify(input)).toBe("MATCHED");
+        for (const [i, b] of rest.entries())
+          expect(b, `${RULE_ENGINES[i + 1]} vs zen for ${JSON.stringify(input)}`).toEqual(a);
+        for (const id of a?.ruleIds ?? []) seen.add(id);
+      }
+      for (const r of RULES_STRING_FIXTURE.rows) expect(seen.has(r.id), r.id).toBe(true);
     });
   }
 });

@@ -71,6 +71,66 @@ export const fixtureInput = (over: Record<string, unknown> = {}): Record<string,
   ...over,
 });
 
+/**
+ * Fixture for the CEL string functions `startsWith`, `endsWith`, `contains` and `matches`
+ * (PR-LDC-13; R1-plan M40; R1-D-71), used by the contract and by the differential test in
+ * `connectors`. Patterns are CEL raw strings, so `\d` is the pattern's own backslash.
+ */
+export const RULES_STRING_FIXTURE: RuleSetBody = {
+  format: "ipb.decision_table.v1",
+  hit_policy: "first",
+  inputs: [
+    { name: "name", type: "string", dataClass: "INTERNAL" },
+    { name: "code", type: "string", dataClass: "INTERNAL" },
+    { name: "prefix", type: "string", dataClass: "INTERNAL" },
+    { name: "amount", type: "integer", dataClass: "INTERNAL" },
+  ],
+  outputs: [{ name: "class", type: "string", dataClass: "INTERNAL", statutory: false }],
+  rows: [
+    {
+      id: "listed",
+      when: 'code.matches(r"^L\\d{5}[A-Z]{2}\\d{4}(PLC|PTC)\\d{6}$")',
+      then: { class: "listed" },
+      verify: false,
+    },
+    {
+      id: "nbfc",
+      when: 'name.contains("NBFC") && !name.startsWith("Test")',
+      then: { class: "nbfc" },
+      verify: false,
+    },
+    {
+      id: "co-op",
+      when: 'name.matches(r"\\b[Cc]o-?op(erative)?\\b") || name.contains("सहकारी")',
+      then: { class: "co-op" },
+      verify: false,
+    },
+    {
+      id: "prefixed",
+      when: "code.startsWith(prefix) && amount >= 100",
+      then: { class: "prefixed" },
+      verify: false,
+    },
+    {
+      id: "company",
+      when: 'name.endsWith(" Ltd") || name.endsWith(" Limited")',
+      then: { class: "company" },
+      verify: false,
+    },
+    { id: "other", when: "true", then: { class: "other" }, verify: false },
+  ],
+};
+
+export const stringFixtureInput = (
+  over: Record<string, unknown> = {},
+): Record<string, unknown> => ({
+  name: "Acme Traders",
+  code: "U12345MH2020PTC123456",
+  prefix: "",
+  amount: 0,
+  ...over,
+});
+
 const collect = (b: RuleSetBody): RuleSetBody => ({ ...b, hit_policy: "collect" });
 
 async function refused(e: RuleEngineAdapter, body: RuleSetBody, reason?: string): Promise<void> {
@@ -192,7 +252,8 @@ export const RULE_ENGINE_CASES: ReadonlyArray<ContractCase<RuleEngineAdapter>> =
     async run(e) {
       for (const when of [
         "amount + 1 > 2",
-        'segment.startsWith("r")',
+        'segment.lowerAscii() == "r"',
+        "segment.size() > 1",
         "amount > score",
         "unknownInput == 1",
         'segment < "z"',
@@ -218,6 +279,93 @@ export const RULE_ENGINE_CASES: ReadonlyArray<ContractCase<RuleEngineAdapter>> =
         "reserved_name",
       );
       await refused(e, { ...RULES_FIXTURE, rows: [] } as RuleSetBody, "schema");
+    },
+  },
+  {
+    name: "CEL string functions startsWith, endsWith, contains and matches (PR-LDC-13)",
+    async run(e) {
+      const c = await e.compile(RULES_STRING_FIXTURE);
+      const ids = async (over: Record<string, unknown>): Promise<string[]> =>
+        (await c.evaluate(stringFixtureInput(over), T)).ruleIds;
+      expect(await c.evaluate(stringFixtureInput(), T)).toEqual({
+        outcome: "MATCHED",
+        outputs: { class: "other" },
+        ruleIds: ["other"],
+        reason: "matched",
+      });
+      // matches is an unanchored search; the pattern's own ^ and $ anchor it.
+      expect(await ids({ code: "L65910MH1995PLC012345" })).toEqual(["listed"]);
+      expect(await ids({ code: "XL65910MH1995PLC012345" })).toEqual(["other"]);
+      expect(await ids({ code: "L65910MH1995PLC0123456" })).toEqual(["other"]);
+      expect(await ids({ name: "Acme NBFC Finance" })).toEqual(["nbfc"]);
+      expect(await ids({ name: "Test NBFC" })).toEqual(["other"]);
+      expect(await ids({ name: "Acme nbfc" })).toEqual(["other"]);
+      expect(await ids({ name: "Shree Co-op Bank" })).toEqual(["co-op"]);
+      expect(await ids({ name: "The Cooperative Society" })).toEqual(["co-op"]);
+      expect(await ids({ name: "Coopers and Sons" })).toEqual(["other"]);
+      expect(await ids({ name: "शहरी सहकारी बैंक" })).toEqual(["co-op"]);
+      // A string input as the argument, including the empty string.
+      expect(await ids({ code: "U12", prefix: "U1", amount: 100 })).toEqual(["prefixed"]);
+      expect(await ids({ code: "U12", prefix: "U2", amount: 100 })).toEqual(["other"]);
+      expect(await ids({ prefix: "", amount: 100 })).toEqual(["prefixed"]);
+      expect(await ids({ name: "Acme Ltd" })).toEqual(["company"]);
+      expect(await ids({ name: "Acme Limited" })).toEqual(["company"]);
+      expect(await ids({ name: "Acme Ltd." })).toEqual(["other"]);
+      const all = await e.compile(collect(RULES_STRING_FIXTURE));
+      const every = stringFixtureInput({
+        name: "Shree NBFC Co-op Ltd",
+        code: "L65910MH1995PLC012345",
+        prefix: "L6",
+        amount: 100,
+      });
+      expect(await all.evaluate(every, T)).toEqual({
+        outcome: "MATCHED",
+        outputs: { class: ["listed", "nbfc", "co-op", "prefixed", "company", "other"] },
+        ruleIds: ["listed", "nbfc", "co-op", "prefixed", "company", "other"],
+        reason: "matched",
+      });
+      // A text over 4096 characters or with a lone surrogate never reaches an engine.
+      for (const bad of [{ name: "a".repeat(4097) }, { code: "L\uD800" }, { prefix: "\uDC00" }])
+        expect(await c.evaluate(stringFixtureInput(bad), T)).toEqual({
+          outcome: "UNDETERMINED",
+          outputs: {},
+          ruleIds: [],
+          reason: "input_invalid",
+        });
+    },
+  },
+  {
+    name: "compile refuses a matches pattern outside the linear-time subset (cel_pattern)",
+    async run(e) {
+      const withString = (when: string): RuleSetBody => ({
+        ...RULES_STRING_FIXTURE,
+        rows: [{ id: "only", when, then: { class: "x" }, verify: false }],
+      });
+      for (const pattern of [
+        "(a+)+",
+        "(a*)*",
+        "(a|aa)+",
+        "(\\w)\\1",
+        "(?<n>a)\\k<n>",
+        "(?=a)b",
+        "(?!a)b",
+        "(?<=a)b",
+        "(?<!a)b",
+        "(?>a+)b",
+        "a*+",
+        ".*",
+        "[^a]",
+        "a".repeat(257),
+      ])
+        await refused(e, withString(`name.matches(r"${pattern}")`), "cel_pattern");
+      // The pattern must be a literal; the receiver a string input (not a date, not a literal).
+      await refused(e, withString("name.matches(prefix)"), "cel_unsupported");
+      await refused(e, withString('"Acme".startsWith(name)'), "cel_unsupported");
+      await refused(e, withRow('sanctionedOn.startsWith("2026")'), "cel_unsupported");
+      await refused(e, withString('name.startsWith("a\\"b")'), "cel_unsupported");
+      // A non-string receiver or argument is a type error, as everywhere in the subset.
+      for (const when of ['amount.startsWith("1")', "name.contains(1)", "name.matches(1)"])
+        await refused(e, withString(when), "cel_type");
     },
   },
 ];

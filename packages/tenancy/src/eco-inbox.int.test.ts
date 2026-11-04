@@ -98,6 +98,26 @@ describe("G2 Ecosystem inbox (Spec §3.5)", () => {
     expect(audit.entries.filter((a) => a.action === "consumer.eco_inbox.receive")).toHaveLength(3);
   });
 
+  it("R1-D-70 exclusiveWith: only the first of two types under one business key is stored", async () => {
+    const i = inbox();
+    const a = event("excl", 1);
+    const b = { ...event("excl", 2), type: "in.infrabyx.ops.ProvisioningFailed.v1" };
+    const types = [a.type, b.type];
+    const key = "provisioning:excl";
+    expect((await i.receive(ctx(), a, { businessKey: key, exclusiveWith: types })).outcome).toBe(
+      "accepted",
+    );
+    expect((await i.receive(ctx(), b, { businessKey: key, exclusiveWith: types })).outcome).toBe(
+      "business_duplicate",
+    );
+    expect(await i.list(ctx(), SOURCE, "excl")).toHaveLength(1);
+    // Another tenant's event under the same key is its own.
+    expect(
+      (await i.receive(ctx("tnt_b"), b, { businessKey: key, exclusiveWith: types })).outcome,
+    ).toBe("accepted");
+    await expect(i.receive(ctx(), a, { exclusiveWith: types })).rejects.toThrow(/businessKey/);
+  });
+
   it("refuses an invalid envelope and an event of the other environment", async () => {
     const i = inbox();
     await expect(i.receive(ctx(), { ...event("loan_bad", 1), id: "not-a-uuid" })).rejects.toThrow();

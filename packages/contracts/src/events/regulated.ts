@@ -1,6 +1,6 @@
 // Regulated messages (Ecosystem Spec v1.2 §3.6): events that carry RFC 9421 in transit and a
 // detached JWS over the CloudEvent, stored with it (`signRegulatedMessage` in @infrabyx/crypto,
-// G5, R1-D-08). The names are the Spec's, in its order: v1.0, then v1.1, then v1.2.
+// G5, R1-D-08). The names are the Spec's, in its order: v1.0, then v1.1, v1.2 and v1.3.
 import { ECOSYSTEM_TYPE_REGEX } from "./envelope.js";
 
 export const REGULATED_MESSAGE_EVENTS = Object.freeze([
@@ -61,6 +61,9 @@ export const REGULATED_MESSAGE_EVENTS = Object.freeze([
   "ServiceCreditIssued",
   "WhiteLabelTenantProvisioned",
   "WhiteLabelTenantExited",
+  // v1.3 (PR-040, OWNER-QUESTIONS #105; R1-D-70)
+  "ProvisioningRequested",
+  "ProvisioningFailed",
 ] as const);
 export type RegulatedMessageEvent = (typeof REGULATED_MESSAGE_EVENTS)[number];
 

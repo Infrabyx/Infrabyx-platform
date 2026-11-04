@@ -20,12 +20,15 @@ import {
   RuleCompileError,
   type CelLimits,
   type Cond,
+  wellFormed,
 } from "./cel.js";
+import { MAX_MATCH_INPUT } from "./pattern.js";
 
 /** Largest accepted input, as JSON (bounds evaluation time with the CEL limits, PL3-D-15). */
 export const MAX_INPUT_BYTES = 64 * 1024;
 const MAX_LIST_INPUT = 1000;
-const MAX_STRING_INPUT = 4096;
+/** The bound on a `matches` text too (PR-LDC-13): a longer string is input_invalid. */
+const MAX_STRING_INPUT = MAX_MATCH_INPUT;
 
 export interface PreparedRow {
   index: number;
@@ -102,7 +105,7 @@ export function checkRuleInput(t: Pick<PreparedTable, "fields">, input: unknown)
 function typeOk(f: RuleField, v: unknown): boolean {
   switch (f.type) {
     case "string":
-      return typeof v === "string" && v.length <= MAX_STRING_INPUT;
+      return typeof v === "string" && v.length <= MAX_STRING_INPUT && wellFormed(v);
     case "number":
       return typeof v === "number" && Number.isFinite(v);
     case "integer":
@@ -117,7 +120,7 @@ function typeOk(f: RuleField, v: unknown): boolean {
         v.length <= MAX_LIST_INPUT &&
         v.every(
           (x) =>
-            (typeof x === "string" && x.length <= MAX_STRING_INPUT) ||
+            (typeof x === "string" && x.length <= MAX_STRING_INPUT && wellFormed(x)) ||
             (typeof x === "number" && Number.isFinite(x)),
         )
       );

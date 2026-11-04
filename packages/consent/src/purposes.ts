@@ -6,6 +6,11 @@
 // changes. A grant names the exact notice version shown and its SHA-256 (computed by the database
 // over the stored body); a withdrawal is a new row; `consentState` reads the latest. Every change is
 // ledgered in the same transaction and, with an outbox, emits the internal `PurposeConsentChanged`.
+// A purpose may instead be platform-tier (PR-LDC-14; R1-plan M41; R1-D-72): its notices are
+// `tnt_platform` rows drafted by a PLT_DPO and approved by a different PLT_LEGAL_REVIEWER in the
+// platform context; every tenant reads the approved ones and cites them when recording consent, and
+// PostgreSQL refuses any tenant-scope write to them (`consent/0004`). Records and notice versions
+// are purged under #95 by `ConsentPurge.sweepPurposes` (purge.ts).
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
   AuditSink,
@@ -13,6 +18,7 @@ import type {
   MutationKernel,
   OutboxWriter,
 } from "@infrabyx/contracts/kernel";
+import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import { CONSENT_EVENTS, PurposeConsentChangedData } from "@infrabyx/contracts";
 import { internalEvent } from "@infrabyx/config/events";
 import { newId } from "@infrabyx/crypto";
@@ -26,6 +32,13 @@ export interface PurposeDefinition {
   code: string;
   /** What the person is asked to agree to, for staff screens (not the notice itself). */
   description: string;
+  /**
+   * Who keeps the notice (PR-LDC-14; R1-plan M41; R1-D-72). `tenant` (the default): each tenant
+   * drafts and approves its own. `platform`: one platform notice per language, drafted by a
+   * PLT_DPO and approved by a PLT_LEGAL_REVIEWER in the platform context, read-only in every tenant
+   * and cited there when consent is recorded.
+   */
+  tier?: "tenant" | "platform";
 }
 
 export type PurposeConsentMethod = "SELF_SERVICE" | "ASSISTED" | "API" | "IMPORT";
@@ -33,6 +46,9 @@ export type PurposeConsentMethod = "SELF_SERVICE" | "ASSISTED" | "API" | "IMPORT
 /** Who may draft and who may approve a tenant's notice (approver ≠ maker). */
 export const PURPOSE_NOTICE_MAKER_ROLES = ["ORG_OWNER", "ORG_ADMIN", "ORG_MAKER"] as const;
 export const PURPOSE_NOTICE_CHECKER_ROLES = ["ORG_OWNER", "ORG_ADMIN", "ORG_CHECKER"] as const;
+/** Who drafts and who approves a platform notice (IPB-04 §04.3.12 section 12; PR-LDC-14). */
+export const PLATFORM_NOTICE_MAKER_ROLE = "PLT_DPO";
+export const PLATFORM_NOTICE_CHECKER_ROLE = "PLT_LEGAL_REVIEWER";
 
 export interface PurposeNotice {
   id: string;
@@ -45,6 +61,8 @@ export interface PurposeNotice {
   makerId: string;
   checkerId: string | null;
   approvedAt: string | null;
+  /** `platform` for a platform notice (PR-LDC-14), `tenant` for a tenant's own. */
+  tier: "tenant" | "platform";
 }
 
 export interface PurposeConsentState {
@@ -59,6 +77,7 @@ export interface PurposeConsentState {
 
 interface NoticeRow {
   id: string;
+  tenant_id: string;
   purpose: string;
   version: number;
   language: string;
@@ -71,7 +90,7 @@ interface NoticeRow {
 }
 
 const NOTICE_COLUMNS =
-  "id, purpose, version, language, body, sha256, state, maker_id, checker_id, approved_at";
+  "id, tenant_id, purpose, version, language, body, sha256, state, maker_id, checker_id, approved_at";
 
 const toNotice = (r: NoticeRow): PurposeNotice => ({
   id: r.id,
@@ -84,6 +103,7 @@ const toNotice = (r: NoticeRow): PurposeNotice => ({
   makerId: r.maker_id,
   checkerId: r.checker_id,
   approvedAt: r.approved_at ? r.approved_at.toISOString() : null,
+  tier: r.tenant_id === PLATFORM_TENANT_ID ? "platform" : "tenant",
 });
 
 function assertPerson(ctx: KernelContext, roles: readonly string[], what: string): void {
@@ -94,6 +114,21 @@ function assertPerson(ctx: KernelContext, roles: readonly string[], what: string
   if (!ctx.principal.roles.some((r) => roles.includes(r)))
     throw new IpbError("IPB-UX-011", { detail: `needs one of ${roles.join(", ")}` });
 }
+
+/** A platform notice is written only by a named PLT_* person in the platform context (PR-LDC-14). */
+function assertPlatformPerson(ctx: KernelContext, role: string, what: string): void {
+  if (ctx.principal.type !== "user")
+    throw new IpbError("IPB-SEC-004", { detail: `only a named person may ${what}` });
+  if (ctx.scope !== "platform" || ctx.tenantId !== PLATFORM_TENANT_ID)
+    throw new IpbError("IPB-SEC-005", {
+      detail: "platform notices are written in the platform context only",
+    });
+  if (!ctx.principal.roles.includes(role))
+    throw new IpbError("IPB-UX-011", { detail: `needs ${role}` });
+}
+
+/** Platform scope means platform notices; anything else is the tenant's own. */
+const platformScoped = (ctx: KernelContext): boolean => ctx.scope === "platform";
 
 export class PurposeConsents {
   private readonly purposes: Map<string, PurposeDefinition>;
@@ -129,13 +164,23 @@ export class PurposeConsents {
     return p;
   }
 
-  /** A maker drafts the next version of a tenant's notice for a purpose and language. */
+  /** The tenant whose notices a purpose uses in `ctx`: the platform's for a platform purpose. */
+  private noticeTenant(ctx: KernelContext, purpose: string): string {
+    return this.purpose(purpose).tier === "platform" ? PLATFORM_TENANT_ID : ctx.tenantId;
+  }
+
+  /**
+   * A maker drafts the next version of a notice for a purpose and language: a tenant's maker for a
+   * tenant purpose, a PLT_DPO in the platform context for a platform purpose (PR-LDC-14).
+   */
   async draftNotice(
     ctx: KernelContext,
     d: { purpose: string; language: string; body: string },
   ): Promise<PurposeNotice> {
-    assertPerson(ctx, PURPOSE_NOTICE_MAKER_ROLES, "draft a consent notice");
-    this.purpose(d.purpose);
+    const def = this.purpose(d.purpose);
+    if (def.tier === "platform")
+      assertPlatformPerson(ctx, PLATFORM_NOTICE_MAKER_ROLE, "draft a platform consent notice");
+    else assertPerson(ctx, PURPOSE_NOTICE_MAKER_ROLES, "draft a consent notice");
     if (!LANGUAGE.test(d.language)) throw new RangeError(`invalid language ${d.language}`);
     if (d.body.length < 1 || d.body.length > 20000)
       throw new RangeError("a notice is 1 to 20,000 characters");
@@ -163,15 +208,21 @@ export class PurposeConsents {
     );
   }
 
-  /** A different person approves a draft; from then on it can be shown and consented to. */
+  /**
+   * A different person approves a draft; from then on it can be shown and consented to. A platform
+   * notice is approved by a PLT_LEGAL_REVIEWER in the platform context (PR-LDC-14).
+   */
   async approveNotice(ctx: KernelContext, noticeId: string): Promise<PurposeNotice> {
-    assertPerson(ctx, PURPOSE_NOTICE_CHECKER_ROLES, "approve a consent notice");
+    if (platformScoped(ctx))
+      assertPlatformPerson(ctx, PLATFORM_NOTICE_CHECKER_ROLE, "approve a platform consent notice");
+    else assertPerson(ctx, PURPOSE_NOTICE_CHECKER_ROLES, "approve a consent notice");
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
+        // Only the context's own notices: a tenant never approves a platform notice.
         const cur = await tx.query<NoticeRow>(
-          `select ${NOTICE_COLUMNS} from consent.purpose_notice where id = $1 for update`,
-          [noticeId],
+          `select ${NOTICE_COLUMNS} from consent.purpose_notice where id = $1 and tenant_id = $2 for update`,
+          [noticeId, ctx.tenantId],
         );
         const n = cur.rows[0];
         if (!n || n.state !== "draft")
@@ -199,14 +250,16 @@ export class PurposeConsents {
 
   /** Retire an approved version so it is no longer offered; past grants keep pointing at it. */
   async retireNotice(ctx: KernelContext, noticeId: string): Promise<void> {
-    assertPerson(ctx, PURPOSE_NOTICE_CHECKER_ROLES, "retire a consent notice");
+    if (platformScoped(ctx))
+      assertPlatformPerson(ctx, PLATFORM_NOTICE_CHECKER_ROLE, "retire a platform consent notice");
+    else assertPerson(ctx, PURPOSE_NOTICE_CHECKER_ROLES, "retire a consent notice");
     await this.o.kernel.mutate(
       ctx,
       async (tx) => {
         const r = await tx.query(
           `update consent.purpose_notice set state = 'retired', retired_at = now()
-            where id = $1 and state = 'approved'`,
-          [noticeId],
+            where id = $1 and tenant_id = $2 and state = 'approved'`,
+          [noticeId, ctx.tenantId],
         );
         if (r.rowCount !== 1)
           throw new IpbError("IPB-WEB-002", { detail: "no approved notice with that id" });
@@ -222,19 +275,22 @@ export class PurposeConsents {
     );
   }
 
-  /** The notice to show: the newest approved, unretired version for the purpose and language. */
+  /**
+   * The notice to show: the newest approved, unretired version for the purpose and language, the
+   * platform's for a platform purpose (read-only in every tenant, PR-LDC-14).
+   */
   async currentNotice(
     ctx: KernelContext,
     purpose: string,
     language: string,
   ): Promise<PurposeNotice | null> {
-    this.purpose(purpose);
+    const tenant = this.noticeTenant(ctx, purpose);
     return this.o.kernel.read(ctx, async (tx) => {
       const r = await tx.query<NoticeRow>(
         `select ${NOTICE_COLUMNS} from consent.purpose_notice
           where tenant_id = $1 and purpose = $2 and language = $3 and state = 'approved'
           order by version desc limit 1`,
-        [ctx.tenantId, purpose, language],
+        [tenant, purpose, language],
       );
       return r.rows[0] ? toNotice(r.rows[0]) : null;
     });
@@ -254,7 +310,7 @@ export class PurposeConsents {
       throw new IpbError("IPB-SEC-004", { detail: "an agent cannot record consent" });
     if (ctx.principal.type === "external" || ctx.principal.type === "breakglass")
       throw new IpbError("IPB-SEC-004", { detail: "this principal cannot record consent" });
-    this.purpose(d.purpose);
+    const noticeTenant = this.noticeTenant(ctx, d.purpose);
     if (!SUBJECT.test(d.subjectRef)) throw new RangeError("subjectRef is 3 to 120 characters");
     const action = `consent.purpose.${d.action === "granted" ? "grant" : "withdraw"}`;
     return this.o.kernel.mutate(
@@ -262,10 +318,11 @@ export class PurposeConsents {
       async (tx) => {
         let notice: NoticeRow | undefined;
         if (d.action === "granted") {
+          // The tenant's own notice, or the platform's for a platform purpose (PR-LDC-14).
           const r = await tx.query<NoticeRow>(
             `select ${NOTICE_COLUMNS} from consent.purpose_notice
               where id = $1 and tenant_id = $2 and purpose = $3 and state = 'approved'`,
-            [d.noticeId ?? "", ctx.tenantId, d.purpose],
+            [d.noticeId ?? "", noticeTenant, d.purpose],
           );
           notice = r.rows[0];
           if (!notice)
