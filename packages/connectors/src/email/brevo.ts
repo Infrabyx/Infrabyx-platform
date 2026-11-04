@@ -79,6 +79,17 @@ export function brevoIdempotencyKey(key: string): string {
 export const brevoIdempotencyTag = (key: string): string =>
   `ipb_idem_${sha256Hex(key).slice(0, 32)}`;
 
+const HTML_ESCAPES: Readonly<Record<string, string>> = {
+  "&": "&amp;",
+  "<": "&lt;",
+  ">": "&gt;",
+  '"': "&quot;",
+  "'": "&#39;",
+};
+/** A plain-text part as HTML: every character escaped, line breaks kept. */
+export const textAsHtml = (text: string): string =>
+  `<p>${text.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] as string).replace(/\r?\n/g, "<br>")}</p>`;
+
 const EVENT_TYPES: Readonly<Record<string, EmailEvent["type"]>> = {
   request: "sent",
   delivered: "delivered",
@@ -120,7 +131,13 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
       residency: "GLOBAL",
       maxDataClass: "INTERNAL",
       dpaRef: o.dpaRef,
-      capabilities: { verifyDomain: "emulated", suppress: "emulated", sendRaw: "unsupported" },
+      // `content`: rendered subject and parts as Brevo's own content fields (PR-LDC-27; R1-D-90).
+      capabilities: {
+        verifyDomain: "emulated",
+        suppress: "emulated",
+        sendRaw: "unsupported",
+        content: "native",
+      },
     };
     const base = new URL(o.baseUrl ?? BASE);
     this.egress = createEgress({
@@ -178,8 +195,8 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
     assertBodyClass(this.descriptor, call);
     const m = EmailMessage.parse(message);
     const b = this.brand(m.brand);
-    const templateId = b.templates[m.template];
-    if (templateId === undefined)
+    const templateId = m.content ? undefined : b.templates[m.template];
+    if (!m.content && templateId === undefined)
       throw new PortError("IPB-PORT-001", "EMAIL", {
         adapter: "brevo",
         detail: `template ${m.template} is not mapped for brand ${m.brand} on brevo`,
@@ -206,8 +223,15 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
       to: m.to.map((email) => ({ email })),
       ...(m.cc ? { cc: m.cc.map((email) => ({ email })) } : {}),
       ...(b.replyTo ? { replyTo: { email: b.replyTo } } : {}),
-      templateId,
-      params: m.vars,
+      ...(m.content
+        ? {
+            subject: m.content.subject,
+            textContent: m.content.text,
+            // Brevo needs an HTML body without a template: a text-only message gets the text,
+            // escaped, with its line breaks.
+            htmlContent: m.content.html ?? textAsHtml(m.content.text),
+          }
+        : { templateId, params: m.vars }),
       tags,
       ...(Object.keys(headers).length ? { headers } : {}),
       ...(files.length

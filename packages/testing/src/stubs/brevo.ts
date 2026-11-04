@@ -5,7 +5,11 @@ import { startStub, stubCredential, type StubReply, type VendorStub } from "./ht
 
 export interface BrevoStubMessage {
   messageId: string;
-  templateId: number;
+  /** Absent for a message sent with its own content (`subject`, `textContent`, `htmlContent`). */
+  templateId?: number;
+  subject?: string;
+  textContent?: string;
+  htmlContent?: string;
   sender: string;
   to: string[];
   params: Record<string, unknown>;
@@ -43,13 +47,20 @@ export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoSt
         sender?: { email?: string };
         to?: Array<{ email: string }>;
         templateId?: number;
+        subject?: string;
+        textContent?: string;
+        htmlContent?: string;
         params?: Record<string, unknown>;
         tags?: string[];
         headers?: Record<string, string>;
         attachment?: Array<{ name?: string; content?: string }>;
       }>();
       if (!b.sender?.email || !b.to?.length) return fail(400, "missing_parameter", "sender/to");
-      if (b.templateId === undefined || !s.templates.has(b.templateId))
+      // Without a template Brevo needs a subject and an HTML body (textContent is optional).
+      if (b.templateId === undefined) {
+        if (!b.subject || !b.htmlContent)
+          return fail(400, "missing_parameter", "subject and htmlContent are required");
+      } else if (!s.templates.has(b.templateId))
         return fail(400, "invalid_parameter", "Template ID is not valid");
       const idem = b.headers?.idempotencyKey;
       const seen = idem ? byIdem.get(idem) : undefined;
@@ -58,7 +69,10 @@ export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoSt
       if (idem) byIdem.set(idem, messageId);
       messages.push({
         messageId,
-        templateId: b.templateId,
+        ...(b.templateId !== undefined ? { templateId: b.templateId } : {}),
+        ...(b.subject !== undefined ? { subject: b.subject } : {}),
+        ...(b.textContent !== undefined ? { textContent: b.textContent } : {}),
+        ...(b.htmlContent !== undefined ? { htmlContent: b.htmlContent } : {}),
         sender: b.sender.email,
         to: b.to.map((x) => x.email),
         params: b.params ?? {},

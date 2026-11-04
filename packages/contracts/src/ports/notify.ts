@@ -58,6 +58,14 @@ export const NotificationClass = z
     /** Deep-link pattern; every notification carries one (IPB-07-25). */
     deep_link: z.string().regex(/^\/[A-Za-z0-9/_:{}.-]*$/),
     marketing_purpose: z.enum(MARKETING_PURPOSES).optional(),
+    /**
+     * The variables a tenant's own email template may use (LawDocsComply PR-LDC-27; R1-D-90).
+     * Omitted: the SMS and WhatsApp templates' `vars`; a class with neither offers none.
+     */
+    variables: z
+      .array(z.string().regex(/^[a-z][a-zA-Z0-9_]*$/))
+      .max(50)
+      .optional(),
     templates: z
       .object({
         email: z
@@ -268,7 +276,23 @@ export type ResolvedTemplate =
       vars?: readonly string[];
     }
   | { channel: "whatsapp"; name: string; lang: string; vars?: readonly string[] }
-  | { channel: "email"; key: string };
+  | {
+      channel: "email";
+      key: string;
+      /**
+       * The tenant's own subject and parts (PR-LDC-27; R1-D-90) with `{{var}}` placeholders:
+       * NOTIFY lints and renders them at delivery and sends the result in place of the vendor
+       * template, `key` staying the logical template name.
+       */
+      content?: EmailTemplateContent;
+    };
+
+/** A tenant's email template: a subject, a required plain-text part and an optional HTML part. */
+export interface EmailTemplateContent {
+  subject: string;
+  text: string;
+  html?: string;
+}
 
 /**
  * Consulted by NOTIFY at every delivery, `dispatchDue` included, in the delivering tenant's
