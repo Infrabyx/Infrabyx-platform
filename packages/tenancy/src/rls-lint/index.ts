@@ -42,6 +42,8 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   "tenancy.breakglass_claim_notices",
   // A scoped break-glass (tenancy/0016, R1-D-75): an active grant's own scope, nothing else.
   "tenancy.breakglass_scope",
+  // Support access (tenancy/0017, R1-D-76): records a read only under the principal's own grant.
+  "tenancy.support_read_record",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

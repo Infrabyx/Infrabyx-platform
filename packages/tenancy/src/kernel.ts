@@ -19,7 +19,12 @@ import type {
   Tx,
   UnitOutcome,
 } from "@infrabyx/contracts/kernel";
-import { assertValidContext, isAgentPrincipal, serviceReaderRole } from "./context.js";
+import {
+  assertValidContext,
+  isAgentPrincipal,
+  isSupportContext,
+  serviceReaderRole,
+} from "./context.js";
 import { KernelGuardError } from "./errors.js";
 import { isExternalGated } from "./external-gate.js";
 import {
@@ -29,6 +34,12 @@ import {
   type GrantScope,
   type ScopeRefusal,
 } from "./scope-guard.js";
+import {
+  bindSupportGrant,
+  supportGateOf,
+  type LiveSupportGrant,
+  type SupportGate,
+} from "./support-gate.js";
 
 /** Minimal pool surface (pg.Pool satisfies it). */
 export interface PoolLike {
@@ -43,13 +54,15 @@ export interface PgKernelOptions {
   /**
    * The ledger the kernel writes its own refusals to (LawDocsComply PR-LDC-08 (c); R1-D-75): a
    * scoped break-glass context that leaves its scope is refused and ledgered in the tenant it
-   * touched. Without it, a scoped grant's context is refused outright.
+   * touched, and so is a support principal's (R1-D-76). Without it, a scoped grant's context and
+   * a support principal's use of its grant are refused outright.
    */
   audit?: AuditSink;
 }
 
 /** Ledger actions of the kernel's scope refusals (R1-D-75). */
 export const BREAKGLASS_SCOPE_REFUSED_ACTION = "security.breakglass.scope_refused";
+export const SUPPORT_SCOPE_REFUSED_ACTION = "security.support_access.scope_refused";
 
 // Statements the callback may not run: session-level SET/RESET, role switches, set_config with
 // is_local = false, writes to the kernel's own settings, and trigger bypass (IPB-09 §09.4.6.3).
@@ -293,15 +306,22 @@ export class PgKernel implements MutationKernel {
       throw new RangeError("a mutation's reason has 1 to 500 characters");
     const frame = this.ambientFrame.getStore();
     if (frame) return this.joined(frame, ctx, role, fn, opts);
-    return this.run(ctx, role, false, opts, async (tx) => {
-      const r = await fn(tx);
-      if (!tx.audited) {
-        throw new IpbError("IPB-MOD-003", {
-          detail: `mutation${opts.action ? ` ${opts.action}` : ""} wrote no audit ledger entry`,
-        });
-      }
-      return r;
-    });
+    return this.run(
+      ctx,
+      role,
+      false,
+      opts,
+      async (tx) => {
+        const r = await fn(tx);
+        if (!tx.audited) {
+          throw new IpbError("IPB-MOD-003", {
+            detail: `mutation${opts.action ? ` ${opts.action}` : ""} wrote no audit ledger entry`,
+          });
+        }
+        return r;
+      },
+      isSupportContext(ctx) ? supportGateOf(fn) : undefined,
+    );
   }
 
   /**
@@ -387,6 +407,12 @@ export class PgKernel implements MutationKernel {
   ): Promise<T> {
     assertValidContext(ctx);
     assertExternalGated(ctx, fn);
+    // A support principal reads only through SupportReads, which ledgers every read (R1-D-76).
+    const gate = isSupportContext(ctx) ? supportGateOf(fn) : undefined;
+    if (isSupportContext(ctx) && gate !== "read" && gate !== "manage")
+      throw new IpbError("IPB-SEC-005", {
+        detail: "a support principal reads through SupportReads, which ledgers every read",
+      });
     // A service reader in platform scope runs as its own database role, which is granted only the
     // columns it needs (PL3-D-21); RLS still applies. An external principal reads as the
     // SELECT-only app_external, under its grant's restrictive policies (R1-D-29).
@@ -401,6 +427,7 @@ export class PgKernel implements MutationKernel {
       opts.snapshot ? "snapshot" : true,
       {},
       fn,
+      gate,
     );
   }
 
@@ -468,11 +495,12 @@ export class PgKernel implements MutationKernel {
     return scope;
   }
 
-  /** Ledger a scope refusal in the context's tenant, in its own transaction (R1-D-75). */
+  /** Ledger a scope refusal in the context's tenant, in its own transaction (R1-D-75, R1-D-76). */
   private async ledgerRefusal(ctx: KernelContext, r: ScopeRefusal, action?: string): Promise<void> {
     const audit = this.audit;
     if (!audit) throw new KernelGuardError("a scoped grant needs the kernel's audit sink");
-    const ledgerAction = BREAKGLASS_SCOPE_REFUSED_ACTION;
+    const support = r.scope.kind === "support";
+    const ledgerAction = support ? SUPPORT_SCOPE_REFUSED_ACTION : BREAKGLASS_SCOPE_REFUSED_ACTION;
     const client = await this.pool.connect();
     try {
       await client.query("begin");
@@ -480,7 +508,7 @@ export class PgKernel implements MutationKernel {
       await applySettings(client, ctx, { action: ledgerAction });
       await audit.record(new PgTx(client, ctx), {
         action: ledgerAction,
-        resourceType: "breakglass_grant",
+        resourceType: support ? "support_grant" : "breakglass_grant",
         resourceId: r.scope.grantId,
         after: {
           reason: r.reason,
@@ -505,10 +533,19 @@ export class PgKernel implements MutationKernel {
     readOnly: boolean | "snapshot",
     m: MutateOptions,
     fn: (tx: Tx) => Promise<T>,
+    gate?: SupportGate,
   ): Promise<T> {
-    const scope = ctx.breakGlassGrantId
+    let scope = ctx.breakGlassGrantId
       ? await this.breakGlassPreflight(ctx, readOnly === false, m)
       : undefined;
+    // A support principal runs its own requests (`manage`) and the ledger entries of its reads
+    // (`record`) without a grant; anything else needs its live grant in this tenant (R1-D-76).
+    const needsGrant = isSupportContext(ctx) && gate !== "manage" && gate !== "record";
+    if (needsGrant && !this.audit)
+      throw new KernelGuardError(
+        "support access needs the kernel's audit sink (PgKernelOptions.audit)",
+      );
+    let live: LiveSupportGrant | undefined;
     const client = await this.pool.connect();
     const refused: ScopeRefusal[] = [];
     try {
@@ -542,6 +579,29 @@ export class PgKernel implements MutationKernel {
             meta: { grant_id: ctx.externalGrantId ?? null },
           });
       }
+      // A support principal without a live, consented grant in this tenant sees nothing; under a
+      // read grant it never writes (R1-D-76).
+      if (needsGrant) {
+        const g = await client.query<LiveSupportGrant>(
+          `select id, modules, access from tenancy.support_grant
+            where tenant_id = $1 and requester_id = $2 and state = 'active' and expires_at > now()`,
+          [ctx.tenantId, ctx.principal.id],
+        );
+        if (g.rows.length !== 1)
+          throw new IpbError("IPB-TRUST-003", {
+            detail: "no live support access grant for this principal in this tenant",
+          });
+        live = g.rows[0] as LiveSupportGrant;
+        scope = {
+          kind: "support",
+          grantId: live.id,
+          tenantId: ctx.tenantId,
+          modules: live.modules,
+          access: live.access,
+        };
+        if (readOnly === false && live.access === "read")
+          throw scopeRefusal({ scope, reason: "write" }, m.action);
+      }
       // A scoped grant's statements name only its modules (R1-D-75); a module is a schema. Each
       // refusal is kept, so it is ledgered even when the caller catches it (a unit, a retry).
       let guard: ((text: string) => void) | undefined;
@@ -560,7 +620,9 @@ export class PgKernel implements MutationKernel {
           }
         };
       }
-      const result = await fn(new PgTx(client, ctx, readOnly !== false, guard));
+      const tx = new PgTx(client, ctx, readOnly !== false, guard);
+      if (live) bindSupportGrant(tx, live);
+      const result = await fn(tx);
       await client.query("commit");
       return result;
     } catch (e) {
