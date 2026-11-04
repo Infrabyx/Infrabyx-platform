@@ -20,6 +20,9 @@ export class ZenRuleEngine extends InProcessRuleEngine {
   protected async compilePrepared(t: PreparedTable): Promise<CompiledRuleSet> {
     this.engine ??= new ZenEngine();
     const decision: ZenDecision = this.engine.createDecision(toJdm(t));
+    // Warm the decision once with no input (every row reads as no match), so its first real
+    // evaluation does not pay ZEN's lazy set-up inside the time budget (PR-LDC-25, R1-D-88).
+    await decision.evaluate({}).catch(() => undefined);
     const dates = [...t.fields.values()].filter((f) => f.type === "date").map((f) => f.name);
     const matches = matchesConds(t.rows.map((r) => r.cond)).map((m, i) => ({
       name: matchVar(i),

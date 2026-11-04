@@ -43,6 +43,71 @@ export const RuleRow = z
   .strict();
 export type RuleRow = z.infer<typeof RuleRow>;
 
+export const RULE_PARAMETER_TYPES = ["string", "number", "integer", "boolean", "date"] as const;
+
+/**
+ * A tenant parameter of a rule set (PR-LDC-21 (a), R1-D-88): a row compares an input with it as
+ * with a literal. Its value is the tenant's value of a registered setting (so a change goes
+ * through settings' maker-checker and history), else `default`, bound when the table is compiled
+ * for that tenant. An invalid value makes the decision UNDETERMINED.
+ */
+export const RuleParameter = z
+  .object({
+    name: z.string().regex(/^[a-z][a-zA-Z0-9_]*$/),
+    type: z.enum(RULE_PARAMETER_TYPES),
+    /** The registered settings key (IPB-07) that holds the tenant's value. */
+    setting: z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/),
+    default: z.union([z.string(), z.number(), z.boolean()]),
+    /** Bounds for `number` and `integer`. */
+    min: z.number().finite().optional(),
+    max: z.number().finite().optional(),
+    /** Allowed values for `string`. */
+    values: z.array(z.string().min(1).max(200)).min(1).max(100).optional(),
+    help_key: z.string().optional(),
+  })
+  .strict()
+  .superRefine((p, ctx) => {
+    const numeric = p.type === "number" || p.type === "integer";
+    if ((p.min !== undefined || p.max !== undefined) && !numeric)
+      ctx.addIssue({ code: "custom", path: ["min"], message: "bounds apply to numbers only" });
+    if (p.values && p.type !== "string")
+      ctx.addIssue({ code: "custom", path: ["values"], message: "values apply to strings only" });
+    if (p.min !== undefined && p.max !== undefined && p.min > p.max)
+      ctx.addIssue({ code: "custom", path: ["max"], message: "max is below min" });
+    const err = ruleParameterValueError(p, p.default);
+    if (err) ctx.addIssue({ code: "custom", path: ["default"], message: err });
+  });
+export type RuleParameter = z.infer<typeof RuleParameter>;
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Why `value` is not a valid value of the parameter, or null when it is. */
+export function ruleParameterValueError(
+  p: Pick<RuleParameter, "type" | "min" | "max" | "values">,
+  value: unknown,
+): string | null {
+  switch (p.type) {
+    case "boolean":
+      return typeof value === "boolean" ? null : "not a boolean";
+    case "string":
+      if (typeof value !== "string") return "not a string";
+      return p.values && !p.values.includes(value) ? "not an allowed value" : null;
+    case "date":
+      return typeof value === "string" &&
+        ISO_DATE.test(value) &&
+        new Date(`${value}T00:00:00Z`).toISOString().startsWith(value)
+        ? null
+        : "not a date (YYYY-MM-DD)";
+    case "number":
+    case "integer":
+      if (typeof value !== "number" || !Number.isFinite(value)) return "not a number";
+      if (p.type === "integer" && !Number.isInteger(value)) return "not an integer";
+      if (p.min !== undefined && value < p.min) return `below ${p.min}`;
+      if (p.max !== undefined && value > p.max) return `above ${p.max}`;
+      return null;
+  }
+}
+
 /** Platform decision table, the body of a rule-set version. */
 export const RuleSetBody = z
   .object({
@@ -51,9 +116,21 @@ export const RuleSetBody = z
     inputs: z.array(RuleField).min(1),
     outputs: z.array(RuleOutput).min(1),
     rows: z.array(RuleRow).min(1).max(5000),
+    /** Tenant parameters (R1-D-88); rows read them like inputs. */
+    parameters: z.array(RuleParameter).max(50).optional(),
   })
   .strict()
   .superRefine((b, ctx) => {
+    const names = new Set(b.inputs.map((i) => i.name));
+    for (const [i, p] of (b.parameters ?? []).entries()) {
+      if (names.has(p.name))
+        ctx.addIssue({
+          code: "custom",
+          path: ["parameters", i, "name"],
+          message: "a parameter shares its name with an input or another parameter",
+        });
+      names.add(p.name);
+    }
     const outs = new Set(b.outputs.map((o) => o.name));
     const ids = new Set<string>();
     for (const [i, r] of b.rows.entries()) {
@@ -75,8 +152,13 @@ export type DecisionOutcome = (typeof DECISION_OUTCOMES)[number];
 
 export interface RuleSetRef {
   ruleSetId: string;
-  /** Pinned version; omitted means the version effective now. */
+  /** Pinned version; omitted means the version effective now (or at `asOf`). */
   version?: number;
+  /**
+   * Evaluate the version that was in force at this past instant (PR-LDC-22 (b), R1-D-88); never
+   * with `version`. Parameters still take the tenant's current values.
+   */
+  asOf?: Date | string;
 }
 
 export interface Decision {
@@ -88,8 +170,15 @@ export interface Decision {
   ruleIds: string[];
   ruleSetId: string;
   version: number;
-  /** Machine reason, e.g. `matched`, `no_row`, `engine_error`, `timeout`, `cel_limit`, `verify_row`. */
+  /**
+   * Machine reason, e.g. `matched`, `no_row`, `engine_error`, `timeout`, `cel_limit`, `verify_row`,
+   * `parameter_invalid`.
+   */
   reason: string;
+  /** The parameter values the decision used (R1-D-88). */
+  parameters?: Record<string, unknown>;
+  /** The instant whose version was evaluated, when `asOf` was given (ISO 8601). */
+  asOf?: string;
 }
 
 export interface CelResult {
@@ -129,6 +218,10 @@ export interface Explanation {
   /** Input names read; values only for INTERNAL or PUBLIC inputs. */
   inputs: { name: string; value?: unknown }[];
   help_keys: string[];
+  /** Parameter values and where each came from (R1-D-88). */
+  parameters?: { name: string; value: unknown; source: "setting" | "default" }[];
+  /** The instant whose version was evaluated, when the decision was made with `asOf`. */
+  asOf?: string;
   /** Always "rules": an AI source never produces a decision (IPB-07-16, @IPB-07-AT-11). */
   source: "rules";
 }
@@ -146,7 +239,7 @@ export interface RulesPort extends Port {
   publish(ctx: KernelContext, ruleSetId: string, version: number): Promise<{ approvalId: string }>;
   simulate(
     ctx: KernelContext,
-    ref: Required<RuleSetRef>,
+    ref: Required<Pick<RuleSetRef, "ruleSetId" | "version">>,
     inputs: unknown[],
   ): Promise<SimulationReport>;
   explain(ctx: KernelContext, decisionId: string): Promise<Explanation>;
@@ -158,7 +251,11 @@ export interface RulesPort extends Port {
  */
 export interface RuleEngine {
   readonly name: string;
-  compile(body: RuleSetBody): Promise<CompiledRuleSet>;
+  /** `parameters` binds the body's parameters to values (default: their defaults; R1-D-88). */
+  compile(
+    body: RuleSetBody,
+    parameters?: Readonly<Record<string, unknown>>,
+  ): Promise<CompiledRuleSet>;
 }
 
 export interface CompiledRuleSet {

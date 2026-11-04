@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { ArchiveManifestV1, ExportMap, parseMapVersion, requiredMapBump } from "./export.js";
 import { NotificationCatalogue, NotificationClass, NotificationRequest } from "./ports/notify.js";
 import { PushNotification } from "./ports/push.js";
-import { RuleSetBody } from "./ports/rules.js";
+import { RuleSetBody, ruleParameterValueError } from "./ports/rules.js";
 import { DocumentRef } from "./ports/esign.js";
 import { payloadClass } from "./ports/payload-class.js";
 import { MarketingConsentUpdatedData, ExportCompletedData } from "./events/pl3-events.js";
@@ -233,5 +233,49 @@ describe("ids, errors and events added in PL3", () => {
     expect(platformEventType("fbx", "ItemCreated")).toBe("in.fbx.inbox.ItemCreated.v1");
     expect(platformEventType("ref", "RuleSetPublished")).toBe("in.ref.rules.RuleSetPublished.v1");
     expect(INBOX_ITEM_TYPES).toContain("approval");
+  });
+});
+
+describe("rule parameters (PR-LDC-21 (a), R1-D-88)", () => {
+  const base = {
+    format: "ipb.decision_table.v1",
+    hit_policy: "first",
+    inputs: [{ name: "score", type: "integer" }],
+    outputs: [{ name: "band", type: "string" }],
+    rows: [{ id: "r", when: "score >= minScore", then: { band: "x" } }],
+  };
+  const param = { name: "minScore", type: "integer", setting: "ldc.rules.min_score", default: 700 };
+  it("accepts a parameter whose default fits its type and bounds", () => {
+    expect(
+      RuleSetBody.safeParse({ ...base, parameters: [{ ...param, min: 300, max: 900 }] }).success,
+    ).toBe(true);
+  });
+  it("refuses a default outside the bounds, bounds on a string, values on a number and a clash with an input", () => {
+    expect(RuleSetBody.safeParse({ ...base, parameters: [{ ...param, max: 600 }] }).success).toBe(
+      false,
+    );
+    expect(
+      RuleSetBody.safeParse({
+        ...base,
+        parameters: [{ name: "p", type: "string", setting: "a.b", default: "x", min: 1 }],
+      }).success,
+    ).toBe(false);
+    expect(
+      RuleSetBody.safeParse({ ...base, parameters: [{ ...param, values: ["1"] }] }).success,
+    ).toBe(false);
+    expect(
+      RuleSetBody.safeParse({ ...base, parameters: [{ ...param, name: "score" }] }).success,
+    ).toBe(false);
+    expect(RuleSetBody.safeParse({ ...base, parameters: [param, param] }).success).toBe(false);
+    expect(
+      RuleSetBody.safeParse({ ...base, parameters: [{ ...param, setting: "Bad Key" }] }).success,
+    ).toBe(false);
+  });
+  it("checks a value against the parameter", () => {
+    expect(ruleParameterValueError({ type: "string", values: ["a", "b"] }, "c")).toMatch(/allowed/);
+    expect(ruleParameterValueError({ type: "date" }, "2026-02-30")).toMatch(/date/);
+    expect(ruleParameterValueError({ type: "date" }, "2026-02-28")).toBeNull();
+    expect(ruleParameterValueError({ type: "integer", min: 1 }, 0)).toMatch(/below/);
+    expect(ruleParameterValueError({ type: "number" }, Number.NaN)).toMatch(/number/);
   });
 });

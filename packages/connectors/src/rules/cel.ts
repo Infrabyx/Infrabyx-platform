@@ -113,12 +113,25 @@ export function celEnvironment(fields: readonly RuleField[], limits: CelLimits):
   return env;
 }
 
-/** Parse, type-check and lower one row's `when` against the declared inputs. */
+/**
+ * The rule set's parameters (R1-D-88) while one row is lowered: each is a constant bound to the
+ * tenant's value at compile time, so a row compares an input with a parameter as with a literal.
+ * Lowering is synchronous, so this is set and cleared around one `lowerWhen` call.
+ */
+let CONSTS: ReadonlyMap<string, Literal> = new Map();
+const isConst = (n: ASTNode): boolean => n.op === "id" && CONSTS.has(n.args as string);
+const isInput = (n: ASTNode): boolean => n.op === "id" && !CONSTS.has(n.args as string);
+
+/**
+ * Parse, type-check and lower one row's `when` against the declared inputs. `consts` binds the
+ * rule set's parameters to their values (the environment declares them as variables).
+ */
 export function lowerWhen(
   rowId: string,
   when: string,
   fields: ReadonlyMap<string, RuleField>,
   env: Environment,
+  consts: ReadonlyMap<string, Literal> = new Map(),
 ): Cond {
   let ast: ASTNode;
   try {
@@ -142,7 +155,12 @@ export function lowerWhen(
       msg,
     );
   }
-  return fold(lower(rowId, ast, fields));
+  CONSTS = consts;
+  try {
+    return fold(lower(rowId, ast, fields));
+  } finally {
+    CONSTS = new Map();
+  }
 }
 
 function refuse(rowId: string, what: string): never {
@@ -177,21 +195,26 @@ function lower(rowId: string, n: ASTNode, fields: ReadonlyMap<string, RuleField>
       if (typeof n.args === "boolean") return { k: "const", value: n.args };
       return refuse(rowId, "a non-boolean constant is not a condition");
     case "id": {
+      if (isConst(n)) {
+        const v = CONSTS.get(n.args);
+        if (typeof v !== "boolean") refuse(rowId, `parameter ${n.args} is not boolean`);
+        return { k: "const", value: v as boolean };
+      }
       const f = fieldOf(rowId, n.args, fields);
       if (f.type !== "boolean") refuse(rowId, `input ${f.name} is not boolean`);
       return { k: "cmp", field: f.name, op: "==", value: true };
     }
     case "in": {
       const [a, b] = n.args;
-      if (a.op === "id" && b.op === "list") {
-        const f = fieldOf(rowId, a.args, fields);
+      if (isInput(a) && b.op === "list") {
+        const f = fieldOf(rowId, a.args as string, fields);
         if (f.type === "list") refuse(rowId, `list input ${f.name} cannot be the left side of in`);
         const values = b.args.map((x) => literalFor(rowId, x, f));
         if (values.length === 0) refuse(rowId, "empty list");
         return { k: "in", field: f.name, values };
       }
-      if (b.op === "id") {
-        const f = fieldOf(rowId, b.args, fields);
+      if (isInput(b)) {
+        const f = fieldOf(rowId, b.args as string, fields);
         if (f.type !== "list") refuse(rowId, `${f.name} is not a list input`);
         const v = literal(rowId, a);
         if (typeof v === "boolean") refuse(rowId, "boolean list membership");
@@ -207,11 +230,12 @@ function lower(rowId: string, n: ASTNode, fields: ReadonlyMap<string, RuleField>
     let op = n.op as CmpOp;
     let id: ASTNode;
     let lit: ASTNode;
-    if (a.op === "id" && b.op !== "id") [id, lit] = [a, b];
-    else if (b.op === "id" && a.op !== "id") {
+    if (isInput(a) && !isInput(b)) [id, lit] = [a, b];
+    else if (isInput(b) && !isInput(a)) {
       [id, lit] = [b, a];
       op = MIRROR[op];
-    } else return refuse(rowId, "a comparison needs exactly one input and one literal");
+    } else
+      return refuse(rowId, "a comparison needs exactly one input and one literal or parameter");
     const f = fieldOf(rowId, id.args as string, fields);
     if (f.type === "list") refuse(rowId, `list input ${f.name} cannot be compared`);
     if ((f.type === "string" || f.type === "boolean") && op !== "==" && op !== "!=")
@@ -237,8 +261,8 @@ function lowerStringCall(
   fields: ReadonlyMap<string, RuleField>,
 ): Cond {
   if (name !== "matches" && !STR_FNS.has(name)) return refuse(rowId, `function ${name}`);
-  if (recv.op !== "id") return refuse(rowId, `${name} needs a string input as its receiver`);
-  const f = stringField(rowId, recv.args, fields, name);
+  if (!isInput(recv)) return refuse(rowId, `${name} needs a string input as its receiver`);
+  const f = stringField(rowId, recv.args as string, fields, name);
   const [a] = argv;
   if (argv.length !== 1 || !a) return refuse(rowId, `${name} takes one argument`);
   if (name === "matches") {
@@ -249,8 +273,8 @@ function lowerStringCall(
     return { k: "matches", field: f.name, pattern: a.args };
   }
   const fn = name as StrFn;
-  if (a.op === "id") {
-    const g = stringField(rowId, a.args, fields, name);
+  if (isInput(a)) {
+    const g = stringField(rowId, a.args as string, fields, name);
     return { k: "str", fn, field: f.name, arg: { field: g.name } };
   }
   const v = literal(rowId, a);
@@ -301,6 +325,7 @@ function fieldOf(rowId: string, name: string, fields: ReadonlyMap<string, RuleFi
 }
 
 function literal(rowId: string, n: ASTNode): Literal {
+  if (isConst(n)) return CONSTS.get(n.args as string) as Literal;
   if (n.op === "-_" && n.args.op === "value") {
     const v = number(rowId, n.args.args);
     return -v;
