@@ -1,4 +1,5 @@
 {
   "0001_init.sql": "0fe9faa36a90c3784d095592f04130bdb6a584e08dea2eae868132e83801275e",
-  "0002_service_readers.sql": "45a61dcedbbaeded788cd115d462daef729257c21b8a11281f79a9e32442a2db"
+  "0002_service_readers.sql": "45a61dcedbbaeded788cd115d462daef729257c21b8a11281f79a9e32442a2db",
+  "0003_vendor_ref_routing.sql": "7fc083b8e08a6c0944920ef74836a98d34f2a3b2f87fd9fdbc06ca54ad879575"
 }

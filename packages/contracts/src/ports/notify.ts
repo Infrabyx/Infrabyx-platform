@@ -253,3 +253,31 @@ export interface ContactResolver {
     channel: Exclude<NotifyChannel, "inapp" | "push">,
   ): Promise<{ address: string; locale?: string; timezone?: string } | null>;
 }
+
+/**
+ * A tenant's own template for one class and channel (Finbyx PR-FBX-33; R1-plan M39; R1-D-69):
+ * the SMS DLT template with its sender and entity ids, the WhatsApp template's name and language,
+ * or the email template key; `vars` gives the template's positional order (PR-UDF-025).
+ */
+export type ResolvedTemplate =
+  | {
+      channel: "sms";
+      dltTemplateId: string;
+      senderId: string;
+      dltEntityId: string;
+      vars?: readonly string[];
+    }
+  | { channel: "whatsapp"; name: string; lang: string; vars?: readonly string[] }
+  | { channel: "email"; key: string };
+
+/**
+ * Consulted by NOTIFY at every delivery, `dispatchDue` included, in the delivering tenant's
+ * context. An object is used as is; `undefined` falls back to the static catalogue; `null` fails
+ * the delivery closed (no template, nothing sent; IPB-04-28).
+ */
+export type TemplateResolver = (
+  ctx: KernelContext,
+  cls: NotificationClass,
+  channel: "email" | "sms" | "whatsapp",
+  locale: string | null,
+) => Promise<ResolvedTemplate | null | undefined>;
