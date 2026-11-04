@@ -304,9 +304,12 @@ describe("ZitadelIdentity.refreshSession (recorded Zitadel v4)", () => {
           error_description: "Errors.OIDCSession.RefreshTokenInvalid",
         },
       },
+      // An undecryptable token, as Zitadel v4.19.5 answers it (the hermetic leg, R1-D-77).
+      { status: 400, body: { error: "invalid_request", error_description: "Errors.Internal" } },
       { status: 503, body: {} },
     ]);
     expect(await refusal(p, "unknown")).toMatchObject({ meta: { reason: "refresh_invalid" } });
+    expect(await refusal(p, "garbage")).toMatchObject({ meta: { reason: "refresh_invalid" } });
     expect(await refusal(p, "unknown-2")).toMatchObject({ code: "IPB-IDN-002" });
   });
 

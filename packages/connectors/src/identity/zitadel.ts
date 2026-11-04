@@ -178,6 +178,13 @@ interface ZUser {
   machine?: unknown;
 }
 
+/** OAuth token-endpoint errors that mean the refresh token itself was refused (RFC 6749 §5.2). */
+const REFRESH_REFUSALS: ReadonlySet<string> = new Set([
+  "invalid_grant",
+  "invalid_request",
+  "invalid_token",
+]);
+
 export class ZitadelIdentity implements IdentityPort {
   readonly descriptor: AdapterDescriptor = {
     port: "IDENTITY",
@@ -483,7 +490,10 @@ export class ZitadelIdentity implements IdentityPort {
     });
     if (r.status !== 200) {
       const e = oauthError(r);
-      if ((r.status === 400 || r.status === 401) && e.error === "invalid_grant")
+      // Zitadel answers an unknown or undecryptable refresh token with `invalid_request` (400),
+      // a spent or revoked one with `invalid_grant`; to our well-formed refresh request either means
+      // the token was refused (R1-D-77; seen on Zitadel v4.19.5 in the hermetic leg).
+      if ((r.status === 400 || r.status === 401) && REFRESH_REFUSALS.has(e.error))
         throw refreshRefused("refresh_invalid", "the refresh token was refused");
       this.fail(r.status, "refresh");
     }
