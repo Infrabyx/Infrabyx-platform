@@ -4,10 +4,8 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 114 | R1-D-90  | The tenant brand layer's host resolution runs before a tenant is known, so contexts in `tnt_platform` may read `brand.tenant_host` (domain to tenant id, never the layer itself), as they already read `tenancy.tenant`. Recommended: yes, keep it. Default taken: that read. Impact if no: host resolution would need a SECURITY DEFINER lookup function (a `brand` patch and an rls-lint allow-list entry). Reverse: replace the policy with the function |
-| 115 | R1-D-90  | Taking a tenant in or out of the sandbox (`TenantSandbox.set`) is one PLT_SUPER_ADMIN with a reason, ledgered in the tenant, with no second approver. Recommended: add maker-checker (a platform approval action, R3) before any production tenant is flagged, since leaving the sandbox turns on real sends. Default taken: ledgered single action. Impact if yes: a `tenancy` minor routing `set` through the approvals engine. Reverse: drop the action  |
+| #   | Decision | Question |
+| --- | -------- | -------- |
 
 ## Answered
 
@@ -133,3 +131,5 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 | 112 | 2026-11-04 | Yes to all three: 4 hours by default (at most 24); `PLT_SUPPORT` only in support contexts; a read-write grant never includes `tenancy` or `audit` | R1-D-89 (default R1-D-76) |
 | 113 | 2026-11-04 | Yes: keep the conservative NPCI table `[VERIFY]` until the sponsor bank's file specification arrives | R1-D-89 (default R1-D-80) |
 | 105 (#210, closed) | 2026-11-04 | #210 merged as `78d7bc0`; the owner removed the Repository-admin bypass from the `main` ruleset, so the `docs/ecosystem` guard is back in force | R1-D-85 (closed) |
+| 114 | 2026-11-04 | Yes: a platform context may read `brand.tenant_host` (domain to tenant) only, never a tenant's brand layer | R1-D-91 (default R1-D-90) |
+| 115 | 2026-11-04 | Yes: taking a tenant into or out of the sandbox needs maker-checker (a PLT_SUPER_ADMIN maker and a different approver, with a logged reason), built before any production tenant can be flagged | R1-D-91 (default R1-D-90) |

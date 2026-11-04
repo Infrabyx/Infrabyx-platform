@@ -90,10 +90,18 @@ export function assertAllowedStatement(text: string): void {
 /** Most units one transaction may open (a batch is cut into transactions of at most this). */
 export const MAX_UNITS_PER_TX = 100_000;
 
+/**
+ * Refuses work on a transaction that has ended (R1-D-92): its connection goes back to the pool
+ * and its next user may be another tenant, so a statement from a call that outlived it must never
+ * reach the connection.
+ */
+const ENDED = "the transaction has ended: no statement may run on its connection";
+
 class PgTx implements Tx {
   private _audited = false;
   private units = 0;
   private depth = 0;
+  private ended = false;
   constructor(
     private readonly client: pg.PoolClient,
     readonly ctx: KernelContext,
@@ -102,7 +110,16 @@ class PgTx implements Tx {
     private readonly guard?: (text: string) => void,
   ) {}
 
+  /** Kernel only: no statement runs after this (called before commit or rollback). */
+  end(): void {
+    this.ended = true;
+  }
+  private assertOpen(): void {
+    if (this.ended) throw new KernelGuardError(ENDED);
+  }
+
   async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+    this.assertOpen();
     if (this.readOnly) throw new KernelGuardError("units are for mutations");
     if (++this.units > MAX_UNITS_PER_TX)
       throw new KernelGuardError(`a transaction opens at most ${MAX_UNITS_PER_TX} units`);
@@ -129,6 +146,7 @@ class PgTx implements Tx {
     text: string,
     params?: readonly unknown[],
   ): Promise<QueryResult<R>> {
+    this.assertOpen();
     assertAllowedStatement(text);
     this.guard?.(text);
     const r = await this.client.query(text, params as unknown[] | undefined);
@@ -142,6 +160,7 @@ class PgTx implements Tx {
   }
   /** Kernel only: apply a context's `app.*` settings to this transaction. */
   async applyContext(ctx: KernelContext, m: MutateOptions): Promise<void> {
+    this.assertOpen();
     await applySettings(this.client, ctx, m);
   }
 }
@@ -152,14 +171,20 @@ class PgTx implements Tx {
  */
 class JoinedTx implements Tx {
   private _audited = false;
+  private ended = false;
   constructor(
     private readonly parent: PgTx,
     readonly ctx: KernelContext,
   ) {}
+  /** Kernel only: the joined call's unit is over; its tx may not be used again (R1-D-92). */
+  end(): void {
+    this.ended = true;
+  }
   query<R = Record<string, unknown>>(
     text: string,
     params?: readonly unknown[],
   ): Promise<QueryResult<R>> {
+    if (this.ended) return Promise.reject(new KernelGuardError(ENDED));
     return this.parent.query<R>(text, params);
   }
   markAudited(): void {
@@ -170,6 +195,7 @@ class JoinedTx implements Tx {
     return this._audited;
   }
   async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+    if (this.ended) throw new KernelGuardError(ENDED);
     const before = this._audited;
     const out = await this.parent.unit(() => fn(this));
     if (!out.ok) this._audited = before;
@@ -183,6 +209,10 @@ interface AmbientScope {
   opts: MutateOptions;
   /** Tokens of the open joined calls, innermost last; the first is the ambient call's own. */
   stack: symbol[];
+  /** Joined calls not yet settled; the ambient mutation waits for them before it ends (R1-D-92). */
+  inflight: Set<Promise<unknown>>;
+  /** Set when the ambient mutation ends: a joined call that starts later is refused. */
+  ended: boolean;
 }
 interface AmbientFrame {
   scope: AmbientScope;
@@ -364,14 +394,59 @@ export class PgKernel implements MutationKernel {
       ctx,
       async (tx) => {
         const token = Symbol("ambient");
-        const scope: AmbientScope = { tx: tx as PgTx, ctx, opts, stack: [token] };
-        return this.ambientFrame.run({ scope, token }, () => fn(tx));
+        const scope: AmbientScope = {
+          tx: tx as PgTx,
+          ctx,
+          opts,
+          stack: [token],
+          inflight: new Set(),
+          ended: false,
+        };
+        let value: T | undefined;
+        let failure: { error: unknown } | undefined;
+        try {
+          value = await this.ambientFrame.run({ scope, token }, () => fn(tx));
+        } catch (error) {
+          failure = { error };
+        }
+        // A joined call still running when the callback ended (one not awaited, or a sibling of a
+        // refused one) finishes inside this transaction before it ends, and the transaction then
+        // fails: it never commits half a call, and the call never reaches the next transaction on
+        // this connection (R1-D-92).
+        const running = [...scope.inflight];
+        while (scope.inflight.size) await Promise.allSettled([...scope.inflight]);
+        scope.ended = true;
+        if (failure) throw failure.error;
+        if (running.length)
+          throw new KernelGuardError(
+            "a mutation joined to the ambient one was still running when it ended",
+          );
+        return value as T;
       },
       opts,
     );
   }
 
   private async joined<T>(
+    frame: AmbientFrame,
+    ctx: KernelContext,
+    role: string,
+    fn: (tx: Tx) => Promise<T>,
+    opts: MutateOptions,
+  ): Promise<T> {
+    const { scope } = frame;
+    if (scope.ended)
+      throw new KernelGuardError("the ambient mutation has ended: a joined call cannot start");
+    const p = this.joinedCall(frame, ctx, role, fn, opts);
+    scope.inflight.add(p);
+    void p.then(
+      () => scope.inflight.delete(p),
+      () => scope.inflight.delete(p),
+    );
+    return p;
+  }
+
+  private async joinedCall<T>(
     frame: AmbientFrame,
     ctx: KernelContext,
     role: string,
@@ -395,20 +470,25 @@ export class PgKernel implements MutationKernel {
     const token = Symbol("joined");
     scope.stack.push(token);
     let out: UnitOutcome<T>;
+    let child: JoinedTx | undefined;
     try {
       out = await scope.tx.unit(async () => {
         await scope.tx.applyContext(ctx, opts);
         // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
-        const child = new JoinedTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
-        const r = await this.ambientFrame.run({ scope, token }, () => fn(child));
-        if (!child.audited)
+        child = new JoinedTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
+        const c = child;
+        const r = await this.ambientFrame.run({ scope, token }, () => fn(c));
+        if (!c.audited)
           throw new IpbError("IPB-MOD-003", {
             detail: `mutation${opts.action ? ` ${opts.action}` : ""} wrote no audit ledger entry`,
           });
         return r;
       });
     } finally {
-      scope.stack.pop();
+      child?.end();
+      // Pop only this call's own token, wherever it is (a refused sibling never pushed one).
+      const i = scope.stack.lastIndexOf(token);
+      if (i >= 0) scope.stack.splice(i, 1);
     }
     // A released savepoint keeps the joined call's settings; put the ambient ones back.
     await scope.tx.applyContext(a, scope.opts);
@@ -522,7 +602,8 @@ export class PgKernel implements MutationKernel {
       await client.query("begin");
       await client.query(`set local role ${quoteIdent(this.role)}`);
       await applySettings(client, ctx, { action: ledgerAction });
-      await audit.record(new PgTx(client, withKernelSandbox(ctx, undefined)), {
+      const ltx = new PgTx(client, withKernelSandbox(ctx, undefined));
+      await audit.record(ltx, {
         action: ledgerAction,
         resourceType: support ? "support_grant" : "breakglass_grant",
         resourceId: r.scope.grantId,
@@ -534,6 +615,7 @@ export class PgKernel implements MutationKernel {
           ...(action ? { action } : {}),
         },
       });
+      ltx.end();
       await client.query("commit");
     } catch (e) {
       await client.query("rollback").catch(() => undefined);
@@ -564,6 +646,7 @@ export class PgKernel implements MutationKernel {
     let live: LiveSupportGrant | undefined;
     const client = await this.pool.connect();
     const refused: ScopeRefusal[] = [];
+    let tx: PgTx | undefined;
     try {
       await client.query(
         readOnly === "snapshot"
@@ -649,12 +732,14 @@ export class PgKernel implements MutationKernel {
         );
         sandbox = sb.rows[0]?.sandbox ?? false;
       }
-      const tx = new PgTx(client, withKernelSandbox(ctx, sandbox), readOnly !== false, guard);
+      tx = new PgTx(client, withKernelSandbox(ctx, sandbox), readOnly !== false, guard);
       if (live) bindSupportGrant(tx, live);
       const result = await fn(tx);
+      tx.end();
       await client.query("commit");
       return result;
     } catch (e) {
+      tx?.end();
       await client.query("rollback").catch(() => undefined);
       const r = refusalOf(e);
       if (r && !refused.includes(r)) refused.push(r);

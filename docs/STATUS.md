@@ -10,6 +10,13 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                    |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                        |
 
+## Security patch (seventh session, 4 Nov): no work on a connection after its transaction ended
+
+- **Owner answers (R1-D-91):** #114 yes, #115 yes (sandbox maker-checker in wave 7), PR-042 yes (lower setting scopes in wave 7), PR-043 `X-Infrabyx-JWS` (v1.4 text as a docs PR for sign-off). The race goes first.
+- **Fix (R1-D-92, `tenancy` patch):** a joined call left running when its ambient mutation ended could run in the next transaction on the returned connection, another tenant's (reproduced by `ambient-race.int.test.ts`, one-connection pool: the statement read `app.tenant_id = tnt_b`; four tests failing before the fix, passing after). The kernel now refuses any statement on an ended transaction, an ambient mutation waits for its joined calls and fails when one was still running, and a late joined call is refused. Threat model §3.94.
+- **Products:** upgrade to the patched `tenancy` before the next exit gate (`finbyx.md`, `lawdocscomply.md`, `udofin.md`). Exposure: Finbyx's searchable code does not call `kernel.ambient`; Udofin and LawDocsComply could not be searched from here; no product logs are reachable.
+- **Next:** the patch gate (`ci:run`), its version PR and release record; then wave 7 (M63, lower scopes after PR-042, sandbox maker-checker, PDF after the dependency review; the spec v1.4 draft; M61 after sign-off).
+
 ## Wave 6 (seventh session, 4 Nov): released (run 197)
 
 - **Owner answers (4 Nov, R1-D-89):** #106 yes (built here as M62), #107 no, #108 yes, #110 yes (planned as M63 in wave 7: the export map and erasure), #111 to #113 yes; #210 closed (R1-D-85). PR-042 put to the owner again in one line.
@@ -17,7 +24,7 @@ Updated: 2026-11-04
 - **Open questions:** #114 (the platform-tenant read of `brand.tenant_host`), #115 (maker-checker on `TenantSandbox.set`); PR-042.
 - **Follow-up (not in this wave):** `PgKernel.ambient` lets a concurrent joined sibling run on after the scope ends (pre-existing; found while adding the sandbox lookup); to be fixed in its own PR.
 - **Done:** the gate (#219; its first run was cancelled when two labels were added at once, the single-label re-run was green), version PR #220 and release run 197 (record below); the LawDocsComply adoption note (`lawdocscomply.md` §9).
-- **Next:** wave 7 (M63: setting history in the tenant export and DPDP erasure; PDF; M61 after spec v1.4), and the `PgKernel.ambient` fix in its own PR.
+- **Next:** see the security patch above.
 
 ## Wave 5 (seventh session, 4 Nov): released (run 193)
 
