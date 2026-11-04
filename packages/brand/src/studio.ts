@@ -14,7 +14,7 @@ import type {
   Tx,
 } from "@infrabyx/contracts/kernel";
 import type { MediaPort, StoragePort } from "@infrabyx/contracts/ports";
-import { FAVICON_PNG_SIZES, storageKey } from "@infrabyx/contracts/ports";
+import { storageKey } from "@infrabyx/contracts/ports";
 import { BRAND_EVENTS, BrandPackPublishedData, ContrastGuardFailedData } from "@infrabyx/contracts";
 import { internalEvent } from "@infrabyx/config/events";
 import { newId, sha256Hex, ulid } from "@infrabyx/crypto";
@@ -32,6 +32,7 @@ import {
   type BrandProduct,
   type MediaRef,
 } from "./shape.js";
+import { rasteriseFavicons } from "./raster.js";
 import { sanitiseSvg } from "./svg.js";
 
 export const PUBLISH_CHECKERS = ["PLT_SUPER_ADMIN", "PLT_RELEASE_MANAGER"] as const;
@@ -163,26 +164,6 @@ export class BrandStudio {
     );
   }
 
-  /** PNG favicons rasterised from the sanitised SVG, or none without a capable MEDIA port (#53). */
-  private async rasterise(
-    ctx: KernelContext,
-    svg: string,
-  ): Promise<{ size: number; bytes: Uint8Array }[]> {
-    const m = this.o.media;
-    if (!m || m.descriptor.capabilities?.rasteriseSvg === "unsupported") return [];
-    if (this.o.reencodeEnabled && !(await this.o.reencodeEnabled(ctx))) return [];
-    try {
-      return (await m.rasteriseSvg(svg, FAVICON_PNG_SIZES)).map((r) => ({
-        size: r.width,
-        bytes: r.bytes,
-      }));
-    } catch (e) {
-      // Best effort: the logo is kept and the favicon set lists the PNGs as missing (IPB-04-22).
-      if (/^IPB-(?:PORT|SEC)-/.test((e as { code?: string }).code ?? "")) return [];
-      throw e;
-    }
-  }
-
   /**
    * Sanitise an uploaded SVG logo and store only the result (`@IPB-04-AT-21`). The report lists
    * every removal; the upload itself is never written anywhere. With a MEDIA port that can
@@ -199,7 +180,7 @@ export class BrandStudio {
     const bytes = new TextEncoder().encode(svg);
     const sha256 = sha256Hex(bytes);
     const key = storageKey(PLATFORM_TENANT_ID, "brand", ulid(), "svg");
-    const pngs = await this.rasterise(ctx, svg);
+    const pngs = await rasteriseFavicons(this.o, ctx, svg);
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -595,26 +576,18 @@ export class BrandStudio {
     return faviconSet(rev.body, svg, guard.previews.light.colours.primary);
   }
 
-  /** Resolve the pack for a request: published hosts only, the product default otherwise. */
+  /**
+   * Resolve the pack for a request: published hosts only, the product default otherwise. A
+   * verified tenant domain (brand 0002) resolves to that tenant's base pack and names the tenant;
+   * `TenantBrandLayers.resolveHost` then applies the tenant's layer. Tenant domains are visible to
+   * a context in the platform tenant (and to their own tenant) only.
+   */
   async resolve(
     ctx: KernelContext,
     product: BrandProduct,
     headers: { host: string | null | undefined; forwardedHost?: string | null | undefined },
   ): Promise<HostResolution> {
-    const { map, fallback } = await this.o.kernel.read(ctx, async (tx) => {
-      const hosts = await tx.query<{ host: string; pack_id: string }>(
-        `select h.host, h.pack_id from brand.host h join brand.pack p on p.id = h.pack_id
-          where p.status = 'published' and h.verified`,
-      );
-      const def = await tx.query<{ id: string }>(
-        "select id from brand.pack where product = $1 and is_default and status = 'published'",
-        [product],
-      );
-      return {
-        map: hosts.rows.map((h): HostMapEntry => ({ host: h.host, packId: h.pack_id })),
-        fallback: def.rows[0]?.id,
-      };
-    });
+    const { map, fallback } = await this.o.kernel.read(ctx, (tx) => loadHostMap(tx, product));
     if (!fallback) throw new NotFoundError("published default brand pack");
     const res = resolveHost(map, fallback, headers);
     for (const e of res.events) this.o.hooks.onHostEvent?.(e);
@@ -651,9 +624,17 @@ export class BrandStudio {
       "select host, pack_id from brand.host where host = any($1) and pack_id <> $2",
       [hosts.map((h) => h.host), packId],
     );
-    if (r.rows.length)
+    // A tenant's domain (brand 0002) is never a pack host either; a platform context reads them.
+    const t = await tx.query<{ host: string }>(
+      "select host from brand.tenant_host where host = any($1)",
+      [hosts.map((h) => h.host)],
+    );
+    if (r.rows.length || t.rows.length)
       throw new IpbError("IPB-BRD-002", {
-        detail: r.rows.map((x) => `${x.host} belongs to ${x.pack_id}`).join("; "),
+        detail: [
+          ...r.rows.map((x) => `${x.host} belongs to ${x.pack_id}`),
+          ...t.rows.map((x) => `${x.host} is a tenant domain`),
+        ].join("; "),
       });
   }
 
@@ -719,4 +700,37 @@ export class BrandStudio {
     );
     return r.rows[0] ?? null;
   }
+}
+
+/**
+ * The per-host map: verified hosts of published packs, then verified tenant domains over a
+ * published pack (brand 0002), with the product's published default pack.
+ */
+export async function loadHostMap(
+  tx: Tx,
+  product: BrandProduct,
+): Promise<{ map: HostMapEntry[]; fallback: string | undefined }> {
+  const hosts = await tx.query<{ host: string; pack_id: string }>(
+    `select h.host, h.pack_id from brand.host h join brand.pack p on p.id = h.pack_id
+      where p.status = 'published' and h.verified`,
+  );
+  const tenants = await tx.query<{ host: string; pack_id: string; tenant_id: string }>(
+    `select t.host, t.pack_id, t.tenant_id from brand.tenant_host t join brand.pack p on p.id = t.pack_id
+      where p.status = 'published' and t.verified`,
+  );
+  const def = await tx.query<{ id: string }>(
+    "select id from brand.pack where product = $1 and is_default and status = 'published'",
+    [product],
+  );
+  return {
+    map: [
+      ...hosts.rows.map((h): HostMapEntry => ({ host: h.host, packId: h.pack_id })),
+      ...tenants.rows.map((h): HostMapEntry => ({
+        host: h.host,
+        packId: h.pack_id,
+        tenantId: h.tenant_id,
+      })),
+    ],
+    fallback: def.rows[0]?.id,
+  };
 }
