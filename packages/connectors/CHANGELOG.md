@@ -1,5 +1,20 @@
 # @infrabyx/connectors
 
+## 1.11.0
+
+### Minor Changes
+
+- b8c1f2c: RULES engines (R1-plan M55; R1-D-88): rule parameters are constants bound at compile time (`compile(body, parameters?)`, defaults otherwise); a row compares an input with a parameter as with a literal on `zen`, `json-rules` and `memory`, and a parameter is never an input. ZEN warms each compiled decision once, so its first evaluation does not pay its lazy set-up inside the time budget (PR-LDC-25).
+
+### Patch Changes
+
+- Updated dependencies [b8c1f2c]
+- Updated dependencies [b8c1f2c]
+  - @infrabyx/contracts@1.20.0
+  - @infrabyx/tenancy@1.13.0
+  - @infrabyx/config@1.10.1
+  - @infrabyx/crypto@1.5.5
+
 ## 1.10.0
 
 ### Minor Changes

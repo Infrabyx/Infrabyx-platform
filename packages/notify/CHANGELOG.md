@@ -1,5 +1,16 @@
 # @infrabyx/notify
 
+## 1.2.3
+
+### Patch Changes
+
+- Updated dependencies [b8c1f2c]
+- Updated dependencies [b8c1f2c]
+  - @infrabyx/contracts@1.20.0
+  - @infrabyx/tenancy@1.13.0
+  - @infrabyx/config@1.10.1
+  - @infrabyx/crypto@1.5.5
+
 ## 1.2.2
 
 ### Patch Changes

@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.13.0
+
+### Minor Changes
+
+- b8c1f2c: Approvals (R1-D-86): `ActionPolicy.platformCheckerRoles`, so an action can add product roles to its tenant checkers while a platform context keeps its own; `DEFAULT_TENANT_CHECKERS` and `DEFAULT_PLATFORM_CHECKERS` are exported.
+
+### Patch Changes
+
+- Updated dependencies [b8c1f2c]
+  - @infrabyx/contracts@1.20.0
+  - @infrabyx/config@1.10.1
+  - @infrabyx/crypto@1.5.5
+
 ## 1.12.0
 
 ### Minor Changes
