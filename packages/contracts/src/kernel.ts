@@ -42,7 +42,22 @@ export interface KernelContext {
   branchIds?: readonly string[];
   /** Every branch of the tenant (for example head office); takes the place of `branchIds`. */
   allBranches?: boolean;
+  /**
+   * The tenant is a sandbox (LawDocsComply PR-LDC-29; R1-D-87): ports record and never send, and
+   * the AI gateway refuses data above INTERNAL. **Set by the kernel only**: inside every read and
+   * mutate transaction `tx.ctx.sandbox` is read from `tenancy.tenant.sandbox`, overwriting
+   * whatever the caller passed, so only `tx.ctx` is to be trusted, never a request's context.
+   * Absent means the kernel could not read it (no tenant row, a kernel that does not set it); the
+   * ports then fail closed and treat the tenant as a sandbox (`isSandboxed`).
+   */
+  sandbox?: boolean;
 }
+
+/**
+ * Whether ports must behave as in a sandbox for this transaction's context: true unless the kernel
+ * has read the tenant's flag as false (fail closed, R1-D-87). Pass `tx.ctx`, never a caller's.
+ */
+export const isSandboxed = (ctx: Pick<KernelContext, "sandbox">): boolean => ctx.sandbox !== false;
 
 export interface QueryResult<R> {
   rows: R[];

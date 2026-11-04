@@ -173,6 +173,8 @@ export const DELIVERY_STATES = [
   "killed",
   "digested",
   "expired",
+  /** Recorded in a sandbox tenant and never handed to an adapter (PR-LDC-29; R1-D-87). */
+  "sandboxed",
 ] as const;
 export type DeliveryState = (typeof DELIVERY_STATES)[number];
 
