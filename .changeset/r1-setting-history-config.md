@@ -1,0 +1,5 @@
+---
+"@infrabyx/config": minor
+---
+
+`SettingsService.history(ctx, key, scope, { limit?, cursor? })` lists each change of a setting at one scope, newest first and paged (1 to 100, default 50): who, when, the old and new value, the version and the approval request id, each linked to its `settings.setting.change` ledger entry. Migration `config/0003_setting_change.sql` adds the insert-only `config.setting_change` table under forced RLS (TENANT, ENTITY and USER rows follow `app.tenant_id`; PLATFORM, PLAN and BRAND rows a platform context; the actor is the context's own), written by `SettingsService` in the same transaction as the value and the ledger entry; history is kept from this migration on. A USER scope's history is its owner's alone; TENANT and ENTITY need a role that may change the key, `ORG_OWNER`, `ORG_ADMIN` or `ORG_AUDITOR_RO`; the platform tiers a platform role in a platform context. `SettingsStore` gains the optional `appendChange` and `history`, implemented by `PgSettingsStore` and `MemorySettingsStore` (PR-LDC-17 in part; R1-D-82).
