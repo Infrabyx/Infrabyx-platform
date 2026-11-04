@@ -4,8 +4,10 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question |
-| --- | -------- | -------- |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 114 | R1-D-90  | The tenant brand layer's host resolution runs before a tenant is known, so contexts in `tnt_platform` may read `brand.tenant_host` (domain to tenant id, never the layer itself), as they already read `tenancy.tenant`. Recommended: yes, keep it. Default taken: that read. Impact if no: host resolution would need a SECURITY DEFINER lookup function (a `brand` patch and an rls-lint allow-list entry). Reverse: replace the policy with the function |
+| 115 | R1-D-90  | Taking a tenant in or out of the sandbox (`TenantSandbox.set`) is one PLT_SUPER_ADMIN with a reason, ledgered in the tenant, with no second approver. Recommended: add maker-checker (a platform approval action, R3) before any production tenant is flagged, since leaving the sandbox turns on real sends. Default taken: ledgered single action. Impact if yes: a `tenancy` minor routing `set` through the approvals engine. Reverse: drop the action  |
 
 ## Answered
 

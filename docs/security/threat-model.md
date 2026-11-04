@@ -997,3 +997,35 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 - **E (a product role, an agent or platform staff checks a publish):** Control: `publishCheckerRoles` accepts tenant and product roles only and refuses `PLT_`, `AGT_`, `SVC_` and `OPS_` roles at construction; a platform context keeps the platform checkers; maker ≠ checker and the tenant's tighten-only narrowing still apply; every publish is ledgered.
 - **D (compilation under load turns decisions UNDETERMINED):** Control: ZEN warms each compiled decision; `prepare` and the executed publish compile ahead of traffic; the cache is bounded (256 entries per version and parameter set).
 - **Residual:** as-of evaluation uses the tenant's current parameter values, not those in force at the instant; the decision records which values it used.
+
+### 3.89 XLSX and DOCX exports (PR-LDC-28, R1-D-90)
+
+- **T and I (formula injection in an opened export):** Control: `toXlsx` writes only inline-string, number, boolean and date cells, never a formula; text starting with `=`, `+`, `-`, `@`, tab or CR (headers included) gets an apostrophe; `toCsv` offers the same rule for spreadsheet-bound CSV.
+- **T (XML injection):** Control: every text and attribute value is escaped and characters outside XML 1.0 dropped; part names, relationship ids and styles are fixed by the writer; DOCX writes no fields, macros, images or OLE objects; the only external target is an https hyperlink without credentials.
+- **D (oversized output, a decompression bomb for the reader):** Control: grid, cell, sheet, block and link limits; uncompressed parts counted against a 64 MiB default cap (at most 1 GiB); the ZIP writer refuses archives that would need ZIP64.
+
+### 3.90 Tenant brand layer (`brand/0002`; PR-LDC-26, R1-D-90)
+
+- **S (spoofing through the email identity):** Control: the from-address domain must be verified (SPF, DKIM, DMARC) through the same NOTIFY hook as packs, at proposal and again at approval; the from-name is single-line plain text without quotes, `@` or angle brackets (no header injection or display-name spoofing); the pack's reply-to and DKIM selector are never carried onto a tenant address; every change needs a second person.
+- **S (spoofing through the domain):** Control: a host is unique across pack hosts and every tenant's domain (code and triggers); a domain selects the layer only when the EDGE hook confirms control; the tenant is chosen from `Host` only, never `X-Forwarded-Host`. Residual: the clash check reveals that a host is taken (public DNS information).
+- **T (XSS through SVG or the login message):** Control: logos, favicons and SVG letterheads must be sanitiser-written objects (stored tag and matching SHA-256) under the tenant's own key; other letterheads are PDF, PNG or JPEG with a matching stored type; the login message refuses `<`, `>`, character references, control and bidirectional characters, and is rendered as text.
+- **I and E (tenant isolation):** Control: `brand.tenant_layer_version` and `brand.tenant_host` have RLS enabled and forced on `app.tenant_id` (rls-lint clean); the only cross-tenant read is the host index from platform-tenant contexts; the executor refuses another tenant's payload; the strict schema and the merge keep the legal entity, terminology, policy set and consent the pack's; versions are immutable.
+
+### 3.91 Tenant notification templates (`notify/0004`; PR-LDC-27, R1-D-90)
+
+- **T and S (HTML injection or phishing through a tenant template):** Control: an allow-list lint with no sanitiser (script, style, iframe, form, input, object, embed, svg, link, base and comments refused; no `on…` attributes; links https, mailto or tel only, checked after decoding references; no credentials in URLs; link hosts limited by `linkHosts` when set; only inline raster images; CSS from a property allow-list; no variables inside attributes); every value escaped in HTML and line breaks stripped from the subject; every change R3 maker-checker with the full text in the checker's diff; digest, base version and lint checked again at activation; security classes keep the catalogue email.
+- **I (variable leakage):** Control: only the class's declared `variables` may appear, checked at request, approval and every render; a class that loses a variable fails the delivery closed (`template_invalid`).
+- **T (unapproved SMS or WhatsApp wording, another entity's DLT template or sender):** Control: overrides only select a template the product's registry returns for that tenant; sender and entity ids come from the registry; the selection is re-checked at activation and delivery and fails closed when withdrawn.
+- **I and T (tenant isolation):** Control: `notify.tenant_template` is tenant-owned under forced RLS and every query also filters on the context tenant; the dispatcher's cross-tenant reader has no grant on it.
+- **Residual:** text-only social engineering inside allowed wording relies on the checker; with `linkHosts` unset any https host is allowed (set it to the tenant's verified domains).
+
+### 3.92 Sandbox tenants (`tenancy/0018`, `notify/0005`; PR-LDC-29, R1-D-90)
+
+- **E (a tenant takes itself out of the sandbox):** Control: the BEFORE UPDATE trigger `tenant_sandbox_guard` refuses any change to `sandbox` unless the transaction is platform-scoped and carries the action `tenancy.tenant.sandbox.set`, both set only by the kernel from the verified context (callers cannot `set_config('app.…')`); the only path is `TenantSandbox.set` (PLT_SUPER_ADMIN, a reason, ledgered in the tenant).
+- **S (a caller forges `ctx.sandbox`):** Control: `contextFromClaims` never copies it, the kernel replaces it in every transaction with the tenant row's value, joined mutations inherit the ambient transaction's value, and NOTIFY and the AI gateway read it only from `tx.ctx`. Residual: a non-PgKernel kernel (a test fake) passes the caller's value through.
+- **Fail closed:** the lookup is a SECURITY DEFINER function bound to `app.tenant_id`; a transaction run as a role without the lookup carries no flag and `isSandboxed` treats it as a sandbox; a failed lookup aborts the transaction. A tenant without a row is not a sandbox (it was never flagged). In-app messages, which never leave the platform, are the stated exception.
+
+### 3.93 Form-layout lint and a shorter approval expiry (PR-LDC-24, PR-LDC-19)
+
+- **Form lint:** no port, adapter, data flow or stored data; `axeFormScan` reuses the existing in-page axe injection under the same CSP assumption (PL5-D-03).
+- **E (a tenant lengthens its approval window to keep stale requests alive):** Control: `mc.expiry_hours` is tighten-only, at most 168 hours, changed by ORG_OWNER under R4, and the engine never exceeds the action's platform period nor goes below 1 hour.

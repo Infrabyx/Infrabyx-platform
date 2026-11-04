@@ -10,6 +10,14 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                          |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                              |
 
+## Wave 6 (seventh session, 4 Nov): the gate PR
+
+- **Owner answers (4 Nov, R1-D-89):** #106 yes (built here as M62), #107 no, #108 yes, #110 yes (planned as M63 in wave 7: the export map and erasure), #111 to #113 yes; #210 closed (R1-D-85). PR-042 put to the owner again in one line.
+- **Built (R1-D-90):** M56 `lintForm` and `axeFormScan` (`a11y`); M57 the tenant brand layer (`brand/0002`); M58 tenant notification templates (`notify/0004`, email content through `ses` and `brevo`); M59 `toXlsx` and `toDocx` (`export`); M60 sandbox tenants (`tenancy/0018`, `notify/0005`, the AI gateway); M62 `mc.expiry_hours.{action}`. Fixed on the way: NOTIFY's email tag `ipb_class` (refused by `ses`) is now `notify_class`.
+- **Open questions:** #114 (the platform-tenant read of `brand.tenant_host`), #115 (maker-checker on `TenantSandbox.set`); PR-042.
+- **Follow-up (not in this wave):** `PgKernel.ambient` lets a concurrent joined sibling run on after the scope ends (pre-existing; found while adding the sandbox lookup); to be fixed in its own PR.
+- **Next:** the wave 6 gate (`ci:run`), its version PR and release record, the LawDocsComply adoption note; then wave 7 (M63, PDF, M61 after spec v1.4).
+
 ## Wave 5 (seventh session, 4 Nov): released (run 193)
 
 - **Owner answers (4 Nov):** #109 yes (R1-D-86); #210 merges as a one-off bypass of the `docs/ecosystem` guard (R1-D-85), done by the owner, since the session's credentials cannot bypass the ruleset. LawDocsComply PR-LDC-23 to 29 logged (R1-D-87): PR-LDC-23 becomes spec request PR-043 (spec v1.4); PR-LDC-25 joins wave 5; PR-LDC-24, 26, 27, 28 (XLSX, DOCX) and 29 go to wave 6 (M56 to M60), PDF to wave 7.
