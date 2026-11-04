@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PortHealth,
+  type ConsentPort,
   type FeatureFlagPort,
   type KmsPort,
   type Port,
@@ -111,6 +112,46 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
         await expect(p.extendRetention(plain, later)).rejects.toMatchObject({
           code: "IPB-STOR-003",
         });
+      },
+    },
+  ] as Array<ContractCase<never>>,
+  CONSENT: [
+    {
+      name: "latestByPrincipal gives the latest record per purpose, in the caller's tenant only (PR-LDC-14)",
+      method: "latestByPrincipal",
+      invoke: (p: ConsentPort) => p.latestByPrincipal?.("prn_contract_none") ?? Promise.resolve([]),
+      async run(p: ConsentPort) {
+        if (!p.latestByPrincipal) throw new Error("adapter lacks latestByPrincipal");
+        // An approved text the adapter can cite (the pg_local test seeds it).
+        const text = (p as unknown as { contractText?: { textKey: string; textVersion: string } })
+          .contractText ?? { textKey: "consent.contact_form", textVersion: "1.0" };
+        const ref = `prn_contract_${Date.now().toString(36)}`;
+        const a = { tenantId: "tnt_contract_a" };
+        const b = { tenantId: "tnt_contract_b" };
+        const base = {
+          principalRef: ref,
+          method: "FORM" as const,
+          region: "IN" as const,
+          gpc: false,
+          ...text,
+        };
+        const first = await p.recordConsent({ ...base, purposes: ["LEAD_CONTACT"] }, a);
+        const second = await p.recordConsent(
+          { ...base, purposes: ["LEAD_CONTACT", "MARKETING_EMAIL"] },
+          a,
+        );
+        await p.recordConsent({ ...base, purposes: ["ANALYTICS"] }, b);
+        await p.recordConsent(
+          { ...base, principalRef: `${ref}_x`, purposes: ["MARKETING_SMS"] },
+          a,
+        );
+        const got = await p.latestByPrincipal(ref, a);
+        expect(got.map((x) => x.purpose)).toEqual(["LEAD_CONTACT", "MARKETING_EMAIL"]);
+        expect(first.receiptId).not.toBe(second.receiptId);
+        for (const x of got)
+          expect(x).toMatchObject({ receiptId: second.receiptId, granted: true });
+        expect((await p.latestByPrincipal(ref, b)).map((x) => x.purpose)).toEqual(["ANALYTICS"]);
+        expect(await p.latestByPrincipal(`${ref}_none`, a)).toEqual([]);
       },
     },
   ] as Array<ContractCase<never>>,

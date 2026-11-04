@@ -4,7 +4,7 @@
 // Every record is a new row (a changed choice never overwrites one), keeps the exact text shown
 // (IPB-05 `@IPB-05-AT-10`), is ledgered in the audit chain, and emits `ConsentRecorded` (internal).
 // The Ecosystem `MarketingConsentUpdated` emitter stays off until v1.2 is approved (#46).
-import { IpbError } from "@infrabyx/contracts/errors";
+import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type {
   AuditSink,
@@ -23,6 +23,7 @@ import {
   type ConsentState,
   type PortCall,
   type PortHealth,
+  type PrincipalPurposeConsent,
 } from "@infrabyx/contracts/ports";
 import { CONSENT_EVENTS, ConsentRecordedData } from "@infrabyx/contracts";
 import { internalEvent } from "@infrabyx/config/events";
@@ -169,6 +170,59 @@ export class PgConsentLedger implements ConsentPort {
       };
     });
   }
+
+  /**
+   * The latest record per purpose for a principal reference, in the call's tenant only (PR-LDC-14;
+   * R1-plan M41; R1-D-72): the Ecosystem purposes of its ledger records (`consent.record`, granted
+   * purposes only) and the product purposes of its purpose-consent records
+   * (`consent.purpose_record`, grants and withdrawals, against a tenant or platform notice).
+   */
+  async latestByPrincipal(
+    principalRef: string,
+    call?: PortCall,
+  ): Promise<PrincipalPurposeConsent[]> {
+    if (principalRef.length < 3 || principalRef.length > 120)
+      throw new RangeError("principalRef is 3 to 120 characters");
+    return this.o.kernel.read(this.ctx(call), async (tx) => {
+      const r = await tx.query<{
+        purpose: string;
+        granted: boolean;
+        id: string;
+        recorded_at: Date;
+        shown: string | null;
+        sha256: string | null;
+        platform: boolean;
+      }>(
+        `with ledger as (
+           select distinct on (p.purpose) p.purpose, true as granted, r.id, r.recorded_at,
+                  r.text_key || '@' || r.text_version as shown, null::text as sha256, false as platform
+             from consent.record r cross join lateral unnest(r.purposes) as p(purpose)
+            where r.tenant_id = $1 and r.principal_ref = $2
+            order by p.purpose, r.recorded_at desc, r.id desc),
+         purposes as (
+           select distinct on (r.purpose) r.purpose, r.action = 'granted' as granted, r.id,
+                  r.recorded_at,
+                  case when r.notice_id is null then null
+                       else r.notice_id || '@' || r.notice_version end as shown,
+                  r.notice_sha256 as sha256, coalesce(n.tenant_id = $3, false) as platform
+             from consent.purpose_record r
+             left join consent.purpose_notice n on n.id = r.notice_id
+            where r.tenant_id = $1 and r.subject_ref = $2
+            order by r.purpose, r.recorded_at desc, r.id desc)
+         select * from ledger union all select * from purposes order by purpose`,
+        [tx.ctx.tenantId, principalRef, PLATFORM_TENANT_ID],
+      );
+      return r.rows.map((x) => ({
+        purpose: x.purpose,
+        granted: x.granted,
+        receiptId: x.id,
+        recordedAt: x.recorded_at.toISOString(),
+        shown: x.shown,
+        noticeSha256: x.sha256,
+        platformNotice: x.platform,
+      }));
+    });
+  }
 }
 
 /**
@@ -181,6 +235,8 @@ export class OhConsentLedger implements ConsentPort {
     adapter: "oh_ledger",
     residency: "IN",
     maxDataClass: "CONFIDENTIAL",
+    // The OH ledger offers no read by principal (PR-LDC-14; R1-D-72).
+    capabilities: { latestByPrincipal: "unsupported" },
   };
   constructor(
     private readonly o: {
@@ -238,5 +294,16 @@ export class OhConsentLedger implements ConsentPort {
     if (r.status !== 200)
       throw new IpbError("IPB-WEB-001", { detail: `consent ledger answered ${r.status}` });
     return (await r.json()) as ConsentState;
+  }
+
+  /** Not offered by the OH ledger (PR-LDC-14; R1-D-72): IPB-PORT-001, reason `unsupported`. */
+  latestByPrincipal(): Promise<PrincipalPurposeConsent[]> {
+    return Promise.reject(
+      new PortError("IPB-PORT-001", "CONSENT", {
+        adapter: "oh_ledger",
+        detail: "the Operations Hub ledger has no read by principal",
+        meta: { reason: "unsupported" },
+      }),
+    );
   }
 }
