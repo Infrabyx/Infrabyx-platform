@@ -107,11 +107,16 @@ export class EcosystemInbox {
    * Validates and stores one event before anything processes it (Spec §3.4: acknowledge with 2xx
    * only after this returns). Invalid envelopes throw; an event of the other environment is
    * refused with IPB-API-005.
+   *
+   * `exclusiveWith` (R1-D-70): event types that share the business key with this one, where only
+   * the first stored of any of them is processed (Ecosystem Spec v1.3 §6.29: one provisioning
+   * request ends in exactly one of `TenantProvisioned` or `ProvisioningFailed`). A later event of
+   * another listed type is a `business_duplicate`, stored nowhere and ledgered as received.
    */
   async receive(
     ctx: KernelContext,
     raw: unknown,
-    opts: { businessKey?: string } = {},
+    opts: { businessKey?: string; exclusiveWith?: readonly string[] } = {},
   ): Promise<{ outcome: ReceiveOutcome; eventId: string }> {
     const e = EcosystemEnvelope.parse(raw);
     if ((e.environment ?? "live") !== this.o.environment)
@@ -120,9 +125,38 @@ export class EcosystemInbox {
         meta: { reason: "environment" },
       });
     const action = `${this.o.schema}.eco_inbox.receive`;
+    const others = (opts.exclusiveWith ?? []).filter((t) => t !== e.type);
+    if (others.length && !opts.businessKey) throw new Error("exclusiveWith needs a businessKey");
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
+        if (others.length) {
+          // Serialise receivers of one business key, so two types cannot both be stored.
+          await tx.query("select pg_advisory_xact_lock(hashtext($1), hashtext($2))", [
+            `${this.inbox}:${tx.ctx.tenantId}`,
+            opts.businessKey,
+          ]);
+          const taken = await tx.query(
+            `select 1 from ${this.inbox} where tenant_id = $1 and business_key = $2 and type = any($3)`,
+            [tx.ctx.tenantId, opts.businessKey, others],
+          );
+          if (taken.rowCount) {
+            await this.o.audit.record(tx, {
+              action,
+              resourceType: this.inbox,
+              resourceId: e.id,
+              after: {
+                source: e.source,
+                type: e.type,
+                subject: e.subject,
+                seq: e.seq,
+                outcome: "business_duplicate",
+                exclusive: true,
+              },
+            });
+            return { outcome: "business_duplicate" as const, eventId: e.id };
+          }
+        }
         const ins = await tx.query(
           `insert into ${this.inbox}
              (tenant_id, source, event_id, type, subject, seq, business_key, envelope)
