@@ -4,7 +4,9 @@
 // rotation, brute-force protection, back-channel logout to the API, platform roles, and admin-only
 // user attributes (tenant_id, principal_type, product_scope, external_id) mapped into the token.
 // SCIM 2.0 operations go to the Admin API (PL2 plan A-08). RFC 8693 tokens with an `act` claim are
-// unsupported on Keycloak (PL2-D-55): impersonation stays off on this adapter.
+// unsupported on Keycloak (PL2-D-55): impersonation stays off on this adapter. `refreshSession` is the
+// refresh grant under the realm's rotation (`revokeRefreshToken`, `refreshTokenMaxReuse` 0): a
+// spent token is refused by Keycloak as reused, and the adapter then revokes its session (R1-D-77).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   mfaRequired,
@@ -16,12 +18,19 @@ import {
   type IdentityUser,
   type PortHealth,
   type ProvisionUserSpec,
+  type RefreshedTokens,
   type ScimOp,
   type VerifiedClaims,
   PLATFORM_KMS_TENANT,
 } from "@infrabyx/contracts";
 import { createEgress, type EgressResponse } from "../core/http.js";
-import { TokenVerifier, type RevocationStore } from "./common.js";
+import {
+  oauthError,
+  refreshRefused,
+  TokenVerifier,
+  unverifiedJwtPayload,
+  type RevocationStore,
+} from "./common.js";
 
 type Egress = ReturnType<typeof createEgress>;
 
@@ -210,8 +219,17 @@ export interface KeycloakIdentityOptions {
   /** Required action that enrols MFA (default CONFIGURE_TOTP; passkey realms may use webauthn-register-passwordless). */
   mfaEnrolmentAction?: string;
   allowLoopbackHttp?: boolean;
+  /** Tests only: recorded HTTP fixtures. */
+  fetchImpl?: typeof fetch;
   now?: () => number;
 }
+
+/**
+ * Keycloak's descriptions of a refresh token refused under `revokeRefreshToken`: a token older
+ * than the session's last refresh (`Stale token`) or one used past `refreshTokenMaxReuse`.
+ */
+export const KEYCLOAK_REFRESH_REUSED =
+  /^(stale token|maximum allowed refresh token reuse exceeded)/i;
 
 interface KcUser {
   id: string;
@@ -272,7 +290,7 @@ export class KeycloakIdentity implements IdentityPort {
   constructor(private readonly o: KeycloakIdentityOptions) {
     const base = o.baseUrl.replace(/\/$/, "");
     this.issuer = `${base}/realms/${o.realm}`;
-    this.egress = keycloakEgress(base, o.allowLoopbackHttp);
+    this.egress = keycloakEgress(base, o.allowLoopbackHttp, o.fetchImpl);
     this.verifier = new TokenVerifier({
       issuer: this.issuer,
       audience: o.audience,
@@ -536,6 +554,86 @@ export class KeycloakIdentity implements IdentityPort {
       ...(t.refresh_token ? { refreshToken: t.refresh_token } : {}),
       expiresIn: t.expires_in,
     };
+  }
+
+  /**
+   * The refresh grant (RFC 6749 §6) under the realm's rotation (PR-LDC-03, R1-D-77). A token
+   * Keycloak reports as reused revokes its session: recorded first, so the API refuses the
+   * session's access tokens even if the IdP call fails, then ended at Keycloak, which kills the
+   * session's current refresh token.
+   */
+  async refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens> {
+    if (!req.refreshToken)
+      throw refreshRefused("refresh_invalid", "a refresh needs a refresh token");
+    const r = await this.tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: req.refreshToken,
+      client_id: this.o.clientId,
+      client_secret: this.o.clientSecret,
+    }).catch((e: unknown) => {
+      throw new PortError("IPB-IDN-002", "IDENTITY", {
+        adapter: "keycloak",
+        detail: "identity provider unavailable for refresh",
+        cause: e,
+      });
+    });
+    if (r.status !== 200) {
+      const e = oauthError(r);
+      if ((r.status === 400 || r.status === 401) && e.error === "invalid_grant") {
+        if (KEYCLOAK_REFRESH_REUSED.test(e.description)) {
+          await this.revokeReused(req.refreshToken);
+          throw refreshRefused(
+            "refresh_reused",
+            "a spent refresh token was presented again; the session is revoked",
+          );
+        }
+        throw refreshRefused("refresh_invalid", "the refresh token was refused");
+      }
+      this.fail(r.status, "refresh", e.error ? ` (${e.error})` : "");
+    }
+    const t = r.json<{
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in: number;
+    }>();
+    if (!t.refresh_token || t.refresh_token === req.refreshToken)
+      throw new PortError("IPB-PORT-002", "IDENTITY", {
+        adapter: "keycloak",
+        detail: "the realm did not rotate the refresh token (revokeRefreshToken is off)",
+      });
+    await this.verifier.verify(t.access_token);
+    return {
+      accessToken: t.access_token,
+      ...(t.id_token ? { idToken: t.id_token } : {}),
+      refreshToken: t.refresh_token,
+      expiresIn: t.expires_in,
+    };
+  }
+
+  /**
+   * Revoke the session of a refresh token Keycloak has verified and reported as reused. Its `sid`
+   * names the session; without one, every session of its user is revoked.
+   */
+  private async revokeReused(refreshToken: string): Promise<void> {
+    const p = unverifiedJwtPayload(refreshToken);
+    const sub = typeof p.sub === "string" ? p.sub : undefined;
+    const sid =
+      typeof p.sid === "string"
+        ? p.sid
+        : typeof p.session_state === "string"
+          ? p.session_state
+          : undefined;
+    if (!sub) this.fail(422, "a reused refresh token without a subject");
+    const { data: u } = await this.api<KcUser>("GET", `/users/${encodeURIComponent(sub!)}`);
+    if (!sid) {
+      await this.revokeUser(u, "security");
+      return;
+    }
+    const tenant = u.attributes?.tenant_id?.[0];
+    if (!tenant) this.fail(422, "user without tenant_id");
+    await this.o.revocations.revoke(tenant!, "session", sid, new Date(this.now), "security");
+    await this.api("DELETE", `/sessions/${encodeURIComponent(sid)}`, undefined, [200, 204, 404]);
   }
 
   /** Client credentials for the API client's service account. `actor` (RFC 8693 `act`) is unsupported. */
@@ -811,11 +909,16 @@ export class KeycloakIdentity implements IdentityPort {
   }
 }
 
-export function keycloakEgress(base: string, allowLoopbackHttp?: boolean): Egress {
+export function keycloakEgress(
+  base: string,
+  allowLoopbackHttp?: boolean,
+  fetchImpl?: typeof fetch,
+): Egress {
   return createEgress({
     port: "IDENTITY",
     adapter: "keycloak",
     allow: [new URL(base).hostname],
     ...(allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
+    ...(fetchImpl ? { fetchImpl } : {}),
   });
 }

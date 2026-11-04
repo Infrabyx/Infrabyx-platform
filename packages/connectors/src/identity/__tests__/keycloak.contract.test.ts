@@ -7,9 +7,14 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { IdentityPort } from "@infrabyx/contracts/ports";
+import type { IdentityPort, IdentitySessionRefresh } from "@infrabyx/contracts/ports";
 import { generateSeedPassword, randomBytes, toHex } from "@infrabyx/crypto";
-import { defineContractSuite, startService, type StartedService } from "@infrabyx/testing";
+import {
+  defineContractSuite,
+  identityRefreshContractCases,
+  startService,
+  type StartedService,
+} from "@infrabyx/testing";
 import { assertMfaForRoles, MemoryRevocationStore } from "../common.js";
 import { KEYCLOAK_IPB_SETTINGS, KEYCLOAK_SESSION_PROFILES, KeycloakIdentity } from "../keycloak.js";
 import { LoginDriver, totp, totpSecretOf } from "./login-driver.js";
@@ -348,6 +353,44 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
         },
       },
     ],
+    { leg: "hermetic" },
+  );
+
+  // The refresh grant under the realm's rotation (PR-LDC-03, R1-D-77): a real login per session.
+  defineContractSuite<IdentitySessionRefresh>(
+    "IDENTITY",
+    adapter,
+    identityRefreshContractCases(
+      {
+        async signIn() {
+          const p = adapter();
+          const user = email("refresh");
+          const password = pw();
+          await p.provisionUser({
+            email: user,
+            displayName: "Refresh User",
+            tenantId: "tnt_a",
+            roles: ["ORG_MEMBER"],
+            password: { value: password, temporary: false },
+            mfaRequired: false,
+          });
+          const r = await new LoginDriver(issuer(), API).login((page) => {
+            if (page === "login") return { username: user, password, credentialId: "" };
+            throw new Error(`unexpected page ${page}`);
+          });
+          const t = await p.authenticate({
+            kind: "oidc_code",
+            value: r.code,
+            redirectUri: r.redirectUri,
+            codeVerifier: r.codeVerifier,
+          });
+          if (!t.refreshToken) throw new Error("the realm issued no refresh token");
+          return { refreshToken: t.refreshToken };
+        },
+      },
+      // Keycloak compares a refresh token's issue time with the session's last refresh in seconds.
+      { pauseMs: 1100 },
+    ),
     { leg: "hermetic" },
   );
 

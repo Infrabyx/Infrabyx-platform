@@ -5,7 +5,9 @@
 // project roles (`urn:zitadel:iam:org:project:roles`). Signing uses an ES256 web key (C-12).
 // Zitadel cannot require MFA per role, so every organisation forces MFA at login (stricter than
 // IPB-02-02, PL2-D-56) and the API guard still refuses privileged roles without it (IPB-SEC-001). RFC 8693 tokens with `act`
-// are unsupported here as on Keycloak (PL2-D-55).
+// are unsupported here as on Keycloak (PL2-D-55). Zitadel rotates every refresh token but reports a
+// spent one only as invalid, so `refreshSession` detects reuse itself from a ledger of SHA-256
+// hashes (`RefreshTokenLedger`; capability `refreshSession.reuseDetection: emulated`, R1-D-77).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   RoleSchema,
@@ -15,12 +17,21 @@ import {
   type IdentityUser,
   type PortHealth,
   type ProvisionUserSpec,
+  type RefreshedTokens,
   type ScimOp,
   type VerifiedClaims,
 } from "@infrabyx/contracts";
 import { sha256Hex } from "@infrabyx/crypto";
 import { createEgress, type EgressResponse } from "../core/http.js";
-import { TokenVerifier, type RevocationStore } from "./common.js";
+import {
+  MemoryRefreshTokenLedger,
+  oauthError,
+  refreshRefused,
+  TokenVerifier,
+  type RefreshFamily,
+  type RefreshTokenLedger,
+  type RevocationStore,
+} from "./common.js";
 
 type Egress = ReturnType<typeof createEgress>;
 
@@ -97,8 +108,17 @@ export interface ZitadelIdentityOptions {
     | { kind: "client_credentials"; clientId: string; clientSecret: string }
     | { kind: "pat"; token: string };
   revocations: RevocationStore;
+  /**
+   * Hashes of spent refresh tokens, for reuse detection (R1-D-77). Default: in memory, which
+   * detects reuse on this replica only; several replicas share one.
+   */
+  refreshLedger?: RefreshTokenLedger;
+  /** How long the ledger keeps a hash: the instance's absolute refresh lifetime (default 12 h). */
+  refreshTokenMaxSeconds?: number;
   jwksCacheSeconds?: number;
   allowLoopbackHttp?: boolean;
+  /** Tests only: recorded HTTP fixtures. */
+  fetchImpl?: typeof fetch;
   now?: () => number;
 }
 
@@ -120,16 +140,19 @@ export class ZitadelIdentity implements IdentityPort {
       "authenticate.saml": "unsupported",
       "issueToken.actor": "unsupported",
       "provisionUser.mfaRequired": "emulated",
+      "refreshSession.reuseDetection": "emulated",
     },
   };
   readonly issuer: string;
   private readonly egress: Egress;
   private readonly verifier: TokenVerifier;
+  private readonly ledger: RefreshTokenLedger;
   private adminToken: { value: string; until: number } | null = null;
 
   constructor(private readonly o: ZitadelIdentityOptions) {
     this.issuer = o.baseUrl.replace(/\/$/, "");
-    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp);
+    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp, o.fetchImpl);
+    this.ledger = o.refreshLedger ?? new MemoryRefreshTokenLedger(() => this.now);
     this.verifier = new TokenVerifier({
       issuer: this.issuer,
       audience: o.projectId,
@@ -372,6 +395,101 @@ export class ZitadelIdentity implements IdentityPort {
       ...(t.refresh_token ? { refreshToken: t.refresh_token } : {}),
       expiresIn: t.expires_in,
     };
+  }
+
+  /**
+   * The refresh grant (RFC 6749 §6; PR-LDC-03, R1-D-77). Zitadel always rotates; the ledger marks
+   * each presented token spent. A spent token presented again revokes its session: the ledger
+   * refuses the whole family from then on, the revocation store refuses its access tokens (the
+   * session's `sid`, or the user when the tokens carry none), and the Zitadel session is ended.
+   */
+  async refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens> {
+    if (!req.refreshToken)
+      throw refreshRefused("refresh_invalid", "a refresh needs a refresh token");
+    const hash = sha256Hex(req.refreshToken);
+    const known = await this.ledger.lookup(hash);
+    if (known?.revoked) {
+      // A descendant of a reused token: refused, and revoked at Zitadel now that it is in hand.
+      await this.revokeAtIdp(req.refreshToken);
+      throw refreshRefused("refresh_invalid", "the refresh token's session has been revoked");
+    }
+    if (known?.spent) {
+      await this.revokeFamily(hash, known.family);
+      throw refreshRefused(
+        "refresh_reused",
+        "a spent refresh token was presented again; the session is revoked",
+      );
+    }
+    const r = await this.token(
+      { grant_type: "refresh_token", refresh_token: req.refreshToken },
+      { id: this.o.clientId, secret: this.o.clientSecret },
+    ).catch((e: unknown) => {
+      throw new PortError("IPB-IDN-002", "IDENTITY", {
+        adapter: "zitadel",
+        detail: "identity provider unavailable for refresh",
+        cause: e,
+      });
+    });
+    if (r.status !== 200) {
+      const e = oauthError(r);
+      if ((r.status === 400 || r.status === 401) && e.error === "invalid_grant")
+        throw refreshRefused("refresh_invalid", "the refresh token was refused");
+      this.fail(r.status, "refresh");
+    }
+    const t = r.json<{
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in: number;
+    }>();
+    if (!t.refresh_token || t.refresh_token === req.refreshToken)
+      throw new PortError("IPB-PORT-002", "IDENTITY", {
+        adapter: "zitadel",
+        detail: "the instance did not rotate the refresh token",
+      });
+    const claims = await this.verifier.verify(t.access_token);
+    await this.ledger.rotated(
+      hash,
+      sha256Hex(t.refresh_token),
+      { tenantId: claims.tid, userId: claims.sub, ...(claims.sid ? { sid: claims.sid } : {}) },
+      new Date(this.now + (this.o.refreshTokenMaxSeconds ?? 43_200) * 1000),
+    );
+    return {
+      accessToken: t.access_token,
+      ...(t.id_token ? { idToken: t.id_token } : {}),
+      refreshToken: t.refresh_token,
+      expiresIn: t.expires_in,
+    };
+  }
+
+  /** Revoke a reused token's family: ledger, then revocation store, then the Zitadel session. */
+  private async revokeFamily(hash: string, family: RefreshFamily): Promise<void> {
+    await this.ledger.revokeFamily(hash);
+    const at = new Date(this.now);
+    if (!family.sid) {
+      await this.o.revocations.revoke(family.tenantId, "user", family.userId, at, "security");
+      return;
+    }
+    await this.o.revocations.revoke(family.tenantId, "session", family.sid, at, "security");
+    // Best effort: the refusal above already holds whatever Zitadel answers.
+    await this.api("DELETE", `/v2/sessions/${encodeURIComponent(family.sid)}`, {}).catch(
+      () => undefined,
+    );
+  }
+
+  /** RFC 7009 revocation of a refresh token at Zitadel; best effort. */
+  private async revokeAtIdp(refreshToken: string): Promise<void> {
+    await this.egress(`${this.issuer}/oauth/v2/revoke`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: basicAuth(this.o.clientId, this.o.clientSecret),
+      },
+      body: new URLSearchParams({
+        token: refreshToken,
+        token_type_hint: "refresh_token",
+      }).toString(),
+    }).catch(() => undefined);
   }
 
   /** Client credentials for the platform service principal. `actor` (RFC 8693 `act`) is unsupported. */

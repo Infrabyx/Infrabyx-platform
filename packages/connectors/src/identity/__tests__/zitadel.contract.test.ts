@@ -12,16 +12,28 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PLATFORM_ROLES, TENANT_ROLES } from "@infrabyx/contracts";
-import type { CustomerIdentityPort, IdentityPort } from "@infrabyx/contracts/ports";
-import { generateSeedPassword, MemoryReplayStore, randomBytes, toHex } from "@infrabyx/crypto";
+import type {
+  CustomerIdentityPort,
+  IdentityPort,
+  IdentitySessionRefresh,
+} from "@infrabyx/contracts/ports";
+import {
+  generateSeedPassword,
+  MemoryReplayStore,
+  randomBytes,
+  sha256,
+  toBase64Url,
+  toHex,
+} from "@infrabyx/crypto";
 import {
   defineContractSuite,
   existingServiceUrl,
+  identityRefreshContractCases,
   startNetwork,
   startService,
   type StartedService,
 } from "@infrabyx/testing";
-import { MemoryRevocationStore } from "../common.js";
+import { MemoryRefreshTokenLedger, MemoryRevocationStore } from "../common.js";
 import { MemoryCustomerAuthStore } from "../customer.js";
 import { scimUserId, ZITADEL_IPB_SETTINGS, ZitadelIdentity } from "../zitadel.js";
 import { ZitadelCustomerIdentity } from "../zitadel-customer.js";
@@ -40,6 +52,7 @@ const customerStore = new MemoryCustomerAuthStore();
 const customerReplay = new MemoryReplayStore();
 const mail = capturingSender();
 const revocations = new MemoryRevocationStore();
+const refreshLedger = new MemoryRefreshTokenLedger();
 
 const freePort = () =>
   new Promise<number>((resolve) => {
@@ -161,9 +174,78 @@ const adapter = () =>
     serviceClient: inst.serviceClient,
     admin: { kind: "pat", token: pat },
     revocations,
+    refreshLedger,
     allowLoopbackHttp: true,
   });
 const email = (n: string) => `${n}.${toHex(randomBytes(4))}@example.test`;
+
+/**
+ * A workforce login as a login client would make it (PR-LDC-03 cases): a password session, an
+ * authorisation request with `offline_access` finalised with that session, and the code exchanged
+ * by the adapter. The customer organisation's login client finalises it.
+ */
+async function signInWorkforce(): Promise<{ refreshToken: string }> {
+  const p = adapter();
+  const user = email("refresh");
+  const password = generateSeedPassword();
+  await p.provisionUser({
+    email: user,
+    displayName: "Refresh User",
+    tenantId: "tnt_a",
+    roles: ["ORG_MEMBER"],
+    password: { value: password, temporary: false },
+    mfaRequired: false,
+  });
+  const asLogin = async (method: string, path: string, body?: unknown, extra: RequestInit = {}) =>
+    fetch(`${base}${path}`, {
+      method,
+      redirect: "manual",
+      ...extra,
+      headers: {
+        authorization: `Bearer ${customer.loginClient.token}`,
+        "content-type": "application/json",
+        ...(extra.headers as Record<string, string> | undefined),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+    });
+  const s = await asLogin("POST", "/v2/sessions", {
+    checks: { user: { loginName: user }, password: { password } },
+  });
+  if (s.status >= 300) throw new Error(`session: ${s.status} ${await s.text()}`);
+  const session = (await s.json()) as { sessionId: string; sessionToken: string };
+  const verifier = toBase64Url(randomBytes(32));
+  const redirectUri = "http://localhost/callback";
+  const q = new URLSearchParams({
+    client_id: inst.clientId,
+    redirect_uri: redirectUri,
+    response_type: "code",
+    scope: `openid offline_access urn:zitadel:iam:user:metadata urn:zitadel:iam:org:projects:roles urn:zitadel:iam:org:project:id:${inst.projectId}:aud`,
+    code_challenge: toBase64Url(sha256(new TextEncoder().encode(verifier))),
+    code_challenge_method: "S256",
+  });
+  const az = await asLogin("GET", `/oauth/v2/authorize?${q}`, undefined, {
+    headers: { "x-zitadel-login-client": customer.loginClient.userId },
+  });
+  const authRequest = new URL(az.headers.get("location") ?? "/", base).searchParams.get(
+    "authRequest",
+  );
+  if (!authRequest) throw new Error(`authorize: ${az.status}`);
+  const fin = await asLogin("POST", `/v2/oidc/auth_requests/${authRequest}`, {
+    session: { sessionId: session.sessionId, sessionToken: session.sessionToken },
+  });
+  if (fin.status >= 300) throw new Error(`finalise: ${fin.status} ${await fin.text()}`);
+  const code = new URL(
+    ((await fin.json()) as { callbackUrl: string }).callbackUrl,
+  ).searchParams.get("code");
+  const t = await p.authenticate({
+    kind: "oidc_code",
+    value: code ?? "",
+    redirectUri,
+    codeVerifier: verifier,
+  });
+  if (!t.refreshToken) throw new Error("the instance issued no refresh token");
+  return { refreshToken: t.refreshToken };
+}
 const svcToken = (p: IdentityPort) =>
   p.issueToken({ subject: inst.serviceClient.clientId, audience: inst.projectId }, 300);
 const tamper = (jwt: string) => {
@@ -342,6 +424,15 @@ describe("@IPB-01-15 IDENTITY hermetic leg: zitadel v4.19.5", () => {
         },
       },
     ],
+    { leg: "hermetic" },
+  );
+
+  // The refresh grant (PR-LDC-03, R1-D-77): Zitadel rotates, the adapter's ledger detects reuse.
+  // A pause keeps each token's issue time before the next revocation's, in whole seconds.
+  defineContractSuite<IdentitySessionRefresh>(
+    "IDENTITY",
+    adapter,
+    identityRefreshContractCases({ signIn: signInWorkforce }, { pauseMs: 1100 }),
     { leg: "hermetic" },
   );
 

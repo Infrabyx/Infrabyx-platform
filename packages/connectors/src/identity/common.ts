@@ -4,7 +4,12 @@
 // 60 s (IPB-02-05, PL2-D-53); privileged roles without MFA are refused at the API (IPB-02-02).
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
-import { VerifiedClaims, mfaRequired, RoleSchema } from "@infrabyx/contracts";
+import {
+  VerifiedClaims,
+  mfaRequired,
+  RoleSchema,
+  type RefreshRefusalReason,
+} from "@infrabyx/contracts";
 import { JwksCache, newId, sha256Hex, verifyJwt, type JwsAlgorithm } from "@infrabyx/crypto";
 import type { createEgress } from "../core/http.js";
 
@@ -173,6 +178,124 @@ export class PgRevocationStore implements RevocationStore {
     const user = s.users.get(subjectHash("user", c.sub));
     if (user !== undefined && c.iat * 1000 < user) return true;
     return c.sid !== undefined && s.sessions.has(subjectHash("session", c.sid));
+  }
+}
+
+// ---- refresh-token grant (PR-LDC-03, R1-D-77) ----------------------------------------------------
+
+/** IPB-IDN-001 from `refreshSession`; the detail never carries the token. */
+export const refreshRefused = (reason: RefreshRefusalReason, detail: string): IpbError =>
+  new IpbError("IPB-IDN-001", { detail, meta: { reason } });
+
+/** The RFC 6749 §5.2 error of a refused token request: its `error` and `error_description` only. */
+export function oauthError(r: { body: Uint8Array; json<T>(): T }): {
+  error: string;
+  description: string;
+} {
+  if (!r.body.byteLength) return { error: "", description: "" };
+  try {
+    const b = r.json<{ error?: unknown; error_description?: unknown }>();
+    return {
+      error: typeof b.error === "string" ? b.error : "",
+      description: typeof b.error_description === "string" ? b.error_description : "",
+    };
+  } catch {
+    return { error: "", description: "" };
+  }
+}
+
+/**
+ * The payload of a JWT, unverified. Used only to name the session to revoke after the IdP has
+ * verified a refresh token and reported its reuse; never to authorise anything. `{}` when the
+ * token is not a JWT.
+ */
+export function unverifiedJwtPayload(token: string): Record<string, unknown> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return {};
+  try {
+    const p = JSON.parse(Buffer.from(parts[1]!, "base64url").toString("utf8")) as unknown;
+    return p && typeof p === "object" && !Array.isArray(p) ? (p as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/** The session a refresh token belongs to. */
+export interface RefreshFamily {
+  tenantId: string;
+  userId: string;
+  /** IdP session id, when the access tokens carry one (`sid`). */
+  sid?: string;
+}
+
+/**
+ * What an adapter that detects reuse itself remembers of refresh tokens: SHA-256 hashes only,
+ * never a token. Used where the IdP rotates refresh tokens but does not report a reused one as
+ * such (Zitadel). One family per session; a family is revoked as a whole.
+ */
+export interface RefreshTokenLedger {
+  /** `fromHash` was spent for `toHash`; `toHash` joins `fromHash`'s family, or starts one. */
+  rotated(fromHash: string, toHash: string, family: RefreshFamily, expiresAt: Date): Promise<void>;
+  /** A hash's state; undefined when the ledger has never seen it (or it has expired). */
+  lookup(
+    hash: string,
+  ): Promise<{ spent: boolean; revoked: boolean; family: RefreshFamily } | undefined>;
+  /** Revoke the family of `hash`: every token in it is refused from now on. */
+  revokeFamily(hash: string): Promise<void>;
+}
+
+/**
+ * Single-process ledger for one API replica, tests and local development. Entries expire with
+ * the IdP's absolute refresh lifetime. Several replicas need a shared ledger: on another replica a
+ * reused token is still refused by the IdP, as `refresh_invalid`, without revoking the session.
+ */
+export class MemoryRefreshTokenLedger implements RefreshTokenLedger {
+  private readonly hashes = new Map<string, { familyId: string; spent: boolean; until: number }>();
+  private readonly families = new Map<
+    string,
+    { family: RefreshFamily; revoked: boolean; until: number }
+  >();
+
+  constructor(private readonly now: () => number = Date.now) {}
+
+  private prune(): void {
+    const t = this.now();
+    for (const [k, v] of this.hashes) if (v.until <= t) this.hashes.delete(k);
+    for (const [k, v] of this.families) if (v.until <= t) this.families.delete(k);
+  }
+
+  async rotated(
+    fromHash: string,
+    toHash: string,
+    family: RefreshFamily,
+    expiresAt: Date,
+  ): Promise<void> {
+    this.prune();
+    const until = expiresAt.getTime();
+    const from = this.hashes.get(fromHash);
+    const familyId = from?.familyId ?? newId("rtf");
+    const f = this.families.get(familyId);
+    this.families.set(familyId, {
+      family: { ...family },
+      revoked: f?.revoked ?? false,
+      until: Math.max(until, f?.until ?? 0),
+    });
+    this.hashes.set(fromHash, { familyId, spent: true, until: Math.max(until, from?.until ?? 0) });
+    this.hashes.set(toHash, { familyId, spent: false, until });
+  }
+
+  async lookup(hash: string) {
+    const h = this.hashes.get(hash);
+    if (!h || h.until <= this.now()) return undefined;
+    const f = this.families.get(h.familyId);
+    if (!f) return undefined;
+    return { spent: h.spent, revoked: f.revoked, family: { ...f.family } };
+  }
+
+  async revokeFamily(hash: string): Promise<void> {
+    const h = this.hashes.get(hash);
+    const f = h && this.families.get(h.familyId);
+    if (f) f.revoked = true;
   }
 }
 

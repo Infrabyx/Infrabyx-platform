@@ -61,7 +61,44 @@ export type ScimOp =
     }
   | { op: "deactivate"; externalId: string };
 
+// ---- refresh-token grant (LawDocsComply PR-LDC-03, R1-D-77) -------------------------------------
+// RFC 6749 §6 with rotation: every refresh spends the presented token and returns a new one. A
+// spent token presented again means it has been copied: the session it belongs to is revoked
+// (its access tokens refused within 60 s, IPB-02-05; its current refresh token dead) and the call
+// raises IPB-IDN-001 with `meta.reason: "refresh_reused"`. Refresh tokens are never logged, put in
+// an error or stored in clear; adapters that remember them keep a SHA-256 only.
+
+/** `meta.reason` of an IPB-IDN-001 refusal from `refreshSession`. */
+export const REFRESH_REFUSAL_REASONS = ["refresh_reused", "refresh_invalid"] as const;
+export type RefreshRefusalReason = (typeof REFRESH_REFUSAL_REASONS)[number];
+
+/** Tokens from a refresh: the refresh token is always a new one (rotation is on). */
+export interface RefreshedTokens {
+  accessToken: string;
+  idToken?: string;
+  refreshToken: string;
+  /** Seconds. */
+  expiresIn: number;
+}
+
+/** The refresh grant and the check that proves a revoked session (contract cases, fakes). */
+export interface IdentitySessionRefresh extends Port {
+  /**
+   * Exchange a refresh token for new tokens (PR-LDC-03, R1-D-77). Refusals: IPB-IDN-001 with
+   * `refresh_reused` (a spent token: the session is revoked first) or `refresh_invalid` (expired,
+   * revoked, unknown or another client's); IPB-IDN-002 when the IdP cannot be reached.
+   */
+  refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens>;
+  verifyToken(jwt: string): Promise<VerifiedClaims>;
+}
+
 export interface IdentityPort extends Port, IdentityProvisioning {
+  /**
+   * The refresh-token grant with rotation and reuse detection (PR-LDC-03, R1-D-77); see
+   * `IdentitySessionRefresh`. Optional: an adapter without it refuses with IPB-PORT-001
+   * `unsupported`.
+   */
+  refreshSession?(req: { refreshToken: string }): Promise<RefreshedTokens>;
   /** Exchange a login assertion (authorisation code, SAML response) for tokens. */
   authenticate(assertion: {
     kind: "oidc_code" | "saml";
