@@ -2,10 +2,22 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { ObjectMeta, StoragePort } from "@infrabyx/contracts/ports";
 import { LOCAL_KMS_KEYS, LocalKms, localDevKey, newId } from "@infrabyx/crypto";
-import { ExternalReads, PgKernel, PgOutbox, externalContext } from "@infrabyx/tenancy";
+import {
+  EXTERNAL_READ_ACTION,
+  ExternalReads,
+  PgKernel,
+  PgOutbox,
+  externalContext,
+} from "@infrabyx/tenancy";
 import { lintRls } from "@infrabyx/tenancy/rls-lint";
 import { laneHeadMismatch, lanePosition, verifyChain } from "./chain.js";
-import { AuditService, verifyAgainstAnchor, verifyAnchorFile, type AnchorFile } from "./service.js";
+import {
+  AuditService,
+  EXTERNAL_READ_LEDGER_ACTION,
+  verifyAgainstAnchor,
+  verifyAnchorFile,
+  type AnchorFile,
+} from "./service.js";
 import { PgAuditSink } from "./sink.js";
 import { freshDb } from "./__tests__/db.js";
 
@@ -277,5 +289,121 @@ describe("external reads in the ledger (R1-D-29)", () => {
       },
     ]);
     expect(verifyChain(await svc.query(ctx("tnt_x"))).ok).toBe(true);
+  });
+});
+
+describe("external-read summary (PR-LDC-10, R1-D-81)", () => {
+  const grantFixture = async (tenant: string, grantee: string, name: string) => {
+    const ent = newId("ent");
+    const grant = newId("xgr");
+    await db.admin.query(
+      "insert into tenancy.legal_entity (id, tenant_id, name) values ($1, $2, 'S Ltd')",
+      [ent, tenant],
+    );
+    await db.admin.query(
+      `insert into tenancy.external_grant (id, tenant_id, grantee_id, grantee_name, organisation, kind,
+         purpose, entity_ids, period_from, period_to, duration_days, state, requested_by, approved_by,
+         approved_at, expires_at)
+       values ($1, $2, $3, $4, 'Audit firm', 'statutory_auditor', 'statutory audit', array[$5],
+         '2026-04-01', '2027-03-31', 30, 'active', 'usr_a', 'usr_b', now(), now() + interval '30 days')`,
+      [grant, tenant, grantee, name, ent],
+    );
+    return grant;
+  };
+  const as = (tenant: string, grantee: string, grant: string) =>
+    externalContext(tenant, grantee, grant, {
+      ip: "198.51.100.9",
+      userAgent: "auditor-ua",
+      traceId: "trace-xr-1",
+    });
+
+  it("counts reads per grant and table, grantee and table with first and last times, in the tenant only", async () => {
+    expect(EXTERNAL_READ_LEDGER_ACTION).toBe(EXTERNAL_READ_ACTION);
+    for (const t of ["tnt_s", "tnt_o"])
+      await db.admin.query(
+        "insert into tenancy.tenant (id, product, name) values ($1, 'LDC', $1)",
+        [t],
+      );
+    // A second table an external principal may read (a product grants app_external its own).
+    await db.admin.query(
+      `create schema xr; create table xr.book (id text primary key);
+       grant usage on schema xr to app_external; grant select on xr.book to app_external`,
+    );
+    const g1 = await grantFixture("tnt_s", "ext_one", "Ann Example");
+    const g2 = await grantFixture("tnt_s", "ext_two", "Bea Example");
+    const g3 = await grantFixture("tnt_o", "ext_one", "Ann Example");
+    const reads = new ExternalReads({ kernel, audit: sink });
+    const before = Date.now();
+    const grantSql = "select id from tenancy.external_grant";
+    await reads.read(as("tnt_s", "ext_one", g1), "tenancy.external_grant", grantSql);
+    await reads.read(as("tnt_s", "ext_one", g1), "xr.book", "select id from xr.book");
+    await reads.read(as("tnt_s", "ext_one", g1), "xr.book", "select id from xr.book");
+    await reads.read(as("tnt_s", "ext_two", g2), "xr.book", "select id from xr.book");
+    await reads.read(as("tnt_o", "ext_one", g3), "xr.book", "select id from xr.book");
+    // Other entries of the day are not external reads.
+    await write(ctx("tnt_s"), 3, "s");
+    const after = Date.now();
+    const today = new Date(before).toISOString().slice(0, 10);
+
+    const s = await svc.externalReadSummary(ctx("tnt_s"), today);
+    expect(s).toMatchObject({ tenantId: "tnt_s", day: today, reads: 4 });
+    expect(s.byGrantTable.map((c) => [c.grantId, c.granteeId, c.table, c.reads])).toEqual(
+      [
+        [g1, "ext_one", "tenancy.external_grant", 1],
+        [g1, "ext_one", "xr.book", 2],
+        [g2, "ext_two", "xr.book", 1],
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    );
+    expect(s.byGrantee.map((g) => [g.granteeId, g.grantIds, g.reads])).toEqual([
+      ["ext_one", [g1], 3],
+      ["ext_two", [g2], 1],
+    ]);
+    expect(s.byTable.map((t) => [t.table, t.reads])).toEqual([
+      ["tenancy.external_grant", 1],
+      ["xr.book", 3],
+    ]);
+    const book = s.byGrantTable.find((c) => c.grantId === g1 && c.table === "xr.book")!;
+    expect(book.firstReadAt < book.lastReadAt).toBe(true);
+    expect(s.firstReadAt! <= book.firstReadAt && s.lastReadAt! >= book.lastReadAt).toBe(true);
+    for (const t of [s.firstReadAt!, s.lastReadAt!]) {
+      expect(Date.parse(t)).toBeGreaterThanOrEqual(before - 1000);
+      expect(Date.parse(t)).toBeLessThanOrEqual(after + 1000);
+    }
+    // Ids, counts and times only: no grantee name, IP, user-agent hash, trace id or digest.
+    const led = await db.admin.query<{ ip_hash: string; ua_hash: string; after_digest: string }>(
+      `select ip_hash, ua_hash, after_digest from audit.ledger
+        where tenant_id = 'tnt_s' and action = 'platform.external_read'`,
+    );
+    expect(led.rows).toHaveLength(4);
+    const text = JSON.stringify(s);
+    for (const personal of [
+      "Ann Example",
+      "Bea Example",
+      "trace-xr-1",
+      "198.51.100.9",
+      ...led.rows.flatMap((r) => [r.ip_hash, r.ua_hash, r.after_digest]),
+    ])
+      expect(text).not.toContain(personal);
+
+    // The other tenant sees only its own read; another day is empty.
+    const o = await svc.externalReadSummary(ctx("tnt_o"), today);
+    expect(o.byGrantTable.map((c) => [c.grantId, c.table, c.reads])).toEqual([[g3, "xr.book", 1]]);
+    const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    expect(await svc.externalReadSummary(ctx("tnt_s"), yesterday)).toEqual({
+      tenantId: "tnt_s",
+      day: yesterday,
+      reads: 0,
+      firstReadAt: null,
+      lastReadAt: null,
+      byGrantTable: [],
+      byGrantee: [],
+      byTable: [],
+    });
+    await expect(svc.externalReadSummary(ctx("tnt_s"), "2026-02-30")).rejects.toThrow(RangeError);
+    await expect(svc.externalReadSummary(as("tnt_s", "ext_one", g1), today)).rejects.toMatchObject({
+      code: "IPB-SEC-005",
+    });
   });
 });

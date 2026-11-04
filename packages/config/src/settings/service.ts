@@ -16,11 +16,13 @@ import { internalEvent } from "../events.js";
 import { defaultRegistry, type SettingsRegistry } from "./registry.js";
 import type { SettingKey, SettingValueMap } from "./registry.generated.js";
 import { resolve, scopeChain, tierAllowed, type Resolution } from "./resolve.js";
-import type { SettingsStore } from "./store.js";
-import type { ResolutionScope, SettingDef, SettingScopeRef } from "./types.js";
+import { MAX_HISTORY_PAGE, historyCursor, type SettingsStore } from "./store.js";
+import type { ResolutionScope, SettingDef, SettingHistoryPage, SettingScopeRef } from "./types.js";
 import { assertValid, tightenError } from "./validate.js";
 
 export const SETTING_CHANGE_ACTION = "settings.setting.change";
+/** Tenant roles that read a TENANT or ENTITY setting's change history besides its changers. */
+export const HISTORY_READER_ROLES = ["ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR_RO"] as const;
 
 export interface SettingsServiceOptions {
   store: SettingsStore;
@@ -74,6 +76,39 @@ export class SettingsService {
     });
     const rows = await this.o.kernel.read(ctx, (tx) => this.o.store.read(tx, key, refs));
     return { ...resolve(def, rows), def };
+  }
+
+  /**
+   * Each change of `key` at `scope`, newest first and paged (PR-LDC-17, R1-D-82): who, when, the
+   * old and new value, the version and the approval request that carried it, each linked to its
+   * `settings.setting.change` ledger entry. Read in the caller's context, so RLS keeps it to the
+   * caller's tenant (PLATFORM, PLAN and BRAND to a platform context). A USER scope is its owner's
+   * alone; TENANT and ENTITY need a role that may change the key, ORG_OWNER, ORG_ADMIN or
+   * ORG_AUDITOR_RO; the platform tiers a platform role. Changes are kept from config/0003 on.
+   */
+  async history(
+    ctx: KernelContext,
+    key: string,
+    scope: SettingScopeRef,
+    page: { limit?: number; cursor?: string } = {},
+  ): Promise<SettingHistoryPage> {
+    const def = this.registry.require(key);
+    this.assertHistoryReadable(ctx, def, scope);
+    const store = this.o.store;
+    if (!store.history) throw new Error("this settings store keeps no change history");
+    const limit = Math.floor(page.limit ?? 50);
+    if (!(limit >= 1 && limit <= MAX_HISTORY_PAGE))
+      throw new RangeError(`limit is 1 to ${MAX_HISTORY_PAGE}`);
+    historyCursor(page.cursor);
+    return this.o.kernel.read(ctx, (tx) =>
+      store.history!(tx, {
+        key,
+        tier: scope.tier,
+        scopeId: scope.scopeId,
+        limit,
+        ...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+      }),
+    );
   }
 
   /** Validate and apply (or route to maker-checker) a change at `target`. */
@@ -207,12 +242,26 @@ export class SettingsService {
       value,
       actorId: ctx.principal.id,
     });
-    await this.o.audit.record(tx, {
+    const { id: ledgerId } = await this.o.audit.record(tx, {
       action: SETTING_CHANGE_ACTION,
       resourceType: "setting",
       resourceId: `${key}@${target.tier}:${target.scopeId ?? "platform"}`,
       before: { value: old },
       after: { value },
+    });
+    // The readable side of the ledgered change (PR-LDC-17, R1-D-82): the ledger keeps the digests
+    // of { value: old } and { value }, this row the values, linked by the entry's id.
+    await this.o.store.appendChange?.(tx, {
+      ledgerId,
+      key,
+      tier: target.tier,
+      scopeId: target.scopeId,
+      tenantId,
+      actorId: ctx.principal.id,
+      old,
+      new: value,
+      version,
+      approvalRequestId: mcRequestId,
     });
     if (this.o.outbox) {
       const userTier = target.tier === "USER";
@@ -282,6 +331,35 @@ export class SettingsService {
     }
     if (!def.change.some((r) => roles.has(r)))
       throw deny(`requires one of ${def.change.join(", ")}`);
+  }
+
+  private assertHistoryReadable(ctx: KernelContext, def: SettingDef, scope: SettingScopeRef): void {
+    const p = ctx.principal;
+    const deny = (why: string) =>
+      new IpbError("IPB-UX-011", {
+        detail: `${def.key} history: ${why}`,
+        meta: { key: def.key, tier: scope.tier },
+      });
+    if (p.type === "external" || p.type === "agent")
+      throw deny("not readable by an external principal or an agent");
+    switch (scope.tier) {
+      case "USER":
+        if (scope.scopeId !== p.id) throw deny("a user reads only their own preferences' history");
+        return;
+      case "TENANT":
+      case "ENTITY": {
+        if (scope.tier === "TENANT" && scope.scopeId !== ctx.tenantId)
+          throw deny("outside the caller's tenant");
+        if (p.type === "service") return;
+        const readers = new Set([...def.change, ...HISTORY_READER_ROLES]);
+        if (!p.roles.some((r) => readers.has(r)))
+          throw deny(`requires one of ${[...readers].filter((r) => r !== "self").join(", ")}`);
+        return;
+      }
+      default:
+        if (ctx.scope !== "platform" || (p.type !== "service" && !p.roles.some(isPlatformRole)))
+          throw deny(`${scope.tier} history needs a platform context`);
+    }
   }
 
   private async assertTighten(

@@ -22,6 +22,10 @@ export const PLATFORM_EVENTS = {
   BreakGlassRevoked: { module: "security", name: "BreakGlassRevoked" },
   // PR-FBX-10 item 3 (R1-D-28): a break-glass grant was used in this tenant, raised in the tenant.
   BreakGlassUsed: { module: "security", name: "BreakGlassUsed" },
+  // Tenant-consented support access (PR-LDC-08 (a), (b), PR-LDC-20; #104; R1-D-76), in the tenant.
+  SupportAccessRequested: { module: "security", name: "SupportAccessRequested" },
+  SupportAccessGranted: { module: "security", name: "SupportAccessGranted" },
+  SupportAccessRevoked: { module: "security", name: "SupportAccessRevoked" },
   ImpersonationStarted: { module: "security", name: "ImpersonationStarted" },
   ImpersonationEnded: { module: "security", name: "ImpersonationEnded" },
   LedgerAnchorWritten: { module: "security", name: "LedgerAnchorWritten" },

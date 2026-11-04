@@ -8,6 +8,7 @@ import type {
 } from "@infrabyx/contracts/kernel";
 import type { KmsPort, StoragePort } from "@infrabyx/contracts/ports";
 import { storageKey } from "@infrabyx/contracts/ports";
+import { IpbError } from "@infrabyx/contracts/errors";
 import { internalEvent } from "@infrabyx/config/events";
 import {
   canonicalize,
@@ -77,6 +78,67 @@ export interface LedgerFilter {
   afterSeq?: number;
   limit?: number;
 }
+
+/** The action and resource type `ExternalReads` (`@infrabyx/tenancy`) ledgers each read under. */
+export const EXTERNAL_READ_LEDGER_ACTION = "platform.external_read";
+const EXTERNAL_READ_RESOURCE = "external_read";
+
+/** A count of ledgered external reads with the first and last read time (ISO 8601, UTC). */
+export interface ExternalReadTotal {
+  /** Ledgered reads: one entry per `ExternalReads.read` call. */
+  reads: number;
+  firstReadAt: string;
+  lastReadAt: string;
+}
+
+/** Reads of one table under one grant in the day (PR-LDC-10, R1-D-81). */
+export interface ExternalReadCount extends ExternalReadTotal {
+  grantId: string;
+  /** The grantee's principal id (the entry's actor), never their name or contact details. */
+  granteeId: string;
+  /** The table read, `schema.table`. */
+  table: string;
+}
+
+/**
+ * One tenant's external reads on one UTC day, counted from its `platform.external_read` ledger
+ * entries. It carries ids, counts and times only: no IP or user-agent hash, trace id, digest or
+ * grantee name. An entry holds its row count only inside a digest, so reads are counted, not rows.
+ */
+export interface ExternalReadSummary {
+  tenantId: string;
+  /** `YYYY-MM-DD`, UTC. */
+  day: string;
+  reads: number;
+  firstReadAt: string | null;
+  lastReadAt: string | null;
+  /** Per grant and table, ordered by grant, then table. */
+  byGrantTable: ExternalReadCount[];
+  /** Per grantee (principal), with the grants they read under. */
+  byGrantee: (ExternalReadTotal & { granteeId: string; grantIds: string[] })[];
+  /** Per table read. */
+  byTable: (ExternalReadTotal & { table: string })[];
+}
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+function rollUp<T extends ExternalReadTotal>(
+  into: Map<string, T>,
+  key: string,
+  c: ExternalReadCount,
+  make: () => T,
+): T {
+  const t = into.get(key) ?? make();
+  t.reads += c.reads;
+  if (!t.firstReadAt || c.firstReadAt < t.firstReadAt) t.firstReadAt = c.firstReadAt;
+  if (!t.lastReadAt || c.lastReadAt > t.lastReadAt) t.lastReadAt = c.lastReadAt;
+  into.set(key, t);
+  return t;
+}
+
+const sortedValues = <T>(m: Map<string, T>): T[] =>
+  [...m.entries()].sort(([a], [b]) => cmp(a, b)).map(([, v]) => v);
 
 export interface AuditServiceOptions {
   kernel: MutationKernel;
@@ -165,6 +227,89 @@ export class AuditService {
   /** Tenant-scoped read for the Audit trails node and the tenant export slice (IPB-02-18). */
   async query(ctx: KernelContext, f: LedgerFilter = {}): Promise<LedgerEntry[]> {
     return this.o.kernel.read(ctx, (tx) => this.select(tx, f));
+  }
+
+  /**
+   * The context tenant's external reads on `day` (`YYYY-MM-DD`, UTC) for its daily report
+   * (PR-LDC-10, R1-D-81): reads per grant and table, per grantee and per table, each with its first
+   * and last read time, from the `platform.external_read` entries `ExternalReads` writes. It reads
+   * in the tenant's context, so the ledger's RLS keeps it to that tenant; an external grantee may
+   * not call it.
+   */
+  async externalReadSummary(ctx: KernelContext, day: string): Promise<ExternalReadSummary> {
+    if (ctx.principal.type === "external")
+      throw new IpbError("IPB-SEC-005", {
+        detail: "an external grantee does not read the tenant's external-read summary",
+      });
+    if (!DAY.test(day) || new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) !== day)
+      throw new RangeError("day must be a calendar date, YYYY-MM-DD");
+    const rows = await this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query<{
+            resource_id: string;
+            actor_id: string;
+            reads: string;
+            first_at: Date;
+            last_at: Date;
+          }>(
+            `select resource_id, actor_id, count(*)::text as reads, min(occurred_at) as first_at,
+                    max(occurred_at) as last_at
+               from audit.ledger
+              where action = $1 and resource_type = $2
+                and occurred_at >= $3::date::timestamp at time zone 'UTC'
+                and occurred_at < ($3::date + 1)::timestamp at time zone 'UTC'
+              group by resource_id, actor_id`,
+            [EXTERNAL_READ_LEDGER_ACTION, EXTERNAL_READ_RESOURCE, day],
+          )
+        ).rows,
+    );
+    const byGrantTable: ExternalReadCount[] = rows
+      .map((r) => {
+        // `<grant>/<table>`, as ExternalReads writes it.
+        const cut = r.resource_id.indexOf("/");
+        return {
+          grantId: cut < 0 ? r.resource_id : r.resource_id.slice(0, cut),
+          granteeId: r.actor_id,
+          table: cut < 0 ? "" : r.resource_id.slice(cut + 1),
+          reads: Number(r.reads),
+          firstReadAt: r.first_at.toISOString(),
+          lastReadAt: r.last_at.toISOString(),
+        };
+      })
+      .sort(
+        (a, b) =>
+          cmp(a.grantId, b.grantId) || cmp(a.table, b.table) || cmp(a.granteeId, b.granteeId),
+      );
+    const empty = () => ({ reads: 0, firstReadAt: "", lastReadAt: "" });
+    const grantees = new Map<
+      string,
+      ExternalReadTotal & { granteeId: string; grantIds: string[] }
+    >();
+    const tables = new Map<string, ExternalReadTotal & { table: string }>();
+    const all = new Map<string, ExternalReadTotal>();
+    for (const c of byGrantTable) {
+      const g = rollUp(grantees, c.granteeId, c, () => ({
+        granteeId: c.granteeId,
+        grantIds: [],
+        ...empty(),
+      }));
+      if (!g.grantIds.includes(c.grantId)) g.grantIds.push(c.grantId);
+      rollUp(tables, c.table, c, () => ({ table: c.table, ...empty() }));
+      rollUp(all, "", c, empty);
+    }
+    const total = all.get("");
+    return {
+      tenantId: ctx.tenantId,
+      day,
+      reads: total?.reads ?? 0,
+      firstReadAt: total?.firstReadAt ?? null,
+      lastReadAt: total?.lastReadAt ?? null,
+      byGrantTable,
+      byGrantee: sortedValues(grantees),
+      byTable: sortedValues(tables),
+    };
   }
 
   /** A correction is a new entry referencing the original; nothing is ever updated (NN-02). */

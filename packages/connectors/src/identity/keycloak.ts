@@ -4,24 +4,46 @@
 // rotation, brute-force protection, back-channel logout to the API, platform roles, and admin-only
 // user attributes (tenant_id, principal_type, product_scope, external_id) mapped into the token.
 // SCIM 2.0 operations go to the Admin API (PL2 plan A-08). RFC 8693 tokens with an `act` claim are
-// unsupported on Keycloak (PL2-D-55): impersonation stays off on this adapter.
+// unsupported on Keycloak (PL2-D-55): impersonation stays off on this adapter. `refreshSession` is the
+// refresh grant under the realm's rotation (`revokeRefreshToken`, `refreshTokenMaxReuse` 0): a
+// spent token is refused by Keycloak as reused, and the adapter then revokes its session (R1-D-77).
+// Tenant SSO brokers (OIDC, SAML; linking only) and domain discovery go to the Admin API when the
+// realm grants the admin account `manage-identity-providers` (`identityBrokers`, R1-D-78).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
+  IdpAlias,
   mfaRequired,
   PLATFORM_ROLES,
   RoleSchema,
   TENANT_ROLES,
+  VerifiedDomain,
   type AdapterDescriptor,
   type IdentityPort,
+  type IdentityProviderInfo,
+  type IdentityProviderSpec,
   type IdentityUser,
   type PortHealth,
   type ProvisionUserSpec,
+  type RefreshedTokens,
   type ScimOp,
   type VerifiedClaims,
   PLATFORM_KMS_TENANT,
 } from "@infrabyx/contracts";
 import { createEgress, type EgressResponse } from "../core/http.js";
-import { TokenVerifier, type RevocationStore } from "./common.js";
+import {
+  brokerInfo,
+  claimBroker,
+  discoverBroker,
+  oauthError,
+  parseBrokerSpec,
+  refreshRefused,
+  resolveBrokerSecret,
+  TokenVerifier,
+  unverifiedJwtPayload,
+  type BrokerRecord,
+  type BrokerSecretResolver,
+  type RevocationStore,
+} from "./common.js";
 
 type Egress = ReturnType<typeof createEgress>;
 
@@ -45,6 +67,26 @@ export const KEYCLOAK_IPB_SETTINGS = {
   sslRequired: "external",
   passwordPolicy: "length(12) and notUsername and notEmail and passwordHistory(5)",
 } as const;
+
+/**
+ * The bundled breached-password list (PR-LDC-04, R1-D-83): the 10,000 most common passwords of 12
+ * characters or more, lower-cased, from SecLists (MIT). The Keycloak customer image carries it at
+ * `/opt/keycloak/data/password-blacklists/` (`infra/keycloak/customer-otp/password-blacklists/`),
+ * where Keycloak's `passwordBlacklist` policy looks it up; nothing is fetched at runtime.
+ */
+export const KEYCLOAK_PASSWORD_BLACKLIST = "ipb-common-passwords.txt";
+const BLACKLIST_FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/;
+
+/**
+ * The realm's password policy: the IPB floor, plus `passwordBlacklist(<file>)` when the realm names
+ * a list the Keycloak server holds (IPB-02; PR-LDC-04, R1-D-83).
+ */
+export function keycloakPasswordPolicy(passwordBlacklist?: string): string {
+  if (passwordBlacklist === undefined) return KEYCLOAK_IPB_SETTINGS.passwordPolicy;
+  if (!BLACKLIST_FILE.test(passwordBlacklist) || passwordBlacklist.includes(".."))
+    throw new RangeError("passwordBlacklist is a file name of A-Z a-z 0-9 . _ -");
+  return `${KEYCLOAK_IPB_SETTINGS.passwordPolicy} and passwordBlacklist(${passwordBlacklist})`;
+}
 
 /** Realm role every MFA-required role carries as a composite (filtered out of `roles` by RoleSchema). */
 const MFA_MARKER_ROLE = "ipb-mfa-required";
@@ -74,7 +116,54 @@ export interface KeycloakRealmSpec {
   rpId?: string;
   /** Product roles to create beside the platform floor (e.g. FBX_CREDIT_HEAD). */
   productRoles?: readonly string[];
+  /**
+   * Refuse passwords on a list the Keycloak server holds in `data/password-blacklists/`, usually
+   * `KEYCLOAK_PASSWORD_BLACKLIST` on the Keycloak customer image (PR-LDC-04, R1-D-83). Omitted, the
+   * policy stays length, username, email and history only. Keycloak refuses the realm when the file
+   * is missing, so set it only where the server carries the list.
+   */
+  passwordBlacklist?: string;
+  /**
+   * Let the admin service account manage identity-provider brokers (`manage-identity-providers`,
+   * `view-identity-providers`; PR-LDC-09, R1-D-78). Off by default: only a product that offers
+   * tenant SSO turns it on.
+   */
+  identityBrokers?: boolean;
 }
+
+/** Keycloak broker config keys the adapter owns (R1-D-78): owner tenant, domains, source URL. */
+export const KEYCLOAK_BROKER_KEYS = {
+  tenant: "ipb.tenant_id",
+  domains: "ipb.domains",
+  source: "ipb.source_url",
+} as const;
+
+/**
+ * The first-broker-login flow of every managed broker (R1-D-78): linking only. It finds the
+ * existing account of the brokered identity (refused when there is none) and links it after its
+ * user signs in to it again. No `idp-create-user-if-unique`, no `idp-review-profile`, no
+ * automatic linking. `applyRealm` creates it with `identityBrokers` and removes anything else.
+ */
+export const KEYCLOAK_BROKER_LINK_FLOW = "ipb-broker-link-only";
+export const KEYCLOAK_BROKER_LINK_EXECUTIONS = [
+  "idp-detect-existing-broker-user",
+  "idp-username-password-form",
+] as const;
+
+/** The access-token claim naming the broker a session signed in with (session note mapper). */
+export const KEYCLOAK_BROKER_CLAIM_MAPPER = {
+  name: "idp",
+  protocol: "openid-connect",
+  protocolMapper: "oidc-usersessionmodel-note-mapper",
+  config: {
+    "user.session.note": "identity_provider",
+    "claim.name": "idp",
+    "jsonType.label": "String",
+    "access.token.claim": "true",
+    "id.token.claim": "false",
+    "userinfo.token.claim": "false",
+  },
+} as const;
 
 /** The realm as configuration as code (PL2 plan §6.5). Secrets are generated by Keycloak, never here. */
 export function ipbRealm(spec: KeycloakRealmSpec): Record<string, unknown> {
@@ -97,6 +186,7 @@ export function ipbRealm(spec: KeycloakRealmSpec): Record<string, unknown> {
     realm: spec.realm,
     enabled: true,
     ...KEYCLOAK_IPB_SETTINGS,
+    passwordPolicy: keycloakPasswordPolicy(spec.passwordBlacklist),
     ...KEYCLOAK_SESSION_PROFILES[spec.profile],
     permanentLockout: false,
     waitIncrementSeconds: 60,
@@ -209,9 +299,68 @@ export interface KeycloakIdentityOptions {
   jwksCacheSeconds?: number;
   /** Required action that enrols MFA (default CONFIGURE_TOTP; passkey realms may use webauthn-register-passwordless). */
   mfaEnrolmentAction?: string;
+  /**
+   * Resolves identity-provider client secrets by SECRETS reference (R1-D-78); without it, OIDC
+   * brokers are refused with IPB-PORT-001.
+   */
+  resolveSecret?: BrokerSecretResolver;
   allowLoopbackHttp?: boolean;
+  /** Tests only: recorded HTTP fixtures. */
+  fetchImpl?: typeof fetch;
   now?: () => number;
 }
+
+/** How long `discoverIdentityProvider` reuses the broker list read from the Admin API. */
+const BROKER_CACHE_MS = 30_000;
+
+interface KcIdp {
+  alias: string;
+  internalId?: string;
+  displayName?: string;
+  providerId: string;
+  enabled?: boolean;
+  config?: Record<string, string>;
+  [k: string]: unknown;
+}
+
+/** A Keycloak broker as the port sees it; one without the platform's tenant key is unmanaged. */
+function kcBroker(i: KcIdp): BrokerRecord {
+  const c = i.config ?? {};
+  const tenantId = c[KEYCLOAK_BROKER_KEYS.tenant] ?? "";
+  let domains: VerifiedDomain[] = [];
+  try {
+    const d = VerifiedDomain.array().safeParse(JSON.parse(c[KEYCLOAK_BROKER_KEYS.domains] ?? "[]"));
+    if (d.success) domains = d.data;
+  } catch {
+    domains = [];
+  }
+  const protocol = i.providerId === "saml" ? "saml" : "oidc";
+  const source = c[KEYCLOAK_BROKER_KEYS.source];
+  return {
+    managed: tenantId !== "",
+    tenantId,
+    alias: i.alias,
+    protocol,
+    displayName: i.displayName ?? i.alias,
+    enabled: i.enabled !== false,
+    domains,
+    ...(protocol === "oidc"
+      ? {
+          ...(source ? { discoveryUrl: source } : {}),
+          ...(c.clientId ? { clientId: c.clientId } : {}),
+        }
+      : source
+        ? { metadataUrl: source }
+        : {}),
+  };
+}
+
+/**
+ * Keycloak's descriptions of a refresh token refused under `revokeRefreshToken`: a token older
+ * than the session's last refresh (`Stale token`) or one used past `refreshTokenMaxReuse`.
+ */
+export const KEYCLOAK_REFRESH_REUSED =
+  /^(stale token|maximum allowed refresh token reuse exceeded)/i;
 
 interface KcUser {
   id: string;
@@ -262,17 +411,22 @@ export class KeycloakIdentity implements IdentityPort {
     adapter: "keycloak",
     residency: "IN",
     maxDataClass: "CONFIDENTIAL",
-    capabilities: { "authenticate.saml": "unsupported", "issueToken.actor": "unsupported" },
+    capabilities: {
+      "authenticate.saml": "unsupported",
+      "issueToken.actor": "unsupported",
+      discoverIdentityProvider: "emulated",
+    },
   };
   readonly issuer: string;
   private readonly egress: Egress;
   private readonly verifier: TokenVerifier;
   private adminToken: { value: string; until: number } | null = null;
+  private brokerCache: { at: number; list: BrokerRecord[] } | null = null;
 
   constructor(private readonly o: KeycloakIdentityOptions) {
     const base = o.baseUrl.replace(/\/$/, "");
     this.issuer = `${base}/realms/${o.realm}`;
-    this.egress = keycloakEgress(base, o.allowLoopbackHttp);
+    this.egress = keycloakEgress(base, o.allowLoopbackHttp, o.fetchImpl);
     this.verifier = new TokenVerifier({
       issuer: this.issuer,
       audience: o.audience,
@@ -529,13 +683,93 @@ export class KeycloakIdentity implements IdentityPort {
       expires_in: number;
     }>();
     // A token the platform cannot verify is never handed out.
-    await this.verifier.verify(t.access_token);
+    await this.verifyAccess(t.access_token);
     return {
       accessToken: t.access_token,
       ...(t.id_token ? { idToken: t.id_token } : {}),
       ...(t.refresh_token ? { refreshToken: t.refresh_token } : {}),
       expiresIn: t.expires_in,
     };
+  }
+
+  /**
+   * The refresh grant (RFC 6749 §6) under the realm's rotation (PR-LDC-03, R1-D-77). A token
+   * Keycloak reports as reused revokes its session: recorded first, so the API refuses the
+   * session's access tokens even if the IdP call fails, then ended at Keycloak, which kills the
+   * session's current refresh token.
+   */
+  async refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens> {
+    if (!req.refreshToken)
+      throw refreshRefused("refresh_invalid", "a refresh needs a refresh token");
+    const r = await this.tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: req.refreshToken,
+      client_id: this.o.clientId,
+      client_secret: this.o.clientSecret,
+    }).catch((e: unknown) => {
+      throw new PortError("IPB-IDN-002", "IDENTITY", {
+        adapter: "keycloak",
+        detail: "identity provider unavailable for refresh",
+        cause: e,
+      });
+    });
+    if (r.status !== 200) {
+      const e = oauthError(r);
+      if ((r.status === 400 || r.status === 401) && e.error === "invalid_grant") {
+        if (KEYCLOAK_REFRESH_REUSED.test(e.description)) {
+          await this.revokeReused(req.refreshToken);
+          throw refreshRefused(
+            "refresh_reused",
+            "a spent refresh token was presented again; the session is revoked",
+          );
+        }
+        throw refreshRefused("refresh_invalid", "the refresh token was refused");
+      }
+      this.fail(r.status, "refresh", e.error ? ` (${e.error})` : "");
+    }
+    const t = r.json<{
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in: number;
+    }>();
+    if (!t.refresh_token || t.refresh_token === req.refreshToken)
+      throw new PortError("IPB-PORT-002", "IDENTITY", {
+        adapter: "keycloak",
+        detail: "the realm did not rotate the refresh token (revokeRefreshToken is off)",
+      });
+    await this.verifyAccess(t.access_token);
+    return {
+      accessToken: t.access_token,
+      ...(t.id_token ? { idToken: t.id_token } : {}),
+      refreshToken: t.refresh_token,
+      expiresIn: t.expires_in,
+    };
+  }
+
+  /**
+   * Revoke the session of a refresh token Keycloak has verified and reported as reused. Its `sid`
+   * names the session; without one, every session of its user is revoked.
+   */
+  private async revokeReused(refreshToken: string): Promise<void> {
+    const p = unverifiedJwtPayload(refreshToken);
+    const sub = typeof p.sub === "string" ? p.sub : undefined;
+    const sid =
+      typeof p.sid === "string"
+        ? p.sid
+        : typeof p.session_state === "string"
+          ? p.session_state
+          : undefined;
+    if (!sub) this.fail(422, "a reused refresh token without a subject");
+    const { data: u } = await this.api<KcUser>("GET", `/users/${encodeURIComponent(sub!)}`);
+    if (!sid) {
+      await this.revokeUser(u, "security");
+      return;
+    }
+    const tenant = u.attributes?.tenant_id?.[0];
+    if (!tenant) this.fail(422, "user without tenant_id");
+    await this.o.revocations.revoke(tenant!, "session", sid, new Date(this.now), "security");
+    await this.api("DELETE", `/sessions/${encodeURIComponent(sid)}`, undefined, [200, 204, 404]);
   }
 
   /** Client credentials for the API client's service account. `actor` (RFC 8693 `act`) is unsupported. */
@@ -566,12 +800,12 @@ export class KeycloakIdentity implements IdentityPort {
         adapter: "keycloak",
         detail: "the realm issues this client's tokens for another audience or a longer lifetime",
       });
-    await this.verifier.verify(t.access_token);
+    await this.verifyAccess(t.access_token);
     return { accessToken: t.access_token, expiresIn: t.expires_in };
   }
 
   async verifyToken(jwt: string): Promise<VerifiedClaims> {
-    return this.verifier.verify(jwt);
+    return this.verifyAccess(jwt);
   }
 
   // ---- SCIM and revocation -----------------------------------------------------------------------
@@ -653,6 +887,135 @@ export class KeycloakIdentity implements IdentityPort {
     return r;
   }
 
+  // ---- identity-provider brokers (PR-LDC-09, R1-D-78) --------------------------------------------
+  // Each broker carries its owner tenant, verified domains and source URL in its config
+  // (`KEYCLOAK_BROKER_KEYS`). Brokers are linking only (`KEYCLOAK_BROKER_LINK_FLOW`): a brokered
+  // login reaches only an account the product provisioned, never creates one, and a session
+  // whose broker belongs to another tenant than its account is refused (`verifyAccess`).
+  // Keycloak reads the discovery or metadata document itself (`import-config`). Every change is
+  // a maker-checker action in the product.
+
+  private async brokers(fresh: boolean): Promise<BrokerRecord[]> {
+    if (!fresh && this.brokerCache && this.now - this.brokerCache.at < BROKER_CACHE_MS)
+      return this.brokerCache.list;
+    const { data } = await this.api<KcIdp[]>(
+      "GET",
+      "/identity-provider/instances?briefRepresentation=false&first=0&max=1000",
+    );
+    const list = (data ?? []).map(kcBroker);
+    this.brokerCache = { at: this.now, list };
+    return list;
+  }
+
+  async upsertIdentityProvider(
+    raw: IdentityProviderSpec,
+  ): Promise<{ alias: string; created: boolean }> {
+    const spec = parseBrokerSpec(raw, "keycloak", this.o.allowLoopbackHttp);
+    const same = claimBroker(spec, await this.brokers(true), "keycloak");
+    const secret =
+      spec.protocol === "oidc"
+        ? await resolveBrokerSecret(spec, this.o.resolveSecret, "keycloak")
+        : undefined;
+    const source = spec.protocol === "oidc" ? spec.discoveryUrl : spec.metadataUrl;
+    const { data: imported } = await this.api<Record<string, string>>(
+      "POST",
+      "/identity-provider/import-config",
+      { providerId: spec.protocol, fromUrl: source },
+    );
+    const config: Record<string, string> = {
+      ...imported,
+      syncMode: "IMPORT",
+      [KEYCLOAK_BROKER_KEYS.tenant]: spec.tenantId,
+      [KEYCLOAK_BROKER_KEYS.domains]: JSON.stringify(spec.domains),
+      [KEYCLOAK_BROKER_KEYS.source]: source,
+      ...(spec.protocol === "oidc"
+        ? {
+            clientId: spec.clientId,
+            clientSecret: secret!,
+            clientAuthMethod: "client_secret_post",
+            defaultScope: spec.scopes.join(" "),
+            validateSignature: "true",
+            useJwksUrl: "true",
+            pkceEnabled: "true",
+            pkceMethod: "S256",
+          }
+        : { validateSignature: "true", wantAssertionsSigned: "true" }),
+    };
+    const rep = {
+      alias: spec.alias,
+      displayName: spec.displayName,
+      providerId: spec.protocol,
+      enabled: spec.enabled,
+      // Linking only (R1-D-78): the first brokered login finds the existing account and links it
+      // once its user has signed in to it; no account is ever created and no profile reviewed.
+      // An email from a tenant's IdP never proves an account by itself.
+      trustEmail: false,
+      storeToken: false,
+      addReadTokenRoleOnCreate: false,
+      linkOnly: false,
+      firstBrokerLoginFlowAlias: KEYCLOAK_BROKER_LINK_FLOW,
+      config,
+    };
+    const path = `/identity-provider/instances/${encodeURIComponent(spec.alias)}`;
+    if (same && same.protocol === spec.protocol) {
+      const { data: cur } = await this.api<KcIdp>("GET", path);
+      await this.api("PUT", path, { ...cur, ...rep, internalId: cur.internalId });
+    } else {
+      // Another protocol under the same alias is a new broker in Keycloak.
+      if (same) await this.api("DELETE", path, undefined, [200, 204, 404]);
+      await this.api("POST", "/identity-provider/instances", rep);
+    }
+    this.brokerCache = null;
+    return { alias: spec.alias, created: !same };
+  }
+
+  /**
+   * The tenant guard on brokered sessions (R1-D-78). Keycloak links a brokered login to whichever
+   * existing account its user signs in to, so a token whose `idp` claim names a managed broker
+   * is refused unless the account belongs to that broker's tenant: a tenant's IdP never signs in
+   * to another tenant's account. Tokens without `idp` (no broker) are not affected.
+   */
+  private async verifyAccess(jwt: string): Promise<VerifiedClaims> {
+    const { claims, raw } = await this.verifier.verifyWithRaw(jwt);
+    const idp = typeof raw.idp === "string" ? raw.idp : "";
+    if (!idp) return claims;
+    const broker = (await this.brokers(false)).find((b) => b.alias === idp);
+    if (broker?.managed && broker.tenantId !== claims.tid)
+      throw new PortError("IPB-IDN-001", "IDENTITY", {
+        adapter: "keycloak",
+        detail:
+          "the account belongs to another tenant than the identity provider it signed in with",
+        meta: { reason: "idp_tenant" },
+      });
+    return claims;
+  }
+
+  async removeIdentityProvider(tenantId: string, alias: string): Promise<{ removed: boolean }> {
+    if (!IdpAlias.safeParse(alias).success) return { removed: false };
+    const b = (await this.brokers(true)).find((x) => x.alias === alias);
+    if (!b?.managed || b.tenantId !== tenantId) return { removed: false };
+    await this.api(
+      "DELETE",
+      `/identity-provider/instances/${encodeURIComponent(alias)}`,
+      undefined,
+      [200, 204, 404],
+    );
+    this.brokerCache = null;
+    return { removed: true };
+  }
+
+  async listIdentityProviders(tenantId: string): Promise<IdentityProviderInfo[]> {
+    return (await this.brokers(true))
+      .filter((b) => b.managed && b.tenantId === tenantId)
+      .map(brokerInfo);
+  }
+
+  async discoverIdentityProvider(
+    email: string,
+  ): Promise<{ tenantId: string; alias: string } | null> {
+    return discoverBroker(await this.brokers(false), email);
+  }
+
   async health(): Promise<PortHealth> {
     const t0 = Date.now();
     let status: PortHealth["status"];
@@ -693,9 +1056,11 @@ export class KeycloakIdentity implements IdentityPort {
     masterAdmin: { username: string; password: string };
     spec: KeycloakRealmSpec;
     allowLoopbackHttp?: boolean;
+    /** Tests only: recorded HTTP fixtures. */
+    fetchImpl?: typeof fetch;
   }): Promise<{ clientSecret: string; adminClientSecret: string }> {
     const base = o.baseUrl.replace(/\/$/, "");
-    const egress = keycloakEgress(base, o.allowLoopbackHttp);
+    const egress = keycloakEgress(base, o.allowLoopbackHttp, o.fetchImpl);
     const tr = await egress(`${base}/realms/master/protocol/openid-connect/token`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -775,7 +1140,7 @@ export class KeycloakIdentity implements IdentityPort {
       }
     }
 
-    // The admin service account gets user management only.
+    // The admin service account gets user management only (and brokers, when turned on).
     const clients = await call<Array<{ id: string; clientId: string }>>("GET", `/${realm}/clients`);
     const id = (cid: string) => clients.find((c) => c.clientId === cid)!.id;
     const adminCid = id(o.spec.adminClientId);
@@ -789,7 +1154,14 @@ export class KeycloakIdentity implements IdentityPort {
       `/${realm}/clients/${rm}/roles`,
     );
     const grant = available.filter((r) =>
-      ["manage-users", "view-users", "query-users", "view-realm"].includes(r.name),
+      [
+        "manage-users",
+        "view-users",
+        "query-users",
+        "view-realm",
+        // Tenant SSO only where the product turns it on (R1-D-78).
+        ...(o.spec.identityBrokers ? ["manage-identity-providers", "view-identity-providers"] : []),
+      ].includes(r.name),
     );
     await call("POST", `/${realm}/users/${sa.id}/role-mappings/clients/${rm}`, grant);
     // The API client's own service account: a platform service principal (issueToken).
@@ -802,6 +1174,39 @@ export class KeycloakIdentity implements IdentityPort {
       attributes: { tenant_id: [PLATFORM_KMS_TENANT], principal_type: ["service"] },
     });
 
+    // Tenant SSO (R1-D-78): the linking-only first-broker-login flow every managed broker uses,
+    // exactly as `KEYCLOAK_BROKER_LINK_EXECUTIONS` (anything else is removed), and the `idp`
+    // claim that names a session's broker for the adapter's tenant guard.
+    if (o.spec.identityBrokers) {
+      const flows = await call<Array<{ alias: string }>>("GET", `/${realm}/authentication/flows`);
+      if (!flows.some((f) => f.alias === KEYCLOAK_BROKER_LINK_FLOW))
+        await call("POST", `/${realm}/authentication/flows`, {
+          alias: KEYCLOAK_BROKER_LINK_FLOW,
+          description: "IPB tenant SSO: link a brokered login to an existing account only",
+          providerId: "basic-flow",
+          topLevel: true,
+          builtIn: false,
+        });
+      type Exec = { id: string; providerId?: string; requirement?: string; level?: number };
+      const flowPath = `/${realm}/authentication/flows/${encodeURIComponent(KEYCLOAK_BROKER_LINK_FLOW)}`;
+      const top = (await call<Exec[]>("GET", `${flowPath}/executions`)).filter(
+        (e) => (e.level ?? 0) === 0,
+      );
+      const wanted: readonly string[] = KEYCLOAK_BROKER_LINK_EXECUTIONS;
+      if (top.map((e) => e.providerId).join() !== wanted.join()) {
+        for (const e of top) await call("DELETE", `/${realm}/authentication/executions/${e.id}`);
+        for (const provider of wanted)
+          await call("POST", `${flowPath}/executions/execution`, { provider });
+      }
+      for (const e of await call<Exec[]>("GET", `${flowPath}/executions`))
+        if (e.requirement !== "REQUIRED")
+          await call("PUT", `${flowPath}/executions`, { ...e, requirement: "REQUIRED" });
+      const models = `/${realm}/clients/${id(o.spec.apiClient.clientId)}/protocol-mappers/models`;
+      const mappers = await call<Array<{ name: string }>>("GET", models);
+      if (!mappers.some((m) => m.name === KEYCLOAK_BROKER_CLAIM_MAPPER.name))
+        await call("POST", models, KEYCLOAK_BROKER_CLAIM_MAPPER);
+    }
+
     const secret = async (cid: string) =>
       (await call<{ value: string }>("GET", `/${realm}/clients/${id(cid)}/client-secret`)).value;
     return {
@@ -811,11 +1216,16 @@ export class KeycloakIdentity implements IdentityPort {
   }
 }
 
-export function keycloakEgress(base: string, allowLoopbackHttp?: boolean): Egress {
+export function keycloakEgress(
+  base: string,
+  allowLoopbackHttp?: boolean,
+  fetchImpl?: typeof fetch,
+): Egress {
   return createEgress({
     port: "IDENTITY",
     adapter: "keycloak",
     allow: [new URL(base).hostname],
     ...(allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
+    ...(fetchImpl ? { fetchImpl } : {}),
   });
 }

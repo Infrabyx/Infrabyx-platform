@@ -13,9 +13,10 @@
 //   answered `{ requestId, memberReference, status: COMPLETED|PENDING|NO_HIT, report? }`;
 // - a read-back: `GET /consumer/v4/reports/<requestId>`, the same answer;
 // - the report (CIR 4.0): `scores[{ scoreName, score }]`, `accounts[{ memberType, accountType,
-//   ownershipIndicator, highCreditAmount, currentBalance, amountOverdue, paymentHistory (3-digit
-//   days past due per month, latest first), accountStatus, dateOpened, dateClosed }]` (amounts in
-//   whole rupees, dates DDMMYYYY), `enquiries[{ enquiryDate }]`;
+//   ownershipIndicator, highCreditAmount, currentBalance, amountOverdue, emiAmount (the instalment,
+//   absent or empty when not reported; PR-FBX-35, R1-D-84), paymentHistory (3-digit days past due
+//   per month, latest first), accountStatus, dateOpened, dateClosed }]` (amounts in whole rupees,
+//   dates DDMMYYYY), `enquiries[{ enquiryDate }]`;
 // - the async-report event: `{ memberReference, requestId, status }`.
 // The pull id is ours and is sent as the member reference, so the CIC's event names it. The raw
 // report goes to STORAGE as received with its SHA-256; the result carries only the normalised
@@ -113,6 +114,21 @@ const paise = (v: unknown): number => {
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0;
 };
 
+/**
+ * STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX ([VERIFY] the field name `emiAmount` and its unit):
+ * an account's reported instalment in whole rupees to integer paise, or `null` when CIBIL reports
+ * none. Absent, empty, unparseable, zero or negative are all `null`, so a product computing FOIR
+ * never reads a missing instalment as a zero obligation.
+ */
+export function cibilEmiPaise(v: unknown): number | null {
+  if (v === undefined || v === null) return null;
+  const s = typeof v === "number" ? String(v) : typeof v === "string" ? v.trim() : "";
+  if (!/^[0-9][0-9,]*(\.[0-9]{1,2})?$/.test(s)) return null;
+  const n = Number(s.replace(/,/g, ""));
+  const p = Math.round(n * 100);
+  return Number.isSafeInteger(p) && p > 0 ? p : null;
+}
+
 const LENDER: Record<string, Tradeline["lenderType"]> = {
   BANK: "bank",
   NBFC: "nbfc",
@@ -155,6 +171,7 @@ export function mapCibilReport(report: unknown, now: Date): BureauSummary {
       sanctionedPaise: paise(a.highCreditAmount),
       currentPaise: paise(a.currentBalance),
       overduePaise: paise(a.amountOverdue),
+      emiPaise: cibilEmiPaise(a.emiAmount),
       worstDpd12m: buckets.reduce<DpdBucket>(worse, "0"),
       currentDpd: buckets[0] ?? "0",
       status: STATUS[String(a.accountStatus)] ?? "active",

@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { PrincipalType, RoleSchema } from "../roles.js";
 import type { Port } from "./common.js";
+import { isSecretRef } from "./secrets.js";
 
 /** Claims of a token already verified by the IDENTITY adapter. The tenancy context is built only from these. */
 export const VerifiedClaims = z.object({
@@ -61,7 +62,53 @@ export type ScimOp =
     }
   | { op: "deactivate"; externalId: string };
 
+// ---- refresh-token grant (LawDocsComply PR-LDC-03, R1-D-77) -------------------------------------
+// RFC 6749 §6 with rotation: every refresh spends the presented token and returns a new one. A
+// spent token presented again means it has been copied: the session it belongs to is revoked
+// (its access tokens refused within 60 s, IPB-02-05; its current refresh token dead) and the call
+// raises IPB-IDN-001 with `meta.reason: "refresh_reused"`. Refresh tokens are never logged, put in
+// an error or stored in clear; adapters that remember them keep a SHA-256 only.
+
+/** `meta.reason` of an IPB-IDN-001 refusal from `refreshSession`. */
+export const REFRESH_REFUSAL_REASONS = ["refresh_reused", "refresh_invalid"] as const;
+export type RefreshRefusalReason = (typeof REFRESH_REFUSAL_REASONS)[number];
+
+/** Tokens from a refresh: the refresh token is always a new one (rotation is on). */
+export interface RefreshedTokens {
+  accessToken: string;
+  idToken?: string;
+  refreshToken: string;
+  /** Seconds. */
+  expiresIn: number;
+}
+
+/** The refresh grant and the check that proves a revoked session (contract cases, fakes). */
+export interface IdentitySessionRefresh extends Port {
+  /**
+   * Exchange a refresh token for new tokens (PR-LDC-03, R1-D-77). Refusals: IPB-IDN-001 with
+   * `refresh_reused` (a spent token: the session is revoked first) or `refresh_invalid` (expired,
+   * revoked, unknown or another client's); IPB-IDN-002 when the IdP cannot be reached.
+   */
+  refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens>;
+  verifyToken(jwt: string): Promise<VerifiedClaims>;
+}
+
 export interface IdentityPort extends Port, IdentityProvisioning {
+  /**
+   * The refresh-token grant with rotation and reuse detection (PR-LDC-03, R1-D-77); see
+   * `IdentitySessionRefresh`. Optional: an adapter without it refuses with IPB-PORT-001
+   * `unsupported`.
+   */
+  refreshSession?(req: { refreshToken: string }): Promise<RefreshedTokens>;
+  /**
+   * Identity-provider brokers and domain discovery (PR-LDC-09, R1-D-78); see
+   * `IdentityBrokerAdmin`. Optional: an adapter without them refuses with IPB-PORT-001
+   * `unsupported`.
+   */
+  upsertIdentityProvider?: IdentityBrokerAdmin["upsertIdentityProvider"];
+  removeIdentityProvider?: IdentityBrokerAdmin["removeIdentityProvider"];
+  listIdentityProviders?: IdentityBrokerAdmin["listIdentityProviders"];
+  discoverIdentityProvider?: IdentityBrokerAdmin["discoverIdentityProvider"];
   /** Exchange a login assertion (authorisation code, SAML response) for tokens. */
   authenticate(assertion: {
     kind: "oidc_code" | "saml";
@@ -249,4 +296,120 @@ export interface CustomerIdentityPort extends Port {
     channel: CustomerOtpChannel;
     login: string;
   }): Promise<void>;
+}
+
+// ---- identity-provider brokers (LawDocsComply PR-LDC-09, R1-D-78) ------------------------------
+// A tenant's own SSO: an OIDC or SAML identity provider brokered by the product's realm (Keycloak)
+// or organisation (Zitadel), and the email domains that lead to it. The client secret is given by
+// SECRETS reference only (`secret://<adapter>/<path>#<key>`) and resolved by the adapter; a literal
+// secret is refused by the schema, and no secret is ever returned. Every change is an admin action
+// the product puts behind maker-checker (R3); the adapter only executes the approved change.
+
+/** Broker alias: lower case, unique in the realm or organisation, owned by one tenant. */
+export const IdpAlias = z.string().regex(/^[a-z][a-z0-9-]{1,38}[a-z0-9]$/);
+
+/** An email domain, lower case (`example.in`, `mail.example.co.in`). */
+export const EmailDomain = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/);
+
+/** A domain the product has verified the tenant controls (DNS or similar); only these route. */
+export const VerifiedDomain = z.strictObject({
+  domain: EmailDomain,
+  verifiedAt: z.iso.datetime({ offset: true }),
+});
+export type VerifiedDomain = z.infer<typeof VerifiedDomain>;
+
+/**
+ * The IdP's discovery or metadata URL. Adapters require `https:` (a loopback `http:` URL only
+ * with their test-only `allowLoopbackHttp`).
+ */
+const IdpUrl = z.url({ protocol: /^https?$/ }).max(2048);
+
+const brokerBase = {
+  tenantId: z.string().min(1).max(64),
+  alias: IdpAlias,
+  displayName: z.string().trim().min(1).max(100),
+  enabled: z.boolean().default(true),
+  domains: z.array(VerifiedDomain).max(50).default([]),
+};
+
+export const IdentityProviderSpec = z.discriminatedUnion("protocol", [
+  z.strictObject({
+    ...brokerBase,
+    protocol: z.literal("oidc"),
+    /** `…/.well-known/openid-configuration` of the tenant's IdP. */
+    discoveryUrl: IdpUrl.refine(
+      (u) => new URL(u).pathname.endsWith("/.well-known/openid-configuration"),
+      { message: "an OpenID discovery URL (…/.well-known/openid-configuration)" },
+    ),
+    clientId: z.string().min(1).max(255),
+    /** `secret://<adapter>/<path>#<key>`; never the secret itself. */
+    clientSecretRef: z.string().refine(isSecretRef, {
+      message: "a SECRETS reference (secret://<adapter>/<path>#<key>)",
+    }),
+    scopes: z
+      .array(z.string().regex(/^[\x21\x23-\x5b\x5d-\x7e]{1,64}$/))
+      .min(1)
+      .max(20)
+      .default(["openid", "email", "profile"]),
+  }),
+  z.strictObject({
+    ...brokerBase,
+    protocol: z.literal("saml"),
+    /** The IdP's SAML 2.0 metadata document. */
+    metadataUrl: IdpUrl,
+  }),
+]);
+/** What a product passes: defaults (`enabled`, `domains`, `scopes`) may be left out. */
+export type IdentityProviderSpec = z.input<typeof IdentityProviderSpec>;
+export type IdentityProviderConfig = z.output<typeof IdentityProviderSpec>;
+
+/** A broker as the port reports it: never a secret. */
+export interface IdentityProviderInfo {
+  tenantId: string;
+  alias: string;
+  protocol: "oidc" | "saml";
+  displayName: string;
+  enabled: boolean;
+  domains: VerifiedDomain[];
+  discoveryUrl?: string;
+  clientId?: string;
+  metadataUrl?: string;
+}
+
+/**
+ * Broker management and domain discovery (PR-LDC-09, R1-D-78). Refusals: a malformed spec before
+ * any call (schema error); IPB-PORT-004 (`meta.reason` `alias_taken`: the alias belongs to another
+ * tenant or was configured by hand; `domain_taken`: a domain already routes to another broker);
+ * IPB-PORT-001 when the adapter has no SECRETS resolver or its admin credentials lack the right.
+ */
+export interface IdentityBrokerAdmin extends Port {
+  /** Create or update the tenant's broker `alias`; `created` is false for an update. */
+  upsertIdentityProvider(spec: IdentityProviderSpec): Promise<{ alias: string; created: boolean }>;
+  /** Remove the tenant's broker; false when it does not exist or is another tenant's. */
+  removeIdentityProvider(tenantId: string, alias: string): Promise<{ removed: boolean }>;
+  listIdentityProviders(tenantId: string): Promise<IdentityProviderInfo[]>;
+  /**
+   * The enabled broker a sign-in email's domain routes to, by verified domain; null when none
+   * (or the input is not an email address). The product then starts the login with that alias.
+   */
+  discoverIdentityProvider(email: string): Promise<{ tenantId: string; alias: string } | null>;
+}
+
+/** The domain part of an email address, normalised; null when the input is not one. */
+export function emailDomainOf(email: string): string | null {
+  const at = email.trim().lastIndexOf("@");
+  if (at < 1) return null;
+  const d = EmailDomain.safeParse(email.trim().slice(at + 1));
+  return d.success ? d.data : null;
+}
+
+/** The adapters' URL rule: `https:`, or `http:` on a loopback host when tests allow it. */
+export function idpUrlAllowed(url: string, allowLoopbackHttp = false): boolean {
+  const u = new URL(url);
+  if (u.protocol === "https:") return true;
+  return allowLoopbackHttp && ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
 }

@@ -238,6 +238,57 @@ describe("SettingsService writes", () => {
   });
 });
 
+describe("per-value change history (PR-LDC-17, R1-D-82)", () => {
+  const key = "trust.auth.session_idle_minutes";
+  const tenant = { tier: "TENANT", scopeId: "tnt_a" } as const;
+  it("lists each change at the scope newest first, paged, linked to its ledger entry", async () => {
+    const { svc } = setup();
+    const admin = ctxFor(["ORG_ADMIN"]);
+    for (const v of [20, 15, 10]) await svc.set(admin, key, tenant, v);
+    const first = await svc.history(admin, key, tenant, { limit: 2 });
+    expect(first.items.map((c) => [c.old, c.new, c.version, c.ledgerId])).toEqual([
+      [15, 10, 3, "led_3"],
+      [20, 15, 2, "led_2"],
+    ]);
+    expect(first.items[0]).toMatchObject({ key, tier: "TENANT", scopeId: "tnt_a" });
+    expect(first.items[0]).toMatchObject({ actorId: "usr_maker", approvalRequestId: null });
+    const rest = await svc.history(admin, key, tenant, { cursor: first.nextCursor! });
+    expect(rest).toMatchObject({ items: [{ old: null, new: 20, version: 1 }], nextCursor: null });
+  });
+  it("is the owner's alone at USER and needs a reader role at TENANT", async () => {
+    const { svc } = setup();
+    await svc.set(ctxFor([]), "ux.density", { tier: "USER", scopeId: "usr_maker" }, "compact");
+    const mine = await svc.history(ctxFor([]), "ux.density", {
+      tier: "USER",
+      scopeId: "usr_maker",
+    });
+    expect(mine.items.map((c) => c.new)).toEqual(["compact"]);
+    const other = { tier: "USER", scopeId: "usr_maker" } as const;
+    const admin = ctxFor(["ORG_ADMIN"], { principal: { id: "usr_adm", type: "user", roles: [] } });
+    expect(await codeAsync(svc.history(admin, "ux.density", other))).toBe("IPB-UX-011");
+    expect(await codeAsync(svc.history(ctxFor(["ORG_MEMBER"]), key, tenant))).toBe("IPB-UX-011");
+    expect(await svc.history(ctxFor(["ORG_AUDITOR_RO"]), key, tenant)).toEqual({
+      items: [],
+      nextCursor: null,
+    });
+    const elsewhere = { tier: "TENANT", scopeId: "tnt_other" } as const;
+    expect(await codeAsync(svc.history(ctxFor(["ORG_ADMIN"]), key, elsewhere))).toBe("IPB-UX-011");
+    const platform = { tier: "PLATFORM", scopeId: null } as const;
+    expect(await codeAsync(svc.history(ctxFor(["ORG_ADMIN"]), "ux.undo.window_s", platform))).toBe(
+      "IPB-UX-011",
+    );
+    await expect(svc.history(ctxFor(["ORG_ADMIN"]), key, tenant, { limit: 0 })).rejects.toThrow(
+      RangeError,
+    );
+    await expect(svc.history(ctxFor(["ORG_ADMIN"]), key, tenant, { cursor: "x" })).rejects.toThrow(
+      RangeError,
+    );
+    expect(await codeAsync(svc.history(ctxFor(["ORG_ADMIN"]), "no.such.key", tenant))).toBe(
+      "IPB-UX-007",
+    );
+  });
+});
+
 describe("@IPB-07-AT-06 @NN-18 maker-checker on organisation settings", () => {
   const disbursement: SettingDef = {
     key: "mc.thresholds.disbursement",

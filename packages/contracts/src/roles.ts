@@ -11,7 +11,14 @@ export const PLATFORM_ROLES = [
   "PLT_GRIEVANCE_OFFICER",
   "PLT_AUDITOR_RO",
   "PLT_ACCESSIBILITY_LEAD",
+  // Tenant-consented support access (LawDocsComply PR-LDC-08 (a), PR-LDC-20; owner answer #104;
+  // R1-D-76): sees a tenant only under that tenant's live consent (`SupportAccess` in
+  // `@infrabyx/tenancy`), never in a platform context. Products map their own support role onto it.
+  "PLT_SUPPORT",
 ] as const;
+
+/** The support role of tenant-consented support access (R1-D-76). */
+export const SUPPORT_ROLE = "PLT_SUPPORT" as const;
 
 export const TENANT_ROLES = [
   "ORG_OWNER",

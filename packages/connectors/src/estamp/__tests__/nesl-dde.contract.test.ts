@@ -14,7 +14,14 @@ import {
   type DdeFixtures,
   type NeslDdeStub,
 } from "@infrabyx/testing";
-import { MemoryDdeRecordStore, NeslDde, mapNeslDdeState } from "../nesl-dde.js";
+import {
+  MemoryDdeRecordStore,
+  NeslDde,
+  mapNeslDdeState,
+  mapNeslNotStampable,
+  neslNonStampable,
+  neslSigners,
+} from "../nesl-dde.js";
 
 const PREFIX = "tenant/tnt_dde/los";
 let stub: NeslDdeStub;
@@ -62,6 +69,16 @@ const fixtures: DdeFixtures = {
 const reg = (document: DocFileRef) => ({
   document,
   certificateId: "IN-MH00000000000002",
+  executants: [{ partyRef: "p1", name: "Party p1" }],
+  outputPrefix: PREFIX,
+});
+
+const nsReg = (
+  document: DocFileRef,
+  notStampable: { reason: "NOT_AN_INSTRUMENT" | "ACKNOWLEDGEMENT" | "OTHER"; note?: string },
+) => ({
+  document,
+  notStampable,
   executants: [{ partyRef: "p1", name: "Party p1" }],
   outputPrefix: PREFIX,
 });
@@ -124,5 +141,89 @@ describe("R1-D-62 the NeSL DDE adapter", () => {
     expect(mapNeslDdeState("PARTIALLY_EXECUTED")).toBe("pending_execution");
     expect(mapNeslDdeState("executed")).toBe("executed");
     expect(() => mapNeslDdeState("SOMETHING_NEW")).toThrow();
+  });
+});
+
+describe("R1-D-84 the NeSL DDE signer trail and not-stampable registration (PR-FBX-35)", () => {
+  const posts = () => stub.requests.filter((r) => r.method === "POST");
+
+  it("sends NeSL a reason code in place of a stamp reference, and the note for OTHER only", async () => {
+    const before = posts().length;
+    const p = make();
+    const a = await p.ddeRegister(nsReg(docs.a, { reason: "ACKNOWLEDGEMENT" }), "dde-ns-000001");
+    expect(a.notStampableReason).toBe("ACKNOWLEDGEMENT");
+    const b = await p.ddeRegister(
+      nsReg(docs.a, { reason: "OTHER", note: "a borrower's declaration" }),
+      "dde-ns-000002",
+    );
+    expect(b.notStampableReason).toBe("OTHER");
+    const sent = posts()
+      .slice(before)
+      .map((r) => r.json<Record<string, unknown>>());
+    expect(sent).toHaveLength(2);
+    expect(sent[0]).not.toHaveProperty("stamp_ref");
+    expect(sent[0]!.non_stampable).toEqual({ reason_code: "ACKNOWLEDGEMENT" });
+    expect(sent[1]!.non_stampable).toEqual({
+      reason_code: "OTHERS",
+      remarks: "a borrower's declaration",
+    });
+    // A note given with another reason stays home.
+    expect(neslNonStampable({ reason: "NOT_AN_INSTRUMENT", note: "internal" })).toEqual({
+      reason_code: "NOT_AN_INSTRUMENT",
+    });
+  });
+
+  it("refuses a not-stampable registration with an e-stamp or a duty before anything reaches NeSL", async () => {
+    const before = stub.requests.length;
+    const ns = { reason: "ACKNOWLEDGEMENT" as const };
+    await expect(
+      make().ddeRegister({ ...reg(docs.a), notStampable: ns }, "dde-ns-000003"),
+    ).rejects.toThrow(/no e-stamp certificate/);
+    await expect(
+      make().ddeRegister({ ...nsReg(docs.a, ns), dutyMinor: 10_000 } as never, "dde-ns-000004"),
+    ).rejects.toThrow();
+    expect(stub.requests.length).toBe(before);
+  });
+
+  it("keeps each signer's evidence without the executant's name, and fails closed on a partial trail", async () => {
+    const p = make();
+    const d = await p.ddeRegister(
+      { ...reg(docs.a), executants: [{ partyRef: "p1", name: "Asha Rao" }] },
+      "dde-trail-0001",
+    );
+    stub.execute(d.ddeId, "p1", { sign_mode: "DSC", ip_address: "2001:db8::7" });
+    const done = await p.ddeStatus(d.ddeId);
+    expect(done.signers).toEqual([
+      {
+        signerRef: "p1",
+        signedAt: expect.stringMatching(/Z$/),
+        method: "DSC",
+        espTransactionId: `ESP-${d.ddeId}-1`,
+        signerIp: "2001:db8::7",
+      },
+    ]);
+    expect(JSON.stringify(done)).not.toContain("Asha");
+
+    for (const [key, evidence, msg] of [
+      ["dde-trail-0002", { sign_mode: "VIDEO" }, /signing mode/],
+      ["dde-trail-0003", { signed_at: null }, /signing time/],
+      ["dde-trail-0004", { esp_txn_id: null, ip_address: null }, /transaction id or an IP/],
+      ["dde-trail-0005", { ip_address: "not-an-ip" }, /IP address/],
+    ] as const) {
+      const r = await p.ddeRegister(reg(docs.a), key);
+      stub.execute(r.ddeId, "p1", evidence);
+      await expect(p.ddeStatus(r.ddeId)).rejects.toThrow(msg);
+    }
+  });
+
+  it("maps the stub-shaped stamping conservatively", () => {
+    expect(mapNeslNotStampable({})).toBeNull();
+    expect(mapNeslNotStampable({ stamp_ref: "IN-MH1" })).toBeNull();
+    expect(mapNeslNotStampable({ non_stampable: { reason_code: "others" } })).toBe("OTHER");
+    expect(() => mapNeslNotStampable({ non_stampable: { reason_code: "EXEMPT" } })).toThrow();
+    expect(() =>
+      mapNeslNotStampable({ stamp_ref: "IN-MH1", non_stampable: { reason_code: "OTHERS" } }),
+    ).toThrow();
+    expect(neslSigners({ executants: [{ ref: "p1", status: "PENDING" }] })).toEqual([]);
   });
 });

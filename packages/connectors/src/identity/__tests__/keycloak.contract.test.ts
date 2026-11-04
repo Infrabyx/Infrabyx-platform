@@ -7,9 +7,20 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { IdentityPort } from "@infrabyx/contracts/ports";
+import type {
+  IdentityBrokerAdmin,
+  IdentityPort,
+  IdentitySessionRefresh,
+  SecretRef,
+} from "@infrabyx/contracts/ports";
 import { generateSeedPassword, randomBytes, toHex } from "@infrabyx/crypto";
-import { defineContractSuite, startService, type StartedService } from "@infrabyx/testing";
+import {
+  defineContractSuite,
+  identityBrokerContractCases,
+  identityRefreshContractCases,
+  startService,
+  type StartedService,
+} from "@infrabyx/testing";
 import { assertMfaForRoles, MemoryRevocationStore } from "../common.js";
 import { KEYCLOAK_IPB_SETTINGS, KEYCLOAK_SESSION_PROFILES, KeycloakIdentity } from "../keycloak.js";
 import { LoginDriver, totp, totpSecretOf } from "./login-driver.js";
@@ -27,6 +38,12 @@ let spec: Parameters<typeof KeycloakIdentity.applyRealm>[0]["spec"];
 let logoutServer: Server;
 const logoutTokens: string[] = [];
 const revocations = new MemoryRevocationStore();
+/** The broker client secret behind `secret://memory/idp/contract#client_secret` (R1-D-78). */
+const BROKER_SECRET = pw();
+const brokerSecret = async (ref: SecretRef) => {
+  if (ref.adapter !== "memory" || ref.key !== "client_secret") throw new Error("unknown secret");
+  return BROKER_SECRET;
+};
 
 beforeAll(async () => {
   logoutServer = createServer((req, res) => {
@@ -64,6 +81,7 @@ beforeAll(async () => {
     adminClientId: "ipb-admin",
     audience: AUDIENCE,
     passkeys: true,
+    identityBrokers: true,
   };
   secrets = await KeycloakIdentity.applyRealm({
     baseUrl: base,
@@ -87,6 +105,7 @@ const adapter = () =>
     adminClientSecret: secrets.adminClientSecret,
     audience: AUDIENCE,
     revocations,
+    resolveSecret: brokerSecret,
     allowLoopbackHttp: true,
   });
 const issuer = () => `${base}/realms/${REALM}`;
@@ -348,6 +367,85 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
         },
       },
     ],
+    { leg: "hermetic" },
+  );
+
+  // The refresh grant under the realm's rotation (PR-LDC-03, R1-D-77): a real login per session.
+  defineContractSuite<IdentitySessionRefresh>(
+    "IDENTITY",
+    adapter,
+    identityRefreshContractCases(
+      {
+        async signIn() {
+          const p = adapter();
+          const user = email("refresh");
+          const password = pw();
+          await p.provisionUser({
+            email: user,
+            displayName: "Refresh User",
+            tenantId: "tnt_a",
+            roles: ["ORG_MEMBER"],
+            password: { value: password, temporary: false },
+            mfaRequired: false,
+          });
+          const r = await new LoginDriver(issuer(), API).login((page) => {
+            if (page === "login") return { username: user, password, credentialId: "" };
+            throw new Error(`unexpected page ${page}`);
+          });
+          const t = await p.authenticate({
+            kind: "oidc_code",
+            value: r.code,
+            redirectUri: r.redirectUri,
+            codeVerifier: r.codeVerifier,
+          });
+          if (!t.refreshToken) throw new Error("the realm issued no refresh token");
+          return { refreshToken: t.refreshToken };
+        },
+      },
+      // Keycloak compares a refresh token's issue time with the session's last refresh in seconds.
+      { pauseMs: 1100 },
+    ),
+    { leg: "hermetic" },
+  );
+
+  // Tenant SSO brokers (PR-LDC-09, R1-D-78). Keycloak reads the discovery and metadata documents
+  // itself (`import-config`), so they are its own master realm's, on its loopback address. A first
+  // brokered login is answered from what Keycloak would run: the broker's first-login flow as the
+  // realm holds it (applied by `applyRealm` with `identityBrokers`). The tenant guard on brokered
+  // sessions needs a token Keycloak signs after a real brokered login, so it is unit-tested only.
+  defineContractSuite<IdentityBrokerAdmin>(
+    "IDENTITY",
+    adapter,
+    identityBrokerContractCases({
+      tenants: ["tnt_a", "tnt_b"],
+      oidc: {
+        discoveryUrl: "http://localhost:8080/realms/master/.well-known/openid-configuration",
+        clientId: "tenant-sso",
+        clientSecretRef: "secret://memory/idp/contract#client_secret",
+        secretValue: BROKER_SECRET,
+      },
+      saml: { metadataUrl: "http://localhost:8080/realms/master/protocol/saml/descriptor" },
+      async brokerSignIn(_p, alias, user) {
+        const rep = (await adminCall("GET", `/identity-provider/instances/${alias}`)) as {
+          enabled?: boolean;
+          trustEmail?: boolean;
+          firstBrokerLoginFlowAlias?: string;
+        };
+        const flow = encodeURIComponent(rep.firstBrokerLoginFlowAlias ?? "");
+        const steps = (
+          (await adminCall("GET", `/authentication/flows/${flow}/executions`)) as Array<{
+            providerId?: string;
+            requirement?: string;
+          }>
+        )
+          .filter((e) => e.requirement !== "DISABLED")
+          .map((e) => e.providerId);
+        if (rep.enabled === false) return "refused";
+        if (user.existingIn === undefined)
+          return steps.includes("idp-create-user-if-unique") ? "linked" : "refused";
+        return steps.includes("idp-detect-existing-broker-user") ? "linked" : "refused";
+      },
+    }),
     { leg: "hermetic" },
   );
 

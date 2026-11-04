@@ -5,22 +5,47 @@
 // project roles (`urn:zitadel:iam:org:project:roles`). Signing uses an ES256 web key (C-12).
 // Zitadel cannot require MFA per role, so every organisation forces MFA at login (stricter than
 // IPB-02-02, PL2-D-56) and the API guard still refuses privileged roles without it (IPB-SEC-001). RFC 8693 tokens with `act`
-// are unsupported here as on Keycloak (PL2-D-55).
+// are unsupported here as on Keycloak (PL2-D-55). Zitadel rotates every refresh token but reports a
+// spent one only as invalid, so `refreshSession` detects reuse itself from a ledger of SHA-256
+// hashes (`RefreshTokenLedger`; capability `refreshSession.reuseDetection: emulated`, R1-D-77).
+// Tenant SSO brokers are organisation IdPs with linking only, routed by organisation metadata
+// (`ipb.idp.<alias>`; R1-D-78).
+import { z } from "zod";
 import { PortError } from "@infrabyx/contracts/errors";
 import {
+  IdpAlias,
   RoleSchema,
   PLATFORM_KMS_TENANT,
+  VerifiedDomain,
   type AdapterDescriptor,
   type IdentityPort,
+  type IdentityProviderInfo,
+  type IdentityProviderSpec,
   type IdentityUser,
   type PortHealth,
   type ProvisionUserSpec,
+  type RefreshedTokens,
   type ScimOp,
   type VerifiedClaims,
 } from "@infrabyx/contracts";
 import { sha256Hex } from "@infrabyx/crypto";
 import { createEgress, type EgressResponse } from "../core/http.js";
-import { TokenVerifier, type RevocationStore } from "./common.js";
+import {
+  brokerInfo,
+  claimBroker,
+  discoverBroker,
+  MemoryRefreshTokenLedger,
+  oauthError,
+  parseBrokerSpec,
+  refreshRefused,
+  resolveBrokerSecret,
+  TokenVerifier,
+  type BrokerRecord,
+  type BrokerSecretResolver,
+  type RefreshFamily,
+  type RefreshTokenLedger,
+  type RevocationStore,
+} from "./common.js";
 
 type Egress = ReturnType<typeof createEgress>;
 
@@ -97,10 +122,53 @@ export interface ZitadelIdentityOptions {
     | { kind: "client_credentials"; clientId: string; clientSecret: string }
     | { kind: "pat"; token: string };
   revocations: RevocationStore;
+  /**
+   * Hashes of spent refresh tokens, for reuse detection (R1-D-77). Default: in memory, which
+   * detects reuse on this replica only; several replicas share one.
+   */
+  refreshLedger?: RefreshTokenLedger;
+  /** How long the ledger keeps a hash: the instance's absolute refresh lifetime (default 12 h). */
+  refreshTokenMaxSeconds?: number;
+  /**
+   * Resolves identity-provider client secrets by SECRETS reference (R1-D-78); without it, OIDC
+   * brokers are refused with IPB-PORT-001.
+   */
+  resolveSecret?: BrokerSecretResolver;
   jwksCacheSeconds?: number;
   allowLoopbackHttp?: boolean;
+  /** Tests only: recorded HTTP fixtures. */
+  fetchImpl?: typeof fetch;
   now?: () => number;
 }
+
+/** Organisation metadata key prefix of the platform's brokers: `ipb.idp.<alias>` (R1-D-78). */
+export const ZITADEL_BROKER_PREFIX = "ipb.idp.";
+/** How long `discoverIdentityProvider` reuses the broker list read from the metadata. */
+const BROKER_CACHE_MS = 30_000;
+/** Brokered users link to an account the product provisioned; Zitadel creates none itself. */
+const BROKER_OPTIONS = {
+  isLinkingAllowed: true,
+  isCreationAllowed: false,
+  isAutoCreation: false,
+  isAutoUpdate: false,
+};
+
+/** What the organisation metadata holds per broker: ids and routing, never a secret. */
+const ZitadelBrokerMeta = z.object({
+  tenantId: z.string().min(1),
+  idpId: z.string().min(1),
+  protocol: z.enum(["oidc", "saml"]),
+  displayName: z.string(),
+  enabled: z.boolean(),
+  domains: VerifiedDomain.array(),
+  source: z.string(),
+  clientId: z.string().optional(),
+});
+type ZitadelBrokerMeta = z.infer<typeof ZitadelBrokerMeta>;
+
+/** `https://idp.example/.well-known/openid-configuration` → `https://idp.example`. */
+export const oidcIssuerOf = (discoveryUrl: string): string =>
+  discoveryUrl.replace(/\/\.well-known\/openid-configuration$/, "");
 
 interface ZUser {
   userId: string;
@@ -109,6 +177,13 @@ interface ZUser {
   human?: { profile?: { displayName?: string }; email?: { email?: string } };
   machine?: unknown;
 }
+
+/** OAuth token-endpoint errors that mean the refresh token itself was refused (RFC 6749 §5.2). */
+const REFRESH_REFUSALS: ReadonlySet<string> = new Set([
+  "invalid_grant",
+  "invalid_request",
+  "invalid_token",
+]);
 
 export class ZitadelIdentity implements IdentityPort {
   readonly descriptor: AdapterDescriptor = {
@@ -120,16 +195,22 @@ export class ZitadelIdentity implements IdentityPort {
       "authenticate.saml": "unsupported",
       "issueToken.actor": "unsupported",
       "provisionUser.mfaRequired": "emulated",
+      "refreshSession.reuseDetection": "emulated",
+      discoverIdentityProvider: "emulated",
     },
   };
   readonly issuer: string;
   private readonly egress: Egress;
   private readonly verifier: TokenVerifier;
+  private readonly ledger: RefreshTokenLedger;
   private adminToken: { value: string; until: number } | null = null;
+  private brokerCache: { at: number; list: BrokerRecord[] } | null = null;
+  private readonly linkCache = new Map<string, { at: number; idpIds: string[] }>();
 
   constructor(private readonly o: ZitadelIdentityOptions) {
     this.issuer = o.baseUrl.replace(/\/$/, "");
-    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp);
+    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp, o.fetchImpl);
+    this.ledger = o.refreshLedger ?? new MemoryRefreshTokenLedger(() => this.now);
     this.verifier = new TokenVerifier({
       issuer: this.issuer,
       audience: o.projectId,
@@ -365,13 +446,111 @@ export class ZitadelIdentity implements IdentityPort {
       refresh_token?: string;
       expires_in: number;
     }>();
-    await this.verifier.verify(t.access_token);
+    await this.verifyAccess(t.access_token);
     return {
       accessToken: t.access_token,
       ...(t.id_token ? { idToken: t.id_token } : {}),
       ...(t.refresh_token ? { refreshToken: t.refresh_token } : {}),
       expiresIn: t.expires_in,
     };
+  }
+
+  /**
+   * The refresh grant (RFC 6749 §6; PR-LDC-03, R1-D-77). Zitadel always rotates; the ledger marks
+   * each presented token spent. A spent token presented again revokes its session: the ledger
+   * refuses the whole family from then on, the revocation store refuses its access tokens (the
+   * session's `sid`, or the user when the tokens carry none), and the Zitadel session is ended.
+   */
+  async refreshSession(req: { refreshToken: string }): Promise<RefreshedTokens> {
+    if (!req.refreshToken)
+      throw refreshRefused("refresh_invalid", "a refresh needs a refresh token");
+    const hash = sha256Hex(req.refreshToken);
+    const known = await this.ledger.lookup(hash);
+    if (known?.revoked) {
+      // A descendant of a reused token: refused, and revoked at Zitadel now that it is in hand.
+      await this.revokeAtIdp(req.refreshToken);
+      throw refreshRefused("refresh_invalid", "the refresh token's session has been revoked");
+    }
+    if (known?.spent) {
+      await this.revokeFamily(hash, known.family);
+      throw refreshRefused(
+        "refresh_reused",
+        "a spent refresh token was presented again; the session is revoked",
+      );
+    }
+    const r = await this.token(
+      { grant_type: "refresh_token", refresh_token: req.refreshToken },
+      { id: this.o.clientId, secret: this.o.clientSecret },
+    ).catch((e: unknown) => {
+      throw new PortError("IPB-IDN-002", "IDENTITY", {
+        adapter: "zitadel",
+        detail: "identity provider unavailable for refresh",
+        cause: e,
+      });
+    });
+    if (r.status !== 200) {
+      const e = oauthError(r);
+      // Zitadel answers an unknown or undecryptable refresh token with `invalid_request` (400),
+      // a spent or revoked one with `invalid_grant`; to our well-formed refresh request either means
+      // the token was refused (R1-D-77; seen on Zitadel v4.19.5 in the hermetic leg).
+      if ((r.status === 400 || r.status === 401) && REFRESH_REFUSALS.has(e.error))
+        throw refreshRefused("refresh_invalid", "the refresh token was refused");
+      this.fail(r.status, "refresh");
+    }
+    const t = r.json<{
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in: number;
+    }>();
+    if (!t.refresh_token || t.refresh_token === req.refreshToken)
+      throw new PortError("IPB-PORT-002", "IDENTITY", {
+        adapter: "zitadel",
+        detail: "the instance did not rotate the refresh token",
+      });
+    const claims = await this.verifyAccess(t.access_token);
+    await this.ledger.rotated(
+      hash,
+      sha256Hex(t.refresh_token),
+      { tenantId: claims.tid, userId: claims.sub, ...(claims.sid ? { sid: claims.sid } : {}) },
+      new Date(this.now + (this.o.refreshTokenMaxSeconds ?? 43_200) * 1000),
+    );
+    return {
+      accessToken: t.access_token,
+      ...(t.id_token ? { idToken: t.id_token } : {}),
+      refreshToken: t.refresh_token,
+      expiresIn: t.expires_in,
+    };
+  }
+
+  /** Revoke a reused token's family: ledger, then revocation store, then the Zitadel session. */
+  private async revokeFamily(hash: string, family: RefreshFamily): Promise<void> {
+    await this.ledger.revokeFamily(hash);
+    const at = new Date(this.now);
+    if (!family.sid) {
+      await this.o.revocations.revoke(family.tenantId, "user", family.userId, at, "security");
+      return;
+    }
+    await this.o.revocations.revoke(family.tenantId, "session", family.sid, at, "security");
+    // Best effort: the refusal above already holds whatever Zitadel answers.
+    await this.api("DELETE", `/v2/sessions/${encodeURIComponent(family.sid)}`, {}).catch(
+      () => undefined,
+    );
+  }
+
+  /** RFC 7009 revocation of a refresh token at Zitadel; best effort. */
+  private async revokeAtIdp(refreshToken: string): Promise<void> {
+    await this.egress(`${this.issuer}/oauth/v2/revoke`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: basicAuth(this.o.clientId, this.o.clientSecret),
+      },
+      body: new URLSearchParams({
+        token: refreshToken,
+        token_type_hint: "refresh_token",
+      }).toString(),
+    }).catch(() => undefined);
   }
 
   /** Client credentials for the platform service principal. `actor` (RFC 8693 `act`) is unsupported. */
@@ -410,7 +589,43 @@ export class ZitadelIdentity implements IdentityPort {
   }
 
   async verifyToken(jwt: string): Promise<VerifiedClaims> {
-    return this.verifier.verify(jwt);
+    return this.verifyAccess(jwt);
+  }
+
+  /**
+   * The tenant guard on brokered accounts (R1-D-78). Zitadel links a brokered login to whichever
+   * account of the organisation its user signs in to, and its tokens do not name the IdP, so a
+   * user's token is refused while the account is linked to a managed broker of another tenant: a
+   * tenant's IdP never signs in to another tenant's account. Read only while the organisation has
+   * such brokers; each user's links are cached for a minute.
+   */
+  private async verifyAccess(jwt: string): Promise<VerifiedClaims> {
+    const claims = await this.verifier.verify(jwt);
+    if (claims.typ !== "user") return claims;
+    const foreign = (await this.brokers(false)).filter((b) => b.tenantId !== claims.tid && b.idpId);
+    if (!foreign.length) return claims;
+    const linked = await this.linkedIdps(claims.sub);
+    if (foreign.some((b) => linked.includes(b.idpId!)))
+      throw new PortError("IPB-IDN-001", "IDENTITY", {
+        adapter: "zitadel",
+        detail: "the account is linked to another tenant's identity provider",
+        meta: { reason: "idp_tenant" },
+      });
+    return claims;
+  }
+
+  private async linkedIdps(userId: string): Promise<string[]> {
+    const hit = this.linkCache.get(userId);
+    if (hit && this.now - hit.at < 60_000) return hit.idpIds;
+    const r = await this.api<{ result?: Array<{ idpId?: string }> }>(
+      "POST",
+      `/v2/users/${encodeURIComponent(userId)}/links/_search`,
+      {},
+    );
+    const idpIds = (r.result ?? []).flatMap((l) => (l.idpId ? [l.idpId] : []));
+    if (this.linkCache.size > 10_000) this.linkCache.clear();
+    this.linkCache.set(userId, { at: this.now, idpIds });
+    return idpIds;
   }
 
   // ---- SCIM and revocation -----------------------------------------------------------------------
@@ -473,6 +688,164 @@ export class ZitadelIdentity implements IdentityPort {
 
   async revokeSessions(userId: string): Promise<{ revoked: number }> {
     return { revoked: await this.revoke(userId, "revoke_sessions") };
+  }
+
+  // ---- identity-provider brokers (PR-LDC-09, R1-D-78) --------------------------------------------
+  // Zitadel IdPs of the organisation (generic OIDC, SAML) with linking only: a brokered login
+  // links to an account the product provisioned (with its tenant metadata), and Zitadel creates
+  // none; an account linked to another tenant's broker is refused at verification
+  // (`verifyAccess`). Alias, owner tenant, domains and source URL live in organisation metadata
+  // (`ipb.idp.<alias>`); an enabled broker is on the organisation's login policy. Every change is
+  // a maker-checker action in the product.
+
+  /** Run an admin call; a status in `ignore` (e.g. 404 on a delete) is not an error. */
+  private async tolerate(call: Promise<unknown>, ignore: readonly number[]): Promise<void> {
+    try {
+      await call;
+    } catch (e) {
+      const status = (e as PortError).meta?.status;
+      if (typeof status !== "number" || !ignore.includes(status)) throw e;
+    }
+  }
+
+  private async brokers(fresh: boolean): Promise<BrokerRecord[]> {
+    if (!fresh && this.brokerCache && this.now - this.brokerCache.at < BROKER_CACHE_MS)
+      return this.brokerCache.list;
+    const r = await this.api<{ result?: Array<{ key: string; value?: string }> }>(
+      "POST",
+      "/management/v1/metadata/_search",
+      {
+        query: { limit: 1000 },
+        queries: [
+          { keyQuery: { key: ZITADEL_BROKER_PREFIX, method: "TEXT_QUERY_METHOD_STARTS_WITH" } },
+        ],
+      },
+    );
+    const list: BrokerRecord[] = [];
+    for (const m of r.result ?? []) {
+      const alias = m.key.slice(ZITADEL_BROKER_PREFIX.length);
+      let parsed: ReturnType<typeof ZitadelBrokerMeta.safeParse> | undefined;
+      try {
+        parsed = ZitadelBrokerMeta.safeParse(JSON.parse(unb64(m.value) ?? ""));
+      } catch {
+        parsed = undefined;
+      }
+      if (!m.key.startsWith(ZITADEL_BROKER_PREFIX) || !parsed?.success) continue;
+      const b = parsed.data;
+      list.push({
+        managed: true,
+        idpId: b.idpId,
+        tenantId: b.tenantId,
+        alias,
+        protocol: b.protocol,
+        displayName: b.displayName,
+        enabled: b.enabled,
+        domains: b.domains,
+        ...(b.protocol === "oidc"
+          ? { discoveryUrl: b.source, ...(b.clientId ? { clientId: b.clientId } : {}) }
+          : { metadataUrl: b.source }),
+      });
+    }
+    this.brokerCache = { at: this.now, list };
+    return list;
+  }
+
+  private async dropIdp(idpId: string): Promise<void> {
+    await this.tolerate(
+      this.api("DELETE", `/management/v1/policies/login/idps/${encodeURIComponent(idpId)}`),
+      [400, 404, 412],
+    );
+    await this.tolerate(
+      this.api("DELETE", `/management/v1/idps/${encodeURIComponent(idpId)}`),
+      [404],
+    );
+  }
+
+  async upsertIdentityProvider(
+    raw: IdentityProviderSpec,
+  ): Promise<{ alias: string; created: boolean }> {
+    const spec = parseBrokerSpec(raw, "zitadel", this.o.allowLoopbackHttp);
+    const same = claimBroker(spec, await this.brokers(true), "zitadel");
+    // Another protocol under the same alias is a new IdP in Zitadel.
+    let idpId = same && same.protocol === spec.protocol ? same.idpId : undefined;
+    if (same?.idpId && !idpId) await this.dropIdp(same.idpId);
+    if (spec.protocol === "oidc") {
+      const body = {
+        name: spec.displayName,
+        issuer: oidcIssuerOf(spec.discoveryUrl),
+        clientId: spec.clientId,
+        clientSecret: await resolveBrokerSecret(spec, this.o.resolveSecret, "zitadel"),
+        scopes: spec.scopes,
+        isIdTokenMapping: true,
+        providerOptions: BROKER_OPTIONS,
+      };
+      if (idpId) await this.api("PUT", `/management/v1/idps/generic_oidc/${idpId}`, body);
+      else
+        idpId = (await this.api<{ id: string }>("POST", "/management/v1/idps/generic_oidc", body))
+          .id;
+    } else {
+      const body = {
+        name: spec.displayName,
+        metadataUrl: spec.metadataUrl,
+        binding: "SAML_BINDING_POST",
+        withSignedRequest: true,
+        providerOptions: BROKER_OPTIONS,
+      };
+      if (idpId) await this.api("PUT", `/management/v1/idps/saml/${idpId}`, body);
+      else idpId = (await this.api<{ id: string }>("POST", "/management/v1/idps/saml", body)).id;
+    }
+    const wasOn = Boolean(same?.enabled && same.idpId === idpId);
+    if (spec.enabled && !wasOn)
+      await this.tolerate(
+        this.api("POST", "/management/v1/policies/login/idps", {
+          idpId,
+          ownerType: "IDP_OWNER_TYPE_ORG",
+        }),
+        [409],
+      );
+    if (!spec.enabled && wasOn)
+      await this.tolerate(
+        this.api("DELETE", `/management/v1/policies/login/idps/${encodeURIComponent(idpId!)}`),
+        [400, 404, 412],
+      );
+    const meta: ZitadelBrokerMeta = {
+      tenantId: spec.tenantId,
+      idpId: idpId!,
+      protocol: spec.protocol,
+      displayName: spec.displayName,
+      enabled: spec.enabled,
+      domains: spec.domains,
+      source: spec.protocol === "oidc" ? spec.discoveryUrl : spec.metadataUrl,
+      ...(spec.protocol === "oidc" ? { clientId: spec.clientId } : {}),
+    };
+    await this.api("POST", `/management/v1/metadata/${ZITADEL_BROKER_PREFIX}${spec.alias}`, {
+      value: b64(JSON.stringify(meta)),
+    });
+    this.brokerCache = null;
+    return { alias: spec.alias, created: !same };
+  }
+
+  async removeIdentityProvider(tenantId: string, alias: string): Promise<{ removed: boolean }> {
+    if (!IdpAlias.safeParse(alias).success) return { removed: false };
+    const b = (await this.brokers(true)).find((x) => x.alias === alias);
+    if (!b || b.tenantId !== tenantId) return { removed: false };
+    if (b.idpId) await this.dropIdp(b.idpId);
+    await this.tolerate(
+      this.api("DELETE", `/management/v1/metadata/${ZITADEL_BROKER_PREFIX}${alias}`),
+      [404],
+    );
+    this.brokerCache = null;
+    return { removed: true };
+  }
+
+  async listIdentityProviders(tenantId: string): Promise<IdentityProviderInfo[]> {
+    return (await this.brokers(true)).filter((b) => b.tenantId === tenantId).map(brokerInfo);
+  }
+
+  async discoverIdentityProvider(
+    email: string,
+  ): Promise<{ tenantId: string; alias: string } | null> {
+    return discoverBroker(await this.brokers(false), email);
   }
 
   async handleLogoutToken(jwt: string): Promise<{ sid?: string; sub?: string }> {

@@ -19,11 +19,13 @@ import {
   MandateRegistration,
   PayoutSpec,
   RenderRequest,
+  SIGNING_METHODS,
   assertMoneyCall,
   payloadClass,
   type AccountValidationResult,
   type AdapterDescriptor,
   type DdeRecord,
+  type DdeSignerEvidence,
   type DocFileRef,
   type DocgenPort,
   type DutyQuote,
@@ -167,8 +169,10 @@ export class FakeEstamp implements EstampPort {
   }
 
   async ddeRegister(req: unknown, idempotencyKey: string): Promise<DdeRecord> {
+    // A not-stampable registration (a reason code, no certificate or duty) skips the stamp check;
+    // the schema refuses one that also names a certificate or a duty (PR-FBX-35 (c)).
     const r = DdeRegistration.parse(req);
-    if (!this.certs.has(r.certificateId))
+    if (!r.notStampable && !this.certs.has(r.certificateId ?? ""))
       throw new PortError("IPB-PORT-001", "ESTAMP", {
         detail: "the document needs its stamp first",
       });
@@ -178,6 +182,8 @@ export class FakeEstamp implements EstampPort {
         ddeId: id,
         state: "pending_execution" as const,
         executed: [] as string[],
+        signers: [] as DdeSignerEvidence[],
+        notStampableReason: r.notStampable?.reason ?? null,
         vendorRef: `fake-${id}`,
         adapter: "fake-estamp",
         prefix: r.outputPrefix,
@@ -189,11 +195,22 @@ export class FakeEstamp implements EstampPort {
     });
   }
 
-  /** Test helper: an executant signs at the information utility. */
+  /** Test helper: an executant signs at the information utility (Aadhaar OTP eSign there). */
   execute(ddeId: string, partyRef: string): void {
     const d = this.dde.get(ddeId) as (DdeRecord & { executants: string[] }) | undefined;
     if (!d) throw new Error("unknown DDE");
-    if (!d.executed.includes(partyRef)) d.executed.push(partyRef);
+    if (!d.executed.includes(partyRef)) {
+      d.executed.push(partyRef);
+      const n = d.executed.length;
+      d.signers.push({
+        signerRef: partyRef,
+        signedAt: this.now().toISOString(),
+        method: "AADHAAR_OTP_ESIGN",
+        espTransactionId: `fake-esp-${d.ddeId}-${n}`,
+        // Documentation range (RFC 5737): a test address only.
+        signerIp: `203.0.113.${n}`,
+      });
+    }
     if (d.executants.every((e) => d.executed.includes(e))) d.state = "executed";
   }
 
@@ -202,6 +219,8 @@ export class FakeEstamp implements EstampPort {
       ddeId: d.ddeId,
       state: d.state,
       executed: [...d.executed],
+      signers: d.signers.map((s) => ({ ...s })),
+      notStampableReason: d.notStampableReason,
       vendorRef: d.vendorRef,
       adapter: d.adapter,
     };
@@ -1000,6 +1019,8 @@ export function estampDdeContractCases(fx: DdeFixtures): Array<ContractCase<Esta
         expect((await p.ddeRegister!(r, "contract-dde-0001")).ddeId).toBe(a.ddeId);
         expect(["registered", "pending_execution"]).toContain(a.state);
         expect(a.executed).toEqual([]);
+        expect(a.signers).toEqual([]);
+        expect(a.notStampableReason).toBeNull();
         expect(
           await code(p.ddeRegister!(await reg(p, fx.otherDocument), "contract-dde-0001")),
         ).toBe("IPB-PORT-004");
@@ -1021,6 +1042,74 @@ export function estampDdeContractCases(fx: DdeFixtures): Array<ContractCase<Esta
         const f = await p.ddeDownloadExecuted!(a.ddeId);
         expect(f.storageKey.startsWith(fx.outputPrefix)).toBe(true);
         expect(f.sha256).toMatch(/^[0-9a-f]{64}$/);
+      },
+    },
+    {
+      name: "each signed executant carries its evidence: reference, time, method, and the ESP's transaction id or IP",
+      method: "ddeStatus",
+      async run(p) {
+        const a = await p.ddeRegister!(await reg(p), "contract-dde-0003");
+        await fx.execute(p, a.ddeId, "p1");
+        const half = await p.ddeStatus!(a.ddeId);
+        expect(half.signers.map((s) => s.signerRef)).toEqual(half.executed);
+        await fx.execute(p, a.ddeId, "p2");
+        const done = await p.ddeStatus!(a.ddeId);
+        expect(done.signers.map((s) => s.signerRef)).toEqual(["p1", "p2"]);
+        for (const s of done.signers) {
+          expect(new Date(s.signedAt).toISOString()).toBe(s.signedAt);
+          expect(SIGNING_METHODS).toContain(s.method);
+          expect(s.espTransactionId !== undefined || s.signerIp !== undefined).toBe(true);
+          // The trail names the party by reference only: no executant name, nothing else.
+          for (const k of Object.keys(s))
+            expect(["signerRef", "signedAt", "method", "espTransactionId", "signerIp"]).toContain(
+              k,
+            );
+          expect(JSON.stringify(s)).not.toContain("Party p");
+        }
+      },
+    },
+    {
+      name: "registers a not-stampable document with a reason code and no e-stamp; refuses one that also carries an e-stamp or a duty",
+      method: "ddeRegister",
+      async run(p) {
+        const ns = (over: Record<string, unknown> = {}) => ({
+          document: fx.document,
+          notStampable: { reason: "ACKNOWLEDGEMENT" as const },
+          executants,
+          outputPrefix: fx.outputPrefix,
+          ...over,
+        });
+        const a = await p.ddeRegister!(ns(), "contract-dde-0004");
+        expect(["registered", "pending_execution"]).toContain(a.state);
+        expect(a.notStampableReason).toBe("ACKNOWLEDGEMENT");
+        expect((await p.ddeStatus!(a.ddeId)).notStampableReason).toBe("ACKNOWLEDGEMENT");
+        expect((await p.ddeRegister!(ns(), "contract-dde-0004")).ddeId).toBe(a.ddeId);
+        // The same key replayed as a stamped registration is another registration.
+        expect(await code(p.ddeRegister!(await reg(p), "contract-dde-0004"))).toBe("IPB-PORT-004");
+        const other = await p.ddeRegister!(
+          ns({ notStampable: { reason: "OTHER", note: "a borrower's declaration" } }),
+          "contract-dde-0005",
+        );
+        expect(other.notStampableReason).toBe("OTHER");
+        // Refused before anything is registered: an e-stamp or a duty with it, OTHER without a
+        // note, an unknown reason, or neither path.
+        for (const bad of [
+          ns({ certificateId: await fx.certificateId(p) }),
+          ns({ dutyMinor: 10_000 }),
+          ns({ notStampable: { reason: "OTHER" } }),
+          ns({ notStampable: { reason: "EXEMPT" } }),
+          ns({ notStampable: undefined }),
+        ])
+          await expect(p.ddeRegister!(bad as never, "contract-dde-0006")).rejects.toThrow();
+        // Nothing was registered under the refused key.
+        expect(
+          (
+            await p.ddeRegister!(
+              ns({ notStampable: { reason: "NOT_AN_INSTRUMENT" } }),
+              "contract-dde-0006",
+            )
+          ).notStampableReason,
+        ).toBe("NOT_AN_INSTRUMENT");
       },
     },
   ];

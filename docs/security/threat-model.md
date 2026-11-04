@@ -915,3 +915,77 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 - **T and S (an alias repointed at another tenant's key, or an unknown adapter):** Control: alias and key administration is not granted to the runtime role; a repointed alias would wrap under a key whose policy refuses the other tenant's context, so the seal fails rather than crossing tenants; an adapter without a convention is refused (`IPB-PORT-001`), so nothing falls back to a shared key.
 - **D (the tenant key missing, disabled or pending deletion):** Control: sealing and opening fail closed (`IPB-KMS-001`), never to plaintext; keys are created idempotently when the tenant is created.
 - **Residual:** the `aws-kms` and `vault-transit` convention strings are repeated in `@infrabyx/tenancy` beside the adapters' `createTenantKey`; a drift between them fails closed (key not found), not open.
+
+### 3.78 Scoped break-glass and more grantee kinds (PR-LDC-07, PR-LDC-08 (c), R1-D-75)
+
+- **E (break-glass used beyond what the incident needs):** Control: a grant may carry a scope (one tenant, its modules, read or read-write) that only narrows it; the kernel checks the active grant's scope (definer function `breakglass_scope`) before each transaction and refuses another tenant, a platform context and a write under `read`; the database refuses the same in `breakglass_active` and `breakglass_touch`. Under a module list every statement is tokenized (comments and literals dropped, quoted names kept) and any name that is a database schema outside the list is refused, as are statements that could reach a module unnamed (search path, `set_config`, `SET`, `DO`, `PREPARE`/`EXECUTE`, `COPY`, `CALL`, `*_to_xml`).
+- **R (an out-of-scope attempt hidden):** Control: each refusal is ledgered in the tenant touched in its own transaction (`security.breakglass.scope_refused`), even when the caller catches the error; without an audit sink a scoped grant is refused.
+- **Residual:** the guard is lexical and fails closed (a name that is both an alias and a schema is refused); unqualified names resolve only through the default search path, which holds no tenant data by convention; a module's own view or definer function that reads another module is that module's responsibility. The new grantee kinds carry the same 90-day, second-approver, read-only controls as before (R1-D-29).
+
+### 3.79 Tenant-consented support access (PR-LDC-08 (a), (b), PR-LDC-20; #104; R1-D-76)
+
+- **E (support staff reading a tenant without its knowledge):** Control: `PLT_SUPPORT` sees nothing in a tenant without a live grant (`IPB-TRUST-003`, checked in every transaction); the tenant's ORG_OWNER or ORG_ADMIN consents first, and read-write also needs a second, different one (check constraints: consenter ≠ requester, second approver ≠ both); at most 24 hours, revocable at once, module-scoped, read-only by default; a read-write grant cannot list `tenancy` or `audit`, so it cannot touch its own record or the ledger.
+- **S (a product-defined role posing as platform staff):** Control: only the contracts role `PLT_SUPPORT` is honoured; a context holding it holds nothing else and is never a platform context, the platform tenant, impersonation or break-glass (R1-D-74).
+- **R (a read hidden from the tenant):** Control: a support principal reads only through `SupportReads`; each read is ledgered and recorded in `tenancy.support_read`, written only by a definer function for the principal's own grant (application roles hold SELECT only); refusals are ledgered.
+- **I (cross-tenant):** Control: grants and reads are tenant rows under forced RLS, the grant lookup bound to tenant and principal.
+- **Residual:** under read-write, what a mutation reads inside its own transaction is covered by that mutation's ledger entry, not a separate read record.
+
+### 3.80 Refresh-token rotation and reuse detection (`refreshSession`; PR-LDC-03, R1-D-77)
+
+- **S and E (a stolen refresh token replayed):** Control: rotation on every refresh; a spent token presented again revokes the whole session before the refusal is returned (the revocation store first, so it holds even if the IdP call fails, then the IdP session). On Zitadel the adapter's hash ledger also refuses every later token of the family and revokes it at Zitadel (RFC 7009).
+- **I (tokens in logs or errors):** Control: no refusal, detail or meta carries a token (a contract case asserts it); the Zitadel ledger keeps SHA-256 hashes only; a Keycloak refresh token is decoded, unverified, only to name the session to revoke, and only after Keycloak has verified it and reported its reuse.
+- **D (revocation used to sign someone out):** Control: only a token the IdP verified (Keycloak), or a hash the adapter recorded as spent (Zitadel), triggers a revocation; an unknown or forged token is `refresh_invalid` and revokes nothing.
+- **Residual:** the default Zitadel ledger is per replica (a reuse on another replica is refused but revokes nothing until a shared ledger is supplied); without a `sid`, Zitadel revokes the user (stricter); a client's parallel refreshes look like a reuse.
+
+### 3.81 Identity-provider brokers and domain discovery (PR-LDC-09, R1-D-78)
+
+- **S and E (a tenant's broker used to sign in to another tenant, or as another user):** Control: linking only on both IdPs (no account created through a broker; an unknown identity refused): Keycloak's first-login flow `ipb-broker-link-only` (detect the existing account, then re-authentication), restored by `applyRealm`, `trustEmail` off; Zitadel linking on, creation off. A link needs the account's own user to sign in first. A session whose broker belongs to another tenant than its account is refused (`idp_tenant`). Aliases are owned by one tenant; hand-configured IdPs are never taken over.
+- **E (the admin account's rights):** Control: `identityBrokers` adds only `manage-identity-providers` and `view-identity-providers` (never `manage-realm`); the flow and the claim are created at deploy time.
+- **T (a broker changed without approval):** Control: broker changes are R3 maker-checker requests in the product; the adapter only executes; admin credentials stay in SECRETS.
+- **I (client secrets):** Control: the port takes a `secret://` reference only, resolved at the call, sent to the IdP over TLS, never returned by `list`, stored in metadata or logged.
+- **SSRF (tenant-supplied URLs):** Control: https only (`IPB-SEC-018` otherwise) and approved through maker-checker; Keycloak fetches documents from its own network position, so its egress should allow the internet only, not internal ranges.
+- **Spoofed routing:** Control: only domains the product verified route; one domain to one broker; disabled brokers do not route.
+- **Residual:** ownership and domain checks are read-then-write; discovery and the broker list are cached 30 s per replica; Zitadel's link check reads an eventually consistent projection cached 60 s per user; discovery reaches the admin API, so rate-limit it; Keycloak's re-authentication is password-based, so a passkey-only account cannot complete a link.
+
+### 3.82 Company data by CIN or LLPIN (`CompanyDataPort`; PR-LDC-02, R1-D-79)
+
+- **S and T (a forged or malformed identifier reaching the source, or a scraped source):** Control: CIN, LLPIN and company-id schemas refuse anything malformed before any call; IPB-01 forbids MCA21 scraping, and no adapter exists until the owner chooses a licensed source (#102).
+- **I (director names and DINs disclosed beyond need):** Control: lookups are INTERNAL and results are public-register data, never logged in full; no PAN is returned (a contract case checks it); fixtures are fictional.
+- **T (stale register data taken as current):** Control: every result carries `asOf` and `stale`; a failover cache is labelled, never silent.
+- **Residual:** no adapter yet; the source's licence terms and accuracy are assessed when the owner chooses one.
+
+### 3.83 Collection rails and settlement lines (`DisbursementRailPort`, `SettlementLine`; PR-FBX-34, R1-D-80)
+
+- **E (an agent or an unapproved caller presenting debits):** Control: `assertDebitBatch` applies `assertMoneyCall` to every item (an agent is `IPB-SEC-004`; a missing approval, initiator or key is `IPB-UX-004`) and refuses the whole batch on any failure. The product's maker-checker runs before the call; the approvals engine does not consume debit approvals (unlike mandates, R1-D-66), which would be an owner decision.
+- **T (a double debit by a retried or edited batch):** Control: one key, one presentation; a repeat in a batch is refused, a retry is a replay, another item under the key is `IPB-PORT-004`; integer paise only.
+- **T and R (a forged or mismatched response file):** Control: a file naming an unpresented item, a different amount or a contradicting result is refused whole; unknown return codes are `final`, so nothing is re-presented on an unchecked code; a re-presentation is a new money call with a fresh key and approval. The file's transport authenticity is the adapter's, specified with the sponsor bank.
+- **I (account and mandate data):** Control: items, statement and settlement lines are REGULATED and `IN`.
+- **Residual:** the return-code table is `[VERIFY]` against the sponsor bank's file specification; no adapter until a sponsor bank and the owner's word.
+
+### 3.84 External-read summary (`AuditService.externalReadSummary`; PR-LDC-10, R1-D-81)
+
+- **I (one tenant's external reads seen by another, or personal data in a report):** Control: read in the caller's context under the ledger's forced RLS (no tenant id is passed); ids, counts and times only, never IP or user-agent HMACs, trace ids, digests or names.
+- **E (a grantee reading its own audit trail):** Control: external principals are refused (`IPB-SEC-005`).
+- **Residual:** reads are counted, not rows (row counts sit only inside each entry's digest); the summary is as complete as the ledger, whose chain verifier covers tampering.
+
+### 3.85 Setting change history (`config.setting_change`; PR-LDC-17, R1-D-82)
+
+- **T (history rewritten):** Control: no UPDATE or DELETE grants for `app_rw` or `app_ro`; each row names its ledger entry, whose before and after digests must match the row's values, and the ledger is hash-chained and anchored.
+- **S (a change attributed to someone else):** Control: the insert policy requires `actor_id = app.actor_id`, and rows are written only inside the kernel transaction that changes the value.
+- **I (another tenant's or a platform key's history):** Control: forced RLS on `app.tenant_id`; platform tiers only in a platform context; USER history only for its owner; TENANT and ENTITY history needs a changer, owner, admin or auditor role; agents and external principals refused.
+- **Residual:** the table holds CONFIDENTIAL values with no purge and is not yet in the tenant export maps; its retention, the erasure of USER rows and its export are OWNER-QUESTIONS #110.
+
+### 3.86 Breached-password list on Keycloak (PR-LDC-04, R1-D-83)
+
+- **I (password material sent to a third party):** Control: the list is bundled in the image and read locally by Keycloak's `passwordBlacklist`; no range query and no download at build or run time (the static image test checks it).
+- **T (the list swapped or emptied):** Control: the list is in the repository with a SHA-256 checked by `pnpm images:test`, copied read-only (0444) into an image built from a pinned digest.
+- **D (realm application fails):** Control: Keycloak refuses a realm naming a missing list, so the failure is loud at deploy; the option is per realm and off by default.
+- **Residual:** exact matching after lower-casing (variants pass, though length, history, username and email rules still apply); a static snapshot to refresh as its README describes.
+
+### 3.87 Bureau EMI, the DDE signer trail and not-stampable DDE (PR-FBX-35, R1-D-84)
+
+- **T (a missing instalment read as zero, so FOIR is understated):** Control: `emiPaise` is `null` whenever the bureau gives no usable value, never `0`; the guide tells products to treat `null` as unknown; the contract case requires both an EMI and a `null` from the known subject.
+- **R (an executant denies signing a DDE document):** Control: each signed executant's evidence (reference, time, method, ESP id or IP) is read back from NeSL, never taken from the callback; a partial or malformed trail is a vendor error, so a record without evidence is never returned.
+- **I (personal data in the trail):** Control: only the party reference, time, method, ESP id and IP are kept; the executant's name is not in the record (tested); the IP is CONFIDENTIAL signing evidence, as for ESIGN.
+- **T and E (a stampable instrument registered as not stampable to avoid duty):** Control: the schema refuses `notStampable` with a certificate or duty and refuses a registration with neither; the reason comes from a closed code table (`OTHER` needs a note); NeSL's echo must match; a key replayed with another stamping is refused; the stampability decision is the product's, under its own RULES and maker-checker, and the reason is recorded for audit.
+- **Residual:** CIBIL and NeSL field names are stub-shaped (`[VERIFY]`) until the sandboxes exist; whether a document is truly not an instrument stays the product's legal determination.
