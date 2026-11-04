@@ -216,6 +216,13 @@ export const PORT_CATALOGUE = {
     ownerFile: "FBX v1.6",
     interfaceDefined: true,
   },
+  /** Collection half only so far (R1-D-80, ADR-0006); disbursement methods follow. */
+  DISBURSEMENT_RAIL: {
+    tier: 1,
+    configPrefix: "int.disbursement_rail.",
+    ownerFile: "FBX v1.6",
+    interfaceDefined: true,
+  },
   CAPTCHA: {
     tier: 3,
     configPrefix: "int.captcha.",
@@ -238,7 +245,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003; R1-D-52: PR-FBX-29's
  * ESTAMP, PAYOUTS, DOCGEN and PDF; R1-D-50: Udofin PR-UDF-028 and PR-UDF-029's DEVICE_ATTESTATION
  * and CAPTCHA, ADR-0004; R1-D-79: LawDocsComply PR-LDC-02's COMPANY_DATA, no adapter until the
- * owner chooses a data source).
+ * owner chooses a data source; R1-D-80: Finbyx PR-FBX-34's DISBURSEMENT_RAIL product port, IPB-01
+ * §01.4.4.3, ADR-0006, collection methods with fakes, no adapter).
  */
 export const R1_PORTS = [
   "KYC",
@@ -252,4 +260,5 @@ export const R1_PORTS = [
   "CAPTCHA",
   "DEVICE_ATTESTATION",
   "COMPANY_DATA",
+  "DISBURSEMENT_RAIL",
 ] as const satisfies readonly PortName[];
