@@ -74,3 +74,11 @@ What changes for Finbyx with the wave 2 release (R1-plan M39; R1-D-69). Move eve
 1. **PR-FBX-33, per-tenant templates (guide §7aa).** Pass `templates: (ctx, cls, channel, locale) => …` to `NotifyService`. Return the tenant's DLT entity id, sender id, DLT template id and positional `vars` for SMS, or the template name and language for WhatsApp; `undefined` uses the catalogue's; `null` fails that delivery closed (nothing is sent; `IPB-PORT-001`, `template_missing`). NOTIFY calls it at every delivery, so `dispatchDue` sends each tenant's own template too. **Shim removed:** the AsyncLocalStorage `TenantSms` and `TenantEmail` wrappers. WhatsApp can now be turned on per tenant.
 2. **Delivery reports.** If your SMS or WhatsApp vendor's webhook carries no tenant, call `routeSmsReports(adapter, reports)` or `routeWhatsappEvents(adapter, events)` after verifying the webhook, instead of resolving the tenant yourself.
 3. **Mark met** PR-FBX-33 in your `docs/platform-requests.md`.
+
+## 7. Wave 3 (version PR #212, release run 188: `contracts` 1.18.0, `connectors` 1.9.0, `consent` 1.2.0, `tenancy` 1.11.0, `testing` 1.9.0, patches of the rest)
+
+What changes for Finbyx with the wave 3 release (R1-D-72, R1-D-73). Move every `@infrabyx/*` dependency to the run 188 versions together and run `infrabyx-migrate --require-all` (`consent/0004`).
+
+1. **#95, the purpose-consent purge (guide §7ac).** Schedule `ConsentPurge.sweepPurposes()` daily beside `sweep()`, and call `ConsentSubjects.endRelationship(ctx, subjectRef, closedAt)` when a loan relationship ends. Records go only once that end and any later withdrawal are both 8 years past, never under a legal hold (`ConsentSubjects.legalHold`); the reading of the two clocks is OWNER-QUESTIONS #108. No setting to change. **Shim removed:** none; this adds the approved retention sweep.
+2. **Optional:** `fieldCryptoForTenant` (guide §7ad) if you seal fields per tenant; `latestByPrincipal` (guide §7ac) to read a borrower's latest consent per purpose.
+3. **No change needed** for the v1.3 provisioning events (Finbyx is provisioned by the Operations Hub) or the CEL string functions.
