@@ -1,5 +1,12 @@
 # @infrabyx/contracts
 
+## 1.16.0
+
+### Minor Changes
+
+- b3edda2: The one approval action for mandates (owner answer #100's gap; R1-D-66): `MANDATE_APPROVAL_ACTION` (`payments.mandate.change`), `MandateApprovalSubject` (operation, mandate, ceiling in integer paise) and the `MandateApprovalVerifier` port the mandate adapter calls before any vendor call.
+- b3edda2: `TenantProvisionedData`, `TENANT_PROVISIONED_TYPE` and `PROVISIONING_PRODUCTS` for the Operations Hub's `TenantProvisioned` (Ecosystem Spec §6.29; PR-LDC-11, R1-D-68).
+
 ## 1.15.0
 
 ### Minor Changes

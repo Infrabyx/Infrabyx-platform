@@ -1,5 +1,24 @@
 # @infrabyx/connectors
 
+## 1.8.0
+
+### Minor Changes
+
+- b3edda2: `DigioMandates` takes the approvals engine's verifier (`approvals`) and the tenant (`tenantId`), both required, and has the engine consume each call's approval before Digio is called to register or cancel a mandate (R1-D-66). A retry that reads the first mandate back consumes nothing.
+- b3edda2: `OperationsHubProvisioning` (`@infrabyx/connectors/provisioning`; PR-LDC-11, R1-D-68): verifies the signed `TenantProvisioned`, stores it in the product's Ecosystem inbox and creates the tenant once per provisioning request through `TenantBootstrap.provision`, with the product's hook in the creation transaction.
+
+### Patch Changes
+
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+- Updated dependencies [b3edda2]
+  - @infrabyx/config@1.9.0
+  - @infrabyx/tenancy@1.10.0
+  - @infrabyx/contracts@1.16.0
+  - @infrabyx/crypto@1.5.1
+
 ## 1.7.0
 
 ### Minor Changes
