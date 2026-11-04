@@ -27,7 +27,8 @@ import {
 } from "@infrabyx/contracts/ports";
 import type { ContractCase } from "../contract.js";
 
-const PAN_LIKE = /[A-Z]{5}[0-9]{4}[A-Z]/;
+// Word-bounded, so a PAN-shaped run inside a random ULID (e.g. a consent id) never matches.
+const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Inputs a COMPANY_DATA adapter's contract run needs: identifiers its source knows. */

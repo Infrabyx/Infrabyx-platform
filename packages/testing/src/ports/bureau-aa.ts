@@ -24,7 +24,8 @@ import {
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import type { ContractCase } from "../contract.js";
 
-const PAN_LIKE = /[A-Z]{5}[0-9]{4}[A-Z]/;
+// Word-bounded, so a PAN-shaped run inside a random ULID (e.g. a consent id) never matches.
+const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
 
 // ------------------------------------------------------------------------------- credit bureau
 
