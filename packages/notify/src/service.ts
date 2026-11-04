@@ -38,10 +38,12 @@ import {
   type PortHealth,
   type PushPort,
   type RenderedChannels,
+  type ResolvedTemplate,
   type SendResult,
   type SmsDeliveryReport,
   type SmsPort,
   type SuppressionInput,
+  type TemplateResolver,
   type WhatsappEvent,
   type WhatsappPort,
 } from "@infrabyx/contracts/ports";
@@ -129,6 +131,11 @@ export interface NotifyServiceOptions {
   messages?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** Called with the Ecosystem `MarketingConsentUpdated` data the product publishes. */
   onConsentChanged?: (tx: Tx, data: Record<string, unknown>) => Promise<void>;
+  /**
+   * The tenant's own templates (PR-FBX-33; R1-D-69), consulted at every delivery: an object is
+   * used, `undefined` falls back to the catalogue, `null` fails the delivery closed.
+   */
+  templates?: TemplateResolver;
   /** Leave due deliveries for `dispatchDue` (a worker) instead of delivering after `send`. */
   deferDelivery?: boolean;
   /** Operational log of the dispatcher's cross-tenant reads (the ledger has them as well). */
@@ -180,6 +187,15 @@ const codeOf = (e: unknown): string => {
   const c = (e as { code?: unknown })?.code;
   return typeof c === "string" && /^[A-Z]{2,4}-[A-Z0-9]{2,6}-\d{3}$/.test(c) ? c : "error";
 };
+
+/** What routing vendor reports by reference did (PR-LDC-15). */
+export interface RoutedReports {
+  routed: number;
+  /** References no delivery of that channel and adapter carries: dropped. */
+  unknown: number;
+  /** References found in more than one tenant: dropped (never applied to either). */
+  ambiguous: number;
+}
 
 export class NotifyService implements NotifyPort {
   readonly descriptor: AdapterDescriptor = {
@@ -565,11 +581,13 @@ export class NotifyService implements NotifyPort {
       }
       case "email": {
         const e = this.o.channels.email;
-        if (!e || !cls.templates.email) throw notConfigured("EMAIL");
+        const own = await this.template(ctx, cls, "email", n.locale);
+        const key = own ? own.key : cls.templates.email?.key;
+        if (!e || !key) throw notConfigured("EMAIL");
         const r = await e.port.send(
           {
             to: [address as string],
-            template: cls.templates.email.key,
+            template: key,
             vars,
             brand: e.brand,
             tags: { ipb_class: cls.id },
@@ -580,16 +598,27 @@ export class NotifyService implements NotifyPort {
       }
       case "sms": {
         const s = this.o.channels.sms;
-        if (!s || !cls.templates.sms) throw notConfigured("SMS");
+        const own = await this.template(ctx, cls, "sms", n.locale);
+        const t = own
+          ? { id: own.dltTemplateId, vars: own.vars, sender: own.senderId, entity: own.dltEntityId }
+          : cls.templates.sms && s
+            ? {
+                id: cls.templates.sms.dlt_template_id,
+                vars: cls.templates.sms.vars,
+                sender: s.senderId,
+                entity: s.dltEntityId,
+              }
+            : null;
+        if (!s || !t) throw notConfigured("SMS");
         const r = await s.port.send(
           {
             to: address as string,
-            templateId: cls.templates.sms.dlt_template_id,
-            vars: positional(vars, cls.templates.sms.vars, cls.id)
+            templateId: t.id,
+            vars: positional(vars, t.vars, cls.id)
               .map((v) => String(v).slice(0, 30))
               .slice(0, 10),
-            senderId: s.senderId,
-            dltEntityId: s.dltEntityId,
+            senderId: t.sender,
+            dltEntityId: t.entity,
           },
           call,
         );
@@ -597,13 +626,23 @@ export class NotifyService implements NotifyPort {
       }
       case "whatsapp": {
         const w = this.o.channels.whatsapp;
-        const t = cls.templates.whatsapp;
+        const own = await this.template(ctx, cls, "whatsapp", n.locale);
+        const c = cls.templates.whatsapp;
+        const t = own
+          ? { name: own.name, lang: own.lang, vars: own.vars }
+          : c
+            ? {
+                name: c.name,
+                lang: n.locale && c.lang.includes(n.locale) ? n.locale : (c.lang[0] as string),
+                vars: c.vars,
+              }
+            : null;
         if (!w || !t) throw notConfigured("WHATSAPP");
         const r = await w.port.sendTemplate(
           {
             to: address as string,
             templateName: t.name,
-            lang: n.locale && t.lang.includes(n.locale) ? n.locale : (t.lang[0] as string),
+            lang: t.lang,
             components: [
               {
                 type: "body",
@@ -619,6 +658,28 @@ export class NotifyService implements NotifyPort {
         return { adapter: w.port.descriptor.adapter, vendorRef: r.messageId };
       }
     }
+  }
+
+  /**
+   * The tenant's own template (PR-FBX-33; R1-D-69): `undefined` when there is no resolver or it
+   * defers to the catalogue; `null` from the resolver fails the delivery closed (IPB-04-28).
+   */
+  private async template<C extends "email" | "sms" | "whatsapp">(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    channel: C,
+    locale: string | null,
+  ): Promise<Extract<ResolvedTemplate, { channel: C }> | undefined> {
+    if (!this.o.templates) return undefined;
+    const t = await this.o.templates(ctx, cls, channel, locale);
+    if (t === undefined) return undefined;
+    if (t === null || t.channel !== channel)
+      throw new PortError("IPB-PORT-001", channel.toUpperCase(), {
+        adapter: "notify",
+        detail: `no ${channel} template for ${cls.id} in this tenant`,
+        meta: { reason: "template_missing", definite: true },
+      });
+    return t as Extract<ResolvedTemplate, { channel: C }>;
   }
 
   private async settle(
@@ -1200,6 +1261,91 @@ export class NotifyService implements NotifyPort {
       else if (e.type === "failed")
         await this.report(ctx, "whatsapp", adapter, e.messageId, "failed", e.type);
     }
+  }
+
+  /**
+   * Vendor delivery reports carry no tenant (PR-LDC-15; R1-D-69). The dispatcher's service reader
+   * (SVC_NOTIFY_DISPATCH, ledgered per tenant) finds the tenant of each `(channel, adapter,
+   * vendor_ref)`; each tenant's reports are then applied in that tenant's context. A reference
+   * no delivery carries, or one found in two tenants, is dropped and counted.
+   */
+  async routeEmailEvents(adapter: string, events: readonly EmailEvent[]): Promise<RoutedReports> {
+    return this.route(
+      "email",
+      adapter,
+      events,
+      (e) => e.messageId,
+      (ctx, part) => this.handleEmailEvents(ctx, adapter, part),
+    );
+  }
+
+  async routeSmsReports(
+    adapter: string,
+    reports: readonly SmsDeliveryReport[],
+  ): Promise<RoutedReports> {
+    return this.route(
+      "sms",
+      adapter,
+      reports,
+      (r) => r.messageId,
+      (ctx, part) => this.handleSmsReports(ctx, adapter, part),
+    );
+  }
+
+  async routeWhatsappEvents(
+    adapter: string,
+    events: readonly WhatsappEvent[],
+  ): Promise<RoutedReports> {
+    return this.route(
+      "whatsapp",
+      adapter,
+      events,
+      (e) => e.messageId,
+      (ctx, part) => this.handleWhatsappEvents(ctx, adapter, part),
+    );
+  }
+
+  private async route<T>(
+    channel: NotifyChannel,
+    adapter: string,
+    items: readonly T[],
+    refOf: (t: T) => string | undefined,
+    apply: (ctx: KernelContext, part: T[]) => Promise<void>,
+  ): Promise<RoutedReports> {
+    const out: RoutedReports = { routed: 0, unknown: 0, ambiguous: 0 };
+    const refs = [...new Set(items.map(refOf).filter((r): r is string => !!r))];
+    const owners = new Map<string, Set<string>>();
+    if (refs.length) {
+      const rows = await this.dispatcher.read<{ tenant_id: string; vendor_ref: string }>(
+        "notify.delivery",
+        `select distinct tenant_id, vendor_ref from notify.delivery
+          where channel = $1 and adapter = $2 and vendor_ref = any($3::text[])`,
+        [channel, adapter, refs],
+      );
+      for (const r of rows) {
+        const set = owners.get(r.vendor_ref) ?? new Set<string>();
+        set.add(r.tenant_id);
+        owners.set(r.vendor_ref, set);
+      }
+    }
+    const byTenant = new Map<string, T[]>();
+    for (const item of items) {
+      const ref = refOf(item);
+      const set = ref ? owners.get(ref) : undefined;
+      if (!set) {
+        out.unknown += 1;
+        continue;
+      }
+      if (set.size > 1) {
+        out.ambiguous += 1;
+        continue;
+      }
+      const tenant = [...set][0] as string;
+      byTenant.set(tenant, [...(byTenant.get(tenant) ?? []), item]);
+      out.routed += 1;
+    }
+    for (const [tenant, part] of byTenant) await apply(serviceContext(tenant), part);
+    return out;
   }
 
   private async report(
