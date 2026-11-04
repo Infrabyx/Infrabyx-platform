@@ -1,5 +1,6 @@
 {
   "0001_init.sql": "a969501d753e6f7eb785b444ab86c873a8da8f72f188d01332a0fd05ee5b4513",
   "0002_saved_views.sql": "43d9faa83be767932e3919206f8a91f738c74d925a7179e8c84070a4e41c8f5a",
-  "0003_setting_change.sql": "740ec8fd55d93ffd1cadddaef729a2cbb23de6cf1a915b99b56161c0d3d40d3c"
+  "0003_setting_change.sql": "740ec8fd55d93ffd1cadddaef729a2cbb23de6cf1a915b99b56161c0d3d40d3c",
+  "0004_setting_user_erasure.sql": "04f74495d8e9fb6864a9c7f865321783ffa5dfb8e725dd47f26326f6a8c686b2"
 }

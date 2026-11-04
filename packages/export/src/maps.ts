@@ -12,16 +12,22 @@ export function loadExportMap(path: string | URL): ExportMap {
 }
 
 /**
- * The current reference map. 1.4 (R1-D-58, PR-FBX-32) adds the ledger's `lane` and `lane_seq`
+ * The current reference map. 1.5 (R1-D-95, OWNER-QUESTIONS #110) adds the setting change history
+ * (`config.setting_change`, config/0003): who changed which setting at which scope, when, from
+ * what to what, and the approval request; 1.4 (R1-D-58, PR-FBX-32) adds the ledger's `lane` and `lane_seq`
  * (`audit/0006`), which the chain hashes when they are set; 1.3 (R1-D-26) added the ledger's `branch_id` to the audit trail, which
  * the chain hashes when it is set; 1.2 (PL4-D-12) added the AI run log (`ai_runs`, metadata only)
  * and the Vidhi action log (`vidhi_actions`), IPB-03-55 and 03-83; 1.1 (PL3-D-25) added the IST
  * export time to the README.
  */
 export const REF_EXPORT_MAP: ExportMap = loadExportMap(
-  new URL("../maps/REF-EXPORT-1.4.json", import.meta.url),
+  new URL("../maps/REF-EXPORT-1.5.json", import.meta.url),
 );
 /** The previous reference map, still emitted during the dual run. */
+export const REF_EXPORT_MAP_1_4: ExportMap = loadExportMap(
+  new URL("../maps/REF-EXPORT-1.4.json", import.meta.url),
+);
+/** An earlier map (kept for archives built under it). */
 export const REF_EXPORT_MAP_1_3: ExportMap = loadExportMap(
   new URL("../maps/REF-EXPORT-1.3.json", import.meta.url),
 );

@@ -88,7 +88,7 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
     const job = await svc.request(owner, { scope: { type: "FULL_TENANT" } });
     expect(job.state).toBe("requested");
     const done = await svc.run("tnt_demo", job.id);
-    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.4" });
+    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.5" });
     const arc = (
       await db.admin.query<{
         id: string;

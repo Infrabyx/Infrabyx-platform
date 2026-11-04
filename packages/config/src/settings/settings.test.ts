@@ -445,3 +445,53 @@ describe("PL5 website keys (PL5 plan §8)", () => {
     expect(tightenError(def("mkt.sensitive_routes"), ["/contact"], [])).toMatch(/add/);
   });
 });
+
+describe("erasing a person's USER settings (#110, R1-D-95)", () => {
+  const me = { tier: "USER", scopeId: "usr_maker" } as const;
+  it("deletes their USER values and history only, ledgered with counts and the request", async () => {
+    const { svc, store, audit } = setup();
+    await svc.set(ctxFor([]), "ux.density", me, "compact");
+    await svc.set(ctxFor([]), "ux.density", me, "comfortable");
+    await svc.set(
+      ctxFor(["ORG_ADMIN"]),
+      "trust.auth.session_idle_minutes",
+      { tier: "TENANT", scopeId: "tnt_a" },
+      20,
+    );
+    const r = await svc.eraseUser(ctxFor(["ORG_ADMIN"]), "usr_maker", {
+      requestRef: "dpr_1",
+      reason: "DPDP erasure request from the data principal",
+    });
+    expect(r).toMatchObject({ values: 1, changes: 2 });
+    expect(await store.read(null, "ux.density", [me])).toEqual([]);
+    expect((await svc.history(ctxFor([]), "ux.density", me)).items).toEqual([]);
+    expect(
+      (
+        await svc.history(ctxFor(["ORG_ADMIN"]), "trust.auth.session_idle_minutes", {
+          tier: "TENANT",
+          scopeId: "tnt_a",
+        })
+      ).items,
+    ).toHaveLength(1);
+    const led = audit.entries.find((e) => e.action === "settings.user.erase");
+    expect(led).toMatchObject({
+      resourceId: "usr_maker",
+      after: { request_ref: "dpr_1", values: 1, changes: 2 },
+    });
+    expect(JSON.stringify(led)).not.toContain("compact");
+  });
+  it("refuses agents, members without a role and platform contexts", async () => {
+    const { svc } = setup();
+    const req = { requestRef: "dpr_1", reason: "DPDP erasure request from the data principal" };
+    const agent = ctxFor([], { principal: { id: "agt_x", type: "agent", roles: [] } });
+    expect(await codeAsync(svc.eraseUser(agent, "usr_maker", req))).toBe("IPB-SEC-004");
+    expect(await codeAsync(svc.eraseUser(ctxFor(["ORG_MEMBER"]), "usr_maker", req))).toBe(
+      "IPB-UX-011",
+    );
+    expect(
+      await codeAsync(
+        svc.eraseUser(ctxFor(["ORG_ADMIN"], { scope: "platform" }), "usr_maker", req),
+      ),
+    ).toBe("IPB-UX-011");
+  });
+});

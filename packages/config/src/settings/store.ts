@@ -47,6 +47,27 @@ export interface SettingsStore {
   appendChange?(tx: Tx | null, c: SettingChangeWrite): Promise<void>;
   /** The changes of one key at one scope, newest first. */
   history?(tx: Tx | null, q: SettingHistoryQuery): Promise<SettingHistoryPage>;
+  /**
+   * Erase a person's USER values and USER change history in a tenant (DPDP erasure, #110,
+   * R1-D-95): the erasure is recorded first, then both are deleted. Other tiers are untouched.
+   */
+  eraseUser?(tx: Tx | null, e: SettingUserErasure): Promise<SettingUserErasureResult>;
+}
+
+export interface SettingUserErasure {
+  tenantId: string;
+  userId: string;
+  /** The product's erasure request id. */
+  requestRef: string;
+  actorId: string;
+}
+
+export interface SettingUserErasureResult {
+  erasureId: string;
+  /** USER values deleted. */
+  values: number;
+  /** USER change-history rows deleted. */
+  changes: number;
 }
 
 export class MemorySettingsStore implements SettingsStore {
@@ -91,6 +112,21 @@ export class MemorySettingsStore implements SettingsStore {
       items: page.map(({ seq: _seq, ...c }) => c),
       nextCursor: more ? String(page.at(-1)!.seq) : null,
     };
+  }
+  async eraseUser(_tx: Tx | null, e: SettingUserErasure): Promise<SettingUserErasureResult> {
+    let values = 0;
+    for (const [id, r] of this.rows)
+      if (r.tier === "USER" && r.scopeId === e.userId) {
+        this.rows.delete(id);
+        values++;
+      }
+    let changes = 0;
+    for (let i = this.changes.length - 1; i >= 0; i--)
+      if (this.changes[i]!.tier === "USER" && this.changes[i]!.scopeId === e.userId) {
+        this.changes.splice(i, 1);
+        changes++;
+      }
+    return { erasureId: newId("ser"), values, changes };
   }
 }
 
@@ -230,5 +266,41 @@ export class PgSettingsStore implements SettingsStore {
       })),
       nextCursor: r.rows.length > q.limit ? page.at(-1)!.seq : null,
     };
+  }
+
+  /**
+   * DPDP erasure of one person's USER settings (config/0004): the `setting_erasure` row first, which
+   * the history's only delete policy requires, then the values and the history; counts recorded.
+   */
+  async eraseUser(tx: Tx | null, e: SettingUserErasure): Promise<SettingUserErasureResult> {
+    if (!tx) throw new Error("PgSettingsStore needs a transaction");
+    const n = await tx.query<{ values: number; changes: number }>(
+      `select (select count(*)::int from config.setting_value
+                where tier = 'USER' and scope_id = $1 and tenant_id = $2) as values,
+              (select count(*)::int from config.setting_change
+                where tier = 'USER' and scope_id = $1 and tenant_id = $2) as changes`,
+      [e.userId, e.tenantId],
+    );
+    const values = n.rows[0]!.values;
+    const changes = n.rows[0]!.changes;
+    const erasureId = newId("ser");
+    await tx.query(
+      `insert into config.setting_erasure
+         (id, tenant_id, user_id, request_ref, value_rows, change_rows, erased_by)
+       values ($1, $2, $3, $4, $5, $6, $7)`,
+      [erasureId, e.tenantId, e.userId, e.requestRef, values, changes, e.actorId],
+    );
+    const v = await tx.query(
+      `delete from config.setting_value where tier = 'USER' and scope_id = $1 and tenant_id = $2`,
+      [e.userId, e.tenantId],
+    );
+    const c = await tx.query(
+      `delete from config.setting_change where tier = 'USER' and scope_id = $1 and tenant_id = $2`,
+      [e.userId, e.tenantId],
+    );
+    // A change written between the count and the delete fails the erasure; the caller retries.
+    if ((v.rowCount ?? 0) !== values || (c.rowCount ?? 0) !== changes)
+      throw new Error(`erasure of ${e.userId}'s settings deleted a different number of rows`);
+    return { erasureId, values, changes };
   }
 }
