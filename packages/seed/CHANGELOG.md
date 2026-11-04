@@ -1,5 +1,13 @@
 # @infrabyx/seed
 
+## 1.0.30
+
+### Patch Changes
+
+- Updated dependencies [bc2c301]
+  - @infrabyx/tenancy@1.14.1
+  - @infrabyx/audit@1.7.2
+
 ## 1.0.29
 
 ### Patch Changes

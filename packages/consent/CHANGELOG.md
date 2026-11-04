@@ -1,5 +1,12 @@
 # @infrabyx/consent
 
+## 1.2.4
+
+### Patch Changes
+
+- Updated dependencies [bc2c301]
+  - @infrabyx/tenancy@1.14.1
+
 ## 1.2.3
 
 ### Patch Changes
