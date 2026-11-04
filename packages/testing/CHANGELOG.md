@@ -1,5 +1,25 @@
 # @infrabyx/testing
 
+## 1.9.0
+
+### Minor Changes
+
+- 9c368c7: RULES contract cases for the CEL string functions and a refused `matches` pattern, with `RULES_STRING_FIXTURE` and `stringFixtureInput` (PR-LDC-13; R1-D-71).
+- 9c368c7: `FakeConsentLedger.latestByPrincipal` and `recordPurposeConsent` (tenant-scoped by `call.tenantId`), and a CONSENT contract case for `latestByPrincipal` (PR-LDC-14; R1-D-72).
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/tenancy@1.11.0
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/audit@1.6.5
+  - @infrabyx/seed@1.0.26
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.8.1
 
 ### Patch Changes

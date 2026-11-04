@@ -1,5 +1,23 @@
 # @infrabyx/consent
 
+## 1.2.0
+
+### Minor Changes
+
+- 9c368c7: Platform purpose notices (`tier: "platform"` purposes: drafted by a PLT_DPO, approved by a different PLT_LEGAL_REVIEWER, read-only and citable in every tenant, tenant-scope writes refused by PostgreSQL), `PgConsentLedger.latestByPrincipal` (`OhConsentLedger` declares it unsupported), `ConsentSubjects.endRelationship`, and #95's ledgered purge `ConsentPurge.sweepPurposes()` (purpose-consent records and their notice versions once the relationship has ended and 8 years have passed since the later of that end and any withdrawal; a legal hold keeps them); migration `consent/0004` (PR-LDC-14, OWNER-QUESTIONS #95; R1-D-72).
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/tenancy@1.11.0
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+  - @infrabyx/ui@1.2.6
+
 ## 1.1.6
 
 ### Patch Changes

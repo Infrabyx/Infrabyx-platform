@@ -1,5 +1,20 @@
 # @infrabyx/tenancy
 
+## 1.11.0
+
+### Minor Changes
+
+- 9c368c7: `fieldCryptoForTenant(kms, tenantId, opts?)` returns a `TenantFieldCrypto`, a FieldCrypto bound to one validated tenant id (`tnt_` and a ULID) with the tenant key-id convention of the KMS adapter (`tenantFieldKeyId`: LocalKms `local:tenant:<id>`, AWS KMS `alias/ipb/tenant/<id>`, Vault Transit `tenant-<id>`); calls for another tenant and unknown adapters are refused (PR-LDC-16; R1-D-73).
+- 9c368c7: `EcosystemInbox.receive` takes `exclusiveWith`: event types sharing a business key of which only the first stored is processed, as Ecosystem Spec v1.3 requires for one provisioning request (R1-D-70).
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.10.1
 
 ### Patch Changes
