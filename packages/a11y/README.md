@@ -1,6 +1,6 @@
 # @infrabyx/a11y
 
-The accessibility gate kit: journey registry and lint, the WCAG 2.2 mapping, the release checklist, the accessibility statement generator, keyboard shortcuts, client hooks, Playwright checks and the overlay scan (IPB-06).
+The accessibility gate kit: journey registry and lint, the WCAG 2.2 mapping, the release checklist, the accessibility statement generator, keyboard shortcuts, client hooks, Playwright checks, the overlay scan and the form-layout lint (IPB-06).
 
 **Specified by:** `docs/ipb/` IPB-06 (§06.3.8 gates, §06.4.1 layout, §06.4.3 registry, §06.4.4 AT scripts, §06.4.9 statement). Its acceptance tests are the `@IPB-06-AT-..` scenarios tagged in `src`.
 
@@ -8,18 +8,19 @@ The accessibility gate kit: journey registry and lint, the WCAG 2.2 mapping, the
 
 ## Contents
 
-| Path or import              | Purpose                                                                                                                                                                       |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mapping.json`              | The 55 WCAG 2.2 A and AA criteria mapped to EN 301 549 V3.2.1 clause 9; IS 17802 clauses stay `[VERIFY]` until the standard is bought (OI-06-02)                              |
-| `checklist.md`              | The 40 manual checks the Accessibility Lead signs per release (IPB-06-55)                                                                                                     |
-| `at-scripts/_template.md`   | The assistive-technology script template (§06.4.4)                                                                                                                            |
-| `lintJourneys`              | Registry lint: uncovered routes, voice journeys without a text twin (`IPB-A11Y-009`), regulated steps, missing AT scripts                                                     |
-| `generateStatement`         | Computes conformance per journey from the release record; an open P1 or P2 downgrades "Conforms" (`IPB-A11Y-010`)                                                             |
-| `ShortcutRegistry`          | Remappable shortcuts; single-character keys are off by default and never fire in text fields (SC 2.1.4)                                                                       |
-| `scanText`, `scanPaths`     | Overlay vendor detection (`IPB-A11Y-003`)                                                                                                                                     |
-| `evaluateLighthouse`        | Lighthouse result against `a11y.ci.lighthouse_min` (95, never lower) and the IPB-04 budgets                                                                                   |
-| `@infrabyx/a11y/playwright` | `axeScan`, `htmlcsScan`, `reflowCheck`, `textScaleCheck`, `textSpacingCheck`, `skipLinkFirst`, `focusVisibleCheck`, `recordThirdPartyRequests`, `assertGate` (`IPB-A11Y-004`) |
-| `@infrabyx/a11y/hooks`      | `useReducedMotion`, `useTextScale`, `useAnnounce`, `useShortcut`                                                                                                              |
+| Path or import              | Purpose                                                                                                                                                                                                                                 |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mapping.json`              | The 55 WCAG 2.2 A and AA criteria mapped to EN 301 549 V3.2.1 clause 9; IS 17802 clauses stay `[VERIFY]` until the standard is bought (OI-06-02)                                                                                        |
+| `checklist.md`              | The 40 manual checks the Accessibility Lead signs per release (IPB-06-55)                                                                                                                                                               |
+| `at-scripts/_template.md`   | The assistive-technology script template (§06.4.4)                                                                                                                                                                                      |
+| `lintJourneys`              | Registry lint: uncovered routes, voice journeys without a text twin (`IPB-A11Y-009`), regulated steps, missing AT scripts                                                                                                               |
+| `generateStatement`         | Computes conformance per journey from the release record; an open P1 or P2 downgrades "Conforms" (`IPB-A11Y-010`)                                                                                                                       |
+| `ShortcutRegistry`          | Remappable shortcuts; single-character keys are off by default and never fire in text fields (SC 2.1.4)                                                                                                                                 |
+| `scanText`, `scanPaths`     | Overlay vendor detection (`IPB-A11Y-003`)                                                                                                                                                                                               |
+| `evaluateLighthouse`        | Lighthouse result against `a11y.ci.lighthouse_min` (95, never lower) and the IPB-04 budgets                                                                                                                                             |
+| `lintForm`                  | Form-layout lint over `FormLayoutSchema`: names, labels, unique names, error association, required marking, focus order, headings, groups, autocomplete, id references; each finding has its WCAG 2.2 criterion                         |
+| `@infrabyx/a11y/playwright` | `axeFormScan` (axe on a rendered form, as form findings), `axeScan`, `htmlcsScan`, `reflowCheck`, `textScaleCheck`, `textSpacingCheck`, `skipLinkFirst`, `focusVisibleCheck`, `recordThirdPartyRequests`, `assertGate` (`IPB-A11Y-004`) |
+| `@infrabyx/a11y/hooks`      | `useReducedMotion`, `useTextScale`, `useAnnounce`, `useShortcut`                                                                                                                                                                        |
 
 ## CLI
 
