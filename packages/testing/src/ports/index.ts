@@ -13,3 +13,4 @@ export * from "./documents-money.js";
 export * from "./captcha.js";
 export * from "./device-attestation.js";
 export * from "./mandate-approvals.js";
+export * from "./company-data.js";

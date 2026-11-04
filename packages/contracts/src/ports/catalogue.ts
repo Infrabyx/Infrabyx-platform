@@ -55,7 +55,7 @@ export const PORT_CATALOGUE = {
     tier: 3,
     configPrefix: "int.company_data.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   LLM: { tier: 2, configPrefix: "ai.llm.", ownerFile: "IPB-01, IPB-03", interfaceDefined: true },
   EMBEDDING: {
@@ -237,7 +237,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * Ports whose interfaces the 1.x line defined, adapters to follow (R1-D-21: PR-FBX-01; R1-D-43:
  * PR-FBX-28's BUREAU and AA_FIU product ports, IPB-01 §01.4.4.3, ADR-0003; R1-D-52: PR-FBX-29's
  * ESTAMP, PAYOUTS, DOCGEN and PDF; R1-D-50: Udofin PR-UDF-028 and PR-UDF-029's DEVICE_ATTESTATION
- * and CAPTCHA, ADR-0004).
+ * and CAPTCHA, ADR-0004; R1-D-79: LawDocsComply PR-LDC-02's COMPANY_DATA, no adapter until the
+ * owner chooses a data source).
  */
 export const R1_PORTS = [
   "KYC",
@@ -250,4 +251,5 @@ export const R1_PORTS = [
   "PDF",
   "CAPTCHA",
   "DEVICE_ATTESTATION",
+  "COMPANY_DATA",
 ] as const satisfies readonly PortName[];
