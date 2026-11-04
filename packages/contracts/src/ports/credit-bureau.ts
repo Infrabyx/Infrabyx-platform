@@ -89,6 +89,12 @@ export interface Tradeline {
   sanctionedPaise: number;
   currentPaise: number;
   overduePaise: number;
+  /**
+   * The instalment (EMI) the CIC reports for the account, in integer paise; `null` when it reports
+   * none (a card, an overdraft, or a field left empty). Products computing FOIR treat `null` as
+   * unknown, never as zero (PR-FBX-35, R1-D-84).
+   */
+  emiPaise: number | null;
   /** The worst days-past-due bucket in the last 12 months, and the latest. */
   worstDpd12m: DpdBucket;
   currentDpd: DpdBucket;

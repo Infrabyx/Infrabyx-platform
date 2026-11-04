@@ -31,7 +31,7 @@ const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
 
 /** Inputs a bureau adapter's contract run needs: the CIC sandbox's own test subjects. */
 export interface CreditBureauFixtures {
-  /** A subject the CIC knows. */
+  /** A subject the CIC knows, with a tradeline that reports an EMI and one that does not. */
   known: { pan: string; name: string };
   /** A subject the CIC has no record of. */
   noHit: { pan: string; name: string };
@@ -101,6 +101,8 @@ export class FakeCreditBureau implements CreditBureauPort {
         sanctionedPaise: 10_000_000,
         currentPaise: 2_500_000,
         overduePaise: 0,
+        // A card: the CIC reports no instalment (PR-FBX-35).
+        emiPaise: null,
         worstDpd12m: "0",
         currentDpd: "0",
         status: "active",
@@ -113,6 +115,7 @@ export class FakeCreditBureau implements CreditBureauPort {
         sanctionedPaise: 50_000_000,
         currentPaise: 0,
         overduePaise: 0,
+        emiPaise: 1_500_000,
         worstDpd12m: "1-30",
         currentDpd: "0",
         status: "closed",
@@ -245,6 +248,21 @@ export function creditBureauContractCases(
             expect(Number.isInteger(v) && v >= 0).toBe(true);
         expect(JSON.stringify(r)).not.toMatch(PAN_LIKE);
         expect((await p.status(r.pullId)).pullId).toBe(r.pullId);
+      },
+    },
+    {
+      name: "each tradeline carries its EMI in integer paise, or null when the CIC reports none (the known subject has both)",
+      async run(p) {
+        const r = await p.pull(req(fx.known.pan, fx.known.name));
+        const ready = r.state === "pending" ? await p.status(r.pullId) : r;
+        if (ready.state === "pending") return; // completed through status or the webhook
+        const emis = (ready.summary?.tradelines ?? []).map((t) => t.emiPaise);
+        for (const e of emis) {
+          expect(e).not.toBeUndefined();
+          if (e !== null) expect(Number.isSafeInteger(e) && e > 0).toBe(true);
+        }
+        expect(emis.some((e) => e === null)).toBe(true);
+        expect(emis.some((e) => e !== null)).toBe(true);
       },
     },
     {

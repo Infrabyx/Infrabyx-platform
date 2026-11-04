@@ -17,6 +17,7 @@ import {
 import {
   CibilBureau,
   cibilDpdBucket,
+  cibilEmiPaise,
   cibilEventPullId,
   mapCibilReport,
   type CibilPullRecord,
@@ -185,5 +186,22 @@ describe("R1-D-61 the CIBIL adapter", () => {
       openedOn: "2020-02-01",
     });
     expect(s.enquiries).toEqual({ last30d: 0, last90d: 0, last365d: 0 });
+    // No `emiAmount` on the account: the CIC reported none (PR-FBX-35).
+    expect(s.tradelines[0]!.emiPaise).toBeNull();
+  });
+
+  it("maps the reported EMI to integer paise, and anything else to null, never zero (R1-D-84)", async () => {
+    expect(cibilEmiPaise("15000")).toBe(1_500_000);
+    expect(cibilEmiPaise("1,25,000")).toBe(12_500_000);
+    expect(cibilEmiPaise(4321.5)).toBe(432_150);
+    expect(cibilEmiPaise(" 999.05 ")).toBe(99_905);
+    for (const none of [undefined, null, "", "  ", "0", 0, "-500", -1, "NA", "1e9", {}, true])
+      expect(cibilEmiPaise(none)).toBeNull();
+    // Through the adapter: the stub's card reports none, its personal loan an instalment.
+    const r = await make().pull(req(stub.subjects.known.pan, stub.subjects.known.name));
+    expect(r.summary?.tradelines.map((t) => [t.accountType, t.emiPaise])).toEqual([
+      ["credit_card", null],
+      ["personal_loan", 1_500_000],
+    ]);
   });
 });
