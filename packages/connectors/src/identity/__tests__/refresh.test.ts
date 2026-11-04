@@ -233,6 +233,8 @@ describe("ZitadelIdentity.refreshSession (recorded Zitadel v4)", () => {
       ["GET", "/oauth/v2/keys", { status: 200, body: { keys: [TEST_JWK] } }],
       ["POST", "/oauth/v2/token", () => tokens[n++] ?? { status: 599 }],
       ["POST", "/oauth/v2/revoke", { status: 200 }],
+      // No tenant SSO brokers in this organisation (the R1-D-78 guard reads them).
+      ["POST", "/management/v1/metadata/_search", { status: 200, body: {} }],
       ["DELETE", /^\/v2\/sessions\/[^/]+$/, { status: 200, body: {} }],
     ]);
     const revocations = new MemoryRevocationStore();

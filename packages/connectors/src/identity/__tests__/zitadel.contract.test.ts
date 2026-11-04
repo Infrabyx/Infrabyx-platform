@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PLATFORM_ROLES, TENANT_ROLES } from "@infrabyx/contracts";
 import type {
   CustomerIdentityPort,
+  IdentityBrokerAdmin,
   IdentityPort,
   IdentitySessionRefresh,
 } from "@infrabyx/contracts/ports";
@@ -28,6 +29,7 @@ import {
 import {
   defineContractSuite,
   existingServiceUrl,
+  identityBrokerContractCases,
   identityRefreshContractCases,
   startNetwork,
   startService,
@@ -53,6 +55,8 @@ const customerReplay = new MemoryReplayStore();
 const mail = capturingSender();
 const revocations = new MemoryRevocationStore();
 const refreshLedger = new MemoryRefreshTokenLedger();
+/** The broker client secret behind `secret://memory/idp/contract#client_secret` (R1-D-78). */
+const BROKER_SECRET = generateSeedPassword();
 
 const freePort = () =>
   new Promise<number>((resolve) => {
@@ -175,6 +179,10 @@ const adapter = () =>
     admin: { kind: "pat", token: pat },
     revocations,
     refreshLedger,
+    resolveSecret: async (ref) => {
+      if (ref.adapter !== "memory" || ref.key !== "client_secret") throw new Error("unknown");
+      return BROKER_SECRET;
+    },
     allowLoopbackHttp: true,
   });
 const email = (n: string) => `${n}.${toHex(randomBytes(4))}@example.test`;
@@ -433,6 +441,57 @@ describe("@IPB-01-15 IDENTITY hermetic leg: zitadel v4.19.5", () => {
     "IDENTITY",
     adapter,
     identityRefreshContractCases({ signIn: signInWorkforce }, { pauseMs: 1100 }),
+    { leg: "hermetic" },
+  );
+
+  // Tenant SSO brokers (PR-LDC-09, R1-D-78). Zitadel reads an OIDC issuer only at login, so the
+  // issuer need not resolve here; SAML is left out, as Zitadel reads metadata when the IdP is
+  // added and this network serves none (the SAML request shape is unit-tested). A first brokered
+  // login is answered from the IdP's provider options and the login policy as Zitadel holds them.
+  defineContractSuite<IdentityBrokerAdmin>(
+    "IDENTITY",
+    adapter,
+    identityBrokerContractCases({
+      tenants: ["tnt_a", "tnt_b"],
+      oidc: {
+        discoveryUrl: "https://sso.example.test/.well-known/openid-configuration",
+        clientId: "tenant-sso",
+        clientSecretRef: "secret://memory/idp/contract#client_secret",
+        secretValue: BROKER_SECRET,
+      },
+      async brokerSignIn(_p, alias, user) {
+        const asAdmin = async (method: string, path: string, body?: unknown) => {
+          const r = await fetch(`${base}${path}`, {
+            method,
+            headers: {
+              authorization: `Bearer ${pat}`,
+              "content-type": "application/json",
+              "x-zitadel-orgid": inst.orgId,
+            },
+            ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          });
+          if (r.status >= 300) throw new Error(`${method} ${path}: ${r.status} ${await r.text()}`);
+          return (await r.json()) as Record<string, unknown>;
+        };
+        const m = (await asAdmin("GET", `/management/v1/metadata/ipb.idp.${alias}`)) as {
+          metadata?: { value?: string };
+        };
+        const { idpId } = JSON.parse(
+          Buffer.from(m.metadata?.value ?? "", "base64").toString("utf8"),
+        ) as { idpId: string };
+        const idp = (await asAdmin("GET", `/management/v1/idps/templates/${idpId}`)) as {
+          idp?: { config?: { options?: Record<string, boolean | undefined> } };
+        };
+        const o = idp.idp?.config?.options ?? {};
+        const onPolicy = JSON.stringify(
+          await asAdmin("POST", "/management/v1/policies/login/idps/_search", {}),
+        ).includes(idpId);
+        if (!onPolicy) return "refused";
+        if (user.existingIn === undefined)
+          return o.isCreationAllowed || o.isAutoCreation ? "linked" : "refused";
+        return o.isLinkingAllowed ? "linked" : "refused";
+      },
+    }),
     { leg: "hermetic" },
   );
 

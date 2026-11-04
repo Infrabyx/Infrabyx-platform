@@ -1,10 +1,59 @@
-// The IDENTITY fakes pass their own contract cases (LawDocsComply PR-LDC-03; R1-D-77).
+// The IDENTITY fakes pass their own contract cases (LawDocsComply PR-LDC-03 and PR-LDC-09;
+// R1-D-77, R1-D-78).
 import { describe, expect, it } from "vitest";
 import { defineContractSuite } from "../contract.js";
-import { FakeIdentitySessions, identityRefreshContractCases } from "./identity.js";
+import {
+  FAKE_BROKER_SIGN_IN,
+  FakeIdentityBrokers,
+  FakeIdentitySessions,
+  identityBrokerContractCases,
+  identityRefreshContractCases,
+} from "./identity.js";
 
 const sessions = new FakeIdentitySessions();
 defineContractSuite("IDENTITY", () => sessions, identityRefreshContractCases(sessions));
+
+const SECRET = "fake-idp-client-secret";
+const brokers = new FakeIdentityBrokers(async (ref) => {
+  if (ref.adapter !== "memory" || ref.key !== "client_secret") throw new Error("unknown secret");
+  return SECRET;
+});
+defineContractSuite(
+  "IDENTITY",
+  () => brokers,
+  identityBrokerContractCases({
+    tenants: ["tnt_a", "tnt_b"],
+    oidc: {
+      discoveryUrl: "https://sso.example.test/.well-known/openid-configuration",
+      clientId: "tenant-a-client",
+      clientSecretRef: "secret://memory/idp/tenant-a#client_secret",
+      secretValue: SECRET,
+    },
+    saml: { metadataUrl: "https://sso.example.test/saml/metadata" },
+    ...FAKE_BROKER_SIGN_IN,
+  }),
+);
+
+describe("FakeIdentityBrokers", () => {
+  it("resolves the reference without keeping the secret; refuses OIDC without a resolver", async () => {
+    const spec = {
+      tenantId: "tnt_a",
+      alias: "acme-sso",
+      protocol: "oidc" as const,
+      displayName: "Acme",
+      discoveryUrl: "https://sso.example.test/.well-known/openid-configuration",
+      clientId: "c",
+      clientSecretRef: "secret://memory/idp/acme#client_secret",
+    };
+    const f = new FakeIdentityBrokers(async () => SECRET);
+    await f.upsertIdentityProvider(spec);
+    expect(f.resolved).toEqual(["idp:acme-sso"]);
+    expect(JSON.stringify(await f.listIdentityProviders("tnt_a"))).not.toContain(SECRET);
+    await expect(new FakeIdentityBrokers().upsertIdentityProvider(spec)).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+    });
+  });
+});
 
 describe("FakeIdentitySessions", () => {
   it("keeps hashes only: a reuse revokes the session it belongs to and no other", async () => {

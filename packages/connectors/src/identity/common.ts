@@ -2,13 +2,20 @@
 // @infrabyx/crypto under the issuer's own allow-list (ES256 for both IdPs, C-12); claims are mapped
 // to the PL1 VerifiedClaims schema; revoked sessions and users are refused on every replica within
 // 60 s (IPB-02-05, PL2-D-53); privileged roles without MFA are refused at the API (IPB-02-02).
-import { IpbError } from "@infrabyx/contracts/errors";
+import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import {
   VerifiedClaims,
+  emailDomainOf,
+  IdentityProviderSpec,
+  idpUrlAllowed,
   mfaRequired,
+  parseSecretRef,
   RoleSchema,
+  type IdentityProviderConfig,
+  type IdentityProviderInfo,
   type RefreshRefusalReason,
+  type SecretRef,
 } from "@infrabyx/contracts";
 import { JwksCache, newId, sha256Hex, verifyJwt, type JwsAlgorithm } from "@infrabyx/crypto";
 import type { createEgress } from "../core/http.js";
@@ -297,6 +304,104 @@ export class MemoryRefreshTokenLedger implements RefreshTokenLedger {
     const f = h && this.families.get(h.familyId);
     if (f) f.revoked = true;
   }
+}
+
+// ---- identity-provider brokers (PR-LDC-09, R1-D-78) ---------------------------------------------
+
+/** Resolves a SECRETS reference (`secretsResolver` from `@infrabyx/config` fits). */
+export type BrokerSecretResolver = (ref: SecretRef, name: string) => Promise<string>;
+
+/** A broker as an adapter reads it back; `managed` is false for one configured by hand. */
+export interface BrokerRecord extends IdentityProviderInfo {
+  managed: boolean;
+  /** The IdP's own id where it differs from the alias (Zitadel). */
+  idpId?: string;
+}
+
+/** Validate a broker spec (schema, then the adapter's URL rule) before any call. */
+export function parseBrokerSpec(
+  raw: unknown,
+  adapter: string,
+  allowLoopbackHttp = false,
+): IdentityProviderConfig {
+  const spec = IdentityProviderSpec.parse(raw);
+  const url = spec.protocol === "oidc" ? spec.discoveryUrl : spec.metadataUrl;
+  if (!idpUrlAllowed(url, allowLoopbackHttp))
+    throw new PortError("IPB-SEC-018", "IDENTITY", {
+      adapter,
+      detail: "an identity provider's discovery or metadata URL must be https",
+    });
+  return spec;
+}
+
+/**
+ * Check an upsert against the brokers there are: the alias must be free or this tenant's own
+ * managed broker, and no domain may already route to another broker. Returns the one updated.
+ */
+export function claimBroker(
+  spec: IdentityProviderConfig,
+  existing: readonly BrokerRecord[],
+  adapter: string,
+): BrokerRecord | undefined {
+  const conflict = (reason: "alias_taken" | "domain_taken", detail: string): never => {
+    throw new PortError("IPB-PORT-004", "IDENTITY", {
+      adapter,
+      detail,
+      meta: { reason, definite: true },
+    });
+  };
+  const same = existing.find((b) => b.alias === spec.alias);
+  if (same && (!same.managed || same.tenantId !== spec.tenantId))
+    conflict("alias_taken", "the alias belongs to another tenant or was configured by hand");
+  const wanted = new Set(spec.domains.map((d) => d.domain));
+  for (const b of existing)
+    if (b.alias !== spec.alias && b.domains.some((d) => wanted.has(d.domain)))
+      conflict("domain_taken", "a domain already routes to another identity provider");
+  return same;
+}
+
+/** The enabled managed broker a sign-in email routes to, by verified domain. */
+export function discoverBroker(
+  existing: readonly BrokerRecord[],
+  email: string,
+): { tenantId: string; alias: string } | null {
+  const domain = emailDomainOf(email);
+  if (!domain) return null;
+  const hit = existing.find(
+    (b) => b.managed && b.enabled && b.domains.some((d) => d.domain === domain),
+  );
+  return hit ? { tenantId: hit.tenantId, alias: hit.alias } : null;
+}
+
+/** The secret behind an OIDC broker's reference; IPB-PORT-001 without a resolver. */
+export async function resolveBrokerSecret(
+  spec: IdentityProviderConfig & { protocol: "oidc" },
+  resolver: BrokerSecretResolver | undefined,
+  adapter: string,
+): Promise<string> {
+  const ref = parseSecretRef(spec.clientSecretRef);
+  if (!resolver || !ref)
+    throw new PortError("IPB-PORT-001", "IDENTITY", {
+      adapter,
+      detail: "no SECRETS resolver is configured for identity-provider client secrets",
+      meta: { reason: "not_configured" },
+    });
+  return resolver(ref, `idp:${spec.alias}`);
+}
+
+/** The broker fields reported back: never a secret. */
+export function brokerInfo(b: BrokerRecord): IdentityProviderInfo {
+  return {
+    tenantId: b.tenantId,
+    alias: b.alias,
+    protocol: b.protocol,
+    displayName: b.displayName,
+    enabled: b.enabled,
+    domains: b.domains.map((d) => ({ ...d })),
+    ...(b.discoveryUrl ? { discoveryUrl: b.discoveryUrl } : {}),
+    ...(b.clientId ? { clientId: b.clientId } : {}),
+    ...(b.metadataUrl ? { metadataUrl: b.metadataUrl } : {}),
+  };
 }
 
 // ---- verifier -----------------------------------------------------------------------------------
