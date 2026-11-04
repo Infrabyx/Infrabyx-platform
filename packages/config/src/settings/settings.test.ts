@@ -6,7 +6,7 @@ import { resolve } from "./resolve.js";
 import { SettingsService } from "./service.js";
 import { MemorySettingsStore } from "./store.js";
 import type { SettingDef } from "./types.js";
-import { tightenError } from "./validate.js";
+import { assertValid, tightenError } from "./validate.js";
 import { FakeApprovals, FakeAudit, FakeKernel, FakeOutbox, ctxFor } from "../__tests__/fakes.js";
 
 const code = (fn: () => unknown) => {
@@ -336,9 +336,19 @@ describe("PL3 maker-checker tenant keys are tighten-only (PL3-D-08)", () => {
       "mc.dual_checker_above.payments_refund",
       "mc.checker_roles.payments_refund",
       "mc.reminder_hours",
+      "mc.expiry_hours.payments_refund",
     ]) {
       expect(def(k)).toMatchObject({ tier: "TENANT", mc: "R4" });
     }
+  });
+  it("mc.expiry_hours is 1 to 168 hours and may only be lowered (#106, R1-D-89)", () => {
+    const d = def("mc.expiry_hours.payments_refund");
+    expect(d).toMatchObject({ type: "int", min: 1, max: 168, default: null });
+    expect(() => assertValid(d, 0)).toThrow();
+    expect(() => assertValid(d, 169)).toThrow();
+    expect(() => assertValid(d, 12)).not.toThrow();
+    expect(tightenError(d, 24, 48)).toMatch(/lowered/);
+    expect(tightenError(d, 48, 24)).toBeNull();
   });
   it("only lowers thresholds and the reminder, only adds actions, only narrows checker roles", () => {
     expect(tightenError(def("mc.reminder_hours"), 24, 12)).toBeNull();

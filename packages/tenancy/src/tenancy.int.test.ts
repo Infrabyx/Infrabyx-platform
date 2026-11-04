@@ -443,7 +443,10 @@ describe("infrabyx-migrate", () => {
 describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers (PL3-D-07, PL3-D-08)", () => {
   const fieldCrypto = new FieldCrypto({ kms: new LocalKms(), keyIdFor: localTenantKeyId });
   const seen: string[] = [];
-  const policy: Record<string, { checkerRoles?: string[]; dualCheckerAbove?: number }> = {};
+  const policy: Record<
+    string,
+    { checkerRoles?: string[]; dualCheckerAbove?: number; expiryHours?: number }
+  > = {};
   let engine: ApprovalsEngine;
   beforeAll(() => {
     engine = new ApprovalsEngine({
@@ -482,6 +485,29 @@ describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers 
         [id],
       )
     ).rows[0]?.h;
+
+  it("a tenant's mc.expiry_hours only shortens the platform expiry, never below 1 hour (#106)", async () => {
+    policy["org.setting.change"] = { expiryHours: 12 };
+    const shorter = await make({ action: "org.setting.change", riskClass: "R2", payload: {} });
+    policy["org.setting.change"] = { expiryHours: 500 };
+    const longer = await make({ action: "org.setting.change", riskClass: "R2", payload: {} });
+    policy["access.ip_allowlist.change"] = { expiryHours: 100 };
+    const r4 = await make({ action: "access.ip_allowlist.change", riskClass: "R4", payload: {} });
+    policy["access.ip_allowlist.change"] = { expiryHours: 0 };
+    const floor = await make({
+      action: "access.ip_allowlist.change",
+      riskClass: "R4",
+      payload: {},
+    });
+    expect([
+      await hoursLeft(shorter.id),
+      await hoursLeft(longer.id),
+      await hoursLeft(r4.id),
+      await hoursLeft(floor.id),
+    ]).toEqual([12, 168, 72, 1]);
+    delete policy["org.setting.change"];
+    delete policy["access.ip_allowlist.change"];
+  });
 
   it("expires after 7 days, or 72 hours for R4/R5 and financial R3; an expired request is terminal", async () => {
     const a = await make({ action: "org.setting.change", riskClass: "R2", payload: {} });

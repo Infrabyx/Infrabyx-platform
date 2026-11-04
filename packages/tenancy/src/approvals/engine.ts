@@ -98,6 +98,11 @@ export interface TenantApprovalPolicy {
   checkerRoles?: readonly string[] | null;
   /** `mc.dual_checker_above.<action>`: above this amount two distinct checkers decide. */
   dualCheckerAbove?: number | null;
+  /**
+   * `mc.expiry_hours.<action>` (OWNER-QUESTIONS #106, R1-D-89): a shorter expiry, clamped to
+   * [1 hour, the platform period]; it never lengthens the platform period.
+   */
+  expiryHours?: number | null;
 }
 
 /** Called inside the transaction of each transition, after the ledger entry. */
@@ -117,11 +122,24 @@ export const APPROVAL_REMINDER_HOURS = 24;
 export const APPROVAL_ESCALATION_HOURS = 48;
 export const APPROVAL_ESCALATION_ROLE = "ORG_ADMIN";
 
-/** 72 hours for every R4 and R5 request and for R3 on a financial action; 7 days otherwise. */
-export function expiryHoursFor(risk: Risk, financial: boolean): number {
-  return risk === "R4" || risk === "R5" || (risk === "R3" && financial)
-    ? APPROVAL_EXPIRY_HOURS.short
-    : APPROVAL_EXPIRY_HOURS.default;
+/** The shortest expiry a tenant may set (OWNER-QUESTIONS #106). */
+export const APPROVAL_MIN_EXPIRY_HOURS = 1;
+
+/**
+ * 72 hours for every R4 and R5 request and for R3 on a financial action; 7 days otherwise. A
+ * tenant's `mc.expiry_hours.<action>` may only shorten it, never below 1 hour (R1-D-89).
+ */
+export function expiryHoursFor(
+  risk: Risk,
+  financial: boolean,
+  tenantHours?: number | null,
+): number {
+  const platform =
+    risk === "R4" || risk === "R5" || (risk === "R3" && financial)
+      ? APPROVAL_EXPIRY_HOURS.short
+      : APPROVAL_EXPIRY_HOURS.default;
+  if (tenantHours == null || !Number.isFinite(tenantHours)) return platform;
+  return Math.min(platform, Math.max(APPROVAL_MIN_EXPIRY_HOURS, Math.floor(tenantHours)));
 }
 
 export interface ApprovalsEngineOptions {
@@ -306,7 +324,7 @@ export class ApprovalsEngine implements ApprovalGateway {
         delay,
         financial,
         JSON.stringify(storedDiff(input.diff, cls)),
-        expiryHoursFor(input.riskClass, financial),
+        expiryHoursFor(input.riskClass, financial, tenant.expiryHours),
       ],
     );
     await this.o.audit.record(tx, {
