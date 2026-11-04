@@ -4,7 +4,9 @@ name: port-contract
 # run, a manual dispatch and every release run all ports. CI budget: PL2-D-41.
 # Sandbox legs join when the GitHub `sandbox` environment exists (PL2-D-12, docs/runbooks/README.md).
 on:
+  # Pull requests only when the `ci:run` label is added, at release gates (R1-D-64).
   pull_request:
+    types: [labeled]
   schedule:
     - cron: "17 21 * * *" # 02:47 IST nightly, changed ports only
     - cron: "47 20 * * 6" # 02:17 IST Sunday, every port
@@ -20,6 +22,7 @@ env:
   LEFTHOOK: "0"
 jobs:
   plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'ci:run'
     runs-on: ubuntu-24.04
     outputs:
       ports: ${{ steps.matrix.outputs.ports }}

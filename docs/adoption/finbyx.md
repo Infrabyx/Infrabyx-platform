@@ -59,3 +59,10 @@ What the close of business gains, and what Finbyx changes, once `@infrabyx/audit
 3. **Batch per transaction.** Group loans into transactions of a few thousand `tx.unit` each, with one `recordBatch` per step (§7n), and drop the per-loan `update cob.run set loans = loans + 1` hot row (set the count at the step's end). In each transaction, write the loan's rows before its ledger entry.
 4. **`seq` is not a count any more.** Anything that counts ledger or capture entries by `seq`, or pages by `afterSeq` expecting commit order, uses `count(*)` or a snapshot read instead. The Rule 11(g) pack and the auditor export verify with `verifyAgainstAnchor` and `verifyCaptureAgainstAnchor`, which accept the new format-3 anchors and the old ones.
 5. **Prove it.** Re-run `load:cob-db` with several workers, then the 1,000,000-loan staging run (#38) with `FBX_COB_ASSERT_WINDOW=1`. Mark PR-FBX-32 met once the window holds.
+
+## 5. Wave 1 (the release after version PR #204: `connectors` 1.8.0, `tenancy` 1.10.0, `contracts` 1.16.0, `testing` 1.8.0)
+
+What changes for Finbyx with the wave 1 release (R1-D-66; owner answer #100's gap). Move every `@infrabyx/*` dependency to that release together. Wave 1 adds no migration.
+
+1. **Mandate approvals are consumed by the approvals engine (guide §7x).** If you wire `DigioMandates`, raise each mandate's maker-checker request on `MANDATE_APPROVAL_ACTION` at R3 or above. Its payload is exactly the `MandateApprovalSubject`: register with the idempotency key and the ceiling in paise, or cancel with the mandate id and its current ceiling. Pass the adapter `approvals: engine.mandateVerifier(ctxFor)` and `tenantId`; both are now required. The adapter consumes the approval before Digio is called. A consumed approval never covers a second vendor call. **Shim removed:** any product-side "was this approval already used for a mandate" check. Your own maker-checker stays in front of the call.
+2. **No change needed** for the chain lanes, PR-FBX-29's interfaces or the stub adapters. PR-FBX-33 (per-tenant SMS and WhatsApp templates) is wave 2 (M39); keep the AsyncLocalStorage `TenantSms`/`TenantEmail` wrappers until then.

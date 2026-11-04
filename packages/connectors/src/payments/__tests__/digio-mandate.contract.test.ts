@@ -3,12 +3,14 @@
 // `unproven` and off. The mandate contract cases, then the money controls only the adapter keeps:
 // off until its flag, the kill switch, live credentials outside prod/dr, a key reused with another
 // mandate, an unknown outcome recovered by our reference, the amount checked back exactly, and a
-// callback that is only a trigger.
+// callback that is only a trigger. R1-D-66: the approvals engine's consumption of each call's
+// approval, before Digio is called.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   CONTRACT_AUTH,
   defineContractSuite,
   mandateContractCases,
+  MemoryMandateApprovals,
   startDigioMandateStub,
   type ContractCase,
   type DigioMandateStub,
@@ -35,6 +37,8 @@ const make = (over: Partial<DigioMandateOptions> = {}) =>
     enabled: () => enabled,
     killed: () => killed,
     keys: new MemoryMandateKeyStore(),
+    approvals: new MemoryMandateApprovals({ acceptAny: true }),
+    tenantId: () => "tnt_1",
     debtor: async () => ({
       name: "Asha Rao",
       identifier: "+919800000001",
@@ -183,5 +187,111 @@ describe("R1-D-62 the Digio mandate adapter", () => {
     expect(() => mapDigioMandateState("something_new")).toThrow();
     expect(digioAuthMode("ENACH_AADHAAR")).toEqual({ auth_mode: "esign" });
     expect(() => digioAuthMode("PHYSICAL_NACH")).toThrow();
+  });
+});
+
+describe("R1-D-66 the approvals engine consumes each mandate approval before Digio", () => {
+  const sub = (key: string, over: Record<string, unknown> = {}) => ({
+    operation: "register" as const,
+    mandate: key,
+    maxAmountMinor: 10_000_00,
+    ...over,
+  });
+  const auth = (approvalRef: string) => ({ ...CONTRACT_AUTH, approvalRef });
+
+  it("registers only on an approval for the same tenant, mandate and amount, and consumes it once", async () => {
+    const approvals = new MemoryMandateApprovals()
+      .approve("apr_ok_0001", "tnt_1", sub("mandate-apr-0001"))
+      .approve("apr_other_tenant", "tnt_2", sub("mandate-apr-0002"))
+      .approve("apr_other_mandate", "tnt_1", sub("mandate-apr-9999"))
+      .approve("apr_other_amount", "tnt_1", sub("mandate-apr-0004", { maxAmountMinor: 10_000_01 }))
+      .approve("apr_cancel_only", "tnt_1", sub("mandate-apr-0005", { operation: "cancel" }));
+    const p = make({ approvals });
+    const before = stub.requests.length;
+    for (const [ref, key, reason] of [
+      ["apr_unknown", "mandate-apr-0006", "not_found"],
+      ["apr_other_tenant", "mandate-apr-0002", "not_found"],
+      ["apr_other_mandate", "mandate-apr-0003", "other_mandate"],
+      ["apr_other_amount", "mandate-apr-0004", "other_amount"],
+      ["apr_cancel_only", "mandate-apr-0005", "other_operation"],
+    ] as const)
+      await expect(p.registerMandate(reg({ authorisation: auth(ref) }), key)).rejects.toMatchObject(
+        { code: "IPB-UX-004", meta: { reason } },
+      );
+    expect(stub.requests.length).toBe(before);
+
+    const m = await p.registerMandate(
+      reg({ authorisation: auth("apr_ok_0001") }),
+      "mandate-apr-0001",
+    );
+    expect(approvals.isConsumed("apr_ok_0001")).toBe(true);
+    // A retry with the same key reads the first mandate back and consumes nothing.
+    const calls = approvals.calls.length;
+    expect(
+      (await p.registerMandate(reg({ authorisation: auth("apr_ok_0001") }), "mandate-apr-0001"))
+        .mandateId,
+    ).toBe(m.mandateId);
+    expect(approvals.calls.length).toBe(calls);
+    // The consumed approval cannot register another mandate, even one approved the same way.
+    approvals.approve("apr_ok_0007", "tnt_1", sub("mandate-apr-0007"));
+    await expect(
+      p.registerMandate(reg({ authorisation: auth("apr_ok_0001") }), "mandate-apr-0007"),
+    ).rejects.toMatchObject({ meta: { reason: "consumed" } });
+    await p.registerMandate(reg({ authorisation: auth("apr_ok_0007") }), "mandate-apr-0007");
+    await expect(
+      p.registerMandate(reg({ authorisation: auth("apr_ok_0007") }), "mandate-apr-0008"),
+    ).rejects.toMatchObject({ code: "IPB-UX-004" });
+  });
+
+  it("a refused approval frees the key, so a fresh approval can register with it", async () => {
+    const approvals = new MemoryMandateApprovals();
+    const p = make({ approvals });
+    await expect(
+      p.registerMandate(reg({ authorisation: auth("apr_missing_01") }), "mandate-apr-0010"),
+    ).rejects.toMatchObject({ code: "IPB-UX-004" });
+    approvals.approve("apr_fresh_0010", "tnt_1", sub("mandate-apr-0010"));
+    const m = await p.registerMandate(
+      reg({ authorisation: auth("apr_fresh_0010") }),
+      "mandate-apr-0010",
+    );
+    expect(m.state).toBe("pending_customer");
+  });
+
+  it("cancels only on a cancel approval for that mandate at its current ceiling", async () => {
+    const approvals = new MemoryMandateApprovals().approve(
+      "apr_reg_0020",
+      "tnt_1",
+      sub("mandate-apr-0020"),
+    );
+    const p = make({ approvals });
+    const m = await p.registerMandate(
+      reg({ authorisation: auth("apr_reg_0020") }),
+      "mandate-apr-0020",
+    );
+    approvals
+      .approve("apr_can_wrong", "tnt_1", {
+        operation: "cancel",
+        mandate: m.mandateId,
+        maxAmountMinor: 9_999_99,
+      })
+      .approve("apr_can_0020", "tnt_1", {
+        operation: "cancel",
+        mandate: m.mandateId,
+        maxAmountMinor: 10_000_00,
+      });
+    const cancels = () => stub.requests.filter((r) => r.path.endsWith("/cancel")).length;
+    const before = cancels();
+    await expect(
+      p.cancelMandate(m.mandateId, "closed", auth("apr_reg_0020"), "mandate-can-0001"),
+    ).rejects.toMatchObject({ meta: { reason: "consumed" } });
+    await expect(
+      p.cancelMandate(m.mandateId, "closed", auth("apr_can_wrong"), "mandate-can-0002"),
+    ).rejects.toMatchObject({ meta: { reason: "other_amount" } });
+    expect(cancels()).toBe(before);
+    expect(
+      (await p.cancelMandate(m.mandateId, "closed", auth("apr_can_0020"), "mandate-can-0003"))
+        .state,
+    ).toBe("cancelled");
+    expect(approvals.isConsumed("apr_can_0020")).toBe(true);
   });
 });

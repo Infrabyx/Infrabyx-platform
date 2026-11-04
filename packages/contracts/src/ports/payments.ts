@@ -130,6 +130,47 @@ export const MandateRegistration = z
   .refine((m) => m.channel !== "PHYSICAL_NACH" || m.formRef, "physical NACH needs the signed form")
   .refine((m) => !m.endDate || m.endDate > m.startDate, "the end date is after the start date");
 
+/**
+ * The one approval action for mandates (owner answer #100's gap, 4 Nov 2026; R1-D-66): register,
+ * amend and cancel each need an approved maker-checker request on `payments.mandate.change` whose
+ * payload is the `MandateApprovalSubject`. The mandate adapter verifies it against the approvals
+ * engine before any vendor call and consumes it once; the product's own maker-checker still runs
+ * first (defence in depth).
+ */
+export const MANDATE_APPROVAL_ACTION = "payments.mandate.change";
+/** The lowest risk class a mandate approval may carry (money movement: dual control, IPB-02). */
+export const MANDATE_APPROVAL_MIN_RISK = "R3";
+
+/** What a mandate approval allows: one operation on one mandate for one ceiling in paise. */
+export const MandateApprovalSubject = z
+  .object({
+    operation: internal(z.enum(["register", "amend", "cancel"])),
+    /**
+     * Register: the registration's idempotency key (the mandate has no vendor id yet). Amend and
+     * cancel: the vendor's mandate id.
+     */
+    mandate: internal(z.string().min(3).max(128)),
+    /** The ceiling in paise: the new one to register or amend to, the current one to cancel. */
+    maxAmountMinor: regulated(AmountMinor),
+  })
+  .strict();
+export type MandateApprovalSubject = z.infer<typeof MandateApprovalSubject>;
+
+/**
+ * The approvals engine's side of a mandate call (`ApprovalsEngine.mandateVerifier` in
+ * `@infrabyx/tenancy`). `consume` refuses unless the request is on `MANDATE_APPROVAL_ACTION`,
+ * approved and past its delay, not yet consumed, in the same tenant, and its subject equals
+ * `subject` exactly; then it marks the request executed (consumed) in the same transaction and
+ * ledgers it. A refusal never reaches the vendor.
+ */
+export interface MandateApprovalVerifier {
+  consume(input: {
+    tenantId: string;
+    approvalRef: string;
+    subject: MandateApprovalSubject;
+  }): Promise<void>;
+}
+
 export type MandateState =
   | "initiated"
   | "pending_customer"

@@ -19,3 +19,11 @@ LawDocsComply has raised no platform request yet. Its repository is at Phase 0: 
 ## 3. Raising requests
 
 Record anything missing in your `docs/platform-requests.md`, with the shim you use meanwhile, as Finbyx and Udofin do. The platform works only on raised requests and security updates (maintenance mode).
+
+## 4. Wave 1 (the release after version PR #204: `tenancy` 1.10.0, `connectors` 1.8.0, `contracts` 1.16.0, `config` 1.9.0, `testing` 1.8.0)
+
+What LawDocsComply removes once the wave 1 release is published (R1-plan M37, M38; R1-D-67, R1-D-68). Move every `@infrabyx/*` dependency to that release together and run `infrabyx-migrate --require-all` (wave 1 adds no migration).
+
+1. **PR-LDC-12, tenant creation (guide §7y).** Replace the tests' direct `insert into tenancy.tenant` rows and the local provisioning gap with `TenantBootstrap.bootstrap(platformCtx, { tenantId, product: "LDC", name, settings?, onCreated? })`. Pass `SettingsService` for initial tenant settings, and write your own first rows in `onCreated`. It is refused in `prod`, `dr` and `pre-prod`. **Shim removed:** the direct tenant inserts in tests and Compose.
+2. **PR-LDC-11, the Operations Hub adapter (guide §7z).** Replace your inbox `TenantProvisioned` consumer and `TrialService.provisionIn` with `OperationsHubProvisioning` from `@infrabyx/connectors/provisioning`. Call `receive(event, jws)` from the webhook route and `drain()` from the worker. Move what `provisionIn` wrote into `onProvisioned(tx, tenant)`. Keep reporting `READY` by `PUT /v1/provisioning-requests/{id}`. **Shim removed:** the inbox consumer and `provisionIn`. **Kept:** your outbox `ProvisioningRequested`, until PR-040 (Ecosystem Spec v1.3) is signed off (OWNER-QUESTIONS #105). The platform then adds the request half and `ProvisioningFailed`.
+3. **Mark met** PR-LDC-11 (the consumer half) and PR-LDC-12 in your `docs/platform-requests.md`. PR-LDC-01 is answered with no change: KYC and KYB go through `digio-kyc` and `idfy-kyc`, and DigiLocker through `digio-kyc`. PR-LDC-04 and PR-LDC-06 are planned for wave 4 and after it (M48, M49). PR-LDC-08 (a) and (b) are planned as tenant-consented support access (M50).

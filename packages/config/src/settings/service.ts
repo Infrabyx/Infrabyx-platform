@@ -120,6 +120,39 @@ export class SettingsService {
     );
   }
 
+  /**
+   * A new tenant's initial tenant-tier value, inside `TenantBootstrap`'s transaction (`@infrabyx/
+   * tenancy`; PR-LDC-12, R1-D-67): the same validation, tighten check, ledger entry and event as
+   * `set`. Only in the platform context of the tenant being created (`tx.ctx.scope` platform, its
+   * `tenantId` the new tenant), and refused for a locked setting, one not settable at TENANT, and
+   * one whose changes need maker-checker (set it through `set` once the tenant exists).
+   */
+  async setInitial(tx: Tx, key: string, value: unknown): Promise<number> {
+    const def = this.registry.require(key);
+    const ctx = tx.ctx;
+    if (ctx.scope !== "platform")
+      throw new IpbError("IPB-UX-011", {
+        detail: `${key}: initial values are written only while a tenant is created`,
+        meta: { key },
+      });
+    if (def.locked)
+      throw new IpbError("IPB-SEC-020", { detail: `${key} is platform-locked`, meta: { key } });
+    if (!tierAllowed(def, "TENANT"))
+      throw new IpbError("IPB-UX-008", {
+        detail: `${key} cannot be set at TENANT`,
+        meta: { key, tier: "TENANT" },
+      });
+    if (def.mc)
+      throw new IpbError("IPB-UX-008", {
+        detail: `${key} changes under maker-checker; set it after the tenant exists`,
+        meta: { key, tier: "TENANT" },
+      });
+    assertValid(def, value);
+    const target: SettingScopeRef = { tier: "TENANT", scopeId: ctx.tenantId };
+    await this.assertTighten(tx, ctx, def, target, value);
+    return this.write(tx, ctx, def, target, value, null);
+  }
+
   /** Executor for an approved change, called by the approvals engine inside its transaction. */
   async applyApproved(tx: Tx, payload: SettingChangePayload, requestId: string): Promise<number> {
     const def = this.registry.require(payload.key);
