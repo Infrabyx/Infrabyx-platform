@@ -6,20 +6,25 @@
 // - marketing needs a GRANTED consent for the address and purpose (default deny);
 // - the platform suppression list (C-23 keyed hashes) is checked just before each send;
 // - an unknown vendor outcome is resent once for `safe` classes and held for a person for `hold`
-//   classes (owner, PL2-D-65), never resent automatically.
+//   classes (owner, PL2-D-65), never resent automatically;
+// - in a sandbox tenant (`tx.ctx.sandbox`, set by the kernel; PR-LDC-29, R1-D-87) every delivery
+//   that would leave the platform is recorded as `sandboxed` and never handed to an adapter, for
+//   immediate sends, one-time codes, digests and `dispatchDue` alike; in-app messages, which stay
+//   in the platform, are still written. When the kernel could not read the flag, nothing is sent.
 // Callers pass principal references only; addresses come from the product's `ContactResolver`
 // and are never stored, logged or put on a queue.
 import { AsyncLocalStorage } from "node:async_hooks";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
-import type {
-  ApprovalGateway,
-  AuditSink,
-  HumanQueue,
-  InboxItemInput,
-  KernelContext,
-  MutationKernel,
-  OutboxWriter,
-  Tx,
+import {
+  isSandboxed,
+  type ApprovalGateway,
+  type AuditSink,
+  type HumanQueue,
+  type InboxItemInput,
+  type KernelContext,
+  type MutationKernel,
+  type OutboxWriter,
+  type Tx,
 } from "@infrabyx/contracts/kernel";
 import {
   NotificationRequest,
@@ -82,6 +87,13 @@ const KIND: Record<"email" | "sms" | "whatsapp", AddressKind> = {
   whatsapp: "phone",
 };
 const PLATFORM_REASONS = new Set(["hard_bounce", "complaint", "invalid"]);
+/**
+ * Whether a delivery on this channel is held back in this transaction's tenant (R1-D-87): every
+ * channel but in-app leaves the platform. `ctx` is a kernel transaction's `tx.ctx`; an unread flag
+ * counts as a sandbox (fail closed).
+ */
+const sandboxes = (ctx: KernelContext, channel: NotifyChannel): boolean =>
+  channel !== "inapp" && isSandboxed(ctx);
 export const SUPPRESSION_LIFT_ACTION = "notify.suppression.lift";
 const UNSUBSCRIBE_TTL_DAYS = 90;
 
@@ -415,7 +427,7 @@ export class NotifyService implements NotifyPort {
             resourceType: "notification",
             resourceId: prior.rows[0].notification_id,
           });
-          return { d: prior.rows[0], replay: true };
+          return { d: prior.rows[0], replay: true, sandbox: sandboxes(tx.ctx, m.channel) };
         }
         const id = newId("ntf");
         await tx.query(
@@ -445,12 +457,14 @@ export class NotifyService implements NotifyPort {
           resourceId: id,
           after: { class: cls.id, recipients: 1, deliveries: { queued: 1 }, one_time_code: true },
         });
-        return { d, replay: false };
+        return { d, replay: false, sandbox: sandboxes(tx.ctx, m.channel) };
       },
       { action: "notify.notification.create" },
     );
     if (res.replay) return res.d.state;
     const d = res.d;
+    // A sandbox tenant: recorded, never sent (R1-D-87).
+    if (res.sandbox) return this.settle(ctx, d, "sandboxed", {});
     if (await this.killed(m.channel))
       return this.settle(ctx, d, "killed", { error: "IPB-NTF-004" });
     const hash = addressHash(this.o.consentKey, KIND[m.channel], m.address);
@@ -486,10 +500,13 @@ export class NotifyService implements NotifyPort {
           d.notification_id,
         ])
       ).rows[0] as NotificationRow;
-      return { d, n };
+      // The kernel's flag for this tenant, never the caller's (R1-D-87).
+      return { d, n, sandbox: sandboxes(tx.ctx, d.channel) };
     });
     if (!loaded) return null;
-    const { d, n } = loaded;
+    const { d, n, sandbox } = loaded;
+    // A sandbox tenant: recorded and ledgered, never handed to an adapter (R1-D-87).
+    if (sandbox) return this.settle(ctx, d, "sandboxed", {});
     const cls = this.o.catalogue.get(n.class_id);
     if (await this.killed(d.channel))
       return this.settle(ctx, d, "killed", { error: "IPB-NTF-004" });
@@ -972,22 +989,25 @@ export class NotifyService implements NotifyPort {
             plan: [{ ref: g.ref, channel: g.channel, state: "queued", sendAfter: this.now() }],
           },
         );
+        // In a sandbox tenant the digest itself is `sandboxed` when delivered; so are its entries.
+        const sandboxed = sandboxes(tx.ctx, g.channel);
         await tx.query(
-          "update notify.delivery set state = 'sent', updated_at = now() where id = any($1::text[]) and state = 'digested'",
-          [g.ids],
+          "update notify.delivery set state = $2, updated_at = now() where id = any($1::text[]) and state = 'digested'",
+          [g.ids, sandboxed ? "sandboxed" : "sent"],
         );
         await this.o.audit.record(tx, {
           action: "notify.digest.send",
           resourceType: "notification",
           resourceId: n.result.notificationId,
-          after: { entries: g.ids.length, channel: g.channel },
+          after: { entries: g.ids.length, channel: g.channel, ...(sandboxed ? { sandboxed } : {}) },
         });
-        await this.emit(tx, "NotificationDigestSent", {
-          user_id: g.ref,
-          channel: g.channel,
-          entry_count: g.ids.length,
-          digest_date: day,
-        });
+        if (!sandboxed)
+          await this.emit(tx, "NotificationDigestSent", {
+            user_id: g.ref,
+            channel: g.channel,
+            entry_count: g.ids.length,
+            digest_date: day,
+          });
         return n;
       },
       { action: "notify.digest.send" },

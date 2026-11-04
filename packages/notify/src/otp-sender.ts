@@ -2,7 +2,7 @@
 // `CustomerOtpSender` the IDENTITY customer adapters call. Each code goes out at once through
 // `NotifyService.sendOneTimeCode` on the product's security class for the channel; the code and the
 // address are never stored. A delivery that is not sent (killed channel, suppressed address, vendor
-// failure) is refused with IPB-NTF-004 (kill switch) or IPB-NTF-003, so the customer sees that no code is on its way.
+// failure, a sandbox tenant's `sandboxed` delivery, R1-D-87) is refused with IPB-NTF-004 (kill switch) or IPB-NTF-003, so the customer sees that no code is on its way.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { CustomerOtpChannel, CustomerOtpSender } from "@infrabyx/contracts/ports";
