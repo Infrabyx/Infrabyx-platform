@@ -209,7 +209,10 @@ export class PgConsentLedger implements ConsentPort {
              left join consent.purpose_notice n on n.id = r.notice_id
             where r.tenant_id = $1 and r.subject_ref = $2
             order by r.purpose, r.recorded_at desc, r.id desc)
-         select * from ledger union all select * from purposes order by purpose`,
+         -- Code-point order (collate "C"), as the port and the fake give it, whatever the
+         -- database's collation (PostgreSQL 18 in CI sorts "ldc." before "LEAD_"; R1-D-72).
+         select * from (select * from ledger union all select * from purposes) u
+          order by u.purpose collate "C"`,
         [tx.ctx.tenantId, principalRef, PLATFORM_TENANT_ID],
       );
       return r.rows.map((x) => ({
