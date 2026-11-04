@@ -4,7 +4,9 @@
 // unless the person has an active relationship. The product reports interactions and relationships;
 // a PLT_LEGAL_REVIEWER places legal holds, which stop every consent-record deletion for the person.
 // Subjects are named as in the ledger: the `principal_ref` (`form:<email>` for the website forms) or
-// `cid:<cid>` for a cookie-only subject.
+// `cid:<cid>` for a cookie-only subject. The product also reports when a relationship ends
+// (`endRelationship`), without which #95 never purges the person's purpose-consent records; the
+// same legal hold stops that purge too (OWNER-QUESTIONS #95; R1-plan M41; R1-D-72).
 import { IpbError } from "@infrabyx/contracts/errors";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
@@ -17,6 +19,8 @@ export interface SubjectStatus {
   lastInteractionAt: Date | null;
   activeRelationship: boolean;
   legalHold: boolean;
+  /** When the product reported the relationship ended (#95), or null while it has not. */
+  relationshipEndedAt: Date | null;
 }
 
 const SUBJECT = /^(?:cid:[A-Za-z0-9_-]{16,64}|[^\s]{3,120})$/;
@@ -39,16 +43,28 @@ export class ConsentSubjects {
   private async upsert(
     tx: Tx,
     ref: string,
-    set: { last?: Date; active?: boolean; hold?: { on: boolean; reason: string | null } },
+    set: {
+      last?: Date;
+      active?: boolean;
+      hold?: { on: boolean; reason: string | null };
+      /** The relationship ended at this time (#95); only a later date moves it. */
+      ended?: Date;
+    },
   ): Promise<void> {
+    // An active relationship has not ended, so `active: true` clears the end (#95: that only ever
+    // lengthens retention). `active: false` alone records no end: only `endRelationship` does.
     await tx.query(
-      `insert into consent.subject_status (tenant_id, subject_ref, last_interaction_at, active_relationship, legal_hold, hold_reason)
-       values ($1, $2, $3, coalesce($4, false), coalesce($5, false), $6)
+      `insert into consent.subject_status (tenant_id, subject_ref, last_interaction_at, active_relationship, legal_hold, hold_reason, relationship_ended_at)
+       values ($1, $2, $3, coalesce($4, false), coalesce($5, false), $6, $7)
        on conflict (tenant_id, subject_ref) do update set
          last_interaction_at = greatest(consent.subject_status.last_interaction_at, excluded.last_interaction_at),
          active_relationship = coalesce($4, consent.subject_status.active_relationship),
          legal_hold = coalesce($5, consent.subject_status.legal_hold),
          hold_reason = case when $5 is null then consent.subject_status.hold_reason else $6 end,
+         relationship_ended_at = case
+           when $4 is true then null
+           when $7::timestamptz is null then consent.subject_status.relationship_ended_at
+           else greatest(consent.subject_status.relationship_ended_at, $7::timestamptz) end,
          updated_at = now()`,
       [
         tx.ctx.tenantId,
@@ -57,6 +73,7 @@ export class ConsentSubjects {
         set.active ?? null,
         set.hold?.on ?? null,
         set.hold?.on ? set.hold.reason : null,
+        set.ended ?? null,
       ],
     );
   }
@@ -96,6 +113,33 @@ export class ConsentSubjects {
         });
       },
       { action: "consent.subject.relationship" },
+    );
+  }
+
+  /**
+   * The product reports that the person's relationship ended (a loan closed, an account closed;
+   * OWNER-QUESTIONS #95, R1-D-72). Their purpose-consent records and notice versions are then kept
+   * 8 years from that time (or from a later withdrawal of the purpose, whichever is later) and
+   * purged by `ConsentPurge.sweepPurposes`, unless held. Until a product calls this, the
+   * relationship has not ended and none of the person's purpose-consent records is ever purged,
+   * withdrawn or not. A later `setRelationship(…, true)` clears the end; only a later end moves it.
+   */
+  async endRelationship(ctx: KernelContext, subjectRef: string, at: Date = this.now()) {
+    const ref = checkRef(subjectRef);
+    if (at.getTime() > this.now().getTime() + 60_000)
+      throw new IpbError("IPB-CMS-001", { detail: "a relationship cannot end in the future" });
+    await this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        await this.upsert(tx, ref, { active: false, ended: at, last: this.now() });
+        await this.o.audit.record(tx, {
+          action: "consent.subject.relationship_end",
+          resourceType: "consent_subject",
+          resourceId: "subject",
+          after: { endedAt: at.toISOString() },
+        });
+      },
+      { action: "consent.subject.relationship_end" },
     );
   }
 
@@ -142,8 +186,9 @@ export class ConsentSubjects {
         last_interaction_at: Date | null;
         active_relationship: boolean;
         legal_hold: boolean;
+        relationship_ended_at: Date | null;
       }>(
-        "select last_interaction_at, active_relationship, legal_hold from consent.subject_status where subject_ref = $1",
+        "select last_interaction_at, active_relationship, legal_hold, relationship_ended_at from consent.subject_status where subject_ref = $1",
         [ref],
       );
       const x = r.rows[0];
@@ -153,6 +198,7 @@ export class ConsentSubjects {
             lastInteractionAt: x.last_interaction_at,
             activeRelationship: x.active_relationship,
             legalHold: x.legal_hold,
+            relationshipEndedAt: x.relationship_ended_at,
           }
         : null;
     });

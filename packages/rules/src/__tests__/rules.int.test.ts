@@ -134,6 +134,26 @@ describe("rule sets: drafts, publish at R4, immutability (PL3 plan §4.4)", () =
       code: "IPB-RULE-001",
       meta: { row: "x", reason: "cel_unsupported" },
     });
+    // A matches pattern outside the linear-time subset is refused before it can be submitted
+    // for publication (PR-LDC-13; R1-D-71); one inside it is saved.
+    const redos = nba({
+      rows: [{ id: "y", when: 'stage.matches(r"(a+)+$")', then: {}, verify: false }],
+    });
+    await expect(svc.saveDraft(maker, ruleSetId, redos)).rejects.toMatchObject({
+      code: "IPB-RULE-001",
+      meta: { row: "y", reason: "cel_pattern" },
+    });
+    const linear = nba({
+      rows: [
+        {
+          id: "z",
+          when: 'stage.matches(r"^under") && stage.contains("writ")',
+          then: {},
+          verify: false,
+        },
+      ],
+    });
+    await expect(svc.saveDraft(maker, ruleSetId, linear)).resolves.toMatchObject({ version: 1 });
     // The set is INTERNAL, the table has a CONFIDENTIAL input.
     await expect(svc.saveDraft(maker, internal.ruleSetId, nba())).rejects.toMatchObject({
       code: "IPB-RULE-001",

@@ -8,10 +8,11 @@ import { ZenRuleEngine } from "./zen.js";
 import type { InProcessRuleEngine } from "./table.js";
 
 export * from "./cel.js";
+export * from "./pattern.js";
 export * from "./table.js";
 export { JsonRulesEngine } from "./json-rules.js";
 export { MemoryRuleEngine } from "./memory.js";
-export { ZenRuleEngine, toJdm, zenExpr } from "./zen.js";
+export { ZenRuleEngine, toJdm, zenExpr, zenMatchInputs } from "./zen.js";
 
 export const RULE_ENGINES = ["zen", "json-rules", "memory"] as const;
 export type RuleEngineName = (typeof RULE_ENGINES)[number];

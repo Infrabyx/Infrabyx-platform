@@ -83,11 +83,38 @@ export interface ConsentState {
   recordedAt: string;
 }
 
+/**
+ * The latest consent record for one purpose of one principal (PR-LDC-14; #95; R1-plan M41;
+ * R1-D-72). `purpose` is an Ecosystem purpose code from a ledger record (`LEAD_CONTACT`, …) or a
+ * product purpose from the purpose-consent ledger (`ldc.account.terms`, …).
+ */
+export interface PrincipalPurposeConsent {
+  purpose: string;
+  /** False when the latest record is a withdrawal. A ledger record names granted purposes only. */
+  granted: boolean;
+  /** `cns_<ULID>` for a ledger record, `cpr_<ULID>` for a purpose-consent record. */
+  receiptId: string;
+  recordedAt: string;
+  /** What was shown: `<textKey>@<textVersion>` or `<noticeId>@<version>`; null for a withdrawal. */
+  shown: string | null;
+  /** SHA-256 of the notice shown, when the record keeps it. */
+  noticeSha256: string | null;
+  /** True when the notice shown is a platform-tier notice (drafted by PLT_DPO, approved by PLT_LEGAL_REVIEWER). */
+  platformNotice: boolean;
+}
+
 /** The consent ledger (Ecosystem Part 6): records append, never overwrite (IPB-04-78). */
 export interface ConsentPort extends Port {
   recordConsent(input: ConsentRecordInput, call?: PortCall): Promise<ConsentReceipt>;
   /** The latest cookie choice for an anonymous id, or null. */
   getConsent(cid: string, call?: PortCall): Promise<ConsentState | null>;
+  /**
+   * The latest record per purpose for a principal reference, in the caller's tenant only (its RLS
+   * applies; it never reads another tenant), sorted by purpose (PR-LDC-14; R1-D-72). Optional so a
+   * product's own fake still compiles; every platform adapter provides it or declares it
+   * `unsupported` (IPB-PORT-001).
+   */
+  latestByPrincipal?(principalRef: string, call?: PortCall): Promise<PrincipalPurposeConsent[]>;
 }
 
 /* --------------------------------------------------------------------- CRM, HR (IPB-04-53, 67) */

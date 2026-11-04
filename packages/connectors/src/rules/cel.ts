@@ -2,19 +2,29 @@
 // row's `when`, and the AST is lowered to a small condition IR that every engine adapter compiles.
 // The subset is deliberately narrow so `zen`, `json-rules` and the memory engine always run the
 // same rows: and, or, not; a declared input compared with a literal (either side); an input `in`
-// a literal list; a literal `in` a list input; a bare boolean input; and a constant. Anything
-// else is refused when the draft is validated (`RuleCompileError`, surfaced as IPB-RULE-001).
+// a literal list; a literal `in` a list input; a bare boolean input; a constant; and the string
+// functions `startsWith`, `endsWith`, `contains` (a string input as receiver, a string literal or
+// another string input as argument) and `matches` (a string literal pattern in the linear-time
+// subset of `pattern.ts`; PR-LDC-13, R1-plan M40, R1-D-71). Anything else is refused when the
+// draft is validated (`RuleCompileError`, surfaced as IPB-RULE-001).
 import { Environment, type ASTNode } from "@marcbachmann/cel-js";
 import type { CelResult, RuleField } from "@infrabyx/contracts/ports";
+import { MAX_MATCH_INPUT, patternRefusal } from "./pattern.js";
 
 export type Literal = string | number | boolean;
 export type CmpOp = "==" | "!=" | "<" | "<=" | ">" | ">=";
+/** CEL string functions with a string argument (PR-LDC-13); `matches` has its own node. */
+export type StrFn = "startsWith" | "endsWith" | "contains";
+/** The argument of a string function: a string literal or another string input. */
+export type StrArg = { value: string } | { field: string };
 export type Cond =
   | { k: "and" | "or"; c: Cond[] }
   | { k: "not"; c: Cond }
   | { k: "cmp"; field: string; op: CmpOp; value: Literal }
   | { k: "in"; field: string; values: Literal[] }
   | { k: "has"; field: string; value: Literal }
+  | { k: "str"; fn: StrFn; field: string; arg: StrArg }
+  | { k: "matches"; field: string; pattern: string }
   | { k: "const"; value: boolean };
 
 /** Structural limits (PL3-D-15); `maxAstNodes` is `rules.cel.max_cost`. */
@@ -61,9 +71,17 @@ const CEL_TYPE: Record<RuleField["type"], string> = {
 export const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 /** Literal numbers every engine prints and parses identically (no exponent form). */
 const PLAIN_NUMBER_RE = /^-?\d+(\.\d+)?$/;
-/** String literals: no quote, backslash or control characters, so no engine needs escapes. */
+/** A lone surrogate: ZEN reads it as U+FFFD, JavaScript as itself, so engines would disagree. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
+/** Well-formed UTF-16 (no lone surrogate); rule inputs and literals must be (PR-LDC-13). */
+export const wellFormed = (s: string): boolean => !LONE_SURROGATE.test(s);
+/**
+ * String literals: no quote, backslash or control characters, so no engine needs escapes; and
+ * well-formed UTF-16.
+ */
 const plainString = (v: string): boolean =>
   v.length <= 1024 &&
+  wellFormed(v) &&
   ![...v].some((ch) => ch === '"' || ch === "\\" || ch < " " || ch === "\u007f");
 
 export class RuleCompileError extends Error {
@@ -153,6 +171,8 @@ function lower(rowId: string, n: ASTNode, fields: ReadonlyMap<string, RuleField>
     }
     case "!_":
       return { k: "not", c: lower(rowId, n.args, fields) };
+    case "rcall":
+      return lowerStringCall(rowId, n.args[0], n.args[1], n.args[2], fields);
     case "value":
       if (typeof n.args === "boolean") return { k: "const", value: n.args };
       return refuse(rowId, "a non-boolean constant is not a condition");
@@ -200,6 +220,79 @@ function lower(rowId: string, n: ASTNode, fields: ReadonlyMap<string, RuleField>
   }
   return refuse(rowId, `operator ${n.op}`);
 }
+
+const STR_FNS: ReadonlySet<string> = new Set<StrFn>(["startsWith", "endsWith", "contains"]);
+
+/**
+ * `s.startsWith(x)`, `s.endsWith(x)`, `s.contains(x)` and `s.matches("re")` (PR-LDC-13; R1-plan
+ * M40; R1-D-71). The receiver is a string input; the type checker has already refused a
+ * non-string receiver or argument (`cel_type`). A `matches` pattern must be a literal in the
+ * linear-time subset (`cel_pattern` otherwise), so it is checked here, when the draft is saved.
+ */
+function lowerStringCall(
+  rowId: string,
+  name: string,
+  recv: ASTNode,
+  argv: readonly ASTNode[],
+  fields: ReadonlyMap<string, RuleField>,
+): Cond {
+  if (name !== "matches" && !STR_FNS.has(name)) return refuse(rowId, `function ${name}`);
+  if (recv.op !== "id") return refuse(rowId, `${name} needs a string input as its receiver`);
+  const f = stringField(rowId, recv.args, fields, name);
+  const [a] = argv;
+  if (argv.length !== 1 || !a) return refuse(rowId, `${name} takes one argument`);
+  if (name === "matches") {
+    if (a.op !== "value" || typeof a.args !== "string")
+      return refuse(rowId, "matches needs a string literal pattern");
+    const why = patternRefusal(a.args);
+    if (why) throw new RuleCompileError(rowId, "cel_pattern", `matches pattern refused: ${why}`);
+    return { k: "matches", field: f.name, pattern: a.args };
+  }
+  const fn = name as StrFn;
+  if (a.op === "id") {
+    const g = stringField(rowId, a.args, fields, name);
+    return { k: "str", fn, field: f.name, arg: { field: g.name } };
+  }
+  const v = literal(rowId, a);
+  if (typeof v !== "string") return refuse(rowId, `${name} needs a string argument`);
+  return { k: "str", fn, field: f.name, arg: { value: v } };
+}
+
+function stringField(
+  rowId: string,
+  name: string,
+  fields: ReadonlyMap<string, RuleField>,
+  fn: string,
+): RuleField {
+  const f = fieldOf(rowId, name, fields);
+  if (f.type !== "string") refuse(rowId, `${fn} takes string inputs; ${f.name} is ${f.type}`);
+  return f;
+}
+
+/** `startsWith`, `endsWith`, `contains` as the IR engines evaluate them (no coercion). */
+export function stringTest(fn: StrFn, s: unknown, arg: unknown): boolean {
+  if (typeof s !== "string" || typeof arg !== "string") throw new TypeError(`${fn} needs strings`);
+  if (fn === "startsWith") return s.startsWith(arg);
+  return fn === "endsWith" ? s.endsWith(arg) : s.includes(arg);
+}
+
+/** Every distinct `matches` node in some conditions, in first-occurrence order. */
+export function matchesConds(conds: readonly Cond[]): { field: string; pattern: string }[] {
+  const out = new Map<string, { field: string; pattern: string }>();
+  const walk = (c: Cond): void => {
+    if (c.k === "and" || c.k === "or") c.c.forEach(walk);
+    else if (c.k === "not") walk(c.c);
+    else if (c.k === "matches") {
+      const key = matchesKey(c.field, c.pattern);
+      if (!out.has(key)) out.set(key, { field: c.field, pattern: c.pattern });
+    }
+  };
+  conds.forEach(walk);
+  return [...out.values()];
+}
+
+/** Map key of one `matches` node (field and pattern). */
+export const matchesKey = (field: string, pattern: string): string => `${field}\u0000${pattern}`;
 
 function fieldOf(rowId: string, name: string, fields: ReadonlyMap<string, RuleField>): RuleField {
   const f = fields.get(name);
@@ -290,6 +383,12 @@ export function evaluateCel(
   }
   const checked = parsed.check();
   if (!checked.valid) return { ok: false, error: "type" };
+  // `matches` here runs on the CEL library's JavaScript RegExp, so its pattern must be a literal in
+  // the linear-time subset ("limit" otherwise), and every string in the input is bounded to
+  // `MAX_MATCH_INPUT` ("eval", fail closed; PR-LDC-13, R1-D-71).
+  const m = matchesUse(parsed.ast);
+  if (m === "refused") return { ok: false, error: "limit" };
+  if (m === "used" && !stringsWithin(input, MAX_MATCH_INPUT)) return { ok: false, error: "eval" };
   try {
     const ctx =
       input && typeof input === "object" && !Array.isArray(input) ? toCelValues(input) : {};
@@ -297,6 +396,53 @@ export function evaluateCel(
   } catch {
     return { ok: false, error: "eval" };
   }
+}
+
+/** Whether an expression calls `matches`, and whether every such call has an accepted pattern. */
+function matchesUse(ast: ASTNode): "none" | "used" | "refused" {
+  let used = false;
+  let bad = false;
+  const visit = (x: unknown, depth: number): void => {
+    if (bad || !x || typeof x !== "object") return;
+    if (depth > 1000) {
+      bad = true;
+      return;
+    }
+    if (Array.isArray(x)) {
+      for (const y of x) visit(y, depth + 1);
+      return;
+    }
+    const node = x as { op?: unknown; args?: unknown };
+    if (typeof node.op !== "string") {
+      for (const y of Object.values(x)) visit(y, depth + 1);
+      return;
+    }
+    if ((node.op === "rcall" || node.op === "call") && Array.isArray(node.args)) {
+      const args = node.args as unknown[];
+      if (args[0] === "matches") {
+        used = true;
+        // Receiver form: [name, receiver, [pattern]]; global form: [name, [text, pattern]].
+        const argv = node.op === "rcall" ? args[2] : args[1];
+        const pat = Array.isArray(argv)
+          ? (argv[argv.length - 1] as ASTNode | undefined)
+          : undefined;
+        if (!pat || pat.op !== "value" || typeof pat.args !== "string" || patternRefusal(pat.args))
+          bad = true;
+      }
+    }
+    visit(node.args, depth + 1);
+  };
+  visit(ast, 0);
+  return bad ? "refused" : used ? "used" : "none";
+}
+
+function stringsWithin(v: unknown, max: number, depth = 0): boolean {
+  if (typeof v === "string") return v.length <= max;
+  if (depth > 100) return false;
+  if (Array.isArray(v)) return v.every((x) => stringsWithin(x, max, depth + 1));
+  if (v && typeof v === "object")
+    return Object.values(v).every((x) => stringsWithin(x, max, depth + 1));
+  return true;
 }
 
 /**

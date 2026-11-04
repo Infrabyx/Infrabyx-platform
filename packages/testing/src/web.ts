@@ -26,7 +26,9 @@ import type {
   MediaPort,
   MediaReencodeRequest,
   MediaRendition,
+  PortCall,
   PortHealth,
+  PrincipalPurposeConsent,
   SupportPort,
   TagManagerPort,
   TicketInput,
@@ -53,16 +55,74 @@ const desc = (port: string, adapter: string): AdapterDescriptor => ({
   maxDataClass: "CONFIDENTIAL",
 });
 
+/** A purpose-consent record the fake holds beside its ledger records (PR-LDC-14; R1-D-72). */
+export interface FakePurposeConsent {
+  tenantId: string;
+  principalRef: string;
+  purpose: string;
+  granted: boolean;
+  /** `<noticeId>@<version>` shown; null for a withdrawal. */
+  shown?: string | null;
+  noticeSha256?: string | null;
+  platformNotice?: boolean;
+}
+
+/** The tenant a fake call runs in when the call names none (the site visitors' tenant). */
+const FAKE_DEFAULT_TENANT = "tnt_platform";
+
 /** In-memory consent ledger: append-only, like the PostgreSQL adapter in `@infrabyx/consent`. */
 export class FakeConsentLedger implements ConsentPort {
   readonly descriptor = desc("CONSENT", "fake");
-  readonly records: (ConsentRecordInput & ConsentReceipt)[] = [];
+  readonly records: (ConsentRecordInput & ConsentReceipt & { tenantId: string })[] = [];
+  /** Purpose-consent records (`PurposeConsents` in `@infrabyx/consent`), added by tests. */
+  readonly purposeRecords: (FakePurposeConsent & ConsentReceipt)[] = [];
   health = up;
-  async recordConsent(input: ConsentRecordInput): Promise<ConsentReceipt> {
+  async recordConsent(input: ConsentRecordInput, call?: PortCall): Promise<ConsentReceipt> {
     const parsed = ConsentRecordSchema.parse(input);
     const receipt = { receiptId: newId("cns"), recordedAt: new Date().toISOString() };
-    this.records.push({ ...parsed, ...receipt });
+    this.records.push({ ...parsed, ...receipt, tenantId: call?.tenantId ?? FAKE_DEFAULT_TENANT });
     return receipt;
+  }
+  /** Add a purpose-consent grant or withdrawal, as `PurposeConsents` would record it. */
+  recordPurposeConsent(r: FakePurposeConsent): ConsentReceipt {
+    const receipt = { receiptId: newId("cpr"), recordedAt: new Date().toISOString() };
+    this.purposeRecords.push({ ...r, ...receipt });
+    return receipt;
+  }
+  /** The latest record per purpose for a principal, in the call's tenant only (R1-D-72). */
+  async latestByPrincipal(
+    principalRef: string,
+    call?: PortCall,
+  ): Promise<PrincipalPurposeConsent[]> {
+    const tenantId = call?.tenantId ?? FAKE_DEFAULT_TENANT;
+    const latest = new Map<string, PrincipalPurposeConsent>();
+    // Records are appended in time order, so the last one seen per purpose is the latest.
+    for (const r of this.records)
+      if (r.tenantId === tenantId && r.principalRef === principalRef)
+        for (const purpose of r.purposes ?? [])
+          latest.set(purpose, {
+            purpose,
+            granted: true,
+            receiptId: r.receiptId,
+            recordedAt: r.recordedAt,
+            shown: `${r.textKey}@${r.textVersion}`,
+            noticeSha256: null,
+            platformNotice: false,
+          });
+    for (const r of this.purposeRecords)
+      if (r.tenantId === tenantId && r.principalRef === principalRef)
+        latest.set(r.purpose, {
+          purpose: r.purpose,
+          granted: r.granted,
+          receiptId: r.receiptId,
+          recordedAt: r.recordedAt,
+          shown: r.granted ? (r.shown ?? null) : null,
+          noticeSha256: r.granted ? (r.noticeSha256 ?? null) : null,
+          platformNotice: r.granted ? (r.platformNotice ?? false) : false,
+        });
+    return [...latest.values()].sort((a, b) =>
+      a.purpose < b.purpose ? -1 : a.purpose > b.purpose ? 1 : 0,
+    );
   }
   async getConsent(cid: string): Promise<ConsentState | null> {
     const last = [...this.records].reverse().find((r) => r.cid === cid && r.choice);
