@@ -1,5 +1,30 @@
 # @infrabyx/connectors
 
+## 1.10.0
+
+### Minor Changes
+
+- c8b8f88: `cibil` maps each account's EMI to `Tradeline.emiPaise` (`cibilEmiPaise`; absent, empty, zero or malformed is `null`). `nesl-dde` maps each signed executant's evidence to `DdeRecord.signers` (`neslSigners`, failing closed on a partial trail) and registers a not-stampable document with NeSL's reason code in place of a stamp reference (`neslNonStampable`, `mapNeslNotStampable`); a key replayed with another stamping is refused. All vendor shapes stub-shaped `[VERIFY]`; both adapters stay off and `unproven` (PR-FBX-35; R1-D-84).
+- c8b8f88: Tenant SSO brokers on `KeycloakIdentity` and `ZitadelIdentity` (PR-LDC-09; R1-D-78), linking only on both: a brokered login reaches only an account the product provisioned in the broker's tenant, and never creates one. Keycloak: realm identity providers built from Keycloak's own `import-config` of the discovery or metadata URL, PKCE S256, signatures validated, `trustEmail` off, owner tenant, verified domains and source URL in `KEYCLOAK_BROKER_KEYS`, and the first-login flow `ipb-broker-link-only` (`KEYCLOAK_BROKER_LINK_FLOW`: detect the existing account, then re-authentication; no account creation, no profile review), which `applyRealm` creates and restores with the new `identityBrokers` realm option, with an `idp` access-token claim and the admin grant `manage-identity-providers`; a session whose broker belongs to another tenant than its account is refused (`IPB-IDN-001` `idp_tenant`). Zitadel: organisation generic OIDC or SAML IdPs with linking only (no account creation), on the login policy while enabled, routed by organisation metadata `ipb.idp.<alias>`; a user's token is refused while the account is linked to another tenant's broker (`idp_tenant`). Both: the client secret resolved through the new `resolveSecret` option (a SECRETS resolver) and never returned; an alias owned by another tenant or configured by hand is refused (`IPB-PORT-004` `alias_taken`), as is a domain already routed (`domain_taken`); discovery maps a verified email domain to its enabled broker (capability `discoverIdentityProvider: emulated`). `applyRealm` takes a `fetchImpl` test option.
+- c8b8f88: Keycloak breached-password check without a third-party call (PR-LDC-04; R1-D-83): `KeycloakRealmSpec.passwordBlacklist` adds Keycloak's `passwordBlacklist(<file>)` policy to the IPB floor (`length(12) and notUsername and notEmail and passwordHistory(5)`), and `KEYCLOAK_PASSWORD_BLACKLIST` (`ipb-common-passwords.txt`) names the list the Keycloak customer image (`infra/keycloak/customer-otp`) now carries: the 10,000 most common passwords of 12 or more characters from SecLists (MIT). `keycloakPasswordPolicy(file?)` returns the policy string and refuses a name that is not a plain file name. Off unless the realm names a list, because Keycloak refuses a realm whose list it does not hold; set `passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST` on realms served by the customer image.
+- c8b8f88: `refreshSession` on `KeycloakIdentity` and `ZitadelIdentity` (PR-LDC-03; R1-D-77). Keycloak refreshes under the realm's rotation (`revokeRefreshToken`, `refreshTokenMaxReuse` 0): a token Keycloak reports as reused (`Stale token`, `Maximum allowed refresh token reuse exceeded`) has its session revoked in the revocation store, then ended at Keycloak. Zitadel rotates every token but reports a spent one only as invalid, so the adapter detects reuse from a `RefreshTokenLedger` of SHA-256 hashes (`MemoryRefreshTokenLedger` by default; option `refreshLedger`; capability `refreshSession.reuseDetection: emulated`), then revokes the session (or the user, when the tokens carry no `sid`) and refuses the family's later tokens. Refresh tokens are never logged or put in an error. `oauthError`, `unverifiedJwtPayload` and `refreshRefused` helpers; a `fetchImpl` test option on both adapters.
+
+### Patch Changes
+
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+  - @infrabyx/tenancy@1.12.0
+  - @infrabyx/contracts@1.19.0
+  - @infrabyx/config@1.10.0
+  - @infrabyx/crypto@1.5.4
+
 ## 1.9.0
 
 ### Minor Changes

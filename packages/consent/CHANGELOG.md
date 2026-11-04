@@ -1,5 +1,24 @@
 # @infrabyx/consent
 
+## 1.2.1
+
+### Patch Changes
+
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+- Updated dependencies [c8b8f88]
+  - @infrabyx/tenancy@1.12.0
+  - @infrabyx/contracts@1.19.0
+  - @infrabyx/config@1.10.0
+  - @infrabyx/crypto@1.5.4
+  - @infrabyx/ui@1.2.7
+
 ## 1.2.0
 
 ### Minor Changes
