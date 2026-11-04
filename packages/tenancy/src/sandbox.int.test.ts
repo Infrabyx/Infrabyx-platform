@@ -112,10 +112,12 @@ describe("R1-D-87 sandbox tenants (PR-LDC-29)", () => {
     expect(await kernel.read(member(liveId), async (tx) => isSandboxed(tx.ctx))).toBe(false);
     // A platform context in a tenant sees that tenant's flag.
     expect(await seen({ ...admin, tenantId: sandboxId, sandbox: false })).toBe(true);
-    // No tenant row: nothing to read, so no flag, and the ports fail closed.
-    const none = await kernel.read(member("tnt_missing", { sandbox: false }), async (tx) => tx.ctx);
-    expect("sandbox" in none).toBe(false);
-    expect(isSandboxed(none)).toBe(true);
+    // No tenant row: never flagged, so not a sandbox, whatever the caller claims.
+    const none = await kernel.read(member("tnt_missing", { sandbox: true }), async (tx) => tx.ctx);
+    expect(none.sandbox).toBe(false);
+    expect(isSandboxed(none)).toBe(false);
+    // A context the kernel never read carries no flag, and the ports treat it as a sandbox.
+    expect(isSandboxed({ ...member(liveId) })).toBe(true);
   });
 
   it("keeps the ambient transaction's flag in a joined mutation", async () => {

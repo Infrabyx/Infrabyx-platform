@@ -637,14 +637,17 @@ export class PgKernel implements MutationKernel {
         };
       }
       // The tenant's sandbox flag, read once per transaction, replaces whatever the caller passed
-      // (R1-D-87). The service readers' and the outbox relay's own roles are not granted the lookup
-      // and never send or call a model: their transactions carry no flag (fail closed).
+      // (R1-D-90). A tenant without a `tenancy.tenant` row was never flagged, so it is not a
+      // sandbox (a production platform tenant may have no row: its mail must still go out). The
+      // service readers' and the outbox relay's own roles are not granted the lookup and never
+      // send or call a model: their transactions carry no flag, which the ports treat as a
+      // sandbox (fail closed).
       let sandbox: boolean | null = null;
       if (role === this.role || role === this.readRole || role === EXTERNAL_DB_ROLE) {
         const sb = await client.query<{ sandbox: boolean | null }>(
           "select tenancy.tenant_sandbox() as sandbox",
         );
-        sandbox = sb.rows[0]?.sandbox ?? null;
+        sandbox = sb.rows[0]?.sandbox ?? false;
       }
       const tx = new PgTx(client, withKernelSandbox(ctx, sandbox), readOnly !== false, guard);
       if (live) bindSupportGrant(tx, live);

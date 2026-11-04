@@ -223,13 +223,34 @@ describe("R1-D-87 NOTIFY in a sandbox tenant (PR-LDC-29)", () => {
     expect(texts.length).toBe(before);
   });
 
-  it("fails closed: a tenant whose flag cannot be read sends nothing", async () => {
+  it("fails closed: a transaction whose flag the kernel did not read sends nothing", async () => {
+    // A kernel that drops the flag stands for a transaction without the lookup.
+    const strip = <T extends { ctx: KernelContext }>(tx: T): T =>
+      new Proxy(tx, {
+        get: (t, p) => {
+          if (p === "ctx") {
+            const c: KernelContext = { ...t.ctx };
+            delete c.sandbox;
+            return c;
+          }
+          const v = Reflect.get(t, p, t) as unknown;
+          return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(t) : v;
+        },
+      });
+    const k = base.kernel;
+    const unread = new NotifyService({
+      ...base,
+      kernel: Object.assign(Object.create(k) as typeof k, {
+        read: ((ctx, fn, o) => k.read(ctx, (tx) => fn(strip(tx)), o)) as typeof k.read,
+        mutate: ((ctx, fn, o) => k.mutate(ctx, (tx) => fn(strip(tx)), o)) as typeof k.mutate,
+      }),
+    });
     const before = emails.length;
-    const r = await svc.send(
-      admin("tnt_ghost", { sandbox: false }),
-      req("approval.requested", "usr_c", "ghost-approval-1"),
+    const r = await unread.send(
+      admin(LIVE),
+      req("approval.requested", "usr_c", "unread-approval-1"),
     );
-    expect(await states("tnt_ghost", r.notificationId)).toEqual({
+    expect(await states(LIVE, r.notificationId)).toEqual({
       inapp: "delivered",
       email: "sandboxed",
     });
