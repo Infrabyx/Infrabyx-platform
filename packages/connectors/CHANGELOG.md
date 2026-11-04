@@ -1,5 +1,23 @@
 # @infrabyx/connectors
 
+## 1.9.0
+
+### Minor Changes
+
+- 9c368c7: CEL string functions in every RULES engine: `s.startsWith(x)`, `s.endsWith(x)`, `s.contains(x)` (a string literal or another string input) and `s.matches("re")`, an unanchored search whose pattern is a literal in a linear-time subset checked when the draft is compiled (`cel_pattern`; at most 256 characters; no back-references, look-around, possessive or nested quantifiers); `zen` and `json-rules` search with `re2js` 2.8.8. String inputs must be well-formed UTF-16 and at most 4 096 characters; `evaluateCel` refuses a `matches` outside the subset (PR-LDC-13; R1-D-71).
+- 9c368c7: The Operations Hub provisioning adapter's request half and failure path (Ecosystem Spec v1.3; PR-LDC-11, M38; R1-D-70): `request()` writes `ProvisioningRequested` to the product's outbox, idempotent on the request id; `signForDelivery()` signs it at delivery; `receive()` and `drain()` take `ProvisioningFailed` once per request (one outcome per request), refuse personal data in `detail`, and hand it to `onFailed` with the 30-day purge deadline.
+
+### Patch Changes
+
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+- Updated dependencies [9c368c7]
+  - @infrabyx/tenancy@1.11.0
+  - @infrabyx/contracts@1.18.0
+  - @infrabyx/config@1.9.2
+  - @infrabyx/crypto@1.5.3
+
 ## 1.8.1
 
 ### Patch Changes
