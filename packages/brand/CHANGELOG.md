@@ -1,5 +1,22 @@
 # @infrabyx/brand
 
+## 1.1.0
+
+### Minor Changes
+
+- 1dda4b2: `TenantBrandLayers` (R1-plan M57; PR-LDC-26; R1-D-90): a tenant layer over the product's pack (colour tokens the pack defines, a sanitised SVG logo and favicon, a letterhead asset, an email identity on a verified domain, a domain, a plain-text login message), never the legal entity or terminology. `propose` and `revert` raise a `brand.tenant_layer.change` R3 approval (ORG_ADMIN or ORG_OWNER make, the default tenant checkers check); the executor runs every guard again (contrast on the resulting colours, SVG sanitiser, verified email domain, host uniqueness across pack hosts and tenant domains) and applies the version with an audit ledger entry in the same transaction. `resolveForTenant` and `resolveHost` return the pack with the layer applied, re-running the contrast guard (`tenant_colours_dropped` when a pack change makes the layer's colours fail). `BrandStudio.resolve` now resolves a verified tenant domain to its base pack and names the tenant (`HostResolution.tenantId`), and pack saves refuse a tenant's domain (`IPB-BRD-002`). Migration `brand/0002` adds `brand.tenant_layer_version` and `brand.tenant_host` (expand-only, RLS forced); apply it before upgrading, as `BrandStudio.resolve` reads the new table.
+
+### Patch Changes
+
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+  - @infrabyx/tenancy@1.14.0
+  - @infrabyx/config@1.11.0
+  - @infrabyx/contracts@1.21.0
+  - @infrabyx/crypto@1.5.6
+  - @infrabyx/ui@1.2.9
+
 ## 1.0.27
 
 ### Patch Changes

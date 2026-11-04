@@ -1,5 +1,21 @@
 # @infrabyx/connectors
 
+## 1.12.0
+
+### Minor Changes
+
+- 1dda4b2: EMAIL (R1-plan M58; R1-D-90): `ses` and `brevo` send `EmailMessage.content` (a tenant's rendered subject, plain text and optional HTML) in place of the vendor template, as SES simple content and as Brevo's `subject`, `textContent` and `htmlContent` (a text-only message gets its text escaped as the HTML body), and declare the capability `content: "native"`.
+
+### Patch Changes
+
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+  - @infrabyx/tenancy@1.14.0
+  - @infrabyx/config@1.11.0
+  - @infrabyx/contracts@1.21.0
+  - @infrabyx/crypto@1.5.6
+
 ## 1.11.0
 
 ### Minor Changes

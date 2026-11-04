@@ -1,5 +1,44 @@
 # @infrabyx/notify
 
+## 1.3.0
+
+### Minor Changes
+
+- 1dda4b2: Tenant notification templates (LawDocsComply PR-LDC-27; R1-plan M58; R1-D-90). `TenantTemplateStore` keeps versioned tenant overrides per class, channel and locale in `notify.tenant_template` (migration `notify/0004`, expand-only, forced RLS) behind wave 2's `TemplateResolver`: pass `store.resolver.resolve` as `templates`. An email override is a subject, a required plain-text part and an optional HTML part with `{{var}}` placeholders, linted by `lintEmailTemplate` (the class's variable whitelist, `templateVariables`; field limits; a strict HTML allow-list with no script, style, iframe, form or embedded content, no event handlers, https, mailto and tel links only, no remote images and no variables in attributes) and rendered by `renderEmailTemplate` with every HTML value escaped; security classes keep the catalogue's email. SMS and WhatsApp overrides only select a template the product's `TemplateRegistry` has registered for the tenant (DLT template with its sender and entity ids; an approved WhatsApp template by name and language), never free text, and a selection no longer registered fails the delivery closed. Every change is the R3 maker-checker request `notify.template.change` (`requestChange`, tenant owner, admin or maker; `registerApprovals`, tenant checkers only), whose executor checks the content digest and the base version, supersedes the previous version and ledgers `notify.template.activate` in the approving transaction; `history`, `get` and `resolvedOf` read the versions. `NotifyService.previewTemplate(ctx, class, channel, locale, vars)` returns the message delivery would hand the port, built by the same code. The email channel sends tenant content as `EmailMessage.content` and refuses an adapter without the `content` capability. Catalogue classes may declare `variables`; the platform classes now do where their variables are known, and the catalogue lint checks them against the SMS and WhatsApp template variables.
+- 1dda4b2: Sandbox tenants (LawDocsComply PR-LDC-29; R1-plan M60; R1-D-87), failing closed.
+
+  - `contracts`: `KernelContext.sandbox`, set by the kernel only and never trusted from a caller, and
+    `isSandboxed(ctx)`, true unless the kernel read the tenant's flag as false; the `sandboxed`
+    delivery state.
+  - `tenancy`: migration 0018 adds `tenancy.tenant.sandbox` (default false), `tenancy.tenant_sandbox()`
+    for the kernel and a trigger that lets only a platform context carrying the action
+    `tenancy.tenant.sandbox.set` change it. `PgKernel` reads the flag once per read and mutate
+    transaction into `tx.ctx.sandbox`, overwriting whatever the caller passed (absent when there is
+    no tenant row). `TenantBootstrap` takes `sandbox`; `TenantSandbox.set` (PLT_SUPER_ADMIN, platform
+    context, a reason) changes it, ledgered in the tenant.
+  - `notify`: migration 0005 widens the delivery state check. In a sandbox tenant every delivery
+    that would leave the platform (email, SMS, WhatsApp, push) is recorded and ledgered as
+    `sandboxed` and never handed to an adapter: immediate sends, `dispatchDue`, digests and one-time
+    codes alike; in-app messages are still written. A tenant whose flag cannot be read sends nothing.
+  - `ai`: in a sandbox tenant the chat and embedding gateways refuse a call whose data class
+    (declared, or raised by the scrubber) is above INTERNAL with `IPB-PORT-003`, recorded on the run
+    (`sandbox_refused`) and ledgered as the other refusals are; PUBLIC and INTERNAL calls proceed.
+
+  Products: run the migrations (`tenancy` 0018, `notify` 0005). Every tenant that sends notifications
+  or calls the AI gateway with data above INTERNAL needs its `tenancy.tenant` row, the platform tenant
+  included: without one the kernel cannot read the flag and the ports fail closed.
+
+### Patch Changes
+
+- 1dda4b2: NOTIFY tags each email `notify_class` with an SES-safe value (the class id with `.` as `-`) in place of `ipb_class`, which the `ses` adapter refused (reserved prefix, dotted value), so emails through `ses` no longer fail with `IPB-PORT-001`.
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+  - @infrabyx/tenancy@1.14.0
+  - @infrabyx/config@1.11.0
+  - @infrabyx/contracts@1.21.0
+  - @infrabyx/crypto@1.5.6
+
 ## 1.2.3
 
 ### Patch Changes

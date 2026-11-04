@@ -1,5 +1,17 @@
 # @infrabyx/a11y
 
+## 1.1.0
+
+### Minor Changes
+
+- 1dda4b2: Form-layout accessibility lint (PR-LDC-24, M56): `lintForm(layout)` checks a declarative form layout (`FormLayoutSchema`: title, headings, groups, help texts and controls in DOM order) for accessible names, visible labels, unique names (allowed only across groups with distinct legends), error-message association, required marking, positive or negative tabindex, heading order, grouped radio and checkbox sets, autocomplete tokens on personal-data inputs and id references, returning findings with a rule id, the WCAG 2.2 success criterion (`FORM_RULES`), severity, subject id and message in a fixed order; `isValidAutocomplete` and `formControlName` are exported, and `@infrabyx/a11y/playwright` adds `axeFormScan(locator)`, which runs axe on the rendered form only and returns the same finding shape. No new dependency.
+
+### Patch Changes
+
+- Updated dependencies [1dda4b2]
+- Updated dependencies [1dda4b2]
+  - @infrabyx/contracts@1.21.0
+
 ## 1.0.20
 
 ### Patch Changes
