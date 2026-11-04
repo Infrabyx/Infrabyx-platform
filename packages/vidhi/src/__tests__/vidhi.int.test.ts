@@ -121,6 +121,11 @@ beforeAll(async () => {
     randomSeed: 20261027,
     runDate: new Date("2026-10-01T00:00:00Z"),
   } as never);
+  // The product tenants these tests run in exist (and are not sandboxes): the AI gateway refuses
+  // data above INTERNAL in a tenant whose sandbox flag the kernel cannot read (R1-D-87).
+  await db.admin.query(
+    "insert into tenancy.tenant (id, product, name) values ('tnt_udf', 'UDF', 'Udf Co'), ('tnt_ld', 'LD', 'Ld Co') on conflict do nothing",
+  );
   approvals = new ApprovalsEngine({
     kernel: db.kernel,
     audit: db.audit,

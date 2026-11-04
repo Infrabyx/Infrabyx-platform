@@ -15,17 +15,43 @@ export function cellText(v: unknown): string {
   return canonicalize(v);
 }
 
+/**
+ * Characters that make a spreadsheet read a text cell as a formula when it starts with one of them
+ * (OWASP "CSV injection"): `=`, `+`, `-`, `@`, tab and carriage return.
+ */
+export const FORMULA_TRIGGERS: readonly string[] = ["=", "+", "-", "@", "\t", "\r"];
+
+/**
+ * Formula-injection neutralisation for text bound for a spreadsheet: text starting with a formula
+ * trigger gets a leading apostrophe, so the program shows it as text and never evaluates it. Other
+ * text is unchanged. `toXlsx` applies it to every string cell; `toCsv` applies it when asked.
+ */
+export function neutraliseFormula(s: string): string {
+  return s.length > 0 && FORMULA_TRIGGERS.includes(s[0] as string) ? `'${s}` : s;
+}
+
 function quote(s: string): string {
   return /[",\r\n]/.test(s) || /^\s|\s$/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+export interface CsvOptions {
+  /**
+   * Neutralise formula injection (`neutraliseFormula`) in the header and every cell. Off by
+   * default, so archive datasets keep the exact values the verifier and JSONL carry; turn it on for
+   * a CSV meant to be opened in a spreadsheet.
+   */
+  neutraliseFormulas?: boolean;
 }
 
 /** CSV with a header row; `columns` gives the order. */
 export function toCsv(
   columns: readonly string[],
   rows: ReadonlyArray<Record<string, unknown>>,
+  o: CsvOptions = {},
 ): Buffer {
-  const lines = [columns.map(quote).join(",")];
-  for (const r of rows) lines.push(columns.map((c) => quote(cellText(r[c]))).join(","));
+  const f = o.neutraliseFormulas ? neutraliseFormula : (s: string) => s;
+  const lines = [columns.map((c) => quote(f(c))).join(",")];
+  for (const r of rows) lines.push(columns.map((c) => quote(f(cellText(r[c])))).join(","));
   return Buffer.from(BOM + lines.join("\r\n") + "\r\n", "utf8");
 }
 

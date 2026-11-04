@@ -3289,6 +3289,24 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "a non-empty subset of the action's allowed checker roles; never widens them"
   },
   {
+    "key": "mc.expiry_hours.{action}",
+    "tier": "TENANT",
+    "type": "int",
+    "default": null,
+    "min": 1,
+    "max": 168,
+    "locked": false,
+    "tighten": "max",
+    "userOverride": false,
+    "change": [
+      "ORG_OWNER"
+    ],
+    "mc": "R4",
+    "pattern": "^mc\\.expiry_hours\\.([a-z0-9_-]+)$",
+    "source": "PL3-D-07; OWNER-QUESTIONS #106; PR-LDC-19",
+    "note": "hours; may only shorten the action's platform expiry (72 h for R4, R5 and financial R3; 7 days otherwise), never below 1 h; a value at or above the platform period changes nothing (OWNER-QUESTIONS #106, R1-D-89)"
+  },
+  {
     "key": "mc.reminder_hours",
     "tier": "TENANT",
     "type": "int",
@@ -7082,6 +7100,7 @@ export type SettingValueMap = {
   [k: `mc.amount_threshold.${string}`]: number | null;
   [k: `mc.dual_checker_above.${string}`]: number | null;
   [k: `mc.checker_roles.${string}`]: string[] | null;
+  [k: `mc.expiry_hours.${string}`]: number | null;
   [k: `ai.routing.policy.${string}.${string}`]: JsonValue | null;
   [k: `ai.cost.feature_monthly_cap.${string}`]: number | null;
   [k: `ai.cost.feature_monthly_token_cap.${string}`]: number | null;

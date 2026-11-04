@@ -14,3 +14,12 @@ export * from "./maps.js";
 export * from "./service.js";
 export * from "./snapshot.js";
 export * from "./zip.js";
+export * from "./docx.js";
+export {
+  OFFICE_DEFAULT_CREATED,
+  OFFICE_DEFAULT_MAX_BYTES,
+  OFFICE_MAX_BYTES_LIMIT,
+  OfficeExportError,
+  type OfficeProperties,
+} from "./ooxml.js";
+export * from "./xlsx.js";

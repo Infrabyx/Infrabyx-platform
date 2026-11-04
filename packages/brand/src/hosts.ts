@@ -6,10 +6,14 @@
 export interface HostMapEntry {
   host: string;
   packId: string;
+  /** Set for a tenant's own domain (the tenant brand layer, brand 0002). */
+  tenantId?: string;
 }
 
 export interface HostResolution {
   packId: string;
+  /** The tenant whose domain the host is; absent for a pack host or the default pack. */
+  tenantId?: string;
   /** True when the default pack was served for a host no pack claims. */
   noindex: boolean;
   /** Security and audit signals for the caller to log (never shown to the visitor). */
@@ -55,5 +59,10 @@ export function resolveHost(
     });
     return { packId: defaultPackId, noindex: true, events };
   }
-  return { packId: hit.packId, noindex: false, events };
+  return {
+    packId: hit.packId,
+    ...(hit.tenantId ? { tenantId: hit.tenantId } : {}),
+    noindex: false,
+    events,
+  };
 }

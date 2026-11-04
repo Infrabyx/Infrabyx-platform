@@ -5,7 +5,9 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { IpbError } from "@infrabyx/contracts/errors";
-import type { Page, Request } from "playwright-core";
+import type { Locator, Page, Request } from "playwright-core";
+import { sortFindings, type FormFinding } from "../form.js";
+import { wcagMapping } from "../mapping.js";
 
 const require = createRequire(import.meta.url);
 let axeSource: string | undefined;
@@ -62,8 +64,7 @@ export async function axeScan(
   page: Page,
   o: ScanOptions & { tags?: readonly string[]; exclude?: readonly string[] } = {},
 ): Promise<GateFinding[]> {
-  axeSource ??= readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
-  if (!(await page.evaluate(() => "axe" in window))) await page.evaluate(axeSource);
+  await injectAxe(page);
   const tags = [...new Set([...DEFAULT_AXE_TAGS, ...(o.tags ?? [])])];
   const violations = await page.evaluate(
     async ({ tags, extra, exclude }) => {
@@ -94,12 +95,80 @@ export async function axeScan(
   }));
 }
 
+async function injectAxe(page: Page): Promise<void> {
+  axeSource ??= readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
+  if (!(await page.evaluate(() => "axe" in window))) await page.evaluate(axeSource);
+}
+
 interface AxeApi {
   getRules(tags: string[]): { ruleId: string }[];
   run(
     context: unknown,
     options: unknown,
-  ): Promise<{ violations: { id: string; help: string; nodes: { target: string[] }[] }[] }>;
+  ): Promise<{
+    violations: { id: string; help: string; tags: string[]; nodes: { target: string[] }[] }[];
+  }>;
+}
+
+/** The WCAG 2.2 criterion of an axe rule: its `wcagNNN` tag, else its `mapping.json` entry. */
+function axeCriterion(rule: string, tags: readonly string[]): string {
+  for (const t of tags) {
+    const m = /^wcag(\d)(\d)(\d+)$/.exec(t);
+    if (m) return `${m[1]}.${m[2]}.${m[3]}`;
+  }
+  const c = wcagMapping().criteria;
+  return (
+    c.find((x) => x.axe_rules.includes(rule))?.sc ??
+    c.find((x) => x.axe_rule_prefix && rule.startsWith(x.axe_rule_prefix))?.sc ??
+    ""
+  );
+}
+
+/** axe rules outside the WCAG tags that `axeFormScan` adds (both are mapped in `mapping.json`). */
+export const FORM_AXE_EXTRA_RULES = ["heading-order", "label-content-name-mismatch"] as const;
+
+/**
+ * axe-core on a rendered form (PR-LDC-24): the `DEFAULT_AXE_TAGS` rules plus
+ * `FORM_AXE_EXTRA_RULES`, run on the locator's element only, returned as `FormFinding`s with
+ * `source: "axe"`: one per violating node, each an error (as in the gate). `subject` is the element
+ * id when axe targets the node by id, else axe's selector; `sc` is the rule's WCAG tag, else its
+ * `mapping.json` criterion (empty only for a rule with neither). The locator must be in the page's
+ * main frame. Findings are ordered by `order` (for example the layout's control ids), then rule.
+ */
+export async function axeFormScan(
+  form: Locator,
+  o: { tags?: readonly string[]; order?: readonly string[] } = {},
+): Promise<FormFinding[]> {
+  await injectAxe(form.page());
+  const tags = [...new Set([...DEFAULT_AXE_TAGS, ...(o.tags ?? [])])];
+  const violations = await form.evaluate(
+    async (el, { tags, extra }) => {
+      const axe = (window as unknown as { axe: AxeApi }).axe;
+      const ids = [...new Set([...axe.getRules(tags).map((r) => r.ruleId), ...extra])];
+      const r = await axe.run(el, {
+        runOnly: { type: "rule", values: ids },
+        resultTypes: ["violations"],
+      });
+      return r.violations.map((v) => ({
+        id: v.id,
+        help: v.help,
+        tags: v.tags,
+        targets: v.nodes.map((n) => n.target.join(" ")),
+      }));
+    },
+    { tags, extra: [...FORM_AXE_EXTRA_RULES] },
+  );
+  const findings: FormFinding[] = violations.flatMap((v) =>
+    v.targets.map((t) => ({
+      rule: v.id,
+      sc: axeCriterion(v.id, v.tags),
+      severity: "error" as const,
+      subject: /^#[A-Za-z][\w-]*$/.test(t) ? t.slice(1) : t,
+      message: v.help,
+      source: "axe" as const,
+    })),
+  );
+  return sortFindings(findings, o.order ?? []);
 }
 
 /** HTML_CodeSniffer with the WCAG2AA standard (the Pa11y engine; #45); zero errors to pass. */

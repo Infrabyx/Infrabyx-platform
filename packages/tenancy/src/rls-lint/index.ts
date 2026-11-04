@@ -44,6 +44,8 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   "tenancy.breakglass_scope",
   // Support access (tenancy/0017, R1-D-76): records a read only under the principal's own grant.
   "tenancy.support_read_record",
+  // Sandbox tenants (tenancy/0018, R1-D-87): the transaction's own tenant's flag, nothing else.
+  "tenancy.tenant_sandbox",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

@@ -30,11 +30,13 @@ export function settingsApprovalPolicy(settings: SettingsReader): {
       if (!ACTION_SEGMENT.test(seg) || ctx.scope === "platform") return {};
       const roles = await read(ctx, `mc.checker_roles.${seg}`);
       const dual = await read(ctx, `mc.dual_checker_above.${seg}`);
+      const expiry = await read(ctx, `mc.expiry_hours.${seg}`);
       return {
         checkerRoles: Array.isArray(roles)
           ? roles.filter((r): r is string => typeof r === "string")
           : null,
         dualCheckerAbove: typeof dual === "number" ? dual : null,
+        expiryHours: typeof expiry === "number" ? expiry : null,
       };
     },
     async reminderHours(ctx) {

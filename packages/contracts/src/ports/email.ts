@@ -6,15 +6,37 @@ import { classed, recipient } from "./payload-class.js";
 
 const internal = <T extends z.ZodType>(s: T): T => classed(s, "INTERNAL");
 
+/**
+ * Content the caller rendered, sent in place of the vendor template (LawDocsComply PR-LDC-27;
+ * R1-D-90): a subject without line breaks, a plain-text part and an optional HTML part. An adapter
+ * that sends it declares the capability `content: "native"`; NOTIFY never hands it to one that
+ * does not, so a tenant's text never silently becomes the vendor's template.
+ */
+export const EmailContent = z
+  .object({
+    subject: z
+      .string()
+      .min(1)
+      .max(200)
+      .regex(/^[^\r\n]*$/),
+    text: z.string().min(1).max(50_000),
+    html: z.string().min(1).max(200_000).optional(),
+  })
+  .strict();
+export type EmailContent = z.infer<typeof EmailContent>;
+
 export const EmailMessage = z.object({
   to: z.array(recipient(z.email())).min(1).max(50),
   cc: z.array(recipient(z.email())).max(50).optional(),
+  /** The logical template; with `content` it only names the message (tags, reports). */
   template: internal(z.string().min(1)),
   vars: internal(z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))),
   /** STORAGE keys of INTERNAL attachments; CONFIDENTIAL documents go as secure links instead. */
   attachments: internal(z.array(z.string()).max(10)).optional(),
   tags: internal(z.record(z.string(), z.string())).optional(),
   brand: internal(z.string()),
+  /** Rendered content sent instead of the vendor template (PR-LDC-27). */
+  content: internal(EmailContent).optional(),
 });
 export type EmailMessage = z.infer<typeof EmailMessage>;
 

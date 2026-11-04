@@ -44,6 +44,11 @@ export interface TenantBootstrapInput {
   orgId?: string;
   planRef?: string;
   brandId?: string;
+  /**
+   * A sandbox tenant (PR-LDC-29; R1-D-87): NOTIFY records and never sends, the AI gateway refuses
+   * data above INTERNAL. Default false. Changed later only through `TenantSandbox.set`.
+   */
+  sandbox?: boolean;
   /** Initial tenant-tier values by settings key; each key must be registered in `packages/config`. */
   settings?: Readonly<Record<string, unknown>>;
   /** The product's own first rows, in the same transaction, after the tenant and its settings. */
@@ -63,6 +68,7 @@ interface TenantRow {
   org_id: string | null;
   plan_ref: string | null;
   brand_id: string | null;
+  sandbox: boolean;
   status: string;
 }
 
@@ -115,6 +121,7 @@ export class TenantBootstrap {
       org_id: input.orgId ?? null,
       plan_ref: input.planRef ?? null,
       brand_id: input.brandId ?? null,
+      sandbox: input.sandbox ?? false,
     };
     // The new tenant's own context, still platform-scoped: the tenant row needs platform scope,
     // and the settings and the ledger entry belong to the new tenant.
@@ -124,8 +131,8 @@ export class TenantBootstrap {
       ctx,
       async (tx) => {
         const inserted = await tx.query(
-          `insert into tenancy.tenant (id, org_id, product, name, residency, brand_id, plan_ref)
-           values ($1, $2, $3, $4, $5, $6, $7) on conflict (id) do nothing`,
+          `insert into tenancy.tenant (id, org_id, product, name, residency, brand_id, plan_ref, sandbox)
+           values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do nothing`,
           [
             input.tenantId,
             want.org_id,
@@ -134,11 +141,12 @@ export class TenantBootstrap {
             want.residency,
             want.brand_id,
             want.plan_ref,
+            want.sandbox,
           ],
         );
         if (!inserted.rowCount) {
           const r = await tx.query<TenantRow>(
-            `select product, name, residency, org_id, plan_ref, brand_id, status
+            `select product, name, residency, org_id, plan_ref, brand_id, sandbox, status
                from tenancy.tenant where id = $1 for update`,
             [input.tenantId],
           );

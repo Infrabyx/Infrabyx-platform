@@ -78,7 +78,8 @@ export class SesEmail implements EmailPort {
     adapter: "ses",
     residency: "IN",
     maxDataClass: "INTERNAL",
-    capabilities: { getStatus: "unsupported" },
+    // `content`: rendered subject and parts sent as SES simple content (PR-LDC-27; R1-D-90).
+    capabilities: { getStatus: "unsupported", content: "native" },
   };
   private readonly client: SESv2Client;
   private readonly certs = new Map<string, Promise<string>>();
@@ -147,28 +148,41 @@ export class SesEmail implements EmailPort {
     const m = EmailMessage.parse(message);
     const b = this.brand(m.brand);
     const files = await loadAttachments(this.descriptor, m.attachments, this.o.storage);
+    const attachments = files.length
+      ? {
+          Attachments: files.map((f) => ({
+            FileName: f.filename,
+            ContentType: f.contentType,
+            RawContent: f.body,
+            ContentDisposition: "ATTACHMENT" as const,
+          })),
+        }
+      : {};
+    const utf8 = (Data: string) => ({ Data, Charset: "UTF-8" });
     const r = await this.client
       .send(
         new SendEmailCommand({
           FromEmailAddress: b.from,
           ...(b.replyTo ? { ReplyToAddresses: [b.replyTo] } : {}),
           Destination: { ToAddresses: m.to, ...(m.cc ? { CcAddresses: m.cc } : {}) },
-          Content: {
-            Template: {
-              TemplateName: m.template,
-              TemplateData: JSON.stringify(m.vars),
-              ...(files.length
-                ? {
-                    Attachments: files.map((f) => ({
-                      FileName: f.filename,
-                      ContentType: f.contentType,
-                      RawContent: f.body,
-                      ContentDisposition: "ATTACHMENT" as const,
-                    })),
-                  }
-                : {}),
-            },
-          },
+          Content: m.content
+            ? {
+                Simple: {
+                  Subject: utf8(m.content.subject),
+                  Body: {
+                    Text: utf8(m.content.text),
+                    ...(m.content.html ? { Html: utf8(m.content.html) } : {}),
+                  },
+                  ...attachments,
+                },
+              }
+            : {
+                Template: {
+                  TemplateName: m.template,
+                  TemplateData: JSON.stringify(m.vars),
+                  ...attachments,
+                },
+              },
           ConfigurationSetName: b.configurationSet,
           EmailTags: this.tags(m, call),
         }),

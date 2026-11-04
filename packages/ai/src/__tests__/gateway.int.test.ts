@@ -575,3 +575,99 @@ describe("runs, metering and caps (IPB-03-22, 03-45, 03-46; no content stored)",
     expect(h.rows).toEqual([{ kind: "approval", ref: "apr_linked", released_at: null }]);
   });
 });
+
+describe("R1-D-87 a sandbox tenant sends nothing above INTERNAL to a model (PR-LDC-29)", () => {
+  const sbx = (extra: Partial<KernelContext> = {}): KernelContext => ({
+    ...withTenant("tnt_sbx", ["ORG_MEMBER"], { principal: { id: "usr_sbx" } }),
+    ...extra,
+  });
+  const calls = () => all.reduce((n, a) => n + a.calls.length, 0);
+  beforeAll(async () => {
+    await db.admin.query(
+      "insert into tenancy.tenant (id, product, name, sandbox) values ('tnt_sbx', 'LDC', 'Sandbox Co', true)",
+    );
+  });
+
+  it("CONFIDENTIAL, REGULATED and SECRET are refused with IPB-PORT-003 and recorded; no model is called", async () => {
+    for (const c of ["CONFIDENTIAL", "REGULATED", "SECRET"] as const)
+      // The caller's context claims a live tenant; the kernel's flag wins.
+      expect(await code(gateway().chat(sbx({ sandbox: false }), req(c)))).toBe("IPB-PORT-003");
+    expect(calls()).toBe(0);
+    const runs = await db.admin.query(
+      "select outcome, error_code, guard_flags, data_class from ai.run where tenant_id = 'tnt_sbx' order by created_at",
+    );
+    expect(runs.rows).toEqual(
+      ["CONFIDENTIAL", "REGULATED", "SECRET"].map((data_class) => ({
+        outcome: "refused",
+        error_code: "IPB-PORT-003",
+        guard_flags: ["sandbox_refused"],
+        data_class,
+      })),
+    );
+    const led = await db.admin.query<{ n: number }>(
+      "select count(*)::int as n from audit.ledger where tenant_id = 'tnt_sbx' and action = 'ai.run'",
+    );
+    expect(led.rows[0]!.n).toBe(3);
+  });
+
+  it("INTERNAL and PUBLIC proceed; INTERNAL raised by personal data in the input is refused", async () => {
+    expect((await gateway().chat(sbx(), req("INTERNAL"))).adapterKey).toBe("bedrock_claude_in");
+    expect((await gateway().chat(sbx(), req("PUBLIC"))).text).toBe("a summary");
+    const before = calls();
+    expect(
+      await code(
+        gateway().chat(
+          sbx(),
+          req("INTERNAL", {
+            messages: [{ role: "user", content: "Write to a.person@example.org" }],
+          }),
+        ),
+      ),
+    ).toBe("IPB-PORT-003");
+    expect(calls()).toBe(before);
+  });
+
+  it("a live tenant is unchanged, even when the caller claims a sandbox", async () => {
+    expect((await gateway().chat({ ...user, sandbox: true }, req("CONFIDENTIAL"))).adapterKey).toBe(
+      "bedrock_claude_in",
+    );
+  });
+
+  it("a tenant without a row is not a sandbox; a transaction whose flag was not read fails closed", async () => {
+    const ghost = withTenant("tnt_ghost", ["ORG_MEMBER"], { principal: { id: "usr_ghost" } });
+    // Never flagged: CONFIDENTIAL proceeds, whatever the caller claims.
+    expect(
+      (await gateway().chat({ ...ghost, sandbox: true }, req("CONFIDENTIAL"))).adapterKey,
+    ).toBe("bedrock_claude_in");
+    // A kernel that drops the flag stands for a transaction without the lookup.
+    const k = db.kernel;
+    const strip = <T extends { ctx: KernelContext }>(tx: T): T =>
+      new Proxy(tx, {
+        get: (t, p) => {
+          if (p === "ctx") {
+            const c: KernelContext = { ...t.ctx };
+            delete c.sandbox;
+            return c;
+          }
+          const v = Reflect.get(t, p, t) as unknown;
+          return typeof v === "function" ? (v as (...a: unknown[]) => unknown).bind(t) : v;
+        },
+      });
+    const unread = new LlmGateway({
+      kernel: Object.assign(Object.create(k) as typeof k, {
+        read: ((ctx, fn, o) => k.read(ctx, (tx) => fn(strip(tx)), o)) as typeof k.read,
+        mutate: ((ctx, fn, o) => k.mutate(ctx, (tx) => fn(strip(tx)), o)) as typeof k.mutate,
+      }),
+      audit: db.audit,
+      product: "REF",
+      settings,
+      registry,
+      prompts,
+      adapters: all,
+      outbox: new PgOutbox(),
+      kill: new KillSwitches(settings, { cacheSeconds: 0 }),
+    });
+    expect(await code(unread.chat(ghost, req("CONFIDENTIAL")))).toBe("IPB-PORT-003");
+    expect((await unread.chat(ghost, req("INTERNAL"))).adapterKey).toBe("bedrock_claude_in");
+  });
+});

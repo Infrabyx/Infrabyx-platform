@@ -8,6 +8,7 @@ export * from "./meter.js";
 export * from "./obs.js";
 export * from "./separation.js";
 export * from "./gateway.js";
+export * from "./sandbox.js";
 export * from "./retention.js";
 export * from "./scrub.js";
 export * from "./guard.js";

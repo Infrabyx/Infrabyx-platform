@@ -7,6 +7,7 @@ import { chromium, type Browser, type Page } from "playwright-core";
 import { IpbError } from "@infrabyx/contracts/errors";
 import {
   assertGate,
+  axeFormScan,
   axeScan,
   focusVisibleCheck,
   htmlcsScan,
@@ -111,6 +112,31 @@ describe.skipIf(!exe)(
         expect(await htmlcsScan(pg)).toEqual([]);
         await pg.close();
       });
+    });
+
+    it("axeFormScan checks only the form and maps violations to form findings (PR-LDC-24)", async () => {
+      const pg = await open(
+        page(
+          `<button type="button"></button>` +
+            `<form id="f" aria-labelledby="fh"><h2 id="fh">Contact</h2>` +
+            `<label for="email">Email</label><input id="email" type="email" autocomplete="email">` +
+            `<input id="q" type="text"><input id="dob" type="text" autocomplete="birthday" aria-label="Date of birth">` +
+            `<button type="submit">Send</button></form>`,
+        ),
+      );
+      const f = await axeFormScan(pg.locator("#f"), { order: ["email", "q", "dob"] });
+      expect(f.map((x) => `${x.rule}:${x.subject}`)).toEqual(["label:q", "autocomplete-valid:dob"]);
+      expect(f[0]).toMatchObject({ sc: "4.1.2", severity: "error", source: "axe" });
+      expect(f[1]).toMatchObject({ sc: "1.3.5" });
+      const clean = await open(
+        page(
+          `<form id="f"><h2>Contact</h2><label for="email">Email</label>` +
+            `<input id="email" type="email" autocomplete="email"><button type="submit">Send</button></form>`,
+        ),
+      );
+      expect(await axeFormScan(clean.locator("#f"))).toEqual([]);
+      await pg.close();
+      await clean.close();
     });
 
     it("HTML_CodeSniffer reports an unlabelled input as an error", async () => {

@@ -10,6 +10,8 @@ export interface SesStubMessage {
   to: string[];
   template?: string;
   templateData?: Record<string, unknown>;
+  /** A simple-content send: the subject and parts as given. */
+  simple?: { subject: string; text?: string; html?: string };
   raw?: Buffer;
   configurationSet?: string;
   tags: Record<string, string>;
@@ -56,12 +58,21 @@ export async function startSesStub(): Promise<SesStub> {
             TemplateData?: string;
             Attachments?: Array<{ FileName: string; ContentType?: string; RawContent: string }>;
           };
+          Simple?: {
+            Subject?: { Data?: string };
+            Body?: { Text?: { Data?: string }; Html?: { Data?: string } };
+            Attachments?: Array<{ FileName: string; ContentType?: string; RawContent: string }>;
+          };
           Raw?: { Data: string };
         };
         ConfigurationSetName?: string;
         EmailTags?: Array<{ Name: string; Value: string }>;
       }>();
+      const sc = b.Content?.Simple;
+      if (sc && (!sc.Subject?.Data || (!sc.Body?.Text?.Data && !sc.Body?.Html?.Data)))
+        return err(400, "BadRequestException", "Simple content needs a subject and a body");
       const t = b.Content?.Template;
+      const atts = (t ?? sc)?.Attachments ?? [];
       if (t && !state.templates.has(t.TemplateName ?? ""))
         return err(404, "NotFoundException", `template ${t.TemplateName} does not exist`);
       const raw = b.Content?.Raw ? Buffer.from(b.Content.Raw.Data, "base64") : undefined;
@@ -75,10 +86,19 @@ export async function startSesStub(): Promise<SesStub> {
         ...(t?.TemplateData
           ? { templateData: JSON.parse(t.TemplateData) as Record<string, unknown> }
           : {}),
+        ...(sc
+          ? {
+              simple: {
+                subject: sc.Subject?.Data ?? "",
+                ...(sc.Body?.Text?.Data ? { text: sc.Body.Text.Data } : {}),
+                ...(sc.Body?.Html?.Data ? { html: sc.Body.Html.Data } : {}),
+              },
+            }
+          : {}),
         ...(raw ? { raw } : {}),
         ...(b.ConfigurationSetName ? { configurationSet: b.ConfigurationSetName } : {}),
         tags: Object.fromEntries((b.EmailTags ?? []).map((x) => [x.Name, x.Value])),
-        attachments: (t?.Attachments ?? []).map((a) => ({
+        attachments: atts.map((a) => ({
           fileName: a.FileName,
           ...(a.ContentType ? { contentType: a.ContentType } : {}),
           bytes: Buffer.from(a.RawContent, "base64").byteLength,

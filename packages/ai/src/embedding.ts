@@ -2,14 +2,16 @@
 // chat: kill switches, a data class raised by what the scrubber finds and never lowered, scrubbed
 // text above PUBLIC, routing in the band that fails closed, failover on 429/5xx/timeout, caps, and
 // one `ai.run` row (operation `embed`, no content) with its ledger entry and events. A retrieval
-// index pins its embedding model, so every vector in one index version comes from one model.
+// index pins its embedding model, so every vector in one index version comes from one model. In a
+// sandbox tenant (R1-D-87) an embedding above INTERNAL is refused, as for chat (`sandbox.ts`).
 import type { DataClass } from "@infrabyx/contracts/data-class";
 import { IpbError } from "@infrabyx/contracts/errors";
-import type {
-  AuditSink,
-  KernelContext,
-  MutationKernel,
-  OutboxWriter,
+import {
+  isSandboxed,
+  type AuditSink,
+  type KernelContext,
+  type MutationKernel,
+  type OutboxWriter,
 } from "@infrabyx/contracts/kernel";
 import {
   AI_EVENTS,
@@ -28,6 +30,7 @@ import { assertUnderCaps, capUse, costOf } from "./meter.js";
 import { aiTrace } from "./obs.js";
 import { CLASS_RANK, maxClass, type ModelRegistry } from "./registry.js";
 import { Breaker, Router } from "./routing.js";
+import { assertSandboxAllows } from "./sandbox.js";
 import { Scrubber } from "./scrub.js";
 
 export interface EmbedRequest {
@@ -130,10 +133,13 @@ export class EmbeddingGateway {
     run.dataClass = dataClass;
     const scrubbed =
       dataClass === "PUBLIC" ? [...req.texts] : req.texts.map((t) => scrubber.session().scrub(t));
-    const caps = await this.o.kernel.read(ctx, (tx) =>
-      capUse(tx, this.o.settings, ctx, req.featureKey),
-    );
+    // The caps read also gives the tenant's sandbox flag, as the kernel read it (R1-D-87).
+    const { caps, sandbox } = await this.o.kernel.read(ctx, async (tx) => ({
+      caps: await capUse(tx, this.o.settings, ctx, req.featureKey),
+      sandbox: isSandboxed(tx.ctx),
+    }));
     try {
+      assertSandboxAllows(sandbox, dataClass, run.flags);
       assertUnderCaps(caps);
     } catch (e) {
       return fail(e);
