@@ -59,3 +59,14 @@ What LawDocsComply removes once it moves to the wave 4 release (R1-D-75 to R1-D-
 7. **PR-LDC-17 (part), setting history (guide §7am).** Read history with `SettingsService.history(ctx, key, scope)`. **Shim removed:** the `cfg` module's change history (its migration 0010 stays for scopes below ENTITY until PR-042).
 8. **PR-LDC-04, breached passwords (guide §7an).** Run Keycloak from the customer image and apply the realm with `passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST`. **Shim removed:** the length-and-history-only policy.
 9. **Mark met** PR-LDC-02 (interface), 03, 04, 07, 08, 09, 10, 17 (history) and 20. PR-LDC-18 needed no change (guide §7ae); PR-LDC-19 waits for OWNER-QUESTIONS #106; PR-LDC-21 and 22 are wave 5.
+
+## 8. Wave 5 (`contracts`, `tenancy`, `connectors` and `rules` minors, patches of the rest)
+
+What LawDocsComply removes once it moves to the wave 5 release (R1-D-86, R1-D-88; guide §7ap). Move every `@infrabyx/*` dependency to that release together and run `infrabyx-migrate --require-all` (`rules/0002`).
+
+1. **PR-LDC-21 (a), rule parameters.** Declare each tenant-tunable threshold or switch as a parameter of the rule set (`name`, `type`, `setting`, `default`, bounds or allowed values), register each `setting` key in your `settings-tree.yaml`, and pass your `SettingsService` to `RulesService` as `settings`. Tenants change values through settings' maker-checker and history. **Shim removed:** per-tenant pack republishing.
+2. **PR-LDC-21 (b), publish checkers (#109).** Build `RulesService` with `publishCheckerRoles: ["TEN_CCO", "TEN_ADMIN"]`. Keep your second sign-off for statute, regulator and SRO layers as it is. **Shim removed:** routing publish checks through ORG_CHECKER only.
+3. **PR-LDC-22 (a), the publish event.** Pass `outbox` to `RulesService` and subscribe to `in.ldc.rules.RuleSetPublished.v1`, written when the publish executes (the cut-over). **Shim removed:** polling for the published version.
+4. **PR-LDC-22 (b), as-of evaluation.** Evaluate past decisions with `evaluate(ctx, { ruleSetId, asOf }, input)`; parameters take current values and the decision records the ones used. **Shim removed:** the version history in `classification.ts`.
+5. **PR-LDC-25, compiling ahead.** Call `rulesService.prepare(ctx)` at start-up and on each `RuleSetPublished` from another instance; keep the 50 ms budget. **Shim removed:** the 2 s authoring instance for seed, publish and tests.
+6. **Mark met** PR-LDC-21 and 22 and PR-LDC-25. PR-LDC-23 is spec request PR-043 (spec v1.4; keep `X-Infrabyx-JWS`); PR-LDC-24, 26, 27, 28 (XLSX, DOCX) and 29 are wave 6; PDF is wave 7.
