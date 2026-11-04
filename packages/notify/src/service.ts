@@ -635,7 +635,7 @@ export class NotifyService implements NotifyPort {
         template: key,
         vars: n.vars ?? {},
         brand: e.brand,
-        tags: { ipb_class: cls.id },
+        tags: emailTags(cls.id),
         ...(content ? { content } : {}),
       },
     };
@@ -1683,4 +1683,13 @@ export function positional(
       });
     return vars[k];
   });
+}
+
+/**
+ * The tags NOTIFY puts on every email: the class, under a name outside the adapters' reserved
+ * `ipb_` prefix, with every character other than `[A-Za-z0-9_-]` replaced by `-`, which SES
+ * requires of tag names and values (the `ipb_class` tag with a dotted class id was refused).
+ */
+export function emailTags(classId: string): Record<string, string> {
+  return { notify_class: classId.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 256) };
 }
