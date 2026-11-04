@@ -26,3 +26,8 @@ a621e1eaeb34464a830c39db17bcf53e26f0fe40:packages/config/src/settings/registry.g
 374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:31
 374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:93
 374ee347f74473b94fe411d0cf47d7e94097c61b:packages/tenancy/src/idempotency.int.test.ts:generic-api-key:123
+#
+# 2026-11-04: the SHA-256 checksum of migration tenancy/0017 in checksums.json, read by
+# generic-api-key because the file name "0017_support_access.sql" holds the word "access". It is a
+# file digest, not a credential; the next commit renames the migration to 0017_support_grants.sql.
+d8a2f14ce302e57717d20590892101606cc4c524:packages/tenancy/migrations/checksums.json:generic-api-key:18
