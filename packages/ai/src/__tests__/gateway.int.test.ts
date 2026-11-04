@@ -575,3 +575,69 @@ describe("runs, metering and caps (IPB-03-22, 03-45, 03-46; no content stored)",
     expect(h.rows).toEqual([{ kind: "approval", ref: "apr_linked", released_at: null }]);
   });
 });
+
+describe("R1-D-87 a sandbox tenant sends nothing above INTERNAL to a model (PR-LDC-29)", () => {
+  const sbx = (extra: Partial<KernelContext> = {}): KernelContext => ({
+    ...withTenant("tnt_sbx", ["ORG_MEMBER"], { principal: { id: "usr_sbx" } }),
+    ...extra,
+  });
+  const calls = () => all.reduce((n, a) => n + a.calls.length, 0);
+  beforeAll(async () => {
+    await db.admin.query(
+      "insert into tenancy.tenant (id, product, name, sandbox) values ('tnt_sbx', 'LDC', 'Sandbox Co', true)",
+    );
+  });
+
+  it("CONFIDENTIAL, REGULATED and SECRET are refused with IPB-PORT-003 and recorded; no model is called", async () => {
+    for (const c of ["CONFIDENTIAL", "REGULATED", "SECRET"] as const)
+      // The caller's context claims a live tenant; the kernel's flag wins.
+      expect(await code(gateway().chat(sbx({ sandbox: false }), req(c)))).toBe("IPB-PORT-003");
+    expect(calls()).toBe(0);
+    const runs = await db.admin.query(
+      "select outcome, error_code, guard_flags, data_class from ai.run where tenant_id = 'tnt_sbx' order by created_at",
+    );
+    expect(runs.rows).toEqual(
+      ["CONFIDENTIAL", "REGULATED", "SECRET"].map((data_class) => ({
+        outcome: "refused",
+        error_code: "IPB-PORT-003",
+        guard_flags: ["sandbox_refused"],
+        data_class,
+      })),
+    );
+    const led = await db.admin.query<{ n: number }>(
+      "select count(*)::int as n from audit.ledger where tenant_id = 'tnt_sbx' and action = 'ai.run'",
+    );
+    expect(led.rows[0]!.n).toBe(3);
+  });
+
+  it("INTERNAL and PUBLIC proceed; INTERNAL raised by personal data in the input is refused", async () => {
+    expect((await gateway().chat(sbx(), req("INTERNAL"))).adapterKey).toBe("bedrock_claude_in");
+    expect((await gateway().chat(sbx(), req("PUBLIC"))).text).toBe("a summary");
+    const before = calls();
+    expect(
+      await code(
+        gateway().chat(
+          sbx(),
+          req("INTERNAL", {
+            messages: [{ role: "user", content: "Write to a.person@example.org" }],
+          }),
+        ),
+      ),
+    ).toBe("IPB-PORT-003");
+    expect(calls()).toBe(before);
+  });
+
+  it("a live tenant is unchanged, even when the caller claims a sandbox", async () => {
+    expect((await gateway().chat({ ...user, sandbox: true }, req("CONFIDENTIAL"))).adapterKey).toBe(
+      "bedrock_claude_in",
+    );
+  });
+
+  it("fails closed: in a tenant whose flag cannot be read, CONFIDENTIAL is refused and INTERNAL proceeds", async () => {
+    const ghost = withTenant("tnt_ghost", ["ORG_MEMBER"], { principal: { id: "usr_ghost" } });
+    expect(await code(gateway().chat({ ...ghost, sandbox: false }, req("CONFIDENTIAL")))).toBe(
+      "IPB-PORT-003",
+    );
+    expect((await gateway().chat(ghost, req("INTERNAL"))).adapterKey).toBe("bedrock_claude_in");
+  });
+});

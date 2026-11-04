@@ -7,14 +7,17 @@
 // allow-list; runs the output classifier, restores the tokens and, for `structured`, validates the
 // JSON with one repair turn; and records one `ai.run` row with a ledger entry and the
 // RunCompleted, RunMetered and GuardrailTriggered events. No prompt or completion text is logged,
-// traced or stored in the run.
+// traced or stored in the run. In a sandbox tenant (`tx.ctx.sandbox`, set by the kernel; PR-LDC-29,
+// R1-D-87) a call whose data class is above INTERNAL is refused (IPB-PORT-003) and recorded as the
+// other refusals are; so is one in a tenant whose flag the kernel could not read (fail closed).
 import type { DataClass } from "@infrabyx/contracts/data-class";
 import { IpbError } from "@infrabyx/contracts/errors";
-import type {
-  AuditSink,
-  KernelContext,
-  MutationKernel,
-  OutboxWriter,
+import {
+  isSandboxed,
+  type AuditSink,
+  type KernelContext,
+  type MutationKernel,
+  type OutboxWriter,
 } from "@infrabyx/contracts/kernel";
 import {
   AI_EVENTS,
@@ -49,6 +52,7 @@ import { aiTrace } from "./obs.js";
 import { insertRunHold, type RunHold } from "./retention.js";
 import { renderTemplate, type PromptRegistry, type PromptVersion } from "./prompts.js";
 import { CLASS_RANK, maxClass, type ModelRegistry } from "./registry.js";
+import { assertSandboxAllows } from "./sandbox.js";
 import { Scrubber, type ScrubSession } from "./scrub.js";
 import { Breaker, Router, type RouteCandidate } from "./routing.js";
 import { DATA_INSTRUCTION, wrapDataBlocks } from "./separation.js";
@@ -276,13 +280,14 @@ export class LlmGateway {
     const feature = keySegment(req.featureKey);
     // IPB-03-38: runs per user per hour.
     const perHour = await this.setting<number>(ctx, "ai.limits.user_runs_per_hour", 120);
-    const recent = await this.o.kernel.read(ctx, async (tx) => {
+    // The same read gives the tenant's sandbox flag, as the kernel read it (R1-D-87).
+    const { recent, sandbox } = await this.o.kernel.read(ctx, async (tx) => {
       const r = await tx.query<{ n: number }>(
         `select count(*)::int as n from ai.run
           where principal_id = $1 and created_at > now() - interval '1 hour'`,
         [ctx.principal.id],
       );
-      return r.rows[0]?.n ?? 0;
+      return { recent: r.rows[0]?.n ?? 0, sandbox: isSandboxed(tx.ctx) };
     });
     if (recent >= perHour) {
       run.outcome = "refused";
@@ -316,6 +321,12 @@ export class LlmGateway {
     const band = bandOf(dataClass);
     run.dataClass = dataClass;
     run.band = band;
+    try {
+      assertSandboxAllows(sandbox, dataClass, run.guardFlags);
+    } catch (e) {
+      run.outcome = "refused";
+      throw e;
+    }
     const prompt = await this.o.prompts.resolve(ctx, req.promptRef);
     run.prompt = prompt;
     if (CLASS_RANK[dataClass] > CLASS_RANK[prompt.dataClassMax]) {
