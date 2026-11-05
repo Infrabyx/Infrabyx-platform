@@ -235,6 +235,12 @@ export const PORT_CATALOGUE = {
     ownerFile: "ADR-0004 (Udofin PR-UDF-028)",
     interfaceDefined: true,
   },
+  TELEPHONY: {
+    tier: 2,
+    configPrefix: "int.telephony.",
+    ownerFile: "ADR-0007 (Finbyx PR-FBX-38)",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
@@ -246,7 +252,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * ESTAMP, PAYOUTS, DOCGEN and PDF; R1-D-50: Udofin PR-UDF-028 and PR-UDF-029's DEVICE_ATTESTATION
  * and CAPTCHA, ADR-0004; R1-D-79: LawDocsComply PR-LDC-02's COMPANY_DATA, no adapter until the
  * owner chooses a data source; R1-D-80: Finbyx PR-FBX-34's DISBURSEMENT_RAIL product port, IPB-01
- * §01.4.4.3, ADR-0006, collection methods with fakes, no adapter).
+ * §01.4.4.3, ADR-0006, collection methods with fakes, no adapter; R1-D-97: Finbyx PR-FBX-38's
+ * TELEPHONY, ADR-0007, fake and contract cases, no adapter until a vendor is chosen).
  */
 export const R1_PORTS = [
   "KYC",
@@ -261,4 +268,5 @@ export const R1_PORTS = [
   "DEVICE_ATTESTATION",
   "COMPANY_DATA",
   "DISBURSEMENT_RAIL",
+  "TELEPHONY",
 ] as const satisfies readonly PortName[];

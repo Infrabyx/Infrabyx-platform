@@ -22,6 +22,7 @@ export * from "./ai.js";
 export * from "./web.js";
 export * from "./media.js";
 export * from "./kyc.js";
+export * from "./telephony.js";
 export * from "./video-meet.js";
 export * from "./credit-bureau.js";
 export * from "./account-aggregator.js";

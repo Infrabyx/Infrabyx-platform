@@ -32,6 +32,8 @@
 import { IpbError } from "@infrabyx/contracts/errors";
 import {
   EcosystemEnvelope,
+  REGULATED_JWS_HEADER,
+  regulatedJwsFromHeaders,
   PROVISIONAL_TENANT_PURGE_DAYS,
   PROVISIONING_FAILED_TYPE,
   PROVISIONING_PRODUCTS,
@@ -303,6 +305,32 @@ export class OperationsHubProvisioning {
       sign: this.o.signer.sign,
       ...(this.o.now ? { now: this.o.now() } : {}),
     });
+  }
+
+  /**
+   * Spec v1.4 (M61): the headers of one outgoing delivery, `X-Infrabyx-JWS` with a JWS made now
+   * (each retry gets a fresh one, with a new `jti`).
+   */
+  async deliveryHeaders(event: Record<string, unknown>): Promise<Record<string, string>> {
+    return { [REGULATED_JWS_HEADER]: await this.signForDelivery(event) };
+  }
+
+  /**
+   * Spec v1.4 (M61): `receive` for an HTTP delivery: the JWS comes from `X-Infrabyx-JWS`, and a
+   * missing, repeated, comma-joined, over-long or malformed header is refused as `signature-invalid`
+   * (IPB-API-018) before anything is verified or stored.
+   */
+  async receiveHttp(
+    body: unknown,
+    headers: Parameters<typeof regulatedJwsFromHeaders>[0],
+  ): Promise<{ outcome: "accepted" | "duplicate" | "business_duplicate"; eventId: string }> {
+    const h = regulatedJwsFromHeaders(headers);
+    if (!h.ok)
+      throw new IpbError("IPB-API-018", {
+        detail: `the ${REGULATED_JWS_HEADER} header is ${h.reason.replace("_", " ")}`,
+        meta: { reason: "signature-invalid", header: h.reason },
+      });
+    return this.receive(body, h.jws);
   }
 
   /** Verify and store one `TenantProvisioned` or `ProvisioningFailed` before acknowledging it. */

@@ -246,6 +246,7 @@ export class FakeDisbursementRail implements DisbursementRailPort {
         returnCode: paid ? null : (r.code as string),
         returnReason: cls?.reason ?? null,
         returnClass: cls?.class ?? null,
+        returnAttribution: cls?.attribution ?? null,
         codeKnown: cls?.codeKnown ?? null,
         settlementRef: paid ? (r.utr ?? null) : null,
         settledOn: paid ? p.debitDate : null,

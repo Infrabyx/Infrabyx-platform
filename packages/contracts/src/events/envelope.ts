@@ -162,3 +162,45 @@ export function parseEnvelope(
   }
   return { kind: "internal", envelope: InternalEnvelope.parse(e) };
 }
+
+/**
+ * Ecosystem Spec v1.4 §3.6 (PR-043, OWNER-QUESTIONS #116; M61): the HTTP request header that
+ * carries a regulated message's detached JWS on every delivery.
+ */
+export const REGULATED_JWS_HEADER = "X-Infrabyx-JWS";
+/** The longest header value v1.4 allows, in octets. */
+export const REGULATED_JWS_HEADER_MAX = 1024;
+const COMPACT_DETACHED = /^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/;
+
+/**
+ * The detached JWS from a request's headers (Spec v1.4 §3.6): exactly one `X-Infrabyx-JWS`
+ * (any case), one compact detached JWS of at most 1,024 octets, no whitespace and no list. Takes a
+ * Fetch `Headers` or a Node-style header record (a repeated header is an array there). Returns the
+ * value, or the reason it is refused (`signature-invalid` for the consumer to answer).
+ */
+export function regulatedJwsFromHeaders(
+  headers: Headers | Readonly<Record<string, string | readonly string[] | undefined>>,
+):
+  | { ok: true; jws: string }
+  | { ok: false; reason: "missing" | "repeated" | "malformed" | "too_long" } {
+  let values: string[];
+  if (typeof Headers !== "undefined" && headers instanceof Headers) {
+    const v = headers.get(REGULATED_JWS_HEADER);
+    // Fetch joins repeated headers with ", ".
+    values = v === null ? [] : v.includes(",") ? ["", ""] : [v];
+  } else {
+    values = [];
+    for (const [k, v] of Object.entries(
+      headers as Record<string, string | readonly string[] | undefined>,
+    ))
+      if (k.toLowerCase() === REGULATED_JWS_HEADER.toLowerCase() && v !== undefined)
+        values.push(...(typeof v === "string" ? [v] : v));
+  }
+  if (values.length === 0) return { ok: false, reason: "missing" };
+  if (values.length > 1 || values[0]!.includes(",")) return { ok: false, reason: "repeated" };
+  const jws = values[0]!;
+  if (new TextEncoder().encode(jws).length > REGULATED_JWS_HEADER_MAX)
+    return { ok: false, reason: "too_long" };
+  if (!COMPACT_DETACHED.test(jws)) return { ok: false, reason: "malformed" };
+  return { ok: true, jws };
+}

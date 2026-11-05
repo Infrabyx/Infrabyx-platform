@@ -19,6 +19,7 @@
     "dist",
     "migrations",
     "maps",
+    "fonts",
     "verify",
     "README.md"
   ],

@@ -1,13 +1,15 @@
-// PDF renderer (PR-LDC-28, wave 7; dependency review R1-D-95): a PDF 1.7 document (ISO 32000-1)
-// from the same block model as `toDocx`, written here with no dependency. Text is set in the
-// standard Helvetica fonts (Helvetica, -Bold, -Oblique, -BoldOblique) with WinAnsiEncoding, so no
-// font is embedded and the text is limited to the WinAnsi set (Latin-1 plus the typographic
-// characters of 0x80 to 0x9F, such as the euro sign, dashes, curly quotes and the bullet); any
-// other character is refused (`char_unsupported`), never replaced. Embedded Unicode fonts (for
-// Indic scripts or the rupee sign) need a font-shaping dependency and a new review. The output
-// has no JavaScript, no forms, no attachments, no external content and no actions other than the
-// https link annotations the caller names. A4 portrait, 72 pt margins, content streams Flate
-// compressed. The same blocks and `created` time always give the same bytes.
+// PDF renderer (PR-LDC-28; dependency review R1-D-95; OWNER-QUESTIONS #117, R1-D-96): a PDF 1.7
+// document (ISO 32000-1) from the same block model as `toDocx`, written here with no dependency.
+// Text is set in Noto Sans (Regular, Bold, Italic, Bold Italic; SIL OFL 1.1), subset once and
+// shipped with the package (`fonts/FONTS.md`), embedded whole as CIDFontType2 fonts with
+// Identity-H encoding and a ToUnicode map, so text stays searchable and copyable. The fonts cover
+// Latin (Basic, Latin-1, Extended-A), the usual punctuation, the euro and the rupee sign (U+20B9).
+// They carry no shaping tables: text in an Indic script is refused with `shaping_required` (send
+// that document through DOCGEN, `renderPdf`, guide §7ay), and any other character the fonts lack
+// with `char_unsupported`; nothing is ever replaced. The output has no JavaScript, no forms, no
+// attachments, no external content and no actions other than the https link annotations the
+// caller names. A4 portrait, 72 pt margins, streams Flate compressed. The same blocks and
+// `created` time always give the same bytes.
 import { deflateSync } from "node:zlib";
 import { sha256Hex } from "@infrabyx/crypto";
 import {
@@ -21,6 +23,7 @@ import {
   type DocxRun,
 } from "./docx.js";
 import { OfficeExportError, createdOf, maxBytesOf, type OfficeProperties } from "./ooxml.js";
+import { bundledFont, type TrueTypeFont } from "./ttf.js";
 
 /** The block model is the DOCX one. */
 export type PdfBlock = DocxBlock;
@@ -39,53 +42,19 @@ const LEAD = 1.35;
 const HEADING_SIZES = [20, 16, 14, 12, 12, 12] as const;
 const INDENT = 18;
 const CELL_PAD = 4;
-const FONTS = [
-  "Helvetica",
-  "Helvetica-Bold",
-  "Helvetica-Oblique",
-  "Helvetica-BoldOblique",
-] as const;
+const STYLES = ["Regular", "Bold", "Italic", "BoldItalic"] as const;
 
-// Unicode to WinAnsi for 0x80 to 0x9F (PDF 32000-1 Annex D); 0xA0 to 0xFF are Latin-1 itself.
-const WIN_ANSI_HIGH: Readonly<Record<number, number>> = {
-  0x20ac: 0x80,
-  0x201a: 0x82,
-  0x0192: 0x83,
-  0x201e: 0x84,
-  0x2026: 0x85,
-  0x2020: 0x86,
-  0x2021: 0x87,
-  0x02c6: 0x88,
-  0x2030: 0x89,
-  0x0160: 0x8a,
-  0x2039: 0x8b,
-  0x0152: 0x8c,
-  0x017d: 0x8e,
-  0x2018: 0x91,
-  0x2019: 0x92,
-  0x201c: 0x93,
-  0x201d: 0x94,
-  0x2022: 0x95,
-  0x2013: 0x96,
-  0x2014: 0x97,
-  0x02dc: 0x98,
-  0x2122: 0x99,
-  0x0161: 0x9a,
-  0x203a: 0x9b,
-  0x0153: 0x9c,
-  0x017e: 0x9e,
-  0x0178: 0x9f,
-};
-
-// Helvetica advance widths (1/1000 em) for 0x20 to 0x7E, from the standard AFM. Other codes take
-// 0.6 em, and bold text is measured 8% wider: line breaks may come early, never late.
-const ASCII_W = [
-  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556,
-  556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667,
-  611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667,
-  667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500,
-  222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
+/** Unicode blocks of the Indic scripts, which need shaping (DOCGEN). */
+const INDIC: ReadonlyArray<readonly [number, number]> = [
+  [0x0900, 0x0dff],
+  [0x1cd0, 0x1cff],
+  [0xa830, 0xa83f],
+  [0xa8e0, 0xa8ff],
+  [0x11000, 0x1107f],
 ];
+export function needsShaping(cp: number): boolean {
+  return INDIC.some(([a, b]) => cp >= a && cp <= b);
+}
 
 interface Style {
   bold: boolean;
@@ -94,7 +63,9 @@ interface Style {
   href?: string;
 }
 interface Piece {
-  bytes: number[];
+  /** Glyph ids in the style's font, and the code point each one shows. */
+  gids: number[];
+  cps: number[];
   style: Style;
   width: number;
 }
@@ -103,43 +74,51 @@ function bad(why: string): OfficeExportError {
   return new OfficeExportError("block_invalid", why);
 }
 
-/** WinAnsi bytes of `s`; tabs become a space; anything else outside WinAnsi is refused. */
-function winAnsi(s: string): number[] {
-  const out: number[] = [];
-  for (const ch of s) {
-    const cp = ch.codePointAt(0)!;
-    if (cp === 9) out.push(32);
-    else if (cp >= 32 && cp <= 126) out.push(cp);
-    else if (cp >= 0xa0 && cp <= 0xff) out.push(cp);
-    else if (WIN_ANSI_HIGH[cp] !== undefined) out.push(WIN_ANSI_HIGH[cp]!);
-    else
-      throw new OfficeExportError(
-        "char_unsupported",
-        `U+${cp.toString(16).toUpperCase().padStart(4, "0")} is outside the PDF's WinAnsi character set`,
-      );
-  }
-  return out;
-}
-
-function widthOf(bytes: readonly number[], size: number, bold: boolean): number {
-  let w = 0;
-  for (const b of bytes) w += b >= 32 && b <= 126 ? ASCII_W[b - 32]! : 600;
-  return (w * size * (bold ? 1.08 : 1)) / 1000;
-}
-
 function fontOf(s: Style): number {
   return (s.bold ? 1 : 0) + (s.italic ? 2 : 0);
 }
+const fontFor = (s: Style): TrueTypeFont => bundledFont(STYLES[fontOf(s)]!);
 
-/** A PDF literal string of WinAnsi bytes. */
-function lit(bytes: readonly number[]): string {
-  let out = "(";
-  for (const b of bytes) {
-    if (b === 0x28 || b === 0x29 || b === 0x5c) out += `\\${String.fromCharCode(b)}`;
-    else if (b >= 32 && b <= 126) out += String.fromCharCode(b);
-    else out += `\\${b.toString(8).padStart(3, "0")}`;
+/** Glyph ids for `text` in the style's font; refuses what the font cannot show. */
+function glyphs(text: string, style: Style): { gids: number[]; cps: number[] } {
+  const f = fontFor(style);
+  const gids: number[] = [];
+  const cps: number[] = [];
+  for (const ch of text) {
+    let cp = ch.codePointAt(0)!;
+    if (cp === 9) cp = 32;
+    const gid = f.cmap.get(cp);
+    if (gid === undefined) {
+      const hex = `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`;
+      if (needsShaping(cp))
+        throw new OfficeExportError(
+          "shaping_required",
+          `${hex} is in an Indic script, which needs shaping: render this document through DOCGEN (renderPdf)`,
+        );
+      throw new OfficeExportError("char_unsupported", `${hex} is not in the PDF's fonts`);
+    }
+    gids.push(gid);
+    cps.push(cp);
   }
-  return `${out})`;
+  return { gids, cps };
+}
+
+function widthOf(gids: readonly number[], size: number, style: Style): number {
+  const f = fontFor(style);
+  let w = 0;
+  for (const g of gids) w += f.advance(g);
+  return (w * size) / f.unitsPerEm;
+}
+
+const hex4 = (g: number) => g.toString(16).toUpperCase().padStart(4, "0");
+/** A PDF literal string of ASCII text (URIs). */
+function asciiLit(s: string): string {
+  if (!/^[\x20-\x7e]*$/.test(s)) throw bad("a link must be ASCII after URL encoding");
+  return `(${s.replace(/[\\()]/g, (c) => `\\${c}`)})`;
+}
+/** A PDF text string in UTF-16BE (document information). */
+function textString(s: string): string {
+  return `<FEFF${Buffer.from(s, "utf16le").swap16().toString("hex").toUpperCase()}>`;
 }
 
 const n = (x: number) => (Math.round(x * 100) / 100).toString();
@@ -154,6 +133,8 @@ class Layout {
   private y = 0;
   private links = 0;
   private bytes = 0;
+  /** Glyphs drawn per font (style index), with the code point each one shows (ToUnicode). */
+  readonly used = new Map<number, Map<number, number>>();
   constructor(private readonly max: number) {
     this.newPage();
   }
@@ -204,9 +185,13 @@ class Layout {
 
   /** One piece at a baseline. */
   draw(p: Piece, x: number, base: number, size: number): void {
-    if (!p.bytes.length) return;
+    if (!p.gids.length) return;
+    const f = fontOf(p.style);
+    const used = this.used.get(f) ?? new Map<number, number>();
+    this.used.set(f, used);
+    p.gids.forEach((g, i) => used.set(g, p.cps[i]!));
     this.op(
-      `BT /F${fontOf(p.style) + 1} ${n(size)} Tf ${n(x)} ${n(base)} Td ${lit(p.bytes)} Tj ET`,
+      `BT /F${f + 1} ${n(size)} Tf ${n(x)} ${n(base)} Td <${p.gids.map(hex4).join("")}> Tj ET`,
     );
     if (p.style.underline || p.style.href)
       this.op(
@@ -279,8 +264,8 @@ function piecesOf(runs: readonly DocxRun[], size = BODY): Piece[] {
     // Line breaks in a run become spaces: a paragraph is one flow of text.
     for (const word of run.text.replace(/\r\n?|\n/g, " ").split(/(?<= )/)) {
       if (!word) continue;
-      const bytes = winAnsi(word);
-      out.push({ bytes, style, width: widthOf(bytes, size, style.bold) });
+      const g = glyphs(word, style);
+      out.push({ ...g, style, width: widthOf(g.gids, size, style) });
     }
   }
   return out;
@@ -291,31 +276,32 @@ function wrap(pieces: Piece[], width: number, size: number): Piece[][] {
   const lines: Piece[][] = [[]];
   let used = 0;
   const push = (p: Piece) => {
-    const trimmed = p.bytes.at(-1) === 32 ? p.bytes.slice(0, -1) : p.bytes;
-    const visible = widthOf(trimmed, size, p.style.bold);
+    const last = p.cps.length - (p.cps.at(-1) === 32 ? 1 : 0);
+    const visible = widthOf(p.gids.slice(0, last), size, p.style);
     if (used > 0 && used + visible > width) {
       lines.push([]);
       used = 0;
     }
     if (visible > width) {
       // Break an over-long word into chunks that fit.
-      let chunk: number[] = [];
-      for (const b of p.bytes) {
-        if (chunk.length && widthOf([...chunk, b], size, p.style.bold) > width) {
-          const w = widthOf(chunk, size, p.style.bold);
-          lines.at(-1)!.push({ bytes: chunk, style: p.style, width: w });
+      let chunk: Piece = { gids: [], cps: [], style: p.style, width: 0 };
+      p.gids.forEach((g, i) => {
+        const next = widthOf([...chunk.gids, g], size, p.style);
+        if (chunk.gids.length && next > width) {
+          lines.at(-1)!.push(chunk);
           lines.push([]);
           used = 0;
-          chunk = [];
+          chunk = { gids: [], cps: [], style: p.style, width: 0 };
         }
-        chunk.push(b);
-      }
-      const w = widthOf(chunk, size, p.style.bold);
-      lines.at(-1)!.push({ bytes: chunk, style: p.style, width: w });
-      used = w;
+        chunk.gids.push(g);
+        chunk.cps.push(p.cps[i]!);
+        chunk.width = widthOf(chunk.gids, size, p.style);
+      });
+      lines.at(-1)!.push(chunk);
+      used = chunk.width;
       return;
     }
-    const w = widthOf(p.bytes, size, p.style.bold);
+    const w = widthOf(p.gids, size, p.style);
     lines.at(-1)!.push({ ...p, width: w });
     used += w;
   };
@@ -334,12 +320,9 @@ function listItems(
     const nested = Array.isArray(item) ? undefined : (item as { items?: unknown }).items;
     if (!Array.isArray(runs)) throw bad("a list item needs runs");
     const marker = numbered ? `${i + 1}.` : level === 0 ? "•" : "-";
-    const bytes = winAnsi(marker);
-    const prefix: Piece = {
-      bytes,
-      style: { bold: false, italic: false, underline: false },
-      width: widthOf(bytes, BODY, false),
-    };
+    const plain: Style = { bold: false, italic: false, underline: false };
+    const g = glyphs(marker, plain);
+    const prefix: Piece = { ...g, style: plain, width: widthOf(g.gids, BODY, plain) };
     const x = MARGIN + INDENT * (level + 1);
     layout.runs(piecesOf(runs), x, TEXT_W - INDENT * (level + 1), BODY, prefix);
     if (nested !== undefined) {
@@ -396,6 +379,64 @@ function block(layout: Layout, b: PdfBlock): void {
   }
 }
 
+/** A Flate-compressed stream object. */
+function stream(dict: string, data: Buffer): Buffer {
+  const z = deflateSync(data, { level: 9 });
+  return Buffer.concat([
+    Buffer.from(`<< ${dict} /Length ${z.length} /Filter /FlateDecode >>\nstream\n`, "latin1"),
+    z,
+    Buffer.from("\nendstream", "latin1"),
+  ]);
+}
+
+/**
+ * Embed a bundled font whole as a Type0 font over a CIDFontType2 (Identity-H, CID = glyph id),
+ * with the widths and a ToUnicode map of the glyphs used; returns the Type0 font's object number.
+ */
+function embedFont(
+  add: (body: Buffer | string) => number,
+  f: TrueTypeFont,
+  used: ReadonlyMap<number, number>,
+): number {
+  const k = 1000 / f.unitsPerEm;
+  const gids = [...used.keys()].sort((a, b) => a - b);
+  const file = add(stream(`/Length1 ${f.bytes.length}`, f.bytes));
+  const flags = 32 + (f.italicAngle !== 0 ? 64 : 0);
+  const descriptor = add(
+    `<< /Type /FontDescriptor /FontName /${f.postScriptName} /Flags ${flags} ` +
+      `/FontBBox [${f.bbox.map((v) => Math.round(v * k)).join(" ")}] /ItalicAngle ${f.italicAngle} ` +
+      `/Ascent ${Math.round(f.ascent * k)} /Descent ${Math.round(f.descent * k)} ` +
+      `/CapHeight ${Math.round(f.capHeight * k)} /StemV 80 /FontFile2 ${file} 0 R >>`,
+  );
+  const widths = gids.map((g) => `${g} [${Math.round(f.advance(g) * k)}]`).join(" ");
+  const cid = add(
+    `<< /Type /Font /Subtype /CIDFontType2 /BaseFont /${f.postScriptName} ` +
+      `/CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> ` +
+      `/FontDescriptor ${descriptor} 0 R /CIDToGIDMap /Identity /DW 1000 /W [${widths}] >>`,
+  );
+  const map = gids.map((g) => {
+    const u = Buffer.from(String.fromCodePoint(used.get(g)!), "utf16le").swap16();
+    return `<${hex4(g)}> <${u.toString("hex").toUpperCase()}>`;
+  });
+  const chunks: string[] = [];
+  for (let i = 0; i < map.length; i += 100) {
+    const part = map.slice(i, i + 100);
+    chunks.push(`${part.length} beginbfchar\n${part.join("\n")}\nendbfchar`);
+  }
+  const cmap =
+    "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n" +
+    "/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def\n" +
+    "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n" +
+    "1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n" +
+    chunks.join("\n") +
+    "\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend";
+  const toUnicode = add(stream("", Buffer.from(cmap, "latin1")));
+  return add(
+    `<< /Type /Font /Subtype /Type0 /BaseFont /${f.postScriptName} /Encoding /Identity-H ` +
+      `/DescendantFonts [${cid} 0 R] /ToUnicode ${toUnicode} 0 R >>`,
+  );
+}
+
 /** A PDF date, D:YYYYMMDDHHmmSSZ. */
 function pdfDate(d: Date): string {
   return `D:${d.toISOString().replace(/[-:T]/g, "").slice(0, 14)}Z`;
@@ -415,7 +456,8 @@ export function toPdf(doc: PdfDocument, o: PdfOptions = {}): Buffer {
   const layout = new Layout(max);
   for (const b of doc.blocks) block(layout, b);
 
-  // Objects: 1 catalog, 2 pages, 3 to 6 fonts, 7 info, then per page: page, contents, links.
+  // Objects: 1 catalog, 2 pages, then the info, the fonts used, and per page its page, contents
+  // and links.
   const objs: Buffer[] = [];
   const add = (body: Buffer | string) => {
     objs.push(typeof body === "string" ? Buffer.from(body, "latin1") : body);
@@ -423,13 +465,14 @@ export function toPdf(doc: PdfDocument, o: PdfOptions = {}): Buffer {
   };
   add(""); // catalog, filled below
   add(""); // pages, filled below
-  for (const f of FONTS)
-    add(`<< /Type /Font /Subtype /Type1 /BaseFont /${f} /Encoding /WinAnsiEncoding >>`);
   const info: string[] = [`/Producer (Infrabyx export)`, `/CreationDate (${pdfDate(created)})`];
-  if (doc.title !== undefined) info.push(`/Title ${lit(winAnsi(doc.title))}`);
-  if (o.creator !== undefined) info.push(`/Creator ${lit(winAnsi(o.creator))}`);
+  if (doc.title !== undefined) info.push(`/Title ${textString(doc.title)}`);
+  if (o.creator !== undefined) info.push(`/Creator ${textString(o.creator)}`);
   const infoId = add(`<< ${info.join(" ")} >>`);
-  const fonts = FONTS.map((_, i) => `/F${i + 1} ${i + 3} 0 R`).join(" ");
+  const fontRefs: string[] = [];
+  for (const [idx, used] of [...layout.used].sort((a, b) => a[0] - b[0]))
+    fontRefs.push(`/F${idx + 1} ${embedFont(add, bundledFont(STYLES[idx]!), used)} 0 R`);
+  const fonts = fontRefs.join(" ");
   const kids: number[] = [];
   for (const p of layout.pages) {
     const stream = deflateSync(Buffer.from(p.ops.join("\n"), "latin1"), { level: 9 });
@@ -452,7 +495,7 @@ export function toPdf(doc: PdfDocument, o: PdfOptions = {}): Buffer {
     for (const l of p.links)
       add(
         `<< /Type /Annot /Subtype /Link /Rect [${l.rect.map(n).join(" ")}] /Border [0 0 0] ` +
-          `/A << /S /URI /URI ${lit(winAnsi(l.href))} >> >>`,
+          `/A << /S /URI /URI ${asciiLit(l.href)} >> >>`,
       );
     kids.push(pageId);
   }

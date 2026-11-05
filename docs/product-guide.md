@@ -475,13 +475,33 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **Resolution.** ENTITY, then each unit outermost first, then USER: the innermost unit wins. A UNIT write needs the key's change role and the unit in the caller's own chain, is tighten-only against the tenant, the entity and the outer units, and goes to the change history (`history(ctx, key, { tier: "UNIT", scopeId })`).
 - **Remove** LDC's `cfg` module (its migration 0010) once its keys are moved.
 
-## 7ay. PDF export (PR-LDC-28; R1-D-95)
+## 7ay. PDF export (PR-LDC-28; #117; R1-D-95, R1-D-96, R1-D-97)
 
-- **`toPdf(doc, { creator, created, maxBytes })` (`export` minor)** renders the `toDocx` block model as a PDF 1.7 file, A4, with no new dependency (review: `docs/phases/R1-pdf-dependency-review.md`). Text uses the standard Helvetica fonts, so it is limited to WinAnsi (Latin-1 plus the euro sign, dashes, curly quotes and the bullet); the rupee sign or an Indic script is refused with `char_unsupported`. Write "INR" or "Rs." yourself where you need it.
+- **`toPdf(doc, { creator, created, maxBytes })` (`export` minor)** renders the `toDocx` block model as a PDF 1.7 file, A4, with no new dependency (review: `docs/phases/R1-pdf-dependency-review.md`). From wave 8 it embeds Noto Sans (OFL; `export/fonts/FONTS.md`), so it shows Latin (including Latin Extended-A), the usual punctuation, the euro and **the rupee sign**, and the text stays searchable and copyable. A character the fonts lack is refused with `char_unsupported`; nothing is ever replaced.
+- **Vernacular documents (Devanagari, Gurmukhi and the other Indic scripts).** They need shaping, which `toPdf` does not do: it refuses them with `shaping_required`. Render them with `renderPdf(doc, { docgen, lang, outputPrefix })`: a document with Indic text goes to your DOCGEN adapter's `renderHtml` (Gotenberg's Chromium, with Noto Sans Devanagari and Gurmukhi installed in its image) as the self-contained page `blocksToHtml(doc, { lang })` writes; anything else is rendered in process. Pass `lang` as the document's language (`hi`, `pa`, …). The platform's Gotenberg DOCGEN adapter follows in wave 9 (#120, R1-plan M71); bind your own until then. `pdfNeedsShaping(doc)` tells you which path applies.
 
 ## 7az. Sandbox changes under maker-checker (#115; R1-D-95)
 
-- **`tenancy` minor.** Build `new TenantSandbox({ kernel, audit, approvals })`. A PLT_SUPER_ADMIN raises `request(platformCtx, tenantId, true | false, reason)`; a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER calls `decide(platformCtx, tenantId, requestId, "approve" | "reject", reason?)`; a PLT_SUPER_ADMIN then calls `apply(platformCtx, tenantId, requestId)`, which uses the approval once and sets the flag, ledgered with the reason and the request id. `set` is refused (`IPB-SEC-005`). Setting the flag at tenant creation is unchanged.
+- **`tenancy` minor.** Build `new TenantSandbox({ kernel, audit, approvals, appEnv })`. In a production deployment (`prod`, `dr`, `pre-prod`, or when `appEnv` is not given) a change is R4: it can be applied only 60 minutes after its approval (`IPB-SEC-008` before then), in either direction (#118); elsewhere R3. A PLT_SUPER_ADMIN raises `request(platformCtx, tenantId, true | false, reason)`; a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER calls `decide(platformCtx, tenantId, requestId, "approve" | "reject", reason?)`; a PLT_SUPER_ADMIN then calls `apply(platformCtx, tenantId, requestId)`, which uses the approval once and sets the flag, ledgered with the reason and the request id. `set` is refused (`IPB-SEC-005`). Setting the flag at tenant creation is unchanged.
+
+## 7ba. Whose return it is (PR-FBX-36; R1-D-97)
+
+- **`contracts` minor.** `classifyReturnCode(channel, code).attribution` and `PresentationResult.returnAttribution`: `BORROWER` (NACH 04, 01, 06; UPI Z9) or `NOT_BORROWER` (NACH 07, 09, every other code and any unknown code). Levy a bounce charge only when `bounceChargeable(result)` is true. The table is the owner's platform floor (#119), `[VERIFY]` against your sponsor bank's specification; to apply a tenant's narrower list, pass it as `classifyReturnCode(channel, code, { borrowerCodes })`: it can only remove codes, never add one.
+- **Remove** `pay.return.borrower_codes` as a source of truth; if a tenant keeps one, pass it as `borrowerCodes` (narrowing only).
+
+## 7bb. The purpose-consent purge per tenant, dry run first (PR-FBX-37; R1-D-97)
+
+- **`consent` minor; `consent/0005`.** For each tenant from `purge.tenantsWithPurposesDue()`: `const r = await purge.dryRunPurposes(tenantId)`, keep or show the report (ids, purposes, counts, SHA-256), then `purge.purgePurposesFor(tenantId, { dryRunId: r.runId })` within 72 hours. The live run deletes only what the dry run listed, and every record deleted has its own `consent.purpose.purge.record` ledger entry. The 8-year rule is unchanged.
+- **Remove** Finbyx's dry-run table, its per-record ledgering and the hold on relationship-end reports.
+
+## 7bc. The TELEPHONY port (PR-FBX-38; ADR-0007; R1-D-97)
+
+- **`contracts`, `testing` minors.** Program against `TelephonyPort`: `clickToCall({ initiatedBy, agentLine, to, purpose, subjectRef, recording, maxMinutes, idempotencyKey })` (never from an agent), `callOutcome`, `storeRecording` (only when you named a disclosure and the adapter played it; stored under your `outputPrefix` in the tenant's STORAGE with `retentionDays`) and `cancel`. Use `FakeTelephony` below staging and refuse above it until an adapter exists; calling hours and consent to be called stay your rules.
+- **Remove** the product-local `TelephonyPort` and its fake.
+
+## 7bd. The detached JWS in `X-Infrabyx-JWS` (Ecosystem Spec v1.4; M61; R1-D-96, R1-D-97)
+
+- **`contracts`, `connectors` minors.** On delivery, send `await hub.deliveryHeaders(event)` (a fresh JWS per attempt). On receipt, call `hub.receiveHttp(body, request.headers)`: a missing, repeated, comma-joined, over-long or malformed header is refused as `signature-invalid` (`IPB-API-018`) before anything is verified. For other regulated messages, read the header with `regulatedJwsFromHeaders(headers)` from `@infrabyx/contracts/events`.
 
 ## 8. Adopting 1.0.0
 

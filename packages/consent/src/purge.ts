@@ -22,6 +22,7 @@
 // `consent.purpose_notice.purge` entry in the platform tenant. Re-running it finds nothing more.
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
+import { canonicalDigest, newId } from "@infrabyx/crypto";
 import { ServiceReader } from "@infrabyx/tenancy";
 
 export const CONSENT_PURGE_PRINCIPAL_ID = "svc_consent_sweep";
@@ -29,9 +30,25 @@ export const CONSENT_PURGE_PRINCIPAL_ID = "svc_consent_sweep";
 export const PURPOSE_CONSENT_RETENTION_YEARS = 8;
 const NOTHING_DUE = Symbol("nothing due");
 const PURPOSE_PURGE_ACTION = "consent.purpose.purge";
+/** One ledger entry per purpose-consent record deleted (Finbyx PR-FBX-37, R1-D-97). */
+export const PURPOSE_RECORD_PURGE_ACTION = "consent.purpose.purge.record";
+export const PURPOSE_DRY_RUN_ACTION = "consent.purpose.purge.dry_run";
+/** A live run follows a dry run of the same tenant no older than this (PR-FBX-37). */
+export const PURPOSE_DRY_RUN_VALID_HOURS = 72;
+const DRY_RUN = Symbol("dry run");
 const NOTICE_PURGE_ACTION = "consent.purpose_notice.purge";
 const PURPOSE_RULE =
   "8 years after the later of the relationship end and any withdrawal; never while the relationship continues; never held";
+
+/** What a dry run would delete in one tenant (PR-FBX-37): ids, purposes and times only. */
+export interface PurposePurgeReport {
+  runId: string;
+  tenantId: string;
+  records: Array<{ id: string; purpose: string; recordedAt: string }>;
+  byPurpose: Record<string, number>;
+  /** SHA-256 of the canonical JSON of `records`, kept with the run and in the ledger. */
+  reportSha256: string;
+}
 
 export interface PurposeSweepResult {
   /** Purpose-consent records deleted, across tenants. */
@@ -116,18 +133,32 @@ export class ConsentPurge {
     return out;
   }
 
-  private async purgePurposeBatch(
-    tenantId: string,
-    size: number,
-    platformNotices: Set<string>,
-  ): Promise<{ records: number; notices: number }> {
-    try {
-      return await this.o.kernel.mutate(
-        purgeContext(tenantId),
-        async (tx) => {
-          // The restrictive policy decides which rows may go; the same test here only picks the
-          // batch. Oldest first, a grant before a withdrawal recorded at the same instant.
-          const r = await tx.query<{ id: string; notice_id: string | null }>(
+  /** The tenants with a purpose-consent purge possibly due (PR-FBX-37: run them one by one). */
+  async tenantsWithPurposesDue(): Promise<string[]> {
+    const ended = await this.reader.read<{ tenant_id: string }>(
+      "consent.subject_status",
+      `select tenant_id from consent.subject_status
+        where relationship_ended_at < now() - interval '8 years'
+        group by tenant_id order by tenant_id`,
+    );
+    return [...new Set(ended.map((t) => t.tenant_id))].sort();
+  }
+
+  /**
+   * A dry run of #95's purge in one tenant (Finbyx PR-FBX-37, R1-D-97): the same delete under the
+   * same rule and RLS, rolled back, so the report lists exactly what a live run would take. The
+   * ids are kept with the run (`consent.purpose_purge_run`) and the report's digest is ledgered
+   * (`consent.purpose.purge.dry_run`, counts by purpose). Nothing is deleted.
+   */
+  async dryRunPurposes(tenantId: string, o: { max?: number } = {}): Promise<PurposePurgeReport> {
+    const max = Math.max(1, Math.min(o.max ?? 10_000, 50_000));
+    return this.o.kernel.mutate(
+      purgeContext(tenantId),
+      async (tx) => {
+        if (!tx.unit) throw new Error("a dry run needs a kernel with savepoint units");
+        let rows: Array<{ id: string; purpose: string; recorded_at: Date }> = [];
+        const u = await tx.unit(async (t) => {
+          const r = await t.query<{ id: string; purpose: string; recorded_at: Date }>(
             `delete from consent.purpose_record where id in (
                select r.id from consent.purpose_record r
                 where not exists (
@@ -144,8 +175,121 @@ export class ConsentPurge {
                            and w.purpose = r.purpose and w.action = 'withdrawn'
                            and w.recorded_at >= r.recorded_at and w.recorded_at >= now() - interval '8 years')
                 order by r.recorded_at, (r.action = 'withdrawn'), r.id limit $1)
-             returning id, notice_id`,
-            [size],
+             returning id, purpose, recorded_at`,
+            [max],
+          );
+          rows = r.rows;
+          throw DRY_RUN;
+        });
+        if (u.ok || u.error !== DRY_RUN)
+          throw u.ok ? new Error("dry run not rolled back") : u.error;
+        const records = rows
+          .map((x) => ({ id: x.id, purpose: x.purpose, recordedAt: x.recorded_at.toISOString() }))
+          .sort((a, b) => (a.id < b.id ? -1 : 1));
+        const byPurpose: Record<string, number> = {};
+        for (const x of records) byPurpose[x.purpose] = (byPurpose[x.purpose] ?? 0) + 1;
+        const reportSha256 = canonicalDigest(records);
+        const runId = newId("cpr");
+        await tx.query(
+          `insert into consent.purpose_purge_run
+             (id, tenant_id, kind, record_ids, records, report_sha256, ran_by)
+           values ($1, $2, 'dry_run', $3, $4, $5, $6)`,
+          [
+            runId,
+            tenantId,
+            records.map((x) => x.id),
+            records.length,
+            reportSha256,
+            CONSENT_PURGE_PRINCIPAL_ID,
+          ],
+        );
+        await this.o.audit.record(tx, {
+          action: PURPOSE_DRY_RUN_ACTION,
+          resourceType: "purpose_purge_run",
+          resourceId: runId,
+          after: {
+            rule: PURPOSE_RULE,
+            records: records.length,
+            by_purpose: byPurpose,
+            report_sha256: reportSha256,
+          },
+        });
+        return { runId, tenantId, records, byPurpose, reportSha256 };
+      },
+      // The delete guard (consent/0004) admits only the purge's own action; the delete is rolled back.
+      { action: PURPOSE_PURGE_ACTION },
+    );
+  }
+
+  /**
+   * A live run of #95's purge in one tenant after its dry run (PR-FBX-37): refused unless the
+   * dry run is this tenant's and at most 72 hours old; deletes no record outside its report (and
+   * none the rule no longer allows), each one ledgered; retired notices as in `sweepPurposes`.
+   */
+  async purgePurposesFor(
+    tenantId: string,
+    o: { dryRunId: string; batch?: number },
+  ): Promise<PurposeSweepResult> {
+    const batch = Math.max(1, Math.min(o.batch ?? 500, 1000));
+    const dry = await this.o.kernel.read(purgeContext(tenantId), async (tx) => {
+      const r = await tx.query<{ record_ids: string[]; fresh: boolean }>(
+        `select record_ids, ran_at > now() - make_interval(hours => $2) as fresh
+           from consent.purpose_purge_run where id = $1 and kind = 'dry_run'`,
+        [o.dryRunId, PURPOSE_DRY_RUN_VALID_HOURS],
+      );
+      return r.rows[0];
+    });
+    if (!dry) throw new Error(`no dry run ${o.dryRunId} in tenant ${tenantId}`);
+    if (!dry.fresh)
+      throw new Error(`dry run ${o.dryRunId} is older than ${PURPOSE_DRY_RUN_VALID_HOURS} hours`);
+    const out: PurposeSweepResult = { records: 0, tenantNotices: 0, platformNotices: 0 };
+    const platformNotices = new Set<string>();
+    for (;;) {
+      const r = await this.purgePurposeBatch(tenantId, batch, platformNotices, {
+        dryRunId: o.dryRunId,
+        ids: dry.record_ids,
+      });
+      out.records += r.records;
+      out.tenantNotices += r.notices;
+      if (r.records < batch) break;
+    }
+    if (platformNotices.size)
+      out.platformNotices = await this.purgePlatformNotices(platformNotices);
+    return out;
+  }
+
+  private async purgePurposeBatch(
+    tenantId: string,
+    size: number,
+    platformNotices: Set<string>,
+    live?: { dryRunId: string; ids: readonly string[] },
+  ): Promise<{ records: number; notices: number }> {
+    try {
+      return await this.o.kernel.mutate(
+        purgeContext(tenantId),
+        async (tx) => {
+          // The restrictive policy decides which rows may go; the same test here only picks the
+          // batch. Oldest first, a grant before a withdrawal recorded at the same instant.
+          const r = await tx.query<{ id: string; notice_id: string | null; purpose: string }>(
+            `delete from consent.purpose_record where id in (
+               select r.id from consent.purpose_record r
+                where not exists (
+                        select 1 from consent.subject_status h
+                         where h.tenant_id = r.tenant_id and h.subject_ref = r.subject_ref and h.legal_hold)
+                  and exists (
+                        select 1 from consent.subject_status s
+                         where s.tenant_id = r.tenant_id and s.subject_ref = r.subject_ref
+                           and not s.active_relationship and s.relationship_ended_at is not null
+                           and greatest(s.relationship_ended_at, r.recorded_at) < now() - interval '8 years')
+                  and not exists (
+                        select 1 from consent.purpose_record w
+                         where w.tenant_id = r.tenant_id and w.subject_ref = r.subject_ref
+                           and w.purpose = r.purpose and w.action = 'withdrawn'
+                           and w.recorded_at >= r.recorded_at and w.recorded_at >= now() - interval '8 years')
+                  and ($2::text[] is null or r.id = any($2::text[]))
+                order by r.recorded_at, (r.action = 'withdrawn'), r.id limit $1)
+             returning id, notice_id, purpose`,
+            [size, live ? [...live.ids] : null],
           );
           if (!r.rows.length) throw NOTHING_DUE;
           const cited = [...new Set(r.rows.map((x) => x.notice_id).filter((x) => x !== null))];
@@ -163,6 +307,20 @@ export class ConsentPurge {
             resourceId: "batch",
             after: { rule: PURPOSE_RULE, records: r.rows.length, notices },
           });
+          // One entry per record deleted (PR-FBX-37): its id and purpose, never personal data.
+          for (const x of r.rows)
+            await this.o.audit.record(tx, {
+              action: PURPOSE_RECORD_PURGE_ACTION,
+              resourceType: "purpose_consent",
+              resourceId: x.id,
+              after: { purpose: x.purpose, ...(live ? { dry_run_id: live.dryRunId } : {}) },
+            });
+          if (live)
+            await tx.query(
+              `insert into consent.purpose_purge_run (id, tenant_id, kind, dry_run_id, records, ran_by)
+               values ($1, $2, 'live', $3, $4, $5)`,
+              [newId("cpr"), tenantId, live.dryRunId, r.rows.length, CONSENT_PURGE_PRINCIPAL_ID],
+            );
           return { records: r.rows.length, notices };
         },
         { action: PURPOSE_PURGE_ACTION },
