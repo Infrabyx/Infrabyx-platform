@@ -15,6 +15,7 @@ export * from "./service.js";
 export * from "./snapshot.js";
 export * from "./zip.js";
 export * from "./docx.js";
+export * from "./pdf.js";
 export {
   OFFICE_DEFAULT_CREATED,
   OFFICE_DEFAULT_MAX_BYTES,
