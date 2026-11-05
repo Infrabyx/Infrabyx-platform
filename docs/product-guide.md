@@ -478,7 +478,7 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 ## 7ay. PDF export (PR-LDC-28; #117; R1-D-95, R1-D-96, R1-D-97)
 
 - **`toPdf(doc, { creator, created, maxBytes })` (`export` minor)** renders the `toDocx` block model as a PDF 1.7 file, A4, with no new dependency (review: `docs/phases/R1-pdf-dependency-review.md`). From wave 8 it embeds Noto Sans (OFL; `export/fonts/FONTS.md`), so it shows Latin (including Latin Extended-A), the usual punctuation, the euro and **the rupee sign**, and the text stays searchable and copyable. A character the fonts lack is refused with `char_unsupported`; nothing is ever replaced.
-- **Vernacular documents (Devanagari, Gurmukhi and the other Indic scripts).** They need shaping, which `toPdf` does not do: it refuses them with `shaping_required`. Render them with `renderPdf(doc, { docgen, lang, outputPrefix })`: a document with Indic text goes to your DOCGEN adapter's `renderHtml` (Gotenberg's Chromium, with Noto Sans Devanagari and Gurmukhi installed in its image) as the self-contained page `blocksToHtml(doc, { lang })` writes; anything else is rendered in process. Pass `lang` as the document's language (`hi`, `pa`, …). The platform's Gotenberg DOCGEN adapter follows in wave 9 (#120, R1-plan M71); bind your own until then. `pdfNeedsShaping(doc)` tells you which path applies.
+- **Vernacular documents (Devanagari, Gurmukhi and the other Indic scripts).** They need shaping, which `toPdf` does not do: it refuses them with `shaping_required`. Render them with `renderPdf(doc, { docgen, lang, outputPrefix })`: a document with Indic text goes to your DOCGEN adapter's `renderHtml` (Gotenberg's Chromium, with Noto Sans Devanagari and Gurmukhi installed in its image) as the self-contained page `blocksToHtml(doc, { lang })` writes; anything else is rendered in process. Pass `lang` as the document's language (`hi`, `pa`, …). Bind the platform's Gotenberg adapter (§7be) as `docgen`. `pdfNeedsShaping(doc)` tells you which path applies.
 
 ## 7az. Sandbox changes under maker-checker (#115; R1-D-95)
 
@@ -502,6 +502,11 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 ## 7bd. The detached JWS in `X-Infrabyx-JWS` (Ecosystem Spec v1.4; M61; R1-D-96, R1-D-97)
 
 - **`contracts`, `connectors` minors.** On delivery, send `await hub.deliveryHeaders(event)` (a fresh JWS per attempt). On receipt, call `hub.receiveHttp(body, request.headers)`: a missing, repeated, comma-joined, over-long or malformed header is refused as `signature-invalid` (`IPB-API-018`) before anything is verified. For other regulated messages, read the header with `regulatedJwsFromHeaders(headers)` from `@infrabyx/contracts/events`.
+
+## 7be. The Gotenberg DOCGEN adapter (#120; R1-D-100)
+
+- **`connectors` minor (`@infrabyx/connectors/docgen`).** Run Gotenberg 8.39.0 in your cluster (the pinned image in `infra/docker/TEST_IMAGES.md`; it carries the Noto fonts for Devanagari and Gurmukhi) behind HTTPS, with no egress. Build `new GotenbergDocgen({ baseUrl, storage, enabled })`, `enabled` reading `int.docgen.gotenberg.enabled` (off by default; turned on by PLT_SUPER_ADMIN under R4), and pass it to `renderPdf(doc, { docgen, lang: "hi" | "pa", outputPrefix: "tenant/<id>/<module>" })`. The PDF (or PDF/A-2b with `format: "pdfa"`) lands in the tenant's STORAGE with its SHA-256 and page count. Templates are not offered by this adapter.
+- **Remove** your own DOCGEN or HTML-to-PDF adapter for vernacular documents.
 
 ## 8. Adopting 1.0.0
 

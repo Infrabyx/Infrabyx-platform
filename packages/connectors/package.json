@@ -127,6 +127,10 @@
     "./media": {
       "types": "./dist/media/index.d.ts",
       "default": "./dist/media/index.js"
+    },
+    "./docgen": {
+      "types": "./dist/docgen/index.d.ts",
+      "default": "./dist/docgen/index.js"
     }
   },
   "files": [

@@ -101,6 +101,10 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 4. **PDF (guide §7ay).** KFS and notices with the rupee sign render in process; those in the borrower's language go through `renderPdf` with your DOCGEN adapter.
 5. **Mark met** PR-FBX-36, 37 and 38.
 
+## 10. Wave 9 (`connectors`, `testing`, `config` minors, patches of the rest)
+
+1. **Vernacular KFS and notices (guide §7be, §7ay).** Run Gotenberg in your cluster, enable `int.docgen.gotenberg.enabled`, and render documents in the borrower's language with `renderPdf(doc, { docgen: new GotenbergDocgen(…), lang, outputPrefix })`. **Shim removed:** any product-local HTML-to-PDF path for Hindi or Punjabi.
+
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 
 **Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

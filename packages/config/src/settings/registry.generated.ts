@@ -3055,6 +3055,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)"
   },
   {
+    "key": "int.docgen.gotenberg.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 DOCGEN; OWNER-QUESTIONS #120, R1-D-100 (off until a deployment runs its in-cluster Gotenberg with the Noto fonts)"
+  },
+  {
     "key": "int.captcha.under_attack",
     "tier": "PLATFORM",
     "type": "bool",
@@ -6855,6 +6868,7 @@ export type SettingValueMap = {
   "int.bureau.cibil.enabled": boolean;
   "int.aa_fiu.setu.enabled": boolean;
   "int.video_meet.livekit.enabled": boolean;
+  "int.docgen.gotenberg.enabled": boolean;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;

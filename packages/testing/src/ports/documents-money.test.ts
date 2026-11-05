@@ -10,6 +10,7 @@ import {
   FakePdf,
   CONTRACT_AUTH,
   docgenContractCases,
+  docgenHtmlContractCases,
   esignFakeCases,
   estampContractCases,
   estampDdeContractCases,
@@ -28,7 +29,10 @@ describe("ESTAMP DDE on the fake (R1-D-62)", () => {
   );
 });
 defineContractSuite("PAYOUTS", () => new FakePayouts(), payoutsContractCases());
-defineContractSuite("DOCGEN", () => new FakeDocgen(), docgenContractCases());
+defineContractSuite("DOCGEN", () => new FakeDocgen(), [
+  ...docgenContractCases(),
+  ...docgenHtmlContractCases(),
+]);
 defineContractSuite("PDF", () => new FakePdf(), pdfContractCases());
 
 describe("the PAYMENTS mandate lifecycle fake (PR-FBX-29)", () => {

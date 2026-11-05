@@ -10,6 +10,12 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                    |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                        |
 
+## Wave 9 (eighth session, 5 Nov): at its gate
+
+- **Owner (R1-D-100):** the Repository-admin bypass is removed (the v1.4 and IPB-07-38 one-off is closed); the apt waiver (R1-D-99) accepted to 5 Dec: drop it once a fixed base digest is 7 days old, and tell the owner if 5 Dec comes first.
+- **Built:** M71, `GotenbergDocgen` (`connectors/docgen`, `renderHtml` to PDF and PDF/A through the pinned Gotenberg 8.39.0 with the Noto fonts; `int.docgen.gotenberg.enabled`), `docgenHtmlContractCases` and the `gotenberg` test image (`testing`), a DOCGEN `port-contract` leg and exit entry. Guide §7be; threat model §3.104. No new product requests found (Finbyx's repository is the only one searchable from here).
+- **Next:** the wave 9 gate (`ci:run`; the Hindi and Punjabi contract leg runs there), version PR, release record, adoption notes.
+
 ## Wave 8 (eighth session, 5 Nov): released (run 207)
 
 - **Owner answers (R1-D-96):** #116 signed off; IPB-07-38 wording approved; one bypass PR for both (#228, open, waiting for the owner's one-off bypass); #117 no to Latin-only (rupee sign now; Indic through DOCGEN); #118 R4 for production tenants. Finbyx PR-FBX-36, 37 and 38 logged and accepted (platform-requests).
