@@ -1068,3 +1068,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.102 `X-Infrabyx-JWS` (Ecosystem Spec v1.4; M61)
 
 - **S and T (a missing or substituted proof):** a regulated message without exactly one well-formed header is refused before verification; the header value is verified against the pinned key ring with the `iat` window and `jti` replay check, then kept byte for byte. A substituted JWS for another event fails verification over the JCS of this event.
+
+### 3.103 Base image: apt CVE-2026-109518 (waived 30 days; R1-D-99)
+
+- **T (an on-path attacker during apt downloads):** apt is in the Debian 12 base of both platform images but is never run: the runtime fetches no packages, runs as UID 10001 with every capability dropped and a read-only root. Waived until 2026-12-05 (`infra/docker/trivyignore.yaml`) because no `node:24.22.1-bookworm-slim` digest at least 7 days old carries the fixed apt 2.6.2; the waiver goes with the first such digest.
