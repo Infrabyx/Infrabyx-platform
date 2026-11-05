@@ -15,7 +15,8 @@ Updated: 2026-11-05
 - **Owner (R1-D-102):** #122 yes, the narrow capture retirement; PR-FBX-40 refused at creation; PR-FBX-41 to 44 ports and fakes only, no vendor accounts.
 - **Built:** M72 `audit/0008` `retire_capture` (and the runner's `ipb.migration` marker); M73 `tenancy/0019` tenant-id rule, `TENANT_ID_REGEX`; M74 DISPATCH, COURT_DATA and ODR ports with fakes, `equatorOdrStub()` and contract cases (ADR-0008 to 0010). Guide §7bf to §7bh; threat model §3.105 to §3.107; Finbyx adoption §11.
 - **Planned:** PR-FBX-43 (module lifecycle, entitlements, module and legal-hold events) in wave 11 (M76), after OWNER-QUESTIONS #123 (who approves an entitlement change).
-- **Next:** wave 10's one gate (`export:unchanged` for the `tenancy.tenant` constraint, then `ci:run`), version PR, release record.
+- **Gate:** the first `ci:run` run was green except `containers` (a new base advisory, CVE-2026-76844 in `zlib1g`, no fix: waived 30 days under the standing rule, R1-D-106, with the apt waiver to 5 Dec) and `compose` (MinIO's console took a host port already in use before any migration ran: an infrastructure flake, re-run once).
+- **Next:** wave 10's gate re-run, version PR, release record.
 
 ## Wave 9 (eighth session, 5 Nov): released (run 210)
 

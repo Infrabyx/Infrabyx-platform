@@ -1088,3 +1088,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.107 The DISPATCH, COURT_DATA and ODR ports (ADR-0008 to 0010; R1-D-104)
 
 - Interfaces and fakes only: no new data flow leaves the platform until an adapter lands, each with its own threat-model entry. **E (an agent acting outside):** DISPATCH and ODR refuse an agent initiator, as TELEPHONY does. **R:** dispatch proofs carry the document's SHA-256; court data names its source and time and is never treated as a verified order; ODR referrals carry their basis and the disclosure version shown. **I:** addressees, parties, case files and outcomes are CONFIDENTIAL and go only to the tenant's own STORAGE prefix.
+
+### 3.108 Base image: zlib1g CVE-2026-76844 (waived 30 days; R1-D-106)
+
+- **T and D (crafted compressed input):** `zlib1g` is in the Debian 12 base of both platform images, with no fixed package. Node.js uses its own bundled zlib for every compression the app does, and the runtime runs no system tool on untrusted archives (UID 10001, no capabilities, read-only root). Waived until 2026-12-05 (`infra/docker/trivyignore.yaml`); Trivy's record looks misattributed and is re-checked when its database updates.
