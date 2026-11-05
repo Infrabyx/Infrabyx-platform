@@ -33,6 +33,7 @@ export const PORTS = [
   "BUREAU",
   "AA_FIU",
   "ESTAMP",
+  "DOCGEN",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");

@@ -101,6 +101,10 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 2. **PDF (guide §7ay).** The rupee sign now renders; documents in Hindi or Punjabi go through `renderPdf` with a DOCGEN adapter (the platform's Gotenberg adapter follows in wave 9, #120).
 3. **Sandbox changes (guide §7az).** Pass `appEnv` to `TenantSandbox`: in production a change waits 60 minutes after approval (#118).
 
+## 12. Wave 9 (`connectors`, `testing`, `config` minors, patches of the rest)
+
+1. **Hindi and Punjabi documents (guide §7be, §7ay).** Bind `GotenbergDocgen` (in-cluster Gotenberg, `int.docgen.gotenberg.enabled`) as the `docgen` of `renderPdf`. **Shim removed:** any product-local HTML-to-PDF path for vernacular notices.
+
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 
 **Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

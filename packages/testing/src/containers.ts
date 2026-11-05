@@ -104,6 +104,12 @@ export const TEST_IMAGES = {
     version: "v1.13.11",
     role: "LiveKit server, single node, no egress worker (VIDEO_MEET)",
   },
+  gotenberg: {
+    image:
+      "gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5",
+    version: "8.39.0",
+    role: "Gotenberg (Chromium and LibreOffice, fonts-noto-core) for DOCGEN renderHtml (#120)",
+  },
   unleash: {
     image:
       "unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050",

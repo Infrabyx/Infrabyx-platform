@@ -221,6 +221,18 @@ export const PORT_EXIT: readonly PortExit[] = [
     lockIn: "Calls in progress at cut-over finish on the source",
   },
   {
+    port: "DOCGEN",
+    primary: "gotenberg",
+    exitTarget: "none",
+    pending:
+      "The template adapter (docxtemplater) follows when a product needs it; Gotenberg is self-hosted in the cluster, so leaving it is a hosting change rather than a vendor exit",
+    dataMove:
+      "Configuration swap; rendered documents are already in the tenant's STORAGE, and the renderer keeps nothing",
+    volumeClass: "S",
+    lockIn:
+      "Page layout can differ slightly between HTML renderers; golden PDFs are re-baselined on a switch",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",

@@ -1072,3 +1072,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.103 Base image: apt CVE-2026-109518 (waived 30 days; R1-D-99)
 
 - **T (an on-path attacker during apt downloads):** apt is in the Debian 12 base of both platform images but is never run: the runtime fetches no packages, runs as UID 10001 with every capability dropped and a read-only root. Waived until 2026-12-05 (`infra/docker/trivyignore.yaml`) because no `node:24.22.1-bookworm-slim` digest at least 7 days old carries the fixed apt 2.6.2; the waiver goes with the first such digest.
+
+### 3.104 The Gotenberg DOCGEN adapter (`connectors/docgen`; #120, R1-D-100)
+
+- **I and T (HTML that makes the renderer fetch or run something):** the adapter sends one `index.html` and no other file or URL, asks Chromium to fail on console exceptions and not to wait for the network; pages from `blocksToHtml` carry a CSP of `default-src 'none'`. Deploy Gotenberg with no egress (a network policy) and its own `--chromium-deny-list`/`--chromium-allow-list` defaults kept, so a page from any other source still cannot reach out. **S (a forged renderer):** HTTPS to the configured host only (the SSRF guard), optional basic auth from SECRETS. **I (data at rest):** the PDF goes straight to the tenant's STORAGE, CONFIDENTIAL by default; Gotenberg keeps nothing.

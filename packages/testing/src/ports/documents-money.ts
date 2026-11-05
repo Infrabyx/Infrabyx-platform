@@ -900,6 +900,57 @@ export function docgenContractCases(
   ];
 }
 
+/**
+ * DOCGEN `renderHtml` contract cases (#120, R1-D-100), for every adapter that renders HTML, the
+ * template ones and `gotenberg` alike: a PDF or PDF/A in STORAGE under the prefix, with its hash and
+ * page count; a request outside the schema is refused before anything is rendered.
+ */
+export function docgenHtmlContractCases(): Array<ContractCase<DocgenPort>> {
+  const page = (body: string) =>
+    `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"></head><body>${body}</body></html>`;
+  return [
+    {
+      name: "renders HTML to a PDF in STORAGE under the prefix, with its hash and page count",
+      method: "renderHtml",
+      async run(p) {
+        const a = await p.renderHtml({
+          html: page("<h1>Key Fact Statement</h1><p>Loan amount: ₹1,25,000</p>"),
+          format: "pdf",
+          outputPrefix: PREFIX,
+        });
+        expect(a.file.storageKey.startsWith(PREFIX)).toBe(true);
+        expect(a.file.sha256).toMatch(/^[0-9a-f]{64}$/);
+        expect(a.format).toBe("pdf");
+        expect(a.pageCount).toBeGreaterThan(0);
+        expect(a.templateVersion).toBeNull();
+      },
+    },
+    {
+      name: "renders PDF/A on request, and refuses a request outside the schema",
+      method: "renderHtml",
+      async run(p) {
+        const a = await p.renderHtml({
+          html: page("<p>Notice</p>"),
+          format: "pdfa",
+          outputPrefix: PREFIX,
+        });
+        expect(a.format).toBe("pdfa");
+        await expect(
+          p.renderHtml({ html: page("<p>x</p>"), format: "docx", outputPrefix: PREFIX } as never),
+        ).rejects.toThrow();
+        await expect(
+          p.renderHtml({
+            html: page("<p>x</p>"),
+            format: "pdf",
+            outputPrefix: "../escape",
+          } as never),
+        ).rejects.toThrow();
+        expect(payloadClass(HtmlRenderRequest).bodyHighest).toBe("CONFIDENTIAL");
+      },
+    },
+  ];
+}
+
 export function pdfContractCases(): Array<ContractCase<PdfPort>> {
   const f = (s: string): DocFileRef => ({ storageKey: `${PREFIX}/${s}.pdf`, sha256: sha256Hex(s) });
   return [

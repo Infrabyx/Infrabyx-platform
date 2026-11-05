@@ -52,6 +52,7 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
       "BUREAU",
       "AA_FIU",
       "VIDEO_MEET",
+      "DOCGEN",
     ]);
   });
 
