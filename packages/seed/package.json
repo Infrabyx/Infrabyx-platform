@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/seed",
-  "version": "1.0.33",
+  "version": "1.0.34",
   "description": "Seed framework, profiles, SEED_CREDENTIALS loader, production refusal",
   "license": "UNLICENSED",
   "private": false,
