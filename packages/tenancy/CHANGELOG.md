@@ -1,5 +1,20 @@
 # @infrabyx/tenancy
 
+## 1.16.0
+
+### Minor Changes
+
+- 67be297: Sandbox changes in production are R4 (OWNER-QUESTIONS #118, R1-D-96): `TenantSandbox` takes the deployment's `appEnv`; a change to a tenant of a production deployment (`prod`, `dr`, `pre-prod`), or when `appEnv` is not given, is raised at R4, so it can be applied only 60 minutes after its approval, in either direction; in any other environment it stays R3 (one approver, no delay). `sandboxChangeRisk(appEnv)` is exported.
+
+### Patch Changes
+
+- Updated dependencies [67be297]
+- Updated dependencies [67be297]
+- Updated dependencies [67be297]
+  - @infrabyx/contracts@1.23.0
+  - @infrabyx/config@1.12.1
+  - @infrabyx/crypto@1.5.8
+
 ## 1.15.0
 
 ### Minor Changes
