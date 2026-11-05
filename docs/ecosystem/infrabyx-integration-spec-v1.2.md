@@ -2,7 +2,17 @@
 
 **Canonical contract for events, APIs, data ownership, identity and connectors across LawDocs, Finbyx, Udofin, the Infrabyx Operations Hub, Equator Resolution, LawDocsComply, the Recovery Suite (future Udolex), non-RE lenders, future ecosystem apps and third parties**
 
-Version 1.3 · 4 November 2026 · Companion to the Infrabyx Platform Baseline Standard (IPB) v1.0, the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, whose event, API and layout tables remain as summaries and point here as canonical · Supersedes v1.2 of 26 October 2026 (changes in Part 16.0) *(v1.3: owner-authorised amendment, OWNER-QUESTIONS #105)* · v1.2 superseded v1.1 of 24 October 2026 (changes in Part 16.1) *(v1.2)*
+Version 1.4 · 5 November 2026 · Companion to the Infrabyx Platform Baseline Standard (IPB) v1.0, the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, whose event, API and layout tables remain as summaries and point here as canonical · Supersedes v1.3 of 4 November 2026 (changes in Part 16.0) *(v1.4: owner-authorised amendment, OWNER-QUESTIONS #116)* · v1.3 superseded v1.2 of 26 October 2026 (changes in Part 16.1) *(v1.3: owner-authorised amendment, OWNER-QUESTIONS #105)* · v1.2 superseded v1.1 of 24 October 2026 (changes in Part 16.2) *(v1.2)*
+
+---
+
+## WHAT CHANGED IN v1.4 *(v1.4)*
+
+Minor version (Part 14.1): one header and its rules; no event, field, schema, code table or RFC 9421 covered component changes meaning, and a consumer that already reads the header is unaffected, so no parallel run is required. Raised as platform request PR-043 from LawDocsComply PR-LDC-23; signed off by the owner on 5 November 2026 (OWNER-QUESTIONS #116).
+
+1. **`X-Infrabyx-JWS`**: the HTTP request header that carries a regulated message's detached JWS on every delivery, its form (one compact detached JWS, RFC 7515 Appendix F, ES256, under the platform's approved JWS profile), what it signs, and the consumer's and producer's rules (3.6; 3.4).
+2. Batches and files are unchanged; a replayed regulated message is re-delivered on its own (3.6).
+3. Certification test "Detached JWS header (v1.4)" (14.3); change log 16.0.
 
 ---
 
@@ -13,7 +23,7 @@ Minor version (Part 14.1): two new events, one optional field, one code table an
 1. **`ProvisioningRequested`** (product → OH) and **`ProvisioningFailed`** (OH → the requesting product) added to 6.29, both signed regulated messages (3.6).
 2. **`provisional_tenant_id?`** added to `TenantProvisioned`'s key payload fields.
 3. **Code table `provisioning_failure_reason`** and the rules for one outcome per request, idempotency, PRODUCTION, data and **retention of a failed or expired provisional tenant** (6.29).
-4. **Tag (N13)** for canonical names adopted in v1.3 (6.1); certification test "Provisioning request and failure (v1.3)" (14.3); change log 16.0.
+4. **Tag (N13)** for canonical names adopted in v1.3 (6.1); certification test "Provisioning request and failure (v1.3)" (14.3); change log 16.1.
 
 ---
 
@@ -32,7 +42,7 @@ Minor version (Part 14.1): new owner code, product, principles, entities, domain
 9. **Vidhi cross-product delegation contract** (4.9; events 6.36): a Vidhi task in one product requests data or action from another only through `VidhiTaskDelegated` with an explicit `consentref` and under the receiving product's autonomy ceiling; locked-list actions can never be delegated.
 10. **Vendor assurance publication contract** (6.34): OH14.6 is the system of record; products hold read-only mirrors keyed by `vad_id` and digest; acknowledgement events return to OH.
 11. **Runtime and version pins** (3.12; Appendix C): Node.js 24.22.1 for every product; capability-port names per IPB-01 §01.4.4 and TCP port variables per IPB-11; error-code prefixes confirmed non-colliding; export package and MCP resource names per product.
-12. Part 14: IPB change-propagation rule; three new certification groups (Legal-tech boundaries; Product scope, brand and white-label; Delegation, trust and content). Part 15: website and CMS, Vidhi and trust-publication waves plus LawDocs rows. Part 16 becomes the cumulative change log (16.1 v1.2, 16.2 v1.1). New Appendix C (cross-pack consistency table).
+12. Part 14: IPB change-propagation rule; three new certification groups (Legal-tech boundaries; Product scope, brand and white-label; Delegation, trust and content). Part 15: website and CMS, Vidhi and trust-publication waves plus LawDocs rows. Part 16 becomes the cumulative change log (now 16.2 v1.2, 16.3 v1.1). New Appendix C (cross-pack consistency table).
 13. Error codes added (3.9): `product-scope-denied`, `delegation-not-permitted`, `locked-action`, `brand-host-unknown`, `mirror-digest-mismatch`.
 
 ---
@@ -124,7 +134,7 @@ Each product exposes partner APIs through its own gateway (TLS 1.3, mTLS for mac
 
 ## 3.4 Webhooks and idempotency
 
-- **Standard Webhooks:** `webhook-id` (= `id`), `webhook-timestamp`, `webhook-signature` (HMAC-SHA256 over `id.timestamp.body`, `whsec_` secret); Infrabyx-to-Infrabyx deliveries add RFC 9421. Timestamps more than 5 minutes off are rejected.
+- **Standard Webhooks:** `webhook-id` (= `id`), `webhook-timestamp`, `webhook-signature` (HMAC-SHA256 over `id.timestamp.body`, `whsec_` secret); Infrabyx-to-Infrabyx deliveries add RFC 9421. Timestamps more than 5 minutes off are rejected. Regulated messages also carry `X-Infrabyx-JWS` (3.6) *(v1.4)*.
 - **At-least-once:** `2xx` only after durable inbox write; exponential back-off with jitter for 72 hours, then DLQ and alert to both sides.
 - **Idempotency-Key** (UUIDv7) on every state-changing request (`draft-ietf-httpapi-idempotency-key-header`, still a draft [VERIFY: status]); stored with body hash and response ≥ 24 hours (7 days for money); same key with a different body returns 422 and a retry while the original is still processing returns 409, as the draft specifies.
 - **Business keys** (Part 6) are unique constraints at the consumer.
@@ -143,6 +153,11 @@ Producers write to a transactional outbox with the state change; consumers store
 - **Documents** travel by reference (`document_id`, `sha256`) with a **detached JWS** (RFC 7515, 7797) for transfer integrity; legal effect rests on the document's own eSign, DSC or PAdES signature and e-stamp.
 - **Regulated messages added in v1.2** *(v1.2)*: `AgreementExecuted`, `CourtOrderRecorded`, `SigningRequestCompleted`, `StampInstrumentVerified`, `SystemOfRecordSwitched`, `TenantRegistered`, `MarketplacePayoutSettled`, `MarketplaceTransferInstructed`, `ServiceCreditIssued` (from LD App. Y), `WhiteLabelTenantProvisioned`, `WhiteLabelTenantExited`. Each carries RFC 9421 in transit and a detached JWS over the CloudEvent, stored with it.
 - **Regulated messages added in v1.3** *(v1.3)*: `ProvisioningRequested`, `ProvisioningFailed` (6.29). As for `TenantProvisioned`: RFC 9421 in transit and a detached JWS over the CloudEvent, stored with it so the proof can be re-verified after the HTTP exchange. The JWS is made with the producer's ecosystem signing key (for `ProvisioningRequested`, the product's; for `ProvisioningFailed`, the Operations Hub's), and the consumer checks it against the key set it already pins for that producer. A consumer refuses an unsigned or wrongly signed event with `signature-invalid` and never acts on it.
+- **Transport of the detached JWS** *(v1.4)*: a regulated message delivered by HTTP push (3.1, 3.4) carries its detached JWS in the request header **`X-Infrabyx-JWS`** (lower case `x-infrabyx-jws` in HTTP/2 and HTTP/3; header names are case-insensitive), on the first delivery and on every retry. The header value is exactly one compact detached JWS, `BASE64URL(protected header) || ".." || BASE64URL(signature)` (RFC 7515 Appendix F), at most 1,024 octets, with no whitespace, no comma-joined list and no second `X-Infrabyx-JWS` header.
+- **What the JWS signs** *(v1.4)*: the JCS form (RFC 8785) of the CloudEvent in the request body, without a `signature` attribute if one is present, so a proof stays valid when the event is stored or re-serialised. The payload is base64url-encoded in the signing input as RFC 7515 specifies; the protected header holds `alg` (`ES256` only), `kid`, `typ` (`ipb-regulated-message+jws`), `iat` and `jti`, and nothing else (no `b64`, `crit`, `jku`, `jwk`, `x5u` or `x5c`).
+- **Consumer** *(v1.4)*: before its `2xx` (3.4), a consumer of a regulated message verifies the JWS against the key set it pins for the producer (`kid`, an `iat` within 5 minutes back and 1 minute ahead, `jti` not seen before for that producer), and stores the header value byte for byte beside the event. A regulated message with no `X-Infrabyx-JWS`, with more than one, or with one that does not verify is refused with `signature-invalid` and never processed. A consumer ignores the header on a message that is not regulated, and stores nothing for it.
+- **Producer** *(v1.4)*: the producer signs each delivery when it sends it (the JWS lives 5 minutes, so a retry carries a fresh JWS with a new `jti`); the stored copy at the consumer is the JWS of the delivery it accepted. `X-Infrabyx-JWS` is not added to the RFC 9421 covered components: the JWS is itself a signature over the event, and RFC 9421's `content-digest` already binds the body it signs.
+- **Batches and files** *(v1.4)*: unchanged. A CloudEvents batch, NDJSON file or registered layout (3.11, Part 12) keeps its manifest JWS; a regulated message that is replayed is re-delivered on its own by HTTP push, with its header.
 
 ## 3.7 Sandbox and certification
 
@@ -619,7 +634,7 @@ IPB-D-10 makes `brand_pack` the one object that carries a brand across the group
 **Tags:** **(E)** existing Finbyx Part 5.2 interface, unchanged; **(A)** one of the six Udofin Part 5.2 proposals, **adopted in v1.0 of this specification subject to approval by both the Finbyx and Udofin product owners** (until both approvals are recorded, send through the RE's agreed manual channel and log); **(N)** new canonical name fixed in v1.0 for the Finbyx v1.4 and Udofin v1.1 prompts; **(N+)** added by this specification; **(N11)** new canonical name adopted in v1.1 for the Finbyx v1.5, Udofin v1.2 and Operations Hub v1.0 prompts (the (A) approval rule applies until the Finbyx and Udofin owners approve v1.1); **(N11+)** API or field added by v1.1. **Signed** = regulated message (3.6); **API** = synchronous. Parties as Part 5.1 plus **AGY** agency or dialler, **FIA** field-investigation app, **CL** co-lender, **DSP** dispatch adapter, **CDA** court-data adapter, **OH** Operations Hub, **INS** insurer or registered insurance partner, **CIC** credit information company, **TR** securitisation trustee or SPE, **SOC** a non-RE lender's (society's) own system; an RE on another LMS takes the FX role, and FIA working for an appointed agent takes the AGY role in 6.7 (allocations, activity, PTP, visits, receipts). The idempotency key is the consumer's business unique constraint (besides `(source, id)`). **std** = delivery p95 ≤ 5 minutes (3.8). LSP consumers receive `.lsp` projections; scopes in 4.5. Events in 6.18–6.30 carry `productfamily = na` unless they concern one loan; every subscription to them is checked at registration against the routing rules of its section (for example 6.23 tenant-internal, 6.27 aggregates only to the Hub, 6.30 Udofin and insurer only).
 
 
-**Tags added in v1.2** *(v1.2)*: **(N12)** new canonical name adopted in v1.2 for the LawDocs v1.1, LawDocsComply v1.3, Equator v3.2, Finbyx v1.6, Udofin v1.3 and Operations Hub v1.1 prompts; **(N12+)** API or field added by v1.2; **(IPB)** the event was proposed in an IPB "Proposed Ecosystem events" table and is registered here under its canonical name (the proposed name, where different, is in 6.17 and is never emitted). Until every affected owner records approval of v1.2 (Part 16.1), the (A) rule applies to (N12) events: send through the agreed manual channel and log. Tables for the v1.2 domains (6.34–6.40) carry two further columns — `data` field types and the `dataclass` / consent rule — because their consumers include public-site and marketing systems where the data-class ceiling is the main control.
+**Tags added in v1.2** *(v1.2)*: **(N12)** new canonical name adopted in v1.2 for the LawDocs v1.1, LawDocsComply v1.3, Equator v3.2, Finbyx v1.6, Udofin v1.3 and Operations Hub v1.1 prompts; **(N12+)** API or field added by v1.2; **(IPB)** the event was proposed in an IPB "Proposed Ecosystem events" table and is registered here under its canonical name (the proposed name, where different, is in 6.17 and is never emitted). Until every affected owner records approval of v1.2 (Part 16.2), the (A) rule applies to (N12) events: send through the agreed manual channel and log. Tables for the v1.2 domains (6.34–6.40) carry two further columns — `data` field types and the `dataclass` / consent rule — because their consumers include public-site and marketing systems where the data-class ceiling is the main control.
 
 **Tags added in v1.3** *(v1.3)*: **(N13)** new canonical name adopted in v1.3 (6.29 `ProvisioningRequested` and `ProvisioningFailed`). The change is additive: a v1.2 consumer that does not subscribe to the new types is unaffected, and no existing event, field or code changes meaning.
 
@@ -1786,6 +1801,7 @@ Proposal `infrabyx-contracts/proposals/[date]-[slug].md` (motivation, regulatory
 | Product scope, brand and white-label (v1.2) *(v1.2)* | A Hub request outside `product_scope[]` is refused `product-scope-denied` although entity and role match; a `group_grant` without `product_scope` is rejected; expiry ends sessions within 60 s; the Equator separation-of-duties rule blocks a combined grant; a host listed in two packs is refused group-wide; an unknown `Host` or spoofed `X-Forwarded-Host` serves the default pack with `noindex` and never a tenant pack; a pack fails publish on contrast-guard failure, unsanitised SVG, unverified e-mail domain or (Udofin) missing `dla_ids`; `WhiteLabelTenantProvisioned` for a Udofin brand whose `legal_entity` lacks `is_lsp` or `is_re` is rejected with `regulatory-guard`; `terminology_override` changes no event name, scope, schema field or kernel identifier; a reseller principal cannot obtain a `group_grant` into an end-customer tenant; `WhiteLabelTenantExited` deletes nothing and keeps the redirect for ≥ 90 days; a `CatalogueChanged` with an unsigned catalogue is rejected |
 | Delegation, trust and content (v1.2) *(v1.2)* | A `VidhiTaskDelegated` without `consentref` or `legalbasis` is rejected `consent-missing` before any skill runs; a locked-list `task_type` is rejected `locked-action` and the requesting skill is auto-demoted; the effective level is the lower ceiling; `kill.vidhi.a2a` yields `delegation-not-permitted`; a delegation referencing `REGULATED`, `SPI`, `HR`, `WELLNESS` or `CONSUMER_HELP` is rejected; a mirror with a digest mismatch keeps the previous verified version and raises `mirror-digest-mismatch`; a `WITHDRAWN` document disappears from every mirror within 60 s; a product cannot edit a mirrored `vad_`; `LeadCaptured`, `CareerApplicationReceived` and `FeedbackSubmitted` carrying a name, e-mail, mobile, Aadhaar, PAN or account pattern in clear are rejected by schema and scanner; `MarketingConsentUpdated` WITHDRAWN stops every consumer within 60 s and no pixel fires before GRANTED; a `WhatsAppTemplateApproved` MARKETING template cannot be sent to a principal without `MARKETING_WHATSAPP` consent; `BlogPostPublished` and `ResourcePublished` without a passing `claims_check_id` are rejected; an unregistered `in.infrabyx.*` type fails the event-catalogue lint in every product CI (IPB-10-41) |
 | Provisioning request and failure (v1.3) *(v1.3)* | A `ProvisioningRequested` without a valid JWS, or with the first-admin email but no `legalbasis`, is refused by OH; the same `provisioning_request_id` resent with another payload is refused with `idempotency-conflict` and with the same payload is a no-op; a request ends in exactly one of `TenantProvisioned` (carrying its `provisional_tenant_id`) or `ProvisioningFailed`; a consumer that has processed `TenantProvisioned` ignores a later `ProvisioningFailed` for the same id; a `ProvisioningFailed` with personal data in `detail` is rejected at the gateway; a PRODUCTION request without MSA, DPA and OUT refs ends in `ProvisioningFailed` with `CONTRACT_MISSING`; a provisional tenant whose request failed or expired is purged with its first-admin contact data within 30 days of `failed_at` unless a retry is open, and the purge is ledgered |
+| Detached JWS header (v1.4) *(v1.4)* | A regulated message without `X-Infrabyx-JWS`, with two of them, with a comma-joined value, with an attached payload, with `b64` or `crit` in the protected header, signed with another key or with an `iat` older than 5 minutes is refused with `signature-invalid` and not processed; a valid one is accepted and the stored copy equals the header value byte for byte; a retry carries a new `jti` and is accepted; the same `jti` replayed is refused; the header on a message that is not regulated is ignored |
 
 Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
@@ -1850,7 +1866,20 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 # 16 — CHANGE LOG
 
-## 16.0 v1.3 change log *(v1.3)*
+
+## 16.0 v1.4 change log *(v1.4)*
+
+**Version 1.4 · 5 November 2026 · minor version** (one header and its rules; no event, field, schema, code table or covered component changes meaning, so no parallel run is required: Part 14.1). Raised as platform request PR-043 from LawDocsComply PR-LDC-23; text drafted in `infrabyx-platform` `docs/phases/PR-043-ecosystem-v1.4-draft.md` and signed off by the owner on 5 November 2026 (OWNER-QUESTIONS #116).
+
+| Area | Change | Products affected |
+|---|---|---|
+| Title, What changed | Version 1.4 and its summary | All |
+| Part 3 | 3.4 regulated messages carry `X-Infrabyx-JWS`; 3.6 transport of the detached JWS (`X-Infrabyx-JWS`), what it signs, consumer, producer, batches and files | All |
+| Part 14 | 14.3 certification test "Detached JWS header (v1.4)" | All |
+
+**Propagation.** Every repository adopts v1.4 within 10 working days of publication (Part 14.2) [REC]. A product that already sends and reads `X-Infrabyx-JWS` in the C-22 form has nothing to change.
+
+## 16.1 v1.3 change log *(v1.3)*
 
 **Version 1.3 · 4 November 2026 · minor version** (two events, one optional field, one code table and one retention rule; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Raised as platform request PR-040 from LawDocsComply PR-LDC-11; text drafted in `infrabyx-platform` `docs/phases/PR-040-ecosystem-v1.3-draft.md` and signed off by the owner on 4 November 2026 with the retention rule added (OWNER-QUESTIONS #105).
 
@@ -1863,7 +1892,7 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 **Propagation.** Every repository adopts v1.3 within 10 working days of publication (Part 14.2) [REC]. A product that does not start provisioning itself is unaffected.
 
-## 16.1 v1.2 change log *(v1.2)*
+## 16.2 v1.2 change log *(v1.2)*
 
 **Version 1.2 · 26 October 2026 · minor version** (new owner code, product, principles, entities, domains, events, APIs, optional fields, scopes, code-table values, layouts and certification groups; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Implemented by the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, under the Infrabyx Platform Baseline Standard v1.0.
 
@@ -1900,7 +1929,7 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 **Open items carried as [VERIFY] or [OWNER] from v1.2.** ESP/aggregator confirmation that LawDocs-hosted ceremonies created through a customer's own systems are within ASP terms (LawDocs OI-Y-02); `CONTRACT_PERFORMANCE_CUSTOMER` and B2C invoicing on OH8 (OI-Y-03; tax memo); Consumer Help conflict policy where the respondent is a group client (OI-Y-04); LDC P26 overlap (OI-Y-05); kernel export schema versions (OI-Y-06); `owner_readable` acceptance (OI-Y-07); BSA s.63(4) citation (OI-Y-08); token-exchange parameters (OI-Y-09); OH7 asset-library path and `crm/leads` field set (OI-Y-10); `ops` as the service-order domain (OI-Y-11); white-label resale entity and commercial terms (IPB open item 2); WhatsApp BSP and Meta business verification entity (IPB open item 4); Payment Aggregator Directions paragraph references for Route transfers; each product's confirmation of its error-code prefix and export package name (Appendix C).
 
-## 16.2 v1.1 change log
+## 16.3 v1.1 change log
 
 **Version 1.1 · 24 October 2026 · minor version** (new events, APIs, optional fields, codes, layouts and connectors only; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Implemented by the Finbyx Master Build Prompt v1.5, the Udofin Master Build Prompt v1.2 and the Infrabyx Operations Hub Master Build Prompt v1.0.
 
