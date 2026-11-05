@@ -83,7 +83,7 @@ What LawDocsComply removes once it moves to the wave 6 release (R1-D-89, R1-D-90
 6. **PR-LDC-19, a shorter approval expiry (guide §7av).** Register nothing new: set `mc.expiry_hours.<action>` per tenant (1 to 168 hours, through settings' R4 maker-checker); the engine never exceeds the action's platform period. **Shim removed:** your own expiry of approval requests.
 7. **Mark met** PR-LDC-19, 24, 26, 27, 28 (XLSX, DOCX) and 29. PR-LDC-23 waits for spec v1.4 (keep `X-Infrabyx-JWS`); PDF is wave 7.
 
-## 10. Wave 7 (`contracts`, `config`, `export` and `tenancy` minors, patches of the rest)
+## 10. Wave 7 (version PR #226, release run 203: `contracts` 1.22.0, `config` 1.12.0, `export` 1.4.0, `tenancy` 1.15.0, patches of the rest)
 
 What LawDocsComply removes once it moves to the wave 7 release (R1-D-95; guide §7aw to §7az). Move every `@infrabyx/*` dependency to that release together and run `infrabyx-migrate --require-all` (`config/0004`, `config/0005`), then `infrabyx-rls-lint`.
 
