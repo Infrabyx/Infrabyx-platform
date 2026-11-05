@@ -1,5 +1,14 @@
 # @infrabyx/trust
 
+## 1.0.33
+
+### Patch Changes
+
+- Updated dependencies [d3888de]
+  - @infrabyx/config@1.13.0
+  - @infrabyx/ai@1.1.4
+  - @infrabyx/tenancy@1.16.1
+
 ## 1.0.32
 
 ### Patch Changes

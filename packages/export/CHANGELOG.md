@@ -1,5 +1,11 @@
 # @infrabyx/export
 
+## 1.5.1
+
+### Patch Changes
+
+- @infrabyx/tenancy@1.16.1
+
 ## 1.5.0
 
 ### Minor Changes
