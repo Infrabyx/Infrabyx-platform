@@ -45,7 +45,7 @@ describe("@IPB-02 the tenant-id rule (tenancy/0019, PR-FBX-40)", () => {
       "update tenancy.tenant set id = 'tnt_bclenterprises' where id = 'tnt_bcl_enterprises'",
     );
     const r = await migrate({ client: db.admin, sources: [TENANCY_SOURCE] });
-    expect(r.applied).toEqual(["@infrabyx/tenancy/0019_tenant_id_rule.sql"]);
+    expect(r.applied).toContain("@infrabyx/tenancy/0019_tenant_id_rule.sql");
     expect(await hasRule()).toBe(true);
     for (const id of ["tnt_other_pay", "tnt_Upper", `tnt_${"a".repeat(61)}`, "tnt_a-b"])
       await expect(

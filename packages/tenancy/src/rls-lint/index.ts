@@ -46,6 +46,10 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   "tenancy.support_read_record",
   // Sandbox tenants (tenancy/0018, R1-D-87): the transaction's own tenant's flag, nothing else.
   "tenancy.tenant_sandbox",
+  // Tenant entitlements (tenancy/0020, R1-D-107): the transaction's own tenant's status of a SKU;
+  // and the lapse sweep's list, which returns nothing outside a platform context.
+  "tenancy.entitlement_status",
+  "tenancy.entitlement_lapses_due",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

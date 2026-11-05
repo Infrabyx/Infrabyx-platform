@@ -141,7 +141,8 @@ create function tenancy.entitlement_status(p_sku text) returns text
 revoke all on function tenancy.entitlement_status(text) from public;
 grant execute on function tenancy.entitlement_status(text) to app_rw, app_ro, app_external;
 
--- Grants that ended (latest version per tenant and SKU) and have no lapse notice yet.
+-- Grants that ended (latest version per tenant and SKU) and have no lapse notice yet, for the
+-- platform's sweep only: outside a platform context it returns nothing.
 create function tenancy.entitlement_lapses_due()
   returns table (tenant_id text, entitlement_id text)
   language sql stable security definer set search_path = pg_catalog, tenancy
@@ -150,7 +151,8 @@ create function tenancy.entitlement_lapses_due()
       select distinct on (e.tenant_id, e.sku) e.*
         from tenancy.entitlement e
        order by e.tenant_id, e.sku, e.version desc) l
-     where l.kind = 'GRANT' and l.valid_until is not null
+     where coalesce(pg_catalog.current_setting('app.scope', true), '') = 'platform'
+       and l.kind = 'GRANT' and l.valid_until is not null
        and l.valid_until < tenancy.entitlement_today()
        and not exists (select 1 from tenancy.entitlement_notice n
                         where n.entitlement_id = l.id and n.kind = 'LAPSE')

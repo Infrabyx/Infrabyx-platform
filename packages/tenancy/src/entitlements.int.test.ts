@@ -216,6 +216,14 @@ describe("PR-FBX-43 tenant entitlements (#123)", () => {
     await ents.apply(finance, tC, requestId);
     expect(await status(tC)).toBe("LAPSED");
     expect(await err(write(tC))).toBe("not_entitled");
+    // The cross-tenant list is the platform sweep's alone: a tenant context sees nothing.
+    expect(
+      await kernel.read(member(tC), async (tx) =>
+        Number(
+          (await tx.query("select count(*) as n from tenancy.entitlement_lapses_due()")).rows[0].n,
+        ),
+      ),
+    ).toBe(0);
     const sweep = plt("svc_entitlements", "PLT_SUPER_ADMIN");
     expect(await ents.recordLapses(sweep)).toBe(1);
     expect(await ents.recordLapses(sweep)).toBe(0);
