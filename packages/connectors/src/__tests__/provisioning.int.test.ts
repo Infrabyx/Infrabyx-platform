@@ -388,3 +388,42 @@ describe("R1-D-70 the request half and the failure path (Ecosystem Spec v1.3, PR
     expect(carriesPersonalData("the plan is not offered in this cell")).toBe(false);
   });
 });
+
+describe("M61 the detached JWS travels in X-Infrabyx-JWS (Ecosystem Spec v1.4, PR-043, #116)", () => {
+  it("receives a delivery from its header and refuses a missing, repeated or malformed one", async () => {
+    const { e, jws } = await signed(event({}));
+    for (const [headers, reason] of [
+      [{}, "missing"],
+      [{ "x-infrabyx-jws": [jws, jws] }, "repeated"],
+      [{ "X-Infrabyx-JWS": `${jws}, ${jws}` }, "repeated"],
+      [{ "X-Infrabyx-JWS": `${jws} ` }, "malformed"],
+      [{ "X-Infrabyx-JWS": "x".repeat(1025) }, "too_long"],
+    ] as const) {
+      expect(await code(adapter.receiveHttp(e, headers as never))).toBe(
+        "IPB-API-018:signature-invalid",
+      );
+      expect(proofs.has(e.id), String(reason)).toBe(false);
+    }
+    // Any case of the header name; the stored proof is the header value, byte for byte.
+    expect((await adapter.receiveHttp(e, { "x-infrabyx-jws": jws })).outcome).toBe("accepted");
+    expect(proofs.get(e.id)).toBe(jws);
+    // A Fetch Headers object works the same way.
+    const next = await signed(event({}));
+    const h = new Headers({ "X-Infrabyx-JWS": next.jws });
+    expect((await adapter.receiveHttp(next.e, h)).outcome).toBe("accepted");
+  });
+
+  it("signs each outgoing delivery afresh into the header", async () => {
+    // A ProvisioningRequested envelope as the relay reads it from the outbox.
+    const row = await db.admin.query(
+      "select envelope from ldcprov.outbox where type = 'in.infrabyx.ops.ProvisioningRequested.v1' limit 1",
+    );
+    const e = row.rows[0].envelope;
+    const a = await adapter.deliveryHeaders(e);
+    const b = await adapter.deliveryHeaders(e);
+    expect(Object.keys(a)).toEqual(["X-Infrabyx-JWS"]);
+    expect(a["X-Infrabyx-JWS"]).toMatch(/^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/);
+    // A retry carries a new JWS (a new jti), never the first one again.
+    expect(b["X-Infrabyx-JWS"]).not.toBe(a["X-Infrabyx-JWS"]);
+  });
+});
