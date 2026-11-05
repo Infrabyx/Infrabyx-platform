@@ -10,6 +10,13 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                    |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                        |
 
+## Wave 8 (eighth session, 5 Nov): built locally
+
+- **Owner answers (R1-D-96):** #116 signed off; IPB-07-38 wording approved; one bypass PR for both (#228, open, waiting for the owner's one-off bypass); #117 no to Latin-only (rupee sign now; Indic through DOCGEN); #118 R4 for production tenants. Finbyx PR-FBX-36, 37 and 38 logged and accepted (platform-requests).
+- **Built (R1-D-97), on a local branch until #228 merges:** #117 embedded Noto Sans in `toPdf` and `renderPdf`/`blocksToHtml` to DOCGEN (`export`); #118 `sandboxChangeRisk` (`tenancy`); PR-FBX-36 return attribution (`contracts`, `testing`); PR-FBX-37 purge dry runs, per-record entries and per-tenant runs (`consent/0005`); PR-FBX-38 the TELEPHONY port (ADR-0007; `contracts`, `testing`); M61 `X-Infrabyx-JWS` (`contracts`, `connectors`). Guide §7ay to §7bd; threat model §3.99 to §3.102.
+- **Open questions:** #119 (attribution table), #120 (a Gotenberg DOCGEN adapter for Indic PDFs, wave 9), #121 (the 72-hour dry-run window).
+- **Next:** merge #228 once the owner adds the bypass (then the owner removes it); push wave 8 and run its gate (`ci:run`); version PR; release record; adoption notes (Finbyx §9, LawDocsComply §11).
+
 ## Wave 7 (eighth session, 5 Nov): released (run 203)
 
 - **Security patch released:** #222 merged (`bc2c301`); version PR #224 merged (`6c0627d`) after its gate was re-run once when #223 rebuilt it (R1-D-95 (5)); release run 201 published `tenancy` 1.14.1 (record below). Products upgrade before their next exit gate (adoption notes; Udofin §0).

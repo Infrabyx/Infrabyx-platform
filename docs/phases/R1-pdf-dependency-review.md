@@ -17,3 +17,10 @@ C, as for XLSX and DOCX: no new dependency, no font parsing, no untrusted conten
 ## Tests
 
 `packages/export/src/pdf.test.ts`: the cross-reference table points at every object; A4 pages; the table header repeats on every page a table spans; WinAnsi bytes for the euro sign, dashes and quotes; escaping; link annotations (https only) and none of JavaScript, AcroForm, embedded files, Launch or OpenAction; the same bytes for the same input; refusal of the rupee sign and Devanagari; bad blocks; the size cap. A sample was also checked with poppler (`pdfinfo`, `pdftotext`) and `pypdf` in strict mode.
+
+## Update, wave 8 (OWNER-QUESTIONS #117, R1-D-96, R1-D-97)
+
+The owner said no to Latin-only PDF: Indian lending and compliance documents need the rupee sign and the borrower's language. Two changes, still without a run-time dependency:
+
+1. **The rupee sign.** `toPdf` now embeds Noto Sans (Regular, Bold, Italic, Bold Italic; SIL OFL 1.1) in place of the standard Helvetica: subset once, at build time, with fontTools 4.55.3 to Latin, Latin Extended-A, the WinAnsi punctuation, the euro and the rupee sign, about 22 KB per style, shipped in `packages/export/fonts/` with the upstream commit, the upstream and subset SHA-256 and the licence (`FONTS.md`, `OFL.txt`). fontTools is a one-off tool, not a dependency of any package. The fonts are embedded whole as CIDFontType2 with Identity-H and a ToUnicode map; `ttf.ts` reads only their metrics and character maps.
+2. **Indic scripts.** Shaping (conjuncts, matras, reordering) is not done in process; such documents are refused with `shaping_required` and routed by `renderPdf` to the DOCGEN port (Gotenberg's Chromium) as self-contained HTML. Doing the shaping in process (a HarfBuzz build, or an OpenType layout engine) would be its own dependency review and is not proposed.

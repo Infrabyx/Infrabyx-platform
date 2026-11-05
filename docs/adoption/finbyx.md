@@ -91,6 +91,16 @@ What changes for Finbyx with the wave 4 release (R1-D-80, R1-D-84). Move every `
 2. **PR-FBX-35, bureau EMI, DDE signer trail and not-stampable DDE (guide §7ao).** (a) Use `Tradeline.emiPaise` in FOIR; impute or refer when it is `null`, never count it as 0. (b) Store `DdeRecord.signers` with your ESIGN evidence. (c) Register sanction letters and KFS acknowledgements with `ddeRegister({ …, notStampable: { reason } })` from your RULES' stampability decision. If you implement `EstampPort` yourself, add `signers` and `notStampableReason` to its `DdeRecord`. **Shims removed:** the fail-closed handling of each.
 3. **Mark met** PR-FBX-34 (1), (2) (interfaces) and PR-FBX-35.
 
+## 9. Wave 8 (`contracts`, `testing`, `consent`, `connectors`, `export` and `tenancy` minors)
+
+What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide §7ba to §7bd). Move every `@infrabyx/*` dependency together and run `infrabyx-migrate --require-all` (`consent/0005`), then `infrabyx-rls-lint`.
+
+1. **PR-FBX-36, whose return it is (guide §7ba).** Charge a bounce only when `bounceChargeable(result)`. **Shim removed:** `pay.return.borrower_codes` (keep a tenant override only if OWNER-QUESTIONS #119 asks for one).
+2. **PR-FBX-37, the purge per tenant (guide §7bb).** Schedule `dryRunPurposes` then `purgePurposesFor` per tenant from `tenantsWithPurposesDue()`. **Shim removed:** Finbyx's dry-run table, per-record ledgering and the hold on relationship-end reports.
+3. **PR-FBX-38, TELEPHONY (guide §7bc).** Program against `TelephonyPort`; `FakeTelephony` below staging. **Shim removed:** the product-local `TelephonyPort` and its fake.
+4. **PDF (guide §7ay).** KFS and notices with the rupee sign render in process; those in the borrower's language go through `renderPdf` with your DOCGEN adapter.
+5. **Mark met** PR-FBX-36, 37 and 38.
+
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 
 **Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

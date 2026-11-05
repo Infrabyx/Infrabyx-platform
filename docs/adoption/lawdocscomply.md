@@ -93,6 +93,14 @@ What LawDocsComply removes once it moves to the wave 7 release (R1-D-95; guide �
 4. **PR-LDC-29, sandbox changes (guide §7az).** Change a tenant's flag only through `request`, `decide` and `apply`; `TenantSandbox.set` is refused.
 5. **Mark met** PR-LDC-17 and PR-LDC-28 (PDF). PR-LDC-23 waits for spec v1.4 (#116; keep `X-Infrabyx-JWS`).
 
+## 11. Wave 8 (`contracts`, `connectors`, `export` and `tenancy` minors, patches of the rest)
+
+What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97).
+
+1. **PR-LDC-23, the JWS header (guide §7bd; Ecosystem Spec v1.4).** Use `deliveryHeaders` and `receiveHttp` on the Operations Hub adapter, or `regulatedJwsFromHeaders` for other regulated messages. LDC already sends `X-Infrabyx-JWS`, so nothing changes on the wire. **Shim removed:** your own header reading and writing. Mark PR-LDC-23 met.
+2. **PDF (guide §7ay).** The rupee sign now renders; documents in Hindi or Punjabi go through `renderPdf` with a DOCGEN adapter (OWNER-QUESTIONS #120).
+3. **Sandbox changes (guide §7az).** Pass `appEnv` to `TenantSandbox`: in production a change waits 60 minutes after approval (#118).
+
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 
 **Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

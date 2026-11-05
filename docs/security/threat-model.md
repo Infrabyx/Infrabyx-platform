@@ -1051,3 +1051,20 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.98 PDF export (PR-LDC-28, R1-D-95)
 
 - **No new dependency or data flow.** `toPdf` writes caller text into a PDF with the standard fonts; no font parsing, no images, no JavaScript, forms, attachments, Launch or OpenAction; links are https annotations only. Characters outside WinAnsi are refused, never replaced, so amounts and names are never silently altered.
+
+### 3.99 Embedded fonts and the DOCGEN route for Indic PDFs (#117; R1-D-96, R1-D-97)
+
+- **T (a tampered font in the package):** the four Noto Sans subsets are vendored with their upstream and subset SHA-256 and the upstream commit (`export/fonts/FONTS.md`), published inside the signed and attested package; `ttf.ts` reads only those files, never a caller's font, and parses metrics and the character map only (no outlines, no hinting programs).
+- **I and T (the HTML sent to DOCGEN):** `blocksToHtml` escapes every text and attribute, allows https links only, and sets a CSP of `default-src 'none'` (inline styles only), so the renderer fetches nothing and runs no script. The HTML carries the document's data (CONFIDENTIAL by default in `HtmlRenderRequest`); the DOCGEN adapter keeps the port's rules (in-cluster, output to the tenant's STORAGE prefix).
+
+### 3.100 Purge runs and per-record entries (`consent/0005`; PR-FBX-37, R1-D-97)
+
+- **E and repudiation (a live run deletes more than was reviewed):** a live run deletes only the ids its dry run listed, under the unchanged 8-year rule and deletion guard; it needs a dry run of the same tenant (RLS) at most 72 hours old; each record deleted has its own ledger entry (id and purpose only). The run table is insert-only for the application. The dry run's delete runs under the purge's action inside a savepoint that is always rolled back.
+
+### 3.101 The TELEPHONY port (ADR-0007; PR-FBX-38, R1-D-97)
+
+- **I (a recording kept without a disclosure, or kept by the vendor):** `storeRecording` refuses unless the request named a disclosure and the adapter reports it was played; the recording goes to the tenant's STORAGE with a retention and the vendor keeps no copy once stored. **E (an agent places calls):** refused by the request schema and by the contract cases. No adapter exists yet, so no data leaves the platform through this port.
+
+### 3.102 `X-Infrabyx-JWS` (Ecosystem Spec v1.4; M61)
+
+- **S and T (a missing or substituted proof):** a regulated message without exactly one well-formed header is refused before verification; the header value is verified against the pinned key ring with the `iat` window and `jti` replay check, then kept byte for byte. A substituted JWS for another event fails verification over the JCS of this event.
