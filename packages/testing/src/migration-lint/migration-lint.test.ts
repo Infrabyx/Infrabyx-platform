@@ -149,9 +149,13 @@ describe("@IPB-09-AT-12 released migration immutability", () => {
 // Reviewed exceptions: a CHECK dropped and re-added wider in the same migration accepts every
 // existing row (expand-only; as workflow/0002 and 0003, PL3-D-21). Only this exact warning is let
 // through, and it must still be raised.
-const WIDENED_CHECKS: Record<string, string[]> = {
+// Reviewed widenings: a check constraint dropped and re-added wider in the same migration, so no
+// row becomes invalid and no contract step follows. Each entry: the file and its number of drops.
+const WIDENED_CHECKS: Record<string, ReadonlyArray<readonly [string, number]>> = {
   // LawDocsComply PR-LDC-07 (R1-D-75): the external grantee kinds.
-  tenancy: ["0016_grantee_kinds_breakglass_scope.sql"],
+  tenancy: [["0016_grantee_kinds_breakglass_scope.sql", 1]],
+  // PR-042 (R1-D-95): the UNIT tier in the tier and scope checks of setting_value and setting_change.
+  config: [["0005_unit_tier.sql", 4]],
 };
 
 describe("PL1 migrations", () => {
@@ -162,9 +166,9 @@ describe("PL1 migrations", () => {
       const reviewed = (f: (typeof r.findings)[number]) =>
         f.rule === "drop-requires-contract-label" &&
         f.severity === "warn" &&
-        widened.some((w) => f.file.endsWith(w));
+        widened.some(([w]) => f.file.endsWith(w));
       expect(r.findings.filter((f) => !reviewed(f))).toEqual([]);
-      expect(r.findings.filter(reviewed).length).toBe(widened.length);
+      expect(r.findings.filter(reviewed).length).toBe(widened.reduce((a, [, k]) => a + k, 0));
       expect(r.files.length).toBeGreaterThan(0);
     });
   }
