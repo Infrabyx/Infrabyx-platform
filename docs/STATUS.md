@@ -10,6 +10,14 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                    |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                        |
 
+## Wave 7 (eighth session, 5 Nov): built, at its gate
+
+- **Security patch released:** #222 merged (`bc2c301`); version PR #224 (`tenancy` 1.14.1, patches of its dependants) in its gate, re-run once after #223 rebuilt it (R1-D-95 (5)); its release record follows.
+- **Spec v1.4:** draft merged as #223 (`docs/phases/PR-043-ecosystem-v1.4-draft.md`); waits for the owner's sign-off (#116) and the owner's one-off bypass merge; M61 after it.
+- **Built (R1-D-95):** M63 setting history in `REF-EXPORT-1.5` and `SettingsService.eraseUser` (`config/0004`); M64 the UNIT tier below ENTITY (`config/0005`, `contracts`); M65 sandbox changes under maker-checker (`tenancy`); M66 `toPdf` (`export`, no dependency). Guide §7aw to §7az; threat model §3.95 to §3.98.
+- **Open questions:** #116 (v1.4 sign-off), #117 (PDF WinAnsi only), #118 (sandbox changes at R3). IPB-07-38's amended text is the owner's to apply (platform-requests PR-042).
+- **Next:** the wave 7 gate (`ci:run`), its version PR (`contracts`, `config`, `export`, `tenancy` minors), the release record and the LawDocsComply adoption note §10.
+
 ## Security patch (seventh session, 4 Nov): no work on a connection after its transaction ended
 
 - **Owner answers (R1-D-91):** #114 yes, #115 yes (sandbox maker-checker in wave 7), PR-042 yes (lower setting scopes in wave 7), PR-043 `X-Infrabyx-JWS` (v1.4 text as a docs PR for sign-off). The race goes first.
