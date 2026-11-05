@@ -1,5 +1,13 @@
 # @infrabyx/contracts
 
+## 1.23.0
+
+### Minor Changes
+
+- 67be297: The detached JWS in `X-Infrabyx-JWS` (Ecosystem Spec v1.4 §3.6, PR-043, OWNER-QUESTIONS #116; R1-plan M61). `@infrabyx/contracts/events`: `REGULATED_JWS_HEADER` and `regulatedJwsFromHeaders(headers)` (a Fetch `Headers` or a Node header record): exactly one header, any case, one compact detached JWS of at most 1,024 octets; a missing, repeated, comma-joined, over-long or malformed value is refused with its reason. The Operations Hub provisioning adapter adds `deliveryHeaders(event)` (a fresh JWS per delivery, so a retry has a new `jti`) and `receiveHttp(body, headers)`, which refuses a bad header as `signature-invalid` (`IPB-API-018`) before verifying or storing anything and keeps the header value byte for byte as the proof. `receive(event, jws)` and `signForDelivery` are unchanged. A product that already sends and reads `X-Infrabyx-JWS` removes nothing (minor rather than patch, because two methods are added).
+- 67be297: Whose return it is (Finbyx PR-FBX-36; the owner's table, OWNER-QUESTIONS #119; R1-D-97, R1-D-98). `ReturnCodeInfo.attribution` and `PresentationResult.returnAttribution`: `BORROWER` for NACH 04 (balance insufficient), NACH 01 (account closed), NACH 06 (payment stopped by drawer) and UPI Z9 (insufficient funds); `NOT_BORROWER` for NACH 07, 09, every other code and every unknown code (no charge). `bounceChargeable(info)` is true only for `BORROWER`. The table is a platform floor: `classifyReturnCode(channel, code, { borrowerCodes })` takes a tenant's list, which can only shrink the borrower's codes, never widen them. `[VERIFY]` against the sponsor bank's NPCI specification; the testing fake fills the new field.
+- 67be297: The TELEPHONY port (Finbyx PR-FBX-38; ADR-0007; R1-D-97): `TelephonyPort` with `clickToCall` (a person or the product's service places it, never an agent; idempotent on its key), `callOutcome`, `storeRecording` (only when the request named a recording disclosure and the adapter reports it was played; stored in the tenant's STORAGE under the request's output prefix with its retention and `deleteAfter`) and `cancel`; catalogue row `TELEPHONY` (tier 2, `int.telephony.`). `@infrabyx/testing` adds `FakeTelephony` and `telephonyContractCases`. No adapter until a provider is chosen.
+
 ## 1.22.0
 
 ### Minor Changes
