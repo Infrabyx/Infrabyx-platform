@@ -133,16 +133,19 @@ describe("setting change history (PR-LDC-17, R1-D-82)", () => {
   });
 
   it("is insert-only, and a row is written only as the context's own actor", async () => {
-    for (const sql of [
-      "update config.setting_change set new_value = '1'::jsonb",
-      "delete from config.setting_change",
-    ]) {
-      await db.admin.query("begin");
-      await db.admin.query("set local role app_rw");
-      await db.admin.query("select set_config('app.tenant_id', 'tnt_a', true)");
-      await expect(db.admin.query(sql), sql).rejects.toThrow(/permission denied/);
-      await db.admin.query("rollback");
-    }
+    await db.admin.query("begin");
+    await db.admin.query("set local role app_rw");
+    await db.admin.query("select set_config('app.tenant_id', 'tnt_a', true)");
+    await expect(
+      db.admin.query("update config.setting_change set new_value = '1'::jsonb"),
+    ).rejects.toThrow(/permission denied/);
+    await db.admin.query("rollback");
+    // The only delete is of an erased person's USER rows (config/0004, R1-D-95): here, none.
+    await db.admin.query("begin");
+    await db.admin.query("set local role app_rw");
+    await db.admin.query("select set_config('app.tenant_id', 'tnt_a', true)");
+    expect((await db.admin.query("delete from config.setting_change")).rowCount).toBe(0);
+    await db.admin.query("rollback");
     await expect(
       db.kernel.mutate(adminA, async (tx) => {
         await db.audit.record(tx, { action: "t.t.t", resourceType: "t", resourceId: "t" });

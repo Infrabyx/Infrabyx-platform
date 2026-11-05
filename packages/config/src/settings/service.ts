@@ -15,7 +15,14 @@ import type { SecretKey } from "@infrabyx/crypto";
 import { internalEvent } from "../events.js";
 import { defaultRegistry, type SettingsRegistry } from "./registry.js";
 import type { SettingKey, SettingValueMap } from "./registry.generated.js";
-import { resolve, scopeChain, tierAllowed, type Resolution } from "./resolve.js";
+import {
+  inChainOrder,
+  resolve,
+  scopeChain,
+  tierAllowed,
+  unitChain,
+  type Resolution,
+} from "./resolve.js";
 import { MAX_HISTORY_PAGE, historyCursor, type SettingsStore } from "./store.js";
 import type { ResolutionScope, SettingDef, SettingHistoryPage, SettingScopeRef } from "./types.js";
 import { assertValid, tightenError } from "./validate.js";
@@ -23,6 +30,11 @@ import { assertValid, tightenError } from "./validate.js";
 export const SETTING_CHANGE_ACTION = "settings.setting.change";
 /** Tenant roles that read a TENANT or ENTITY setting's change history besides its changers. */
 export const HISTORY_READER_ROLES = ["ORG_OWNER", "ORG_ADMIN", "ORG_AUDITOR_RO"] as const;
+/** Ledger action of a DPDP erasure of a person's USER settings (#110, R1-D-95). */
+export const SETTING_USER_ERASE_ACTION = "settings.user.erase";
+/** Tenant roles that may erase a person's USER settings; a service principal (the product's erasure workflow) may too. */
+export const USER_ERASURE_ROLES = ["ORG_OWNER", "ORG_ADMIN"] as const;
+const ERASURE_REQUEST_REF = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 export interface SettingsServiceOptions {
   store: SettingsStore;
@@ -69,13 +81,15 @@ export class SettingsService {
     scope: ResolutionScope = {},
   ): Promise<Resolution & { def: SettingDef }> {
     const def = this.registry.require(key);
+    const units = unitChain(scope.unitIds ?? ctx.unitIds);
     const refs = scopeChain({
       tenantId: ctx.tenantId,
       ...(ctx.entityId ? { entityId: ctx.entityId } : {}),
       ...scope,
+      unitIds: units,
     });
     const rows = await this.o.kernel.read(ctx, (tx) => this.o.store.read(tx, key, refs));
-    return { ...resolve(def, rows), def };
+    return { ...resolve(def, inChainOrder(rows, refs)), def };
   }
 
   /**
@@ -108,6 +122,62 @@ export class SettingsService {
         limit,
         ...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
       }),
+    );
+  }
+
+  /**
+   * Erase a person's USER settings in the caller's tenant on a DPDP erasure request (OWNER-QUESTIONS
+   * #110; R1-D-95): their USER values and their USER change history, in one ledgered transaction
+   * whose `settings.user.erase` entry keeps the counts and the request reference, never a value.
+   * Called by the product's erasure workflow (a service principal) or an ORG_OWNER or ORG_ADMIN in
+   * the tenant; agents, externals and platform contexts are refused. Other tiers are untouched.
+   */
+  async eraseUser(
+    ctx: KernelContext,
+    userId: string,
+    request: { requestRef: string; reason: string },
+  ): Promise<{ erasureId: string; values: number; changes: number }> {
+    const p = ctx.principal;
+    const deny = (why: string) =>
+      new IpbError("IPB-UX-011", { detail: `erasing USER settings: ${why}` });
+    if (p.type === "agent")
+      throw new IpbError("IPB-SEC-004", { detail: "an agent cannot erase settings" });
+    if (p.type === "external") throw deny("not by an external principal");
+    if (ctx.scope === "platform") throw deny("USER settings are erased in the person's tenant");
+    if (p.type !== "service" && !USER_ERASURE_ROLES.some((r) => p.roles.includes(r)))
+      throw deny(`requires a service principal or one of ${USER_ERASURE_ROLES.join(", ")}`);
+    if (typeof userId !== "string" || userId.length < 1 || userId.length > 128)
+      throw new RangeError("a user id of 1 to 128 characters");
+    if (!ERASURE_REQUEST_REF.test(request.requestRef))
+      throw new RangeError("an erasure request reference of 1 to 128 of [A-Za-z0-9_.:-]");
+    const reason = request.reason.trim();
+    if (reason.length < 10 || reason.length > 500)
+      throw new RangeError("a reason of 10 to 500 characters");
+    const store = this.o.store;
+    if (!store.eraseUser) throw new Error("this settings store cannot erase USER settings");
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const r = await store.eraseUser!(tx, {
+          tenantId: ctx.tenantId,
+          userId,
+          requestRef: request.requestRef,
+          actorId: p.id,
+        });
+        await this.o.audit.record(tx, {
+          action: SETTING_USER_ERASE_ACTION,
+          resourceType: "user_settings",
+          resourceId: userId,
+          after: {
+            erasure_id: r.erasureId,
+            request_ref: request.requestRef,
+            values: r.values,
+            changes: r.changes,
+          },
+        });
+        return r;
+      },
+      { action: SETTING_USER_ERASE_ACTION, reason },
     );
   }
 
@@ -231,7 +301,10 @@ export class SettingsService {
   ): Promise<number> {
     const key = def.key;
     const tenantId =
-      target.tier === "TENANT" || target.tier === "ENTITY" || target.tier === "USER"
+      target.tier === "TENANT" ||
+      target.tier === "ENTITY" ||
+      target.tier === "UNIT" ||
+      target.tier === "USER"
         ? ctx.tenantId
         : null;
     const { old, version } = await this.o.store.write(tx, {
@@ -320,10 +393,13 @@ export class SettingsService {
         return;
       case "TENANT":
       case "ENTITY":
+      case "UNIT":
         if (target.tier === "TENANT" && target.scopeId !== ctx.tenantId)
           throw deny("outside the caller's tenant");
         if (target.tier === "ENTITY" && target.scopeId !== ctx.entityId)
           throw deny("outside the caller's legal entity");
+        if (target.tier === "UNIT" && !unitChain(ctx.unitIds).includes(target.scopeId ?? ""))
+          throw deny("outside the caller's organisation units");
         break;
       default:
         if (ctx.scope !== "platform" || !p.roles.some(isPlatformRole))
@@ -347,7 +423,8 @@ export class SettingsService {
         if (scope.scopeId !== p.id) throw deny("a user reads only their own preferences' history");
         return;
       case "TENANT":
-      case "ENTITY": {
+      case "ENTITY":
+      case "UNIT": {
         if (scope.tier === "TENANT" && scope.scopeId !== ctx.tenantId)
           throw deny("outside the caller's tenant");
         if (p.type === "service") return;
@@ -370,13 +447,24 @@ export class SettingsService {
     value: unknown,
   ): Promise<void> {
     if (def.tighten === undefined || target.tier === "PLATFORM") return;
+    const units = unitChain(ctx.unitIds);
+    // A UNIT write inherits from the units outside it (the chain before it), not from itself.
+    const outer =
+      target.tier === "UNIT" ? units.slice(0, units.indexOf(target.scopeId ?? "")) : units;
     const refs = scopeChain({
       tenantId: ctx.tenantId,
       ...(ctx.entityId ? { entityId: ctx.entityId } : {}),
+      unitIds: outer,
       userId: ctx.principal.id,
     });
-    const rows = await this.o.store.read(tx, def.key, refs);
-    const inherited = resolve(def, rows, target.tier).value;
+    const rows = inChainOrder(await this.o.store.read(tx, def.key, refs), refs);
+    const inherited =
+      target.tier === "UNIT"
+        ? resolve(
+            def,
+            rows.filter((r) => r.tier !== "USER"),
+          ).value
+        : resolve(def, rows, target.tier).value;
     const why = tightenError(def, inherited, value);
     if (why)
       throw new IpbError("IPB-UX-008", {

@@ -7,6 +7,7 @@ import { isSandboxed } from "@infrabyx/contracts/kernel";
 import { newId } from "@infrabyx/crypto";
 import { TenantBootstrap } from "./bootstrap.js";
 import { PLATFORM_TENANT_ID } from "./context.js";
+import { ApprovalsEngine } from "./approvals/engine.js";
 import { PgKernel } from "./kernel.js";
 import { TENANT_SANDBOX_SET_ACTION, TenantSandbox } from "./sandbox.js";
 import { freshDb, type TestDb } from "./__tests__/pg.js";
@@ -28,6 +29,11 @@ const admin: KernelContext = {
   tenantId: PLATFORM_TENANT_ID,
   scope: "platform",
   principal: { id: "usr_admin", type: "user", roles: ["PLT_SUPER_ADMIN"] },
+};
+const admin2: KernelContext = {
+  tenantId: PLATFORM_TENANT_ID,
+  scope: "platform",
+  principal: { id: "usr_admin2", type: "user", roles: ["PLT_SUPER_ADMIN"] },
 };
 const officer: KernelContext = {
   tenantId: PLATFORM_TENANT_ID,
@@ -61,7 +67,11 @@ let liveId: string;
 beforeAll(async () => {
   db = await freshDb();
   kernel = new PgKernel({ pool: db.pool, audit });
-  sandboxes = new TenantSandbox({ kernel, audit });
+  sandboxes = new TenantSandbox({
+    kernel,
+    audit,
+    approvals: new ApprovalsEngine({ kernel, audit, product: "LDC" }),
+  });
   const boot = new TenantBootstrap({ kernel, audit, appEnv: "local" });
   sandboxId = newId("tnt");
   liveId = newId("tnt");
@@ -158,42 +168,81 @@ describe("R1-D-87 sandbox tenants (PR-LDC-29)", () => {
     ).toBe("42501");
     // Other columns of its own row are unaffected by the guard.
     await db.admin.query("update tenancy.tenant set plan_ref = 'pln_x' where id = $1", [sandboxId]);
-    // The service: a tenant context and a platform role other than PLT_SUPER_ADMIN are refused.
-    expect(
-      await err(sandboxes.set(member(sandboxId), sandboxId, false, "go live after the trial")),
-    ).toBe("IPB-SEC-005");
-    expect(await err(sandboxes.set(officer, sandboxId, false, "go live after the trial"))).toBe(
+    // The service: a direct set is refused (#115); a tenant context and a platform role other
+    // than PLT_SUPER_ADMIN cannot raise a change; a reason is required.
+    expect(await err(sandboxes.set(admin, sandboxId, false, "go live after the trial"))).toBe(
       "IPB-SEC-005",
     );
-    expect(await err(sandboxes.set(admin, sandboxId, false, "short"))).toMatch(/reason/);
+    expect(
+      await err(sandboxes.request(member(sandboxId), sandboxId, false, "go live after the trial")),
+    ).toBe("IPB-SEC-005");
+    expect(await err(sandboxes.request(officer, sandboxId, false, "go live after the trial"))).toBe(
+      "IPB-SEC-005",
+    );
+    expect(await err(sandboxes.request(admin, sandboxId, false, "short"))).toMatch(/reason/);
     expect(await seen(member(sandboxId))).toBe(true);
   });
 
-  it("is changed by PLT_SUPER_ADMIN through TenantSandbox.set, ledgered in the tenant", async () => {
+  it("changes under maker-checker: a PLT_SUPER_ADMIN maker, a different approver, applied once (#115)", async () => {
     const before = audit.entries.length;
-    expect(await sandboxes.set(admin, sandboxId, false, "go live after the trial")).toEqual({
-      changed: true,
+    const { requestId } = await sandboxes.request(
+      admin,
+      sandboxId,
+      false,
+      "go live after the trial",
+    );
+    // Nothing changes until it is approved and applied.
+    expect(await seen(member(sandboxId))).toBe(true);
+    expect(await err(sandboxes.apply(admin, sandboxId, requestId))).toMatch(/pending/);
+    // The maker cannot approve; neither can the tenant, in its own context.
+    expect(await err(sandboxes.decide(admin, sandboxId, requestId, "approve"))).toBe("IPB-SEC-007");
+    expect(await err(sandboxes.decide(member(sandboxId), sandboxId, requestId, "approve"))).toBe(
+      "IPB-SEC-005",
+    );
+    expect(
+      await sandboxes.decide(officer, sandboxId, requestId, "approve", "trial ended"),
+    ).toMatchObject({
+      state: "approved",
     });
+    // An approver alone cannot apply; the maker (or another PLT_SUPER_ADMIN) applies it once.
+    expect(await err(sandboxes.apply(officer, sandboxId, requestId))).toBe("IPB-SEC-005");
+    expect(await err(sandboxes.apply(admin, liveId, requestId))).toMatch(/not found/i);
+    expect(await sandboxes.apply(admin2, sandboxId, requestId)).toEqual({ changed: true });
+    expect(await err(sandboxes.apply(admin, sandboxId, requestId))).toMatch(/executed/);
     expect(await seen(member(sandboxId))).toBe(false);
     expect(await sandboxes.get(admin, sandboxId)).toBe(false);
-    expect(await sandboxes.set(admin, sandboxId, false, "go live after the trial")).toEqual({
-      changed: false,
-    });
-    const mine = audit.entries.slice(before);
-    expect(mine.map((e) => [e.action, e.tenantId])).toEqual([
-      [TENANT_SANDBOX_SET_ACTION, sandboxId],
-      [TENANT_SANDBOX_SET_ACTION, sandboxId],
-    ]);
-    expect(mine[0]).toMatchObject({
+    const set = audit.entries.slice(before).filter((e) => e.action === TENANT_SANDBOX_SET_ACTION);
+    expect(set).toHaveLength(1);
+    expect(set[0]).toMatchObject({
+      tenantId: sandboxId,
       before: { sandbox: true },
-      after: { sandbox: false, changed: true },
+      after: {
+        sandbox: false,
+        changed: true,
+        reason: "go live after the trial",
+        approval_request_id: requestId,
+      },
     });
+    expect(audit.entries.slice(before).map((e) => e.action)).toEqual(
+      expect.arrayContaining([
+        "approvals.request.create",
+        "approvals.request.approve",
+        "approvals.request.consume",
+        "approvals.request.execute",
+      ]),
+    );
+    // A rejected request can never be applied.
+    const back = await sandboxes.request(
+      admin,
+      sandboxId,
+      true,
+      "back to the sandbox for a rehearsal",
+    );
+    await sandboxes.decide(officer, sandboxId, back.requestId, "reject", "not now");
+    expect(await err(sandboxes.apply(admin, sandboxId, back.requestId))).toMatch(/rejected/);
+    expect(await seen(member(sandboxId))).toBe(false);
     expect(
-      await sandboxes.set(admin, sandboxId, true, "back to the sandbox for a rehearsal"),
-    ).toEqual({ changed: true });
-    expect(await seen(member(sandboxId))).toBe(true);
-    expect(
-      await err(sandboxes.set(admin, "tnt_missing", true, "a tenant that is not there")),
+      await err(sandboxes.request(admin, "tnt_missing", true, "a tenant that is not there")),
     ).toMatch(/not found|tenant/i);
   });
 });

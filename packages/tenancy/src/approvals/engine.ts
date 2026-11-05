@@ -562,6 +562,45 @@ export class ApprovalsEngine implements ApprovalGateway {
   }
 
   /**
+   * Use an approved request once, inside the caller's own transaction (OWNER-QUESTIONS #115,
+   * R1-D-95): for an action whose change must run in a transaction that carries its own action
+   * (so a database guard keyed on that action still holds), not in the checker's. Refused unless
+   * the request is in the transaction's tenant, on `action`, approved and past its delay, not yet
+   * used and not expired; it is then marked executed and ledgered in that transaction, under the
+   * row lock, so two calls cannot both use it. Returns the approved payload for the caller to apply.
+   */
+  async consumeIn(
+    tx: Tx,
+    id: string,
+    action: string,
+  ): Promise<{ record: ApprovalRecord; payload: Record<string, unknown> }> {
+    if (action === MANDATE_APPROVAL_ACTION)
+      throw new ConflictError(`approval ${id} is consumed only by the mandate adapter`);
+    if (isAgentPrincipal(tx.ctx))
+      throw new IpbError("IPB-SEC-004", { detail: "an agent cannot use an approval" });
+    const row = await this.load(tx, id, true);
+    if (row.tenant_id !== tx.ctx.tenantId || row.action !== action)
+      throw new NotFoundError("approval request");
+    if (row.expired_at) throw new IpbError("IPB-UX-012", { meta: { request_id: id } });
+    if (row.state !== "approved") throw new ConflictError(`approval ${id} is ${row.state}`);
+    const now = await tx.query<{ now: Date }>("select now() as now");
+    if (row.delay_until && row.delay_until > (now.rows[0]?.now as Date))
+      throw new IpbError("IPB-SEC-008", {
+        meta: { request_id: id, delay_until: row.delay_until.toISOString() },
+      });
+    const payload = await this.payloadOf(tx, row);
+    if (canonicalDigest(payload) !== row.payload_digest)
+      throw new Error("approval payload digest mismatch");
+    await this.o.audit.record(tx, {
+      action: "approvals.request.consume",
+      resourceType: "approval_request",
+      resourceId: row.id,
+      after: { action: row.action, payload_digest: row.payload_digest },
+    });
+    return { record: toRecord(await this.runExecutor(tx, row)), payload };
+  }
+
+  /**
    * The `MandateApprovalVerifier` the mandate adapter takes: `ctxFor` gives the kernel context of
    * the service principal that makes the call in the named tenant.
    */

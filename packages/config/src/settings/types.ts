@@ -30,6 +30,11 @@ export interface SettingDef {
   locked: boolean;
   tighten?: Tighten;
   userOverride: boolean;
+  /**
+   * The key may be set per organisation unit, department or function (UNIT, between ENTITY and
+   * USER; PR-042). Declared per key (`unit_override` in settings-tree.yaml); off by default.
+   */
+  unitOverride?: boolean;
   /** Roles that may change; "self" = the owning user; "pipeline"/"system" = no human writes. */
   change: readonly string[];
   mc: false | "R2" | "R4" | "R5";
@@ -46,7 +51,7 @@ export interface SettingDef {
   note?: string;
 }
 
-/** Where a stored value applies. `scopeId` is the plan, brand, tenant, entity or user id; null for PLATFORM. */
+/** Where a stored value applies. `scopeId` is the plan, brand, tenant, entity, unit or user id; null for PLATFORM. */
 export interface SettingScopeRef {
   tier: SettingTier;
   scopeId: string | null;
@@ -58,6 +63,8 @@ export interface ResolutionScope {
   brandId?: string;
   tenantId?: string;
   entityId?: string;
+  /** Organisation units, outermost first; an inner unit overrides an outer one. */
+  unitIds?: readonly string[];
   userId?: string;
 }
 

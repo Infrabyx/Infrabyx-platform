@@ -46,7 +46,7 @@ export interface TenantBootstrapInput {
   brandId?: string;
   /**
    * A sandbox tenant (PR-LDC-29; R1-D-87): NOTIFY records and never sends, the AI gateway refuses
-   * data above INTERNAL. Default false. Changed later only through `TenantSandbox.set`.
+   * data above INTERNAL. Default false. Changed later only under maker-checker through `TenantSandbox.request`, `decide` and `apply` (#115).
    */
   sandbox?: boolean;
   /** Initial tenant-tier values by settings key; each key must be registered in `packages/config`. */

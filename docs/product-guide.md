@@ -452,7 +452,7 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 
 ## 7au. Sandbox tenants (PR-LDC-29; R1-D-90)
 
-- **The flag (`tenancy`, `contracts` minors; `tenancy/0018`).** `tenancy.tenant.sandbox` (default false). Set it when the tenant is created, `TenantBootstrap.bootstrap/provision(ctx, { ..., sandbox: true })` (part of the request, so a retry with another value is a conflict), and change it only with `new TenantSandbox({ kernel, audit }).set(platformCtx, tenantId, true | false, reason)`: `PLT_SUPER_ADMIN` in a platform context, a reason of 10 to 500 characters, ledgered in that tenant as `tenancy.tenant.sandbox.set`. The database refuses any other change, a tenant's own update of its row included.
+- **The flag (`tenancy`, `contracts` minors; `tenancy/0018`).** `tenancy.tenant.sandbox` (default false). Set it when the tenant is created, `TenantBootstrap.bootstrap/provision(ctx, { ..., sandbox: true })` (part of the request, so a retry with another value is a conflict), and change it only under maker-checker (§7az). The database refuses any other change, a tenant's own update of its row included.
 - **Reading it.** The kernel reads the flag once per read and mutate transaction into `tx.ctx.sandbox`, replacing whatever your context carried; a tenant without a `tenancy.tenant` row reads as not a sandbox. Never set `sandbox` on a context and never trust it outside `tx.ctx`; use `isSandboxed(tx.ctx)` from `@infrabyx/contracts/kernel`, true unless the kernel read the flag as false (a transaction it did not read fails closed).
 - **NOTIFY (`notify` minor; `notify/0005`).** In a sandbox tenant, email, SMS, WhatsApp and push deliveries are recorded and ledgered as `sandboxed` and never reach an adapter: `send`, `dispatchDue`, digests and `sendOneTimeCode` alike (the OTP sender refuses with `IPB-NTF-003`). In-app messages are still written.
 - **AI gateway (`ai` minor).** In a sandbox tenant a chat or embedding call above INTERNAL (the stated class, or the one the scrubber raises it to) is refused with `IPB-PORT-003` and recorded as `sandbox_refused`; PUBLIC and INTERNAL calls run as usual.
@@ -462,6 +462,26 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 
 - **Setting (`config`, `tenancy`, `workflow` minors).** `mc.expiry_hours.{action}` (TENANT tier, 1 to 168 hours, tighten-only, changed by ORG_OWNER under R4) shortens the platform expiry of that action's requests: 72 hours for R4, R5 and financial R3, 7 days otherwise. `settingsApprovalPolicy` reads it as `TenantApprovalPolicy.expiryHours`, and `ApprovalsEngine` clamps it to [1 hour, the action's platform period], so it never lengthens the platform period; a value above 168 hours is refused when it is set. `expiryHoursFor(risk, financial, tenantHours?)` and `APPROVAL_MIN_EXPIRY_HOURS` are exported.
 - **Remove** LDC's own expiry of its requests.
+
+## 7aw. Setting history in the tenant export, and erasing a person's USER settings (#110; R1-D-95)
+
+- **Export (`export` minor).** `REF-EXPORT-1.5` adds `01 Data/setting_change.csv` and `.jsonl` (who changed which setting at which scope, when, from what to what, and the approval request). `REF-EXPORT-1.4` is still emitted beside it for the 90-day dual run. A product map adds the same entity in its own next map version.
+- **Erasure (`config` minor; `config/0004`).** On a DPDP erasure request, call `settings.eraseUser(ctx, userId, { requestRef, reason })` from your erasure workflow (a service principal) or as ORG_OWNER or ORG_ADMIN, in the person's tenant. It deletes their USER values and USER change history in one ledgered transaction (`settings.user.erase`: counts and the request reference, never a value). Other tiers are untouched; the history accepts no other delete.
+
+## 7ax. Setting scopes below ENTITY (PR-042, PR-LDC-17; R1-D-95)
+
+- **Declare (`config`, `contracts` minors; `config/0005`).** Add `unit_override: true` to a TENANT, ENTITY or USER key in your `settings-tree.yaml` (`SettingDef.unitOverride`). No platform key declares it.
+- **Context.** Put the caller's units in `KernelContext.unitIds`, outermost first (an organisation unit, then a department or function), at most 8, built server-side from your organisation model and the verified principal, never from a request body.
+- **Resolution.** ENTITY, then each unit outermost first, then USER: the innermost unit wins. A UNIT write needs the key's change role and the unit in the caller's own chain, is tighten-only against the tenant, the entity and the outer units, and goes to the change history (`history(ctx, key, { tier: "UNIT", scopeId })`).
+- **Remove** LDC's `cfg` module (its migration 0010) once its keys are moved.
+
+## 7ay. PDF export (PR-LDC-28; R1-D-95)
+
+- **`toPdf(doc, { creator, created, maxBytes })` (`export` minor)** renders the `toDocx` block model as a PDF 1.7 file, A4, with no new dependency (review: `docs/phases/R1-pdf-dependency-review.md`). Text uses the standard Helvetica fonts, so it is limited to WinAnsi (Latin-1 plus the euro sign, dashes, curly quotes and the bullet); the rupee sign or an Indic script is refused with `char_unsupported`. Write "INR" or "Rs." yourself where you need it.
+
+## 7az. Sandbox changes under maker-checker (#115; R1-D-95)
+
+- **`tenancy` minor.** Build `new TenantSandbox({ kernel, audit, approvals })`. A PLT_SUPER_ADMIN raises `request(platformCtx, tenantId, true | false, reason)`; a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER calls `decide(platformCtx, tenantId, requestId, "approve" | "reject", reason?)`; a PLT_SUPER_ADMIN then calls `apply(platformCtx, tenantId, requestId)`, which uses the approval once and sets the flag, ledgered with the reason and the request id. `set` is refused (`IPB-SEC-005`). Setting the flag at tenant creation is unchanged.
 
 ## 8. Adopting 1.0.0
 

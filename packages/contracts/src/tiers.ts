@@ -1,8 +1,17 @@
-// Settings tiers (IPB-07-38) and action risk classes (IPB-02 §02.4.6.1).
+// Settings tiers (IPB-07-38, amended by the owner for PR-042 on 4 Nov 2026: UNIT, an organisation
+// unit, department or function, between ENTITY and USER) and action risk classes (IPB-02 §02.4.6.1).
 import { z } from "zod";
 
 /** Registry tiers in precedence order: earlier tiers set floors/ceilings, later tiers override within them. */
-export const SETTING_TIERS = ["PLATFORM", "PLAN", "BRAND", "TENANT", "ENTITY", "USER"] as const;
+export const SETTING_TIERS = [
+  "PLATFORM",
+  "PLAN",
+  "BRAND",
+  "TENANT",
+  "ENTITY",
+  "UNIT",
+  "USER",
+] as const;
 export const SettingTier = z.enum(SETTING_TIERS);
 export type SettingTier = z.infer<typeof SettingTier>;
 
@@ -14,7 +23,7 @@ export type DisplayTier = (typeof DISPLAY_TIERS)[number];
 
 export function displayTier(t: SettingTier): DisplayTier {
   if (t === "USER") return "USER";
-  if (t === "TENANT" || t === "ENTITY") return "ORG";
+  if (t === "TENANT" || t === "ENTITY" || t === "UNIT") return "ORG";
   return "PLATFORM";
 }
 

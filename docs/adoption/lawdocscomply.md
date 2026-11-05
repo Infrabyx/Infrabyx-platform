@@ -79,9 +79,19 @@ What LawDocsComply removes once it moves to the wave 6 release (R1-D-89, R1-D-90
 2. **PR-LDC-26, the tenant brand layer (guide §7as).** Build `TenantBrandLayers` with your NOTIFY `emailIdentityVerified` hook, your EDGE `domainVerified` hook and, if you sell it by plan, `enabled`; move each tenant's colours, logo, favicon, letterhead, email identity, domain and login message into a layer through `propose` and a checker's approval (R3). **Shim removed:** `cfg.brand_layer`.
 3. **PR-LDC-27, tenant notification templates (guide §7at).** Build `TenantTemplateStore`, pass its resolver to `NotifyService` as `templates`, call `registerApprovals` once, declare `variables` on your catalogue classes and move each tenant's override in through `requestChange` (R3). SMS and WhatsApp overrides select a registered template from your `TemplateRegistry`. Any EMAIL adapter of your own must declare `capabilities.content: "native"`, or tenant email overrides fail closed. **Shim removed:** `cfg.notification_template`.
 4. **PR-LDC-28, XLSX and DOCX (guide §7ar).** Produce reports with `toXlsx` and explanations with `toDocx`; pass `{ neutraliseFormulas: true }` to `toCsv` for a CSV a person will open in a spreadsheet. **Shim removed:** the JSON and CSV in a ZIP, and the Markdown explanations. PDF follows in wave 7.
-5. **PR-LDC-29, sandbox tenants (guide §7au).** Create sandbox tenants with `TenantBootstrap ... { sandbox: true }` and change the flag only through `TenantSandbox.set` (PLT_SUPER_ADMIN, with a reason; OWNER-QUESTIONS #115 may add a second approver); read it only as `isSandboxed(tx.ctx)`. A tenant without a `tenancy.tenant` row is not a sandbox, so no extra step is needed for the platform tenant. **Shims removed:** the `cfg.sandbox` guard and the wrapped senders.
+5. **PR-LDC-29, sandbox tenants (guide §7au).** Create sandbox tenants with `TenantBootstrap ... { sandbox: true }` and change the flag only through `TenantSandbox` (from wave 7 under maker-checker, §10); read it only as `isSandboxed(tx.ctx)`. A tenant without a `tenancy.tenant` row is not a sandbox, so no extra step is needed for the platform tenant. **Shims removed:** the `cfg.sandbox` guard and the wrapped senders.
 6. **PR-LDC-19, a shorter approval expiry (guide §7av).** Register nothing new: set `mc.expiry_hours.<action>` per tenant (1 to 168 hours, through settings' R4 maker-checker); the engine never exceeds the action's platform period. **Shim removed:** your own expiry of approval requests.
 7. **Mark met** PR-LDC-19, 24, 26, 27, 28 (XLSX, DOCX) and 29. PR-LDC-23 waits for spec v1.4 (keep `X-Infrabyx-JWS`); PDF is wave 7.
+
+## 10. Wave 7 (`contracts`, `config`, `export` and `tenancy` minors, patches of the rest)
+
+What LawDocsComply removes once it moves to the wave 7 release (R1-D-95; guide §7aw to §7az). Move every `@infrabyx/*` dependency to that release together and run `infrabyx-migrate --require-all` (`config/0004`, `config/0005`), then `infrabyx-rls-lint`.
+
+1. **PR-LDC-17, scopes below ENTITY (guide §7ax).** Declare `unit_override: true` on the keys you set per unit, build `ctx.unitIds` (outermost first) server-side from your organisation model, and move each unit's values in through `settings.set(ctx, key, { tier: "UNIT", scopeId }, value)`. **Shim removed:** the product `cfg` module (migration 0010; contract it in a later release).
+2. **#110, history in the export and erasure (guide §7aw).** Add `setting_change` to your next export map version; call `settings.eraseUser` from your DPDP erasure workflow.
+3. **PR-LDC-28, PDF (guide §7ay).** Render with `toPdf` from the same blocks you give `toDocx`; write "INR" or "Rs." where you used the rupee sign. **Shim removed:** your own PDF rendering.
+4. **PR-LDC-29, sandbox changes (guide §7az).** Change a tenant's flag only through `request`, `decide` and `apply`; `TenantSandbox.set` is refused.
+5. **Mark met** PR-LDC-17 and PR-LDC-28 (PDF). PR-LDC-23 waits for spec v1.4 (#116; keep `X-Infrabyx-JWS`).
 
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 

@@ -17,6 +17,12 @@ export interface Principal {
 export interface KernelContext {
   tenantId: string;
   entityId?: string;
+  /**
+   * The caller's organisation units, outermost first (an organisation unit, then a department or
+   * function), from the product's own organisation model, for setting resolution at the UNIT tier
+   * (IPB-07-38 as amended for PR-042). At most 8 ids of 1 to 64 of [A-Za-z0-9_-].
+   */
+  unitIds?: readonly string[];
   principal: Principal;
   /** RFC 8693 actor during impersonation; any mutation is refused while present (IPB-02-09). */
   act?: { sub: string; sessionId: string };

@@ -15,6 +15,7 @@
 #              true / false (the strict boolean value). A floor kept in code (RISK_POLICY for mc.*) is
 #              enforced again where the value is read: the stricter of floor and setting wins
 #   user_override  USER may set a TENANT/ENTITY key
+#   unit_override  UNIT (an organisation unit, department or function; PR-042) may set a TENANT, ENTITY or USER key
 #   change     roles that may change it; "self" = the user the value belongs to; "pipeline" = deploy only
 #   mc         maker-checker risk class (R2 | R4 | R5) or false
 #   help       help key (IPB-07-42)

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:infrabyx:export:REF-EXPORT-1.5:setting_change",
+  "title": "setting_change",
+  "description": "Rows of config.setting_change exported under REF-EXPORT-1.5",
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "ledger_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "key": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "tier": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "scope_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "old_value": {
+      "x-dataclass": "CONFIDENTIAL"
+    },
+    "new_value": {
+      "x-dataclass": "CONFIDENTIAL"
+    },
+    "version": {
+      "type": "integer",
+      "x-dataclass": "INTERNAL"
+    },
+    "actor_id": {
+      "type": "string",
+      "x-dataclass": "INTERNAL"
+    },
+    "mc_request_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "x-dataclass": "INTERNAL"
+    },
+    "changed_at": {
+      "type": "string",
+      "format": "date-time",
+      "x-dataclass": "INTERNAL"
+    }
+  },
+  "required": [
+    "id",
+    "ledger_id",
+    "key",
+    "tier",
+    "version",
+    "actor_id",
+    "changed_at"
+  ],
+  "additionalProperties": false
+}

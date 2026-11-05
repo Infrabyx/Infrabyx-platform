@@ -1021,7 +1021,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 
 ### 3.92 Sandbox tenants (`tenancy/0018`, `notify/0005`; PR-LDC-29, R1-D-90)
 
-- **E (a tenant takes itself out of the sandbox):** Control: the BEFORE UPDATE trigger `tenant_sandbox_guard` refuses any change to `sandbox` unless the transaction is platform-scoped and carries the action `tenancy.tenant.sandbox.set`, both set only by the kernel from the verified context (callers cannot `set_config('app.…')`); the only path is `TenantSandbox.set` (PLT_SUPER_ADMIN, a reason, ledgered in the tenant).
+- **E (a tenant takes itself out of the sandbox):** Control: the BEFORE UPDATE trigger `tenant_sandbox_guard` refuses any change to `sandbox` unless the transaction is platform-scoped and carries the action `tenancy.tenant.sandbox.set`, both set only by the kernel from the verified context (callers cannot `set_config('app.…')`); the only path is `TenantSandbox.apply` after a maker-checker approval (§3.97; a reason, ledgered in the tenant).
 - **S (a caller forges `ctx.sandbox`):** Control: `contextFromClaims` never copies it, the kernel replaces it in every transaction with the tenant row's value, joined mutations inherit the ambient transaction's value, and NOTIFY and the AI gateway read it only from `tx.ctx`. Residual: a non-PgKernel kernel (a test fake) passes the caller's value through.
 - **Fail closed:** the lookup is a SECURITY DEFINER function bound to `app.tenant_id`; a transaction run as a role without the lookup carries no flag and `isSandboxed` treats it as a sandbox; a failed lookup aborts the transaction. A tenant without a row is not a sandbox (it was never flagged). In-app messages, which never leave the platform, are the stated exception.
 
@@ -1033,3 +1033,21 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.94 Work on a connection after its transaction ended (`PgKernel.ambient`; R1-D-92, security patch)
 
 - **I and T (a call that outlives its transaction reaches another tenant's):** A joined call left running when its ambient mutation ended (a refused concurrent sibling, a call not awaited) kept the `PgTx` of a connection already returned to the pool; its next statements ran in the next transaction on that connection, under another tenant's `app.tenant_id`, and RLS then admitted them for that tenant (reproduced by `ambient-race.int.test.ts` with a one-connection pool). Control: every kernel transaction is marked ended before its commit or rollback, and any statement, unit or settings change after that is refused (`KernelGuardError`), so nothing reaches a returned connection; an ambient mutation waits for every joined call still running and then fails, so it never commits half a call; a joined call that starts after the ambient mutation ended, or whose own unit is over, is refused. Residual: none known for the kernel's own transactions; code outside the kernel that holds a raw pool client is outside this control.
+
+### 3.95 Setting history in the export, and DPDP erasure of USER settings (`config/0004`, `REF-EXPORT-1.5`; #110, R1-D-95)
+
+- **I (another tenant's history in an export):** Control: `config.setting_change` is read in the export worker's tenant context under forced RLS, so an archive carries the tenant's own TENANT, ENTITY, UNIT and USER rows and never PLATFORM, PLAN or BRAND rows (their `tenant_id` is null). Values are CONFIDENTIAL and travel in the signed archive like `setting.value`.
+- **T and repudiation (an erasure used to rewrite history):** Control: the history's only delete policy admits USER rows of a person who has a `config.setting_erasure` row in the same tenant; that row is written first, in the same transaction as the deletes and the `settings.user.erase` ledger entry (counts and the request reference, never a value); UPDATE stays ungranted; agents, externals and platform contexts are refused; the callers are a service principal, ORG_OWNER or ORG_ADMIN. Residual: an ORG_ADMIN can erase a person's USER preferences with a reason; the ledger keeps who and why.
+
+### 3.96 Setting scopes below ENTITY (`config/0005`; PR-042, PR-LDC-17, R1-D-95)
+
+- **E (a unit loosens a security setting):** Control: UNIT is allowed only for a key that declares `unit_override` (none of the platform's keys does), stays tighten-only against the tenant, the entity and each outer unit, and needs the key's change role with the unit in the caller's own `ctx.unitIds`.
+- **S (a forged unit chain):** `ctx.unitIds` comes from the product's own organisation model, set server-side like `entityId`; at most 8 ids of a fixed alphabet. Residual: the platform does not hold the organisation model, so a product that builds the chain from a request body would let a caller pick a unit's values; the guide says to build it from the verified principal only. UNIT rows follow `app.tenant_id` under RLS like ENTITY rows.
+
+### 3.97 Sandbox changes under maker-checker (#115, R1-D-95)
+
+- **E (one administrator takes a production tenant into the sandbox, silencing its mail):** Control: `TenantSandbox.set` is refused; a change is an R3 request by a PLT_SUPER_ADMIN, approved by a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER in a platform context only (a tenant's own checkers cannot decide it, and a tenant's `mc.*` settings do not narrow platform checkers), then applied once by a PLT_SUPER_ADMIN through `ApprovalsEngine.consumeIn` in the `tenancy.tenant.sandbox.set` transaction, so the database guard still holds; the ledger keeps the reason and the request id. The request is visible to the tenant's approvers in their own tenant, which is information about their own tenant only.
+
+### 3.98 PDF export (PR-LDC-28, R1-D-95)
+
+- **No new dependency or data flow.** `toPdf` writes caller text into a PDF with the standard fonts; no font parsing, no images, no JavaScript, forms, attachments, Launch or OpenAction; links are https annotations only. Characters outside WinAnsi are refused, never replaced, so amounts and names are never silently altered.

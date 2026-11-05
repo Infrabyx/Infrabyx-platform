@@ -61,9 +61,18 @@ describe("roles (PL1-D-05)", () => {
 });
 
 describe("tiers and risk classes (IPB-07-38, IPB-02 §02.4.6.1)", () => {
-  it("orders tiers PLATFORM → USER", () => {
-    expect(SETTING_TIERS).toEqual(["PLATFORM", "PLAN", "BRAND", "TENANT", "ENTITY", "USER"]);
+  it("orders tiers PLATFORM → USER, with UNIT between ENTITY and USER (PR-042)", () => {
+    expect(SETTING_TIERS).toEqual([
+      "PLATFORM",
+      "PLAN",
+      "BRAND",
+      "TENANT",
+      "ENTITY",
+      "UNIT",
+      "USER",
+    ]);
     expect(displayTier("ENTITY")).toBe("ORG");
+    expect(displayTier("UNIT")).toBe("ORG");
     expect(displayTier("PLAN")).toBe("PLATFORM");
   });
   it("encodes delays and agent rules", () => {
