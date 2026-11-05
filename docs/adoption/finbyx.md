@@ -91,7 +91,7 @@ What changes for Finbyx with the wave 4 release (R1-D-80, R1-D-84). Move every `
 2. **PR-FBX-35, bureau EMI, DDE signer trail and not-stampable DDE (guide §7ao).** (a) Use `Tradeline.emiPaise` in FOIR; impute or refer when it is `null`, never count it as 0. (b) Store `DdeRecord.signers` with your ESIGN evidence. (c) Register sanction letters and KFS acknowledgements with `ddeRegister({ …, notStampable: { reason } })` from your RULES' stampability decision. If you implement `EstampPort` yourself, add `signers` and `notStampableReason` to its `DdeRecord`. **Shims removed:** the fail-closed handling of each.
 3. **Mark met** PR-FBX-34 (1), (2) (interfaces) and PR-FBX-35.
 
-## 9. Wave 8 (`contracts`, `testing`, `consent`, `connectors`, `export` and `tenancy` minors)
+## 9. Wave 8 (version PR #230, release run 207: `contracts` 1.23.0, `connectors` 1.13.0, `consent` 1.3.0, `export` 1.5.0, `tenancy` 1.16.0, `testing` 1.12.0, patches of the rest)
 
 What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide §7ba to §7bd). Move every `@infrabyx/*` dependency together and run `infrabyx-migrate --require-all` (`consent/0005`), then `infrabyx-rls-lint`.
 
