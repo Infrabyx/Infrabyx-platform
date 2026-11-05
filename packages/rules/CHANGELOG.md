@@ -1,5 +1,13 @@
 # @infrabyx/rules
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [bc2c301]
+  - @infrabyx/tenancy@1.14.1
+  - @infrabyx/connectors@1.12.1
+
 ## 1.1.1
 
 ### Patch Changes

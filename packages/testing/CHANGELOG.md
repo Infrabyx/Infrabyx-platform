@@ -1,5 +1,14 @@
 # @infrabyx/testing
 
+## 1.11.1
+
+### Patch Changes
+
+- Updated dependencies [bc2c301]
+  - @infrabyx/tenancy@1.14.1
+  - @infrabyx/audit@1.7.2
+  - @infrabyx/seed@1.0.30
+
 ## 1.11.0
 
 ### Minor Changes
