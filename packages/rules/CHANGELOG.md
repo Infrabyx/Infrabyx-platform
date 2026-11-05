@@ -1,5 +1,14 @@
 # @infrabyx/rules
 
+## 1.1.5
+
+### Patch Changes
+
+- Updated dependencies [d3888de]
+  - @infrabyx/connectors@1.14.0
+  - @infrabyx/config@1.13.0
+  - @infrabyx/tenancy@1.16.1
+
 ## 1.1.4
 
 ### Patch Changes

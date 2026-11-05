@@ -1,5 +1,12 @@
 # @infrabyx/tenancy
 
+## 1.16.1
+
+### Patch Changes
+
+- Updated dependencies [d3888de]
+  - @infrabyx/config@1.13.0
+
 ## 1.16.0
 
 ### Minor Changes

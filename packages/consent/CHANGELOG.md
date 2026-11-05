@@ -1,5 +1,13 @@
 # @infrabyx/consent
 
+## 1.3.1
+
+### Patch Changes
+
+- Updated dependencies [d3888de]
+  - @infrabyx/config@1.13.0
+  - @infrabyx/tenancy@1.16.1
+
 ## 1.3.0
 
 ### Minor Changes
