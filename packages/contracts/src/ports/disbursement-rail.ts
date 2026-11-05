@@ -125,9 +125,19 @@ export interface DebitBatchReceipt {
 
 export type ReturnClass = "re_presentable" | "final";
 
+/**
+ * Whose return it is (Finbyx PR-FBX-36, R1-D-97): a bounce charge may be levied only for a return
+ * attributable to the borrower (RBI, Penal Charges in Loan Accounts, 18 Aug 2023). `BORROWER`: the
+ * borrower's account could not pay (insufficient funds); `NOT_BORROWER`: a bank, NPCI, system,
+ * mandate-data or file error; `UNKNOWN`: the code alone does not say, so no charge applies.
+ */
+export const RETURN_ATTRIBUTIONS = ["BORROWER", "NOT_BORROWER", "UNKNOWN"] as const;
+export type ReturnAttribution = (typeof RETURN_ATTRIBUTIONS)[number];
+
 export interface ReturnCodeInfo {
   reason: string;
   class: ReturnClass;
+  attribution: ReturnAttribution;
 }
 
 /**
@@ -143,25 +153,33 @@ export const NPCI_RETURN_CODES: Readonly<
   Record<CollectionChannel, Readonly<Record<string, Readonly<ReturnCodeInfo>>>>
 > = Object.freeze({
   NACH: Object.freeze({
-    "01": rc("Account closed or transferred", "final"),
-    "02": rc("No such account", "final"),
-    "03": rc("Account description does not tally", "final"),
-    "04": rc("Balance insufficient", "re_presentable"),
-    "06": rc("Payment stopped by drawer", "final"),
-    "07": rc("Payment stopped under court order or account under litigation", "final"),
-    "08": rc("Mandate not received", "final"),
-    "09": rc("Miscellaneous (others)", "final"),
+    "01": rc("Account closed or transferred", "final", "UNKNOWN"),
+    "02": rc("No such account", "final", "NOT_BORROWER"),
+    "03": rc("Account description does not tally", "final", "NOT_BORROWER"),
+    "04": rc("Balance insufficient", "re_presentable", "BORROWER"),
+    "06": rc("Payment stopped by drawer", "final", "UNKNOWN"),
+    "07": rc("Payment stopped under court order or account under litigation", "final", "UNKNOWN"),
+    "08": rc("Mandate not received", "final", "NOT_BORROWER"),
+    "09": rc("Miscellaneous (others)", "final", "UNKNOWN"),
   }),
   UPI_AUTOPAY: Object.freeze({
-    Z9: rc("Insufficient funds in the customer's account", "re_presentable"),
+    Z9: rc("Insufficient funds in the customer's account", "re_presentable", "BORROWER"),
   }),
 });
 
-function rc(reason: string, cls: ReturnClass): Readonly<ReturnCodeInfo> {
-  return Object.freeze({ reason, class: cls });
+function rc(
+  reason: string,
+  cls: ReturnClass,
+  attribution: ReturnAttribution,
+): Readonly<ReturnCodeInfo> {
+  return Object.freeze({ reason, class: cls, attribution });
 }
 
-/** Class a return code; an unknown code is `final` with `codeKnown: false`. */
+/**
+ * Class a return code; an unknown code is `final`, `UNKNOWN` (no charge) with `codeKnown: false`.
+ * Attribution follows the conservative table above, `[VERIFY]` against the sponsor bank's
+ * specification like the classes: only insufficient funds is the borrower's.
+ */
 export function classifyReturnCode(
   channel: CollectionChannel,
   code: string,
@@ -171,7 +189,12 @@ export function classifyReturnCode(
     : undefined;
   return hit
     ? { ...hit, codeKnown: true }
-    : { reason: "Unknown return code", class: "final", codeKnown: false };
+    : { reason: "Unknown return code", class: "final", attribution: "UNKNOWN", codeKnown: false };
+}
+
+/** Whether a bounce charge may be levied for this return: only a borrower-attributable one. */
+export function bounceChargeable(info: { attribution: ReturnAttribution | null }): boolean {
+  return info.attribution === "BORROWER";
 }
 
 export interface PresentationResult {
@@ -184,6 +207,8 @@ export interface PresentationResult {
   returnCode: string | null;
   returnReason: string | null;
   returnClass: ReturnClass | null;
+  /** Set when returned: whose return it is (PR-FBX-36); only `BORROWER` may carry a bounce charge. */
+  returnAttribution: ReturnAttribution | null;
   codeKnown: boolean | null;
   /** Set when paid: the settlement reference (UTR or NPCI transaction reference) and date. */
   settlementRef: string | null;

@@ -1,7 +1,12 @@
 // PR-FBX-34 (1) and (2) (R1-D-80): the DISBURSEMENT_RAIL collection contract and the PAYMENTS
 // settlement-line contract run against the fakes, as every adapter will.
 import { describe, expect, it } from "vitest";
-import { NPCI_RETURN_CODES, classifyReturnCode } from "@infrabyx/contracts/ports";
+import {
+  NPCI_RETURN_CODES,
+  RETURN_ATTRIBUTIONS,
+  bounceChargeable,
+  classifyReturnCode,
+} from "@infrabyx/contracts/ports";
 import { defineContractSuite } from "../contract.js";
 import {
   DISBURSEMENT_RAIL_FAKE_FIXTURES,
@@ -121,5 +126,26 @@ describe("the DISBURSEMENT_RAIL fake's response file", () => {
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ direction: "credit", amountMinor: 1_000_00 });
     expect(r.filesSent).toBe(1);
+  });
+});
+
+describe("PR-FBX-36 whose return it is", () => {
+  it("attributes only insufficient funds to the borrower; anything unknown carries no charge", () => {
+    expect(classifyReturnCode("NACH", "04")).toMatchObject({ attribution: "BORROWER" });
+    expect(classifyReturnCode("UPI_AUTOPAY", "Z9")).toMatchObject({ attribution: "BORROWER" });
+    for (const c of ["02", "03", "08"])
+      expect(classifyReturnCode("NACH", c).attribution).toBe("NOT_BORROWER");
+    for (const c of ["01", "06", "07", "09"])
+      expect(classifyReturnCode("NACH", c).attribution).toBe("UNKNOWN");
+    expect(classifyReturnCode("NACH", "99")).toMatchObject({
+      attribution: "UNKNOWN",
+      codeKnown: false,
+    });
+    for (const ch of Object.values(NPCI_RETURN_CODES))
+      for (const info of Object.values(ch)) expect(RETURN_ATTRIBUTIONS).toContain(info.attribution);
+    expect(bounceChargeable(classifyReturnCode("NACH", "04"))).toBe(true);
+    expect(bounceChargeable(classifyReturnCode("NACH", "01"))).toBe(false);
+    expect(bounceChargeable(classifyReturnCode("NACH", "99"))).toBe(false);
+    expect(bounceChargeable({ attribution: null })).toBe(false);
   });
 });
