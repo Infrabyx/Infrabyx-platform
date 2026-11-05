@@ -9,6 +9,7 @@
 // sandbox. The kernel reads the flag into `tx.ctx.sandbox` in every transaction; NOTIFY and the AI
 // gateway honour it there.
 import { IpbError } from "@infrabyx/contracts/errors";
+import { isSeedRefused, type AppEnv } from "@infrabyx/contracts/env";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import type { ApprovalRecord, ApprovalsEngine } from "./approvals/engine.js";
 import { NotFoundError } from "./errors.js";
@@ -29,6 +30,17 @@ export interface TenantSandboxOptions {
   audit: AuditSink;
   /** The approvals engine the change goes through (#115); without it no change can be made. */
   approvals?: ApprovalsEngine;
+  /**
+   * This deployment's APP_ENV (#118, R1-D-96). A change to a tenant of a production deployment
+   * (`prod`, `dr`, `pre-prod`), or when it is not given, is R4 (a 60-minute delay before it can be
+   * applied); in any other environment R3 (one approver, no delay).
+   */
+  appEnv?: AppEnv;
+}
+
+/** The risk class of a sandbox change in a deployment (#118): R4 for production, else R3. */
+export function sandboxChangeRisk(appEnv: AppEnv | undefined): "R3" | "R4" {
+  return appEnv === undefined || isSeedRefused(appEnv) ? "R4" : "R3";
 }
 
 export class TenantSandbox {
@@ -69,8 +81,8 @@ export class TenantSandbox {
   }
 
   /**
-   * Raise a change of a tenant's flag (the maker, a PLT_SUPER_ADMIN, with a reason): an R3
-   * approval request in that tenant, decided in a platform context only.
+   * Raise a change of a tenant's flag (the maker, a PLT_SUPER_ADMIN, with a reason): an approval
+   * request in that tenant, R4 in a production deployment and R3 elsewhere (#118), decided in a platform context only.
    */
   async request(
     caller: KernelContext,
@@ -93,7 +105,7 @@ export class TenantSandbox {
         if (!before) throw new NotFoundError("tenant");
         const { id } = await approvals.request(tx, {
           action: TENANT_SANDBOX_SET_ACTION,
-          riskClass: "R3",
+          riskClass: sandboxChangeRisk(this.o.appEnv),
           payload: { tenant_id: tenantId, sandbox, reason: why },
           summary: `${sandbox ? "Put" : "Take"} tenant ${tenantId} ${sandbox ? "into" : "out of"} the sandbox: ${why}`,
           diff: { before: { sandbox: before.sandbox }, after: { sandbox } },

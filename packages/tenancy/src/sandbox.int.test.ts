@@ -71,6 +71,7 @@ beforeAll(async () => {
     kernel,
     audit,
     approvals: new ApprovalsEngine({ kernel, audit, product: "LDC" }),
+    appEnv: "local",
   });
   const boot = new TenantBootstrap({ kernel, audit, appEnv: "local" });
   sandboxId = newId("tnt");
@@ -244,5 +245,30 @@ describe("R1-D-87 sandbox tenants (PR-LDC-29)", () => {
     expect(
       await err(sandboxes.request(admin, "tnt_missing", true, "a tenant that is not there")),
     ).toMatch(/not found|tenant/i);
+  });
+});
+
+describe("#118 the risk class of a sandbox change", () => {
+  it("is R4 (a 60-minute delay) in a production deployment or when unknown, R3 elsewhere", async () => {
+    const { sandboxChangeRisk } = await import("./sandbox.js");
+    expect(sandboxChangeRisk("prod")).toBe("R4");
+    expect(sandboxChangeRisk("dr")).toBe("R4");
+    expect(sandboxChangeRisk("pre-prod")).toBe("R4");
+    expect(sandboxChangeRisk(undefined)).toBe("R4");
+    expect(sandboxChangeRisk("staging")).toBe("R3");
+    expect(sandboxChangeRisk("local")).toBe("R3");
+  });
+
+  it("cannot be applied in production before its delay has passed", async () => {
+    const prod = new TenantSandbox({
+      kernel,
+      audit,
+      approvals: new ApprovalsEngine({ kernel, audit, product: "LDC" }),
+      appEnv: "prod",
+    });
+    const { requestId } = await prod.request(admin, liveId, true, "rehearse in a sandbox copy");
+    await prod.decide(officer, liveId, requestId, "approve", "ok");
+    expect(await err(prod.apply(admin, liveId, requestId))).toBe("IPB-SEC-008");
+    expect(await seen(member(liveId))).toBe(false);
   });
 });
