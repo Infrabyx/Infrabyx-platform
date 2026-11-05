@@ -1076,3 +1076,15 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.104 The Gotenberg DOCGEN adapter (`connectors/docgen`; #120, R1-D-100)
 
 - **I and T (HTML that makes the renderer fetch or run something):** the adapter sends one `index.html` and no other file or URL, asks Chromium to fail on console exceptions and not to wait for the network; pages from `blocksToHtml` carry a CSP of `default-src 'none'`. Deploy Gotenberg with no egress (a network policy) and its own `--chromium-deny-list`/`--chromium-allow-list` defaults kept, so a page from any other source still cannot reach out. **S (a forged renderer):** HTTPS to the configured host only (the SSRF guard), optional basic auth from SECRETS. **I (data at rest):** the PDF goes straight to the tenant's STORAGE, CONFIDENTIAL by default; Gotenberg keeps nothing.
+
+### 3.105 Retiring a statutory-capture registration (`audit/0008`; #122, R1-D-102)
+
+- **T and R (a captured table dropped with its rows, or the capture switched off under cover of a retirement):** `retire_capture` runs only for `app_migrate`, only inside a migration applied by the platform runner (its transaction marker and advisory lock), and only on an empty table, counted past row-level security under an ACCESS EXCLUSIVE lock; writes to the table are refused from then on. The drop guard admits only the drop of that table and its `ipb_capture*` triggers, only in the retiring transaction and only with the table itself; a deferred check fails the commit if the table survives. Every other drop is refused as before. **R:** the retirement is a chained capture entry in the platform chain and each affected tenant's chain; no capture row is removed; `audit.capture_retirement` and `audit.capture_table` stay append-only except for that one sanctioned delete. **E:** the function is SECURITY DEFINER owned by the database owner; it fails closed where its owner cannot read past row-level security.
+
+### 3.106 The tenant-id rule (`tenancy/0019`; PR-FBX-40, R1-D-103)
+
+- **D (a tenant that cannot use a port) and T (a tenant id that could be read as a path):** a tenant id is `tnt_` then lower-case letters and digits, or a ULID; the database refuses any other at creation, and no id it admits contains a separator a storage key could misread. The migration names, and does not change, existing ids that break the rule.
+
+### 3.107 The DISPATCH, COURT_DATA and ODR ports (ADR-0008 to 0010; R1-D-104)
+
+- Interfaces and fakes only: no new data flow leaves the platform until an adapter lands, each with its own threat-model entry. **E (an agent acting outside):** DISPATCH and ODR refuse an agent initiator, as TELEPHONY does. **R:** dispatch proofs carry the document's SHA-256; court data names its source and time and is never treated as a verified order; ODR referrals carry their basis and the disclosure version shown. **I:** addressees, parties, case files and outcomes are CONFIDENTIAL and go only to the tenant's own STORAGE prefix.

@@ -105,6 +105,14 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 
 1. **Vernacular KFS and notices (guide §7be, §7ay).** Run Gotenberg in your cluster, enable `int.docgen.gotenberg.enabled`, and render documents in the borrower's language with `renderPdf(doc, { docgen: new GotenbergDocgen(…), lang, outputPrefix })`. **Shim removed:** any product-local HTML-to-PDF path for Hindi or Punjabi.
 
+## 11. Wave 10 (`audit`, `tenancy`, `contracts`, `testing` minors; `workflow` patch)
+
+1. **PR-FBX-40, the tenant-id rule (guide §7bg).** Before upgrading `tenancy`, check that no tenant id has an underscore after `tnt_` (`tenancy/0019` stops and names any). **Shim removed:** `COL_TENANT_PREFIX` in `col/calls.ts`.
+2. **PR-FBX-39, retire `cif.consent_purge_run` (guide §7bf).** Upgrade `audit` (install `audit/0008` as the database owner) and `tenancy` (the runner's marker), then in one contract migration: `select audit.retire_capture('cif.consent_purge_run'); drop table cif.consent_purge_run;`. **Shim removed:** the retired, empty table.
+3. **PR-FBX-41, 42, 44, the DISPATCH, COURT_DATA and ODR ports (guide §7bh).** Program against `DispatchPort`, `CourtDataPort` and `OdrPort`; `FakeDispatch`, `FakeCourtData`, `FakeOdr` and `equatorOdrStub()` below staging. **Shims removed:** the product-local `DispatchPort` and `CourtDataPort` with their fakes, and the product-local `OdrProvider` with its Equator stub (keep the CSV fallback as your own FILE-mode adapter).
+4. **PR-FBX-43** is planned for wave 11, after OWNER-QUESTIONS #123. Meanwhile, sign `LegalNoticeIssued`, `OrderRecorded` and `RecoveryReceiptPosted` with `signRegulatedMessage` from `@infrabyx/crypto` (the C-22 profile, `X-Infrabyx-JWS`). **Shim removed now:** unsigned regulated events.
+5. **Mark met** PR-FBX-39, 40, 41, 42 and 44 once adopted.
+
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
 
 **Upgrade to the patched `tenancy` release (1.14.1 or later) before your next exit gate.** In `tenancy` 1.14.0 and earlier, a mutation joined to an ambient one (`kernel.ambient`, PR-UDF-033, PR-FBX-21) that was still running when the ambient mutation ended (a sibling of a refused concurrent call, or a call not awaited) could run its next statements on the pooled connection after it was returned, that is, in the next transaction on that connection, which may be another tenant's. The patch refuses any statement on a transaction that has ended (`KernelGuardError`), makes an ambient mutation wait for its joined calls and fail when one was still running, and refuses a joined call that starts after it ended. What to check: await every call inside `kernel.ambient` (no fire-and-forget, no `Promise.all` over joined mutations), and never keep a `tx` beyond its callback. No migration, setting or API change; code that already awaited its calls behaves as before.

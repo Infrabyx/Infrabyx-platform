@@ -508,6 +508,20 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **`connectors` minor (`@infrabyx/connectors/docgen`).** Run Gotenberg 8.39.0 in your cluster (the pinned image in `infra/docker/TEST_IMAGES.md`; it carries the Noto fonts for Devanagari and Gurmukhi) behind HTTPS, with no egress. Build `new GotenbergDocgen({ baseUrl, storage, enabled })`, `enabled` reading `int.docgen.gotenberg.enabled` (off by default; turned on by PLT_SUPER_ADMIN under R4), and pass it to `renderPdf(doc, { docgen, lang: "hi" | "pa", outputPrefix: "tenant/<id>/<module>" })`. The PDF (or PDF/A-2b with `format: "pdfa"`) lands in the tenant's STORAGE with its SHA-256 and page count. Templates are not offered by this adapter.
 - **Remove** your own DOCGEN or HTML-to-PDF adapter for vernacular documents.
 
+## 7bf. Retiring a captured table (#122; `audit/0008`; R1-D-102)
+
+- **`audit` minor; install `audit/0008` as the database owner, as `audit/0003`.** To drop a table registered for statutory capture that you no longer use, empty it first (every delete is captured), then, in one migration applied by the platform runner (`@infrabyx/tenancy` migrate, at this release or later): `select audit.retire_capture('<schema>.<table>'); drop table <schema>.<table>;`. It is refused outside a migration, to any role but `app_migrate`, and while the table has a row. The retirement is a chained capture entry (`audit.capture.retire`) in the platform chain and in each tenant's chain that holds capture rows of the table, every capture row is kept, and the commit fails if the table is not dropped in the same transaction. Every other drop of a registered table is still refused.
+
+## 7bg. The tenant-id rule (PR-FBX-40; `tenancy/0019`; R1-D-103)
+
+- **`tenancy`, `contracts` minors.** A tenant id is `tnt_` followed by 1 to 60 lower-case letters and digits, or a ULID (`TENANT_ID_REGEX`, `isTenantId` in `@infrabyx/contracts/ids`). Every such id fits every port's storage prefix. `tenancy/0019` stops, naming up to ten ids, if an existing tenant breaks the rule: rename them (and every row that carries the id) in your own migration before upgrading, then run it again.
+- **Remove** any guard that refused a port call because the tenant id could not name a storage prefix.
+
+## 7bh. The DISPATCH, COURT_DATA and ODR ports (PR-FBX-41, 42, 44; ADR-0008 to 0010; R1-D-104)
+
+- **`contracts`, `testing` minors; interfaces and fakes, no adapters yet.** `DispatchPort`: `dispatch({ initiatedBy, channel, document, addressee, purpose, subjectRef, evidencePrefix, idempotencyKey })` (never from an agent; the document by its SHA-256), `status`, `storeProof(id, "booking_receipt" | "proof_of_delivery" | "proof_of_return")` into your tenant's STORAGE, `cancel` before booking; `FakeDispatch` below staging. `CourtDataPort`: `lookupCase` by CNR or court, type, number and year, `hearings`, `orders`, `fetchOrder` into your STORAGE, `causeList`; every result names its source and time and is not a verified record; `FakeCourtData`. `OdrPort`: `disclosure`, `modes`, `refer` (who chose the provider, never a default; the basis by reference; the provider's disclosure version as shown, required when it has one), `status`, `withdraw`, `outcome` into your STORAGE; `FakeOdr` and `equatorOdrStub()` ("Equator Resolution is an Infrabyx group company"). Show Equator among the other configured providers, never pre-selected (Spec 6.9).
+- **Remove** your product-local `DispatchPort`, `CourtDataPort`, `OdrProvider` and their fakes and stubs.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
