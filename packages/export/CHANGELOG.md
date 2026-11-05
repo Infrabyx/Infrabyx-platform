@@ -1,5 +1,24 @@
 # @infrabyx/export
 
+## 1.4.0
+
+### Minor Changes
+
+- 3c9bb25: PDF export (PR-LDC-28; dependency review `docs/phases/R1-pdf-dependency-review.md`, R1-D-95): `toPdf(doc, { creator, created, maxBytes })` renders the `toDocx` block model (headings, paragraphs with bold, italic, underline and https links, bullet and numbered lists with one nested level, tables with a header row repeated on each page, page breaks) as a PDF 1.7 file, A4, with no new dependency. Text is set in the standard Helvetica fonts with WinAnsiEncoding (no font embedded); a character outside WinAnsi, such as the rupee sign or Indic script, is refused with `char_unsupported`, never replaced. No JavaScript, forms, attachments or actions other than https link annotations; the same input and `created` time give the same bytes.
+- 3c9bb25: `REF-EXPORT-1.5` (R1-D-95, OWNER-QUESTIONS #110): the tenant export carries the setting change history, `01 Data/setting_change.csv` and `.jsonl` (from `config.setting_change`: who changed which setting at which scope, when, from what to what, and the approval request). `REF-EXPORT-1.4` stays exported beside it for the 90-day dual run (`REF_EXPORT_MAP_1_4`); the golden archive is `golden/REF-EXPORT-1.5`.
+
+  Customer note: archives gain `01 Data/setting_change.csv` and `.jsonl`, the history of setting changes; every existing file is unchanged.
+
+  export_map: REF-EXPORT-1.5
+
+### Patch Changes
+
+- Updated dependencies [3c9bb25]
+- Updated dependencies [3c9bb25]
+  - @infrabyx/tenancy@1.15.0
+  - @infrabyx/contracts@1.22.0
+  - @infrabyx/crypto@1.5.7
+
 ## 1.3.1
 
 ### Patch Changes
