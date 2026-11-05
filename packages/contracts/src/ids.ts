@@ -102,6 +102,19 @@ export const ID_PREFIXES = {
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 
+/**
+ * The one tenant-id rule, platform-wide (Finbyx PR-FBX-40; R1-D-103; tenancy/0019): `tnt_` then
+ * letters and digits only, either lower-case letters and digits (1 to 60, so the id fits every
+ * 64-character tenant column) or a ULID. The database refuses any other id when a tenant is
+ * created, and every port's storage prefix (`tenant/<tenant id>/<module>`) admits every id it
+ * allows. No underscore after `tnt_`.
+ */
+export const TENANT_ID_PATTERN = `tnt_(?:[a-z0-9]{1,60}|${ULID_PATTERN})`;
+export const TENANT_ID_REGEX = new RegExp(`^${TENANT_ID_PATTERN}$`);
+export function isTenantId(v: unknown): v is string {
+  return typeof v === "string" && TENANT_ID_REGEX.test(v);
+}
+
 /** Reserved well-known IDs (IPB-11-26 platform, demo and sandbox tenants). */
 export const RESERVED_IDS = ["tnt_platform", "tnt_demo", "tnt_sandbox"] as const;
 export const PLATFORM_TENANT_ID = "tnt_platform";

@@ -5,6 +5,7 @@
 // it is the reference engine and always runs as the catch-up reconciler. A Temporal engine
 // (`TemporalTimers` in `@infrabyx/connectors/workflow`) may fire them on time as well; firing is
 // idempotent because every handler re-checks the state it acts on.
+import { TENANT_ID_PATTERN } from "@infrabyx/contracts/ids";
 import type { KernelContext, MutationKernel, AuditSink, Tx } from "@infrabyx/contracts/kernel";
 import type { TimerEngine } from "@infrabyx/contracts/ports";
 import { ServiceReader, type ServiceReadRecord } from "@infrabyx/tenancy";
@@ -70,12 +71,14 @@ export type TimerHandler = (ctx: KernelContext, t: DueTimer) => Promise<"done" |
 export const timerId = (tenantId: string, kind: TimerKind, ref: string): string =>
   `ipb-timer.${tenantId}.${kind}.${ref}`;
 
+// The tenant part follows the one tenant-id rule (PR-FBX-40, R1-D-103).
+const TIMER_ID = new RegExp(
+  `^ipb-timer\\.(${TENANT_ID_PATTERN})\\.((?:approval|inbox)\\.[a-z]+|[a-z]{2,4}\\.[a-z][a-z0-9_]{0,31}\\.[a-z][a-z0-9_]{0,31})\\.([A-Za-z0-9_-]{1,64})$`,
+);
+
 /** Parse a `timerId` back into its parts (for the Temporal activity). */
 export function parseTimerId(id: string): { tenantId: string; kind: TimerKind; ref: string } {
-  const m =
-    /^ipb-timer\.(tnt_[a-z0-9_]+|tnt_[0-9A-HJKMNP-TV-Z]{26})\.((?:approval|inbox)\.[a-z]+|[a-z]{2,4}\.[a-z][a-z0-9_]{0,31}\.[a-z][a-z0-9_]{0,31})\.([A-Za-z0-9_-]{1,64})$/.exec(
-      id,
-    );
+  const m = TIMER_ID.exec(id);
   if (!m) throw new Error("not a timer id");
   const kind = m[2] as string;
   const ref = m[3] as string;
