@@ -199,7 +199,12 @@ export async function migrate(o: MigrateOptions): Promise<MigrateResult> {
       const statements = inTx ? [f.sql] : splitStatements(f.sql);
       let done = 0;
       try {
-        if (inTx) await c.query("begin");
+        if (inTx) {
+          await c.query("begin");
+          // The file being applied, for this transaction only: `audit.retire_capture` runs only
+          // inside a migration (OWNER-QUESTIONS #122, R1-D-102).
+          await c.query("select set_config('ipb.migration', $1, true)", [id]);
+        }
         for (const sql of statements) {
           await c.query(sql);
           done++;

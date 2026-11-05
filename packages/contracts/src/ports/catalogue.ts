@@ -241,6 +241,24 @@ export const PORT_CATALOGUE = {
     ownerFile: "ADR-0007 (Finbyx PR-FBX-38)",
     interfaceDefined: true,
   },
+  DISPATCH: {
+    tier: 2,
+    configPrefix: "int.dispatch.",
+    ownerFile: "ADR-0008 (Finbyx PR-FBX-41)",
+    interfaceDefined: true,
+  },
+  COURT_DATA: {
+    tier: 3,
+    configPrefix: "int.court_data.",
+    ownerFile: "ADR-0009 (Finbyx PR-FBX-42)",
+    interfaceDefined: true,
+  },
+  ODR: {
+    tier: 2,
+    configPrefix: "int.odr.",
+    ownerFile: "ADR-0010 (Finbyx PR-FBX-44; Ecosystem Spec 8.9)",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
@@ -253,7 +271,9 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * and CAPTCHA, ADR-0004; R1-D-79: LawDocsComply PR-LDC-02's COMPANY_DATA, no adapter until the
  * owner chooses a data source; R1-D-80: Finbyx PR-FBX-34's DISBURSEMENT_RAIL product port, IPB-01
  * §01.4.4.3, ADR-0006, collection methods with fakes, no adapter; R1-D-97: Finbyx PR-FBX-38's
- * TELEPHONY, ADR-0007, fake and contract cases, no adapter until a vendor is chosen).
+ * TELEPHONY, ADR-0007, fake and contract cases, no adapter until a vendor is chosen; R1-D-104:
+ * Finbyx PR-FBX-41, 42 and 44's DISPATCH, COURT_DATA and ODR, ADR-0008 to 0010, fakes and contract
+ * cases, no adapter until a provider is chosen).
  */
 export const R1_PORTS = [
   "KYC",
@@ -269,4 +289,7 @@ export const R1_PORTS = [
   "COMPANY_DATA",
   "DISBURSEMENT_RAIL",
   "TELEPHONY",
+  "DISPATCH",
+  "COURT_DATA",
+  "ODR",
 ] as const satisfies readonly PortName[];

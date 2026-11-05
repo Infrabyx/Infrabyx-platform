@@ -71,4 +71,7 @@ vulnerabilities:
   - id: CVE-2026-109518
     statement: apt and libapt-pkg6.0 2.6.1, an on-path attacker during apt's own downloads (fixed in Debian 12 as 2.6.2, which no node:24.22.1-bookworm-slim digest carries yet; the newest, built 2026-10-28, still has 2.6.1). The runtime never runs apt, fetches no packages, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-99); removed with the first base digest carrying 2.6.2 once it is 7 days old
     expired_at: 2026-12-05
+  - id: CVE-2026-76844
+    statement: zlib1g 1:1.2.13.dfsg-1 in the Debian 12 base (Trivy status affected, no fixed version; Trivy's record titles it after webpack-dev-middleware, which looks misattributed and is re-checked when its database updates). Node.js uses its own bundled zlib, not the system library; the runtime decompresses no untrusted archives with system tools, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-106); removed with the first fixed package or corrected advisory
+    expired_at: 2026-12-05
 secrets: []

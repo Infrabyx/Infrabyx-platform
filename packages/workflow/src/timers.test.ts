@@ -13,6 +13,8 @@ describe("timer ids", () => {
     for (const bad of [
       "ipb-timer.tnt_a.approval.drop.apr_01M5XQT0PRXMKBEGFFSHNHTA61",
       "ipb-timer.tnt_a.approval.remind.usr_01M5XQT0PRXMKBEGFFSHNHTA61",
+      // An underscore after tnt_ breaks the tenant-id rule (PR-FBX-40).
+      "ipb-timer.tnt_bcl_x.approval.remind.apr_01M5XQT0PRXMKBEGFFSHNHTA61",
       "other",
     ])
       expect(() => parseTimerId(bad), bad).toThrow();

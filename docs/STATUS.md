@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-04
+Updated: 2026-11-05
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,6 +9,14 @@ Updated: 2026-11-04
 | Packages              | Published to GitHub Packages (release run 210, `dd3020c`, 5 Nov 2026): **1.23.0** contracts; **1.16.1** tenancy; **1.14.0** connectors; **1.13.0** config, testing; **1.7.5** audit; **1.5.8** crypto; **1.5.1** export; **1.3.4** notify, workflow; **1.3.1** consent; **1.2.11** ui; **1.1.31** cms; **1.1.5** rules; **1.1.4** ai, brand; **1.1.2** a11y; **1.0.33** feedback, seed, trust, vidhi; **1.0.0** hlp. Records under "Releases after 1.0.0" |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                         |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                             |
+
+## Wave 10 (eighth session, 5 Nov): in its release gate
+
+- **Owner (R1-D-102):** #122 yes, the narrow capture retirement; PR-FBX-40 refused at creation; PR-FBX-41 to 44 ports and fakes only, no vendor accounts.
+- **Built:** M72 `audit/0008` `retire_capture` (and the runner's `ipb.migration` marker); M73 `tenancy/0019` tenant-id rule, `TENANT_ID_REGEX`; M74 DISPATCH, COURT_DATA and ODR ports with fakes, `equatorOdrStub()` and contract cases (ADR-0008 to 0010). Guide §7bf to §7bh; threat model §3.105 to §3.107; Finbyx adoption §11.
+- **Planned:** PR-FBX-43 (module lifecycle, entitlements, module and legal-hold events) in wave 11 (M76), after OWNER-QUESTIONS #123 (who approves an entitlement change).
+- **Gate:** the first `ci:run` run was green except `containers` (a new base advisory, CVE-2026-76844 in `zlib1g`, no fix: waived 30 days under the standing rule, R1-D-106, with the apt waiver to 5 Dec) and `compose` (MinIO's console took a host port already in use before any migration ran: an infrastructure flake, re-run once).
+- **Next:** wave 10's gate re-run, version PR, release record.
 
 ## Wave 9 (eighth session, 5 Nov): released (run 210)
 

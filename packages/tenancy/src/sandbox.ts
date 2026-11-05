@@ -10,6 +10,7 @@
 // gateway honour it there.
 import { IpbError } from "@infrabyx/contracts/errors";
 import { isSeedRefused, type AppEnv } from "@infrabyx/contracts/env";
+import { isTenantId } from "@infrabyx/contracts/ids";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import type { ApprovalRecord, ApprovalsEngine } from "./approvals/engine.js";
 import { NotFoundError } from "./errors.js";
@@ -23,7 +24,6 @@ export const TENANT_SANDBOX_CHECKERS: readonly string[] = [
   "PLT_SUPER_ADMIN",
   "PLT_SECURITY_OFFICER",
 ];
-const TENANT_ID = /^tnt_[a-z0-9_]+$|^tnt_[0-9A-HJKMNP-TV-Z]{26}$/;
 
 export interface TenantSandboxOptions {
   kernel: MutationKernel;
@@ -206,7 +206,8 @@ export class TenantSandbox {
 
   /** The changed tenant's own context, still platform-scoped, so the ledger entry lands there. */
   private contextFor(caller: KernelContext, tenantId: string): KernelContext {
-    if (!TENANT_ID.test(tenantId)) throw new RangeError("a tenant id is tnt_ followed by an id");
+    if (!isTenantId(tenantId))
+      throw new RangeError("a tenant id is tnt_ followed by letters and digits (R1-D-103)");
     const ctx: KernelContext = { ...caller, tenantId, scope: "platform" };
     delete ctx.entityId;
     return ctx;

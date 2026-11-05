@@ -197,7 +197,9 @@ describe("@IPB-02-51 statutory audit capture (audit/0003, R1-D-25)", () => {
       /row-level security/,
     );
     await db.admin.query("select audit.register_capture('books.journal_line')");
-    const n = await db.admin.query("select count(*)::int as n from audit.capture_table");
+    const n = await db.admin.query(
+      "select count(*)::int as n from audit.capture_table where rel_name like 'books.%'",
+    );
     expect(n.rows[0].n).toBe(1);
     await db.admin.query("drop table books.no_tenant, books.no_rls");
   });
