@@ -478,7 +478,7 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 ## 7ay. PDF export (PR-LDC-28; #117; R1-D-95, R1-D-96, R1-D-97)
 
 - **`toPdf(doc, { creator, created, maxBytes })` (`export` minor)** renders the `toDocx` block model as a PDF 1.7 file, A4, with no new dependency (review: `docs/phases/R1-pdf-dependency-review.md`). From wave 8 it embeds Noto Sans (OFL; `export/fonts/FONTS.md`), so it shows Latin (including Latin Extended-A), the usual punctuation, the euro and **the rupee sign**, and the text stays searchable and copyable. A character the fonts lack is refused with `char_unsupported`; nothing is ever replaced.
-- **Vernacular documents (Devanagari, Gurmukhi and the other Indic scripts).** They need shaping, which `toPdf` does not do: it refuses them with `shaping_required`. Render them with `renderPdf(doc, { docgen, lang, outputPrefix })`: a document with Indic text goes to your DOCGEN adapter's `renderHtml` (Gotenberg's Chromium, with Noto Sans Devanagari and Gurmukhi installed in its image) as the self-contained page `blocksToHtml(doc, { lang })` writes; anything else is rendered in process. Pass `lang` as the document's language (`hi`, `pa`, …). The platform has no DOCGEN adapter yet (OWNER-QUESTIONS #120): bind your own until it does. `pdfNeedsShaping(doc)` tells you which path applies.
+- **Vernacular documents (Devanagari, Gurmukhi and the other Indic scripts).** They need shaping, which `toPdf` does not do: it refuses them with `shaping_required`. Render them with `renderPdf(doc, { docgen, lang, outputPrefix })`: a document with Indic text goes to your DOCGEN adapter's `renderHtml` (Gotenberg's Chromium, with Noto Sans Devanagari and Gurmukhi installed in its image) as the self-contained page `blocksToHtml(doc, { lang })` writes; anything else is rendered in process. Pass `lang` as the document's language (`hi`, `pa`, …). The platform's Gotenberg DOCGEN adapter follows in wave 9 (#120, R1-plan M71); bind your own until then. `pdfNeedsShaping(doc)` tells you which path applies.
 
 ## 7az. Sandbox changes under maker-checker (#115; R1-D-95)
 
@@ -486,8 +486,8 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 
 ## 7ba. Whose return it is (PR-FBX-36; R1-D-97)
 
-- **`contracts` minor.** `classifyReturnCode(channel, code).attribution` and `PresentationResult.returnAttribution`: `BORROWER` (NACH 04, UPI Z9), `NOT_BORROWER` (NACH 02, 03, 08) or `UNKNOWN` (NACH 01, 06, 07, 09 and any unknown code). Levy a bounce charge only when `bounceChargeable(result)` is true. The table is `[VERIFY]` against your sponsor bank's specification (OWNER-QUESTIONS #119).
-- **Remove** `pay.return.borrower_codes`.
+- **`contracts` minor.** `classifyReturnCode(channel, code).attribution` and `PresentationResult.returnAttribution`: `BORROWER` (NACH 04, 01, 06; UPI Z9) or `NOT_BORROWER` (NACH 07, 09, every other code and any unknown code). Levy a bounce charge only when `bounceChargeable(result)` is true. The table is the owner's platform floor (#119), `[VERIFY]` against your sponsor bank's specification; to apply a tenant's narrower list, pass it as `classifyReturnCode(channel, code, { borrowerCodes })`: it can only remove codes, never add one.
+- **Remove** `pay.return.borrower_codes` as a source of truth; if a tenant keeps one, pass it as `borrowerCodes` (narrowing only).
 
 ## 7bb. The purpose-consent purge per tenant, dry run first (PR-FBX-37; R1-D-97)
 

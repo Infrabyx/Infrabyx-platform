@@ -129,23 +129,37 @@ describe("the DISBURSEMENT_RAIL fake's response file", () => {
   });
 });
 
-describe("PR-FBX-36 whose return it is", () => {
-  it("attributes only insufficient funds to the borrower; anything unknown carries no charge", () => {
-    expect(classifyReturnCode("NACH", "04")).toMatchObject({ attribution: "BORROWER" });
+describe("PR-FBX-36 whose return it is (the owner's table, #119)", () => {
+  it("attributes NACH 04, 01, 06 and UPI Z9 to the borrower; everything else, unknown codes too, is not", () => {
+    for (const c of ["04", "01", "06"])
+      expect(classifyReturnCode("NACH", c).attribution).toBe("BORROWER");
     expect(classifyReturnCode("UPI_AUTOPAY", "Z9")).toMatchObject({ attribution: "BORROWER" });
-    for (const c of ["02", "03", "08"])
+    for (const c of ["02", "03", "07", "08", "09"])
       expect(classifyReturnCode("NACH", c).attribution).toBe("NOT_BORROWER");
-    for (const c of ["01", "06", "07", "09"])
-      expect(classifyReturnCode("NACH", c).attribution).toBe("UNKNOWN");
     expect(classifyReturnCode("NACH", "99")).toMatchObject({
-      attribution: "UNKNOWN",
+      attribution: "NOT_BORROWER",
       codeKnown: false,
     });
     for (const ch of Object.values(NPCI_RETURN_CODES))
       for (const info of Object.values(ch)) expect(RETURN_ATTRIBUTIONS).toContain(info.attribution);
     expect(bounceChargeable(classifyReturnCode("NACH", "04"))).toBe(true);
-    expect(bounceChargeable(classifyReturnCode("NACH", "01"))).toBe(false);
+    expect(bounceChargeable(classifyReturnCode("NACH", "07"))).toBe(false);
     expect(bounceChargeable(classifyReturnCode("NACH", "99"))).toBe(false);
     expect(bounceChargeable({ attribution: null })).toBe(false);
+  });
+
+  it("is a platform floor: a tenant list only shrinks the borrower's codes, never widens them", () => {
+    const tenant = { borrowerCodes: ["04", "07", "99"] };
+    expect(classifyReturnCode("NACH", "04", tenant).attribution).toBe("BORROWER");
+    // Platform says borrower, tenant left it out: not the borrower's.
+    expect(classifyReturnCode("NACH", "01", tenant).attribution).toBe("NOT_BORROWER");
+    expect(classifyReturnCode("NACH", "06", tenant).attribution).toBe("NOT_BORROWER");
+    // Tenant names it, platform does not: never widened.
+    expect(classifyReturnCode("NACH", "07", tenant).attribution).toBe("NOT_BORROWER");
+    expect(classifyReturnCode("NACH", "99", tenant).attribution).toBe("NOT_BORROWER");
+    // An empty list means no code is the borrower's.
+    expect(classifyReturnCode("NACH", "04", { borrowerCodes: [] }).attribution).toBe(
+      "NOT_BORROWER",
+    );
   });
 });

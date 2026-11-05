@@ -10,12 +10,12 @@ Updated: 2026-11-04
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                    |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                        |
 
-## Wave 8 (eighth session, 5 Nov): built locally
+## Wave 8 (eighth session, 5 Nov): at its gate
 
 - **Owner answers (R1-D-96):** #116 signed off; IPB-07-38 wording approved; one bypass PR for both (#228, open, waiting for the owner's one-off bypass); #117 no to Latin-only (rupee sign now; Indic through DOCGEN); #118 R4 for production tenants. Finbyx PR-FBX-36, 37 and 38 logged and accepted (platform-requests).
-- **Built (R1-D-97), on a local branch until #228 merges:** #117 embedded Noto Sans in `toPdf` and `renderPdf`/`blocksToHtml` to DOCGEN (`export`); #118 `sandboxChangeRisk` (`tenancy`); PR-FBX-36 return attribution (`contracts`, `testing`); PR-FBX-37 purge dry runs, per-record entries and per-tenant runs (`consent/0005`); PR-FBX-38 the TELEPHONY port (ADR-0007; `contracts`, `testing`); M61 `X-Infrabyx-JWS` (`contracts`, `connectors`). Guide §7ay to §7bd; threat model §3.99 to §3.102.
-- **Open questions:** #119 (attribution table), #120 (a Gotenberg DOCGEN adapter for Indic PDFs, wave 9), #121 (the 72-hour dry-run window).
-- **Next:** merge #228 once the owner adds the bypass (then the owner removes it); push wave 8 and run its gate (`ci:run`); version PR; release record; adoption notes (Finbyx §9, LawDocsComply §11).
+- **Built (R1-D-97), ** #117 embedded Noto Sans in `toPdf` and `renderPdf`/`blocksToHtml` to DOCGEN (`export`); #118 `sandboxChangeRisk` (`tenancy`); PR-FBX-36 return attribution (`contracts`, `testing`); PR-FBX-37 purge dry runs, per-record entries and per-tenant runs (`consent/0005`); PR-FBX-38 the TELEPHONY port (ADR-0007; `contracts`, `testing`); M61 `X-Infrabyx-JWS` (`contracts`, `connectors`). Guide §7ay to §7bd; threat model §3.99 to §3.102.
+- **Owner answers (R1-D-98):** #228 merged (`cbca9ad`) under the one-off bypass, which the owner removes; #119 the owner's attribution table, a tenant may only shrink it; #120 Gotenberg DOCGEN adapter in wave 9 (M71); #121 72 hours confirmed.
+- **Next:** wave 8's gate (`export:unchanged`, then `ci:run`), version PR, release record; then wave 9 (M71 and new product requests).
 
 ## Wave 7 (eighth session, 5 Nov): released (run 203)
 

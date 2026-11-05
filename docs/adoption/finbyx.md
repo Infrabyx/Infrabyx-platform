@@ -95,7 +95,7 @@ What changes for Finbyx with the wave 4 release (R1-D-80, R1-D-84). Move every `
 
 What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide §7ba to §7bd). Move every `@infrabyx/*` dependency together and run `infrabyx-migrate --require-all` (`consent/0005`), then `infrabyx-rls-lint`.
 
-1. **PR-FBX-36, whose return it is (guide §7ba).** Charge a bounce only when `bounceChargeable(result)`. **Shim removed:** `pay.return.borrower_codes` (keep a tenant override only if OWNER-QUESTIONS #119 asks for one).
+1. **PR-FBX-36, whose return it is (guide §7ba).** Charge a bounce only when `bounceChargeable(result)`. **Shim removed:** `pay.return.borrower_codes` as the table (the owner's table is the floor, #119); a tenant's narrower list goes in as `borrowerCodes`.
 2. **PR-FBX-37, the purge per tenant (guide §7bb).** Schedule `dryRunPurposes` then `purgePurposesFor` per tenant from `tenantsWithPurposesDue()`. **Shim removed:** Finbyx's dry-run table, per-record ledgering and the hold on relationship-end reports.
 3. **PR-FBX-38, TELEPHONY (guide §7bc).** Program against `TelephonyPort`; `FakeTelephony` below staging. **Shim removed:** the product-local `TelephonyPort` and its fake.
 4. **PDF (guide §7ay).** KFS and notices with the rupee sign render in process; those in the borrower's language go through `renderPdf` with your DOCGEN adapter.

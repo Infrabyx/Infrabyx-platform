@@ -126,12 +126,13 @@ export interface DebitBatchReceipt {
 export type ReturnClass = "re_presentable" | "final";
 
 /**
- * Whose return it is (Finbyx PR-FBX-36, R1-D-97): a bounce charge may be levied only for a return
- * attributable to the borrower (RBI, Penal Charges in Loan Accounts, 18 Aug 2023). `BORROWER`: the
- * borrower's account could not pay (insufficient funds); `NOT_BORROWER`: a bank, NPCI, system,
- * mandate-data or file error; `UNKNOWN`: the code alone does not say, so no charge applies.
+ * Whose return it is (Finbyx PR-FBX-36; the owner's table, OWNER-QUESTIONS #119, R1-D-98): a bounce
+ * charge may be levied only for a return attributable to the borrower (RBI, Penal Charges in Loan
+ * Accounts, 18 Aug 2023). `BORROWER`: insufficient funds, an account the borrower closed, or a
+ * payment the borrower stopped; `NOT_BORROWER`: everything else, a court order or litigation, a
+ * bank, NPCI, mandate-data or file error, and every code the table does not know (no charge).
  */
-export const RETURN_ATTRIBUTIONS = ["BORROWER", "NOT_BORROWER", "UNKNOWN"] as const;
+export const RETURN_ATTRIBUTIONS = ["BORROWER", "NOT_BORROWER"] as const;
 export type ReturnAttribution = (typeof RETURN_ATTRIBUTIONS)[number];
 
 export interface ReturnCodeInfo {
@@ -153,14 +154,18 @@ export const NPCI_RETURN_CODES: Readonly<
   Record<CollectionChannel, Readonly<Record<string, Readonly<ReturnCodeInfo>>>>
 > = Object.freeze({
   NACH: Object.freeze({
-    "01": rc("Account closed or transferred", "final", "UNKNOWN"),
+    "01": rc("Account closed or transferred", "final", "BORROWER"),
     "02": rc("No such account", "final", "NOT_BORROWER"),
     "03": rc("Account description does not tally", "final", "NOT_BORROWER"),
     "04": rc("Balance insufficient", "re_presentable", "BORROWER"),
-    "06": rc("Payment stopped by drawer", "final", "UNKNOWN"),
-    "07": rc("Payment stopped under court order or account under litigation", "final", "UNKNOWN"),
+    "06": rc("Payment stopped by drawer", "final", "BORROWER"),
+    "07": rc(
+      "Payment stopped under court order or account under litigation",
+      "final",
+      "NOT_BORROWER",
+    ),
     "08": rc("Mandate not received", "final", "NOT_BORROWER"),
-    "09": rc("Miscellaneous (others)", "final", "UNKNOWN"),
+    "09": rc("Miscellaneous (others)", "final", "NOT_BORROWER"),
   }),
   UPI_AUTOPAY: Object.freeze({
     Z9: rc("Insufficient funds in the customer's account", "re_presentable", "BORROWER"),
@@ -176,20 +181,32 @@ function rc(
 }
 
 /**
- * Class a return code; an unknown code is `final`, `UNKNOWN` (no charge) with `codeKnown: false`.
- * Attribution follows the conservative table above, `[VERIFY]` against the sponsor bank's
- * specification like the classes: only insufficient funds is the borrower's.
+ * Class a return code; an unknown code is `final` and `NOT_BORROWER` (no charge), with
+ * `codeKnown: false`. The attribution table is a platform floor (#119): a tenant may only shrink
+ * the codes that count as the borrower's, never widen them; pass its list as `borrowerCodes` and a
+ * code counts as the borrower's only when both say so. Classes and attributions stay `[VERIFY]`
+ * against the sponsor bank's NPCI specification.
  */
 export function classifyReturnCode(
   channel: CollectionChannel,
   code: string,
+  o: { borrowerCodes?: readonly string[] } = {},
 ): ReturnCodeInfo & { codeKnown: boolean } {
   const hit = Object.hasOwn(NPCI_RETURN_CODES[channel], code)
     ? NPCI_RETURN_CODES[channel][code]
     : undefined;
-  return hit
-    ? { ...hit, codeKnown: true }
-    : { reason: "Unknown return code", class: "final", attribution: "UNKNOWN", codeKnown: false };
+  if (!hit)
+    return {
+      reason: "Unknown return code",
+      class: "final",
+      attribution: "NOT_BORROWER",
+      codeKnown: false,
+    };
+  const narrowed =
+    hit.attribution === "BORROWER" &&
+    o.borrowerCodes !== undefined &&
+    !o.borrowerCodes.includes(code);
+  return { ...hit, ...(narrowed ? { attribution: "NOT_BORROWER" as const } : {}), codeKnown: true };
 }
 
 /** Whether a bounce charge may be levied for this return: only a borrower-attributable one. */

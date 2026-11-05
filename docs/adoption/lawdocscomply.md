@@ -98,7 +98,7 @@ What LawDocsComply removes once it moves to the wave 7 release (R1-D-95; guide �
 What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97).
 
 1. **PR-LDC-23, the JWS header (guide §7bd; Ecosystem Spec v1.4).** Use `deliveryHeaders` and `receiveHttp` on the Operations Hub adapter, or `regulatedJwsFromHeaders` for other regulated messages. LDC already sends `X-Infrabyx-JWS`, so nothing changes on the wire. **Shim removed:** your own header reading and writing. Mark PR-LDC-23 met.
-2. **PDF (guide §7ay).** The rupee sign now renders; documents in Hindi or Punjabi go through `renderPdf` with a DOCGEN adapter (OWNER-QUESTIONS #120).
+2. **PDF (guide §7ay).** The rupee sign now renders; documents in Hindi or Punjabi go through `renderPdf` with a DOCGEN adapter (the platform's Gotenberg adapter follows in wave 9, #120).
 3. **Sandbox changes (guide §7az).** Pass `appEnv` to `TenantSandbox`: in production a change waits 60 minutes after approval (#118).
 
 ## Security patch: `tenancy` 1.14.1 (R1-D-92)
