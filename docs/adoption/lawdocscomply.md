@@ -93,7 +93,7 @@ What LawDocsComply removes once it moves to the wave 7 release (R1-D-95; guide ย
 4. **PR-LDC-29, sandbox changes (guide ยง7az).** Change a tenant's flag only through `request`, `decide` and `apply`; `TenantSandbox.set` is refused.
 5. **Mark met** PR-LDC-17 and PR-LDC-28 (PDF). PR-LDC-23 waits for spec v1.4 (#116; keep `X-Infrabyx-JWS`).
 
-## 11. Wave 8 (`contracts`, `connectors`, `export` and `tenancy` minors, patches of the rest)
+## 11. Wave 8 (version PR #230, release run 207: `contracts` 1.23.0, `connectors` 1.13.0, `export` 1.5.0, `tenancy` 1.16.0, patches of the rest)
 
 What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97).
 
