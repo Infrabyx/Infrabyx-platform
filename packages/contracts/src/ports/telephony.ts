@@ -15,10 +15,14 @@ import { z } from "zod";
 import type { Port, PortCall } from "./common.js";
 import { DocFileRef, OutputPrefix } from "./doc-file.js";
 import { classed } from "./payload-class.js";
-import { E164 } from "./sms.js";
 
 const internal = <T extends z.ZodType>(s: T): T => classed(s, "INTERNAL");
 const confidential = <T extends z.ZodType>(s: T): T => classed(s, "CONFIDENTIAL");
+/**
+ * An E.164 number. A new schema per use: a data-class annotation sits on the schema instance, so
+ * the SMS port's shared `E164` is never re-classed from here.
+ */
+const e164 = () => z.string().regex(/^\+[1-9]\d{7,14}$/, "an E.164 number");
 
 export const CALL_STATES = [
   "queued",
@@ -65,9 +69,9 @@ export const ClickToCallRequest = z
     /** The staff member's line as the adapter knows it (an extension or a registered number). */
     agentLine: internal(z.string().min(2).max(64)),
     /** The customer's number (personal data). */
-    to: confidential(E164),
+    to: confidential(e164()),
     /** The tenant's registered caller id, when the adapter needs one. */
-    callerId: internal(E164.optional()),
+    callerId: internal(e164().optional()),
     /** Why the call is made, e.g. `collections.reminder`; kept with the call. */
     purpose: internal(z.string().regex(/^[a-z][a-z0-9_.]{2,79}$/)),
     /** The product's reference of the person or case called. */
