@@ -101,7 +101,7 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 2. **PDF (guide §7ay).** The rupee sign now renders; documents in Hindi or Punjabi go through `renderPdf` with a DOCGEN adapter (the platform's Gotenberg adapter follows in wave 9, #120).
 3. **Sandbox changes (guide §7az).** Pass `appEnv` to `TenantSandbox`: in production a change waits 60 minutes after approval (#118).
 
-## 12. Wave 9 (`connectors`, `testing`, `config` minors, patches of the rest)
+## 12. Wave 9 (version PR #233, release run 210: `connectors` 1.14.0, `config` 1.13.0, `testing` 1.13.0, patches of the rest)
 
 1. **Hindi and Punjabi documents (guide §7be, §7ay).** Bind `GotenbergDocgen` (in-cluster Gotenberg, `int.docgen.gotenberg.enabled`) as the `docgen` of `renderPdf`. **Shim removed:** any product-local HTML-to-PDF path for vernacular notices.
 

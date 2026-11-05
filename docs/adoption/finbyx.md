@@ -101,7 +101,7 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 4. **PDF (guide §7ay).** KFS and notices with the rupee sign render in process; those in the borrower's language go through `renderPdf` with your DOCGEN adapter.
 5. **Mark met** PR-FBX-36, 37 and 38.
 
-## 10. Wave 9 (`connectors`, `testing`, `config` minors, patches of the rest)
+## 10. Wave 9 (version PR #233, release run 210: `connectors` 1.14.0, `config` 1.13.0, `testing` 1.13.0, patches of the rest)
 
 1. **Vernacular KFS and notices (guide §7be, §7ay).** Run Gotenberg in your cluster, enable `int.docgen.gotenberg.enabled`, and render documents in the borrower's language with `renderPdf(doc, { docgen: new GotenbergDocgen(…), lang, outputPrefix })`. **Shim removed:** any product-local HTML-to-PDF path for Hindi or Punjabi.
 
