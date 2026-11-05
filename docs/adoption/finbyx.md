@@ -105,7 +105,7 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 
 1. **Vernacular KFS and notices (guide §7be, §7ay).** Run Gotenberg in your cluster, enable `int.docgen.gotenberg.enabled`, and render documents in the borrower's language with `renderPdf(doc, { docgen: new GotenbergDocgen(…), lang, outputPrefix })`. **Shim removed:** any product-local HTML-to-PDF path for Hindi or Punjabi.
 
-## 11. Wave 10 (`audit`, `tenancy`, `contracts`, `testing` minors; `workflow` patch)
+## 11. Wave 10 (version PR #237, release run 214: `audit` 1.8.0, `contracts` 1.24.0, `tenancy` 1.17.0, `testing` 1.14.0, `workflow` 1.3.5 and patches of the rest)
 
 1. **PR-FBX-40, the tenant-id rule (guide §7bg).** Before upgrading `tenancy`, check that no tenant id has an underscore after `tnt_` (`tenancy/0019` stops and names any). **Shim removed:** `COL_TENANT_PREFIX` in `col/calls.ts`.
 2. **PR-FBX-39, retire `cif.consent_purge_run` (guide §7bf).** Upgrade `audit` (install `audit/0008` as the database owner) and `tenancy` (the runner's marker), then in one contract migration: `select audit.retire_capture('cif.consent_purge_run'); drop table cif.consent_purge_run;`. **Shim removed:** the retired, empty table.
