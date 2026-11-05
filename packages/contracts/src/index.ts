@@ -9,6 +9,7 @@ export * from "./tiers.js";
 export * from "./errors.js";
 export * from "./events/index.js";
 export * from "./modules.js";
+export * from "./module-lifecycle.js";
 export * from "./kernel.js";
 export * from "./ports/index.js";
 export * from "./routing.js";

@@ -35,7 +35,8 @@ describe("roles (PL1-D-05)", () => {
     expect(PLATFORM_ROLES).toContain("PLT_ACCESSIBILITY_LEAD");
     // PLT_SUPPORT: tenant-consented support access (owner answer #104; R1-D-76).
     expect(PLATFORM_ROLES).toContain("PLT_SUPPORT");
-    expect(PLATFORM_ROLES).toHaveLength(10);
+    expect(PLATFORM_ROLES).toContain("PLT_FINANCE");
+    expect(PLATFORM_ROLES).toHaveLength(11);
     expect(mfaRequired(["PLT_SUPPORT"])).toBe(true);
     expect(TENANT_ROLES).toEqual([
       "ORG_OWNER",

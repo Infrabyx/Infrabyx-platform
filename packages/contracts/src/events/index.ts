@@ -5,3 +5,4 @@ export * from "./pl4-events.js";
 export * from "./pl5-events.js";
 export * from "./regulated.js";
 export * from "./provisioning.js";
+export * from "./module-events.js";

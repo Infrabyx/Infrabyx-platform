@@ -44,6 +44,10 @@
       "types": "./dist/modules.d.ts",
       "default": "./dist/modules.js"
     },
+    "./module-lifecycle": {
+      "types": "./dist/module-lifecycle.d.ts",
+      "default": "./dist/module-lifecycle.js"
+    },
     "./kernel": {
       "types": "./dist/kernel.d.ts",
       "default": "./dist/kernel.js"
