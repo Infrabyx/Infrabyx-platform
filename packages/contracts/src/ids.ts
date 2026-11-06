@@ -99,6 +99,8 @@ export const ID_PREFIXES = {
   vads: "vendor assurance subscription",
   fbs: "feedback status change",
   svw: "saved table view (IPB-07-13)",
+  lic: "licence (entitlement) version (PR-FBX-43)",
+  lcn: "licence notice to the tenant (PR-FBX-43)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

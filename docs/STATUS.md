@@ -10,6 +10,12 @@ Updated: 2026-11-05
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                               |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                   |
 
+## Wave 11 (eighth session, 5 Nov): in its release gate
+
+- **Owner (R1-D-107, R1-D-108):** #123 answered (two different platform people, PLT_FINANCE may request, R3/R4, notices, writes refused on lapse); the zlib1g waiver accepted to 5 Dec, reviewed with the apt waiver on 1 Dec.
+- **Built:** M76, `tenancy/0020` and `TenantEntitlements`; `contracts` `module-lifecycle`, PLT_FINANCE, and the `ModuleAttached`, `ModuleDetached` and `LegalHoldChanged` schemas. Guide §7bi; threat model §3.109; Finbyx adoption §12.
+- **Next:** wave 11's one gate, version PR, release record.
+
 ## Wave 10 (eighth session, 5 Nov): released (run 214)
 
 - **Owner (R1-D-102):** #122 yes, the narrow capture retirement; PR-FBX-40 refused at creation; PR-FBX-41 to 44 ports and fakes only, no vendor accounts.

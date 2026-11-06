@@ -15,6 +15,9 @@ export const PLATFORM_ROLES = [
   // R1-D-76): sees a tenant only under that tenant's live consent (`SupportAccess` in
   // `@infrabyx/tenancy`), never in a platform context. Products map their own support role onto it.
   "PLT_SUPPORT",
+  // Commercial changes: raises a tenant's licence (entitlement) change, which a different
+  // PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER approves; never an approver (OWNER-QUESTIONS #123; R1-D-107).
+  "PLT_FINANCE",
 ] as const;
 
 /** The support role of tenant-consented support access (R1-D-76). */
