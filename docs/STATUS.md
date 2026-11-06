@@ -13,7 +13,7 @@ Updated: 2026-11-05
 ## Keycloak re-scan (6 Nov, #93, R1-D-36)
 
 - **Result:** `26.8.1-2` (pushed 31 Oct) and `26.8.2` (pushed 5 Nov) both clear CVE-2026-91415 (OpenJDK 21.0.13) and add no new HIGH or CRITICAL finding; CVE-2026-91403 is now `will_not_fix`, the two `sqlite-libs` findings and Guava 33.6.0 remain.
-- **Next:** pin `26.8.1-2` by digest on 7 Nov (after 10:47 UTC, PL2-D-32) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (a `testing` patch), drop the CVE-2026-91415 waiver, ship with the next release gate. OWNER-QUESTIONS #124: the remaining four waivers after 20 Nov.
+- **Next:** pin `26.8.1-2` by digest on 7 Nov (after 10:47 UTC, PL2-D-32) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (a `testing` patch), drop the CVE-2026-91415 waiver, ship with the next release gate. OWNER-QUESTIONS #124 answered (R1-D-109): the four remaining waivers to 20 Dec (set with the 7 Nov pin), CVE-2026-91403 an accepted risk, `26.8.2` after 12 Nov if it adds nothing new, re-scan 15 Dec.
 
 ## Wave 11 (eighth session, 5–6 Nov): released (run 217)
 
