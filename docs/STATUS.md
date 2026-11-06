@@ -10,6 +10,11 @@ Updated: 2026-11-05
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                    |
 
+## Keycloak re-scan (6 Nov, #93, R1-D-36)
+
+- **Result:** `26.8.1-2` (pushed 31 Oct) and `26.8.2` (pushed 5 Nov) both clear CVE-2026-91415 (OpenJDK 21.0.13) and add no new HIGH or CRITICAL finding; CVE-2026-91403 is now `will_not_fix`, the two `sqlite-libs` findings and Guava 33.6.0 remain.
+- **Next:** pin `26.8.1-2` by digest on 7 Nov (after 10:47 UTC, PL2-D-32) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (a `testing` patch), drop the CVE-2026-91415 waiver, ship with the next release gate. OWNER-QUESTIONS #124: the remaining four waivers after 20 Nov.
+
 ## Wave 11 (eighth session, 5–6 Nov): released (run 217)
 
 - **Owner (R1-D-107, R1-D-108):** #123 answered (two different platform people, PLT_FINANCE may request, R3/R4, notices, writes refused on lapse); the zlib1g waiver accepted to 5 Dec, reviewed with the apt waiver on 1 Dec.
