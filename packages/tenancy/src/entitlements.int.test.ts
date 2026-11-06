@@ -220,7 +220,7 @@ describe("PR-FBX-43 tenant entitlements (#123)", () => {
     expect(
       await kernel.read(member(tC), async (tx) =>
         Number(
-          (await tx.query("select count(*) as n from tenancy.entitlement_lapses_due()")).rows[0].n,
+          (await tx.query("select count(*) as n from tenancy.entitlement_lapses_due()")).rows[0]!.n,
         ),
       ),
     ).toBe(0);
