@@ -12,8 +12,8 @@ Updated: 2026-11-07
 
 ## Keycloak 26.8.1-2 pinned (7 Nov, #93, #124, R1-D-110)
 
-- **Done:** #243 (owner answer #124) merged 6 Nov. `keycloak/keycloak:26.8.1-2` (`sha256:3f3c5f8e…`, pushed 31 Oct, digest unchanged) pinned on 7 Nov in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). Trivy 0.76.0: CVE-2026-91415 cleared and its waiver removed; nothing new at HIGH or CRITICAL; CVE-2026-91403 (accepted risk), CVE-2026-119373, CVE-2026-119586 and CVE-2026-102554 waived to 20 Dec (R1-D-109).
-- **Next:** `26.8.2` (`sha256:3879c623…`, pushed 5 Nov) after 16:05 UTC on 12 Nov if it adds nothing new; drop CVE-2026-102554 when a Keycloak image carries Guava 33.7.2; re-scan 15 Dec (owner question before 20 Dec if anything stays unfixed); base-image waivers (apt R1-D-99, zlib1g R1-D-106) reviewed 1 Dec, expire 5 Dec.
+- **Done:** #243 (owner answer #124) merged 6 Nov. `keycloak/keycloak:26.8.1-2` (`sha256:3f3c5f8e…`, pushed 31 Oct, digest unchanged) pinned on 7 Nov in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). Trivy 0.76.0: CVE-2026-91415 cleared and its waiver removed; nothing new at HIGH or CRITICAL; CVE-2026-91403 (accepted risk), CVE-2026-119373, CVE-2026-119586 and CVE-2026-102554 waived to 20 Dec (R1-D-109). The first `ci:run` run failed `containers` on a new base advisory in the app images (CVE-2026-85091, `zlib1g`, no fix): waived 30 days under the standing rule (R1-D-111, to 7 Dec); and `pr-checklist` on the missing plan link (M77 added to `R1-plan.md`).
+- **Next:** `26.8.2` (`sha256:3879c623…`, pushed 5 Nov) after 16:05 UTC on 12 Nov if it adds nothing new; drop CVE-2026-102554 when a Keycloak image carries Guava 33.7.2; re-scan 15 Dec (owner question before 20 Dec if anything stays unfixed); base-image waivers (apt R1-D-99, zlib1g R1-D-106 to 5 Dec; zlib1g R1-D-111 to 7 Dec) reviewed 1 Dec.
 
 ## Keycloak re-scan (6 Nov, #93, R1-D-36)
 
