@@ -44,30 +44,24 @@ vulnerabilities:
   - id: CVE-2023-45853
     statement: zlib minizip zipOpenNewFileInZip4_6 (Debian will not fix; minizip is not built into zlib1g's library API that Node uses). Waived 2026-10-27
     expired_at: 2027-01-25
-  # The upstream Keycloak 26.8.1-1 base of infra/keycloak/customer-otp (UBI 9 and its jars), not the
-  # extension. The rebuild pinned on 30 Oct (R1-D-35) cleared CVE-2026-114406 but not these three:
-  # the OpenJDK fixes are not yet in UBI 9 ("affected", no fixed version) and Guava 33.7.2 needs a
-  # later Keycloak release. Extended to 20 Nov by the owner (OWNER-QUESTIONS #93, R1-D-36), with a
-  # re-scan on 6 Nov; a fixed Keycloak image is pinned once it is 7 days old (PL2-D-32).
+  # The upstream Keycloak 26.8.1-2 base of infra/keycloak/customer-otp (UBI 9 and its jars), not the
+  # extension. The 26.8.1-2 rebuild pinned on 7 Nov (R1-D-110) cleared CVE-2026-91415 but not these
+  # four: UBI 9 will not fix CVE-2026-91403 (an accepted risk, owner-approved 7 Nov 2026, in the
+  # threat model), sqlite-libs has no fixed build and Guava 33.7.2 needs a later Keycloak release.
+  # The owner's second extension, to 20 Dec with a re-scan on 15 Dec (OWNER-QUESTIONS #124,
+  # R1-D-109); a fixed Keycloak image is pinned once it is 7 days old (PL2-D-32).
   - id: CVE-2026-91403
-    statement: OpenJDK eMudhra distrust in the Keycloak 26.8.1-1 base (UBI 9 openjdk 21.0.12.1.1, no fixed build yet); the IdP makes outbound TLS calls only to configured brokers. Waived 2026-10-29; kept on 30 Oct as the rebuild did not carry the fix; extended to 20 Nov on 2 Nov (#93)
-    expired_at: 2026-11-20
-  - id: CVE-2026-91415
-    statement: OpenJDK font rendering in the Keycloak 26.8.1-1 base (no fixed UBI 9 build yet); Keycloak renders no untrusted fonts. Waived 2026-10-29; kept on 30 Oct as the rebuild did not carry the fix; extended to 20 Nov on 2 Nov (#93)
-    expired_at: 2026-11-20
+    statement: OpenJDK eMudhra distrust in the Keycloak 26.8.1-2 base (UBI 9 openjdk 21.0.13, will_not_fix); the IdP makes outbound TLS calls only to configured brokers. Waived 2026-10-29; extended to 20 Nov (#93) and to 20 Dec by the owner's explicit second extension (#124, R1-D-109); an accepted risk in the threat model, reviewed at every re-scan
+    expired_at: 2026-12-20
   - id: CVE-2026-102554
-    statement: Guava 33.6.0 deserialisation DoS in the Keycloak 26.8.1-1 jars (fixed in 33.7.2, not yet in a Keycloak release); Keycloak deserialises no Guava data from requests. Waived 2026-10-29; kept on 30 Oct as the rebuild did not carry the fix; extended to 20 Nov on 2 Nov (#93)
-    expired_at: 2026-11-20
-  # Two findings in UBI 9's sqlite-libs 3.34.1-11.el9_8 in the same Keycloak 26.8.1-1 base, published
-  # after 30 Oct ("affected", no fixed build). Keycloak keeps no SQLite database and never runs the
-  # sqlite3 shell. Waived by the owner on 2 Nov on the terms of #93 (R1-D-36): to 20 Nov, re-scanned
-  # on 6 Nov, cleared by the first fixed Keycloak image once 7 days old.
+    statement: Guava 33.6.0 deserialisation DoS in the Keycloak 26.8.1-2 jars (fixed in 33.7.2, not yet in a Keycloak release); Keycloak deserialises no Guava data from requests. Waived 2026-10-29; extended to 20 Nov (#93) and to 20 Dec by the owner's explicit second extension (#124, R1-D-109); dropped once a Keycloak image carries Guava 33.7.2
+    expired_at: 2026-12-20
   - id: CVE-2026-119373
-    statement: SQLite FTS5 heap overflow in UBI 9 sqlite-libs of the Keycloak 26.8.1-1 base (no fixed build); Keycloak opens no SQLite database and builds no FTS5 index. Waived 2026-11-02 by the owner (R1-D-36)
-    expired_at: 2026-11-20
+    statement: SQLite FTS5 heap overflow in UBI 9 sqlite-libs of the Keycloak 26.8.1-2 base (no fixed build); Keycloak opens no SQLite database and builds no FTS5 index. Waived 2026-11-02 (R1-D-36); extended to 20 Dec by the owner's explicit second extension (#124, R1-D-109)
+    expired_at: 2026-12-20
   - id: CVE-2026-119586
-    statement: sqlite3 shell `.recover` command execution in UBI 9 sqlite-libs of the Keycloak 26.8.1-1 base (no fixed build); the image never runs the sqlite3 shell. Waived 2026-11-02 by the owner (R1-D-36)
-    expired_at: 2026-11-20
+    statement: sqlite3 shell `.recover` command execution in UBI 9 sqlite-libs of the Keycloak 26.8.1-2 base (no fixed build); the image never runs the sqlite3 shell. Waived 2026-11-02 (R1-D-36); extended to 20 Dec by the owner's explicit second extension (#124, R1-D-109)
+    expired_at: 2026-12-20
   - id: CVE-2026-109518
     statement: apt and libapt-pkg6.0 2.6.1, an on-path attacker during apt's own downloads (fixed in Debian 12 as 2.6.2, which no node:24.22.1-bookworm-slim digest carries yet; the newest, built 2026-10-28, still has 2.6.1). The runtime never runs apt, fetches no packages, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-99); removed with the first base digest carrying 2.6.2 once it is 7 days old
     expired_at: 2026-12-05

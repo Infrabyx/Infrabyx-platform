@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-05
+Updated: 2026-11-07
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,6 +9,11 @@ Updated: 2026-11-05
 | Packages              | Published to GitHub Packages (release run 217, `65b7d61`, 6 Nov 2026): **1.25.0** contracts; **1.18.0** tenancy; **1.14.2** connectors; **1.14.1** testing; **1.13.2** config; **1.8.1** audit; **1.5.10** crypto; **1.5.3** export; **1.3.6** notify, workflow; **1.3.3** consent; **1.2.13** ui; **1.1.33** cms; **1.1.7** rules; **1.1.6** ai, brand; **1.1.4** a11y; **1.0.35** feedback, seed, trust, vidhi |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                    |
+
+## Keycloak 26.8.1-2 pinned (7 Nov, #93, #124, R1-D-110)
+
+- **Done:** #243 (owner answer #124) merged 6 Nov. `keycloak/keycloak:26.8.1-2` (`sha256:3f3c5f8e…`, pushed 31 Oct, digest unchanged) pinned on 7 Nov in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). Trivy 0.76.0: CVE-2026-91415 cleared and its waiver removed; nothing new at HIGH or CRITICAL; CVE-2026-91403 (accepted risk), CVE-2026-119373, CVE-2026-119586 and CVE-2026-102554 waived to 20 Dec (R1-D-109).
+- **Next:** `26.8.2` (`sha256:3879c623…`, pushed 5 Nov) after 16:05 UTC on 12 Nov if it adds nothing new; drop CVE-2026-102554 when a Keycloak image carries Guava 33.7.2; re-scan 15 Dec (owner question before 20 Dec if anything stays unfixed); base-image waivers (apt R1-D-99, zlib1g R1-D-106) reviewed 1 Dec, expire 5 Dec.
 
 ## Keycloak re-scan (6 Nov, #93, R1-D-36)
 
