@@ -386,6 +386,20 @@ describe("the gate endpoints (PL6 plan §8.2)", () => {
 });
 
 describe("the outbox relay (IPB-01 §01.4.3.3)", () => {
+  it("every module outbox is registered: each platform package's and the product's (PR-LDC-35)", async () => {
+    const { OutboxRelay } = await import("@infrabyx/tenancy");
+    const relay = new OutboxRelay({ kernel: db.kernel, audit: db.audit, deliver: async () => {} });
+    const tables = await db.admin.query<{ schema: string }>(
+      `select n.nspname as schema from pg_class c join pg_namespace n on n.oid = c.relnamespace
+        where c.relname = 'outbox' and c.relkind in ('r', 'p') order by 1`,
+    );
+    const all = tables.rows.map((r) => r.schema);
+    expect(all).toEqual(
+      expect.arrayContaining(["hello", "notify", "rules", "tenancy", "workflow"]),
+    );
+    expect(await relay.registered()).toEqual(all);
+  });
+
   it("hands each committed event to the events queue once and marks it dispatched", async () => {
     const { OutboxRelay, EVENTS_QUEUE } = await import("../relay.js");
     const { MemoryQueue } = await import("../fixtures.js");

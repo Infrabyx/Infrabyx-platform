@@ -3,5 +3,6 @@
   "0002_saved_views.sql": "43d9faa83be767932e3919206f8a91f738c74d925a7179e8c84070a4e41c8f5a",
   "0003_setting_change.sql": "740ec8fd55d93ffd1cadddaef729a2cbb23de6cf1a915b99b56161c0d3d40d3c",
   "0004_setting_user_erasure.sql": "04f74495d8e9fb6864a9c7f865321783ffa5dfb8e725dd47f26326f6a8c686b2",
-  "0005_unit_tier.sql": "fddb7362693d613d7f17e0987acc96730f327cca8fa917fd1ab834beb5f8fd29"
+  "0005_unit_tier.sql": "fddb7362693d613d7f17e0987acc96730f327cca8fa917fd1ab834beb5f8fd29",
+  "0006_register_outbox.sql": "f93c39acb35ef849bc46e1a7e30a1b621532def4e8c6336bc3f41f986ffce7b5"
 }

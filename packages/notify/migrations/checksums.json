@@ -3,5 +3,6 @@
   "0002_service_readers.sql": "45a61dcedbbaeded788cd115d462daef729257c21b8a11281f79a9e32442a2db",
   "0003_vendor_ref_routing.sql": "7fc083b8e08a6c0944920ef74836a98d34f2a3b2f87fd9fdbc06ca54ad879575",
   "0004_tenant_templates.sql": "a65ca15354bf1eb04c3adb55bb7ea3ee5788d2120389a25d7717eb24ee205e56",
-  "0005_delivery_sandboxed.sql": "588e6649c59403f325adb8e01121813572be12338d6054ca8ab8d0a96bab5560"
+  "0005_delivery_sandboxed.sql": "588e6649c59403f325adb8e01121813572be12338d6054ca8ab8d0a96bab5560",
+  "0006_register_outbox.sql": "c2ccb57c3f939e26b07f0e87b732c0c172141492f97444328fca9dc5c7d93f0f"
 }

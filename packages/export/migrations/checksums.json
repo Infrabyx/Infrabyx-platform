@@ -1,4 +1,5 @@
 {
   "0001_init.sql": "5f9a3e6aff2d44fe6f5646572301e5f7606ca0bf63eed06d75ddc3f33487b8cc",
-  "0002_owner_answers.sql": "220bf2e28bff9eec85c0450fa1040c820ce826c95c6653acdc7f85137f3ada25"
+  "0002_owner_answers.sql": "220bf2e28bff9eec85c0450fa1040c820ce826c95c6653acdc7f85137f3ada25",
+  "0003_register_outbox.sql": "3f63f861a4622c83a5775d77367b8a71e29356fc13ee5b84bd4579bfc111d1bf"
 }

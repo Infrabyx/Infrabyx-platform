@@ -3,5 +3,6 @@
   "0002_form_consent_end.sql": "f56aad4fbc6d93157861a0fe3bbce3bc646759f95d5a0a4f8c8190ca38ba96ae",
   "0003_purpose_consent.sql": "62155a54d809aeae166a6692cb8b9d2aeeaf353432977725a21660a57259b6c9",
   "0004_platform_notices_purge.sql": "110cfeb6b1cf81a05ec1aebda860edce55e784f09a46c20711b51bca0eb49225",
-  "0005_purge_runs.sql": "51c0f0d0d81ceb64c0fbf417c7016a404b3319f2f93203e00942f4dabd762e32"
+  "0005_purge_runs.sql": "51c0f0d0d81ceb64c0fbf417c7016a404b3319f2f93203e00942f4dabd762e32",
+  "0006_register_outbox.sql": "01a43e2ec71b5951aadfa16bfade2f91a0be0789ecb2138b95bed470324d7bdd"
 }

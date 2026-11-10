@@ -1,4 +1,5 @@
 {
   "0001_init.sql": "f0cbea649998c5a3bfd6abbcc9ccf54f68df18f7a3c3be644a7934de5b359bb5",
-  "0002_tenant_layer.sql": "1ae45aebc78e973624d3f507c1ef76ee31c927071619d900a6d6b238bf1cbc5a"
+  "0002_tenant_layer.sql": "1ae45aebc78e973624d3f507c1ef76ee31c927071619d900a6d6b238bf1cbc5a",
+  "0003_register_outbox.sql": "af2bde316daf7d93ba3658e998b902eb0850ba2a3ca5d4b3b9c2986fda3fc570"
 }
