@@ -10,6 +10,20 @@ Updated: 2026-11-10
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                               |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                   |
 
+## Waived image findings products carry (10 Nov; PR-FBX-45)
+
+Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
+
+| Finding                          | Where                         | Expires    | Review                                 | Decision           |
+| -------------------------------- | ----------------------------- | ---------- | -------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                  | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                 | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                 | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 12 Nov (26.8.2), 1 Dec, 15 Dec         | R1-D-115, R1-D-116 |
+| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner) | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
+
 ## Wave 12 (ninth session, 10 Nov): LawDocsComply PR-LDC-30 to PR-LDC-35
 
 - **Triage (R1-D-112 to R1-D-114):** PR-LDC-35 (bug) and PR-LDC-34 in wave 12; PR-LDC-30, the PR-LDC-31 writer and the PR-LDC-33 v1.5 draft in wave 13; PR-LDC-32 and the PR-LDC-31 reader in wave 14; PR-LDC-33's schema after the owner signs off the draft.
