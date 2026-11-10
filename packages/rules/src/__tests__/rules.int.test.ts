@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { HumanQueue, InboxItemInput, KernelContext } from "@infrabyx/contracts/kernel";
 import type { RuleSetBody } from "@infrabyx/contracts/ports";
 import { localTenantKeyId } from "@infrabyx/crypto";
-import { ApprovalsEngine, FieldCrypto, PgOutbox } from "@infrabyx/tenancy";
+import { ApprovalsEngine, FieldCrypto, OutboxRelay, PgOutbox } from "@infrabyx/tenancy";
 import {
   agentContext,
   fakeKms,
@@ -210,6 +210,18 @@ describe("rule sets: drafts, publish at R4, immutability (PL3 plan §4.4)", () =
       version: 1,
       approval_id: approvalId,
     });
+    // The relay finds rules.outbox (rules/0003 registers it; PR-LDC-35) and delivers the event once.
+    const delivered: string[] = [];
+    const relay = new OutboxRelay({
+      kernel: db.kernel,
+      audit: db.audit,
+      schemas: ["rules"],
+      deliver: async (_schema, e) => void delivered.push(e.type),
+    });
+    expect(await relay.registered()).toEqual(["rules"]);
+    expect(await relay.once()).toBeGreaterThanOrEqual(1);
+    expect(delivered).toContain("in.fbx.rules.RuleSetPublished.v1");
+    expect(await relay.once()).toBe(0);
     // Body immutable once it left draft, for every role (trigger).
     await expect(
       db.admin.query(
@@ -461,6 +473,96 @@ describe("tenancy: RLS, platform rule sets and the ledger (@NN-01 @NN-45)", () =
     // The ledger holds digests only; no input value or rule text reaches it.
     expect(ledger).not.toContain("underwriting");
   });
+});
+
+describe("a scheduled cut-over (PR-LDC-34)", () => {
+  it("publishes with a future effectiveFrom: the old version stays in force until it, the event carries it", async () => {
+    const first = await published(maker, "fbx.los.cutover", nba(), checker);
+    const body = nba();
+    body.rows[0] = {
+      ...(body.rows[0] as RuleSetBody["rows"][number]),
+      when: 'stage == "underwriting" && docsComplete && bureauScore >= 650',
+    };
+    const { version } = await svc.saveDraft(maker, first.ruleSetId, body);
+    const past = new Date(Date.now() - 60_000);
+    await expect(
+      svc.publish(maker, first.ruleSetId, version, { effectiveFrom: past }),
+    ).rejects.toMatchObject({ code: "IPB-RULE-001" });
+    await expect(
+      svc.publish(maker, first.ruleSetId, version, {
+        effectiveFrom: new Date(Date.now() + 400 * 86_400_000),
+      }),
+    ).rejects.toMatchObject({ code: "IPB-RULE-001" });
+    await expect(
+      svc.publish(maker, first.ruleSetId, version, { effectiveFrom: "not a date" }),
+    ).rejects.toMatchObject({ code: "IPB-RULE-001" });
+    const at = new Date(Date.now() + 6_000);
+    const { approvalId } = await svc.publish(maker, first.ruleSetId, version, {
+      effectiveFrom: at,
+    });
+    const req = (
+      await db.admin.query("select payload, summary from tenancy.approval_request where id = $1", [
+        approvalId,
+      ])
+    ).rows[0];
+    expect(req.payload.effectiveFrom).toBe(at.toISOString());
+    expect(req.summary).toContain(`in force from ${at.toISOString()}`);
+    await approvals.decide(checker, approvalId, "approve");
+    await db.admin.query(
+      "update tenancy.approval_request set delay_until = now() - interval '1 minute' where id = $1",
+      [approvalId],
+    );
+    await approvals.execute(checker, approvalId);
+    const rows = (
+      await db.admin.query(
+        `select version, state, effective_from, effective_to from rules.rule_set_version
+          where rule_set_id = $1 order by version`,
+        [first.ruleSetId],
+      )
+    ).rows;
+    expect(rows.map((r) => [r.version, r.state])).toEqual([
+      [1, "retired"],
+      [2, "published"],
+    ]);
+    expect(rows[0].effective_to.toISOString()).toBe(at.toISOString());
+    expect(rows[1].effective_from.toISOString()).toBe(at.toISOString());
+    const ev = (
+      await db.admin.query(
+        `select envelope from rules.outbox where tenant_id = 'tnt_a'
+          and envelope->'data'->>'rule_set_id' = $1 order by created_at desc limit 1`,
+        [first.ruleSetId],
+      )
+    ).rows[0];
+    expect(ev.envelope.data).toMatchObject({ version: 2, effective_from: at.toISOString() });
+    // Before the cut-over the first version still decides, and the summary shows both.
+    const input = { stage: "underwriting", docsComplete: true, bureauScore: 680 };
+    expect((await svc.evaluate(maker, { ruleSetId: first.ruleSetId }, input)).outcome).toBe(
+      "NO_MATCH",
+    );
+    const summary = (await svc.listRuleSets(maker)).find((x) => x.ruleSetId === first.ruleSetId);
+    expect(summary).toMatchObject({
+      publishedVersion: 1,
+      scheduledVersion: 2,
+      scheduledFrom: at.toISOString(),
+    });
+    // One scheduled cut-over at a time.
+    const { version: v3 } = await svc.saveDraft(maker, first.ruleSetId, nba());
+    await expect(svc.publish(maker, first.ruleSetId, v3)).rejects.toMatchObject({
+      code: "IPB-RULE-003",
+    });
+    // After it, the new version decides; an as-of read before it still gets the first.
+    await new Promise((r) => setTimeout(r, Math.max(0, at.getTime() - Date.now()) + 300));
+    expect((await svc.evaluate(maker, { ruleSetId: first.ruleSetId }, input)).outcome).toBe(
+      "MATCHED",
+    );
+    const before = new Date(at.getTime() - 1_000);
+    expect(
+      (await svc.evaluate(maker, { ruleSetId: first.ruleSetId, asOf: before }, input)).outcome,
+    ).toBe("NO_MATCH");
+    expect(
+      (await svc.listRuleSets(maker)).find((x) => x.ruleSetId === first.ruleSetId),
+    ).toMatchObject({ publishedVersion: 2, scheduledVersion: null });
+  }, 30_000);
 });
 
 describe("@PL3-RULES-REVIEW UNDETERMINED review (OWNER-QUESTIONS #21)", () => {

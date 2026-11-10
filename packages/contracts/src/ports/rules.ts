@@ -192,8 +192,22 @@ export interface RuleSetSummary {
   ruleSetId: string;
   key: string;
   ownerModule: string;
+  /** The version in force now (published, or retired with its cut-over still ahead). */
   publishedVersion: number | null;
   draftVersion: number | null;
+  /** A version published with a future cut-over, and that instant (PR-LDC-34). */
+  scheduledVersion?: number | null;
+  scheduledFrom?: string | null;
+}
+
+/** Publication options (PR-LDC-34): a future cut-over instant, carried on `RuleSetPublished`. */
+export interface PublishOptions {
+  /**
+   * When the version comes into force: now or later, at most 366 days ahead. The product computes
+   * it (for example 00:00 in the entity's time zone); the approver sees it in the request. If the
+   * request is approved after this instant, the version comes into force at approval.
+   */
+  effectiveFrom?: Date | string;
 }
 
 export interface SimulationReport {
@@ -236,7 +250,12 @@ export interface RulesPort extends Port {
   /** The tenant's rule sets and the platform's (`tnt_platform`), RLS-scoped. */
   listRuleSets(ctx: KernelContext): Promise<RuleSetSummary[]>;
   /** Creates the R4 approval request `rules.ruleset.publish`; the version is published on execute. */
-  publish(ctx: KernelContext, ruleSetId: string, version: number): Promise<{ approvalId: string }>;
+  publish(
+    ctx: KernelContext,
+    ruleSetId: string,
+    version: number,
+    opts?: PublishOptions,
+  ): Promise<{ approvalId: string }>;
   simulate(
     ctx: KernelContext,
     ref: Required<Pick<RuleSetRef, "ruleSetId" | "version">>,
