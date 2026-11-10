@@ -4,8 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question |
-| --- | -------- | -------- |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 125 | R1-D-118 | LawDocsComply PR-LDC-38 asks for ordered approval levels (roles per level) on one approval request. May the platform build it with levels that only tighten the rule: level 1 at least the action's registered checkers, every level a different person (never the maker, an earlier checker or an agent), decided in order, any rejection ends the request, the delay runs from the last level? **Default:** nothing built; LDC chains one request per level. **If yes:** wave 14 (`contracts`, `tenancy` minors). **Reverse:** a product stops passing levels; single-level requests are unchanged. |
 
 ## Answered
 
