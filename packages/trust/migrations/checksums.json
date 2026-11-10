@@ -1,3 +1,4 @@
 {
-  "0001_init.sql": "8b7878a0e69eddc66c8e6adc320402802e6eea23f79806b2cfdab4b7ad0578ec"
+  "0001_init.sql": "8b7878a0e69eddc66c8e6adc320402802e6eea23f79806b2cfdab4b7ad0578ec",
+  "0002_register_outbox.sql": "60add00f8e7e972ff822814fa2570034dad641990b897c52302f97347cf4d6ac"
 }

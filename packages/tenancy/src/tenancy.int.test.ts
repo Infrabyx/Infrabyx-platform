@@ -437,6 +437,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0018_tenant_sandbox.sql",
       "@infrabyx/tenancy/0019_tenant_id_rule.sql",
       "@infrabyx/tenancy/0020_entitlement.sql",
+      "@infrabyx/tenancy/0021_register_outbox.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
@@ -698,9 +699,14 @@ describe("outbox relay as SVC_OUTBOX_RELAY (owner answer #74(e), R1-D-01)", () =
       `insert into relay_b.outbox (id, tenant_id, type, envelope) values ('evt_relay_x', 'tnt_a', 't', '{}')`,
     );
     const delivered: Array<[string, RelayedEvent]> = [];
+    // relay_b is not registered; tenancy.outbox is (tenancy/0021, PR-LDC-35). The pass below is
+    // limited to relay_a so the platform's own events do not enter this test's counts.
+    const all = new OutboxRelay({ kernel, audit, deliver: async () => {} });
+    expect(await all.registered()).toEqual(["relay_a", "tenancy"]);
     const relay = new OutboxRelay({
       kernel,
       audit,
+      schemas: ["relay_a", "relay_b"],
       deliver: async (schema, e) => void delivered.push([schema, e]),
     });
     expect(await relay.registered()).toEqual(["relay_a"]);

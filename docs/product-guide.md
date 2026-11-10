@@ -527,6 +527,14 @@ For the shared shell parts of PR-FBX-09 (R1-D-32), use the platform's components
 - **`contracts`, `tenancy` minors.** Describe each attachable module with `AttachableModule` (Spec §11.1: `requires`, `retentionClass`, `licenceSku`, …) and move it along `MODULE_EDGES` (`canMoveModule`); emit `ModuleAttached` on ENABLED and `ModuleDetached` on entering READ_ONLY with the schemas in `@infrabyx/contracts/events`, and `LegalHoldChanged` for holds. Licences: `new TenantEntitlements({ kernel, audit, approvals, appEnv, onNotice })`; `request` (PLT_SUPER_ADMIN or PLT_FINANCE), `decide` (a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER), `apply` once approved (after the 60-minute delay in production). In every write your module guards, call `assertWritableIn(tx, sku)` (or require `tenancy.entitlement_status('<SKU>') = 'ACTIVE'` in the table's write policy); never refuse reads. Show `forTenant(ctx)` on the tenant's admin page, send the notice from `onNotice`, and run `recordLapses` daily from your platform service. Map PLT_FINANCE in your identity provider.
 - **Remove** the product-local entitlement table and service and the licence half of your module guard; keep your own module state machine on the platform's states.
 
+## 7bj. Platform outboxes are relayed (PR-LDC-35; R1-D-112)
+
+Every platform package now registers its outbox for `OutboxRelay` (one `<package>/00nn_register_outbox.sql` each). Run `infrabyx-migrate`; the relay's next pass delivers every event the platform packages have written so far (for example `RuleSetPublished`, approval, notification and workflow events), including rows written before the fix. Keep consumers idempotent on the event id. Register each of your own module outboxes the same way: `ipb-check` style checks in your repository should refuse an outbox without `select tenancy.register_outbox('<schema>')`.
+
+## 7bk. A scheduled cut-over for a rule set (PR-LDC-34; R1-D-113)
+
+`rules.publish(ctx, ruleSetId, version, { effectiveFrom })` takes the instant the version comes into force, now to 366 days ahead; compute it yourself (for example 00:00 in the entity's time zone). The checker sees it in the R4 request. On approval the previous version stays in force until the cut-over (or the new one applies at approval, if that is later), `RuleSetPublished.effective_from` carries the instant, and as-of reads on either side of it return the right version. Only one cut-over per rule set may be pending; `listRuleSets` shows `scheduledVersion` and `scheduledFrom`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

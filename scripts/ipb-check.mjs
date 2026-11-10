@@ -206,6 +206,22 @@ for (const p of readdirSync("packages")) {
     fail(`${p}: no test file in src/`);
   if (existsSync(`${base}/migrations`) && !existsSync(`${base}/migrations/checksums.json`))
     fail(`${p}: migrations/checksums.json missing (IPB-09-32 checksum-immutable)`);
+  // Every module outbox is registered for the outbox relay in the package's own migrations, or its
+  // events never leave the table (PR-LDC-35, R1-D-112; tenancy/0003 `register_outbox`).
+  if (existsSync(`${base}/migrations`)) {
+    const sql = readdirSync(`${base}/migrations`)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => read(`${base}/migrations/${f}`))
+      .join("\n");
+    for (const m of sql.matchAll(
+      /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z][a-z0-9_]*)\.outbox\b/gi,
+    )) {
+      if (!sql.includes(`tenancy.register_outbox('${m[1]}')`))
+        fail(
+          `${p}: ${m[1]}.outbox is never registered: add a migration with select tenancy.register_outbox('${m[1]}') (PR-LDC-35, R1-D-112)`,
+        );
+    }
+  }
   if (!/IPB-\d\d/.test(read(`${base}/README.md`)))
     fail(`${p}: README must name the IPB file that specifies it`);
   // jose is a test-only devDependency of @infrabyx/crypto, never a runtime dependency (C-11, PL2-C-02).

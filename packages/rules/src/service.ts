@@ -23,6 +23,7 @@ import type {
   DecisionOutcome,
   Explanation,
   PortHealth,
+  PublishOptions,
   RuleEngine,
   RuleSetBody,
   RuleSetRef,
@@ -53,6 +54,8 @@ import {
 } from "@infrabyx/connectors/rules";
 
 export const PUBLISH_ACTION = "rules.ruleset.publish";
+/** How far ahead a cut-over may be scheduled (PR-LDC-34). */
+export const MAX_CUTOVER_DAYS = 366;
 /** Most inputs one simulation may run (PL3 plan §4.4). */
 export const MAX_SIMULATION_INPUTS = 1000;
 const CACHE_SIZE = 256;
@@ -286,7 +289,10 @@ export class RulesService implements RulesPort {
     ctx: KernelContext,
     ruleSetId: string,
     version: number,
+    opts: PublishOptions = {},
   ): Promise<{ approvalId: string }> {
+    const effectiveFrom =
+      opts.effectiveFrom === undefined ? null : cutoverInstant(opts.effectiveFrom);
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -297,12 +303,30 @@ export class RulesService implements RulesPort {
             detail: `version ${version} is ${v.state}`,
             meta: { rule_set_id: ruleSetId, version },
           });
+        if (effectiveFrom) {
+          const w = await tx.query<{ ok: boolean }>(
+            `select $1::timestamptz >= now() and $1::timestamptz <= now() + make_interval(days => $2) as ok`,
+            [effectiveFrom, MAX_CUTOVER_DAYS],
+          );
+          if (!w.rows[0]?.ok)
+            throw new IpbError("IPB-RULE-001", {
+              detail: `effectiveFrom must be now or later, at most ${MAX_CUTOVER_DAYS} days ahead`,
+            });
+        }
+        await this.refuseScheduled(tx, ruleSetId);
         const current = await this.publishedRow(tx, ruleSetId);
         const { id } = await this.o.approvals.request(tx, {
           action: PUBLISH_ACTION,
           riskClass: "R4",
-          payload: { ruleSetId, version, digest: v.digest },
-          summary: publishSummary(set.key, v, current),
+          payload: {
+            ruleSetId,
+            version,
+            digest: v.digest,
+            ...(effectiveFrom ? { effectiveFrom: effectiveFrom.toISOString() } : {}),
+          },
+          summary:
+            publishSummary(set.key, v, current) +
+            (effectiveFrom ? `, in force from ${effectiveFrom.toISOString()}` : ""),
         });
         await tx.query(
           `update rules.rule_set_version set state = 'pending_approval', approval_id = $3
@@ -374,16 +398,26 @@ export class RulesService implements RulesPort {
         detail: "the version no longer matches the approved request",
         meta: { rule_set_id: ruleSetId, version },
       });
+    await this.refuseScheduled(tx, ruleSetId);
+    // The cut-over: the requested instant, or now when the approval came after it (PR-LDC-34). The
+    // version in force keeps applying until then; both windows meet exactly at the cut-over.
+    const requested = typeof payload.effectiveFrom === "string" ? payload.effectiveFrom : null;
+    const cut = (
+      await tx.query<{ cut: Date }>(
+        "select greatest(coalesce($1::timestamptz, now()), now()) as cut",
+        [requested],
+      )
+    ).rows[0]!.cut;
     const prev = await tx.query<{ version: number }>(
-      `update rules.rule_set_version set state = 'retired', effective_to = now()
+      `update rules.rule_set_version set state = 'retired', effective_to = $2
         where rule_set_id = $1 and state = 'published' returning version`,
-      [ruleSetId],
+      [ruleSetId, cut],
     );
     const pub = await tx.query<{ effective_from: Date }>(
       `update rules.rule_set_version
-          set state = 'published', effective_from = now(), published_at = now()
+          set state = 'published', effective_from = $3, published_at = now()
         where rule_set_id = $1 and version = $2 returning effective_from`,
-      [ruleSetId, version],
+      [ruleSetId, version, cut],
     );
     const effectiveFrom = (pub.rows[0]?.effective_from as Date).toISOString();
     // Compile the new version for this tenant now, outside any evaluation's budget (PR-LDC-25,
@@ -397,7 +431,12 @@ export class RulesService implements RulesPort {
       resourceType: "rule_set_version",
       resourceId: `${ruleSetId}@${version}`,
       before: { state: "pending_approval", retired: prev.rows[0]?.version ?? null },
-      after: { state: "published", digest: v.digest, approval_id: approvalId },
+      after: {
+        state: "published",
+        digest: v.digest,
+        approval_id: approvalId,
+        effective_from: effectiveFrom,
+      },
     });
     if (this.o.outbox) {
       const envelope = internalEvent({
@@ -560,10 +599,15 @@ export class RulesService implements RulesPort {
         owner_module: string;
         published: number | null;
         draft: number | null;
+        scheduled: number | null;
+        scheduled_from: Date | null;
       }>(
         `select s.id, s.key, s.owner_module,
-                max(v.version) filter (where v.state = 'published') as published,
-                max(v.version) filter (where v.state in ('draft', 'pending_approval')) as draft
+                max(v.version) filter (where v.state in ('published', 'retired')
+                  and v.effective_from <= now() and (v.effective_to is null or v.effective_to > now())) as published,
+                max(v.version) filter (where v.state in ('draft', 'pending_approval')) as draft,
+                max(v.version) filter (where v.state = 'published' and v.effective_from > now()) as scheduled,
+                max(v.effective_from) filter (where v.state = 'published' and v.effective_from > now()) as scheduled_from
            from rules.rule_set s left join rules.rule_set_version v on v.rule_set_id = s.id
           group by s.id, s.key, s.owner_module
           order by s.key`,
@@ -574,6 +618,8 @@ export class RulesService implements RulesPort {
         ownerModule: x.owner_module,
         publishedVersion: x.published,
         draftVersion: x.draft,
+        scheduledVersion: x.scheduled,
+        scheduledFrom: x.scheduled_from ? x.scheduled_from.toISOString() : null,
       }));
     });
   }
@@ -876,13 +922,31 @@ export class RulesService implements RulesPort {
     return r.rows[0] ?? null;
   }
 
+  /** The version in force now: published, or retired with its cut-over still ahead (PR-LDC-34). */
   private async publishedRow(tx: Tx, id: string): Promise<VersionRow | null> {
     const r = await tx.query<VersionRow>(
       `select * from rules.rule_set_version
-        where rule_set_id = $1 and state = 'published' and effective_from <= now()`,
+        where rule_set_id = $1 and state in ('published', 'retired')
+          and effective_from <= now() and (effective_to is null or effective_to > now())
+        order by version desc limit 1`,
       [id],
     );
     return r.rows[0] ?? null;
+  }
+
+  /** One scheduled cut-over at a time: a new publication waits until the pending one is in force. */
+  private async refuseScheduled(tx: Tx, id: string): Promise<void> {
+    const r = await tx.query<{ version: number; effective_from: Date }>(
+      `select version, effective_from from rules.rule_set_version
+        where rule_set_id = $1 and state = 'published' and effective_from > now()`,
+      [id],
+    );
+    const s = r.rows[0];
+    if (s)
+      throw new IpbError("IPB-RULE-003", {
+        detail: `version ${s.version} comes into force at ${s.effective_from.toISOString()}; publish again after it`,
+        meta: { rule_set_id: id, version: s.version },
+      });
   }
 }
 
@@ -892,6 +956,13 @@ const undetermined = (reason: string): Evaluated => ({
   ruleIds: [],
   reason,
 });
+
+function cutoverInstant(v: Date | string): Date {
+  const at = v instanceof Date ? v : new Date(String(v));
+  if (Number.isNaN(at.getTime()))
+    throw new IpbError("IPB-RULE-001", { detail: "effectiveFrom is not a valid instant" });
+  return at;
+}
 
 function asOfInstant(ref: RuleSetRef): Date {
   if (ref.version !== undefined)
