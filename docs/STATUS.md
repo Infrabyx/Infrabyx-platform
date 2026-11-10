@@ -2,21 +2,35 @@
 
 Updated: 2026-11-10
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                     |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                          |
-| Packages              | Published to GitHub Packages (release run 222, `9af54c5`, 7 Nov 2026; before it run 217, 6 Nov): **1.25.0** contracts; **1.18.0** tenancy; **1.14.2** connectors, testing; **1.13.2** config; **1.8.1** audit; **1.5.10** crypto; **1.5.3** export; **1.3.6** notify, workflow; **1.3.3** consent; **1.2.13** ui; **1.1.33** cms; **1.1.7** rules; **1.1.6** ai, brand; **1.1.4** a11y; **1.0.35** feedback, seed, trust, vidhi |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                               |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                   |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                           |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                |
+| Packages              | Published to GitHub Packages (release run 225, `dbed976`, 10 Nov 2026): **1.26.0** contracts; **1.2.0** rules; **1.18.1** tenancy; **1.14.3** connectors, testing; **1.13.3** config; **1.8.2** audit; **1.5.11** crypto; **1.5.4** export; **1.3.7** notify, workflow; **1.3.4** consent; **1.2.14** ui; **1.1.34** cms; **1.1.7** ai, brand; **1.1.5** a11y; **1.0.36** feedback, seed, trust, vidhi; **1.0.0** hlp |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                     |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                         |
 
-## Wave 12 (ninth session, 10 Nov): LawDocsComply PR-LDC-30 to PR-LDC-35
+## Waived image findings products carry (10 Nov; PR-FBX-45)
+
+Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
+
+| Finding                          | Where                         | Expires    | Review                                 | Decision           |
+| -------------------------------- | ----------------------------- | ---------- | -------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                  | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                 | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                 | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 12 Nov (26.8.2), 1 Dec, 15 Dec         | R1-D-115, R1-D-116 |
+| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner) | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
+
+## Wave 12 (ninth session, 10 Nov): LawDocsComply PR-LDC-30 to PR-LDC-35, released (run 225)
 
 - **Triage (R1-D-112 to R1-D-114):** PR-LDC-35 (bug) and PR-LDC-34 in wave 12; PR-LDC-30, the PR-LDC-31 writer and the PR-LDC-33 v1.5 draft in wave 13; PR-LDC-32 and the PR-LDC-31 reader in wave 14; PR-LDC-33's schema after the owner signs off the draft.
 - **PR-LDC-35 (fixed, M78):** none of the 15 platform outboxes was registered for the relay, so no platform event left its table. A `register_outbox` migration per package (patches), an `ipb-check` rule, reference-API and rules integration checks. Finbyx told in `docs/adoption/finbyx.md` §13.
 - **PR-LDC-34 (built, M79):** `publish(..., { effectiveFrom })`, retire at the cut-over, one pending cut-over per rule set (`contracts`, `rules` minors).
 - **Gate:** the first `ci:run` run failed `containers` on two new `sqlite-libs` advisories in the Keycloak base (CVE-2026-119374, CVE-2026-119379, no fix: waived 30 days under the standing rule, R1-D-115) and `verify` on the export-map gate (the export migration adds outbox grants only: label `export:unchanged`).
-- **Next:** wave 12 PR #247 second `ci:run`, version PR, release record; then wave 13.
+- **Released** (run 225; see Releases). **Next:** wave 13 (PR-LDC-30, the PR-LDC-31 writer, PR-LDC-36 arrows, the PR-LDC-33 v1.5 draft); the 12 Nov Keycloak 26.8.2 move (reassesses PR-FBX-45); the 1 Dec base-waiver decision to the owner.
 
 ## Keycloak 26.8.1-2 pinned and released (7 Nov, #93, #124, R1-D-110; release run 222)
 
@@ -321,6 +335,10 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### Wave 12 (2026-11-10, PR #247, version PR #248, release run 225)
+
+Wave 12 merged as `0aa0f1d` (#247; its first `ci:run` run failed `containers` on two new `sqlite-libs` advisories in the Keycloak base (waived 30 days, R1-D-115) and `verify` on the export-map gate (the export migration only registers its outbox: `export:unchanged`); the second run was green). Version PR #248 merged as `dbed976` under OWNER-QUESTIONS #81(a), after one `ci:run` run (all checks green; an earlier pair of runs was cancelled because both labels arrived at once). Release run 225 (09:22 to 09:38 UTC) ran the full port-contract matrix (29 jobs, all green), then published 21 packages: the minors `contracts` 1.26.0 (`PublishOptions`, `RuleSetSummary.scheduledVersion` and `scheduledFrom`) and `rules` 1.2.0 (the scheduled cut-over, `rules/0003`), and patches of the rest (each package with an outbox registers it, PR-LDC-35), each with its tag. The BOM was signed keyless and each tarball attested; `registry-dist` compared the registry checksums in the same job (129743992210). Products take every `@infrabyx/*` package together and run `infrabyx-migrate`: the first relay pass then delivers the platform events written before the fix (consumers idempotent on the event id); see `docs/adoption/finbyx.md` §13 and `docs/adoption/lawdocscomply.md`.
 
 ### Keycloak 26.8.1-2 patch release (2026-11-07, PR #244, version PR #245, release run 222)
 
