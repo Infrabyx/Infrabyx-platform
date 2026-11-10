@@ -1,5 +1,16 @@
 # @infrabyx/export
 
+## 1.5.4
+
+### Patch Changes
+
+- 0aa0f1d: Register `export.outbox` for the outbox relay (`export` migration `register_outbox`; LawDocsComply PR-LDC-35, R1-D-112). The outbox was never registered, so `OutboxRelay` neither found nor delivered its events; run `infrabyx-migrate` and the next relay pass delivers the backlog.
+- Updated dependencies [0aa0f1d]
+- Updated dependencies [0aa0f1d]
+  - @infrabyx/tenancy@1.18.1
+  - @infrabyx/contracts@1.26.0
+  - @infrabyx/crypto@1.5.11
+
 ## 1.5.3
 
 ### Patch Changes
