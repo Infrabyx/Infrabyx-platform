@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-07
+Updated: 2026-11-10
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -9,6 +9,13 @@ Updated: 2026-11-07
 | Packages              | Published to GitHub Packages (release run 222, `9af54c5`, 7 Nov 2026; before it run 217, 6 Nov): **1.25.0** contracts; **1.18.0** tenancy; **1.14.2** connectors, testing; **1.13.2** config; **1.8.1** audit; **1.5.10** crypto; **1.5.3** export; **1.3.6** notify, workflow; **1.3.3** consent; **1.2.13** ui; **1.1.33** cms; **1.1.7** rules; **1.1.6** ai, brand; **1.1.4** a11y; **1.0.35** feedback, seed, trust, vidhi |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                               |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                   |
+
+## Wave 12 (ninth session, 10 Nov): LawDocsComply PR-LDC-30 to PR-LDC-35
+
+- **Triage (R1-D-112 to R1-D-114):** PR-LDC-35 (bug) and PR-LDC-34 in wave 12; PR-LDC-30, the PR-LDC-31 writer and the PR-LDC-33 v1.5 draft in wave 13; PR-LDC-32 and the PR-LDC-31 reader in wave 14; PR-LDC-33's schema after the owner signs off the draft.
+- **PR-LDC-35 (fixed, M78):** none of the 15 platform outboxes was registered for the relay, so no platform event left its table. A `register_outbox` migration per package (patches), an `ipb-check` rule, reference-API and rules integration checks. Finbyx told in `docs/adoption/finbyx.md` §13.
+- **PR-LDC-34 (built, M79):** `publish(..., { effectiveFrom })`, retire at the cut-over, one pending cut-over per rule set (`contracts`, `rules` minors).
+- **Next:** wave 12 PR, one `ci:run`, version PR, release record; then wave 13.
 
 ## Keycloak 26.8.1-2 pinned and released (7 Nov, #93, #124, R1-D-110; release run 222)
 

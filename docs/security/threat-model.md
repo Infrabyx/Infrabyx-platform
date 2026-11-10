@@ -563,6 +563,7 @@ The reference api and worker use the stack's Temporal for the durable timers of 
 - **S (registering a table that is not an outbox):** Control: `register_outbox` is executable by `app_migrate` only, validates the schema name, the columns and forced RLS, and grants on that schema's `outbox` table only.
 - **Residual:** the event envelope is read by the relay (it must be, to deliver it); envelopes carry no secrets by the IPB-10 event contract.
 - **E (the read-only role writing through the relay role; found by Udofin, PR-UDF-016):** `tenancy/0003` granted `svc_outbox_relay` to `app_ro` and `app_rw` with the default INHERIT, so both held its writes (the ledger append, `dispatched_at` and `attempts`) without switching. Control: `tenancy/0004` revokes it from `app_ro` and makes every `svc_*` membership of `app_rw` and `app_ro` INHERIT FALSE, SET TRUE; `app_ro` and `app_rw` are NOINHERIT, so later grants default the same (R1-D-11). The integration test proves a login holding only `app_ro` is refused every write and the switch to `svc_outbox_relay` (42501), and that no role reachable from a read-only or auditor role holds a write privilege.
+- **D (events that never leave their table; PR-LDC-35, R1-D-112):** registration was opt-in per module, and none of the 15 platform outboxes was registered, so their events were never relayed. Control: each package's own migration registers its outbox (the same column grants and discovery policy as above, nothing wider); `ipb-check` fails a package that creates an outbox without registering it; the reference API suite checks the registered list equals every outbox table. Rows written before the fix are relayed on the first pass after migration; consumers are idempotent on the event id.
 
 ### 3.49 The visual block editor (built, R1 item 2; PR-038, R1-D-02)
 
@@ -1097,6 +1098,12 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.110 Base image: zlib1g CVE-2026-85091 (waived 30 days; R1-D-111)
 
 - **T and D (a gzprintf after a write stall):** `zlib1g` 1.2.13 in the Debian 12 base of both platform images, with no fixed package; the advisory names zlib 1.3.1.2 to 1.3.2, so Trivy's match on 1.2.13 may be wrong. The overflow needs a program calling the system zlib's `gzwrite`/`gzprintf` on a non-blocking descriptor: Node.js uses its own bundled zlib, and the runtime runs no system tool that does (UID 10001, no capabilities, read-only root). Waived until 2026-12-07 (`infra/docker/trivyignore.yaml`) and reviewed with the other base waivers on 1 Dec.
+
+### 3.111 Scheduled rule-set cut-over (`rules`; PR-LDC-34, R1-D-113)
+
+- **E (a cut-over the approver did not see):** Control: `effectiveFrom` is part of the R4 request's payload and summary, so the checker approves the instant with the digest; execution reads it from the approved payload only.
+- **T (back-dating a decision table):** Control: the cut-over is never before execution (`greatest(requested, now())`), and `effectiveFrom` must be now or later at submission, so no past decision or as-of read changes.
+- **D (stacked or overlapping cut-overs):** Control: one scheduled cut-over per rule set (`IPB-RULE-003` until it passes); windows meet exactly at the cut-over, and the version in force is the one whose window covers the instant.
 
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
