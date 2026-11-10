@@ -15,7 +15,8 @@ Updated: 2026-11-10
 - **Triage (R1-D-112 to R1-D-114):** PR-LDC-35 (bug) and PR-LDC-34 in wave 12; PR-LDC-30, the PR-LDC-31 writer and the PR-LDC-33 v1.5 draft in wave 13; PR-LDC-32 and the PR-LDC-31 reader in wave 14; PR-LDC-33's schema after the owner signs off the draft.
 - **PR-LDC-35 (fixed, M78):** none of the 15 platform outboxes was registered for the relay, so no platform event left its table. A `register_outbox` migration per package (patches), an `ipb-check` rule, reference-API and rules integration checks. Finbyx told in `docs/adoption/finbyx.md` §13.
 - **PR-LDC-34 (built, M79):** `publish(..., { effectiveFrom })`, retire at the cut-over, one pending cut-over per rule set (`contracts`, `rules` minors).
-- **Next:** wave 12 PR, one `ci:run`, version PR, release record; then wave 13.
+- **Gate:** the first `ci:run` run failed `containers` on two new `sqlite-libs` advisories in the Keycloak base (CVE-2026-119374, CVE-2026-119379, no fix: waived 30 days under the standing rule, R1-D-115) and `verify` on the export-map gate (the export migration adds outbox grants only: label `export:unchanged`).
+- **Next:** wave 12 PR #247 second `ci:run`, version PR, release record; then wave 13.
 
 ## Keycloak 26.8.1-2 pinned and released (7 Nov, #93, #124, R1-D-110; release run 222)
 

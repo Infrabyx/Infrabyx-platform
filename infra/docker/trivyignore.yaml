@@ -62,6 +62,15 @@ vulnerabilities:
   - id: CVE-2026-119586
     statement: sqlite3 shell `.recover` command execution in UBI 9 sqlite-libs of the Keycloak 26.8.1-2 base (no fixed build); the image never runs the sqlite3 shell. Waived 2026-11-02 (R1-D-36); extended to 20 Dec by the owner's explicit second extension (#124, R1-D-109)
     expired_at: 2026-12-20
+  # Two more findings in the same UBI 9 sqlite-libs 3.34.1-11.el9_8 of the Keycloak 26.8.1-2 base
+  # (published 30 Oct, first reported by the scanner on 10 Nov): no fixed build. Waived under the
+  # standing 30-day rule (R1-D-115); reviewed with the base waivers on 1 Dec and the Keycloak re-scan.
+  - id: CVE-2026-119374
+    statement: SQLite FTS5 secure-delete heap overflow in UBI 9 sqlite-libs of the Keycloak 26.8.1-2 base (no fixed build); Keycloak opens no SQLite database, builds no FTS5 index and never deletes from one. Waived 2026-11-10 under the standing 30-day rule (R1-D-115)
+    expired_at: 2026-12-10
+  - id: CVE-2026-119379
+    statement: SQLite session-extension changeset heap overflow in UBI 9 sqlite-libs of the Keycloak 26.8.1-2 base (no fixed build); Keycloak opens no SQLite database and applies no changesets. Waived 2026-11-10 under the standing 30-day rule (R1-D-115)
+    expired_at: 2026-12-10
   - id: CVE-2026-109518
     statement: apt and libapt-pkg6.0 2.6.1, an on-path attacker during apt's own downloads (fixed in Debian 12 as 2.6.2, which no node:24.22.1-bookworm-slim digest carries yet; the newest, built 2026-10-28, still has 2.6.1). The runtime never runs apt, fetches no packages, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-99); removed with the first base digest carrying 2.6.2 once it is 7 days old
     expired_at: 2026-12-05
