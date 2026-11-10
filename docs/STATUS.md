@@ -24,6 +24,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
 
+## Triage of LawDocsComply PR-LDC-37 to PR-LDC-44 (10 Nov; R1-D-117, R1-D-118)
+
+- **Wave 13 (order):** PR-LDC-41 `FileScanPort` and ClamAV in-cluster (security; the IPB-02-44 AV control was never defined), PR-LDC-37 `cancelIn`, then PR-LDC-30, the PR-LDC-31 writer, PR-LDC-36 arrows, PR-LDC-42 `setIn`, the PR-LDC-33 v1.5 draft.
+- **Wave 14:** PR-LDC-32, the PR-LDC-31 reader, PR-LDC-39 PDF text, PR-LDC-43 brand additions, the PR-LDC-40 threat-model entry; PR-LDC-38 if the owner answers #125. **Wave 15:** PR-LDC-40 `WebSnapshotPort`.
+- **Held:** PR-LDC-38 (ordered approval levels; approval policy, OWNER-QUESTIONS #125). PR-LDC-44 is PR-FBX-45 (12 Nov reassessment).
+
 ## Wave 12 (ninth session, 10 Nov): LawDocsComply PR-LDC-30 to PR-LDC-35, released (run 225)
 
 - **Triage (R1-D-112 to R1-D-114):** PR-LDC-35 (bug) and PR-LDC-34 in wave 12; PR-LDC-30, the PR-LDC-31 writer and the PR-LDC-33 v1.5 draft in wave 13; PR-LDC-32 and the PR-LDC-31 reader in wave 14; PR-LDC-33's schema after the owner signs off the draft.
