@@ -118,3 +118,4 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 ## Wave 13 (in progress)
 
 - **PR-LDC-41 (`contracts`, `testing`, `connectors`, `config` minors):** scan every upload with `FileScanPort` (`@infrabyx/connectors/av`, `ClamavFileScan`) and act only on `scanDecision` (product guide §7bl): `CLEAN` releases, `INFECTED` rejects, `ERROR` stays quarantined. Run clamd in your cluster with daily `freshclam`, set `int.av.clamav.enabled` (R4). **Shim removed:** the local ClamAV client.
+- **PR-LDC-37 (`tenancy` minor; migration `tenancy/0022`):** replace the second-transaction cancel with `approvals.cancelIn(tx, id, reason)` in your own transaction (product guide §7bm). **Shim removed:** the second-transaction cancel.

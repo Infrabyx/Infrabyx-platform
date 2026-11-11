@@ -543,6 +543,10 @@ IPB-02-44 makes the upload scan a platform control. Write every upload to the `Q
 - **Tests.** `FakeFileScan` and `fileScanContractCases(storage)` from `@infrabyx/testing`; `EICAR` is the standard test file.
 - **Shim removed (LawDocsComply):** its local ClamAV client.
 
+## 7bm. Cancelling an approval inside your transaction (PR-LDC-37; R1-D-120)
+
+`approvals.cancelIn(tx, requestId, reason)` withdraws a pending or approved request in the same transaction as the change that made it unnecessary: if your write rolls back, the request stays pending. The rules are `cancel`'s (the maker, ORG_OWNER or PLT_SECURITY_OFFICER; never an expired or executed request), the reason is required (1 to 500 characters) and an agent may not cancel. The checker's inbox item closes in the same transaction. `cancel(ctx, id, reason?)` also accepts a reason. Run `infrabyx-migrate` (`tenancy/0022` adds the nullable `cancel_reason` column).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
