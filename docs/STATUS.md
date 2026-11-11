@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-10
+Updated: 2026-11-11
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,6 +23,13 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner) | R1-D-99            |
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
+
+## Wave 13 (tenth session, 11 Nov): in progress on `claude/epic-ramanujan-wave-3-joju6b`
+
+- **Built and pushed (one commit each, local checks green):** PR-LDC-41 `FileScanPort` and the in-cluster ClamAV adapter (`ebec513`, R1-D-119; `contracts`, `testing`, `connectors`, `config` minors); PR-LDC-37 `ApprovalsEngine.cancelIn` (`57a5f5b`, R1-D-120; `tenancy` minor, migration `tenancy/0022`); PR-LDC-42 `SettingsService.setIn` (`e59e922`, R1-D-121; `config` minor).
+- **Local verification:** build, typecheck and lint of the touched packages; unit tests of `contracts`, `testing`, `connectors`, `config`; `tenancy`, `workflow` and the settings integration suites on PostgreSQL 16; `scripts` tests; `ipb-check`; exit runbook regenerated. The ClamAV contract leg needs Docker, so it first runs at the gate.
+- **Gate not before 16 Nov:** the pinned `clamav/clamav:1.5.4` digest was pushed on 9 Nov (PL2-D-32). `connectors` gains the `./av` export; its minor changeset covers the export-map gate.
+- **Next, in order:** PR-LDC-30 (`audit` business ids), the PR-LDC-31 writer (`export`), PR-LDC-36 arrows (`export` patch), the PR-LDC-33 v1.5 draft; then the gate (`ci:run`) on or after 16 Nov, the version PR and the release record. The 12 Nov Keycloak 26.8.2 move is a separate PR.
 
 ## Triage of LawDocsComply PR-LDC-37 to PR-LDC-44 (10 Nov; R1-D-117, R1-D-118)
 
