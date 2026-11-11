@@ -114,3 +114,7 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-35:** take the wave 12 patches together and run `infrabyx-migrate`: every platform outbox (`rules` included) is registered, and the first relay pass delivers the backlog. No shim to remove (none was possible in the product).
 - **PR-LDC-34:** call `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` with the entity's 00:00 instant and remove `versionAsOf`; read `listRuleSets().scheduledVersion` and `scheduledFrom` for the pending cut-over.
 - **PR-LDC-30 to PR-LDC-33:** planned in waves 13 and 14 (`docs/platform-requests.md`); PR-LDC-33 waits for the owner's sign-off of the v1.5 draft.
+
+## Wave 13 (in progress)
+
+- **PR-LDC-41 (`contracts`, `testing`, `connectors`, `config` minors):** scan every upload with `FileScanPort` (`@infrabyx/connectors/av`, `ClamavFileScan`) and act only on `scanDecision` (product guide §7bl): `CLEAN` releases, `INFECTED` rejects, `ERROR` stays quarantined. Run clamd in your cluster with daily `freshclam`, set `int.av.clamav.enabled` (R4). **Shim removed:** the local ClamAV client.

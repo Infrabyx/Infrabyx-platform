@@ -535,6 +535,14 @@ Every platform package now registers its outbox for `OutboxRelay` (one `<package
 
 `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` takes the instant the version comes into force, now to 366 days ahead; compute it yourself (for example 00:00 in the entity's time zone). The checker sees it in the R4 request. On approval the previous version stays in force until the cut-over (or the new one applies at approval, if that is later), `RuleSetPublished.effective_from` carries the instant, and as-of reads on either side of it return the right version. Only one cut-over per rule set may be pending; `listRuleSets` shows `scheduledVersion` and `scheduledFrom`.
 
+## 7bl. Scanning uploads: the AV port and ClamAV (PR-LDC-41; R1-D-117)
+
+IPB-02-44 makes the upload scan a platform control. Write every upload to the `QUARANTINE` bucket class, then call `FileScanPort.scan({ storageKey, sha256 })` and act only on `scanDecision(result)`: `release` (copy or move the object to its normal class), `reject` (`IPB-SEC-011`; keep the quarantined copy for the security log) or `quarantine` (`IPB-SEC-015`; schedule a re-scan). Never treat `ERROR` as clean.
+
+- **Adapter (`@infrabyx/connectors/av`, `ClamavFileScan`).** Run clamd in your cluster (ClamAV 1.5.x; the test pin is in `infra/docker/TEST_IMAGES.md`) with `freshclam` updating its signatures daily, and a network policy that admits only your scanning service. Pass `host` (a Service name or private address; public addresses are refused), `port` (3310), your `storage`, and `enabled` from `int.av.clamav.enabled` (off by default, R4). Keep `maxBytes` at or below clamd's `StreamMaxLength` (25 MiB by default).
+- **Tests.** `FakeFileScan` and `fileScanContractCases(storage)` from `@infrabyx/testing`; `EICAR` is the standard test file.
+- **Shim removed (LawDocsComply):** its local ClamAV client.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

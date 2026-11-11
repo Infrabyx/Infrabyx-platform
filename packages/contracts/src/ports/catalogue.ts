@@ -157,7 +157,7 @@ export const PORT_CATALOGUE = {
     interfaceDefined: true,
   },
   MEDIA: { tier: 2, configPrefix: "int.media.", ownerFile: "IPB-04", interfaceDefined: true },
-  AV: { tier: 2, configPrefix: "int.av.", ownerFile: "IPB-02, IPB-04", interfaceDefined: false },
+  AV: { tier: 2, configPrefix: "int.av.", ownerFile: "IPB-02, IPB-04", interfaceDefined: true },
   PLAGIARISM: {
     tier: 3,
     configPrefix: "int.plagiarism.",
@@ -273,7 +273,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * §01.4.4.3, ADR-0006, collection methods with fakes, no adapter; R1-D-97: Finbyx PR-FBX-38's
  * TELEPHONY, ADR-0007, fake and contract cases, no adapter until a vendor is chosen; R1-D-104:
  * Finbyx PR-FBX-41, 42 and 44's DISPATCH, COURT_DATA and ODR, ADR-0008 to 0010, fakes and contract
- * cases, no adapter until a provider is chosen).
+ * cases, no adapter until a provider is chosen; R1-D-117: LawDocsComply PR-LDC-41's AV, the IPB-02-44
+ * upload scan, with a fake and the in-cluster ClamAV adapter).
  */
 export const R1_PORTS = [
   "KYC",
@@ -292,4 +293,5 @@ export const R1_PORTS = [
   "DISPATCH",
   "COURT_DATA",
   "ODR",
+  "AV",
 ] as const satisfies readonly PortName[];
