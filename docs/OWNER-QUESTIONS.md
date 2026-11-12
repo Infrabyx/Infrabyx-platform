@@ -4,8 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question |
-| --- | -------- | -------- |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 127 | R1-D-132 | Sign off the spec v1.5 draft `docs/phases/PR-044-ecosystem-v1.5-draft.md` (LawDocsComply PR-LDC-33): the existing `ObligationPublished` (§6.15) gets a fixed payload of ids and keys only (no obligation text; `dataclass = INTERNAL`), a superseded-name row and a certification test; owner points in §5 (ids only, producer code lists, batching PR-LDC-51). **Default:** nothing applied; LawDocsComply keeps its internal event. **If yes:** applied as v1.5 in an owner-authorised docs PR, then the `contracts` schema in the next wave. **Reverse:** nothing to undo before it is applied |
 
 ## Answered
 
