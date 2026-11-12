@@ -24,6 +24,13 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
 
+## Wave 14 (eleventh session, 12 Nov): in progress on `claude/wave-14` (built on wave 13)
+
+- **Built (local checks green):** PR-LDC-55 the product MFA floor with RFC 9470 step-up (R1-D-135, first, security); #125 ordered approval levels (R1-D-136, `tenancy/0023`, with the Work Inbox hand-off); the TallyPrime adapter design and threat-model entry (R1-D-137, `docs/phases/R1-tallyprime-design.md`, OWNER-QUESTIONS #128).
+- **Local verification:** `pnpm build`, `typecheck`, `lint`, `test` (54 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` (125), `workflow` (21), `audit` (38), `testing` (44).
+- **Next in wave 14 (R1-D-123 order):** PR-LDC-49 `rules.project`, PR-LDC-54 the shared rate limiter (its expired-window clean-up is a deletion of operational counters: confirm it with the owner before building), PR-LDC-45 `EvidenceSubmitted`, the PR-LDC-51 `ProviderIncident` schema, the PR-LDC-50 design, then PR-LDC-32, the PR-LDC-31 reader, PR-LDC-39, PR-LDC-43 and the PR-LDC-40 threat-model entry.
+- **PR:** opened once wave 13 (#252) has merged; the branch is then merged with `main` (no rebase, no force-push).
+
 ## Wave 13 (tenth and eleventh sessions, 11–12 Nov): built, gate on or after 16 Nov
 
 - **Built (one commit each; local checks green):** PR-LDC-41 `FileScanPort` and ClamAV (R1-D-119); PR-LDC-37 `cancelIn` (R1-D-120, `tenancy/0022`); PR-LDC-42 `setIn` (R1-D-121); PR-LDC-30 business ids (R1-D-125, `audit/0010`, `audit/0011`; its `DROP INDEX` is a reviewed lint warning, R1-D-133); the PR-LDC-31 writer: widths, typed validations, named ranges, lock-flag protection (R1-D-128); PR-LDC-36 arrows in `toPdf` through a pinned Noto Sans Math subset (R1-D-129); PR-FBX-46 `AccountingSinkPort` (R1-D-130); PR-LDC-53's CALENDAR interface, fake and contract cases, moved up by owner answer #126 (R1-D-131); the PR-LDC-33 spec v1.5 draft `docs/phases/PR-044-ecosystem-v1.5-draft.md` (R1-D-132, OWNER-QUESTIONS #127).
