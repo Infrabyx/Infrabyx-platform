@@ -24,6 +24,15 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
 
+## Handover (2026-11-12, eleventh session)
+
+- **Branches and PRs:** wave 13 is #252 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready, unsubscribed; #251 closed in its favour); the gate (`ci:run`) is on or after 16 Nov, then the version PR and the release record. Wave 14 is `claude/wave-14` (pushed, built on wave 13, no PR yet: open it once #252 merges, after merging `main` into it). The Keycloak 26.8.2-0 pin is `claude/keycloak-26-8-2` (from `main`; checks green locally; committed and opened as its own PR after 16:05 UTC on 12 Nov, `ci:run` once, merge, version PR, release record).
+- **Owner answers recorded (R1-D-126):** #125, #126, PR-FBX-46, PR-LDC-30. **Open questions:** #127 (spec v1.5 sign-off), #128 (TallyPrime agent distribution and sandbox), #129 (rate-limiter counter sweep).
+- **Check-ins (this chat):** daily `trig_01CPNpnXt6ReDWWTDoDCkgJU` (17:41 IST), 1 Dec base waivers `trig_01J6DFmu2LjAV9EZEFMN6DAt`, 15 Dec Keycloak re-scan `trig_01JXkt271epEcL2YVrzYDCbB`; the old chat's four are disabled.
+- **Local environment notes:** Node 24.22.1 is at `/opt/node24/bin` (the default `node` is 22); PostgreSQL 16 with `postgresql-16-pgvector` runs locally for integration suites (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`); no Docker daemon (Trivy 0.76.0 scans remote images).
+
+HANDOVER READY
+
 ## Wave 14 (eleventh session, 12 Nov): in progress on `claude/wave-14` (built on wave 13)
 
 - **Built (local checks green):** PR-LDC-49 `rules.project` (R1-D-139, `rules/0004`); PR-LDC-45 and PR-LDC-51 payload schemas (R1-D-138); PR-LDC-55 the product MFA floor with RFC 9470 step-up (R1-D-135, first, security); #125 ordered approval levels (R1-D-136, `tenancy/0023`, with the Work Inbox hand-off); the TallyPrime adapter design and threat-model entry (R1-D-137, `docs/phases/R1-tallyprime-design.md`, OWNER-QUESTIONS #128); the PR-LDC-50 inbound-mail design (R1-D-141, `docs/phases/R1-inbound-mail-design.md`).
