@@ -156,6 +156,10 @@ const WIDENED_CHECKS: Record<string, ReadonlyArray<readonly [string, number]>> =
   tenancy: [["0016_grantee_kinds_breakglass_scope.sql", 1]],
   // PR-042 (R1-D-95): the UNIT tier in the tier and scope checks of setting_value and setting_change.
   config: [["0005_unit_tier.sql", 4]],
+  // PR-LDC-30 (R1-D-125, R1-D-133): not a widened check but the same kind of reviewed drop: the
+  // concurrent GIN build drops only an invalid index a failed earlier run of this file left, then
+  // builds it again; no data and no constraint is lost.
+  audit: [["0011_business_ids_index.sql", 1]],
 };
 
 describe("PL1 migrations", () => {
