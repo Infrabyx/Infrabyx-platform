@@ -551,6 +551,10 @@ IPB-02-44 makes the upload scan a platform control. Write every upload to the `Q
 
 `settings.setIn(tx, key, { tier: "TENANT" | "UNIT", scopeId }, value)` writes a setting in the same transaction as your own records. It makes every check `set` makes: register your keys in your settings tree with the roles that may change them (`change`), and those roles are what authorise the write; platform keys keep the platform's roles. A maker-checker key still answers `pending` and raises its request in your transaction. PLATFORM, ENTITY and USER values go through `set`.
 
+## 7bo. Business ids on the ledger (PR-LDC-30; R1-D-125)
+
+Pass `businessIds` (1 to 16 ids such as an obligation or matter id; never names or personal data) to `audit.record`, and read every entry for one id with `auditService.history(ctx, businessId)` (actor, time, action, before and after digests; paged by `afterSeq`). The ids are part of the entry's hash when present; older entries verify unchanged. Run `infrabyx-migrate`: `audit/0010` adds the column and `audit/0011` builds its index concurrently (writes continue; on a large ledger allow it time).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

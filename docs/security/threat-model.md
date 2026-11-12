@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-11 (R1-D-120, §3.114: `cancelIn`; R1-D-117, §3.113 and §4: the AV port and the ClamAV adapter; R1-D-69, §3.73: per-tenant templates and delivery reports by vendor reference; R1-D-68, §3.72: the Operations Hub provisioning adapter; R1-D-67, §3.71: tenant creation for a provisional id; R1-D-66, §3.69: the approvals engine consumes each mandate approval; R1-D-64, §3.70: CI runs on pull requests only with the `ci:run` label; R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-12 (R1-D-125, §3.115: business ids on ledger entries; R1-D-120, §3.114: `cancelIn`; R1-D-117, §3.113 and §4: the AV port and the ClamAV adapter; R1-D-69, §3.73: per-tenant templates and delivery reports by vendor reference; R1-D-68, §3.72: the Operations Hub provisioning adapter; R1-D-67, §3.71: tenant creation for a provisional id; R1-D-66, §3.69: the approvals engine consumes each mandate approval; R1-D-64, §3.70: CI runs on pull requests only with the `ci:run` label; R1-D-62, §3.68: the Digio mandate adapter and NeSL DDE; R1-D-61, §3.67: the CIBIL bureau and Setu AA adapters against stubs, owner answer #97). Earlier sections carry their own decision references.
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -1120,6 +1120,10 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.114 Cancelling an approval in the caller's transaction (`tenancy/0022`; PR-LDC-37, R1-D-120)
 
 - **E (withdrawing someone else's request):** `cancelIn` applies `cancel`'s rules unchanged (the maker, ORG_OWNER or PLT_SECURITY_OFFICER; the request must be in the transaction's tenant, which RLS also enforces) and refuses agents. Nothing about approving changes. **R:** the cancellation is ledgered in the same transaction with its reason (digest in the ledger, text on the request); a rolled-back product write rolls back the cancellation, its ledger entry and the inbox closure together. **I:** the reason is CONFIDENTIAL, at most 500 characters, and never in the `ApprovalCancelled` event.
+
+### 3.115 Business ids on ledger entries (`audit/0010`, `audit/0011`; PR-LDC-30, R1-D-125)
+
+- **T (rewriting what an entry concerns):** the ids are inside the entry's hash when present (the trigger builds the canonical form; TypeScript verification matches it), so changing, adding or removing an id breaks the chain at that entry; the ledger stays append-only. Older entries hash exactly as before. **I:** ids only, by pattern (no spaces, at most 128 characters, 16 per entry), never personal data; checked in the sink and by a database check. `history` reads under the ledger's forced RLS, so a tenant sees only its own. **D:** the GIN index is partial and built concurrently, so neither the migration nor the index blocks ledger writes.
 
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
