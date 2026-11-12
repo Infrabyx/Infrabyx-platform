@@ -26,12 +26,18 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 ## Handover (2026-11-12, eleventh session)
 
-- **Branches and PRs:** wave 13 is #252 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready, unsubscribed; #251 closed in its favour); the gate (`ci:run`) is on or after 16 Nov, then the version PR and the release record. Wave 14 is `claude/wave-14` (pushed, built on wave 13, no PR yet: open it once #252 merges, after merging `main` into it). The Keycloak 26.8.2-0 pin is `claude/keycloak-26-8-2` (from `main`; checks green locally; committed and opened as its own PR after 16:05 UTC on 12 Nov, `ci:run` once, merge, version PR, release record).
+- **Branches and PRs:** wave 13 is #252 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready, unsubscribed; #251 closed in its favour); the gate (`ci:run`) is on or after 16 Nov, then the version PR and the release record. Wave 14 is `claude/wave-14` (pushed, built on wave 13, no PR yet: open it once #252 merges, after merging `main` into it). The Keycloak 26.8.2-0 pin is #253 (`claude/keycloak-26-8-2`): its gate failed on a 26.8.2 admin-API change, so it is held and the platform stays on 26.8.1-2 (R1-D-142).
 - **Owner answers recorded (R1-D-126):** #125, #126, PR-FBX-46, PR-LDC-30. **Open questions:** #127 (spec v1.5 sign-off), #128 (TallyPrime agent distribution and sandbox), #129 (rate-limiter counter sweep).
 - **Check-ins (this chat):** daily `trig_01CPNpnXt6ReDWWTDoDCkgJU` (17:41 IST), 1 Dec base waivers `trig_01J6DFmu2LjAV9EZEFMN6DAt`, 15 Dec Keycloak re-scan `trig_01JXkt271epEcL2YVrzYDCbB`; the old chat's four are disabled.
 - **Local environment notes:** Node 24.22.1 is at `/opt/node24/bin` (the default `node` is 22); PostgreSQL 16 with `postgresql-16-pgvector` runs locally for integration suites (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`); no Docker daemon (Trivy 0.76.0 scans remote images).
 
 HANDOVER READY
+
+## Keycloak 26.8.2 held (12 Nov, R1-D-134, R1-D-142)
+
+- **#253** pinned `26.8.2-0` (same six findings as 26.8.1-2, nothing new). Its gate failed `contract (IDENTITY)`: 26.8.2's admin API answers 401 on `/identity-provider` (brokers) despite the granted roles; `compose` and `reference` also failed. Not reproducible here (no Docker). **Held**: the platform stays on 26.8.1-2 (no security cost), `ci:run` removed, PR left open.
+- **PR-FBX-45 / PR-LDC-44:** the two `sqlite-libs` findings are present in every 26.8.2 build; waivers stay to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec.
+- **Next:** find the 26.8.2 identity-provider authorisation change (adapter or realm set-up) before the 15 Dec re-scan, which re-decides the pin.
 
 ## Wave 14 (eleventh session, 12 Nov): in progress on `claude/wave-14` (built on wave 13)
 
