@@ -95,7 +95,7 @@ export const PORT_CATALOGUE = {
     tier: 3,
     configPrefix: "int.calendar.",
     ownerFile: "IPB-01",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   WORKSPACE: {
     tier: 3,
@@ -201,7 +201,7 @@ export const PORT_CATALOGUE = {
     tier: 2,
     configPrefix: "int.accounting.",
     ownerFile: "OH v1.1",
-    interfaceDefined: false,
+    interfaceDefined: true,
   },
   PAYROLL: { tier: 2, configPrefix: "int.payroll.", ownerFile: "OH v1.1", interfaceDefined: false },
   BUREAU: {
@@ -274,7 +274,10 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * TELEPHONY, ADR-0007, fake and contract cases, no adapter until a vendor is chosen; R1-D-104:
  * Finbyx PR-FBX-41, 42 and 44's DISPATCH, COURT_DATA and ODR, ADR-0008 to 0010, fakes and contract
  * cases, no adapter until a provider is chosen; R1-D-117: LawDocsComply PR-LDC-41's AV, the IPB-02-44
- * upload scan, with a fake and the in-cluster ClamAV adapter).
+ * upload scan, with a fake and the in-cluster ClamAV adapter; R1-D-122: Finbyx PR-FBX-46's ACCOUNTING
+ * sink, fake and contract cases, the TallyPrime adapter in wave 15; R1-D-126: LawDocsComply
+ * PR-LDC-53's CALENDAR, fake and contract cases, the Microsoft 365 and Google adapters off until the
+ * owner registers their OAuth applications).
  */
 export const R1_PORTS = [
   "KYC",
@@ -294,4 +297,6 @@ export const R1_PORTS = [
   "COURT_DATA",
   "ODR",
   "AV",
+  "ACCOUNTING",
+  "CALENDAR",
 ] as const satisfies readonly PortName[];
