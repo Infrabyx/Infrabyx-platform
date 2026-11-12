@@ -475,6 +475,61 @@ describe("tenancy: RLS, platform rule sets and the ledger (@NN-01 @NN-45)", () =
   });
 });
 
+const code = (p: Promise<unknown>) =>
+  p.then(
+    () => null,
+    (e: { code?: string }) => e.code ?? "error",
+  );
+
+describe("projection rule sets (PR-LDC-49)", () => {
+  it("project returns outcomes only, records nothing, and never runs a decision-grade set", async () => {
+    const { ruleSetId } = await svc.createRuleSet(maker, {
+      key: "fbx.los.nba_forecast",
+      ownerModule: "los",
+      dataClass: "CONFIDENTIAL",
+      purpose: "projection",
+    });
+    const { version } = await svc.saveDraft(maker, ruleSetId, nba());
+    const { approvalId } = await svc.publish(maker, ruleSetId, version);
+    await approvals.decide(checker, approvalId, "approve");
+    await db.admin.query(
+      "update tenancy.approval_request set delay_until = now() - interval '1 minute' where id = $1",
+      [approvalId],
+    );
+    await approvals.execute(checker, approvalId);
+    const count = async () =>
+      Number(
+        (
+          await db.admin.query<{ n: string }>(
+            "select (select count(*) from rules.decision_log where rule_set_id = $1) + (select count(*) from audit.ledger where action = 'rules.decision.record') as n",
+            [ruleSetId],
+          )
+        ).rows[0]!.n,
+      );
+    const before = await count();
+    const raisedBefore = raised.length;
+    const p = await svc.project(maker, { ruleSetId }, [
+      { stage: "underwriting", docsComplete: true, bureauScore: 742 },
+      { stage: "underwriting", docsComplete: false, bureauScore: 700 },
+      { stage: 1 },
+    ]);
+    expect(p).toMatchObject({ ruleSetId, version });
+    expect(p.results.map((r) => r.outcome)).toEqual(["MATCHED", "MATCHED", "UNDETERMINED"]);
+    expect(p.results[0]!.outputs).toMatchObject({ action: "prepare_sanction" });
+    expect(JSON.stringify(p)).not.toMatch(/dcs_/);
+    expect(await count()).toBe(before);
+    expect(raised.length).toBe(raisedBefore);
+    // A projection set is never a decision, and a decision set is never projected.
+    expect(await code(svc.evaluate(maker, { ruleSetId }, { stage: "x" }))).toBe("IPB-RULE-003");
+    const [{ id: decisionSet }] = (
+      await db.admin.query("select id from rules.rule_set where key = 'fbx.los.nba'")
+    ).rows;
+    expect(await code(svc.project(maker, { ruleSetId: decisionSet }, [{}]))).toBe("IPB-RULE-003");
+    expect(await code(svc.project(maker, { ruleSetId }, []))).toBe("IPB-RULE-001");
+    expect(await code(svc.project(tenantB, { ruleSetId }, [{}]))).not.toBeNull();
+  });
+});
+
 describe("a scheduled cut-over (PR-LDC-34)", () => {
   it("publishes with a future effectiveFrom: the old version stays in force until it, the event carries it", async () => {
     const first = await published(maker, "fbx.los.cutover", nba(), checker);

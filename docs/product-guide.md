@@ -579,6 +579,10 @@ Build your floor once at boot: `const floor = mfaFloor({ roles: ["<PRODUCT>_PART
 
 Pass `levels` with `approvals.request(tx, { ..., levels: [{ checkerRoles: ["ORG_CHECKER"] }, { checkerRoles: ["<PRODUCT>_PARTNER"], checkers: 2 }] })`: up to five levels, decided in order. Level 1's roles must be among the action's checker roles; its checkers are at least what the risk class asks. Every checker is a different person: never the maker, never someone who decided at an earlier level, never an agent. A rejection at any level ends the request, and the delay window starts only when the last level approves. `ApprovalRecord.currentLevel` and `currentLevelApprovals` show progress; the Work Inbox gives each level's checkers their item when that level opens. Run migration `tenancy/0023`. **Shims removed:** chaining one request per level (LawDocsComply, Finbyx).
 
+## 7bv. Projections without decision records (PR-LDC-49; R1-D-139)
+
+Create a rule set for forecasts and what-if views with `createRuleSet(ctx, { key, ownerModule, purpose: "projection" })`, publish it as usual (R4), and run `rules.project(ctx, { ruleSetId }, inputs)` for up to 1,000 inputs: you get `{ outcome, outputs, reason }` per input, no decision id, no decision record, no ledger entry and no review item. A projection set cannot be evaluated as a decision, and a decision-grade set cannot be projected (`IPB-RULE-003`), so anything you act on still comes from `evaluate` and is recorded. Run migration `rules/0004`. **Shim removed:** evaluating decision-grade sets in a loop for forecasts (and the decision records it left).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

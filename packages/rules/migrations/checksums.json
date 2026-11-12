@@ -1,5 +1,6 @@
 {
   "0001_init.sql": "4cbe3f3377fcea1509a761f1cda34af6f379c91edd5eb8137604e7716d280ddf",
   "0002_decision_parameters.sql": "8302cfd848251cb77979ecd544b8ffc1e8454152ca57c6961b70e11d146d029c",
-  "0003_register_outbox.sql": "2d9716dc5fd66a0dcb10d1ae40680f4ef55db25887dee162d94e35732aa07a87"
+  "0003_register_outbox.sql": "2d9716dc5fd66a0dcb10d1ae40680f4ef55db25887dee162d94e35732aa07a87",
+  "0004_rule_set_purpose.sql": "979ffa30e732d2bb2ee64edcf92fd4ac3c267dd5f0c16d3d0cf20dfa8a7b02f4"
 }
