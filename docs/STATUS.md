@@ -26,9 +26,9 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 ## Wave 14 (eleventh session, 12 Nov): in progress on `claude/wave-14` (built on wave 13)
 
-- **Built (local checks green):** PR-LDC-49 `rules.project` (R1-D-139, `rules/0004`); PR-LDC-45 and PR-LDC-51 payload schemas (R1-D-138); PR-LDC-55 the product MFA floor with RFC 9470 step-up (R1-D-135, first, security); #125 ordered approval levels (R1-D-136, `tenancy/0023`, with the Work Inbox hand-off); the TallyPrime adapter design and threat-model entry (R1-D-137, `docs/phases/R1-tallyprime-design.md`, OWNER-QUESTIONS #128).
+- **Built (local checks green):** PR-LDC-49 `rules.project` (R1-D-139, `rules/0004`); PR-LDC-45 and PR-LDC-51 payload schemas (R1-D-138); PR-LDC-55 the product MFA floor with RFC 9470 step-up (R1-D-135, first, security); #125 ordered approval levels (R1-D-136, `tenancy/0023`, with the Work Inbox hand-off); the TallyPrime adapter design and threat-model entry (R1-D-137, `docs/phases/R1-tallyprime-design.md`, OWNER-QUESTIONS #128); the PR-LDC-50 inbound-mail design (R1-D-141, `docs/phases/R1-inbound-mail-design.md`).
 - **Local verification:** `pnpm build`, `typecheck`, `lint`, `test` (54 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` (125), `workflow` (21), `audit` (38), `testing` (44).
-- **Next in wave 14 (R1-D-123 order):** PR-LDC-54 the shared rate limiter (held for OWNER-QUESTIONS #129: the expired-window sweep deletes rows, R1-D-140), the PR-LDC-50 design, then PR-LDC-32, the PR-LDC-31 reader, PR-LDC-39, PR-LDC-43 and the PR-LDC-40 threat-model entry.
+- **Next in wave 14 (R1-D-123 order):** PR-LDC-54 the shared rate limiter (held for OWNER-QUESTIONS #129: the expired-window sweep deletes rows, R1-D-140), then PR-LDC-32, the PR-LDC-31 reader, PR-LDC-39, PR-LDC-43 and the PR-LDC-40 threat-model entry.
 - **PR:** opened once wave 13 (#252) has merged; the branch is then merged with `main` (no rebase, no force-push).
 
 ## Wave 13 (tenth and eleventh sessions, 11–12 Nov): built, gate on or after 16 Nov
