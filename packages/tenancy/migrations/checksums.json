@@ -20,5 +20,6 @@
   "0019_tenant_id_rule.sql": "517fe0b8b999143149800c3f3436703787752661632313b158ac77400cbb9ab4",
   "0020_entitlement.sql": "142c807207569cccf19e6a2e45106e742d1d1e8d80db5605910720481b286e87",
   "0021_register_outbox.sql": "492ec00fda1b2434226b045fd3d9ea8215c3adfdf769407f0d28124ae8512411",
-  "0022_approval_cancel_reason.sql": "55b38822d9bdf1da7b1415cf6c27cca2d9e5bde29b5d7d7d34fd54ff811e5eea"
+  "0022_approval_cancel_reason.sql": "55b38822d9bdf1da7b1415cf6c27cca2d9e5bde29b5d7d7d34fd54ff811e5eea",
+  "0023_approval_levels.sql": "328523274e9856d297c7bf97258c97c99397cfb4a15c60b6ac4c35d863ebcbbb"
 }

@@ -439,6 +439,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0020_entitlement.sql",
       "@infrabyx/tenancy/0021_register_outbox.sql",
       "@infrabyx/tenancy/0022_approval_cancel_reason.sql",
+      "@infrabyx/tenancy/0023_approval_levels.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
@@ -632,6 +633,97 @@ describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers 
     const officer = user("usr_so", ["PLT_SECURITY_OFFICER"]);
     expect((await engine.cancel(officer, id)).state).toBe("cancelled");
     expect(seen).toEqual(["requested:pending", "approve:approved", "cancelled:cancelled"]);
+  });
+
+  it("ordered levels only tighten: in order, different people, any rejection ends it (#125)", async () => {
+    const levels = [{ checkerRoles: ["ORG_CHECKER"] }, { checkerRoles: ["ORG_OWNER"] }];
+    const { id } = await make({
+      action: "org.setting.change",
+      riskClass: "R2",
+      payload: { k: 1 },
+      levels,
+    });
+    const r0 = await engine.get(maker, id);
+    expect(r0).toMatchObject({ requiredCheckers: 2, currentLevel: 1, currentLevelApprovals: 0 });
+    expect(r0.levels).toEqual([
+      { checkerRoles: ["ORG_CHECKER"], checkers: 1 },
+      { checkerRoles: ["ORG_OWNER"], checkers: 1 },
+    ]);
+    // Level 2's role cannot decide while level 1 is open; the maker never decides.
+    expect(await err(engine.decide(user("usr_o", ["ORG_OWNER"]), id, "approve"))).toBe(
+      "IPB-UX-011",
+    );
+    expect(
+      await err(engine.decide(user("usr_maker", ["ORG_ADMIN", "ORG_CHECKER"]), id, "approve")),
+    ).toBe("IPB-SEC-007");
+    const both = user("usr_both", ["ORG_CHECKER", "ORG_OWNER"]);
+    const r1 = await engine.decide(both, id, "approve");
+    expect(r1).toMatchObject({ state: "pending", currentLevel: 2, currentLevelApprovals: 0 });
+    expect(r1.approvedAt).toBeNull();
+    // An earlier level's checker never decides a later level.
+    await expect(engine.decide(both, id, "approve")).rejects.toThrow(/already decided/);
+    const r2 = await engine.decide(user("usr_o", ["ORG_OWNER"]), id, "approve");
+    expect(["approved", "executed"]).toContain(r2.state);
+    expect(r2.currentLevel).toBeNull();
+    const levelsDecided = await db.admin.query<{ level: number }>(
+      "select level from tenancy.approval_decision where request_id = $1 order by decided_at",
+      [id],
+    );
+    expect(levelsDecided.rows.map((x) => x.level)).toEqual([1, 2]);
+
+    // A rejection at any level ends the request.
+    const rej = await make({
+      action: "org.setting.change",
+      riskClass: "R2",
+      payload: { k: 2 },
+      levels,
+    });
+    await engine.decide(user("usr_c1", ["ORG_CHECKER"]), rej.id, "approve");
+    expect((await engine.decide(user("usr_o", ["ORG_OWNER"]), rej.id, "reject")).state).toBe(
+      "rejected",
+    );
+    expect(
+      await err(engine.decide(user("usr_o2", ["ORG_OWNER"]), rej.id, "approve")),
+    ).not.toBeNull();
+  });
+
+  it("ordered levels: the delay runs from the last level, and a loosening definition is refused", async () => {
+    const levels = [
+      { checkerRoles: ["ORG_CHECKER"] },
+      { checkerRoles: ["ORG_OWNER"], checkers: 2 },
+    ];
+    const { id } = await make({
+      action: "access.ip_allowlist.change",
+      riskClass: "R4",
+      payload: {},
+      levels,
+    });
+    expect((await engine.get(maker, id)).requiredCheckers).toBe(3);
+    expect(
+      (await engine.decide(user("usr_c", ["ORG_CHECKER"]), id, "approve")).delayUntil,
+    ).toBeNull();
+    const mid = await engine.decide(user("usr_o1", ["ORG_OWNER"]), id, "approve");
+    expect(mid).toMatchObject({
+      state: "pending",
+      currentLevel: 2,
+      currentLevelApprovals: 1,
+      delayUntil: null,
+    });
+    const last = await engine.decide(user("usr_o2", ["ORG_OWNER"]), id, "approve");
+    expect(last.state).toBe("approved");
+    expect(last.delayUntil!.getTime()).toBeGreaterThan(last.approvedAt!.getTime());
+    expect(await err(engine.execute(user("usr_o2", ["ORG_OWNER"]), id))).toBe("IPB-SEC-008");
+    for (const bad of [
+      [{ checkerRoles: ["ORG_MEMBER"] }],
+      [{ checkerRoles: ["ORG_CHECKER"] }, { checkerRoles: ["AGT_VIDHI"] }],
+      [{ checkerRoles: [] }],
+      [{ checkerRoles: ["ORG_CHECKER"], checkers: 4 }],
+      Array.from({ length: 6 }, () => ({ checkerRoles: ["ORG_CHECKER"] })),
+      [],
+    ])
+      await expect(
+        make({ action: "org.setting.change", riskClass: "R2", payload: { k: 3 }, levels: bad }),
+      ).rejects.toThrow(TypeError);
   });
 
   it("cancelIn cancels inside the caller's transaction, with a reason (PR-LDC-37)", async () => {

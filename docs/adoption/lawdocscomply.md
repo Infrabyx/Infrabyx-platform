@@ -128,3 +128,4 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 ## Wave 14 (in progress)
 
 - **PR-LDC-55 (`contracts`, `connectors` minors):** build your floor with `mfaFloor`, guard with `assertMfaForRoles(claims, floor, { stepUp })`, answer `stepUpChallenge` as a 401, and add `assertStepUpReachable` to a boot test (product guide §7bt). **Shim removed:** your product MFA floor.
+- **#125 ordered approval levels (`contracts`, `tenancy`, `workflow` minors; migration `tenancy/0023`):** pass `levels` on one request instead of chaining a request per level (product guide §7bu). **Shim removed:** the per-level chaining.

@@ -134,3 +134,4 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 ## Wave 14 (in progress)
 
 - **PR-FBX-12 item 2 (with LawDocsComply PR-LDC-55; `contracts`, `connectors` minors):** replace `assertStaffMfa` with `mfaFloor` and `assertMfaForRoles(claims, floor)` (product guide §7bt). **Shim removed:** `assertStaffMfa`.
+- **#125 ordered approval levels (`contracts`, `tenancy`, `workflow` minors; migration `tenancy/0023`):** pass `levels` on one request instead of chaining a request per level (product guide §7bu). **Shim removed:** the per-level chaining.
