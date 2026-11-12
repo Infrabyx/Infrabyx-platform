@@ -30,6 +30,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Local verification:** build, typecheck and lint of the touched packages; unit tests of `contracts`, `testing`, `connectors`, `config`; `tenancy`, `workflow` and the settings integration suites on PostgreSQL 16; `scripts` tests; `ipb-check`; exit runbook regenerated. The ClamAV contract leg needs Docker, so it first runs at the gate.
 - **Gate not before 16 Nov:** the pinned `clamav/clamav:1.5.4` digest was pushed on 9 Nov (PL2-D-32). `connectors` gains the `./av` export; its minor changeset covers the export-map gate.
 - **Triage (12 Nov, R1-D-122):** Finbyx PR-FBX-46 accepted: `AccountingSinkPort` interface, fake and contract cases in wave 13 (M93); the TallyPrime adapter in wave 15 after a wave-14 design (its local agent runs outside the cluster).
+- **Triage (12 Nov, R1-D-123, R1-D-124):** LawDocsComply PR-LDC-45 to PR-LDC-54. Wave 14 opens with PR-LDC-49 and PR-LDC-54, then PR-LDC-45, the `ProviderIncident` schema (PR-LDC-51, otherwise rejected) and the PR-LDC-50 design; wave 15: PR-LDC-50 build, PR-LDC-46, PR-LDC-52; wave 16: PR-LDC-47, PR-LDC-53 (adapters wait for #126).
 - **Next, in order:** PR-LDC-30 (`audit` business ids), the PR-LDC-31 writer (`export`), PR-LDC-36 arrows (`export` patch), PR-FBX-46 (M93), the PR-LDC-33 v1.5 draft; then the gate (`ci:run`) on or after 16 Nov, the version PR and the release record. The 12 Nov Keycloak 26.8.2 move is a separate PR.
 
 ## Triage of LawDocsComply PR-LDC-37 to PR-LDC-44 (10 Nov; R1-D-117, R1-D-118)
