@@ -130,3 +130,7 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 ## Wave 13 (PR-FBX-46)
 
 - **PR-FBX-46 (`contracts`, `testing` minors):** replace your `AccountingSink` interface and fake with `AccountingSinkPort`, `assertBalancedBatch`, `FakeAccountingSink` and `accountingContractCases` (product guide §7br). A changed batch needs a new `journalId`. Keep your TallyPrime JSON file adapter until the platform's TallyPrime adapter ships (wave 15). **Shim removed:** the interface and fake.
+
+## Wave 14 (in progress)
+
+- **PR-FBX-12 item 2 (with LawDocsComply PR-LDC-55; `contracts`, `connectors` minors):** replace `assertStaffMfa` with `mfaFloor` and `assertMfaForRoles(claims, floor)` (product guide §7bt). **Shim removed:** `assertStaffMfa`.

@@ -164,3 +164,46 @@ export const MFA_REQUIRED_ROLE_FLOOR: readonly string[] = [
 ];
 export const mfaRequired = (roles: readonly string[]): boolean =>
   roles.some((r) => MFA_REQUIRED_ROLE_FLOOR.includes(r) || isOpsRole(r));
+
+/**
+ * A product's MFA floor (LawDocsComply PR-LDC-55, Finbyx PR-FBX-12 item 2; R1-D-127, R1-D-135):
+ * the platform floor plus the product's own roles, and the roles for which SMS does not count as
+ * a second factor. Built only by `mfaFloor`, which can add roles and never remove one.
+ */
+export interface MfaFloor {
+  readonly roles: readonly string[];
+  readonly smsExcludedRoles: readonly string[];
+}
+
+/** The platform's floor, as `mfaRequired` applies it. */
+export const PLATFORM_MFA_FLOOR: MfaFloor = Object.freeze({
+  roles: Object.freeze([...MFA_REQUIRED_ROLE_FLOOR]),
+  smsExcludedRoles: Object.freeze([]) as readonly string[],
+});
+
+/**
+ * Tighten the floor: `roles` join the platform's (which always stay), and every role in
+ * `smsExcludedRoles` must be on the resulting floor (or an OPS role). Refuses (`TypeError`) a
+ * name that is not a role (`RoleSchema`), so a typo fails at boot instead of silently leaving a role unguarded.
+ */
+export function mfaFloor(
+  o: { roles?: readonly string[]; smsExcludedRoles?: readonly string[] } = {},
+): MfaFloor {
+  const check = (r: unknown, what: string): string => {
+    if (typeof r !== "string" || !RoleSchema.safeParse(r).success)
+      throw new TypeError(`mfaFloor: ${what} ${JSON.stringify(r)} is not a role name`);
+    return r;
+  };
+  const roles = [
+    ...new Set([...MFA_REQUIRED_ROLE_FLOOR, ...(o.roles ?? []).map((r) => check(r, "role"))]),
+  ];
+  const sms = [...new Set((o.smsExcludedRoles ?? []).map((r) => check(r, "SMS-excluded role")))];
+  for (const r of sms)
+    if (!roles.includes(r) && !isOpsRole(r))
+      throw new TypeError(`mfaFloor: SMS-excluded role ${r} is not on the floor; add it to roles`);
+  return Object.freeze({ roles: Object.freeze(roles), smsExcludedRoles: Object.freeze(sms) });
+}
+
+/** Whether `roles` need MFA under `floor`; the platform floor applies whatever `floor` holds. */
+export const mfaRequiredBy = (floor: MfaFloor, roles: readonly string[]): boolean =>
+  mfaRequired(roles) || roles.some((r) => floor.roles.includes(r));
