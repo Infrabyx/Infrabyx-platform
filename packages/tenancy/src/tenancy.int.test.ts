@@ -440,6 +440,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0021_register_outbox.sql",
       "@infrabyx/tenancy/0022_approval_cancel_reason.sql",
       "@infrabyx/tenancy/0023_approval_levels.sql",
+      "@infrabyx/tenancy/0024_rate_limit.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");

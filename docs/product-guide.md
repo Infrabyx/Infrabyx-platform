@@ -583,6 +583,10 @@ Pass `levels` with `approvals.request(tx, { ..., levels: [{ checkerRoles: ["ORG_
 
 Create a rule set for forecasts and what-if views with `createRuleSet(ctx, { key, ownerModule, purpose: "projection" })`, publish it as usual (R4), and run `rules.project(ctx, { ruleSetId }, inputs)` for up to 1,000 inputs: you get `{ outcome, outputs, reason }` per input, no decision id, no decision record, no ledger entry and no review item. A projection set cannot be evaluated as a decision, and a decision-grade set cannot be projected (`IPB-RULE-003`), so anything you act on still comes from `evaluate` and is recorded. Run migration `rules/0004`. **Shim removed:** evaluating decision-grade sets in a loop for forecasts (and the decision records it left).
 
+## 7bw. A shared rate limit (PR-LDC-54; owner answer #129; R1-D-149)
+
+For a public or token-authenticated route, build one `RateLimiter({ pool, product, root })` per process (`root` is your blind-index root: `loadBlindIndexRoot(secrets, { appEnv, product })`, `localBlindIndexRoot()` below staging) and call `limiter.consume({ tenantId }, "ldc.public_read", token, { limit, windowSeconds })` before the work. It counts in PostgreSQL, so every pod shares the window; it throws 429 `IPB-SEC-019` past the limit (`rateLimitHeaders(result)` gives `Retry-After` and the `RateLimit-*` headers), and `hit` returns the result without throwing. Read `limit` and `windowSeconds` from settings you register (IPB-07). The key is stored only as a keyed hash, and a hit writes no ledger entry. Schedule `new RateLimitSweep({ kernel, audit }).sweep(tenantSweep)` daily: it deletes only counters whose window has ended and writes one ledger entry per tenant and run. Run migration `tenancy/0024`. **Shim removed:** your in-process counter.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
