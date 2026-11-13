@@ -40,9 +40,17 @@ export class FakeFileScan implements FileScanPort {
   ) {}
   async health(): Promise<PortHealth> {
     return {
-      status: this.mode === "unavailable" ? "down" : "up",
+      status:
+        this.mode === "unavailable" ? "down" : this.mode === "stale_signatures" ? "degraded" : "up",
       latency_ms: 0,
       checked_at: new Date().toISOString(),
+      detail: {
+        engine: "fake-av 1",
+        signatures_at: new Date().toISOString(),
+        signature_age_hours: this.mode === "stale_signatures" ? 49 : 0,
+        max_signature_age_hours: 48,
+        signatures_fresh: this.mode !== "stale_signatures",
+      },
     };
   }
   async scan(raw: DocFileRef): Promise<FileScanResult> {
@@ -150,6 +158,19 @@ export function fileScanContractCases(storage: StoragePort): Array<ContractCase<
         await expect(
           p.scan({ storageKey: `${PREFIX}/${ulid()}`, sha256: "nothex" }),
         ).rejects.toThrow();
+      },
+    },
+    {
+      name: "health reports signature-database freshness (PR-LDC-41)",
+      async run(p) {
+        const h = await p.health();
+        expect(h.status).not.toBe("down");
+        const d = h.detail ?? {};
+        expect(typeof d.engine).toBe("string");
+        expect(typeof d.max_signature_age_hours).toBe("number");
+        expect(typeof d.signatures_fresh).toBe("boolean");
+        expect(d.signatures_fresh).toBe(h.status === "up");
+        if (d.signature_age_hours !== null) expect(d.signature_age_hours).toBeGreaterThanOrEqual(0);
       },
     },
   ];
