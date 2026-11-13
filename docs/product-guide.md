@@ -599,6 +599,10 @@ The rule engines evaluate only the declared inputs a decision records, so replay
 
 A consumer of `in.infrabyx.grc.ObligationPublished.v1` validates with `obligationPublishedProblems(envelope)` (an empty list means valid), processes each `(obligation_ref, version)` once, stores a lower `version` that arrives after a higher one without applying it, and pulls the obligation's text, citations or owner from `GET /v1/grc/obligations?updated_since=` when it needs them. The event carries ids and keys only (`dataclass = INTERNAL`); anything else, including text, is refused. The producer emits it under the canonical type, never `in.lawdocscomply.cnt.ObligationPublished.v1` (spec §6.17).
 
+## 7ca. Letterhead text, a cover and a subdomain (PR-LDC-43; R1-D-153)
+
+The tenant brand layer takes three more optional fields, proposed and approved like the rest (R3): `letterhead_text: { header?, footer? }` (plain text, at most 2,000 characters each, new lines allowed, no markup and no `javascript:` or `data:` links), `cover` (an asset in the tenant's storage: PDF, PNG, JPEG or an SVG from `uploadSvg`), and `subdomain` (one label, for example `acme`, served as `acme.<your pack's app host>`). `resolveForTenant` and `resolveHost` return `letterheadText`, `cover` and `subdomain`. Your deployment keeps the wildcard DNS record and certificate for the app host; the subdomain resolves once the app host is verified. Reserved labels (`www`, `api`, `admin`, `login`, product codes and similar) and `xn--` labels are refused. **Shim removed:** your letterhead-text, cover and subdomain tables.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

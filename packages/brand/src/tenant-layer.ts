@@ -69,8 +69,14 @@ export interface AppliedBrand {
   body: BrandPackBody;
   favicon: MediaRef | null;
   letterhead: MediaRef | null;
+  /** Letterhead header and footer text (PR-LDC-43). */
+  letterheadText: { header: string | null; footer: string | null } | null;
+  /** The cover asset of generated PDFs (PR-LDC-43). */
+  cover: MediaRef | null;
   loginMessage: string | null;
   domain: string | null;
+  /** The tenant's subdomain label (PR-LDC-43), served as `<label>.<the pack's app host>`. */
+  subdomain: string | null;
   /** The guard on the colour set served (re-run at every resolution). */
   contrast: ContrastGuardResult;
   /**
@@ -248,10 +254,13 @@ export class TenantBrandLayers {
         await this.assertAsset(ctx, ref, ["image/png"]);
     }
     if (layer.favicon) await this.assertSanitisedSvg(ctx, layer.favicon, "favicon");
-    if (layer.letterhead) {
-      if (layer.letterhead.content_type === "image/svg+xml")
-        await this.assertSanitisedSvg(ctx, layer.letterhead, "letterhead");
-      else await this.assertAsset(ctx, layer.letterhead, LETTERHEAD_TYPES);
+    for (const [what, ref] of [
+      ["letterhead", layer.letterhead],
+      ["cover", layer.cover],
+    ] as const) {
+      if (!ref) continue;
+      if (ref.content_type === "image/svg+xml") await this.assertSanitisedSvg(ctx, ref, what);
+      else await this.assertAsset(ctx, ref, LETTERHEAD_TYPES);
     }
     const domain = layerEmailDomain(layer);
     if (domain && !(await this.o.hooks.emailIdentityVerified(ctx, domain)))
@@ -307,6 +316,10 @@ export class TenantBrandLayers {
           ],
         );
         if (layer.domain) await this.assertHostFree(tx, layer.domain, version, pack.id, true);
+        if (layer.subdomain) {
+          const sub = await this.subdomainHost(tx, pack.id, layer.subdomain);
+          await this.assertHostFree(tx, sub.host, version, pack.id, true);
+        }
         const fields = layerFields(layer);
         const { id } = await this.o.approvals.request(tx, {
           action: TENANT_LAYER_ACTION,
@@ -404,8 +417,16 @@ export class TenantBrandLayers {
       body: applyTenantLayer(pack.body, layer, { colours: events.length === 0 }),
       favicon: layer?.favicon ?? null,
       letterhead: layer?.letterhead ?? null,
+      letterheadText: layer?.letterhead_text
+        ? {
+            header: layer.letterhead_text.header ?? null,
+            footer: layer.letterhead_text.footer ?? null,
+          }
+        : null,
+      cover: layer?.cover ?? null,
       loginMessage: layer?.login_message ?? null,
       domain: layer?.domain ?? null,
+      subdomain: layer?.subdomain ?? null,
       contrast,
       events,
     };
@@ -480,6 +501,14 @@ export class TenantBrandLayers {
       verified = (await this.o.hooks.domainVerified?.(ctx, layer.domain)) ?? false;
       await this.assertHostFree(tx, layer.domain, row.version, pack.id, false, verified);
     }
+    // The subdomain is verified when the pack's app host is: its DNS and certificate are the
+    // product's own deployment, not the tenant's (PR-LDC-43).
+    let subdomainHost: string | null = null;
+    if (layer.subdomain) {
+      const sub = await this.subdomainHost(tx, pack.id, layer.subdomain);
+      subdomainHost = sub.host;
+      await this.assertHostFree(tx, sub.host, row.version, pack.id, false, sub.verified);
+    }
     await this.o.audit.record(tx, {
       action: row.revert_of ? "brand.tenant_layer.revert" : "brand.tenant_layer.apply",
       resourceType: "brand_tenant_layer",
@@ -491,6 +520,7 @@ export class TenantBrandLayers {
         fields: layerFields(layer),
         domain: layer.domain ?? null,
         domain_verified: verified,
+        subdomain_host: subdomainHost,
         approval_id: request.id,
         revert_of: row.revert_of,
       },
@@ -531,6 +561,31 @@ export class TenantBrandLayers {
         host,
         tx.ctx.tenantId,
       ]);
+  }
+
+  /**
+   * The host a subdomain label serves: `<label>.<the pack's APP host>`. The pack must have exactly
+   * one APP host; with none or several there is no single parent and the label is refused
+   * (`IPB-BRD-002`). The result is verified when the APP host is.
+   */
+  private async subdomainHost(
+    tx: Tx,
+    packId: string,
+    label: string,
+  ): Promise<{ host: string; verified: boolean }> {
+    const r = await tx.query<{ host: string; verified: boolean }>(
+      "select host, verified from brand.host where pack_id = $1 and role = 'APP' order by host",
+      [packId],
+    );
+    if (r.rows.length !== 1)
+      throw new IpbError("IPB-BRD-002", {
+        detail: "a subdomain needs the brand pack to have exactly one app host",
+      });
+    const parent = r.rows[0]!;
+    const host = `${label}.${parent.host}`;
+    if (host.length > 253 || normaliseHost(host) !== host)
+      throw new IpbError("IPB-BRD-002", { detail: `${host} is not a host name` });
+    return { host, verified: parent.verified };
   }
 
   /** A pending version whose request was rejected, cancelled or expired, or null; refused while one is live. */
