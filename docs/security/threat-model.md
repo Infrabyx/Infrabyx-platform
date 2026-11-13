@@ -1109,6 +1109,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 ### 3.112 Keycloak base: two more `sqlite-libs` findings (waived 30 days; R1-D-115)
 
 - **T and D (a crafted SQLite file or changeset):** CVE-2026-119374 (FTS5 secure-delete) and CVE-2026-119379 (session changeset apply) are in UBI 9 `sqlite-libs` of the Keycloak 26.8.1-2 image, with no fixed build. Keycloak keeps its state in PostgreSQL, opens no SQLite database, builds no FTS5 index and applies no changesets, so no input reaches either path. Waived until 2026-12-10 (`infra/docker/trivyignore.yaml`), with the two earlier `sqlite-libs` findings (R1-D-109).
+- **Reassessed 12 Nov (R1-D-134):** the move to Keycloak 26.8.2-0 leaves both findings (and the four 20 Dec waivers) unchanged; the later 26.8.2 rebuilds (-1, -2) carry the same `sqlite-libs` build. The exposure analysis above stands.
 
 ### 3.113 The AV port and the ClamAV adapter (`contracts`, `connectors/av`; PR-LDC-41, R1-D-117)
 

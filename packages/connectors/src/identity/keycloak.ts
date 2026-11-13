@@ -1164,6 +1164,7 @@ export class KeycloakIdentity implements IdentityPort {
       ].includes(r.name),
     );
     await call("POST", `/${realm}/users/${sa.id}/role-mappings/clients/${rm}`, grant);
+    await grantAdminApiScope(call, `/${realm}`, adminCid);
     // The API client's own service account: a platform service principal (issueToken).
     const apiSa = await call<Record<string, unknown> & { id: string }>(
       "GET",
@@ -1228,4 +1229,29 @@ export function keycloakEgress(
     ...(allowLoopbackHttp ? { allowLoopbackHttp: true } : {}),
     ...(fetchImpl ? { fetchImpl } : {}),
   });
+}
+
+/** The client scope Keycloak 26.8.2's Admin REST API audience check requires (R1-D-152). */
+export const KEYCLOAK_ADMIN_API_SCOPE = "kc-admin-api";
+
+/**
+ * From Keycloak 26.8.2 the Admin REST API refuses (401) a token without the admin audience, which
+ * only the built-in `kc-admin-api` client scope adds; the built-in admin clients get it and a
+ * realm's own service account does not. Make it a default scope of the admin service account's
+ * client, so its client-credentials token carries the audience. A realm on an earlier version has
+ * no such scope, and nothing changes (R1-D-152; #253).
+ */
+export async function grantAdminApiScope(
+  call: <T>(method: string, path: string, body?: unknown) => Promise<T>,
+  realmPath: string,
+  clientUuid: string,
+): Promise<boolean> {
+  const scopes = await call<Array<{ id: string; name: string }>>(
+    "GET",
+    `${realmPath}/client-scopes`,
+  );
+  const scope = scopes.find((x) => x.name === KEYCLOAK_ADMIN_API_SCOPE);
+  if (!scope) return false;
+  await call("PUT", `${realmPath}/clients/${clientUuid}/default-client-scopes/${scope.id}`);
+  return true;
 }

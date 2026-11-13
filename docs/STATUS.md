@@ -14,30 +14,35 @@ Updated: 2026-11-13
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                         | Expires    | Review                                 | Decision           |
-| -------------------------------- | ----------------------------- | ---------- | -------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                  | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                 | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                 | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 12 Nov (26.8.2), 1 Dec, 15 Dec         | R1-D-115, R1-D-116 |
-| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner) | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
+| Finding                          | Where                         | Expires    | Review                                    | Decision           |
+| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+
+## Keycloak 26.8.2-0 pinned (12 Nov, #124, R1-D-134)
+
+- **Scan:** Keycloak re-tagged 26.8.2: the planned digest (`sha256:3879c623…`, pushed 5 Nov) is now `26.8.2-0`, and `26.8.2` moved to rebuild `26.8.2-2` (12 Nov). 26.8.1-2, 26.8.2-0, -1 and -2 all show the same six HIGH findings and no CRITICAL (Trivy 0.76.0, database of 12 Nov): nothing new, nothing cleared.
+- **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
+- **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
 ## Handover (2026-11-13, twelfth session)
 
-- **Branches and PRs:** #252 wave 13 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready; gate on or after 16 Nov). #254 spec v1.5 (`claude/spec-v1-5`, docs only, waiting for the owner's one-off bypass; merge it, then tell the owner to remove the bypass). #253 Keycloak 26.8.2-0 with the `kc-admin-api` fix (R1-D-152): its one `ci:run` started 13 Nov (run 43415930024 and port-contract run 43415929955); a one-off check-in (`trig_01G7d95V7UybecJHMNxDXC3D`, 12:06 UTC 13 Nov) reads the result once. If `contract (IDENTITY)`, `compose` and `reference` are green, merge it when every check is green; if not, keep 26.8.1-2 and report. Wave 14 is `claude/wave-14` (pushed; wave 13 merged in; no PR yet: open it after #252 and #254 merge, merging `main` in first).
+- **Branches and PRs:** #252 wave 13 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready; gate on or after 16 Nov). #254 spec v1.5 (`claude/spec-v1-5`, docs only, waiting for the owner's one-off bypass; merge it, then tell the owner to remove the bypass). #253 (Keycloak 26.8.2-0 and the `kc-admin-api` fix) merged 13 Nov after a green gate (`26c3035`); its version PR and release record are next. Wave 14 is `claude/wave-14` (pushed; wave 13 merged in; no PR yet: open it after #252 and #254 merge, merging `main` in first).
 - **Owner answers recorded (R1-D-144):** #127, #128, #129, the Keycloak hold, and PR-FBX-45 asked on 1 Dec. **Open questions:** #130 (PR-LDC-59 CONFIDENTIAL values in `explain`), #131 (the `ProviderIncident` severity scale, R1-D-138).
 - **Check-ins (this chat):** daily `trig_01JY4BzC7QoWVpAfdLHuXYSD` (17:41 IST), 1 Dec `trig_013Rjds88BuhijSkJPnvaJNz`, 15 Dec `trig_01T38v6QcqQyXJwXwfwbWyTM`; the eleventh session's three are disabled.
 - **Local environment notes:** Node 24.22.1 at `/opt/node24/bin`; PostgreSQL 16 needs `service postgresql start`, the `postgres` password set and `postgresql-16-pgvector` installed in a fresh container (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`, `INFRABYX_TEST_INT=1`); no Docker; www.keycloak.org is not reachable from here (GitHub is).
 
 HANDOVER READY
 
-## Keycloak 26.8.2 held (12 Nov, R1-D-134, R1-D-142)
+## Keycloak 26.8.2-0 pinned (13 Nov, #253, R1-D-134, R1-D-152)
 
-- **#253** pinned `26.8.2-0` (same six findings as 26.8.1-2, nothing new). Its gate failed `contract (IDENTITY)`: 26.8.2's admin API answers 401 on `/identity-provider` (brokers) despite the granted roles; `compose` and `reference` also failed. Not reproducible here (no Docker). **Held**: the platform stays on 26.8.1-2 (no security cost), `ci:run` removed, PR left open.
-- **PR-FBX-45 / PR-LDC-44:** the two `sqlite-libs` findings are present in every 26.8.2 build; waivers stay to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec.
-- **Next:** find the 26.8.2 identity-provider authorisation change (adapter or realm set-up) before the 15 Dec re-scan, which re-decides the pin.
+- **Cause of the 12 Nov failure:** Keycloak 26.8.2 added an audience check to the Admin REST API; a realm service account's token needs the built-in `kc-admin-api` client scope (upstream keycloak/keycloak#54748, intended). `applyRealm` now adds it to the admin client when the realm has it (R1-D-152).
+- **Gate:** one `ci:run` (runs 43415930024, 43415929955), all 40 checks green; #253 merged as `26c3035` (`connectors`, `testing` patches). The version PR and release record follow (#81(a)). Waivers unchanged: the same six findings as 26.8.1-2; the two `sqlite-libs` waivers stay to 10 Dec (1 Dec owner question).
 
 ## Wave 14 (eleventh and twelfth sessions, 12–13 Nov): in progress on `claude/wave-14` (built on wave 13)
 
