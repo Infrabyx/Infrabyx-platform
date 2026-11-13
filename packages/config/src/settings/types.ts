@@ -27,6 +27,14 @@ export interface SettingDef {
   values?: readonly string[];
   min?: number;
   max?: number;
+  /**
+   * List types only (`string[]`, `enum[]`, `cidr[]`; PR-LDC-56): the fewest and most items a value
+   * may have, and whether its items must all differ ("at least two different approvers" is
+   * `minItems: 2, uniqueItems: true`). Checked on every write path and at registration.
+   */
+  minItems?: number;
+  maxItems?: number;
+  uniqueItems?: boolean;
   locked: boolean;
   tighten?: Tighten;
   userOverride: boolean;

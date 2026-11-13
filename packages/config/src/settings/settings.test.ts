@@ -213,6 +213,70 @@ describe("SettingsService.setIn: a write inside the caller's transaction (PR-LDC
   });
 });
 
+describe("list bounds on settings (PR-LDC-56, R1-D-145)", () => {
+  const approvers: SettingDef = {
+    key: "ldc.policy.approver_ids",
+    tier: "TENANT",
+    type: "string[]",
+    default: null,
+    minItems: 2,
+    maxItems: 5,
+    uniqueItems: true,
+    locked: false,
+    userOverride: false,
+    change: ["LDC_COMPLIANCE_HEAD"],
+    mc: false,
+    source: "PR-LDC-56 fixture",
+  };
+  const tenant = { tier: "TENANT" as const, scopeId: "tnt_a" };
+  it("set and setIn refuse too few, too many or repeated items; two different ones apply", async () => {
+    const { svc, kernel } = setup([approvers]);
+    const head = ctxFor(["LDC_COMPLIANCE_HEAD"]);
+    for (const bad of [["usr_a"], ["usr_a", "usr_a"], ["a", "b", "c", "d", "e", "f"]]) {
+      expect(await codeAsync(svc.set(head, approvers.key, tenant, bad))).toBe("IPB-UX-008");
+      expect(
+        await codeAsync(kernel.mutate(head, (tx) => svc.setIn(tx, approvers.key, tenant, bad))),
+      ).toBe("IPB-UX-008");
+    }
+    expect(await svc.set(head, approvers.key, tenant, ["usr_a", "usr_b"])).toMatchObject({
+      status: "applied",
+    });
+    expect(await svc.get(head, approvers.key as never)).toEqual(["usr_a", "usr_b"]);
+  });
+  it("the bounds are checked when an approved change is executed, too", async () => {
+    const mc: SettingDef = { ...approvers, key: "ldc.policy.approver_ids_mc", mc: "R4" };
+    const { svc, approvals, kernel } = setup([mc]);
+    const head = ctxFor(["LDC_COMPLIANCE_HEAD"]);
+    expect(await codeAsync(svc.set(head, mc.key, tenant, ["usr_a"]))).toBe("IPB-UX-008");
+    expect(await svc.set(head, mc.key, tenant, ["usr_a", "usr_b"])).toMatchObject({
+      status: "pending",
+    });
+    // A payload changed after the request was raised is refused at execution.
+    const payload = { ...(approvals.requests[0]?.payload as object), value: ["usr_a", "usr_a"] };
+    const checker = ctxFor(["ORG_CHECKER"], {
+      principal: { id: "usr_checker", type: "user", roles: ["ORG_CHECKER"] },
+    });
+    expect(
+      await codeAsync(
+        kernel.mutate(checker, (tx) => svc.applyApproved(tx, payload as never, "apr_1")),
+      ),
+    ).toBe("IPB-UX-008");
+  });
+  it("a definition with bounds on a non-list type, inverted bounds or a default outside them fails at registration", () => {
+    const reg = (d: Partial<SettingDef>) =>
+      code(() => new SettingsRegistry([...defaultRegistry.all(), { ...approvers, ...d }]));
+    expect(reg({})).toBeNull();
+    expect(reg({ type: "int", default: 1 })).toBe("IPB-UX-008");
+    expect(reg({ minItems: 3, maxItems: 2 })).toBe("IPB-UX-008");
+    expect(reg({ minItems: -1 })).toBe("IPB-UX-008");
+    expect(reg({ default: ["usr_a"] })).toBe("IPB-UX-008");
+    expect(reg({ default: ["usr_a", "usr_b"] })).toBeNull();
+    expect(
+      code(() => assertValid({ ...approvers, type: "enum[]", values: ["A", "B"] }, ["A", "A"])),
+    ).toBe("IPB-UX-008");
+  });
+});
+
 describe("SettingsService writes", () => {
   it("applies a change with ledger entry and SettingChanged in the same mutation (IPB-07-39)", async () => {
     const { svc, audit, outbox, kernel } = setup();

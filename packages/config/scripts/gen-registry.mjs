@@ -68,6 +68,16 @@ for (const k of doc.keys) {
   if (!k.source) errors.push(`${k.key}: source required`);
   if (k.mc_deactivate && (!["R2", "R4"].includes(k.mc_deactivate) || k.type !== "bool" || k.mc))
     errors.push(`${k.key}: mc_deactivate is R2 or R4 on a bool key without mc`);
+  const items = ["min_items", "max_items", "unique_items"].filter((f) => k[f] !== undefined);
+  if (items.length && !["string[]", "enum[]", "cidr[]"].includes(k.type))
+    errors.push(`${k.key}: ${items.join(", ")} apply to list types only`);
+  for (const f of ["min_items", "max_items"])
+    if (k[f] !== undefined && !(Number.isInteger(k[f]) && k[f] >= 0 && k[f] <= 10000))
+      errors.push(`${k.key}: ${f} is an integer from 0 to 10000`);
+  if (k.min_items !== undefined && k.max_items !== undefined && k.min_items > k.max_items)
+    errors.push(`${k.key}: min_items is above max_items`);
+  if (k.unique_items !== undefined && typeof k.unique_items !== "boolean")
+    errors.push(`${k.key}: unique_items is true or false`);
   if (k.tighten && !["min", "max", "superset", "subset", true, false].includes(k.tighten))
     errors.push(`${k.key}: bad tighten ${k.tighten}`);
 }
@@ -99,6 +109,9 @@ const defs = doc.keys.map((k) => {
     ...(k.values ? { values: k.values } : {}),
     ...(k.min !== undefined ? { min: k.min } : {}),
     ...(k.max !== undefined ? { max: k.max } : {}),
+    ...(k.min_items !== undefined ? { minItems: k.min_items } : {}),
+    ...(k.max_items !== undefined ? { maxItems: k.max_items } : {}),
+    ...(k.unique_items !== undefined ? { uniqueItems: k.unique_items } : {}),
     locked: Boolean(k.locked),
     ...(k.tighten !== undefined ? { tighten: k.tighten } : {}),
     userOverride: Boolean(k.user_override),

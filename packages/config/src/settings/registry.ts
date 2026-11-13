@@ -2,12 +2,19 @@
 import { IpbError } from "@infrabyx/contracts/errors";
 import { SETTING_DEFS, type SettingKey } from "./registry.generated.js";
 import type { SettingDef } from "./types.js";
+import { definitionErrors } from "./validate.js";
 
 export class SettingsRegistry {
   private readonly exact = new Map<string, SettingDef>();
   private readonly patterns: Array<{ re: RegExp; def: SettingDef }> = [];
 
   constructor(defs: readonly SettingDef[] = SETTING_DEFS) {
+    const problems = defs.flatMap(definitionErrors);
+    if (problems.length)
+      throw new IpbError("IPB-UX-008", {
+        detail: `invalid setting definitions: ${problems.join("; ")}`,
+        meta: { problems },
+      });
     for (const d of defs) {
       if (d.pattern) this.patterns.push({ re: new RegExp(d.pattern), def: d });
       else this.exact.set(d.key, d);
