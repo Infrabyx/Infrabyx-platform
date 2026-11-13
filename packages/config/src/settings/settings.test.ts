@@ -131,6 +131,88 @@ describe("scope precedence PLATFORM → PLAN → BRAND → TENANT → ENTITY →
   });
 });
 
+describe("SettingsService.setIn: a write inside the caller's transaction (PR-LDC-42)", () => {
+  const productKey: SettingDef = {
+    key: "ldc.matter.review_days",
+    tier: "TENANT",
+    type: "int",
+    default: 30,
+    min: 1,
+    locked: false,
+    userOverride: false,
+    change: ["LDC_COMPLIANCE_HEAD"],
+    mc: false,
+    source: "PR-LDC-42 fixture",
+  };
+  it("applies with every set check, in the caller's transaction and under its action", async () => {
+    const { svc, audit, outbox, kernel, store } = setup([productKey]);
+    const head = ctxFor(["LDC_COMPLIANCE_HEAD"]);
+    const r = await kernel.mutate(
+      head,
+      async (tx) => {
+        await audit.record(tx, {
+          action: "ldc.matter.update",
+          resourceType: "matter",
+          resourceId: "m1",
+        });
+        return svc.setIn(tx, productKey.key, { tier: "TENANT", scopeId: "tnt_a" }, 14);
+      },
+      { action: "ldc.matter.update" },
+    );
+    expect(r).toEqual({ status: "applied", version: 1 });
+    const stored = await store.read(null, productKey.key, [{ tier: "TENANT", scopeId: "tnt_a" }]);
+    expect(stored[0]?.value).toBe(14);
+    expect(audit.entries.map((e) => e.action)).toEqual([
+      "ldc.matter.update",
+      "settings.setting.change",
+    ]);
+    expect(outbox.events[0]?.envelope.type).toBe("in.fbx.settings.SettingChanged.v1");
+    expect(kernel.actions).toEqual(["ldc.matter.update"]);
+  });
+  it("refuses what set refuses: other roles, other tenants, platform keys, other tiers", async () => {
+    const { svc, kernel } = setup([productKey]);
+    const inTx = (
+      ctx: ReturnType<typeof ctxFor>,
+      key: string,
+      target: { tier: "TENANT" | "PLATFORM" | "USER"; scopeId: string | null },
+      v: unknown,
+    ) => codeAsync(kernel.mutate(ctx, (tx) => svc.setIn(tx, key, target as never, v)));
+    const tenant = { tier: "TENANT" as const, scopeId: "tnt_a" };
+    expect(await inTx(ctxFor(["ORG_ADMIN"]), productKey.key, tenant, 14)).toBe("IPB-UX-011");
+    expect(
+      await inTx(
+        ctxFor(["LDC_COMPLIANCE_HEAD"]),
+        productKey.key,
+        { tier: "TENANT", scopeId: "tnt_other" },
+        14,
+      ),
+    ).toBe("IPB-UX-011");
+    expect(
+      await inTx(ctxFor(["LDC_COMPLIANCE_HEAD"]), "trust.auth.session_idle_minutes", tenant, 20),
+    ).toBe("IPB-UX-011");
+    expect(
+      await inTx(
+        ctxFor(["PLT_SUPER_ADMIN"]),
+        "int.av.clamav.enabled",
+        { tier: "PLATFORM", scopeId: null },
+        true,
+      ),
+    ).toBe("IPB-UX-008");
+    expect(
+      await inTx(ctxFor([]), "ux.density", { tier: "USER", scopeId: "usr_maker" }, "compact"),
+    ).toBe("IPB-UX-008");
+  });
+  it("a key under maker-checker still returns pending, its request raised in the caller's transaction", async () => {
+    const mc: SettingDef = { ...productKey, key: "ldc.matter.escalation_amount", mc: "R4" };
+    const { svc, kernel, store } = setup([mc]);
+    const head = ctxFor(["LDC_COMPLIANCE_HEAD"]);
+    const target = { tier: "TENANT" as const, scopeId: "tnt_a" };
+    const r = await kernel.mutate(head, (tx) => svc.setIn(tx, mc.key, target, 5));
+    expect(r).toMatchObject({ status: "pending" });
+    expect(await store.read(null, mc.key, [target])).toEqual([]);
+  });
+});
+
 describe("SettingsService writes", () => {
   it("applies a change with ledger entry and SettingChanged in the same mutation (IPB-07-39)", async () => {
     const { svc, audit, outbox, kernel } = setup();

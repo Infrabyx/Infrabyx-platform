@@ -535,6 +535,42 @@ Every platform package now registers its outbox for `OutboxRelay` (one `<package
 
 `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` takes the instant the version comes into force, now to 366 days ahead; compute it yourself (for example 00:00 in the entity's time zone). The checker sees it in the R4 request. On approval the previous version stays in force until the cut-over (or the new one applies at approval, if that is later), `RuleSetPublished.effective_from` carries the instant, and as-of reads on either side of it return the right version. Only one cut-over per rule set may be pending; `listRuleSets` shows `scheduledVersion` and `scheduledFrom`.
 
+## 7bl. Scanning uploads: the AV port and ClamAV (PR-LDC-41; R1-D-117)
+
+IPB-02-44 makes the upload scan a platform control. Write every upload to the `QUARANTINE` bucket class, then call `FileScanPort.scan({ storageKey, sha256 })` and act only on `scanDecision(result)`: `release` (copy or move the object to its normal class), `reject` (`IPB-SEC-011`; keep the quarantined copy for the security log) or `quarantine` (`IPB-SEC-015`; schedule a re-scan). Never treat `ERROR` as clean.
+
+- **Adapter (`@infrabyx/connectors/av`, `ClamavFileScan`).** Run clamd in your cluster (ClamAV 1.5.x; the test pin is in `infra/docker/TEST_IMAGES.md`) with `freshclam` updating its signatures daily, and a network policy that admits only your scanning service. Pass `host` (a Service name or private address; public addresses are refused), `port` (3310), your `storage`, and `enabled` from `int.av.clamav.enabled` (off by default, R4). Keep `maxBytes` at or below clamd's `StreamMaxLength` (25 MiB by default).
+- **Tests.** `FakeFileScan` and `fileScanContractCases(storage)` from `@infrabyx/testing`; `EICAR` is the standard test file.
+- **Shim removed (LawDocsComply):** its local ClamAV client.
+
+## 7bm. Cancelling an approval inside your transaction (PR-LDC-37; R1-D-120)
+
+`approvals.cancelIn(tx, requestId, reason)` withdraws a pending or approved request in the same transaction as the change that made it unnecessary: if your write rolls back, the request stays pending. The rules are `cancel`'s (the maker, ORG_OWNER or PLT_SECURITY_OFFICER; never an expired or executed request), the reason is required (1 to 500 characters) and an agent may not cancel. The checker's inbox item closes in the same transaction. `cancel(ctx, id, reason?)` also accepts a reason. Run `infrabyx-migrate` (`tenancy/0022` adds the nullable `cancel_reason` column).
+
+## 7bn. Writing a setting inside your transaction (PR-LDC-42; R1-D-121)
+
+`settings.setIn(tx, key, { tier: "TENANT" | "UNIT", scopeId }, value)` writes a setting in the same transaction as your own records. It makes every check `set` makes: register your keys in your settings tree with the roles that may change them (`change`), and those roles are what authorise the write; platform keys keep the platform's roles. A maker-checker key still answers `pending` and raises its request in your transaction. PLATFORM, ENTITY and USER values go through `set`.
+
+## 7bo. Business ids on the ledger (PR-LDC-30; R1-D-125)
+
+Pass `businessIds` (1 to 16 ids such as an obligation or matter id; never names or personal data) to `audit.record`, and read every entry for one id with `auditService.history(ctx, businessId)` (actor, time, action, before and after digests; paged by `afterSeq`). The ids are part of the entry's hash when present; older entries verify unchanged. Run `infrabyx-migrate`: `audit/0010` adds the column and `audit/0011` builds its index concurrently (writes continue; on a large ledger allow it time).
+
+## 7bp. Workbook forms: widths, validations, named ranges, protection (PR-LDC-31 writer; R1-D-128)
+
+`toXlsx` columns take `width` (1 to 255 characters), `validation` and `editable`; a sheet takes `validationRows` (rows below the header the validations cover, so a template can carry empty validated rows) and `protection`; the options take `namedRanges: [{ name, sheet, range }]`. Validations are typed values only: `list` with `values` (at most 255 characters joined, no comma or double quote) or `namedRange` (one of your `namedRanges`, for a list kept on another sheet), `whole` and `decimal` with `min`/`max`, `date` with ISO `min`/`max`, `textLength` with `max` (and `min`); each may carry a `prompt` and an `error` message. There is no custom-formula validation and no formula text from the caller. `protection` locks every action you do not allow (`sort`, `autoFilter`, `formatCells`, `formatColumns`, `formatRows`, `insertRows`, `deleteRows`) and unlocks only `editable` columns; it never takes a password, because Excel's sheet password is a UI guard, not a control: anything that must not change is checked again when the workbook comes back. A workbook that uses none of these is byte-for-byte what it was before. Refusals are `OfficeExportError` reasons `columns_invalid`, `validation_invalid`, `named_range_invalid`, `protection_invalid`. **Shim removed:** the writer half of an ExcelJS `WorkbookPort`; the bounded reader follows in wave 14 (M84).
+
+## 7bq. Arrows in PDFs (PR-LDC-36; R1-D-129)
+
+`toPdf` now draws the Arrows block (U+2190 to U+21FF: →, ⇒, ↔, ↩ and the rest) from a bundled Noto Sans Math subset, glyph by glyph where Noto Sans has no glyph, so status flows such as “Filed → Accepted” render and stay searchable. The font is embedded only when a document uses an arrow; arrows in bold or italic text are drawn regular. Any other character outside the fonts is still refused with `char_unsupported`. **Shim removed:** replacing arrows with `->` before `toPdf`.
+
+## 7br. Posting to the books: the ACCOUNTING sink (PR-FBX-46; R1-D-130)
+
+`AccountingSinkPort` (`@infrabyx/contracts/ports`) posts a `JournalBatch` (`journalId`, `initiatedBy` a user or your service, `entries` of vouchers with `voucherType`, `date`, `reference` and balanced `lines` in integer paise) and answers `ACKNOWLEDGED` (with the ledger's reference per voucher), `REJECTED` (with a `reasonCode`) or `PENDING`. Post again with the same batch and you get its current result; a changed batch under the same `journalId` is refused (`IPB-PORT-004`), so give a corrected batch a new id. `replay(journalId)` resubmits a pending or rejected batch unchanged; `trialBalance(asOf)` reads balances to reconcile. Run `assertBalancedBatch` in your own code before you queue a batch: the adapter runs it again. Test against `FakeAccountingSink` and `accountingContractCases` (`@infrabyx/testing`). The TallyPrime adapter follows in wave 15; SAP and Zoho Books only when a tenant needs them. **Shim removed:** your own `AccountingSink` interface and fake (keep your TallyPrime file adapter until the platform's ships).
+
+## 7bs. Calendars: the CALENDAR port (PR-LDC-53; R1-D-131)
+
+`CalendarPort` connects a person's own calendar (`beginConnect` with a PKCE S256 challenge, a session-bound `state` and the callback `https://{your console host}/oauth/calendar/{provider}/callback`, then `completeConnect` from that callback) and keeps your entries in it by your external id (`upsertEntry`, `deleteEntry`). Choose each entry's `detail`: `busy` (time only), `title`, or `full` (description and location too); only `calendarPayload(entry)` ever reaches the provider. Only the person connects or disconnects; your service may write entries; agents never write. A disconnected or revoked calendar refuses writes with `IPB-PORT-003` and shows `token_revoked`. Test against `FakeCalendar` and `calendarContractCases`. The Microsoft 365 and Google adapters stay off until the owner registers their OAuth applications (`docs/runbooks/calendar-oauth-apps.md`); keep your ICS export until then. **Shim removed:** none yet (the ICS export goes when an adapter is proven).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

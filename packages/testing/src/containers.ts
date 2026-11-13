@@ -110,6 +110,12 @@ export const TEST_IMAGES = {
     version: "8.39.0",
     role: "Gotenberg (Chromium and LibreOffice, fonts-noto-core) for DOCGEN renderHtml (#120)",
   },
+  clamav: {
+    image:
+      "clamav/clamav:1.5.4@sha256:45fe5149fbee5a46509c9848ef20d0c354b7b2323c9369f285939a37cf33422a",
+    version: "1.5.4",
+    role: "ClamAV clamd with its signature databases, TCP 3310 (AV; PR-LDC-41)",
+  },
   unleash: {
     image:
       "unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050",

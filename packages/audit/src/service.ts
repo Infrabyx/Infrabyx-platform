@@ -36,6 +36,7 @@ import {
   type CaptureVerifyResult,
 } from "./capture.js";
 import type { PgAuditSink } from "./sink.js";
+import { BUSINESS_ID_PATTERN } from "@infrabyx/contracts/kernel";
 
 export const LEDGER_RETENTION_DAYS = 2922; // 8 years (IPB-02-52)
 export const ANCHOR_FORMAT = "infrabyx-audit-anchor/1";
@@ -77,6 +78,8 @@ export interface LedgerFilter {
   to?: Date;
   afterSeq?: number;
   limit?: number;
+  /** Entries that carry this business id (PR-LDC-30; the GIN index of `audit/0011`). */
+  businessId?: string;
 }
 
 /** The action and resource type `ExternalReads` (`@infrabyx/tenancy`) ledgers each read under. */
@@ -227,6 +230,22 @@ export class AuditService {
   /** Tenant-scoped read for the Audit trails node and the tenant export slice (IPB-02-18). */
   async query(ctx: KernelContext, f: LedgerFilter = {}): Promise<LedgerEntry[]> {
     return this.o.kernel.read(ctx, (tx) => this.select(tx, f));
+  }
+
+  /**
+   * The history of one business id (LawDocsComply PR-LDC-30, R1-D-125): every entry that carries it,
+   * in ledger order, with actor, time, action and the before and after digests. Tenant-scoped by the
+   * ledger's RLS; `afterSeq` and `limit` (at most 10,000, default 1,000) page through it.
+   */
+  async history(
+    ctx: KernelContext,
+    businessId: string,
+    page: { afterSeq?: number; limit?: number } = {},
+  ): Promise<LedgerEntry[]> {
+    if (!BUSINESS_ID_PATTERN.test(businessId)) throw new RangeError("invalid business id");
+    return this.o.kernel.read(ctx, (tx) =>
+      this.select(tx, { ...page, limit: page.limit ?? 1_000, businessId }),
+    );
   }
 
   /**
@@ -507,6 +526,7 @@ export class AuditService {
     if (f.from) add("occurred_at >= ?", f.from);
     if (f.to) add("occurred_at < ?", f.to);
     if (f.afterSeq !== undefined) add("seq > ?", f.afterSeq);
+    if (f.businessId !== undefined) add("business_ids @> array[?]::text[]", f.businessId);
     const limit = f.limit ? ` limit ${Math.max(1, Math.min(10_000, Math.floor(f.limit)))}` : "";
     const r = await tx.query<Row>(
       `select * from audit.ledger${where.length ? ` where ${where.join(" and ")}` : ""} order by seq${limit}`,

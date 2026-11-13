@@ -6,6 +6,7 @@ Step-by-step instructions for owner actions the build cannot do itself.
 | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------- |
 | [aws-organization-and-sandbox.md](aws-organization-and-sandbox.md) | AWS Organization, sandbox member account, CloudFormation stack `infra/aws/sandbox/sandbox-account.cfn.yaml` (D-01)                      |
 | [temporal-cloud.md](temporal-cloud.md)                             | Temporal Cloud pay-as-you-go namespace in Mumbai (D-06)                                                                                 |
+| [calendar-oauth-apps.md](calendar-oauth-apps.md)                   | Microsoft Entra ID app registration and Google Cloud OAuth client for the CALENDAR adapters (OWNER-QUESTIONS #126)                      |
 | [messaging-vendors.md](messaging-vendors.md)                       | DLT registration, MSG91, Gupshup SMS and WhatsApp sandbox, Meta test app, Brevo, Razorpay and Cashfree test accounts (D-07, D-08, P-16) |
 
 ## 1. When each account must exist (PL2)

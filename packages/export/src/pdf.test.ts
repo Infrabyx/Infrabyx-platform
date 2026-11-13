@@ -144,6 +144,45 @@ describe("toPdf", () => {
     expect(reason(one("你好"))).toBe("char_unsupported");
   });
 
+  it("draws arrows from the Noto Sans Math fallback, glyph by glyph, only when used (PR-LDC-36)", () => {
+    expect(s).not.toContain("NotoSansMath");
+    const doc: PdfDocument = {
+      blocks: [
+        { type: "paragraph", runs: ["Filed → Accepted ⇒ Closed ↔ ↩"] },
+        { type: "paragraph", runs: [{ text: "Step A→B", bold: true }] },
+      ],
+    };
+    const out = toPdf(doc, { created: T });
+    const text = out.toString("latin1");
+    expect(text).toContain("/BaseFont /NotoSansMath-Regular");
+    expect((text.match(/\/FontFile2/g) ?? []).length).toBe(3);
+    const math = bundledFont("Math");
+    for (const cp of [0x2190, 0x2192, 0x21d2, 0x21d4, 0x21a9, 0x21ff])
+      expect(math.cmap.has(cp)).toBe(true);
+    expect(math.cmap.has(0x41)).toBe(false);
+    // The bold word "A→B" switches font inside the word: Bold, then the fallback, then Bold.
+    const ops = [...text.matchAll(/stream\n([\s\S]*?)\nendstream/g)]
+      .map((m) => {
+        try {
+          return inflateSync(Buffer.from(m[1]!, "latin1")).toString("latin1");
+        } catch {
+          return "";
+        }
+      })
+      .join("\n");
+    expect(ops).toMatch(
+      /\/F2 [\d.]+ Tf [\d.]+ [\d.]+ Td <[0-9A-F]+> Tj ET\nBT \/F5 [\d.]+ Tf [\d.]+ [\d.]+ Td <[0-9A-F]{4}> Tj ET\nBT \/F2 /,
+    );
+    // ToUnicode keeps the arrows searchable.
+    expect(ops).toContain("<2192>");
+    expect(ops).toContain("<21D2>");
+    expect(toPdf(doc, { created: T }).equals(out)).toBe(true);
+    // Outside the Arrows block nothing falls back.
+    expect(reason(() => toPdf({ blocks: [{ type: "paragraph", runs: ["∀x"] }] }))).toBe(
+      "char_unsupported",
+    );
+  });
+
   it("refuses bad blocks and keeps to the size cap", () => {
     const one = (b: unknown) => () => toPdf({ blocks: [b as never] });
     expect(reason(one({ type: "heading", level: 7, text: "x" }))).toBe("block_invalid");
