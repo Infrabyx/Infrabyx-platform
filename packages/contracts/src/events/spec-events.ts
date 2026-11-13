@@ -1,5 +1,6 @@
 // Two more cross-product events the Ecosystem Specification registers without a published schema
-// (LawDocsComply PR-LDC-45 and PR-LDC-51; R1-D-123, R1-D-138): `EvidenceSubmitted` (§6.15, domain
+// (LawDocsComply PR-LDC-45 and PR-LDC-51; R1-D-123, R1-D-138), and `ObligationPublished`, whose
+// payload spec v1.5 fixes (§6.15; R1-D-144, R1-D-151): `EvidenceSubmitted` (§6.15, domain
 // `grc`, any product → LDC) and `ProviderIncident` (§6.16, domain `platform`, the detecting
 // product → OH13, products on the same adapter, LDC). The field names are the Specification's
 // words in snake case, checked against the registry schemas when they are published ([VERIFY]);
@@ -73,3 +74,67 @@ export const ProviderIncidentData = z
     message: "a provider incident never carries tenant ids",
   });
 export type ProviderIncidentData = z.infer<typeof ProviderIncidentData>;
+
+export const OBLIGATION_PUBLISHED_TYPE = "in.infrabyx.grc.ObligationPublished.v1";
+export const OBLIGATION_CHANGE_TYPES = ["ADDED", "AMENDED", "REPEALED"] as const;
+
+/**
+ * `ObligationPublished` (Ecosystem Spec v1.5 §6.15; PR-044, LawDocsComply PR-LDC-33; owner answer
+ * #127): ids and keys only, `dataclass = INTERNAL`, no other field (`additionalProperties: false`).
+ * Never the obligation's text: a consumer pulls it with `GET /v1/grc/obligations` and matches on
+ * `(obligation_ref, version)`, the idempotency key. A lower `version` after a higher one is stored
+ * and never applied over it (the consumer's rule, §14.3).
+ */
+export const ObligationPublishedData = z
+  .object({
+    obligation_ref: z.string().regex(/^obl_[0-9A-HJKMNP-TV-Z]{26}$/, "obl_ + ULID"),
+    business_id: z.string().regex(/^[A-Za-z0-9_.:@/+=-]{1,128}$/),
+    version: z.number().int().min(1),
+    change_type: z.enum(OBLIGATION_CHANGE_TYPES),
+    instrument_ref: z.string().regex(/^[\x20-\x7E]{1,128}$/, "1 to 128 printable characters"),
+    authority: z.string().regex(/^[A-Z0-9_]{2,32}$/),
+    family: z.string().regex(/^[a-z0-9_.]{2,64}$/),
+    effective_from: z.iso.date(),
+    effective_to: z.iso.date().optional(),
+    release_id: z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/),
+    applicability_keys: z
+      .array(z.string().regex(/^[a-z0-9_.:]{2,64}$/))
+      .max(64)
+      .refine((k) => new Set(k).size === k.length, "applicability_keys must not repeat"),
+  })
+  .strict()
+  .superRefine((d, ctx) => {
+    if (d.change_type === "REPEALED" && d.effective_to === undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["effective_to"],
+        message: "REPEALED needs effective_to",
+      });
+    if (d.effective_to !== undefined && d.effective_to < d.effective_from)
+      ctx.addIssue({
+        code: "custom",
+        path: ["effective_to"],
+        message: "effective_to is before effective_from",
+      });
+  });
+export type ObligationPublishedData = z.infer<typeof ObligationPublishedData>;
+
+/**
+ * The envelope rules §6.15 adds for this event: the type, `dataclass = INTERNAL`, and the
+ * obligation as the event's `subject`. Returns the problems (empty when the event is valid).
+ */
+export function obligationPublishedProblems(e: {
+  type: string;
+  subject?: string;
+  dataclass: string;
+  data: unknown;
+}): string[] {
+  const out: string[] = [];
+  if (e.type !== OBLIGATION_PUBLISHED_TYPE) out.push(`type must be ${OBLIGATION_PUBLISHED_TYPE}`);
+  if (e.dataclass !== "INTERNAL") out.push("dataclass must be INTERNAL");
+  const d = ObligationPublishedData.safeParse(e.data);
+  if (!d.success)
+    out.push(...d.error.issues.map((i) => `${i.path.join(".") || "data"}: ${i.message}`));
+  else if (e.subject !== d.data.obligation_ref) out.push("subject must be the obligation_ref");
+  return out;
+}

@@ -595,6 +595,10 @@ A `string[]`, `enum[]` or `cidr[]` setting may declare `minItems`, `maxItems` an
 
 The rule engines evaluate only the declared inputs a decision records, so replay, `explain`, simulation and as-of evaluation give the same answer later. A rule never reads a history itself: CEL list functions such as `filter` or `size` are refused when the draft is validated. Instead, derive each fact from your own records **as of the decision date** and pass it as an input: for example `late_filings_12m` (integer), `open_filings` (integer) and `facts_as_of` (date), each declared with its data class (above INTERNAL it is sealed in the decision log). Compute the facts once per decision, in the same read that loads the record, and pass the same `asOf` to `evaluate`. Name them for what they count and over which window (`_12m`, `_90d`), never reuse a name with a different window, and keep the derivation in one tested function. `packages/connectors/src/rules/__tests__/prepared-facts.test.ts` is a worked example on all three engines.
 
+## 7bz. The obligation feed (spec v1.5; PR-LDC-33; R1-D-151)
+
+A consumer of `in.infrabyx.grc.ObligationPublished.v1` validates with `obligationPublishedProblems(envelope)` (an empty list means valid), processes each `(obligation_ref, version)` once, stores a lower `version` that arrives after a higher one without applying it, and pulls the obligation's text, citations or owner from `GET /v1/grc/obligations?updated_since=` when it needs them. The event carries ids and keys only (`dataclass = INTERNAL`); anything else, including text, is refused. The producer emits it under the canonical type, never `in.lawdocscomply.cnt.ObligationPublished.v1` (spec §6.17).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
