@@ -603,6 +603,10 @@ A consumer of `in.infrabyx.grc.ObligationPublished.v1` validates with `obligatio
 
 The tenant brand layer takes three more optional fields, proposed and approved like the rest (R3): `letterhead_text: { header?, footer? }` (plain text, at most 2,000 characters each, new lines allowed, no markup and no `javascript:` or `data:` links), `cover` (an asset in the tenant's storage: PDF, PNG, JPEG or an SVG from `uploadSvg`), and `subdomain` (one label, for example `acme`, served as `acme.<your pack's app host>`). `resolveForTenant` and `resolveHost` return `letterheadText`, `cover` and `subdomain`. Your deployment keeps the wildcard DNS record and certificate for the app host; the subdomain resolves once the app host is verified. Reserved labels (`www`, `api`, `admin`, `login`, product codes and similar) and `xn--` labels are refused. **Shim removed:** your letterhead-text, cover and subdomain tables.
 
+## 7cb. Reading an uploaded workbook (PR-LDC-31 reader; R1-D-154)
+
+After the upload passes the AV scan, call `readXlsx(bytes, limits?)` (`@infrabyx/export`) to get `[{ name, rows }]`, where each row is an array of `string | number | boolean | null` (dates as `YYYY-MM-DD`, or a full ISO time when the cell has one). `xlsxRecords(sheet)` keys rows by the header row. Formulas are never returned, only their cached values. Raise or lower the limits for your use (defaults: 25 MiB file, 100,000 rows, 1,024 columns, 32,767 characters a cell). Map `IPB-SEC-013` to "the file is too large", `IPB-SEC-012` to "macros or active content are not accepted" and `IPB-SEC-010` to "this is not a readable workbook". **Shim removed:** the reader half of your `WorkbookPort`, so ExcelJS is no longer needed.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
