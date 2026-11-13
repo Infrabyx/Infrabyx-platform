@@ -25,7 +25,7 @@ import {
   type CustomerIdentitySettings,
   type IdpTokens,
 } from "./customer.js";
-import { keycloakEgress } from "./keycloak.js";
+import { grantAdminApiScope, keycloakEgress } from "./keycloak.js";
 
 type Egress = ReturnType<typeof createEgress>;
 
@@ -688,6 +688,7 @@ export class KeycloakCustomerIdentity extends CustomerIdentityBase {
         ["manage-users", "view-users", "query-users", "view-realm"].includes(r.name),
       ),
     );
+    await grantAdminApiScope(call, R, id(o.spec.adminClientId));
     const secret = async (cid: string) =>
       (await call<{ value: string }>("GET", `${R}/clients/${id(cid)}/client-secret`)).value;
     return {

@@ -2,11 +2,11 @@
 # Keycloak with the Infrabyx customer one-time-code step (`ipb-customer-otp`; OWNER-QUESTIONS #84,
 # R1-D-19). The extension is compiled against the jars of the very Keycloak image it ships in, so
 # nothing is downloaded at build time and the SPI version cannot drift. Build from this folder:
-#   docker build -t infrabyx/keycloak-customer:26.8.1-2 infra/keycloak/customer-otp
+#   docker build -t infrabyx/keycloak-customer:26.8.2-0 infra/keycloak/customer-otp
 # The image runs as Keycloak's own non-root user. Products set their database and hostname options
 # at `start` as for the stock image (`--db=postgres` is built in).
 
-FROM keycloak/keycloak:26.8.1-2@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332 AS keycloak
+FROM keycloak/keycloak:26.8.2-0@sha256:3879c623248408de29a5303178b5816c77e8dfef3890c361f8c0bbeaa979ba3b AS keycloak
 
 FROM eclipse-temurin:21.0.12_8-jdk-noble@sha256:4d271cd5e0624598cf563342f47281b09cb364bc13acbbd7251f49f83470018d AS compile
 WORKDIR /build
