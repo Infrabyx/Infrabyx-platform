@@ -2,7 +2,17 @@
 
 **Canonical contract for events, APIs, data ownership, identity and connectors across LawDocs, Finbyx, Udofin, the Infrabyx Operations Hub, Equator Resolution, LawDocsComply, the Recovery Suite (future Udolex), non-RE lenders, future ecosystem apps and third parties**
 
-Version 1.4 · 5 November 2026 · Companion to the Infrabyx Platform Baseline Standard (IPB) v1.0, the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, whose event, API and layout tables remain as summaries and point here as canonical · Supersedes v1.3 of 4 November 2026 (changes in Part 16.0) *(v1.4: owner-authorised amendment, OWNER-QUESTIONS #116)* · v1.3 superseded v1.2 of 26 October 2026 (changes in Part 16.1) *(v1.3: owner-authorised amendment, OWNER-QUESTIONS #105)* · v1.2 superseded v1.1 of 24 October 2026 (changes in Part 16.2) *(v1.2)*
+Version 1.5 · 13 November 2026 · Companion to the Infrabyx Platform Baseline Standard (IPB) v1.0, the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, whose event, API and layout tables remain as summaries and point here as canonical · Supersedes v1.4 of 5 November 2026 (changes in Part 16.0) *(v1.5: owner-authorised amendment, OWNER-QUESTIONS #127)* · v1.4 superseded v1.3 of 4 November 2026 (changes in Part 16.1) *(v1.4: owner-authorised amendment, OWNER-QUESTIONS #116)* · v1.3 superseded v1.2 of 26 October 2026 (changes in Part 16.2) *(v1.3: owner-authorised amendment, OWNER-QUESTIONS #105)* · v1.2 superseded v1.1 of 24 October 2026 (changes in Part 16.3) *(v1.2)*
+
+---
+
+## WHAT CHANGED IN v1.5 *(v1.5)*
+
+Minor version (Part 14.1): the payload of an existing event is fixed for the first time; its name, producer, consumers, idempotency key and SLA are unchanged, and no consumer of the canonical type breaks, so no parallel run is required. Raised as platform request PR-044 from LawDocsComply PR-LDC-33; signed off by the owner on 13 November 2026 (OWNER-QUESTIONS #127).
+
+1. **`ObligationPublished` payload**: ids and keys only (`obligation_ref`, `business_id`, `version`, `change_type`, `instrument_ref`, `authority`, `family`, `effective_from`, `effective_to`, `release_id`, `applicability_keys`), `dataclass = INTERNAL`, no other field; the obligation's text is pulled with `GET /v1/grc/obligations` (6.15). Schema `[registry-base]/schemas/grc/ObligationPublished/1.0.0.json`.
+2. One superseded internal name, `in.lawdocscomply.cnt.ObligationPublished.v1` (6.17).
+3. Certification test "Obligation feed (v1.5)" (14.3); change log 16.0.
 
 ---
 
@@ -12,7 +22,7 @@ Minor version (Part 14.1): one header and its rules; no event, field, schema, co
 
 1. **`X-Infrabyx-JWS`**: the HTTP request header that carries a regulated message's detached JWS on every delivery, its form (one compact detached JWS, RFC 7515 Appendix F, ES256, under the platform's approved JWS profile), what it signs, and the consumer's and producer's rules (3.6; 3.4).
 2. Batches and files are unchanged; a replayed regulated message is re-delivered on its own (3.6).
-3. Certification test "Detached JWS header (v1.4)" (14.3); change log 16.0.
+3. Certification test "Detached JWS header (v1.4)" (14.3); change log 16.1.
 
 ---
 
@@ -23,7 +33,7 @@ Minor version (Part 14.1): two new events, one optional field, one code table an
 1. **`ProvisioningRequested`** (product → OH) and **`ProvisioningFailed`** (OH → the requesting product) added to 6.29, both signed regulated messages (3.6).
 2. **`provisional_tenant_id?`** added to `TenantProvisioned`'s key payload fields.
 3. **Code table `provisioning_failure_reason`** and the rules for one outcome per request, idempotency, PRODUCTION, data and **retention of a failed or expired provisional tenant** (6.29).
-4. **Tag (N13)** for canonical names adopted in v1.3 (6.1); certification test "Provisioning request and failure (v1.3)" (14.3); change log 16.1.
+4. **Tag (N13)** for canonical names adopted in v1.3 (6.1); certification test "Provisioning request and failure (v1.3)" (14.3); change log 16.2.
 
 ---
 
@@ -829,7 +839,7 @@ IPB-D-10 makes `brand_pack` the one object that carries a brand across the group
 
 | Event or API | Producer → consumer(s) | Trigger | Key payload fields | Owner | Idempotency key | SLA |
 |---|---|---|---|---|---|---|
-| `ObligationPublished` (N) | LDC (or FX embedded) → products | Obligation added, amended, repealed (change feed) | obligation_ref, change type, dates, applicability | LDC | (obligation_ref, version) | ≤ 1 working day |
+| `ObligationPublished` (N) *(schema fixed in v1.5)* | LDC (or FX embedded) → products | Obligation added, amended or repealed in a catalogue release (change feed) | obligation_ref, business_id, version, change_type (ADDED, AMENDED, REPEALED), instrument_ref, authority, family, effective_from, effective_to?, release_id, applicability_keys[]; `dataclass = INTERNAL`; ids and keys only, never the obligation's text (pull it with `GET /v1/grc/obligations`) | LDC | (obligation_ref, version) | ≤ 1 working day |
 | `ControlTestResultPublished` (N) | FX, UD, EQ, RS → LDC | Control test run | result, population, masked sample, evidence | Operating product | (control_id, run_id) | ≤ 1 h |
 | `EvidenceSubmitted` (N) | Any → LDC | Evidence artefact | control, URIs, sha256, signer | Producer | evidence_id | ≤ 1 h |
 | `ComplianceIssueRaised` (N) | Any → LDC, RE | Test failure, audit or RBI observation, breach | source, severity, owner, due | Raiser; LDC tracks | issue_id | ≤ 15 min (severity 1) |
@@ -838,6 +848,24 @@ IPB-D-10 makes `brand_pack` the one object that carries a brand across the group
 | `SecurityIncidentNotified` (A) | Any service provider → RE system, LDC; OH13 (copy without personal data, for clock tracking) | Cyber or data incident detected | detected_at, class, affected data, status | Notifier | (incident_id, update_seq) | ≤ 2 h target; RE to RBI within 6 h of provider detection (OUT para 61); data breach notified immediately by the RE (OUT para 28) |
 | `PolicyEffective` (N12) (IPB) *(v1.2)* | Any product's CMS (IPB-05 policy instance) → LDC (compliance calendar; `LDC_GROUP` for Infrabyx's own policies), OH3 (re-consent tracking for business contacts) | A legal page or policy version becomes effective | policy_key, version, effective_at, reconsent_required (bool), notice_url, brand_pack_id, product; `dataclass = PUBLIC` | Publishing product | (product, brand_pack_id, policy_key, version) | ≤ 1 h |
 | `VulnerabilityRecorded` (N12) (IPB) *(v1.2)* | Any product (IPB-02 vulnerability management) → LDC GRC register (`LDC_GROUP`), OH13 risk register | A vulnerability is triaged (never the raw finding) | vuln_id, product, severity (CRITICAL, HIGH, MEDIUM, LOW), cvss, source (SCA, SAST, DAST, PENTEST, DISCLOSURE), affected_component (generic), sla_due_at, status (OPEN, MITIGATED, FIXED, ACCEPTED), fix_release?; `dataclass = INTERNAL`; no hostnames, paths, exploit detail or tenant ids | Recording product | (vuln_id, status) | ≤ 1 h |
+
+- **`ObligationPublished` payload** *(v1.5)*:
+
+| Field | Type and rule |
+|---|---|
+| `obligation_ref` | The producer's obligation id, `obl_` + ULID; also the event's `subject` |
+| `business_id` | The obligation's business id as the producer's audit ledger records it (1 to 128 of `A-Z a-z 0-9 _ . : @ / + = -`; an id, never a name) |
+| `version` | Integer ≥ 1, one more for each change to the obligation; with `obligation_ref`, the idempotency key |
+| `change_type` | `ADDED`, `AMENDED` or `REPEALED` |
+| `instrument_ref` | The issuing instrument's own reference as published by the authority (circular, notification or regulation number; 1 to 128 printable characters) |
+| `authority` | The issuing authority's code (upper case, 2 to 32 of `A-Z 0-9 _`), from the producer's published authority list |
+| `family` | The obligation family code (lower case, 2 to 64 of `a-z 0-9 _ .`), from the producer's published family list |
+| `effective_from` | Date (`YYYY-MM-DD`, IST) from which this version applies |
+| `effective_to` | Date, present only when the version stops applying (always present for `REPEALED`) |
+| `release_id` | The catalogue release that carried the change (1 to 64 of `A-Za-z0-9_.-`); every event of one release carries the same value |
+| `applicability_keys` | 0 to 64 codes (each 2 to 64 of `a-z 0-9 _ . :`) naming the entity types, product families or activities the obligation applies to; an empty list means "see the text" |
+
+No other field is allowed (`additionalProperties: false`). A consumer that needs the text, citations or owner fetches `GET /v1/grc/obligations?updated_since=[ts]` and matches on `(obligation_ref, version)`. Event type `in.infrabyx.grc.ObligationPublished.v1`; schema `[registry-base]/schemas/grc/ObligationPublished/1.0.0.json`. `authority` and `family` are codes from the producer's published lists (a Part 5.3 code table may follow if a second producer appears, also a minor change).
 
 - **Mapping of IPB-02 proposals** *(v1.2)*: `security.IncidentOpened` is carried by the existing `SecurityIncidentNotified` (same row, OH13 copy without personal data); `security.EvidenceCollected` by `ControlEvidenceCollected` (6.29); `policy.AcceptanceRecorded` (IPB-05) by `PolicyAttested`. None of the proposed names is emitted (6.17).
 
@@ -889,6 +917,8 @@ Non-canonical names from pre-v1.0 working papers, the Equator draft and the owne
 | LawDocs-internal `in.lawdocs.*` names | Mapped in LawDocs Appendix I §I.8; never published to the ecosystem |
 | LDC P26 `lit.matters` for organisations with an LD tenant | Projection of `legal_matter` (#49) and `court_case` (#50) |
 | "Equator as default ADR route" (any draft) | Equator is one provider behind `ODR`; never default or mandatory (6.9) |
+
+**v1.5 additions** *(v1.5)*. `in.lawdocscomply.cnt.ObligationPublished.v1` (LawDocsComply's internal obligation feed) → `grc.ObligationPublished` (6.15). An internal `in.[product].*` name never leaves the product (IPB-10-41).
 
 ## 6.18 Regulatory returns (`reporting`)
 
@@ -1802,6 +1832,7 @@ Proposal `infrabyx-contracts/proposals/[date]-[slug].md` (motivation, regulatory
 | Delegation, trust and content (v1.2) *(v1.2)* | A `VidhiTaskDelegated` without `consentref` or `legalbasis` is rejected `consent-missing` before any skill runs; a locked-list `task_type` is rejected `locked-action` and the requesting skill is auto-demoted; the effective level is the lower ceiling; `kill.vidhi.a2a` yields `delegation-not-permitted`; a delegation referencing `REGULATED`, `SPI`, `HR`, `WELLNESS` or `CONSUMER_HELP` is rejected; a mirror with a digest mismatch keeps the previous verified version and raises `mirror-digest-mismatch`; a `WITHDRAWN` document disappears from every mirror within 60 s; a product cannot edit a mirrored `vad_`; `LeadCaptured`, `CareerApplicationReceived` and `FeedbackSubmitted` carrying a name, e-mail, mobile, Aadhaar, PAN or account pattern in clear are rejected by schema and scanner; `MarketingConsentUpdated` WITHDRAWN stops every consumer within 60 s and no pixel fires before GRANTED; a `WhatsAppTemplateApproved` MARKETING template cannot be sent to a principal without `MARKETING_WHATSAPP` consent; `BlogPostPublished` and `ResourcePublished` without a passing `claims_check_id` are rejected; an unregistered `in.infrabyx.*` type fails the event-catalogue lint in every product CI (IPB-10-41) |
 | Provisioning request and failure (v1.3) *(v1.3)* | A `ProvisioningRequested` without a valid JWS, or with the first-admin email but no `legalbasis`, is refused by OH; the same `provisioning_request_id` resent with another payload is refused with `idempotency-conflict` and with the same payload is a no-op; a request ends in exactly one of `TenantProvisioned` (carrying its `provisional_tenant_id`) or `ProvisioningFailed`; a consumer that has processed `TenantProvisioned` ignores a later `ProvisioningFailed` for the same id; a `ProvisioningFailed` with personal data in `detail` is rejected at the gateway; a PRODUCTION request without MSA, DPA and OUT refs ends in `ProvisioningFailed` with `CONTRACT_MISSING`; a provisional tenant whose request failed or expired is purged with its first-admin contact data within 30 days of `failed_at` unless a retry is open, and the purge is ledgered |
 | Detached JWS header (v1.4) *(v1.4)* | A regulated message without `X-Infrabyx-JWS`, with two of them, with a comma-joined value, with an attached payload, with `b64` or `crit` in the protected header, signed with another key or with an `iat` older than 5 minutes is refused with `signature-invalid` and not processed; a valid one is accepted and the stored copy equals the header value byte for byte; a retry carries a new `jti` and is accepted; the same `jti` replayed is refused; the header on a message that is not regulated is ignored |
+| Obligation feed (v1.5) *(v1.5)* | An `ObligationPublished` with obligation text, a free-text applicability, an unknown field, a `REPEALED` without `effective_to`, an `effective_to` before `effective_from` or a `dataclass` other than `INTERNAL` is refused with `schema-validation-failed`; a valid one is accepted; the same `(obligation_ref, version)` delivered twice is processed once; a lower `version` after a higher one is stored and not applied over it; every event of one `release_id` can be fetched by the pull API with the same `(obligation_ref, version)` |
 
 Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
@@ -1867,7 +1898,19 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 # 16 — CHANGE LOG
 
 
-## 16.0 v1.4 change log *(v1.4)*
+## 16.0 v1.5 change log *(v1.5)*
+
+**Version 1.5 · 13 November 2026 · minor version** (the payload of an existing event fixed for the first time, with no meaning changed; no new event name, producer, idempotency key or SLA, so no parallel run is required: Part 14.1). Raised as platform request PR-044 from LawDocsComply PR-LDC-33; text drafted in `infrabyx-platform` `docs/phases/PR-044-ecosystem-v1.5-draft.md` and signed off by the owner on 13 November 2026 as drafted (OWNER-QUESTIONS #127).
+
+| Area | Change | Products affected |
+|---|---|---|
+| Title, What changed | Version 1.5 and its summary | All |
+| Part 6 | 6.15 `ObligationPublished` payload fixed as ids and keys only (`dataclass = INTERNAL`, no other field; text through `GET /v1/grc/obligations`); 6.17 one superseded internal name | LDC (producer); every consuming product |
+| Part 14 | 14.3 certification test "Obligation feed (v1.5)" | LDC, FX, UD, EQ, LD, OH |
+
+**Propagation.** Every repository adopts v1.5 within 10 working days of publication (Part 14.2) [REC]. A product that does not consume `ObligationPublished` has nothing to change; LawDocsComply moves its internal feed to the canonical type.
+
+## 16.1 v1.4 change log *(v1.4)*
 
 **Version 1.4 · 5 November 2026 · minor version** (one header and its rules; no event, field, schema, code table or covered component changes meaning, so no parallel run is required: Part 14.1). Raised as platform request PR-043 from LawDocsComply PR-LDC-23; text drafted in `infrabyx-platform` `docs/phases/PR-043-ecosystem-v1.4-draft.md` and signed off by the owner on 5 November 2026 (OWNER-QUESTIONS #116).
 
@@ -1879,7 +1922,7 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 **Propagation.** Every repository adopts v1.4 within 10 working days of publication (Part 14.2) [REC]. A product that already sends and reads `X-Infrabyx-JWS` in the C-22 form has nothing to change.
 
-## 16.1 v1.3 change log *(v1.3)*
+## 16.2 v1.3 change log *(v1.3)*
 
 **Version 1.3 · 4 November 2026 · minor version** (two events, one optional field, one code table and one retention rule; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Raised as platform request PR-040 from LawDocsComply PR-LDC-11; text drafted in `infrabyx-platform` `docs/phases/PR-040-ecosystem-v1.3-draft.md` and signed off by the owner on 4 November 2026 with the retention rule added (OWNER-QUESTIONS #105).
 
@@ -1892,7 +1935,7 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 **Propagation.** Every repository adopts v1.3 within 10 working days of publication (Part 14.2) [REC]. A product that does not start provisioning itself is unaffected.
 
-## 16.2 v1.2 change log *(v1.2)*
+## 16.3 v1.2 change log *(v1.2)*
 
 **Version 1.2 · 26 October 2026 · minor version** (new owner code, product, principles, entities, domains, events, APIs, optional fields, scopes, code-table values, layouts and certification groups; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Implemented by the LawDocs Build Prompt Pack v1.1, the LawDocsComply Build Prompt Pack v1.3, the Equator Build Prompt Pack v3.2, the Finbyx Master Build Prompt v1.6, the Udofin Master Build Prompt v1.3 and the Infrabyx Operations Hub Master Build Prompt v1.1, under the Infrabyx Platform Baseline Standard v1.0.
 
@@ -1929,7 +1972,7 @@ Results emit `ConnectorCertified` and `ControlTestResultPublished`.
 
 **Open items carried as [VERIFY] or [OWNER] from v1.2.** ESP/aggregator confirmation that LawDocs-hosted ceremonies created through a customer's own systems are within ASP terms (LawDocs OI-Y-02); `CONTRACT_PERFORMANCE_CUSTOMER` and B2C invoicing on OH8 (OI-Y-03; tax memo); Consumer Help conflict policy where the respondent is a group client (OI-Y-04); LDC P26 overlap (OI-Y-05); kernel export schema versions (OI-Y-06); `owner_readable` acceptance (OI-Y-07); BSA s.63(4) citation (OI-Y-08); token-exchange parameters (OI-Y-09); OH7 asset-library path and `crm/leads` field set (OI-Y-10); `ops` as the service-order domain (OI-Y-11); white-label resale entity and commercial terms (IPB open item 2); WhatsApp BSP and Meta business verification entity (IPB open item 4); Payment Aggregator Directions paragraph references for Route transfers; each product's confirmation of its error-code prefix and export package name (Appendix C).
 
-## 16.3 v1.1 change log
+## 16.4 v1.1 change log
 
 **Version 1.1 · 24 October 2026 · minor version** (new events, APIs, optional fields, codes, layouts and connectors only; no published schema changes meaning, ownership or a mandatory field, so no parallel run is required: Part 14.1). Implemented by the Finbyx Master Build Prompt v1.5, the Udofin Master Build Prompt v1.2 and the Infrabyx Operations Hub Master Build Prompt v1.0.
 
