@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-12
+Updated: 2026-11-13
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -24,14 +24,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
 
-## Handover (2026-11-12, eleventh session)
+## Handover (2026-11-13, twelfth session)
 
-- **Branches and PRs:** wave 13 is #252 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready, unsubscribed; #251 closed in its favour); the gate (`ci:run`) is on or after 16 Nov, then the version PR and the release record. Wave 14 is `claude/wave-14` (pushed, built on wave 13, no PR yet: open it once #252 merges, after merging `main` into it). The Keycloak 26.8.2-0 pin is #253 (`claude/keycloak-26-8-2`): its gate failed on a 26.8.2 admin-API change, so it is held and the platform stays on 26.8.1-2 (R1-D-142).
-- **Owner answers recorded (R1-D-126):** #125, #126, PR-FBX-46, PR-LDC-30. **Open questions:** #127 (spec v1.5 sign-off), #128 (TallyPrime agent distribution and sandbox), #129 (rate-limiter counter sweep).
-- **Check-ins (this chat):** daily `trig_01CPNpnXt6ReDWWTDoDCkgJU` (17:41 IST), 1 Dec base waivers `trig_01J6DFmu2LjAV9EZEFMN6DAt`, 15 Dec Keycloak re-scan `trig_01JXkt271epEcL2YVrzYDCbB`; the old chat's four are disabled.
-- **Local environment notes:** Node 24.22.1 is at `/opt/node24/bin` (the default `node` is 22); PostgreSQL 16 with `postgresql-16-pgvector` runs locally for integration suites (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`); no Docker daemon (Trivy 0.76.0 scans remote images).
-
-HANDOVER READY
+- **Branches and PRs:** #252 wave 13 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready; gate on or after 16 Nov). #254 spec v1.5 (`claude/spec-v1-5`, docs only, waiting for the owner's one-off bypass; merge it, then tell the owner to remove the bypass). #253 Keycloak 26.8.2-0 with the `kc-admin-api` fix (R1-D-152): its one `ci:run` started 13 Nov (run 43415930024 and port-contract run 43415929955); read the result once. If `contract (IDENTITY)`, `compose` and `reference` are green, merge it when every check is green; if not, keep 26.8.1-2 and report. Wave 14 is `claude/wave-14` (pushed; wave 13 merged in; no PR yet: open it after #252 and #254 merge, merging `main` in first).
+- **Owner answers recorded (R1-D-144):** #127, #128, #129, the Keycloak hold, and PR-FBX-45 asked on 1 Dec. **Open questions:** #130 (PR-LDC-59 CONFIDENTIAL values in `explain`), #131 (the `ProviderIncident` severity scale, R1-D-138).
+- **Check-ins (this chat):** daily `trig_01JY4BzC7QoWVpAfdLHuXYSD` (17:41 IST), 1 Dec `trig_013Rjds88BuhijSkJPnvaJNz`, 15 Dec `trig_01T38v6QcqQyXJwXwfwbWyTM`; the eleventh session's three are disabled.
+- **Local environment notes:** Node 24.22.1 at `/opt/node24/bin`; PostgreSQL 16 needs `service postgresql start`, the `postgres` password set and `postgresql-16-pgvector` installed in a fresh container (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`, `INFRABYX_TEST_INT=1`); no Docker; www.keycloak.org is not reachable from here (GitHub is).
 
 ## Keycloak 26.8.2 held (12 Nov, R1-D-134, R1-D-142)
 
@@ -39,12 +37,12 @@ HANDOVER READY
 - **PR-FBX-45 / PR-LDC-44:** the two `sqlite-libs` findings are present in every 26.8.2 build; waivers stay to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec.
 - **Next:** find the 26.8.2 identity-provider authorisation change (adapter or realm set-up) before the 15 Dec re-scan, which re-decides the pin.
 
-## Wave 14 (eleventh session, 12 Nov): in progress on `claude/wave-14` (built on wave 13)
+## Wave 14 (eleventh and twelfth sessions, 12–13 Nov): in progress on `claude/wave-14` (built on wave 13)
 
-- **Built (local checks green):** PR-LDC-49 `rules.project` (R1-D-139, `rules/0004`); PR-LDC-45 and PR-LDC-51 payload schemas (R1-D-138); PR-LDC-55 the product MFA floor with RFC 9470 step-up (R1-D-135, first, security); #125 ordered approval levels (R1-D-136, `tenancy/0023`, with the Work Inbox hand-off); the TallyPrime adapter design and threat-model entry (R1-D-137, `docs/phases/R1-tallyprime-design.md`, OWNER-QUESTIONS #128); the PR-LDC-50 inbound-mail design (R1-D-141, `docs/phases/R1-inbound-mail-design.md`).
-- **Local verification:** `pnpm build`, `typecheck`, `lint`, `test` (54 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` (125), `workflow` (21), `audit` (38), `testing` (44).
-- **Next in wave 14 (R1-D-123 order):** PR-LDC-54 the shared rate limiter (held for OWNER-QUESTIONS #129: the expired-window sweep deletes rows, R1-D-140), then PR-LDC-32, the PR-LDC-31 reader, PR-LDC-39, PR-LDC-43 and the PR-LDC-40 threat-model entry.
-- **PR:** opened once wave 13 (#252) has merged; the branch is then merged with `main` (no rebase, no force-push).
+- **Built (local checks green):** PR-LDC-55 MFA floor (R1-D-135); #125 ordered approval levels (R1-D-136, `tenancy/0023`); PR-LDC-49 `rules.project` (R1-D-139, `rules/0004`); PR-LDC-45 and PR-LDC-51 schemas (R1-D-138); **PR-LDC-54 the shared rate limiter** under owner answer #129 (R1-D-149, `tenancy/0024`); **PR-LDC-56 list bounds on settings** (R1-D-145); **PR-LDC-58 prepared facts** (guide and worked test, R1-D-147); **the `ObligationPublished` schema** (spec v1.5, R1-D-151); **PR-LDC-43 letterhead text, cover and subdomain** (R1-D-153). Designs: TallyPrime (R1-D-137), inbound mail (R1-D-141), **dated rule parameters** (PR-LDC-57, R1-D-146, `docs/phases/R1-dated-parameters-design.md`), the **web snapshot threat model** (PR-LDC-40, §3.125, R1-D-150).
+- **Local verification (13 Nov):** `pnpm turbo run build typecheck lint test` (108 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` (130), `brand` (23), `testing` (44), `rules` (22), `audit` (38); `format:check`, `test:policy`, `migration:lint`, `registry:check`, `ipb:check`.
+- **Next in wave 14:** PR-LDC-32 `DataGrid` (`ui`), the PR-LDC-31 reader (bounded ZIP, threat model first), PR-LDC-39 PDF text (untrusted parser behind limits). Then the wave 14 PR and gate.
+- **Wave 15:** PR-LDC-57 build, PR-LDC-40 build, PR-LDC-50 build, the TallyPrime adapter (source and container only, #128), PR-LDC-46, PR-LDC-52; PR-LDC-59 if #130 is yes.
 
 ## Wave 13 (tenth and eleventh sessions, 11–12 Nov): built, gate on or after 16 Nov
 
