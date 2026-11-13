@@ -3,7 +3,7 @@
 // signatures, timeout, engine error, a public address). The contract leg runs the real clamd.
 import { createServer, type Server, type Socket } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { scanDecision, type DocFileRef } from "@infrabyx/contracts/ports";
+import { PortHealth, scanDecision, type DocFileRef } from "@infrabyx/contracts/ports";
 import { sha256Hex, ulid } from "@infrabyx/crypto";
 import { EICAR, MemoryStorage } from "@infrabyx/testing";
 import {
@@ -119,6 +119,15 @@ describe("ClamAV AV adapter (clamd protocol)", () => {
     versionLine = "ClamAV 1.5.4/27800/Fri Nov  6 08:00:00 2026";
     const stale = await make().scan(f);
     expect(stale.reason).toBe("stale_signatures");
+    const sick = await make().health();
+    expect(sick.status).toBe("degraded");
+    expect(sick.detail).toMatchObject({
+      engine: "ClamAV 1.5.4/27800",
+      signatures_at: "2026-11-06T08:00:00.000Z",
+      max_signature_age_hours: 48,
+      signatures_fresh: false,
+    });
+    expect(sick.detail?.signature_age_hours).toBeGreaterThan(48);
     expect(scanDecision(stale).action).toBe("quarantine");
     versionLine = "ClamAV 1.5.4";
     expect((await make().scan(f)).reason).toBe("stale_signatures");
@@ -142,7 +151,10 @@ describe("ClamAV AV adapter (clamd protocol)", () => {
     expect(r.reason).toBe("unavailable");
     expect(received.length).toBe(before);
     expect((await pub.health()).status).toBe("down");
-    expect((await make().health()).status).toBe("up");
+    const ok = await make().health();
+    expect(ok.status).toBe("up");
+    expect(ok.detail).toMatchObject({ signatures_fresh: true, max_signature_age_hours: 48 });
+    expect(PortHealth.parse(ok)).toEqual(ok);
     expect((await make({ port: 1 }).scan(f)).reason).toBe("unavailable");
   });
 

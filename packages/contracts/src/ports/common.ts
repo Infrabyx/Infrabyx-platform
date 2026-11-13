@@ -2,10 +2,25 @@
 import { z } from "zod";
 import { DataClass, Residency } from "../data-class.js";
 
+/**
+ * Operational facts an adapter adds to its health answer (for example the AV adapter's
+ * signature age, PR-LDC-41): snake_case names, scalar values only. Never file contents, ids,
+ * personal data, addresses or secrets.
+ */
+export const PortHealthDetail = z
+  .record(
+    z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+    z.union([z.string().max(128), z.number().finite(), z.boolean(), z.null()]),
+  )
+  .refine((d) => Object.keys(d).length <= 16, "at most 16 detail entries");
+export type PortHealthDetail = z.infer<typeof PortHealthDetail>;
+
 export const PortHealth = z.object({
   status: z.enum(["up", "degraded", "down"]),
   latency_ms: z.number().nonnegative(),
   checked_at: z.iso.datetime({ offset: true }),
+  /** Optional, additive (PR-LDC-41): adapters that report nothing extra leave it out. */
+  detail: PortHealthDetail.optional(),
 });
 export type PortHealth = z.infer<typeof PortHealth>;
 

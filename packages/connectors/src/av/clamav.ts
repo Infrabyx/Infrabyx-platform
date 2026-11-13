@@ -72,19 +72,39 @@ export class ClamavFileScan implements FileScanPort {
 
   async health(): Promise<PortHealth> {
     const started = Date.now();
-    const done = (status: PortHealth["status"]): PortHealth => ({
+    const done = (status: PortHealth["status"], v?: EngineVersion): PortHealth => ({
       status,
       latency_ms: Date.now() - started,
       checked_at: new Date().toISOString(),
+      ...(v ? { detail: this.freshness(v) } : {}),
     });
     try {
       const pong = await this.command("zPING\0", 5_000);
       if (pong !== "PONG") return done("down");
       const v = await this.engineVersion(true);
-      return done(this.stale(v) ? "degraded" : "up");
+      return done(this.stale(v) ? "degraded" : "up", v);
     } catch {
       return done("down");
     }
+  }
+
+  /**
+   * Signature-database freshness for the health answer (PR-LDC-41): the engine, when the loaded
+   * signatures were built, their age in whole hours and the limit past which every scan is `ERROR`.
+   * A set with no build time counts as stale.
+   */
+  private freshness(v: EngineVersion): Record<string, string | number | boolean | null> {
+    const max = this.o.maxSignatureAgeHours ?? 48;
+    const age = v.signaturesAt
+      ? Math.max(0, Math.floor((this.now.getTime() - v.signaturesAt.getTime()) / 3_600_000))
+      : null;
+    return {
+      engine: v.engine.slice(0, 128),
+      signatures_at: v.signaturesAt?.toISOString() ?? null,
+      signature_age_hours: age,
+      max_signature_age_hours: max,
+      signatures_fresh: !this.stale(v),
+    };
   }
 
   async scan(raw: DocFileRef, _call?: PortCall): Promise<FileScanResult> {
