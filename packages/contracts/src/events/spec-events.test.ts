@@ -1,6 +1,12 @@
 // EvidenceSubmitted (§6.15) and ProviderIncident (§6.16) payloads (PR-LDC-45, PR-LDC-51; R1-D-138).
 import { describe, expect, it } from "vitest";
-import { EvidenceSubmittedData, ProviderIncidentData } from "./spec-events.js";
+import {
+  EvidenceSubmittedData,
+  OBLIGATION_PUBLISHED_TYPE,
+  ObligationPublishedData,
+  obligationPublishedProblems,
+  ProviderIncidentData,
+} from "./spec-events.js";
 
 const evidence = {
   evidence_id: "evd_01JAZ",
@@ -46,5 +52,60 @@ describe("spec events", () => {
         false,
       );
     expect(ProviderIncidentData.safeParse({ ...incident, status: "CLOSED" }).success).toBe(false);
+  });
+});
+
+describe("ObligationPublished (spec v1.5 §6.15; certification test 'Obligation feed (v1.5)')", () => {
+  const data = {
+    obligation_ref: "obl_01JCZ3V9K2Q7M8N4P5R6S7T8V9",
+    business_id: "OBL-2026-0042",
+    version: 2,
+    change_type: "AMENDED",
+    instrument_ref: "Notification G.S.R. 123(E)",
+    authority: "MCA",
+    family: "companies.board",
+    effective_from: "2026-12-01",
+    release_id: "2026.11.2",
+    applicability_keys: ["entity:private_company", "activity:board_meeting"],
+  };
+  const event = (d: unknown, over: Record<string, unknown> = {}) => ({
+    type: OBLIGATION_PUBLISHED_TYPE,
+    subject: data.obligation_ref,
+    dataclass: "INTERNAL",
+    data: d,
+    ...over,
+  });
+  it("accepts ids and keys only", () => {
+    expect(ObligationPublishedData.safeParse(data).success).toBe(true);
+    expect(obligationPublishedProblems(event(data))).toEqual([]);
+  });
+  it("refuses text, free-text applicability, unknown fields and bad dates", () => {
+    for (const bad of [
+      { ...data, text: "The board shall meet at least four times a year." },
+      { ...data, applicability_keys: ["All private companies with paid-up capital"] },
+      { ...data, owner: "usr_a" },
+      { ...data, change_type: "REPEALED" },
+      { ...data, effective_to: "2026-11-30" },
+      { ...data, version: 0 },
+      { ...data, obligation_ref: "OBL-1" },
+      { ...data, applicability_keys: ["a.b", "a.b"] },
+    ])
+      expect(ObligationPublishedData.safeParse(bad).success, JSON.stringify(bad)).toBe(false);
+    expect(
+      ObligationPublishedData.safeParse({
+        ...data,
+        change_type: "REPEALED",
+        effective_to: "2027-03-31",
+      }).success,
+    ).toBe(true);
+  });
+  it("refuses a dataclass other than INTERNAL and a subject that is not the obligation", () => {
+    expect(obligationPublishedProblems(event(data, { dataclass: "CONFIDENTIAL" }))).toContain(
+      "dataclass must be INTERNAL",
+    );
+    expect(obligationPublishedProblems(event(data, { subject: "obl_other" }))).toContain(
+      "subject must be the obligation_ref",
+    );
+    expect(obligationPublishedProblems(event({ ...data, text: "x" })).length).toBeGreaterThan(0);
   });
 });
