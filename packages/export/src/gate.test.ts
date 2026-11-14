@@ -155,6 +155,50 @@ describe("@IPB-09-AT-14 export map gate", () => {
       "x",
     ]);
   });
+
+  it("reads every column of a multi-column alter table (PR-LDC-61)", () => {
+    const s = schemaFromMigrations([
+      { sql: MIGRATION },
+      {
+        sql: `alter table documents.document
+  add column a text not null default 'x, y',
+  add column if not exists b numeric(12, 2) check (b >= 0),
+  add c jsonb,
+  add constraint document_a_ck check (a <> ''),
+  add primary key (id),
+  alter column title set not null,
+  add column "d" int; -- trailing comment, add column ignored int
+alter table if exists only "documents"."document" add column e int, add f int;`,
+      },
+    ]);
+    expect([...(s.get("documents.document") ?? [])].sort()).toEqual([
+      "a",
+      "b",
+      "c",
+      "created_at",
+      "d",
+      "e",
+      "f",
+      "id",
+      "title",
+    ]);
+  });
+
+  it("a map over a multi-column alter table has no false findings (PR-LDC-61)", () => {
+    const r = exportMapGate(
+      base({
+        maps: [map("LD-EXPORT-1.0", ["id", "title", "a", "b", "c"])],
+        allMigrations: [
+          { path: "0001.sql", sql: MIGRATION },
+          {
+            path: "0002.sql",
+            sql: "alter table documents.document add column a text, add column b int, add c int;",
+          },
+        ],
+      }),
+    );
+    expect(r.findings).toEqual([]);
+  });
 });
 
 describe("export maps", () => {
