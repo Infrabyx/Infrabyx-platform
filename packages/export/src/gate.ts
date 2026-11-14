@@ -37,7 +37,77 @@ export interface GateResult {
   findings: string[];
 }
 
-/** Tables and columns the migrations create (`create table`, `alter table … add column`). */
+/**
+ * Where the statement that starts at `from` ends: the first `;` outside quotes, quoted
+ * identifiers, dollar-quoted bodies and comments (or the end of the text).
+ */
+function statementEnd(text: string, from: number): number {
+  let i = from;
+  while (i < text.length) {
+    const c = text[i];
+    if (c === ";") return i;
+    if (c === "'" || c === '"') {
+      const close = text.indexOf(c, i + 1);
+      if (close < 0) return text.length;
+      i = close + 1;
+      continue;
+    }
+    if (c === "$") {
+      const tag = /^\$[a-z_]*\$/i.exec(text.slice(i))?.[0];
+      if (tag) {
+        const close = text.indexOf(tag, i + tag.length);
+        if (close < 0) return text.length;
+        i = close + tag.length;
+        continue;
+      }
+    }
+    if (c === "/" && text[i + 1] === "*") {
+      const close = text.indexOf("*/", i + 2);
+      if (close < 0) return text.length;
+      i = close + 2;
+      continue;
+    }
+    i++;
+  }
+  return text.length;
+}
+
+/** Split an `ALTER TABLE` action list at commas outside parentheses and quotes. */
+function alterActions(list: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i];
+    if (c === "'" || c === '"') {
+      const close = list.indexOf(c, i + 1);
+      i = close < 0 ? list.length : close;
+    } else if (c === "(") depth++;
+    else if (c === ")") depth = Math.max(0, depth - 1);
+    else if (c === "," && depth === 0) {
+      parts.push(list.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(list.slice(start));
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+const IDENT = String.raw`"?([a-z_][a-z0-9_]*)"?`;
+const ALTER_TABLE = new RegExp(
+  String.raw`\balter\s+table\s+(?:if\s+exists\s+)?(?:only\s+)?${IDENT}\s*\.\s*${IDENT}\s+`,
+  "gi",
+);
+/** `add [column] [if not exists] name …`, but not `add constraint`, `add primary key` and the like. */
+const ADD_COLUMN = new RegExp(
+  String.raw`^add\s+(?:column\s+)?(?:if\s+not\s+exists\s+)?(?!(?:constraint|primary|unique|check|foreign|exclude)\b)${IDENT}`,
+  "i",
+);
+
+/**
+ * Tables and columns the migrations create: `create table`, and every `add [column]` action of an
+ * `alter table`, including statements that add several columns at once (LawDocsComply PR-LDC-61).
+ */
 export function schemaFromMigrations(
   migrations: ReadonlyArray<{ sql: string }>,
 ): Map<string, Set<string>> {
@@ -57,13 +127,16 @@ export function schemaFromMigrations(
       }
       out.set((m[1] as string).toLowerCase(), cols);
     }
-    for (const m of text.matchAll(
-      /alter\s+table\s+(?:only\s+)?([a-z_][a-z0-9_]*\.[a-z_][a-z0-9_]*)\s+add\s+column\s+(?:if\s+not\s+exists\s+)?"?([a-z_][a-z0-9_]*)/gi,
-    )) {
-      const t = (m[1] as string).toLowerCase();
-      const cols = out.get(t) ?? new Set<string>();
-      cols.add((m[2] as string).toLowerCase());
-      out.set(t, cols);
+    for (const m of text.matchAll(ALTER_TABLE)) {
+      const table = `${m[1] as string}.${m[2] as string}`.toLowerCase();
+      const from = (m.index ?? 0) + m[0].length;
+      for (const action of alterActions(text.slice(from, statementEnd(text, from)))) {
+        const col = ADD_COLUMN.exec(action)?.[1];
+        if (!col) continue;
+        const cols = out.get(table) ?? new Set<string>();
+        cols.add(col.toLowerCase());
+        out.set(table, cols);
+      }
     }
   }
   return out;
