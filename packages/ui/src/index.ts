@@ -16,6 +16,8 @@ export * from "./components/states.js";
 export * from "./components/templates.js";
 export * from "./components/table-views.js";
 export * from "./components/keyboard-map.js";
+export * from "./components/data-grid-core.js";
+export * from "./components/data-grid.js";
 export * from "./search/index.js";
 export { COMPONENT_CSS } from "./styles.js";
 export { messages, type Messages } from "./i18n/messages.js";

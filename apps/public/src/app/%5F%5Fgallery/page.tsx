@@ -13,7 +13,9 @@ import {
   CheckboxField,
   ClickToLoad,
   ColumnChooser,
+  ColumnMapper,
   CommandPalette,
+  DataGrid,
   DataTable,
   EmptyState,
   ErrorMessage,
@@ -153,6 +155,49 @@ export default async function Gallery() {
             { label: "A", value: 2 },
             { label: "B", value: 1 },
           ]}
+        />
+        <DataGrid
+          id="g-grid"
+          label="Example grid"
+          selection="multiple"
+          columns={[
+            { key: "ref", header: "Reference", type: "text", readOnly: true, rowHeader: true },
+            { key: "title", header: "Title", type: "text", required: true },
+            { key: "amount", header: "Amount", type: "number", min: 0 },
+            { key: "due", header: "Due", type: "date" },
+            {
+              key: "state",
+              header: "State",
+              type: "enum",
+              options: [
+                { value: "open", label: "Open" },
+                { value: "closed", label: "Closed" },
+              ],
+            },
+            { key: "done", header: "Done", type: "boolean" },
+          ]}
+          rows={Array.from({ length: 200 }, (_, i) => ({
+            id: `row-${i + 1}`,
+            ref: `REF-${i + 1}`,
+            title: `Item ${i + 1}`,
+            amount: (i + 1) * 100,
+            due: "2026-03-31",
+            state: i % 3 ? "open" : "closed",
+            done: i % 2 === 0,
+          }))}
+        />
+        <ColumnMapper
+          id="g-mapper"
+          label="Example column mapping"
+          sources={[
+            { key: "c1", label: "Name", sample: "A. Person" },
+            { key: "c2", label: "Date", sample: "2026-03-31" },
+          ]}
+          targets={[
+            { key: "name", label: "Full name", required: true },
+            { key: "date", label: "Start date" },
+          ]}
+          defaultMapping={{ name: "c1" }}
         />
       </section>
       <section aria-labelledby="g-shell">
