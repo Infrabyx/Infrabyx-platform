@@ -245,6 +245,18 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Threat names differ between engines; callers act on the verdict, not the name, so only reports change",
   },
   {
+    port: "PDF",
+    primary: "pdf-text",
+    exitTarget: "none",
+    pending:
+      "Only text extraction is built (PR-LDC-39), in-process with no vendor; the IPB-01 file-operation adapters (pdf-lib, pdfcpu, Gotenberg) follow when a product needs them",
+    dataMove:
+      "Configuration swap; files stay in the tenant's STORAGE and the parser keeps nothing between calls",
+    volumeClass: "S",
+    lockIn:
+      "Line breaks and spacing of extracted text can differ between parsers; products that store text re-extract on a switch",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",

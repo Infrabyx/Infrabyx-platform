@@ -135,6 +135,10 @@
     "./av": {
       "types": "./dist/av/index.d.ts",
       "default": "./dist/av/index.js"
+    },
+    "./pdf": {
+      "types": "./dist/pdf/index.d.ts",
+      "default": "./dist/pdf/index.js"
     }
   },
   "files": [

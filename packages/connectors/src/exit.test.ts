@@ -55,6 +55,8 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
       "DOCGEN",
       // AV: the alternatives need an external account the owner has not chosen (R1-D-117).
       "AV",
+      // PDF: only the in-process text extractor exists (PR-LDC-39, R1-D-160).
+      "PDF",
     ]);
   });
 
