@@ -39,14 +39,18 @@ import {
   type Payout,
   type PayoutsPort,
   type PdfPort,
+  type PdfTextRequest,
+  type PdfTextResult,
   type PortHealth,
   type RenderedDocument,
   type SignatureRecord,
   type Signer,
+  type StoragePort,
   type TemplateInfo,
 } from "@infrabyx/contracts/ports";
 import { sha256Hex } from "@infrabyx/crypto";
 import type { ContractCase } from "../contract.js";
+import { fakeExtractText } from "./pdf-text.js";
 
 const up = async (): Promise<PortHealth> => ({
   status: "up",
@@ -503,7 +507,10 @@ export const FAKE_TEMPLATES: readonly TemplateInfo[] = [
   { templateId: "kfs", version: "2", formats: ["pdf", "pdfa"] },
 ];
 
-/** PDF operations as pure functions over STORAGE references (hashes derived from the inputs). */
+/**
+ * PDF operations as pure functions over STORAGE references (hashes derived from the inputs), and
+ * `extractText` over `storage` (PR-LDC-39; `fakeExtractText`) when one is given.
+ */
 export class FakePdf implements PdfPort {
   readonly descriptor: AdapterDescriptor = {
     port: "PDF",
@@ -513,6 +520,10 @@ export class FakePdf implements PdfPort {
   };
   health = up;
   private readonly pages = new Map<string, number>();
+  constructor(private readonly storage?: StoragePort) {}
+  async extractText(req: PdfTextRequest): Promise<PdfTextResult> {
+    return fakeExtractText(this.storage, req);
+  }
   private out(prefix: string, op: string, ...inputs: string[]): DocFileRef {
     const f = fakeFile(prefix, op, ...inputs);
     return f;

@@ -35,6 +35,7 @@ export * from "./estamp.js";
 export * from "./payouts.js";
 export * from "./docgen.js";
 export * from "./file-scan.js";
+export * from "./pdf-text.js";
 export * from "./accounting.js";
 export * from "./calendar.js";
 export * from "./captcha.js";

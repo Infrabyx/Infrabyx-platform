@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { Port, PortCall } from "./common.js";
 import { DocFileRef, OutputPrefix } from "./doc-file.js";
 import { classed } from "./payload-class.js";
+import type { PdfTextRequest, PdfTextResult } from "./pdf-text.js";
 
 const internal = <T extends z.ZodType>(s: T): T => classed(s, "INTERNAL");
 const confidential = <T extends z.ZodType>(s: T): T => classed(s, "CONFIDENTIAL");
@@ -92,4 +93,10 @@ export interface PdfPort extends Port {
   watermark(file: DocFileRef, text: string, outputPrefix: string): Promise<DocFileRef>;
   linearise(file: DocFileRef, outputPrefix: string): Promise<DocFileRef>;
   pageCount(file: DocFileRef): Promise<number>;
+  /**
+   * Text per page from a text PDF (PR-LDC-39, R1-D-160; `pdf-text.ts`). Only for a file the AV port
+   * scanned `CLEAN` (`req.scan`, checked against the bytes read), under limits capped by the platform
+   * maxima; a page with no text layer is `needsOcr`. Optional: adapters without it stay valid.
+   */
+  extractText?(req: PdfTextRequest, call?: PortCall): Promise<PdfTextResult>;
 }

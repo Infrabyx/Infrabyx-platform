@@ -8,8 +8,10 @@
 // its signatures are older than allowed) keeps it quarantined (`IPB-SEC-015`) and it is scanned
 // again later. `scanDecision` is the single mapping every caller uses.
 import { z } from "zod";
+import { PortError } from "../errors.js";
 import type { Port, PortCall } from "./common.js";
 import { DocFileRef } from "./doc-file.js";
+import { classed } from "./payload-class.js";
 
 export const SCAN_VERDICTS = ["CLEAN", "INFECTED", "ERROR"] as const;
 export type ScanVerdict = (typeof SCAN_VERDICTS)[number];
@@ -68,4 +70,43 @@ export function scanDecision(r: Pick<FileScanResult, "verdict">): ScanDecision {
     default:
       return { action: "quarantine", code: "IPB-SEC-015" };
   }
+}
+
+/** What a reader of an untrusted upload takes as proof of its scan: the scan's result, as returned. */
+export const ScanProof = z.looseObject({
+  /** Any string: an unknown verdict is checked by `scanDecision` and never releases. */
+  verdict: classed(z.string().max(32), "INTERNAL"),
+  file: DocFileRef,
+});
+export interface ScanProof {
+  verdict: string;
+  file: DocFileRef;
+}
+
+/**
+ * Throws unless `scan` is a `CLEAN` scan of exactly the bytes with SHA-256 `sha256` (IPB-02-44):
+ * every reader of an untrusted upload calls it before it parses a byte (PR-LDC-39). `INFECTED` is
+ * `IPB-SEC-011`; `ERROR`, an unknown verdict, or a scan of other bytes is `IPB-SEC-015` (the bytes
+ * stay quarantined). The caller still checks that the bytes it reads hash to `sha256`.
+ */
+export function assertScannedClean(
+  scan: ScanProof,
+  sha256: string,
+  port: string,
+  adapter?: string,
+): void {
+  const d = scanDecision({ verdict: scan.verdict as ScanVerdict });
+  const who = adapter === undefined ? {} : { adapter };
+  if (d.action !== "release")
+    throw new PortError(d.code, port, {
+      ...who,
+      detail: `the file's scan is ${String(scan.verdict).slice(0, 16)}, not CLEAN`,
+      meta: { reason: d.action === "reject" ? "infected" : "not_clean" },
+    });
+  if (scan.file.sha256 !== sha256)
+    throw new PortError("IPB-SEC-015", port, {
+      ...who,
+      detail: "the scan is of other bytes",
+      meta: { reason: "hash_mismatch" },
+    });
 }
