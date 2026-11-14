@@ -114,3 +114,7 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-35:** take the wave 12 patches together and run `infrabyx-migrate`: every platform outbox (`rules` included) is registered, and the first relay pass delivers the backlog. No shim to remove (none was possible in the product).
 - **PR-LDC-34:** call `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` with the entity's 00:00 instant and remove `versionAsOf`; read `listRuleSets().scheduledVersion` and `scheduledFrom` for the pending cut-over.
 - **PR-LDC-30 to PR-LDC-33:** planned in waves 13 and 14 (`docs/platform-requests.md`); PR-LDC-33 waits for the owner's sign-off of the v1.5 draft.
+
+## Spec event payload schemas (14 Nov, ahead of waves 13 and 14)
+
+- **PR-LDC-45, PR-LDC-51 (`contracts` minor):** validate `in.infrabyx.grc.EvidenceSubmitted.v1` and `in.infrabyx.platform.ProviderIncident.v1` payloads with `EvidenceSubmittedData` and `ProviderIncidentData` (`@infrabyx/contracts/events`). **Shim removed:** your own copies of these two payload types.

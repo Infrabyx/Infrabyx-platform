@@ -535,6 +535,25 @@ Every platform package now registers its outbox for `OutboxRelay` (one `<package
 
 `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` takes the instant the version comes into force, now to 366 days ahead; compute it yourself (for example 00:00 in the entity's time zone). The checker sees it in the R4 request. On approval the previous version stays in force until the cut-over (or the new one applies at approval, if that is later), `RuleSetPublished.effective_from` carries the instant, and as-of reads on either side of it return the right version. Only one cut-over per rule set may be pending; `listRuleSets` shows `scheduledVersion` and `scheduledFrom`.
 
+## 7bz. The obligation feed (spec v1.5; PR-LDC-33; R1-D-151)
+
+A consumer of `in.infrabyx.grc.ObligationPublished.v1` validates with `obligationPublishedProblems(envelope)` (an empty list means valid), processes each `(obligation_ref, version)` once, stores a lower `version` that arrives after a higher one without applying it, and pulls the obligation's text, citations or owner from `GET /v1/grc/obligations?updated_since=` when it needs them. The event carries ids and keys only (`dataclass = INTERNAL`); anything else, including text, is refused. The producer emits it under the canonical type, never `in.lawdocscomply.cnt.ObligationPublished.v1` (spec §6.17).
+
+## 7cc. Evidence and provider-incident payloads (PR-LDC-45, PR-LDC-51; owner answer #131; R1-D-155)
+
+Validate `in.infrabyx.grc.EvidenceSubmitted.v1` with `EvidenceSubmittedData` and `in.infrabyx.platform.ProviderIncident.v1` with `ProviderIncidentData` (`@infrabyx/contracts/events`). Evidence carries `https` or `storage:` references with their SHA-256, never files. A provider incident is `dataclass = INTERNAL` and never carries a tenant id.
+
+**Severity scale** (`PROVIDER_INCIDENT_SEVERITIES`; the Specification names none, the owner fixed this one). Choose by the impact on your callers when you emit, and emit again with the same `incident_id` when it changes:
+
+| Severity | Meaning                                                                                 |
+| -------- | --------------------------------------------------------------------------------------- |
+| `SEV1`   | A capability is unavailable and no adapter is serving it (no failover)                  |
+| `SEV2`   | The capability works for few callers, or a failover is serving it with reduced function |
+| `SEV3`   | Partial or intermittent degradation; the capability works for most callers              |
+| `SEV4`   | No caller-visible impact: a failover with full function, or a precautionary block       |
+
+This is not the `CRITICAL` to `LOW` scale of `VulnerabilityRecorded`, which rates a finding, not an outage.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
