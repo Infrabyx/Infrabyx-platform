@@ -1167,6 +1167,21 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 STORAGE"
   },
   {
+    "key": "int.storage.bucket.{class}.{compartment}",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": null,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "pattern": "^int\\.storage\\.bucket\\.([a-z0-9_-]+)\\.([a-z0-9_-]+)$",
+    "source": "IPB-01 §01.4.4.2 STORAGE; R1-D-158",
+    "note": "PR-LDC-60: a compartment's own bucket (confidential or regulated; board_confidential or sealed), distinct from every other bucket"
+  },
+  {
     "key": "int.storage.region",
     "tier": "PLATFORM",
     "type": "string",
@@ -7119,6 +7134,7 @@ export type SettingValueMap = {
   [k: `int.${string}.circuit_breaker`]: JsonValue;
   [k: `int.storage.retention.${string}_days`]: number;
   [k: `int.storage.bucket.${string}`]: string | null;
+  [k: `int.storage.bucket.${string}.${string}`]: string | null;
   [k: `int.email.from.${string}`]: string | null;
   [k: `int.sms.sender_id.${string}`]: string | null;
   [k: `int.whatsapp.waba_id.${string}`]: string | null;

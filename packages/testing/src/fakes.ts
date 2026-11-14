@@ -16,7 +16,7 @@ import type {
   StoragePort,
   StoredObject,
 } from "@infrabyx/contracts/ports";
-import { isValidStorageKey } from "@infrabyx/contracts/ports";
+import { compartmentAllowed, isValidStorageKey } from "@infrabyx/contracts/ports";
 import { LocalKms, sha256Hex } from "@infrabyx/crypto";
 
 export { MemoryFlagProvider, MemorySnapshotStore } from "@infrabyx/config/flags";
@@ -104,11 +104,28 @@ export class MemoryStorage implements StoragePort {
   private check(key: string): void {
     if (!isValidStorageKey(key)) throw new Error(`invalid storage key ${key}`);
   }
+  /** PR-LDC-60: a compartment only in its classes, and an object never changes location. */
+  private checkLocation(key: string, meta: ObjectMeta): void {
+    if (!compartmentAllowed(meta.bucketClass, meta.compartment))
+      throw new IpbError("IPB-PORT-003", {
+        detail: `compartment ${meta.compartment} is not allowed in class ${meta.bucketClass}`,
+      });
+    const cur = this.objects.get(key);
+    if (
+      cur &&
+      !cur.deleted &&
+      (cur.meta.bucketClass !== meta.bucketClass || cur.meta.compartment !== meta.compartment)
+    )
+      throw new IpbError("IPB-PORT-003", {
+        detail: "the object exists in another bucket class or compartment",
+      });
+  }
   async put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void> {
     this.check(key);
     const cur = this.objects.get(key);
     if (cur?.retainUntil && cur.retainUntil > this.now())
       throw new IpbError("IPB-STOR-003", { detail: "object is under retention" });
+    this.checkLocation(key, meta);
     this.objects.set(key, { body, meta: { ...meta, sha256: sha256Hex(body) } });
   }
   async putWithRetention(
@@ -120,6 +137,7 @@ export class MemoryStorage implements StoragePort {
     this.check(key);
     if (this.objects.has(key))
       throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
+    this.checkLocation(key, meta);
     this.objects.set(key, { body, meta: { ...meta, sha256: sha256Hex(body) }, retainUntil });
   }
   async get(key: string): Promise<StoredObject> {

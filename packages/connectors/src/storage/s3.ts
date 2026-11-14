@@ -7,7 +7,9 @@
 // Keys on `s3`; `minio` relies on the bucket's SSE-S3 auto-encryption. Presigned URLs (IPB-02-15) are SigV4, 1–300 s, bound to the
 // method and, for uploads, to the content type. Writes fail fast with IPB-STOR-002; the router
 // sends reads to the DR replica (`read_only_failover`). Keys outside the caller's tenant are
-// refused (IPB-PORT-003).
+// refused (IPB-PORT-003). Compartments (PR-LDC-60, R1-D-158): an object in a compartment of a
+// class lives in that compartment's own bucket under its own key; a shared or missing bucket or
+// key is refused at start or at write, never replaced by the class's.
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -28,14 +30,18 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import {
   BUCKET_CLASSES,
+  STORAGE_COMPARTMENTS,
+  compartmentAllowed,
   isValidStorageKey,
   type AdapterDescriptor,
   type BucketClass,
+  type CompartmentClass,
   type ObjectMeta,
   type ObjectRetention,
   type PortHealth,
   type PresignOptions,
   type StoragePort,
+  type StorageCompartment,
   type StoredObject,
 } from "@infrabyx/contracts/ports";
 import { sha256Hex, toBase64Url } from "@infrabyx/crypto";
@@ -51,8 +57,30 @@ export interface S3StorageOptions {
   region: string;
   /** KMS key per class for SSE-KMS (`STORAGE_KMS_KEY_REF`); `s3` requires one for every bucket. */
   kmsKeyIds?: Partial<Record<BucketClass, string>>;
-  /** C-17 (PL2-C-04): a tenant with its own CMK (C-15) gets that key per object. */
-  tenantKmsKeyId?: (tenantId: string) => string | undefined;
+  /**
+   * PR-LDC-60 (R1-D-158): a bucket per compartment and class
+   * (`int.storage.bucket.<class>.<compartment>`), distinct from every other bucket. Writing to a
+   * compartment without one is refused.
+   */
+  compartmentBuckets?: Partial<
+    Record<StorageCompartment, Partial<Record<CompartmentClass, string>>>
+  >;
+  /**
+   * SSE-KMS key per compartment and class, distinct from every class key and every other
+   * compartment's key; `s3` requires one for every compartment bucket.
+   */
+  compartmentKmsKeyIds?: Partial<
+    Record<StorageCompartment, Partial<Record<CompartmentClass, string>>>
+  >;
+  /**
+   * C-17 (PL2-C-04): a tenant with its own CMK (C-15) gets that key per object. Called with the
+   * object's location; for a compartment it must return the tenant's key for that compartment,
+   * distinct from its other keys, or the write is refused (PR-LDC-60).
+   */
+  tenantKmsKeyId?: (
+    tenantId: string,
+    where?: { bucketClass: BucketClass; compartment?: StorageCompartment },
+  ) => string | undefined;
   /** Tenant of the current call (tenancy context); keys of other tenants are refused. */
   currentTenant?: () => string | undefined;
   /** `int.storage.presign_ttl_seconds` (≤ 300). */
@@ -69,12 +97,22 @@ const statusOf = (e: unknown) => (e as S3Error).$metadata?.httpStatusCode;
 const isNotFound = (e: unknown) =>
   ["NoSuchKey", "NotFound", "NoSuchVersion"].includes((e as S3Error).name) || statusOf(e) === 404;
 
+/** Where an object lives: a bucket class, and optionally a compartment of it (PR-LDC-60). */
+interface Slot {
+  cls: BucketClass;
+  compartment?: StorageCompartment;
+}
+const slotName = (s: Slot) => (s.compartment ? `${s.cls}.${s.compartment}` : s.cls);
+const sameSlot = (a: Slot, b: Slot) => a.cls === b.cls && a.compartment === b.compartment;
+const slotOf = (m: { bucketClass: BucketClass; compartment?: StorageCompartment }): Slot =>
+  m.compartment ? { cls: m.bucketClass, compartment: m.compartment } : { cls: m.bucketClass };
+
 export class S3Storage implements StoragePort {
   readonly descriptor: AdapterDescriptor;
   protected readonly client: S3Client;
   private readonly now: () => Date;
-  /** key → bucket class, learnt from writes and lookups. */
-  private readonly located = new Map<string, BucketClass>();
+  /** key → location, learnt from writes and lookups. */
+  private readonly located = new Map<string, Slot>();
 
   constructor(
     protected readonly o: S3StorageOptions,
@@ -92,6 +130,7 @@ export class S3Storage implements StoragePort {
             adapter,
             detail: `bucket class ${c} has no KMS key (C-17)`,
           });
+    this.checkCompartments(o, adapter);
     if ((o.presignTtlSeconds ?? MAX_PRESIGN_TTL_SECONDS) > MAX_PRESIGN_TTL_SECONDS)
       throw new RangeError("presigned URL TTL must be at most 300 s (IPB-02-15)");
     this.descriptor = {
@@ -118,6 +157,46 @@ export class S3Storage implements StoragePort {
 
   // ---- helpers -----------------------------------------------------------------------------------
 
+  private refuseConfig(adapter: string, detail: string): never {
+    throw new PortError("IPB-PORT-001", "STORAGE", { adapter, detail });
+  }
+
+  /**
+   * PR-LDC-60: every compartment bucket is allowed for its class and distinct from every other
+   * bucket; on `s3` each has a KMS key; every compartment key is distinct from every class key and
+   * every other compartment's key.
+   */
+  private checkCompartments(o: S3StorageOptions, adapter: string): void {
+    const buckets = new Map<string, string>();
+    for (const c of BUCKET_CLASSES) {
+      const b = o.buckets[c];
+      if (b) buckets.set(b, c);
+    }
+    const classKeys = new Set(Object.values(o.kmsKeyIds ?? {}).filter(Boolean));
+    const compartmentKeys = new Map<string, string>();
+    for (const comp of STORAGE_COMPARTMENTS)
+      for (const [cls, b] of Object.entries(o.compartmentBuckets?.[comp] ?? {})) {
+        const where = `${cls}.${comp}`;
+        if (!b) continue;
+        if (!compartmentAllowed(cls as BucketClass, comp))
+          this.refuseConfig(adapter, `compartment ${comp} is not allowed in class ${cls}`);
+        if (buckets.has(b))
+          this.refuseConfig(adapter, `bucket of ${where} is also used by ${buckets.get(b)}`);
+        buckets.set(b, where);
+        const k = o.compartmentKmsKeyIds?.[comp]?.[cls as CompartmentClass];
+        if (!k) {
+          if (adapter === "s3") this.refuseConfig(adapter, `${where} has no KMS key (C-17)`);
+          continue;
+        }
+        if (classKeys.has(k) || compartmentKeys.has(k))
+          this.refuseConfig(
+            adapter,
+            `KMS key of ${where} is shared with ${compartmentKeys.get(k) ?? "a bucket class"}`,
+          );
+        compartmentKeys.set(k, where);
+      }
+  }
+
   private checkKey(key: string): void {
     if (!isValidStorageKey(key))
       throw new PortError("IPB-PORT-003", "STORAGE", {
@@ -132,18 +211,36 @@ export class S3Storage implements StoragePort {
       });
   }
 
-  protected bucket(c: BucketClass): string {
-    const b = this.o.buckets[c];
+  protected bucket(c: BucketClass | Slot): string {
+    const slot: Slot = typeof c === "string" ? { cls: c } : c;
+    if (!compartmentAllowed(slot.cls, slot.compartment))
+      throw new PortError("IPB-PORT-003", "STORAGE", {
+        adapter: this.adapter,
+        detail: `compartment ${slot.compartment} is not allowed in class ${slot.cls}`,
+      });
+    const b = slot.compartment
+      ? this.o.compartmentBuckets?.[slot.compartment]?.[slot.cls as CompartmentClass]
+      : this.o.buckets[slot.cls];
     if (!b)
       throw new PortError("IPB-PORT-001", "STORAGE", {
         adapter: this.adapter,
-        detail: `no bucket configured for class ${c}`,
+        detail: `no bucket configured for ${slotName(slot)}`,
       });
     return b;
   }
 
   protected classes(): BucketClass[] {
     return BUCKET_CLASSES.filter((c) => this.o.buckets[c]);
+  }
+
+  /** Every configured location: the class buckets, then the compartment buckets. */
+  protected slots(): Slot[] {
+    const out: Slot[] = this.classes().map((cls) => ({ cls }));
+    for (const compartment of STORAGE_COMPARTMENTS)
+      for (const cls of BUCKET_CLASSES)
+        if (this.o.compartmentBuckets?.[compartment]?.[cls as CompartmentClass])
+          out.push({ cls, compartment });
+    return out;
   }
 
   private notFound(key: string): never {
@@ -160,13 +257,15 @@ export class S3Storage implements StoragePort {
     });
   }
 
-  /** The bucket class holding `key` (current version, not deleted), or undefined. */
+  /** The location holding `key` (current version, not deleted), or undefined. */
   private async locate(
     key: string,
     op: "read" | "write" = "read",
-  ): Promise<{ cls: BucketClass; head: HeadObjectCommandOutput } | undefined> {
+  ): Promise<{ cls: Slot; head: HeadObjectCommandOutput } | undefined> {
     const known = this.located.get(key);
-    const order = known ? [known, ...this.classes().filter((c) => c !== known)] : this.classes();
+    const order = known
+      ? [known, ...this.slots().filter((c) => !sameSlot(c, known))]
+      : this.slots();
     for (const cls of order) {
       try {
         const head = await this.client.send(
@@ -192,12 +291,53 @@ export class S3Storage implements StoragePort {
       throw new IpbError("IPB-STOR-003", { detail: `object is under retention; ${what} refused` });
   }
 
-  private sse(cls: BucketClass, key: string) {
-    const tenant = /^tenant\/([^/]+)\//.exec(key)?.[1];
-    const kms = (tenant && this.o.tenantKmsKeyId?.(tenant)) || this.o.kmsKeyIds?.[cls];
+  private sse(slot: Slot, key: string) {
+    const kms = this.keyFor(slot, key);
     return kms
       ? { ServerSideEncryption: "aws:kms" as const, SSEKMSKeyId: kms, BucketKeyEnabled: true }
       : {};
+  }
+
+  /**
+   * The KMS key for a write. A class: the tenant's CMK, else the class key. A compartment
+   * (PR-LDC-60): the tenant's key for that compartment when the tenant has its own CMK, else the
+   * compartment key; a tenant compartment key that is missing or equal to any of the tenant's
+   * other keys (or to a platform key) is refused, never replaced.
+   */
+  private keyFor(slot: Slot, key: string): string | undefined {
+    const tenant = /^tenant\/([^/]+)\//.exec(key)?.[1];
+    const tenantKey = (where: Slot) =>
+      tenant
+        ? this.o.tenantKmsKeyId?.(tenant, {
+            bucketClass: where.cls,
+            ...(where.compartment ? { compartment: where.compartment } : {}),
+          })
+        : undefined;
+    if (!slot.compartment) return tenantKey(slot) || this.o.kmsKeyIds?.[slot.cls];
+    const own = tenantKey(slot);
+    const tenantHasCmk = BUCKET_CLASSES.some((c) => tenantKey({ cls: c }));
+    if (!own) {
+      if (tenantHasCmk)
+        this.refuseConfig(
+          this.adapter,
+          `the tenant's own key has no key for ${slotName(slot)} (PR-LDC-60)`,
+        );
+      return this.o.compartmentKmsKeyIds?.[slot.compartment]?.[slot.cls as CompartmentClass];
+    }
+    const others = new Set<string | undefined>([
+      ...BUCKET_CLASSES.map((c) => tenantKey({ cls: c })),
+      ...BUCKET_CLASSES.map((c) => this.o.kmsKeyIds?.[c]),
+      ...STORAGE_COMPARTMENTS.filter((c) => c !== slot.compartment).flatMap((c) =>
+        BUCKET_CLASSES.map((cls) => tenantKey({ cls, compartment: c })),
+      ),
+      ...STORAGE_COMPARTMENTS.flatMap((c) => Object.values(this.o.compartmentKmsKeyIds?.[c] ?? {})),
+    ]);
+    if (others.has(own))
+      this.refuseConfig(
+        this.adapter,
+        `the tenant's key for ${slotName(slot)} is shared with another of its keys (PR-LDC-60)`,
+      );
+    return own;
   }
 
   private metadata(body: Uint8Array, meta: ObjectMeta): Record<string, string> {
@@ -208,28 +348,31 @@ export class S3Storage implements StoragePort {
 
   async put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void> {
     this.checkKey(key);
+    const slot = slotOf(meta);
+    const Bucket = this.bucket(slot);
+    const sse = this.sse(slot, key);
     const found = await this.locate(key, "write");
     if (found) {
       this.refuseRetained(found.head, "overwrite");
-      if (found.cls !== meta.bucketClass)
+      if (!sameSlot(found.cls, slot))
         throw new PortError("IPB-PORT-003", "STORAGE", {
           adapter: this.adapter,
-          detail: "the object exists in another bucket class",
+          detail: "the object exists in another bucket class or compartment",
         });
     }
     try {
       await this.client.send(
         new PutObjectCommand({
-          Bucket: this.bucket(meta.bucketClass),
+          Bucket,
           Key: key,
           Body: body,
           ...(meta.contentType ? { ContentType: meta.contentType } : {}),
           Metadata: this.metadata(body, meta),
           ChecksumAlgorithm: "SHA256",
-          ...this.sse(meta.bucketClass, key),
+          ...sse,
         }),
       );
-      this.located.set(key, meta.bucketClass);
+      this.located.set(key, slot);
     } catch (e) {
       this.unavailable("write", e);
     }
@@ -243,12 +386,15 @@ export class S3Storage implements StoragePort {
   ): Promise<void> {
     this.checkKey(key);
     if (!(retainUntil > this.now())) throw new RangeError("retainUntil must be in the future");
+    const slot = slotOf(meta);
+    const Bucket = this.bucket(slot);
+    const sse = this.sse(slot, key);
     if (await this.locate(key, "write"))
       throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
     try {
       await this.client.send(
         new PutObjectCommand({
-          Bucket: this.bucket(meta.bucketClass),
+          Bucket,
           Key: key,
           Body: body,
           IfNoneMatch: "*",
@@ -257,10 +403,10 @@ export class S3Storage implements StoragePort {
           ChecksumAlgorithm: "SHA256",
           ObjectLockMode: "COMPLIANCE",
           ObjectLockRetainUntilDate: retainUntil,
-          ...this.sse(meta.bucketClass, key),
+          ...sse,
         }),
       );
-      this.located.set(key, meta.bucketClass);
+      this.located.set(key, slot);
     } catch (e) {
       if (statusOf(e) === 412)
         throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
@@ -288,7 +434,8 @@ export class S3Storage implements StoragePort {
         key,
         body,
         meta: {
-          bucketClass: found!.cls,
+          bucketClass: found!.cls.cls,
+          ...(found!.cls.compartment ? { compartment: found!.cls.compartment } : {}),
           ...(r.ContentType ? { contentType: r.ContentType } : {}),
           sha256: sha256Hex(body),
           ...(Object.keys(tags).length ? { tags } : {}),
@@ -314,20 +461,38 @@ export class S3Storage implements StoragePort {
     if (op === "put") {
       if (!opts.bucketClass || !opts.contentType)
         throw new RangeError("an upload URL needs its bucket class and content type");
+      const slot = slotOf({
+        bucketClass: opts.bucketClass,
+        ...(opts.compartment ? { compartment: opts.compartment } : {}),
+      });
+      const Bucket = this.bucket(slot);
+      const sse = this.sse(slot, key);
       const found = await this.locate(key);
-      if (found) this.refuseRetained(found.head, "upload");
+      if (found) {
+        this.refuseRetained(found.head, "upload");
+        if (!sameSlot(found.cls, slot))
+          throw new PortError("IPB-PORT-003", "STORAGE", {
+            adapter: this.adapter,
+            detail: "the object exists in another bucket class or compartment",
+          });
+      }
       return getSignedUrl(
         this.client,
         new PutObjectCommand({
-          Bucket: this.bucket(opts.bucketClass),
+          Bucket,
           Key: key,
           ContentType: opts.contentType,
-          ...this.sse(opts.bucketClass, key),
+          ...sse,
         }),
         { expiresIn: ttlSeconds, signableHeaders: new Set(["content-type"]) },
       );
     }
-    const cls = opts.bucketClass ?? (await this.locate(key))?.cls;
+    const cls: Slot | undefined = opts.bucketClass
+      ? slotOf({
+          bucketClass: opts.bucketClass,
+          ...(opts.compartment ? { compartment: opts.compartment } : {}),
+        })
+      : (await this.locate(key))?.cls;
     if (!cls) this.notFound(key);
     return getSignedUrl(
       this.client,
@@ -368,7 +533,7 @@ export class S3Storage implements StoragePort {
         adapter: this.adapter,
         detail: "prefix outside the caller's tenant",
       });
-    const classes = this.classes();
+    const classes = this.slots();
     let [ci, token] = cursor
       ? (JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as [
           number,
@@ -511,7 +676,7 @@ export class S3Storage implements StoragePort {
     const t0 = Date.now();
     let status: PortHealth["status"] = "up";
     try {
-      for (const c of this.classes()) {
+      for (const c of this.slots()) {
         const Bucket = this.bucket(c);
         await this.client.send(new HeadBucketCommand({ Bucket }));
         const [v, lock] = await Promise.all([
@@ -528,19 +693,21 @@ export class S3Storage implements StoragePort {
   }
 
   /** Replication rules per bucket, read only (PL2 plan §6.7: checked, not created). */
-  async replicationStatus(): Promise<Partial<Record<BucketClass, string[]>>> {
-    const out: Partial<Record<BucketClass, string[]>> = {};
-    for (const c of this.classes()) {
+  async replicationStatus(): Promise<
+    Partial<Record<BucketClass | `${CompartmentClass}.${StorageCompartment}`, string[]>>
+  > {
+    const out: Partial<Record<string, string[]>> = {};
+    for (const c of this.slots()) {
       try {
         const r = await this.client.send(
           new GetBucketReplicationCommand({ Bucket: this.bucket(c) }),
         );
-        out[c] = (r.ReplicationConfiguration?.Rules ?? [])
+        out[slotName(c)] = (r.ReplicationConfiguration?.Rules ?? [])
           .filter((x) => x.Status === "Enabled")
           .map((x) => x.Destination?.Bucket ?? "")
           .filter(Boolean);
       } catch (e) {
-        if ((e as S3Error).name === "ReplicationConfigurationNotFoundError") out[c] = [];
+        if ((e as S3Error).name === "ReplicationConfigurationNotFoundError") out[slotName(c)] = [];
         else this.unavailable("read", e);
       }
     }
@@ -570,7 +737,7 @@ export class MinioStorage extends S3Storage {
    */
   async ensureBuckets(): Promise<{ created: string[] }> {
     const created: string[] = [];
-    for (const c of this.classes()) {
+    for (const c of this.slots()) {
       const Bucket = this.bucket(c);
       try {
         await this.client.send(new HeadBucketCommand({ Bucket }));

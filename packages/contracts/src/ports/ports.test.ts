@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidStorageKey, storageKey } from "./storage.js";
+import { compartmentAllowed, isValidStorageKey, storageKey } from "./storage.js";
 import { parseSecretRef, isSecretRef } from "./secrets.js";
 import { PORT_CATALOGUE, PORT_NAMES, R1_PORTS } from "./catalogue.js";
 import { VerifiedClaims } from "./identity.js";
@@ -45,5 +45,16 @@ describe("ports", () => {
       iat: 1,
     });
     expect(c.act?.sub).toBe("usr_2");
+  });
+});
+
+describe("storage compartments (PR-LDC-60)", () => {
+  it("are allowed in CONFIDENTIAL and REGULATED only", () => {
+    expect(compartmentAllowed("CONFIDENTIAL", "BOARD_CONFIDENTIAL")).toBe(true);
+    expect(compartmentAllowed("REGULATED", "SEALED")).toBe(true);
+    expect(compartmentAllowed("GENERAL")).toBe(true);
+    for (const cls of ["AUDIT", "GENERAL", "PUBLIC_ASSETS", "QUARANTINE"] as const)
+      expect(compartmentAllowed(cls, "SEALED"), cls).toBe(false);
+    expect(compartmentAllowed("CONFIDENTIAL", "OTHER" as never)).toBe(false);
   });
 });

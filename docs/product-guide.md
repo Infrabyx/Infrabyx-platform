@@ -607,6 +607,14 @@ The tenant brand layer takes three more optional fields, proposed and approved l
 
 After the upload passes the AV scan, call `readXlsx(bytes, limits?)` (`@infrabyx/export`) to get `[{ name, rows }]`, where each row is an array of `string | number | boolean | null` (dates as `YYYY-MM-DD`, or a full ISO time when the cell has one). `xlsxRecords(sheet)` keys rows by the header row. Formulas are never returned, only their cached values. Raise or lower the limits for your use (defaults: 25 MiB file, 100,000 rows, 1,024 columns, 32,767 characters a cell). Map `IPB-SEC-013` to "the file is too large", `IPB-SEC-012` to "macros or active content are not accepted" and `IPB-SEC-010` to "this is not a readable workbook". **Shim removed:** the reader half of your `WorkbookPort`, so ExcelJS is no longer needed.
 
+## 7cd. Storage compartments for board papers and sealed material (PR-LDC-60; R1-D-158)
+
+Put an object in a compartment with `storage.put(key, body, { bucketClass: "CONFIDENTIAL", compartment: "BOARD_CONFIDENTIAL" })` (or `SEALED`; either in `CONFIDENTIAL` or `REGULATED`, which keep their lock and retention rules). `get` returns the compartment in `meta`, `presign(key, "put", ttl, { bucketClass, compartment, contentType })` gives an upload URL bound to it, and an object never moves between compartments or out of one.
+
+- **Configure** each compartment you use: `compartmentBuckets` (setting `int.storage.bucket.{class}.{compartment}`) and, on `s3`, `compartmentKmsKeyIds`. Every compartment bucket and key must differ from every other bucket and key, or the adapter refuses to start. A write to a compartment you have not configured is refused (`IPB-PORT-001`), never sent to the class bucket.
+- **Tenants with their own CMK:** `tenantKmsKeyId(tenantId, { bucketClass, compartment })` must return a separate key for each compartment. If it returns the tenant's general key, no key, or a key another compartment uses, the write is refused. A single-argument function written before compartments therefore fails closed for compartment writes and works as before for the rest.
+- **Infrastructure:** create the compartment buckets (versioned, Object Lock for the class, private, TLS-only) and one KMS key per compartment in your environment stack. The Terraform modules take them as inputs from wave 15. Limit each compartment key's policy to the workloads that handle that material.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

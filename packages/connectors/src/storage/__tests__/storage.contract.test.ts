@@ -31,6 +31,8 @@ const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "GENERAL"];
 let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
+const compartmentKeys: string[] = [];
+const COMPARTMENT_BUCKETS = ["ipb-s3-conf-board", "ipb-s3-reg-sealed"];
 let tenant: string | undefined;
 
 const raw = () =>
@@ -45,22 +47,30 @@ beforeAll(async () => {
   moto = await startService("moto", { ports: [5000], readyLog: /Running on/ });
   endpoint = `http://${moto.host}:${moto.ports[5000]}`;
   const s3 = raw();
-  for (const set of ["s3", "minio"])
-    for (const Bucket of Object.values(buckets(set))) {
-      await s3.send(
-        new CreateBucketCommand({
-          Bucket,
-          ObjectLockEnabledForBucket: true,
-          CreateBucketConfiguration: { LocationConstraint: REGION },
-        }),
-      );
-      await s3.send(
-        new PutBucketVersioningCommand({ Bucket, VersioningConfiguration: { Status: "Enabled" } }),
-      );
-    }
+  for (const Bucket of [
+    ...Object.values(buckets("s3")),
+    ...Object.values(buckets("minio")),
+    ...COMPARTMENT_BUCKETS,
+  ]) {
+    await s3.send(
+      new CreateBucketCommand({
+        Bucket,
+        ObjectLockEnabledForBucket: true,
+        CreateBucketConfiguration: { LocationConstraint: REGION },
+      }),
+    );
+    await s3.send(
+      new PutBucketVersioningCommand({ Bucket, VersioningConfiguration: { Status: "Enabled" } }),
+    );
+  }
   const kms = new KMSClient({ region: REGION, endpoint, credentials: CREDS });
   kmsKey = (await kms.send(new CreateKeyCommand({ Description: "ipb storage test" }))).KeyMetadata!
     .KeyId!;
+  for (const d of ["board", "sealed"])
+    compartmentKeys.push(
+      (await kms.send(new CreateKeyCommand({ Description: `ipb storage ${d}` }))).KeyMetadata!
+        .KeyId!,
+    );
 });
 afterAll(async () => moto?.stop());
 
@@ -249,6 +259,53 @@ describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
     expect((await head(own)).SSEKMSKeyId).toContain(tenantKey);
     expect((await head(other)).SSEKMSKeyId).toContain(kmsKey);
     expect((await head(own)).ServerSideEncryption).toBe("aws:kms");
+  });
+
+  it("PR-LDC-60: a compartment object is in its own bucket under its own key, never the class's", async () => {
+    const p = new S3Storage({
+      region: REGION,
+      buckets: buckets("s3"),
+      kmsKeyIds: Object.fromEntries(CLASSES.map((c) => [c, kmsKey])),
+      compartmentBuckets: {
+        BOARD_CONFIDENTIAL: { CONFIDENTIAL: COMPARTMENT_BUCKETS[0]! },
+        SEALED: { REGULATED: COMPARTMENT_BUCKETS[1]! },
+      },
+      compartmentKmsKeyIds: {
+        BOARD_CONFIDENTIAL: { CONFIDENTIAL: compartmentKeys[0]! },
+        SEALED: { REGULATED: compartmentKeys[1]! },
+      },
+      endpoint,
+      credentials: CREDS,
+      forcePathStyle: true,
+    });
+    const board = key();
+    const sealed = key("tnt_a", "json");
+    const general = key();
+    await p.put(board, enc("minutes"), {
+      bucketClass: "CONFIDENTIAL",
+      compartment: "BOARD_CONFIDENTIAL",
+      contentType: "application/pdf",
+    });
+    await p.putWithRetention(sealed, enc("{}"), later(), {
+      bucketClass: "REGULATED",
+      compartment: "SEALED",
+    });
+    await p.put(general, enc("memo"), { bucketClass: "REGULATED" });
+    const s3 = raw();
+    const head = (Bucket: string, k: string) => s3.send(new HeadObjectCommand({ Bucket, Key: k }));
+    expect((await head(COMPARTMENT_BUCKETS[0]!, board)).SSEKMSKeyId).toContain(compartmentKeys[0]);
+    expect((await head(COMPARTMENT_BUCKETS[1]!, sealed)).SSEKMSKeyId).toContain(compartmentKeys[1]);
+    expect((await head(buckets("s3").REGULATED, general)).SSEKMSKeyId).toContain(kmsKey);
+    await expect(head(buckets("s3").REGULATED, sealed)).rejects.toBeDefined();
+    expect((await p.get(board)).meta).toMatchObject({
+      bucketClass: "CONFIDENTIAL",
+      compartment: "BOARD_CONFIDENTIAL",
+    });
+    await p.assertImmutable(sealed);
+    await expect(p.put(board, enc("x"), { bucketClass: "CONFIDENTIAL" })).rejects.toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    expect((await p.health()).status).toBe("up");
   });
 
   it("refuses regions outside India and buckets without a KMS key (C-17)", () => {
