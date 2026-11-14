@@ -30,7 +30,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
-## Thirteenth session (14 Nov)
+## Thirteenth session (14 Nov) — handover
 
 - **#254 merged** (`682a2f4`) under the owner's one-off bypass: the Ecosystem Specification is at v1.5 on `main`; the owner removes the bypass.
 - **#256 merged** (`043a348`; one `ci:run`, all checks green): the `ObligationPublished` (R1-D-151), `EvidenceSubmitted` and `ProviderIncident` schemas, with the owner's severity scale `SEV1` to `SEV4` (#131, R1-D-155; guide §7cc), as a `contracts` minor ahead of waves 13 and 14. Released by run 232 (version PR #257, `b774e3f`; record below).
@@ -38,7 +38,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **PR-LDC-61 fixed in wave 13** (R1-D-156, `d3e8f72` on #252): the map gate reads every column of a multi-column `ALTER TABLE`.
 - **PR-LDC-60 built in wave 14** (priority, R1-D-158, M110): separately keyed storage compartments `BOARD_CONFIDENTIAL` and `SEALED` within `CONFIDENTIAL`/`REGULATED`; own bucket and SSE-KMS key each (platform or tenant CMK); missing or shared bucket or key refused; guide §7cd, threat model §3.128. Terraform module inputs in wave 15. LawDocsComply may store board papers once the wave 14 release is installed and the compartment buckets and keys exist.
 - **Check-ins moved to this chat:** daily `trig_01QJQjBAGuS7iTniUvdCCfyL` (17:41 IST), 1 Dec `trig_01M9iAzAMRi1gkXvGXjxgDwQ` (ask the owner about the base-image and `sqlite-libs` waivers before 5, 7 and 10 Dec), 15 Dec `trig_014bQx7WfhVq3kvxN88wAZZs`; the twelfth session's three are disabled.
-- **Next:** the #252 wave 13 gate on or after 16 Nov (label `export:unchanged` if the export-map gate flags the `export` source changes, as in wave 12), its release and adoption notes; wave 14: PR-LDC-32 `DataGrid` (in progress), PR-LDC-39 PDF text; then the wave 14 PR (merge `main` in first) and its gate.
+- **Next:** the #252 wave 13 gate on or after 16 Nov (label `export:unchanged` if the export-map gate flags the `export` source changes, as in wave 12), its release and adoption notes; wave 14: PR-LDC-39 PDF text (read `docs/phases/R1-pdf-dependency-review.md` first); then the wave 14 PR (merge `main` in first; expect a `docs/STATUS.md`/`DECISIONS.md`/guide conflict with #256's §7cc and R1-D-155 rows: keep both) and its gate. **Built 14 Nov:** PR-LDC-32 `DataGrid` and `ColumnMapper` (`ui`, R1-D-159; scanned by the CI a11y job through `/__gallery`).
 
 ## Handover (2026-11-13, twelfth session)
 
