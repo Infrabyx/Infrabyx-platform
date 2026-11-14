@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-10
+Updated: 2026-11-14
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -23,6 +23,11 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+
+## Spec v1.5 and the spec event schemas (14 Nov; #254, R1-D-151, R1-D-155)
+
+- **#254 merged** (`682a2f4`) under the owner's one-off bypass: the Ecosystem Specification is at v1.5 on `main` (`ObligationPublished` payload, §6.15). The owner removes the bypass.
+- **Schemas (`contracts` minor, this PR):** `ObligationPublishedData` and `obligationPublishedProblems` (R1-D-151), `EvidenceSubmittedData` and `ProviderIncidentData` (R1-D-138), and the owner's `ProviderIncident` severity scale `SEV1` to `SEV4` (#131, R1-D-155; guide §7cc). Taken ahead of waves 13 and 14 so the schema follows the spec at once.
 
 ## Keycloak 26.8.2-0 pinned (12 Nov, #124, R1-D-134)
 
