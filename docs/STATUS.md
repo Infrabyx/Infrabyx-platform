@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-12
+Updated: 2026-11-14
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -14,15 +14,26 @@ Updated: 2026-11-12
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                         | Expires    | Review                                 | Decision           |
-| -------------------------------- | ----------------------------- | ---------- | -------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                  | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                 | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                 | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 12 Nov (26.8.2), 1 Dec, 15 Dec         | R1-D-115, R1-D-116 |
-| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner) | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                  | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                  | R1-D-111           |
+| Finding                          | Where                         | Expires    | Review                                    | Decision           |
+| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+
+## Spec v1.5 and the spec event schemas (14 Nov; #254, R1-D-151, R1-D-155)
+
+- **#254 merged** (`682a2f4`) under the owner's one-off bypass: the Ecosystem Specification is at v1.5 on `main` (`ObligationPublished` payload, §6.15). The owner removes the bypass.
+- **Schemas (`contracts` minor, this PR):** `ObligationPublishedData` and `obligationPublishedProblems` (R1-D-151), `EvidenceSubmittedData` and `ProviderIncidentData` (R1-D-138), and the owner's `ProviderIncident` severity scale `SEV1` to `SEV4` (#131, R1-D-155; guide §7cc). Taken ahead of waves 13 and 14 so the schema follows the spec at once.
+
+## Keycloak 26.8.2-0 pinned (12 Nov, #124, R1-D-134)
+
+- **Scan:** Keycloak re-tagged 26.8.2: the planned digest (`sha256:3879c623…`, pushed 5 Nov) is now `26.8.2-0`, and `26.8.2` moved to rebuild `26.8.2-2` (12 Nov). 26.8.1-2, 26.8.2-0, -1 and -2 all show the same six HIGH findings and no CRITICAL (Trivy 0.76.0, database of 12 Nov): nothing new, nothing cleared.
+- **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
+- **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
 ## Wave 13 (tenth and eleventh sessions, 11–12 Nov): built, gate on or after 16 Nov
 

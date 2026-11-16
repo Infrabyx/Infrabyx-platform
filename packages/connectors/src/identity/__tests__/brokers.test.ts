@@ -369,7 +369,7 @@ describe("KeycloakIdentity brokers (recorded Keycloak 26 Admin API)", () => {
 
 // ---- applyRealm with identityBrokers (recorded Keycloak 26 Admin API) -------------------------
 
-function realmAdmin(initialFlow?: string[]) {
+function realmAdmin(initialFlow?: string[], adminApiScope = true) {
   type Exec = { id: string; providerId: string; requirement: string; level: number };
   let flowExists = initialFlow !== undefined;
   let execs: Exec[] = (initialFlow ?? []).map((p, i) => ({
@@ -380,6 +380,7 @@ function realmAdmin(initialFlow?: string[]) {
   }));
   let n = 100;
   const granted: string[] = [];
+  const defaultScopes: string[] = [];
   const mappers: Array<{ name: string }> = [];
   const R = "/admin/realms/ld";
   const FLOW = `${R}/authentication/flows/${KEYCLOAK_BROKER_LINK_FLOW}/executions`;
@@ -411,6 +412,25 @@ function realmAdmin(initialFlow?: string[]) {
       },
     ],
     ["GET", `${R}/clients/c-adm/service-account-user`, { status: 200, body: { id: "sa" } }],
+    [
+      "GET",
+      `${R}/client-scopes`,
+      {
+        status: 200,
+        body: [
+          { id: "cs-roles", name: "roles" },
+          ...(adminApiScope ? [{ id: "cs-admin", name: "kc-admin-api" }] : []),
+        ],
+      },
+    ],
+    [
+      "PUT",
+      /\/clients\/[^/]+\/default-client-scopes\/[^/]+$/,
+      (r) => {
+        defaultScopes.push(r.path.split("/").slice(-3).join("/"));
+        return { status: 204 };
+      },
+    ],
     ["GET", `${R}/clients/c-api/service-account-user`, { status: 200, body: { id: "api-sa" } }],
     ["PUT", `${R}/users/api-sa`, { status: 204 }],
     [
@@ -489,7 +509,7 @@ function realmAdmin(initialFlow?: string[]) {
     ],
     ["GET", /\/clients\/[^/]+\/client-secret$/, { status: 200, body: { value: "generated" } }],
   ]);
-  return { rec, granted, mappers, execs: () => execs };
+  return { rec, granted, mappers, defaultScopes, execs: () => execs };
 }
 
 describe("KeycloakIdentity.applyRealm with identityBrokers (recorded Keycloak 26 Admin API)", () => {
@@ -509,6 +529,16 @@ describe("KeycloakIdentity.applyRealm with identityBrokers (recorded Keycloak 26
       spec: spec(on),
       fetchImpl: a.rec.fetch,
     });
+
+  it("Keycloak 26.8.2: the admin service account gets the kc-admin-api scope (R1-D-152)", async () => {
+    const a = realmAdmin();
+    await apply(a, true);
+    expect(a.defaultScopes).toEqual(["c-adm/default-client-scopes/cs-admin"]);
+    // A realm on an earlier version has no such scope: nothing is changed.
+    const old = realmAdmin(undefined, false);
+    await apply(old, true);
+    expect(old.defaultScopes).toEqual([]);
+  });
 
   it("creates the linking-only first-login flow, the idp claim and the broker grant", async () => {
     const a = realmAdmin();

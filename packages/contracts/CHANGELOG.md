@@ -1,5 +1,13 @@
 # @infrabyx/contracts
 
+## 1.27.0
+
+### Minor Changes
+
+- 043a348: `ObligationPublishedData` and `obligationPublishedProblems` (Ecosystem Spec v1.5 §6.15; PR-LDC-33, owner answer #127): ids and keys only, no other field, `dataclass = INTERNAL`, the obligation as `subject`; `REPEALED` needs `effective_to`.
+- 043a348: `PROVIDER_INCIDENT_SEVERITIES`: the `ProviderIncident` severity scale `SEV1` (most severe) to `SEV4`, accepted by the owner (#131), with each level's meaning.
+- 043a348: `EvidenceSubmittedData` (§6.15) and `ProviderIncidentData` (§6.16) payload schemas (PR-LDC-45, PR-LDC-51).
+
 ## 1.26.0
 
 ### Minor Changes

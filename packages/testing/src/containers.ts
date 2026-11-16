@@ -58,8 +58,8 @@ export const TEST_IMAGES = {
   },
   keycloak: {
     image:
-      "keycloak/keycloak@sha256:3f3c5f8e03c614774b4bd9173b88391fefa4153bfc010d8012d59ad825377332",
-    version: "26.8.1-2",
+      "keycloak/keycloak@sha256:3879c623248408de29a5303178b5816c77e8dfef3890c361f8c0bbeaa979ba3b",
+    version: "26.8.2-0",
     role: "Keycloak, dev mode with in-memory H2 (IDENTITY)",
   },
   localstack: {
