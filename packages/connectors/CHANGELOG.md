@@ -1,5 +1,24 @@
 # @infrabyx/connectors
 
+## 1.15.0
+
+### Minor Changes
+
+- 15be78b: `@infrabyx/connectors/av`: the `clamav` AV adapter (clamd `INSTREAM` over TCP, in-cluster addresses only, fail-closed verdicts, stale signatures refused), off behind `int.av.clamav.enabled`; AV in the exit runbook (PR-LDC-41). Its health answer reports signature-database freshness (`signatures_at`, `signature_age_hours`, `max_signature_age_hours`, `signatures_fresh`) and is `degraded` when stale.
+
+### Patch Changes
+
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/tenancy@1.19.0
+  - @infrabyx/config@1.14.0
+  - @infrabyx/crypto@1.5.13
+
 ## 1.14.5
 
 ### Patch Changes

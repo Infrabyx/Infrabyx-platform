@@ -1,5 +1,13 @@
 # @infrabyx/contracts
 
+## 1.28.0
+
+### Minor Changes
+
+- 15be78b: Two port interfaces: `AccountingSinkPort` on `ACCOUNTING` (PR-FBX-46; `post`, `status`, `replay`, `trialBalance`, `assertBalancedBatch`: balanced integer paise, idempotent on journal id and digest) and `CalendarPort` on `CALENDAR` (PR-LDC-53; PKCE connect, idempotent entries by external id, `calendarPayload` detail levels). Both are catalogued with an interface.
+- 15be78b: AV port (IPB-01 AV, IPB-02-44; PR-LDC-41): `FileScanPort.scan(ref)` → `CLEAN`, `INFECTED` or `ERROR` with a reason, and `scanDecision`, the fail-closed mapping (only `CLEAN` releases). `AV` is catalogued with an interface. `PortHealth` gains an optional `detail` (snake_case names, scalar values, at most 16) for operational facts such as the AV adapter's signature age.
+- 15be78b: `AuditEntryInput.businessIds`, `BUSINESS_ID_PATTERN` and `MAX_BUSINESS_IDS` (PR-LDC-30).
+
 ## 1.27.0
 
 ### Minor Changes
