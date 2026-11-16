@@ -115,7 +115,9 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-34:** call `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` with the entity's 00:00 instant and remove `versionAsOf`; read `listRuleSets().scheduledVersion` and `scheduledFrom` for the pending cut-over.
 - **PR-LDC-30 to PR-LDC-33:** planned in waves 13 and 14 (`docs/platform-requests.md`); PR-LDC-33 waits for the owner's sign-off of the v1.5 draft.
 
-## Wave 13 (in progress)
+## Wave 13 (released 16 Nov, run 234)
+
+**Released 16 Nov (run 234).** Adopt now, before your December exit gate: move every `@infrabyx/*` dependency together to the run 234 versions (`contracts` 1.28.0, `tenancy` 1.19.0, `audit` 1.9.0, `config` 1.14.0, `connectors` 1.15.0, `testing` 1.15.0, `export` 1.6.0 (and dependent patches)), run `infrabyx-migrate --require-all` (new: `audit/0010`, `audit/0011` (no-transaction, builds an index concurrently), `tenancy/0022`), copy `infra/docker/trivyignore.yaml` into your own image scan (new 30-day waiver CVE-2025-6020, `linux-pam`, to 16 Dec, R1-D-162), and accept REF-EXPORT-1.6 in anything that reads archives (two new fields; 1.5 is still emitted for 90 days). No new environment variable.
 
 - **PR-LDC-41 (`contracts`, `testing`, `connectors`, `config` minors):** scan every upload with `FileScanPort` (`@infrabyx/connectors/av`, `ClamavFileScan`) and act only on `scanDecision` (product guide §7bl): `CLEAN` releases, `INFECTED` rejects, `ERROR` stays quarantined. Run clamd in your cluster with daily `freshclam`, set `int.av.clamav.enabled` (R4). **Shim removed:** the local ClamAV client.
 - **PR-LDC-37 (`tenancy` minor; migration `tenancy/0022`):** replace the second-transaction cancel with `approvals.cancelIn(tx, id, reason)` in your own transaction (product guide §7bm). **Shim removed:** the second-transaction cancel.
