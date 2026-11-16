@@ -131,6 +131,10 @@
     "./docgen": {
       "types": "./dist/docgen/index.d.ts",
       "default": "./dist/docgen/index.js"
+    },
+    "./av": {
+      "types": "./dist/av/index.d.ts",
+      "default": "./dist/av/index.js"
     }
   },
   "files": [

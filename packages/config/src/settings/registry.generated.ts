@@ -3068,6 +3068,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 DOCGEN; OWNER-QUESTIONS #120, R1-D-100 (off until a deployment runs its in-cluster Gotenberg with the Noto fonts)"
   },
   {
+    "key": "int.av.clamav.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 AV; IPB-02-44; PR-LDC-41, R1-D-117 (off until a deployment runs clamd in its cluster with daily signature updates; while off every scan is ERROR and uploads stay quarantined)"
+  },
+  {
     "key": "int.captcha.under_attack",
     "tier": "PLATFORM",
     "type": "bool",
@@ -6869,6 +6882,7 @@ export type SettingValueMap = {
   "int.aa_fiu.setu.enabled": boolean;
   "int.video_meet.livekit.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
+  "int.av.clamav.enabled": boolean;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;

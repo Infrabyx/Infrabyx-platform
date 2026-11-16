@@ -271,6 +271,201 @@ describe("toXlsx", () => {
   });
 });
 
+describe("toXlsx widths, validations, named ranges and protection (PR-LDC-31, M81)", () => {
+  const form: XlsxSheet[] = [
+    {
+      name: "Register",
+      columns: [
+        { header: "Ref", type: "string", width: 18 },
+        {
+          header: "Status",
+          type: "string",
+          width: 14,
+          editable: true,
+          validation: {
+            type: "list",
+            namedRange: "Statuses",
+            prompt: { title: "Status", message: "Pick one" },
+            error: { message: "Not a status" },
+          },
+        },
+        {
+          header: "Count",
+          type: "integer",
+          editable: true,
+          validation: { type: "whole", min: 0, max: 99 },
+        },
+        {
+          header: "Due",
+          type: "date",
+          editable: true,
+          validation: { type: "date", min: "2026-01-01" },
+        },
+        {
+          header: "Note",
+          type: "string",
+          editable: true,
+          validation: { type: "textLength", max: 200 },
+        },
+        { header: "Flag", type: "string", validation: { type: "list", values: ["Yes", "No"] } },
+      ],
+      rows: [["R-1", "Open", 3, "2026-11-30", "x", "Yes"]],
+      validationRows: 50,
+      protection: { sort: true },
+    },
+    {
+      name: "Lists",
+      columns: [{ header: "Status", type: "string" }],
+      rows: [["Open"], ["Closed"]],
+    },
+  ];
+  const zip = toXlsx(form, {
+    created: T,
+    namedRanges: [{ name: "Statuses", sheet: "Lists", range: "A2:A3" }],
+  });
+  const sheet = text(zip, "xl/worksheets/sheet1.xml");
+
+  it("writes widths and unlocked editable columns, and locks the rest with no password", () => {
+    expect(sheet).toContain('<col min="1" max="1" width="18" customWidth="1"/>');
+    expect(sheet).toContain('<col min="2" max="2" width="14" style="4" customWidth="1"/>');
+    expect(sheet).toContain('<col min="4" max="4" width="9.140625" style="5"/>');
+    expect(sheet).toMatch(/<c r="B2" s="4" t="inlineStr">/);
+    expect(sheet).toContain('<c r="C2" s="4"><v>3</v></c>');
+    expect(sheet).toMatch(/<c r="D2" s="5">/);
+    expect(sheet).toMatch(/<c r="A2" t="inlineStr">/);
+    expect(sheet).toContain('<sheetProtection sheet="1" objects="1" scenarios="1"');
+    expect(sheet).toContain('sort="0"');
+    expect(sheet).toContain('insertRows="1"');
+    expect(sheet).not.toMatch(/password|hashValue|saltValue/);
+    expect(sheet.indexOf("<sheetProtection")).toBeGreaterThan(sheet.indexOf("</sheetData>"));
+    expect(text(zip, "xl/styles.xml")).toContain('<cellXfs count="7">');
+    expect(text(zip, "xl/styles.xml")).toContain('<protection locked="0"/>');
+  });
+
+  it("writes typed validations over the validated rows, never a caller's formula text", () => {
+    expect(sheet).toContain('<dataValidations count="5">');
+    expect(sheet).toContain(
+      '<dataValidation type="list" allowBlank="1" showInputMessage="1" promptTitle="Status" prompt="Pick one" showErrorMessage="1" error="Not a status" sqref="B2:B51"><formula1>Statuses</formula1></dataValidation>',
+    );
+    expect(sheet).toContain(
+      '<dataValidation type="whole" operator="between" allowBlank="1" showErrorMessage="1" sqref="C2:C51"><formula1>0</formula1><formula2>99</formula2></dataValidation>',
+    );
+    expect(sheet).toContain('type="date" operator="greaterThanOrEqual"');
+    expect(sheet).toContain("<formula1>46023</formula1>");
+    expect(sheet).toContain('type="textLength" operator="lessThanOrEqual"');
+    expect(sheet).toContain('<formula1>"Yes,No"</formula1>');
+    expect(text(zip, "xl/workbook.xml")).toContain(
+      `<definedNames><definedName name="Statuses">'Lists'!$A$2:$A$3</definedName></definedNames>`,
+    );
+  });
+
+  it("keeps the wave 6 bytes when none of it is used", () => {
+    expect(text(toXlsx(SHEETS, { created: T }), "xl/styles.xml")).toContain('<cellXfs count="4">');
+    const plain = text(toXlsx(SHEETS, { created: T }), "xl/worksheets/sheet1.xml");
+    expect(plain).not.toMatch(/<cols>|dataValidation|sheetProtection/);
+    // An editable flag without protection changes nothing.
+    const s = [
+      {
+        name: "S",
+        columns: [{ header: "h", type: "string" as const, editable: true }],
+        rows: [["a"]],
+      },
+    ];
+    expect(
+      toXlsx(s, { created: T }).equals(
+        toXlsx([{ ...s[0]!, columns: [{ header: "h", type: "string" }] }], { created: T }),
+      ),
+    ).toBe(true);
+  });
+
+  it("refuses bad widths, validations, named ranges and a password", () => {
+    const one =
+      (col: Record<string, unknown>, extra: Record<string, unknown> = {}, o = {}) =>
+      () =>
+        toXlsx(
+          [
+            {
+              name: "S",
+              columns: [{ header: "h", type: "string", ...col }],
+              rows: [],
+              ...extra,
+            } as XlsxSheet,
+          ],
+          o,
+        );
+    expect(reason(one({ width: 0 }))).toBe("columns_invalid");
+    expect(reason(one({ width: 256 }))).toBe("columns_invalid");
+    expect(reason(one({ validation: { type: "list", values: ["a,b"] } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "list", values: ['say "hi"'] } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "list", values: ["x".repeat(256)] } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "list", values: [] } }))).toBe("validation_invalid");
+    expect(reason(one({ validation: { type: "list", namedRange: "Nope" } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "whole", min: 1.5 } }))).toBe("validation_invalid");
+    expect(reason(one({ validation: { type: "decimal" } }))).toBe("validation_invalid");
+    expect(reason(one({ validation: { type: "decimal", min: 2, max: 1 } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "date", max: "2026-02-30" } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "textLength", max: 40_000 } }))).toBe(
+      "validation_invalid",
+    );
+    expect(reason(one({ validation: { type: "custom", formula: "=HYPERLINK(1)" } }))).toBe(
+      "validation_invalid",
+    );
+    expect(
+      reason(one({ validation: { type: "whole", max: 1, prompt: { message: "x".repeat(256) } } })),
+    ).toBe("validation_invalid");
+    expect(reason(one({}, { validationRows: 0 }))).toBe("validation_invalid");
+    expect(reason(one({}, { protection: { password: "secret" } }))).toBe("protection_invalid");
+    for (const name of ["A1", "xfd99", "R1C1", "R", "1x", "a b", "has-dash"])
+      expect(reason(one({}, {}, { namedRanges: [{ name, sheet: "S", range: "A1" }] }))).toBe(
+        "named_range_invalid",
+      );
+    for (const range of ["A0", "XFE1", "A1:B", "B2:A1", "A1048577", "S!A1", "A1:B2:C3"])
+      expect(reason(one({}, {}, { namedRanges: [{ name: "N", sheet: "S", range }] }))).toBe(
+        "named_range_invalid",
+      );
+    expect(reason(one({}, {}, { namedRanges: [{ name: "N", sheet: "Other", range: "A1" }] }))).toBe(
+      "named_range_invalid",
+    );
+    expect(
+      reason(
+        one(
+          {},
+          {},
+          {
+            namedRanges: [
+              { name: "N", sheet: "S", range: "A1" },
+              { name: "n", sheet: "S", range: "A2" },
+            ],
+          },
+        ),
+      ),
+    ).toBe("named_range_invalid");
+  });
+
+  it("quotes a sheet name with an apostrophe in a named range", () => {
+    const z = toXlsx([{ name: "Bob's", columns: [{ header: "h", type: "string" }], rows: [] }], {
+      namedRanges: [{ name: "_x.y", sheet: "Bob's", range: "B2:C4" }],
+    });
+    expect(text(z, "xl/workbook.xml")).toContain("'Bob''s'!$B$2:$C$4");
+  });
+
+  it.skipIf(!tools)("writes well-formed XML parts in a clean ZIP (xmllint, unzip)", () => {
+    wellFormed(zip, "xlsx-form");
+  });
+});
+
 describe("toCsv formula neutralisation", () => {
   it("is off by default (archive datasets keep exact values) and on when asked", () => {
     const rows = [{ a: "=1+1", b: "ok" }];

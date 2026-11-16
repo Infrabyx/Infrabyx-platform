@@ -25,6 +25,8 @@ export interface LedgerEntry {
   ua_hash: string | null;
   /** The context's branch (`audit/0004`, R1-D-26); hashed only when set. */
   branch_id?: string | null;
+  /** Business ids (`audit/0010`, PR-LDC-30); hashed only when set. */
+  business_ids?: readonly string[] | null;
   /** The entry's lane and its position there (`audit/0006`); hashed only when set. */
   lane?: number | null;
   lane_seq?: number | string | null;
@@ -58,6 +60,9 @@ export function canonicalEntry(e: Omit<LedgerEntry, "prev_hash" | "entry_hash">)
   for (const f of HASHED_FIELDS) body[f] = e[f];
   // The branch joins the hash only when set, so entries without one hash as before audit/0004.
   if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
+  // So do the business ids, in their stored order, so every entry before audit/0010 hashes as before.
+  if (e.business_ids !== undefined && e.business_ids !== null)
+    body.business_ids = [...e.business_ids];
   // So do the lane and the position, so every entry before audit/0006 hashes as before.
   if (e.lane !== undefined && e.lane !== null) {
     body.lane = Number(e.lane);

@@ -1,7 +1,13 @@
 // AuditSink over audit.ledger (IPB-02-51). Called inside kernel.mutate; the database trigger
 // assigns seq, prev_hash, entry_hash and occurred_at, so no caller can write an unchained row.
 // Before/after payloads are stored only as canonical SHA-256 digests.
-import type { AuditEntryInput, AuditSink, Tx } from "@infrabyx/contracts/kernel";
+import {
+  BUSINESS_ID_PATTERN,
+  MAX_BUSINESS_IDS,
+  type AuditEntryInput,
+  type AuditSink,
+  type Tx,
+} from "@infrabyx/contracts/kernel";
 import { canonicalDigest, hmacSha256Hex, newId, type SecretKey } from "@infrabyx/crypto";
 import type { ActorType } from "./chain.js";
 
@@ -36,6 +42,17 @@ const batchAfter = (run: string, step: string, type: string, ids: readonly strin
   resource_ids: ids,
 });
 
+/** 1 to 16 distinct ids of the business-id pattern, or none (PR-LDC-30, R1-D-125). */
+export function checkBusinessIds(ids: readonly string[] | undefined): string[] | null {
+  if (ids === undefined) return null;
+  if (ids.length < 1 || ids.length > MAX_BUSINESS_IDS)
+    throw new RangeError(`a ledger entry carries 1 to ${MAX_BUSINESS_IDS} business ids`);
+  if (!ids.every((i) => typeof i === "string" && BUSINESS_ID_PATTERN.test(i)))
+    throw new RangeError("a business id is 1 to 128 of A-Z a-z 0-9 _ . : @ / + = -");
+  if (new Set(ids).size !== ids.length) throw new RangeError("business ids must be distinct");
+  return [...ids];
+}
+
 export class PgAuditSink implements AuditSink {
   constructor(private readonly o: PgAuditSinkOptions = {}) {}
 
@@ -50,12 +67,13 @@ export class PgAuditSink implements AuditSink {
         ? "user"
         : ctx.principal.type;
     const key = this.o.pseudonymKey;
+    const businessIds = checkBusinessIds(e.businessIds);
     await tx.query(
       `insert into audit.ledger
          (id, tenant_id, seq, actor_id, actor_type, action, resource_type, resource_id,
           before_digest, after_digest, corrects_id, trace_id, ip_hash, ua_hash, occurred_at, prev_hash, entry_hash,
-          branch_id)
-       values ($1, $2, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), $14, $14, $15)`,
+          branch_id${businessIds ? ", business_ids" : ""})
+       values ($1, $2, 0, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), $14, $14, $15${businessIds ? ", $16" : ""})`,
       [
         id,
         ctx.tenantId,
@@ -72,6 +90,8 @@ export class PgAuditSink implements AuditSink {
         key && ctx.userAgent ? hmacSha256Hex(key, ctx.userAgent) : null,
         "0".repeat(64), // placeholder; the trigger sets prev_hash and entry_hash
         ctx.branchId ?? null,
+        // Named only when given, so an entry without ids writes as before audit/0010.
+        ...(businessIds ? [businessIds] : []),
       ],
     );
     tx.markAudited();

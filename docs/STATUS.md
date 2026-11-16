@@ -23,6 +23,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+
+## Wave 13 gate (16 Nov, #252)
+
+- `main` merged in (docs conflicts kept both sides; `TEST_IMAGES.md` takes Keycloak 26.8.2-0 with the ClamAV row). Added before the gate: PR-LDC-61 (R1-D-156) and **REF-EXPORT-1.6** (R1-D-161): the export-map gate flagged `audit/0010` and `tenancy/0022`, and the ledger chain hashes `business_ids`, so the archive and its verifier now carry them (with `cancel_reason`) instead of an `export:unchanged` label.
+- Local: build, lint, typecheck, unit (108 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` 123, `audit` 38, `export` 10 (the verifier test fails without the 1.6 verifier), `rules` 21; golden archive; format, ipb-check, exit runbook, registry, migration-lint, licence, test:policy. First `ci:run` (run 43866468028): all green but `containers` (a new unfixed `linux-pam` advisory, CVE-2025-6020: waived 30 days, R1-D-162) and `verify` (exit runbook regenerated after REF-EXPORT-1.6). Second run next.
 
 ## Spec v1.5 and the spec event schemas (14 Nov; #254, R1-D-151, R1-D-155)
 
@@ -34,6 +40,15 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Scan:** Keycloak re-tagged 26.8.2: the planned digest (`sha256:3879c623…`, pushed 5 Nov) is now `26.8.2-0`, and `26.8.2` moved to rebuild `26.8.2-2` (12 Nov). 26.8.1-2, 26.8.2-0, -1 and -2 all show the same six HIGH findings and no CRITICAL (Trivy 0.76.0, database of 12 Nov): nothing new, nothing cleared.
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
+
+## Wave 13 (tenth and eleventh sessions, 11–12 Nov): built, gate on or after 16 Nov
+
+- **Built (one commit each; local checks green):** PR-LDC-41 `FileScanPort` and ClamAV (R1-D-119); PR-LDC-37 `cancelIn` (R1-D-120, `tenancy/0022`); PR-LDC-42 `setIn` (R1-D-121); PR-LDC-30 business ids (R1-D-125, `audit/0010`, `audit/0011`; its `DROP INDEX` is a reviewed lint warning, R1-D-133); the PR-LDC-31 writer: widths, typed validations, named ranges, lock-flag protection (R1-D-128); PR-LDC-36 arrows in `toPdf` through a pinned Noto Sans Math subset (R1-D-129); PR-FBX-46 `AccountingSinkPort` (R1-D-130); PR-LDC-53's CALENDAR interface, fake and contract cases, moved up by owner answer #126 (R1-D-131); the PR-LDC-33 spec v1.5 draft `docs/phases/PR-044-ecosystem-v1.5-draft.md` (R1-D-132, OWNER-QUESTIONS #127).
+- **Owner answers of 12 Nov (R1-D-126):** #125 yes (ordered approval levels, wave 14); #126 the CALENDAR interface now, adapters off until the owner registers the OAuth applications (runbook `docs/runbooks/calendar-oauth-apps.md`); PR-FBX-46 and PR-LDC-30 accepted. **New request:** PR-LDC-55, a product MFA floor (with Finbyx PR-FBX-12 item 2), accepted for wave 14, first (R1-D-127, M103).
+- **Local verification (12 Nov):** `pnpm build`, `typecheck`, `lint`, `test` (54 tasks), `format:check`, `test:policy`, `migration:lint`, `registry:check`, `ipb:check`, `licence:check` all green. Not runnable here: `scripts/cli-bins.test.mjs` (its npm `.bin` runs time out in this container; no bin changed), the ClamAV contract leg (Docker), integration suites needing PostgreSQL 18 or Temporal.
+- **13 Nov (twelfth session):** owner priority on PR-LDC-41 met here (R1-D-143): the ClamAV health check now reports signature freshness (`PortHealth.detail`, additive). Spec v1.5 applied in its own owner-authorised docs PR, #254.
+- **Gate not before 16 Nov** (the pinned `clamav/clamav:1.5.4` digest was pushed 9 Nov, PL2-D-32): one `ci:run` on the wave 13 PR, then the version PR (`contracts`, `testing`, `connectors`, `config`, `tenancy`, `audit`, `export` minors) and the release record.
+- **PR:** the wave 13 branch moved to `claude/infrabyx-wave-13-handover-xzu4ib` (this session's branch, cut from #251's head); #251 is closed in favour of its PR.
 
 ## Triage of LawDocsComply PR-LDC-37 to PR-LDC-44 (10 Nov; R1-D-117, R1-D-118)
 

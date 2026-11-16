@@ -138,14 +138,16 @@ function nameOf(b: Buffer, at: number): string {
   throw new Error("the font has no PostScript name");
 }
 
-/** The four bundled styles, read once. */
+/** The four bundled styles and the Arrows fallback (`Math`, Noto Sans Math), read once. */
 const cache = new Map<string, TrueTypeFont>();
-export function bundledFont(style: "Regular" | "Bold" | "Italic" | "BoldItalic"): TrueTypeFont {
+export function bundledFont(
+  style: "Regular" | "Bold" | "Italic" | "BoldItalic" | "Math",
+): TrueTypeFont {
   let f = cache.get(style);
   if (!f) {
-    f = parseTrueType(
-      readFileSync(new URL(`../fonts/NotoSans-${style}.subset.ttf`, import.meta.url)),
-    );
+    const file =
+      style === "Math" ? "NotoSansMath-Regular.subset.ttf" : `NotoSans-${style}.subset.ttf`;
+    f = parseTrueType(readFileSync(new URL(`../fonts/${file}`, import.meta.url)));
     cache.set(style, f);
   }
   return f;

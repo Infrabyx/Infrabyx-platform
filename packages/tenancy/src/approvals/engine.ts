@@ -58,6 +58,8 @@ export interface ApprovalRecord {
   financial: boolean;
   /** Checker diff; above INTERNAL only the changed field names (`{ fields }`). */
   diff: Record<string, unknown> | null;
+  /** Why it was cancelled, when the canceller gave a reason (`cancelIn`; PR-LDC-37). */
+  cancelReason: string | null;
 }
 
 export interface ActionPolicy {
@@ -164,6 +166,7 @@ export const DEFAULT_PLATFORM_CHECKERS: readonly string[] = [
 const CANCEL_ROLES = ["ORG_OWNER", "PLT_SECURITY_OFFICER"];
 
 interface Row {
+  cancel_reason?: string | null;
   id: string;
   tenant_id: string;
   action: string;
@@ -215,9 +218,20 @@ const toRecord = (r: Row): ApprovalRecord => ({
   escalatedAt: r.escalated_at,
   financial: r.financial,
   diff: r.diff,
+  cancelReason: r.cancel_reason ?? null,
 });
 
 const ENCRYPTED: readonly DataClass[] = ["CONFIDENTIAL", "REGULATED"];
+
+/** A cancellation reason: 1 to 500 characters, no control characters other than tab and line breaks. */
+function validReason(r: string): boolean {
+  if (r.trim().length < 1 || r.length > 500) return false;
+  for (const ch of r) {
+    const c = ch.codePointAt(0) ?? 0;
+    if ((c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f) return false;
+  }
+  return true;
+}
 
 /** The checker diff as stored: values only when the payload is PUBLIC or INTERNAL. */
 function storedDiff(
@@ -450,44 +464,75 @@ export class ApprovalsEngine implements ApprovalGateway {
     );
   }
 
-  /** Cancel a pending or approved request: the maker, or the tenant's ORG_OWNER (IPB-02-AT-12). */
-  async cancel(ctx: KernelContext, id: string): Promise<ApprovalRecord> {
-    return this.o.kernel.mutate(
-      ctx,
-      async (tx) => {
-        const row = await this.load(tx, id, true);
-        if (row.expired_at) throw new IpbError("IPB-UX-012", { meta: { request_id: id } });
-        if (row.state !== "pending" && row.state !== "approved")
-          throw new ConflictError(`approval ${id} is ${row.state}`);
-        const may =
-          row.maker_id === ctx.principal.id ||
-          ctx.principal.roles.some((r) => CANCEL_ROLES.includes(r));
-        if (!may)
-          throw new IpbError("IPB-UX-011", {
-            detail: "only the maker, ORG_OWNER or PLT_SECURITY_OFFICER may cancel",
-          });
-        const next = await this.update(tx, id, "state = 'cancelled', cancelled_by = $2", [
-          ctx.principal.id,
-        ]);
-        await this.o.audit.record(tx, {
-          action: "approvals.request.cancel",
-          resourceType: "approval_request",
-          resourceId: id,
-          before: { state: row.state },
-          after: { state: "cancelled" },
-        });
-        await this.emit(tx, "ApprovalCancelled", {
-          request_id: id,
-          action: row.action,
-          risk_class: row.risk_class,
-          maker_id: row.maker_id,
-          state: "cancelled",
-        });
-        for (const ob of this.o.observers ?? []) await ob.onCancelled?.(tx, toRecord(next));
-        return toRecord(next);
-      },
-      { action: "approvals.request.cancel" },
+  /**
+   * Cancel a pending or approved request: the maker, the tenant's ORG_OWNER or PLT_SECURITY_OFFICER
+   * (IPB-02-AT-12), with an optional reason (1 to 500 characters).
+   */
+  async cancel(ctx: KernelContext, id: string, reason?: string): Promise<ApprovalRecord> {
+    return this.o.kernel.mutate(ctx, (tx) => this.cancelRow(tx, ctx, id, reason ?? null), {
+      action: "approvals.request.cancel",
+    });
+  }
+
+  /**
+   * Cancel inside the caller's own transaction (LawDocsComply PR-LDC-37, R1-D-120): so a product
+   * can withdraw a request in the same transaction as the change that made it unnecessary. The same
+   * rules as `cancel` (the maker, ORG_OWNER or PLT_SECURITY_OFFICER; pending or approved, never
+   * expired or executed), plus a required reason, and never an agent. The checker's inbox item and
+   * any scheduled action close in this transaction (the observers), and the cancellation is ledgered
+   * in it (the ledger keeps only the digest of the state and reason; the text stays on the request).
+   */
+  async cancelIn(tx: Tx, id: string, reason: string): Promise<ApprovalRecord> {
+    if (isAgentPrincipal(tx.ctx))
+      throw new IpbError("IPB-SEC-004", { detail: "an agent cannot cancel an approval" });
+    return this.cancelRow(tx, tx.ctx, id, reason);
+  }
+
+  private async cancelRow(
+    tx: Tx,
+    ctx: KernelContext,
+    id: string,
+    reason: string | null,
+  ): Promise<ApprovalRecord> {
+    if (reason !== null && !validReason(reason))
+      throw new RangeError("a cancellation reason is 1 to 500 characters of text");
+    const row = await this.load(tx, id, true);
+    if (row.tenant_id !== tx.ctx.tenantId) throw new NotFoundError("approval request");
+    if (row.expired_at) throw new IpbError("IPB-UX-012", { meta: { request_id: id } });
+    if (row.state !== "pending" && row.state !== "approved")
+      throw new ConflictError(`approval ${id} is ${row.state}`);
+    const may =
+      row.maker_id === ctx.principal.id ||
+      ctx.principal.roles.some((r) => CANCEL_ROLES.includes(r));
+    if (!may)
+      throw new IpbError("IPB-UX-011", {
+        detail: "only the maker, ORG_OWNER or PLT_SECURITY_OFFICER may cancel",
+      });
+    const next = await this.update(
+      tx,
+      id,
+      "state = 'cancelled', cancelled_by = $2, cancel_reason = $3",
+      [ctx.principal.id, reason],
     );
+    await this.o.audit.record(tx, {
+      action: "approvals.request.cancel",
+      resourceType: "approval_request",
+      resourceId: id,
+      before: { state: row.state },
+      after: {
+        state: "cancelled",
+        ...(reason !== null ? { reason } : {}),
+      },
+    });
+    await this.emit(tx, "ApprovalCancelled", {
+      request_id: id,
+      action: row.action,
+      risk_class: row.risk_class,
+      maker_id: row.maker_id,
+      state: "cancelled",
+    });
+    for (const ob of this.o.observers ?? []) await ob.onCancelled?.(tx, toRecord(next));
+    return toRecord(next);
   }
 
   /**

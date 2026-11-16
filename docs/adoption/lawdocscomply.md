@@ -115,6 +115,18 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-34:** call `rules.publish(ctx, ruleSetId, version, { effectiveFrom })` with the entity's 00:00 instant and remove `versionAsOf`; read `listRuleSets().scheduledVersion` and `scheduledFrom` for the pending cut-over.
 - **PR-LDC-30 to PR-LDC-33:** planned in waves 13 and 14 (`docs/platform-requests.md`); PR-LDC-33 waits for the owner's sign-off of the v1.5 draft.
 
+## Wave 13 (in progress)
+
+- **PR-LDC-41 (`contracts`, `testing`, `connectors`, `config` minors):** scan every upload with `FileScanPort` (`@infrabyx/connectors/av`, `ClamavFileScan`) and act only on `scanDecision` (product guide §7bl): `CLEAN` releases, `INFECTED` rejects, `ERROR` stays quarantined. Run clamd in your cluster with daily `freshclam`, set `int.av.clamav.enabled` (R4). **Shim removed:** the local ClamAV client.
+- **PR-LDC-37 (`tenancy` minor; migration `tenancy/0022`):** replace the second-transaction cancel with `approvals.cancelIn(tx, id, reason)` in your own transaction (product guide §7bm). **Shim removed:** the second-transaction cancel.
+- **PR-LDC-42 (`config` minor):** replace the after-commit setting write with `settings.setIn(tx, …)` (product guide §7bn); your Appendix D roles authorise through the `change` roles registered for your keys. **Shim removed:** the after-commit setting write.
+- **PR-LDC-30 (`audit`, `contracts` minors; migrations `audit/0010`, `audit/0011`):** pass `businessIds` to `audit.record` and read with `auditService.history(ctx, id)` (product guide §7bo). **Shim removed:** `core.bizid_history_index`.
+- **PR-LDC-31 writer (`export` minor):** build your workbook templates with `toXlsx` column `width`, `validation`, `editable`, sheet `validationRows` and `protection`, and `namedRanges` (product guide §7bp). Re-check every value when a workbook comes back: protection is not a control. **Shim removed:** the ExcelJS writer half of `WorkbookPort` (the reader waits for wave 14).
+- **PR-LDC-36 (`export` minor):** pass arrows to `toPdf` as they are (product guide §7bq). **Shim removed:** the arrow-to-ASCII replacement.
+- **PR-LDC-53 (`contracts`, `testing` minors):** code your calendar feature against `CalendarPort` and `FakeCalendar` now (product guide §7bs), with a detail level per entry; register your console host's callback in the owner's application when it exists. The adapters stay off until the owner registers the OAuth applications (#126). Keep your ICS export until an adapter is proven.
+- **PR-LDC-61 (`export`):** the map gate now reads every column of a multi-column `ALTER TABLE`; run `infrabyx-export map-gate --base origin/main` as a required CI job (add the `export:unchanged` label to a PR that touches a mapped table without changing what an export holds). **Shim removed:** your own call of the gate function in place of the CLI.
+- **REF-EXPORT-1.6 (`export` minor):** tenant archives now carry `business_ids` on audit-trail lines and `cancel_reason` on approval requests, and the archive verifier hashes business ids; 1.5 is still emitted for 90 days. Nothing to change unless you read archives yourself (then accept the two new fields).
+
 ## Spec event payload schemas (14 Nov, ahead of waves 13 and 14)
 
 - **PR-LDC-45, PR-LDC-51 (`contracts` minor):** validate `in.infrabyx.grc.EvidenceSubmitted.v1` and `in.infrabyx.platform.ProviderIncident.v1` payloads with `EvidenceSubmittedData` and `ProviderIncidentData` (`@infrabyx/contracts/events`). **Shim removed:** your own copies of these two payload types.

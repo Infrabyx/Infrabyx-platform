@@ -407,3 +407,69 @@ describe("external-read summary (PR-LDC-10, R1-D-81)", () => {
     });
   });
 });
+
+describe("business ids on ledger entries (PR-LDC-30, R1-D-125)", () => {
+  it("hashes them when present, keeps older entries verifying, and reads a business id's history", async () => {
+    const c = ctx("tnt_biz");
+    await write(c, 3, "plain");
+    await kernel.mutate(c, async (tx) => {
+      await sink.record(tx, {
+        action: "grc.obligation.update",
+        resourceType: "obligation",
+        resourceId: "obl_1",
+        after: { status: "amended" },
+        businessIds: ["OBL-2026-0001", "MAT-7"],
+      });
+      await sink.record(tx, {
+        action: "grc.control.link",
+        resourceType: "control",
+        resourceId: "ctl_9",
+        businessIds: ["OBL-2026-0001"],
+      });
+    });
+    expect(await svc.verify(c)).toMatchObject({ ok: true, checked: 5 });
+    const h = await svc.history(c, "OBL-2026-0001");
+    expect(h.map((e) => e.action)).toEqual(["grc.obligation.update", "grc.control.link"]);
+    expect(h[0]?.business_ids).toEqual(["OBL-2026-0001", "MAT-7"]);
+    expect(h[0]?.after_digest).toMatch(/^[0-9a-f]{64}$/);
+    expect((await svc.history(c, "MAT-7")).map((e) => e.resource_id)).toEqual(["obl_1"]);
+    // RLS: another tenant sees none of it.
+    expect(await svc.history(ctx("tnt_other_biz"), "OBL-2026-0001")).toEqual([]);
+    // The ids are inside the hash: changing them is detected.
+    const entries = await svc.query(c);
+    const tampered = entries.map((e) =>
+      e.resource_id === "ctl_9" ? { ...e, business_ids: ["OBL-2026-0002"] } : e,
+    );
+    expect(verifyChain(tampered).ok).toBe(false);
+    // The index exists and is valid (audit/0011, built concurrently).
+    const idx = await db.admin.query<{ valid: boolean }>(
+      `select i.indisvalid as valid from pg_index i join pg_class c on c.oid = i.indexrelid
+        where c.relname = 'ledger_business_ids_idx'`,
+    );
+    expect(idx.rows).toEqual([{ valid: true }]);
+  });
+
+  it("refuses ids that are not ids, too many, duplicates, and a write around the sink", async () => {
+    const c = ctx("tnt_biz2");
+    const one = (businessIds: string[]) =>
+      kernel.mutate(c, (tx) =>
+        sink.record(tx, { action: "grc.x.y", resourceType: "x", resourceId: "x1", businessIds }),
+      );
+    await expect(one([])).rejects.toThrow(RangeError);
+    await expect(one(["has space"])).rejects.toThrow(RangeError);
+    await expect(one(["A", "A"])).rejects.toThrow(RangeError);
+    await expect(one(Array.from({ length: 17 }, (_, i) => `ID${i}`))).rejects.toThrow(RangeError);
+    await expect(svc.history(c, "bad id")).rejects.toThrow(RangeError);
+    // The database refuses the same, whoever writes the row.
+    await expect(
+      kernel.mutate(c, async (tx) => {
+        await tx.query(
+          `insert into audit.ledger (id, tenant_id, seq, actor_id, actor_type, action, resource_type, resource_id, occurred_at, prev_hash, entry_hash, business_ids)
+           values ($1, 'tnt_biz2', 0, 'usr_a', 'user', 'grc.x.y', 'x', 'x1', now(), repeat('0', 64), repeat('0', 64), array['a b'])`,
+          [newId("led")],
+        );
+        tx.markAudited();
+      }),
+    ).rejects.toThrow(/valid_business_ids|check constraint/);
+  });
+});

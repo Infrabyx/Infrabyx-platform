@@ -233,6 +233,18 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Page layout can differ slightly between HTML renderers; golden PDFs are re-baselined on a switch",
   },
   {
+    port: "AV",
+    primary: "clamav",
+    exitTarget: "none",
+    pending:
+      "The IPB-01 alternatives (hash-only lookups, a cloud-native malware scanner) need an external account the owner has not chosen; clamd is self-hosted in the cluster, so leaving it is a hosting change rather than a vendor exit",
+    dataMove:
+      "Configuration swap; files stay in the tenant's STORAGE and the scanner keeps nothing but its signature databases",
+    volumeClass: "S",
+    lockIn:
+      "Threat names differ between engines; callers act on the verdict, not the name, so only reports change",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",

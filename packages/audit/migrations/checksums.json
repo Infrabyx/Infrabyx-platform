@@ -7,5 +7,7 @@
   "0006_chain_lanes.sql": "9aac26ca9cee53182dd69c2cc125d026f945f426f95ef7767c13f68f27ff4d8d",
   "0007_lane_indexes.sql": "b6ac51301562e1e9eb67a37afadfa963ef1d361a5a0c89ce8a3597a3352f0bd0",
   "0008_capture_retirement.sql": "c84449a61b3c1d319614e76be08672534dd9c7a6300bb4e1e556ce62f0c14577",
-  "0009_register_outbox.sql": "c682eeba7a30ceeafc4c337eecccbab4e4a2510bf47aadee4108a835e99b2f9b"
+  "0009_register_outbox.sql": "c682eeba7a30ceeafc4c337eecccbab4e4a2510bf47aadee4108a835e99b2f9b",
+  "0010_business_ids.sql": "81177a739fa3406daf8399c291e5bb4af15127209634c253066bc660d5a7ef29",
+  "0011_business_ids_index.sql": "918e08cf904e58e44332d082c68ffde43903e9370577be785307cc31fb42b8e2"
 }

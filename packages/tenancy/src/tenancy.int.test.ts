@@ -438,6 +438,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0019_tenant_id_rule.sql",
       "@infrabyx/tenancy/0020_entitlement.sql",
       "@infrabyx/tenancy/0021_register_outbox.sql",
+      "@infrabyx/tenancy/0022_approval_cancel_reason.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");
@@ -631,6 +632,59 @@ describe("approvals PL3: expiry, reminder, escalation, diff, mc.* and observers 
     const officer = user("usr_so", ["PLT_SECURITY_OFFICER"]);
     expect((await engine.cancel(officer, id)).state).toBe("cancelled");
     expect(seen).toEqual(["requested:pending", "approve:approved", "cancelled:cancelled"]);
+  });
+
+  it("cancelIn cancels inside the caller's transaction, with a reason (PR-LDC-37)", async () => {
+    seen.length = 0;
+    const { id } = await make({
+      action: "access.ip_allowlist.change",
+      riskClass: "R4",
+      payload: {},
+    });
+    // The product's own write and the cancellation commit together, or not at all.
+    await expect(
+      kernel.mutate(maker, async (tx) => {
+        await engine.cancelIn(tx, id, "superseded by a newer change");
+        throw new Error("product write failed");
+      }),
+    ).rejects.toThrow("product write failed");
+    expect((await engine.get(maker, id)).state).toBe("pending");
+    expect(seen).toEqual(["requested:pending", "cancelled:cancelled"]);
+    seen.length = 0;
+    const r = await kernel.mutate(maker, (tx) =>
+      engine.cancelIn(tx, id, "superseded by a newer change"),
+    );
+    expect(r.state).toBe("cancelled");
+    expect(r.cancelReason).toBe("superseded by a newer change");
+    expect(seen).toEqual(["cancelled:cancelled"]);
+    const ledgered = audit.entries.filter(
+      (e) => e.action === "approvals.request.cancel" && e.resourceId === id,
+    );
+    expect(ledgered.at(-1)?.after).toEqual({
+      state: "cancelled",
+      reason: "superseded by a newer change",
+    });
+    // Only the maker, ORG_OWNER or PLT_SECURITY_OFFICER; a reason; never an agent; never twice.
+    const b = await make({ action: "access.ip_allowlist.change", riskClass: "R4", payload: {} });
+    const other = user("usr_other", ["ORG_ADMIN"]);
+    expect(await err(kernel.mutate(other, (tx) => engine.cancelIn(tx, b.id, "x")))).toBe(
+      "IPB-UX-011",
+    );
+    await expect(kernel.mutate(maker, (tx) => engine.cancelIn(tx, b.id, "  "))).rejects.toThrow(
+      RangeError,
+    );
+    await expect(
+      kernel.mutate(maker, (tx) => engine.cancelIn(tx, b.id, "x".repeat(501))),
+    ).rejects.toThrow(RangeError);
+    const agent = user("agt_x", ["AGT_X", "ORG_OWNER"], {
+      principal: { id: "agt_x", type: "agent", roles: ["AGT_X", "ORG_OWNER"] },
+    });
+    expect(await err(kernel.mutate(agent, (tx) => engine.cancelIn(tx, b.id, "x")))).toBe(
+      "IPB-SEC-004",
+    );
+    await expect(kernel.mutate(maker, (tx) => engine.cancelIn(tx, id, "again"))).rejects.toThrow(
+      /cancelled/,
+    );
   });
 });
 

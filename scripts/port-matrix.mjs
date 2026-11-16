@@ -34,6 +34,7 @@ export const PORTS = [
   "AA_FIU",
   "ESTAMP",
   "DOCGEN",
+  "AV",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -63,6 +64,8 @@ const EXTRA_PATHS = {
   LLM: ["packages/contracts/src/ports/ai.ts"],
   EMBEDDING: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
   IMAGE_GEN: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
+  // The AV contract and fake are named for what they do, not the catalogue's short name.
+  AV: ["packages/contracts/src/ports/file-scan.ts", "packages/testing/src/ports/file-scan"],
 };
 
 export const portPaths = (port) => [

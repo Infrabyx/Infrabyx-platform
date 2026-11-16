@@ -126,7 +126,19 @@ export interface AuditEntryInput {
   after?: unknown;
   /** Ledger id being corrected (correction entries, IPB-02 NN-02). */
   correctsId?: string;
+  /**
+   * Business ids the entry concerns (LawDocsComply PR-LDC-30, R1-D-125): 1 to 16 distinct ids of
+   * 1 to 128 characters of `A-Z a-z 0-9 _ . : @ / + = -`, such as an obligation or matter id. Ids
+   * only, never personal data (no names, PAN, Aadhaar or account numbers). Covered by the entry's
+   * hash when present; read back with `AuditService.history(ctx, businessId)`.
+   */
+  businessIds?: readonly string[];
 }
+
+/** The pattern of one business id on a ledger entry (PR-LDC-30). */
+export const BUSINESS_ID_PATTERN = /^[A-Za-z0-9_.:@/+=-]{1,128}$/;
+/** The most business ids one ledger entry carries (PR-LDC-30). */
+export const MAX_BUSINESS_IDS = 16;
 
 /** Writes the hash-chained ledger inside the caller's transaction (IPB-02-51). */
 export interface AuditSink {

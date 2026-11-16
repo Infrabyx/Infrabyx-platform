@@ -53,6 +53,8 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
       "AA_FIU",
       "VIDEO_MEET",
       "DOCGEN",
+      // AV: the alternatives need an external account the owner has not chosen (R1-D-117).
+      "AV",
     ]);
   });
 

@@ -1,0 +1,7 @@
+﻿code,label
+R0,No approval needed
+R1,Confirmation by the maker
+R2,One checker
+R3,"One checker, per-action human confirmation"
+R4,Policy change: one checker and a delay
+R5,Destructive: two checkers and a delay

@@ -191,38 +191,66 @@ export class SettingsService {
     const def = this.registry.require(key);
     this.assertWritable(ctx, def, target);
     assertValid(def, value);
-    return this.o.kernel.mutate(
-      ctx,
-      async (tx) => {
-        await this.assertTighten(tx, ctx, def, target, value);
-        const riskClass = def.mc || (await this.deactivationClass(tx, def, target, value));
-        if (riskClass) {
-          if (!this.o.approvals)
-            throw new Error(
-              `setting ${key} requires maker-checker but no ApprovalGateway is configured`,
-            );
-          const payload: SettingChangePayload = {
-            key,
-            tier: target.tier,
-            scopeId: target.scopeId,
-            value,
-          };
-          // The checker sees what changes at this scope (IPB-07-15, @IPB-07-AT-06).
-          const [cur] = await this.o.store.read(tx, key, [target]);
-          const req = await this.o.approvals.request(tx, {
-            action: SETTING_CHANGE_ACTION,
-            riskClass,
-            payload: payload as unknown as Record<string, unknown>,
-            summary: `Change ${key} at ${target.tier}`,
-            diff: { before: cur ? { [key]: cur.value } : null, after: { [key]: value } },
-          });
-          return { status: "pending", requestId: req.id } as const;
-        }
-        const version = await this.write(tx, ctx, def, target, value, null);
-        return { status: "applied", version } as const;
-      },
-      { action: SETTING_CHANGE_ACTION },
-    );
+    return this.o.kernel.mutate(ctx, (tx) => this.apply(tx, ctx, def, target, value), {
+      action: SETTING_CHANGE_ACTION,
+    });
+  }
+
+  /**
+   * A UNIT or TENANT write inside the caller's own transaction (LawDocsComply PR-LDC-42, R1-D-121),
+   * so a product changes a setting and its own records atomically. Every check `set` makes applies
+   * unchanged: the key is registered, the tier allowed, the principal holds one of the key's
+   * registered `change` roles in its own tenant or units (a product's role rules authorise through
+   * the roles it registers for its own keys; platform keys keep the platform's), the tighten rule,
+   * validation, and the ledger entry and event in this transaction. A key under maker-checker still
+   * returns `pending` with an approval request raised in this transaction. Only UNIT and TENANT.
+   */
+  async setIn(tx: Tx, key: string, target: SettingScopeRef, value: unknown): Promise<SetResult> {
+    const def = this.registry.require(key);
+    if (target.tier !== "UNIT" && target.tier !== "TENANT")
+      throw new IpbError("IPB-UX-008", {
+        detail: `${key}: only UNIT and TENANT values are written inside a caller's transaction`,
+        meta: { key, tier: target.tier },
+      });
+    this.assertWritable(tx.ctx, def, target);
+    assertValid(def, value);
+    return this.apply(tx, tx.ctx, def, target, value);
+  }
+
+  private async apply(
+    tx: Tx,
+    ctx: KernelContext,
+    def: SettingDef,
+    target: SettingScopeRef,
+    value: unknown,
+  ): Promise<SetResult> {
+    const key = def.key;
+    await this.assertTighten(tx, ctx, def, target, value);
+    const riskClass = def.mc || (await this.deactivationClass(tx, def, target, value));
+    if (riskClass) {
+      if (!this.o.approvals)
+        throw new Error(
+          `setting ${key} requires maker-checker but no ApprovalGateway is configured`,
+        );
+      const payload: SettingChangePayload = {
+        key,
+        tier: target.tier,
+        scopeId: target.scopeId,
+        value,
+      };
+      // The checker sees what changes at this scope (IPB-07-15, @IPB-07-AT-06).
+      const [cur] = await this.o.store.read(tx, key, [target]);
+      const req = await this.o.approvals.request(tx, {
+        action: SETTING_CHANGE_ACTION,
+        riskClass,
+        payload: payload as unknown as Record<string, unknown>,
+        summary: `Change ${key} at ${target.tier}`,
+        diff: { before: cur ? { [key]: cur.value } : null, after: { [key]: value } },
+      });
+      return { status: "pending", requestId: req.id } as const;
+    }
+    const version = await this.write(tx, ctx, def, target, value, null);
+    return { status: "applied", version } as const;
   }
 
   /**

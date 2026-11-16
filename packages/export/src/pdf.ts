@@ -4,6 +4,9 @@
 // shipped with the package (`fonts/FONTS.md`), embedded whole as CIDFontType2 fonts with
 // Identity-H encoding and a ToUnicode map, so text stays searchable and copyable. The fonts cover
 // Latin (Basic, Latin-1, Extended-A), the usual punctuation, the euro and the rupee sign (U+20B9).
+// A character the style's font lacks falls back, glyph by glyph, to Noto Sans Math's Arrows block
+// (U+2190 to U+21FF; PR-LDC-36, R1-D-129), embedded only when a document uses it, so a document
+// without arrows keeps its bytes.
 // They carry no shaping tables: text in an Indic script is refused with `shaping_required` (send
 // that document through DOCGEN, `renderPdf`, guide §7ay), and any other character the fonts lack
 // with `char_unsupported`; nothing is ever replaced. The output has no JavaScript, no forms, no
@@ -63,8 +66,9 @@ interface Style {
   href?: string;
 }
 interface Piece {
-  /** Glyph ids in the style's font, and the code point each one shows. */
+  /** Glyph ids, the font each is in (an index of `fontAt`) and the code point each one shows. */
   gids: number[];
+  fonts: number[];
   cps: number[];
   style: Style;
   width: number;
@@ -77,17 +81,29 @@ function bad(why: string): OfficeExportError {
 function fontOf(s: Style): number {
   return (s.bold ? 1 : 0) + (s.italic ? 2 : 0);
 }
-const fontFor = (s: Style): TrueTypeFont => bundledFont(STYLES[fontOf(s)]!);
+/** The fallback font's index: Noto Sans Math, the Arrows block only (PR-LDC-36). */
+const FONT_MATH = STYLES.length;
+const FALLBACK_FIRST = 0x2190;
+const FALLBACK_LAST = 0x21ff;
+/** Font `i`: the four styles, then the fallback. */
+const fontAt = (i: number): TrueTypeFont => bundledFont(i === FONT_MATH ? "Math" : STYLES[i]!);
 
-/** Glyph ids for `text` in the style's font; refuses what the font cannot show. */
-function glyphs(text: string, style: Style): { gids: number[]; cps: number[] } {
-  const f = fontFor(style);
+/** Glyph ids for `text` in the style's font, arrows from the fallback; refuses the rest. */
+function glyphs(text: string, style: Style): { gids: number[]; fonts: number[]; cps: number[] } {
+  const own = fontOf(style);
+  const f = fontAt(own);
   const gids: number[] = [];
+  const fonts: number[] = [];
   const cps: number[] = [];
   for (const ch of text) {
     let cp = ch.codePointAt(0)!;
     if (cp === 9) cp = 32;
-    const gid = f.cmap.get(cp);
+    let font = own;
+    let gid = f.cmap.get(cp);
+    if (gid === undefined && cp >= FALLBACK_FIRST && cp <= FALLBACK_LAST) {
+      font = FONT_MATH;
+      gid = fontAt(FONT_MATH).cmap.get(cp);
+    }
     if (gid === undefined) {
       const hex = `U+${cp.toString(16).toUpperCase().padStart(4, "0")}`;
       if (needsShaping(cp))
@@ -98,16 +114,20 @@ function glyphs(text: string, style: Style): { gids: number[]; cps: number[] } {
       throw new OfficeExportError("char_unsupported", `${hex} is not in the PDF's fonts`);
     }
     gids.push(gid);
+    fonts.push(font);
     cps.push(cp);
   }
-  return { gids, cps };
+  return { gids, fonts, cps };
 }
 
-function widthOf(gids: readonly number[], size: number, style: Style): number {
-  const f = fontFor(style);
+/** The width of glyphs, each in its own font. */
+function widthOf(gids: readonly number[], fonts: readonly number[], size: number): number {
   let w = 0;
-  for (const g of gids) w += f.advance(g);
-  return (w * size) / f.unitsPerEm;
+  gids.forEach((g, i) => {
+    const f = fontAt(fonts[i]!);
+    w += (f.advance(g) * size) / f.unitsPerEm;
+  });
+  return w;
 }
 
 const hex4 = (g: number) => g.toString(16).toUpperCase().padStart(4, "0");
@@ -133,7 +153,7 @@ class Layout {
   private y = 0;
   private links = 0;
   private bytes = 0;
-  /** Glyphs drawn per font (style index), with the code point each one shows (ToUnicode). */
+  /** Glyphs drawn per font (`fontAt` index), with the code point each one shows (ToUnicode). */
   readonly used = new Map<number, Map<number, number>>();
   constructor(private readonly max: number) {
     this.newPage();
@@ -183,16 +203,24 @@ class Layout {
     });
   }
 
-  /** One piece at a baseline. */
+  /** One piece at a baseline, one text object per run of glyphs in the same font. */
   draw(p: Piece, x: number, base: number, size: number): void {
     if (!p.gids.length) return;
-    const f = fontOf(p.style);
-    const used = this.used.get(f) ?? new Map<number, number>();
-    this.used.set(f, used);
-    p.gids.forEach((g, i) => used.set(g, p.cps[i]!));
-    this.op(
-      `BT /F${f + 1} ${n(size)} Tf ${n(x)} ${n(base)} Td <${p.gids.map(hex4).join("")}> Tj ET`,
-    );
+    let cx = x;
+    for (let i = 0; i < p.gids.length;) {
+      const f = p.fonts[i]!;
+      let j = i;
+      while (j < p.gids.length && p.fonts[j] === f) j++;
+      const gids = p.gids.slice(i, j);
+      const used = this.used.get(f) ?? new Map<number, number>();
+      this.used.set(f, used);
+      gids.forEach((g, k) => used.set(g, p.cps[i + k]!));
+      this.op(
+        `BT /F${f + 1} ${n(size)} Tf ${n(cx)} ${n(base)} Td <${gids.map(hex4).join("")}> Tj ET`,
+      );
+      cx += widthOf(gids, p.fonts.slice(i, j), size);
+      i = j;
+    }
     if (p.style.underline || p.style.href)
       this.op(
         `${n(size / 18)} w ${n(x)} ${n(base - 1.5)} m ${n(x + p.width)} ${n(base - 1.5)} l S`,
@@ -265,7 +293,7 @@ function piecesOf(runs: readonly DocxRun[], size = BODY): Piece[] {
     for (const word of run.text.replace(/\r\n?|\n/g, " ").split(/(?<= )/)) {
       if (!word) continue;
       const g = glyphs(word, style);
-      out.push({ ...g, style, width: widthOf(g.gids, size, style) });
+      out.push({ ...g, style, width: widthOf(g.gids, g.fonts, size) });
     }
   }
   return out;
@@ -277,31 +305,32 @@ function wrap(pieces: Piece[], width: number, size: number): Piece[][] {
   let used = 0;
   const push = (p: Piece) => {
     const last = p.cps.length - (p.cps.at(-1) === 32 ? 1 : 0);
-    const visible = widthOf(p.gids.slice(0, last), size, p.style);
+    const visible = widthOf(p.gids.slice(0, last), p.fonts, size);
     if (used > 0 && used + visible > width) {
       lines.push([]);
       used = 0;
     }
     if (visible > width) {
       // Break an over-long word into chunks that fit.
-      let chunk: Piece = { gids: [], cps: [], style: p.style, width: 0 };
+      let chunk: Piece = { gids: [], fonts: [], cps: [], style: p.style, width: 0 };
       p.gids.forEach((g, i) => {
-        const next = widthOf([...chunk.gids, g], size, p.style);
+        const next = widthOf([...chunk.gids, g], [...chunk.fonts, p.fonts[i]!], size);
         if (chunk.gids.length && next > width) {
           lines.at(-1)!.push(chunk);
           lines.push([]);
           used = 0;
-          chunk = { gids: [], cps: [], style: p.style, width: 0 };
+          chunk = { gids: [], fonts: [], cps: [], style: p.style, width: 0 };
         }
         chunk.gids.push(g);
+        chunk.fonts.push(p.fonts[i]!);
         chunk.cps.push(p.cps[i]!);
-        chunk.width = widthOf(chunk.gids, size, p.style);
+        chunk.width = widthOf(chunk.gids, chunk.fonts, size);
       });
       lines.at(-1)!.push(chunk);
       used = chunk.width;
       return;
     }
-    const w = widthOf(p.gids, size, p.style);
+    const w = widthOf(p.gids, p.fonts, size);
     lines.at(-1)!.push({ ...p, width: w });
     used += w;
   };
@@ -322,7 +351,7 @@ function listItems(
     const marker = numbered ? `${i + 1}.` : level === 0 ? "•" : "-";
     const plain: Style = { bold: false, italic: false, underline: false };
     const g = glyphs(marker, plain);
-    const prefix: Piece = { ...g, style: plain, width: widthOf(g.gids, BODY, plain) };
+    const prefix: Piece = { ...g, style: plain, width: widthOf(g.gids, g.fonts, BODY) };
     const x = MARGIN + INDENT * (level + 1);
     layout.runs(piecesOf(runs), x, TEXT_W - INDENT * (level + 1), BODY, prefix);
     if (nested !== undefined) {
@@ -471,7 +500,7 @@ export function toPdf(doc: PdfDocument, o: PdfOptions = {}): Buffer {
   const infoId = add(`<< ${info.join(" ")} >>`);
   const fontRefs: string[] = [];
   for (const [idx, used] of [...layout.used].sort((a, b) => a[0] - b[0]))
-    fontRefs.push(`/F${idx + 1} ${embedFont(add, bundledFont(STYLES[idx]!), used)} 0 R`);
+    fontRefs.push(`/F${idx + 1} ${embedFont(add, fontAt(idx), used)} 0 R`);
   const fonts = fontRefs.join(" ");
   const kids: number[] = [];
   for (const p of layout.pages) {
