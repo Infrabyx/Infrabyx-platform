@@ -1,5 +1,22 @@
 # @infrabyx/tenancy
 
+## 1.19.0
+
+### Minor Changes
+
+- 15be78b: `ApprovalsEngine.cancelIn(tx, id, reason)`: cancel inside the caller's transaction with `cancel`'s rules, a required reason and never an agent; `cancel` takes an optional reason; `ApprovalRecord.cancelReason`. Migration `tenancy/0022` adds the nullable `cancel_reason` column (PR-LDC-37).
+
+### Patch Changes
+
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/config@1.14.0
+  - @infrabyx/crypto@1.5.13
+
 ## 1.18.2
 
 ### Patch Changes
