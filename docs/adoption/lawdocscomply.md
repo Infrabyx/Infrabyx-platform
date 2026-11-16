@@ -125,6 +125,7 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-36 (`export` minor):** pass arrows to `toPdf` as they are (product guide §7bq). **Shim removed:** the arrow-to-ASCII replacement.
 - **PR-LDC-53 (`contracts`, `testing` minors):** code your calendar feature against `CalendarPort` and `FakeCalendar` now (product guide §7bs), with a detail level per entry; register your console host's callback in the owner's application when it exists. The adapters stay off until the owner registers the OAuth applications (#126). Keep your ICS export until an adapter is proven.
 - **PR-LDC-61 (`export`):** the map gate now reads every column of a multi-column `ALTER TABLE`; run `infrabyx-export map-gate --base origin/main` as a required CI job (add the `export:unchanged` label to a PR that touches a mapped table without changing what an export holds). **Shim removed:** your own call of the gate function in place of the CLI.
+- **REF-EXPORT-1.6 (`export` minor):** tenant archives now carry `business_ids` on audit-trail lines and `cancel_reason` on approval requests, and the archive verifier hashes business ids; 1.5 is still emitted for 90 days. Nothing to change unless you read archives yourself (then accept the two new fields).
 
 ## Spec event payload schemas (14 Nov, ahead of waves 13 and 14)
 

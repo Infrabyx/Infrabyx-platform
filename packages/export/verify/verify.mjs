@@ -187,6 +187,8 @@ for (const e of entries) {
   // The branch joins the hash only when set (audit/0004, REF-EXPORT-1.3), as in the ledger chain,
   // and so do the lane and its position (audit/0006, REF-EXPORT-1.4).
   if (e.branch_id !== undefined && e.branch_id !== null) body.branch_id = e.branch_id;
+  // Business ids join it only when set too (audit/0010, REF-EXPORT-1.6), in their stored order.
+  if (e.business_ids !== undefined && e.business_ids !== null) body.business_ids = e.business_ids;
   if (laned) {
     body.lane = lane;
     body.lane_seq = pos;

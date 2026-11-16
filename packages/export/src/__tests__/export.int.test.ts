@@ -56,6 +56,16 @@ beforeAll(async () => {
       });
     },
   );
+  // And one with business ids, which the chain also hashes when set (audit/0010, REF-EXPORT-1.6,
+  // R1-D-161): the trail carries them and the offline verifier hashes them.
+  await db.kernel.mutate(owner, async (tx) => {
+    await db.audit.record(tx, {
+      action: "test.business.entry",
+      resourceType: "test",
+      resourceId: "t2",
+      businessIds: ["obl:42", "matter_7"],
+    });
+  });
   approvals = new ApprovalsEngine({ kernel: db.kernel, audit: db.audit, product: "REF" });
   svc = new ExportService({
     approvals,
@@ -88,7 +98,7 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
     const job = await svc.request(owner, { scope: { type: "FULL_TENANT" } });
     expect(job.state).toBe("requested");
     const done = await svc.run("tnt_demo", job.id);
-    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.5" });
+    expect(done).toMatchObject({ state: "completed", mapVersion: "REF-EXPORT-1.6" });
     const arc = (
       await db.admin.query<{
         id: string;
@@ -148,9 +158,21 @@ describe("export jobs and downloads (PL3 plan §7.3)", () => {
       readFileSync(join(trailDir, f), "utf8")
         .split("\n")
         .filter(Boolean)
-        .map((l) => JSON.parse(l) as { action: string; branch_id: string | null }),
+        .map(
+          (l) =>
+            JSON.parse(l) as {
+              action: string;
+              branch_id: string | null;
+              business_ids: string[] | null;
+            },
+        ),
     );
     expect(entries.find((e) => e.action === "test.branch.entry")?.branch_id).toBe("br_north");
+    // So is the entry with business ids (REF-EXPORT-1.6), in their stored order.
+    expect(entries.find((e) => e.action === "test.business.entry")?.business_ids).toEqual([
+      "obl:42",
+      "matter_7",
+    ]);
     // Every entry carries its lane and position (audit/0006, REF-EXPORT-1.4), which the verifier
     // above hashed lane by lane.
     const laned = entries as unknown as Array<{ lane: number | null; lane_seq: number | null }>;
