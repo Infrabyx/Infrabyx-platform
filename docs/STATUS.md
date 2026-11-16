@@ -23,11 +23,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
 | CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
 | CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
 
 ## Wave 13 gate (16 Nov, #252)
 
 - `main` merged in (docs conflicts kept both sides; `TEST_IMAGES.md` takes Keycloak 26.8.2-0 with the ClamAV row). Added before the gate: PR-LDC-61 (R1-D-156) and **REF-EXPORT-1.6** (R1-D-161): the export-map gate flagged `audit/0010` and `tenancy/0022`, and the ledger chain hashes `business_ids`, so the archive and its verifier now carry them (with `cancel_reason`) instead of an `export:unchanged` label.
-- Local: build, lint, typecheck, unit (108 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` 123, `audit` 38, `export` 10 (the verifier test fails without the 1.6 verifier), `rules` 21; golden archive; format, ipb-check, exit runbook, registry, migration-lint, licence, test:policy. One `ci:run` next.
+- Local: build, lint, typecheck, unit (108 tasks); integration on PostgreSQL 16 with pgvector: `tenancy` 123, `audit` 38, `export` 10 (the verifier test fails without the 1.6 verifier), `rules` 21; golden archive; format, ipb-check, exit runbook, registry, migration-lint, licence, test:policy. First `ci:run` (run 43866468028): all green but `containers` (a new unfixed `linux-pam` advisory, CVE-2025-6020: waived 30 days, R1-D-162) and `verify` (exit runbook regenerated after REF-EXPORT-1.6). Second run next.
 
 ## Spec v1.5 and the spec event schemas (14 Nov; #254, R1-D-151, R1-D-155)
 
