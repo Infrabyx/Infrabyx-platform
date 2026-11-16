@@ -5,6 +5,7 @@ import {
   OBLIGATION_PUBLISHED_TYPE,
   ObligationPublishedData,
   obligationPublishedProblems,
+  PROVIDER_INCIDENT_SEVERITIES,
   ProviderIncidentData,
 } from "./spec-events.js";
 
@@ -52,6 +53,17 @@ describe("spec events", () => {
         false,
       );
     expect(ProviderIncidentData.safeParse({ ...incident, status: "CLOSED" }).success).toBe(false);
+  });
+  it("ProviderIncident severity is the owner's SEV1 (most severe) to SEV4 scale (#131)", () => {
+    expect(PROVIDER_INCIDENT_SEVERITIES).toEqual(["SEV1", "SEV2", "SEV3", "SEV4"]);
+    for (const severity of PROVIDER_INCIDENT_SEVERITIES)
+      expect(ProviderIncidentData.safeParse({ ...incident, severity }).success, severity).toBe(
+        true,
+      );
+    for (const severity of ["CRITICAL", "HIGH", "S1", "SEV0", "SEV5", "sev1"])
+      expect(ProviderIncidentData.safeParse({ ...incident, severity }).success, severity).toBe(
+        false,
+      );
   });
 });
 

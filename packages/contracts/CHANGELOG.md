@@ -1,5 +1,21 @@
 # @infrabyx/contracts
 
+## 1.28.0
+
+### Minor Changes
+
+- 15be78b: Two port interfaces: `AccountingSinkPort` on `ACCOUNTING` (PR-FBX-46; `post`, `status`, `replay`, `trialBalance`, `assertBalancedBatch`: balanced integer paise, idempotent on journal id and digest) and `CalendarPort` on `CALENDAR` (PR-LDC-53; PKCE connect, idempotent entries by external id, `calendarPayload` detail levels). Both are catalogued with an interface.
+- 15be78b: AV port (IPB-01 AV, IPB-02-44; PR-LDC-41): `FileScanPort.scan(ref)` → `CLEAN`, `INFECTED` or `ERROR` with a reason, and `scanDecision`, the fail-closed mapping (only `CLEAN` releases). `AV` is catalogued with an interface. `PortHealth` gains an optional `detail` (snake_case names, scalar values, at most 16) for operational facts such as the AV adapter's signature age.
+- 15be78b: `AuditEntryInput.businessIds`, `BUSINESS_ID_PATTERN` and `MAX_BUSINESS_IDS` (PR-LDC-30).
+
+## 1.27.0
+
+### Minor Changes
+
+- 043a348: `ObligationPublishedData` and `obligationPublishedProblems` (Ecosystem Spec v1.5 §6.15; PR-LDC-33, owner answer #127): ids and keys only, no other field, `dataclass = INTERNAL`, the obligation as `subject`; `REPEALED` needs `effective_to`.
+- 043a348: `PROVIDER_INCIDENT_SEVERITIES`: the `ProviderIncident` severity scale `SEV1` (most severe) to `SEV4`, accepted by the owner (#131), with each level's meaning.
+- 043a348: `EvidenceSubmittedData` (§6.15) and `ProviderIncidentData` (§6.16) payload schemas (PR-LDC-45, PR-LDC-51).
+
 ## 1.26.0
 
 ### Minor Changes

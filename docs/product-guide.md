@@ -607,6 +607,19 @@ The tenant brand layer takes three more optional fields, proposed and approved l
 
 After the upload passes the AV scan, call `readXlsx(bytes, limits?)` (`@infrabyx/export`) to get `[{ name, rows }]`, where each row is an array of `string | number | boolean | null` (dates as `YYYY-MM-DD`, or a full ISO time when the cell has one). `xlsxRecords(sheet)` keys rows by the header row. Formulas are never returned, only their cached values. Raise or lower the limits for your use (defaults: 25 MiB file, 100,000 rows, 1,024 columns, 32,767 characters a cell). Map `IPB-SEC-013` to "the file is too large", `IPB-SEC-012` to "macros or active content are not accepted" and `IPB-SEC-010` to "this is not a readable workbook". **Shim removed:** the reader half of your `WorkbookPort`, so ExcelJS is no longer needed.
 
+## 7cc. Evidence and provider-incident payloads (PR-LDC-45, PR-LDC-51; owner answer #131; R1-D-155)
+
+Validate `in.infrabyx.grc.EvidenceSubmitted.v1` with `EvidenceSubmittedData` and `in.infrabyx.platform.ProviderIncident.v1` with `ProviderIncidentData` (`@infrabyx/contracts/events`). Evidence carries `https` or `storage:` references with their SHA-256, never files. A provider incident is `dataclass = INTERNAL` and never carries a tenant id.
+**Severity scale** (`PROVIDER_INCIDENT_SEVERITIES`; the Specification names none, the owner fixed this one). Choose by the impact on your callers when you emit, and emit again with the same `incident_id` when it changes:
+
+| Severity                                                                                                    | Meaning                                                                                 |
+| ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `SEV1`                                                                                                      | A capability is unavailable and no adapter is serving it (no failover)                  |
+| `SEV2`                                                                                                      | The capability works for few callers, or a failover is serving it with reduced function |
+| `SEV3`                                                                                                      | Partial or intermittent degradation; the capability works for most callers              |
+| `SEV4`                                                                                                      | No caller-visible impact: a failover with full function, or a precautionary block       |
+| This is not the `CRITICAL` to `LOW` scale of `VulnerabilityRecorded`, which rates a finding, not an outage. |
+
 ## 7cd. Storage compartments for board papers and sealed material (PR-LDC-60; R1-D-158)
 
 Put an object in a compartment with `storage.put(key, body, { bucketClass: "CONFIDENTIAL", compartment: "BOARD_CONFIDENTIAL" })` (or `SEALED`; either in `CONFIDENTIAL` or `REGULATED`, which keep their lock and retention rules). `get` returns the compartment in `meta`, `presign(key, "put", ttl, { bucketClass, compartment, contentType })` gives an upload URL bound to it, and an object never moves between compartments or out of one.

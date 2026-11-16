@@ -52,6 +52,17 @@ export type EvidenceSubmittedData = z.infer<typeof EvidenceSubmittedData>;
 export const PROVIDER_INCIDENT_STATUSES = ["OPEN", "DEGRADED", "RECOVERED"] as const;
 
 /**
+ * The `ProviderIncident` severity scale (owner answer #131, R1-D-155; the Specification names
+ * none). `SEV1` is the most severe. Choose by the impact on the product's callers at the time
+ * of the event, and emit a new event (same `incident_id`) when the severity changes:
+ * - `SEV1`: a capability is unavailable and no adapter is serving it (no failover).
+ * - `SEV2`: a capability works for few callers, or a failover is serving it with reduced function.
+ * - `SEV3`: partial or intermittent degradation; the capability works for most callers.
+ * - `SEV4`: no caller-visible impact (a failover with full function, or a precautionary block).
+ */
+export const PROVIDER_INCIDENT_SEVERITIES = ["SEV1", "SEV2", "SEV3", "SEV4"] as const;
+
+/**
  * Idempotency key (incident_id, status). `dataclass = INTERNAL`; never tenant ids (the schema
  * refuses a `tenant_id` or `tenant_ids` field even though other unknown fields pass).
  */
@@ -62,8 +73,8 @@ export const ProviderIncidentData = z
     port: z.string().regex(/^[A-Z][A-Z0-9_]{1,39}$/),
     adapter: z.string().regex(/^[a-z0-9][a-z0-9_.-]{1,63}$/),
     residency: z.enum(["IN", "GLOBAL"]),
-    /** The Specification names no values; SEV1 (worst) to SEV4 here, [VERIFY] with the registry. */
-    severity: z.enum(["SEV1", "SEV2", "SEV3", "SEV4"]),
+    /** `SEV1` (most severe) to `SEV4`; see `PROVIDER_INCIDENT_SEVERITIES` (owner answer #131). */
+    severity: z.enum(PROVIDER_INCIDENT_SEVERITIES),
     started_at: z.iso.datetime({ offset: true }),
     status: z.enum(PROVIDER_INCIDENT_STATUSES),
     eta: z.iso.datetime({ offset: true }).optional(),

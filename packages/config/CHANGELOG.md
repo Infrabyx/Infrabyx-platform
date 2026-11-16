@@ -1,5 +1,30 @@
 # @infrabyx/config
 
+## 1.14.0
+
+### Minor Changes
+
+- 15be78b: Registers `int.av.clamav.enabled` (PLATFORM, default off, R4) for the ClamAV AV adapter (PR-LDC-41).
+- 15be78b: `SettingsService.setIn(tx, key, target, value)`: a UNIT or TENANT write inside the caller's transaction with every check `set` makes; a maker-checker key still answers `pending` (PR-LDC-42).
+
+### Patch Changes
+
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/crypto@1.5.13
+
+## 1.13.4
+
+### Patch Changes
+
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+  - @infrabyx/contracts@1.27.0
+  - @infrabyx/crypto@1.5.12
+
 ## 1.13.3
 
 ### Patch Changes

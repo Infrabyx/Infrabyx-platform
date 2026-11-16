@@ -1,5 +1,40 @@
 # @infrabyx/export
 
+## 1.6.0
+
+### Minor Changes
+
+- 15be78b: `toPdf` draws the Arrows block (U+2190 to U+21FF) from a bundled Noto Sans Math subset, glyph by glyph where Noto Sans has none (PR-LDC-36). The font is embedded only when used; a document without arrows is unchanged byte for byte.
+- 15be78b: `REF-EXPORT-1.6` (R1-D-161): the audit trail carries each entry's `business_ids` (`audit/0010`), which the ledger chain hashes when set, and the offline verifier hashes them too; approval requests carry their `cancel_reason` (`tenancy/0022`). `REF-EXPORT-1.5` stays exported beside it for the 90-day dual run (`REF_EXPORT_MAP_1_5`); the golden archive is `golden/REF-EXPORT-1.6`.
+
+  Customer note: audit-trail lines gain `business_ids` and approval requests gain `cancel_reason`; every other file is unchanged, and archives with business ids now verify offline.
+
+  export_map: REF-EXPORT-1.6
+
+- 15be78b: `toXlsx` workbook forms (PR-LDC-31 writer, M81): column `width`, typed data validations (`list` of values or of a named range, `whole`, `decimal`, `date`, `textLength`, with prompt and error messages), workbook `namedRanges`, and sheet `protection` as lock flags with `editable` columns, never a password. A workbook that uses none of these is unchanged byte for byte.
+
+### Patch Changes
+
+- 15be78b: The export map gate reads every column of a multi-column `ALTER TABLE` (`add column a …, add column b …`, `add` without `column`, `if exists`, quoted names), so map fields on later columns are no longer reported as missing (PR-LDC-61).
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/tenancy@1.19.0
+  - @infrabyx/crypto@1.5.13
+
+## 1.5.5
+
+### Patch Changes
+
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+  - @infrabyx/contracts@1.27.0
+  - @infrabyx/crypto@1.5.12
+  - @infrabyx/tenancy@1.18.2
+
 ## 1.5.4
 
 ### Patch Changes

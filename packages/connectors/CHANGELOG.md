@@ -1,5 +1,42 @@
 # @infrabyx/connectors
 
+## 1.15.0
+
+### Minor Changes
+
+- 15be78b: `@infrabyx/connectors/av`: the `clamav` AV adapter (clamd `INSTREAM` over TCP, in-cluster addresses only, fail-closed verdicts, stale signatures refused), off behind `int.av.clamav.enabled`; AV in the exit runbook (PR-LDC-41). Its health answer reports signature-database freshness (`signatures_at`, `signature_age_hours`, `max_signature_age_hours`, `signatures_fresh`) and is `degraded` when stale.
+
+### Patch Changes
+
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/tenancy@1.19.0
+  - @infrabyx/config@1.14.0
+  - @infrabyx/crypto@1.5.13
+
+## 1.14.5
+
+### Patch Changes
+
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+  - @infrabyx/contracts@1.27.0
+  - @infrabyx/config@1.13.4
+  - @infrabyx/crypto@1.5.12
+  - @infrabyx/tenancy@1.18.2
+
+## 1.14.4
+
+### Patch Changes
+
+- 26c3035: Keycloak 26.8.2: `applyRealm` (workforce and customer realms) makes the built-in `kc-admin-api` client scope a default scope of the admin service account's client, so its token passes the Admin REST API's new audience check; a realm on an earlier version is unchanged (`grantAdminApiScope`).
+
 ## 1.14.3
 
 ### Patch Changes

@@ -1,5 +1,48 @@
 # @infrabyx/testing
 
+## 1.15.0
+
+### Minor Changes
+
+- 15be78b: `FakeAccountingSink` with `accountingContractCases` (PR-FBX-46) and `FakeCalendar` with `calendarContractCases` (PR-LDC-53).
+- 15be78b: AV port: `FakeFileScan`, `fileScanContractCases(storage)` and the `EICAR` test file; the pinned `clamav` test image (PR-LDC-41). A contract case checks that health reports signature freshness.
+
+### Patch Changes
+
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+- Updated dependencies [15be78b]
+  - @infrabyx/contracts@1.28.0
+  - @infrabyx/tenancy@1.19.0
+  - @infrabyx/audit@1.9.0
+  - @infrabyx/config@1.14.0
+  - @infrabyx/crypto@1.5.13
+  - @infrabyx/seed@1.0.38
+
+## 1.14.5
+
+### Patch Changes
+
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+- Updated dependencies [043a348]
+  - @infrabyx/contracts@1.27.0
+  - @infrabyx/audit@1.8.3
+  - @infrabyx/config@1.13.4
+  - @infrabyx/crypto@1.5.12
+  - @infrabyx/seed@1.0.37
+  - @infrabyx/tenancy@1.18.2
+
+## 1.14.4
+
+### Patch Changes
+
+- 26c3035: `TEST_IMAGES.keycloak` pinned to Keycloak 26.8.2-0 by digest (R1-D-134): the same findings as 26.8.1-2, nothing new.
+
 ## 1.14.3
 
 ### Patch Changes
