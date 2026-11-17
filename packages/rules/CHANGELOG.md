@@ -1,5 +1,21 @@
 # @infrabyx/rules
 
+## 1.5.0
+
+### Minor Changes
+
+- 32097cb: Dated, cited and locked rule parameters (LawDocsComply PR-LDC-57, R1-D-146, R1-D-175; product guide §7ch). A rule set's parameter may name a platform parameter schedule instead of a setting: its value is the schedule entry in force at the decision's instant (`asOf`, or now), compared by calendar day in Asia/Kolkata (`SCHEDULE_ZONE`), and it is locked (no setting is read, no default). With no entry in force the decision is UNDETERMINED with reason `parameter_not_in_force`. The decision log and `explain` cite the schedule key, version, entry date and citation (`source: "schedule"`); `explain` now lists parameters in their declared order. Schedules are written in a platform context only (`createSchedule`, `saveScheduleDraft`, `publishSchedule`, `reopenSchedule`), published through `rules.ruleset.publish` (R4, payload `kind: "schedule"`; requests without `kind` stay rule-set publications) with the scheduled cut-over, immutable once published, and read by every tenant (`listSchedules`, `getSchedule`). A rule set naming an unknown or unpublished schedule, one of another type, or one with an entry outside the parameter's bounds is refused (`IPB-RULE-001`). New migration `rules/0005_parameter_schedule.sql` (expand-only: `rules.parameter_schedule`, `rules.parameter_schedule_version`, forced RLS, an immutability trigger): run `infrabyx-migrate`.
+
+### Patch Changes
+
+- Updated dependencies [32097cb]
+- Updated dependencies [32097cb]
+  - @infrabyx/connectors@1.16.4
+  - @infrabyx/contracts@1.31.0
+  - @infrabyx/config@1.15.2
+  - @infrabyx/crypto@1.5.16
+  - @infrabyx/tenancy@1.20.2
+
 ## 1.4.0
 
 ### Minor Changes

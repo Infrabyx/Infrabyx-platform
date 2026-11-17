@@ -1,5 +1,13 @@
 # @infrabyx/config
 
+## 1.15.2
+
+### Patch Changes
+
+- Updated dependencies [32097cb]
+  - @infrabyx/contracts@1.31.0
+  - @infrabyx/crypto@1.5.16
+
 ## 1.15.1
 
 ### Patch Changes
