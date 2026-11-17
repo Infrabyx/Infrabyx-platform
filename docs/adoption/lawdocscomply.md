@@ -128,7 +128,9 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-53 (`contracts`, `testing` minors):** code your calendar feature against `CalendarPort` and `FakeCalendar` now (product guide §7bs), with a detail level per entry; register your console host's callback in the owner's application when it exists. The adapters stay off until the owner registers the OAuth applications (#126). Keep your ICS export until an adapter is proven.
 - **PR-LDC-61 (`export`):** the map gate now reads every column of a multi-column `ALTER TABLE`; run `infrabyx-export map-gate --base origin/main` as a required CI job (add the `export:unchanged` label to a PR that touches a mapped table without changing what an export holds). **Shim removed:** your own call of the gate function in place of the CLI.
 
-## Wave 14 (in progress)
+## Wave 14 (released 17 Nov, run 236)
+
+**Released 17 Nov (run 236).** Adopt with the wave 13 release before your December exit gate: move every `@infrabyx/*` dependency together to the run 236 versions (`contracts` 1.29.0, `tenancy` 1.20.0, `connectors` 1.16.0, `testing` 1.16.0, `config` 1.15.0, `audit` 1.10.0, `export` 1.7.0, `rules` 1.3.0, `ui` 1.3.0, `brand` 1.2.0, `workflow` 1.4.0 (and dependent patches)), run `infrabyx-migrate --require-all` (new: `tenancy/0023`, `tenancy/0024`, `rules/0004`), register the new setting `int.storage.bucket.{class}.{compartment}` only if you use storage compartments, and accept REF-EXPORT-1.7 in anything that reads archives (approval `levels` and `level`; 1.6 is still emitted for 90 days). No new environment variable.
 
 - **PR-LDC-55 (`contracts`, `connectors` minors):** build your floor with `mfaFloor`, guard with `assertMfaForRoles(claims, floor, { stepUp })`, answer `stepUpChallenge` as a 401, and add `assertStepUpReachable` to a boot test (product guide §7bt). **Shim removed:** your product MFA floor.
 - **#125 ordered approval levels (`contracts`, `tenancy`, `workflow` minors; migration `tenancy/0023`):** pass `levels` on one request instead of chaining a request per level (product guide §7bu). **Shim removed:** the per-level chaining.
