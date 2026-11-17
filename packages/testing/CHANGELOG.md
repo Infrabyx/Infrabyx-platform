@@ -1,5 +1,21 @@
 # @infrabyx/testing
 
+## 1.17.0
+
+### Minor Changes
+
+- c79fef5: `defineRulesRevealContract(name, setup)`: the contract for an entitled reveal in `explain` (PR-LDC-59, R1-D-173). Names only without a grant; exactly one CONFIDENTIAL value with one, ledgered without the value; REGULATED, undeclared and INTERNAL inputs refused; agents, platform contexts, break-glass, impersonation and platform roles refused; another tenant's decision not found; grants single use, bound to their decision and principal, and look-alikes refused; purpose bounds.
+
+### Patch Changes
+
+- Updated dependencies [c79fef5]
+  - @infrabyx/contracts@1.30.0
+  - @infrabyx/audit@1.10.1
+  - @infrabyx/config@1.15.1
+  - @infrabyx/crypto@1.5.15
+  - @infrabyx/seed@1.0.40
+  - @infrabyx/tenancy@1.20.1
+
 ## 1.16.1
 
 ### Patch Changes
