@@ -8,9 +8,10 @@ import { PORT_EXIT } from "./exit.js";
 const SRC = fileURLToPath(new URL(".", import.meta.url));
 /**
  * Adapter folders under src/ and their ports (`llm` is LLM; shared folders have no port;
- * `provisioning` consumes an Ecosystem event and is not an IPB-01 port, R1-D-68).
+ * `provisioning` consumes an Ecosystem event and is not an IPB-01 port, R1-D-68; `web-snapshot` is
+ * a platform service over EGRESS, STORAGE and AV, R1-D-176).
  */
-const NOT_PORTS = new Set(["__tests__", "ai", "core", "messaging", "provisioning"]);
+const NOT_PORTS = new Set(["__tests__", "ai", "core", "messaging", "provisioning", "web-snapshot"]);
 const portFolders = readdirSync(SRC).filter(
   (d) => statSync(join(SRC, d)).isDirectory() && !NOT_PORTS.has(d),
 );
@@ -57,6 +58,8 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
       "AV",
       // PDF: only the in-process text extractor exists (PR-LDC-39, R1-D-160).
       "PDF",
+      // EGRESS: the IPB-01 alternative is the network layer (cloud NAT with egress rules, R1-D-176).
+      "EGRESS",
     ]);
   });
 

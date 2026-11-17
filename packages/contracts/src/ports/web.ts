@@ -348,12 +348,37 @@ export interface AnalyticsPort extends Port {
 
 /* --------------------------------------------------- EGRESS (IPB-04 §04.4.4; AT-94 SSRF guard) */
 
+export interface EgressFetchOptions {
+  maxBytes?: number;
+  timeoutMs?: number;
+  accept?: string;
+  /**
+   * Redirects to follow, each hop checked as the first (PR-LDC-40, R1-D-176). Absent or 0: a
+   * redirect is refused (`IPB-SEC-018`). An adapter caps it at 5.
+   */
+  maxRedirects?: number;
+  /**
+   * Hosts this call may reach, in place of the adapter's own list (exact, or `*.suffix`): a
+   * tenant's allow-list. An adapter that cannot take one refuses the call.
+   */
+  allowHosts?: readonly string[];
+}
+
+export interface EgressFetchResult {
+  status: number;
+  contentType: string;
+  body: Uint8Array;
+  /** The URL the body came from, when the adapter followed redirects. */
+  finalUrl?: string;
+  /** Every hop after the first, in order. */
+  redirects?: string[];
+  /** The server's `Content-Encoding`; the body is decoded. */
+  contentEncoding?: "identity" | "gzip" | "deflate" | "br";
+}
+
 export interface EgressPort extends Port {
   /** Fetch an allow-listed URL with DNS pinning, a private-range block, a timeout and a size cap. */
-  fetch(
-    url: string,
-    o?: { maxBytes?: number; timeoutMs?: number; accept?: string },
-  ): Promise<{ status: number; contentType: string; body: Uint8Array }>;
+  fetch(url: string, o?: EgressFetchOptions): Promise<EgressFetchResult>;
 }
 
 /* ------------------------------------------ CLAIMS gate, LAW_REGISTER (Ecosystem §6.29; IPB-05) */

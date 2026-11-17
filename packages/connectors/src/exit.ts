@@ -257,6 +257,16 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Line breaks and spacing of extracted text can differ between parsers; products that store text re-extract on a switch",
   },
   {
+    port: "EGRESS",
+    primary: "governed",
+    exitTarget: "none",
+    pending:
+      "The IPB-01 alternative is cloud NAT with egress rules, a network layer the deployment adds beneath the in-process guard rather than a second adapter (PR-LDC-40, R1-D-176)",
+    dataMove: "Configuration swap; the guard keeps nothing between calls",
+    volumeClass: "S",
+    lockIn: "None: the allow-lists are settings (`int.web_snapshot.allow_hosts`)",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",
