@@ -63,6 +63,21 @@ for (const [re, what] of [
 ]) {
   if (!re.test(workspace)) fail(`pnpm-workspace.yaml must set ${what} (PL2-D-32)`);
 }
+// The exclude list is exactly the platform's own packages: no third-party package may skip the
+// 7-day rule, not even a security update (a fix is taken once its release is 7 days old).
+{
+  const block =
+    /^minimumReleaseAgeExclude:\s*\n((?:[ \t]+(?:-.*|#.*)\n?)*)/m.exec(workspace)?.[1] ?? "";
+  const entries = block
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("-"))
+    .map((l) => l.replace(/^-\s*/, "").replace(/^["']|["']$/g, ""));
+  if (entries.length !== 1 || entries[0] !== "@infrabyx/*")
+    fail(
+      `pnpm-workspace.yaml minimumReleaseAgeExclude must hold only "@infrabyx/*", found ${JSON.stringify(entries)} (PL2-D-32)`,
+    );
+}
 if (renovate.minimumReleaseAge !== "7 days")
   fail('renovate.json minimumReleaseAge must be "7 days" (PL2-D-32)');
 if (root.devDependencies?.lefthook !== "2.2.1")
