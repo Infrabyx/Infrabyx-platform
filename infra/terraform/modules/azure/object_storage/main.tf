@@ -4,14 +4,42 @@
 # equivalent of Object Lock in compliance mode (Azure creates it unlocked; immutability_locked
 # locks it in the next apply); GENERAL and PUBLIC_ASSETS are zone-redundant without one. Every account
 # is private, versioned, HTTPS and TLS 1.2 only, Entra ID only (no shared keys), and encrypted
-# with the platform key.
+# with the platform key, or a compartment's own key (PR-LDC-60).
 locals {
-  classes = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"]
-  abbrev  = { AUDIT = "audit", REGULATED = "reg", CONFIDENTIAL = "conf", GENERAL = "gen", PUBLIC_ASSETS = "pub" }
-  locked  = { for c in ["AUDIT", "REGULATED", "CONFIDENTIAL"] : c => var.retention_years[c] }
+  classes        = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"]
+  abbrev         = { AUDIT = "audit", REGULATED = "reg", CONFIDENTIAL = "conf", GENERAL = "gen", PUBLIC_ASSETS = "pub" }
+  locked_classes = { for c in ["AUDIT", "REGULATED", "CONFIDENTIAL"] : c => var.retention_years[c] }
   # Account names are 3 to 24 lower-case letters and digits.
-  compact = replace(replace(var.name, "infrabyx-", "ibx"), "-", "")
-  names   = { for c in local.classes : c => "${local.compact}${local.abbrev[c]}" }
+  compact     = replace(replace(var.name, "infrabyx-", "ibx"), "-", "")
+  class_names = { for c in local.classes : c => "${local.compact}${local.abbrev[c]}" }
+
+  # PR-LDC-60 (R1-D-158): a compartment location "<CLASS>.<COMPARTMENT>" gets an account of its
+  # own with every control of its class (GZRS, the immutability policy and its lock switch,
+  # private, versioned, Entra ID only) under its own key in place of the platform key. The name
+  # ends in b (BOARD_CONFIDENTIAL) or s (SEALED), for example ibxudfprodconfb. Off by default.
+  cmp       = { for p in var.storage_compartments : "${p.class}.${p.compartment}" => p }
+  cmp_names = { for s, p in local.cmp : s => "${local.compact}${local.abbrev[p.class]}${p.compartment == "SEALED" ? "s" : "b"}" }
+
+  # Every account, keyed by its location: the five classes, then the compartments. The class
+  # keys are unchanged, so adding compartments never moves an existing account.
+  names     = merge(local.class_names, local.cmp_names)
+  slot_tags = { for s in keys(local.names) : s => merge({ bucket_class = split(".", s)[0] }, length(split(".", s)) > 1 ? { compartment = split(".", s)[1] } : {}) }
+  locked    = merge(local.locked_classes, { for s, p in local.cmp : s => var.retention_years[p.class] })
+  key_of    = merge({ for c in local.classes : c => var.key_id }, { for s in keys(local.cmp) : s => lookup(var.compartment_key_ids, s, "") })
+}
+
+# A compartment's key is its own: never the platform key, never another compartment's (the
+# STORAGE adapter refuses the same at start-up). An account name over Azure's 24 characters is
+# refused by the provider when the configuration is validated, before anything is created.
+resource "terraform_data" "compartment_keys" {
+  for_each = local.cmp
+  input    = each.key
+  lifecycle {
+    precondition {
+      condition     = length(distinct(values(local.key_of))) == length(local.key_of) - length(local.classes) + 1
+      error_message = "PR-LDC-60: every compartment location has its own key, distinct from the platform key and from every other compartment's."
+    }
+  }
 }
 
 resource "azurerm_storage_account" "this" {
@@ -35,7 +63,7 @@ resource "azurerm_storage_account" "this" {
     identity_ids = [var.cmk_identity_id]
   }
   customer_managed_key {
-    key_vault_key_id          = var.key_id
+    key_vault_key_id          = local.key_of[each.key]
     user_assigned_identity_id = var.cmk_identity_id
   }
   network_rules {
@@ -61,7 +89,7 @@ resource "azurerm_storage_account" "this" {
       allow_protected_append_writes = false
     }
   }
-  tags = merge(var.tags, { bucket_class = each.key })
+  tags = merge(var.tags, local.slot_tags[each.key])
 }
 
 resource "azurerm_storage_container" "objects" {

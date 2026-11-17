@@ -1,15 +1,49 @@
 locals {
   classes = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"]
   # Only GENERAL and PUBLIC_ASSETS may run without lock (IPB-01 §01.4.7).
-  locked = { for c in ["AUDIT", "REGULATED", "CONFIDENTIAL"] : c => var.retention_years[c] }
-  names  = { for c in local.classes : c => "${var.name}-${replace(lower(c), "_", "-")}" }
+  locked_classes = { for c in ["AUDIT", "REGULATED", "CONFIDENTIAL"] : c => var.retention_years[c] }
+  class_names    = { for c in local.classes : c => "${var.name}-${replace(lower(c), "_", "-")}" }
+
+  # PR-LDC-60 (R1-D-158): a compartment location "<CLASS>.<COMPARTMENT>" gets a bucket of its own
+  # with every control of its class (lock and retention, DR copy, private, versioned, TLS only)
+  # under its own key in place of the platform key. Off by default.
+  cmp_abbrev = { REGULATED = "reg", CONFIDENTIAL = "conf", BOARD_CONFIDENTIAL = "board", SEALED = "sealed" }
+  cmp        = { for p in var.storage_compartments : "${p.class}.${p.compartment}" => p }
+  cmp_names  = { for s, p in local.cmp : s => "${var.name}-${local.cmp_abbrev[p.class]}-${local.cmp_abbrev[p.compartment]}" }
+
+  # Every bucket, keyed by its location: the five classes, then the compartments. The class keys
+  # are unchanged, so adding compartments never moves an existing bucket.
+  names     = merge(local.class_names, local.cmp_names)
+  slot_tags = { for s in keys(local.names) : s => merge({ bucket_class = split(".", s)[0] }, length(split(".", s)) > 1 ? { compartment = split(".", s)[1] } : {}) }
+  locked    = merge(local.locked_classes, { for s, p in local.cmp : s => var.retention_years[p.class] })
+  key_of    = merge({ for c in local.classes : c => var.kms_key_arn }, { for s in keys(local.cmp) : s => lookup(var.compartment_kms_key_arns, s, "") })
+  dr_key_of = merge(
+    { for c in keys(local.locked_classes) : c => var.dr_kms_key_arn },
+    { for s in keys(local.cmp) : s => lookup(var.compartment_dr_kms_key_arns, s, "") },
+  )
+}
+
+# A compartment's keys exist and are its own: never the platform key, never another
+# compartment's (the STORAGE adapter refuses the same at start-up).
+resource "terraform_data" "compartment_keys" {
+  for_each = local.cmp
+  input    = each.key
+  lifecycle {
+    precondition {
+      condition = (
+        length(distinct(values(local.key_of))) == length(local.key_of) - length(local.classes) + 1 &&
+        length(distinct(values(local.dr_key_of))) == length(local.dr_key_of) - length(local.locked_classes) + 1
+      )
+      error_message = "PR-LDC-60: every compartment location has its own primary and DR key, distinct from the platform key and from every other compartment's."
+    }
+  }
 }
 
 resource "aws_s3_bucket" "this" {
   for_each            = local.names
   bucket              = each.value
   object_lock_enabled = contains(keys(local.locked), each.key)
-  tags                = merge(var.tags, { bucket_class = each.key })
+  tags                = merge(var.tags, local.slot_tags[each.key])
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
@@ -43,7 +77,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = var.kms_key_arn
+      kms_master_key_id = local.key_of[each.key]
     }
     bucket_key_enabled = true
   }
@@ -78,13 +112,13 @@ resource "aws_s3_bucket_policy" "tls" {
   depends_on = [aws_s3_bucket_public_access_block.this]
 }
 
-# DR copies of the locked classes, with the same lock, in the DR region (IPB-01 §01.4.7).
+# DR copies of the locked classes and the compartments, with the same lock, in the DR region (IPB-01 §01.4.7).
 resource "aws_s3_bucket" "dr" {
   for_each            = local.locked
   provider            = aws.dr
   bucket              = "${local.names[each.key]}-dr"
   object_lock_enabled = true
-  tags                = merge(var.tags, { bucket_class = each.key, role = "dr" })
+  tags                = merge(var.tags, local.slot_tags[each.key], { role = "dr" })
 }
 
 resource "aws_s3_bucket_public_access_block" "dr" {
@@ -113,7 +147,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "dr" {
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm     = "aws:kms"
-      kms_master_key_id = var.dr_kms_key_arn
+      kms_master_key_id = local.dr_key_of[each.key]
     }
     bucket_key_enabled = true
   }
@@ -164,12 +198,12 @@ resource "aws_iam_role_policy" "replication" {
       {
         Effect   = "Allow"
         Action   = ["kms:Decrypt"]
-        Resource = [var.kms_key_arn]
+        Resource = distinct([for s in keys(local.locked) : local.key_of[s]])
       },
       {
         Effect   = "Allow"
         Action   = ["kms:Encrypt", "kms:GenerateDataKey"]
-        Resource = [var.dr_kms_key_arn]
+        Resource = distinct(values(local.dr_key_of))
       }
     ]
   })
@@ -194,7 +228,7 @@ resource "aws_s3_bucket_replication_configuration" "this" {
     destination {
       bucket = aws_s3_bucket.dr[each.key].arn
       encryption_configuration {
-        replica_kms_key_id = var.dr_kms_key_arn
+        replica_kms_key_id = local.dr_key_of[each.key]
       }
     }
   }

@@ -139,3 +139,7 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 
 - **PR-FBX-12 item 2 (with LawDocsComply PR-LDC-55; `contracts`, `connectors` minors):** replace `assertStaffMfa` with `mfaFloor` and `assertMfaForRoles(claims, floor)` (product guide §7bt). **Shim removed:** `assertStaffMfa`.
 - **#125 ordered approval levels (`contracts`, `tenancy`, `workflow` minors; migration `tenancy/0023`):** pass `levels` on one request instead of chaining a request per level (product guide §7bu). **Shim removed:** the per-level chaining.
+
+## Security patch: `connectors` 1.16.1 (released 17 Nov, run 240; R1-D-166, R1-D-167)
+
+**Take it now if you sign customers in through Zitadel** (`ZitadelCustomerIdentity`): move `@infrabyx/connectors` to 1.16.1 (and `@infrabyx/rules` to 1.3.1, its dependent patch). Before it, while Zitadel's user search lagged, a login just freed with `retireLogin` (a recycled phone number or email) could resolve to the retired account for a moment; the adapter now uses a search hit only after `GET /v2/users/{id}` confirms the account is active under that login, and fails closed when it cannot confirm. No API, setting, migration or environment variable changes; Keycloak users are unaffected. Also run pgvector 0.8.2 or later in every environment (0.8.6 preferred; R1-D-169).

@@ -10,7 +10,7 @@
       "credentials_secret_path": "string"
     },
     "redis": { "url_secret_path": "string" },
-    "storage": { "buckets": "map", "lock_mode": "string" },
+    "storage": { "buckets": "map", "lock_mode": "string", "compartments": "map" },
     "kms": { "platform_key_id": "string" },
     "secrets": { "provider": "string", "path_prefix": "string" },
     "edge": { "zone_id": "string", "origin_hostname": "string" },
@@ -19,5 +19,9 @@
     "region": { "primary": "string", "dr": "string" }
   },
   "bucket_classes": ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"],
-  "locked_classes": ["AUDIT", "REGULATED", "CONFIDENTIAL"]
+  "locked_classes": ["AUDIT", "REGULATED", "CONFIDENTIAL"],
+  "$comment_compartments": "PR-LDC-60 (R1-D-158): storage.compartments maps \"<CLASS>.<COMPARTMENT>\" to { bucket, key_id } for each compartment location the stack turned on (storage_compartments; empty by default). A compartment is one of compartments, in one of compartment_classes; the lists equal @infrabyx/contracts' STORAGE_COMPARTMENTS and COMPARTMENT_CLASSES.",
+  "compartments": ["BOARD_CONFIDENTIAL", "SEALED"],
+  "compartment_classes": ["CONFIDENTIAL", "REGULATED"],
+  "compartment_fields": ["bucket", "key_id"]
 }

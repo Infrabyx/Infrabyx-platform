@@ -77,3 +77,35 @@ resource "azurerm_management_lock" "vault" {
   lock_level = "CanNotDelete"
   notes      = "Deletion protection (IPB-01 §01.4.9.1); covers the keys"
 }
+
+# PR-LDC-60 (R1-D-158): one key per storage compartment location, the same kind as the platform
+# key (RSA-HSM 3072, rotated yearly) and never shared with it or with another compartment. Only in
+# the primary vault: a storage account uses one key, and Key Vault replicates the vault to the
+# paired region itself, read-only after a failover ("Reliability in Azure Key Vault",
+# learn.microsoft.com/en-us/azure/reliability/reliability-key-vault, read 17 Nov 2026 [VERIFY]:
+# read through a search index, the page itself not reachable from the build container). The DR
+# vault exists for the geo-redundant PostgreSQL backups. The CMK
+# identity reaches the keys through its existing vault-scoped role (encryption user: get, wrap
+# and unwrap only); nothing else is granted. Off by default.
+locals {
+  cmp_abbrev = { REGULATED = "reg", CONFIDENTIAL = "conf", BOARD_CONFIDENTIAL = "board", SEALED = "sealed" }
+  cmp_keys   = { for s in var.compartments : s => join("-", [for x in split(".", s) : local.cmp_abbrev[x]]) }
+}
+
+resource "azurerm_key_vault_key" "compartment" {
+  for_each     = local.cmp_keys
+  name         = each.value
+  key_vault_id = azurerm_key_vault.this["primary"].id
+  key_type     = "RSA-HSM"
+  key_size     = 3072
+  key_opts     = ["wrapKey", "unwrapKey"]
+  rotation_policy {
+    automatic {
+      time_after_creation = "P1Y"
+    }
+    expire_after         = "P2Y"
+    notify_before_expiry = "P30D"
+  }
+  tags       = merge(var.tags, { compartment = each.key })
+  depends_on = [azurerm_role_assignment.officer]
+}

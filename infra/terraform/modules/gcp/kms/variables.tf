@@ -28,3 +28,13 @@ variable "multi_region" {
   type        = string
   default     = "asia"
 }
+
+variable "compartments" {
+  description = "PR-LDC-60 (R1-D-158): the storage compartment locations, as \"<CLASS>.<COMPARTMENT>\", each getting its own key. Off by default."
+  type        = set(string)
+  default     = []
+  validation {
+    condition     = alltrue([for s in var.compartments : can(regex("^(REGULATED|CONFIDENTIAL)\\.(BOARD_CONFIDENTIAL|SEALED)$", s))])
+    error_message = "a compartment location is REGULATED or CONFIDENTIAL, then BOARD_CONFIDENTIAL or SEALED, such as CONFIDENTIAL.SEALED."
+  }
+}

@@ -23,8 +23,9 @@ output "redis" {
 
 output "storage" {
   value = {
-    buckets   = module.object_storage.buckets
-    lock_mode = module.object_storage.lock_mode
+    buckets      = module.object_storage.buckets
+    lock_mode    = module.object_storage.lock_mode
+    compartments = module.object_storage.compartments
   }
 }
 

@@ -22,3 +22,8 @@ output "cmk_identity_client_id" {
 output "tenant_id" {
   value = data.azurerm_client_config.current.tenant_id
 }
+
+# PR-LDC-60: "<CLASS>.<COMPARTMENT>" => versionless key id (empty when off).
+output "compartment_key_ids" {
+  value = { for s, k in azurerm_key_vault_key.compartment : s => k.versionless_id }
+}

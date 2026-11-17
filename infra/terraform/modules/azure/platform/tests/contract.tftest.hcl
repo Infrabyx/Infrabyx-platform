@@ -165,3 +165,254 @@ run "unknown_product_refused" {
   }
   expect_failures = [var.product]
 }
+
+# Storage compartments (PR-LDC-60, R1-D-158): off by default; when on, each location has its own
+# account with its class's controls and its own key, never the platform key or another's.
+run "compartments_off_by_default" {
+  command = apply
+
+  assert {
+    condition     = length(output.storage.compartments) == 0 && length(module.kms.compartment_key_ids) == 0
+    error_message = "no compartment account or key unless storage_compartments asks for one"
+  }
+  assert {
+    condition     = toset(keys(output.storage.buckets)) == toset(["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"])
+    error_message = "storage.buckets still maps exactly the five classes"
+  }
+}
+
+run "compartments_on" {
+  command = apply
+  variables {
+    storage_compartments = [
+      { class = "CONFIDENTIAL", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "CONFIDENTIAL", compartment = "SEALED" },
+      { class = "REGULATED", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+  }
+  # The mock gives every key one id; real keys are distinct resources, so each gets its own here.
+  override_resource {
+    target = module.kms.azurerm_key_vault_key.compartment["CONFIDENTIAL.BOARD_CONFIDENTIAL"]
+    values = {
+      id             = "https://ibx-fbx-prod-kv.vault.azure.net/keys/conf-board/0123456789abcdef0123456789abcdef"
+      versionless_id = "https://ibx-fbx-prod-kv.vault.azure.net/keys/conf-board"
+    }
+  }
+  override_resource {
+    target = module.kms.azurerm_key_vault_key.compartment["CONFIDENTIAL.SEALED"]
+    values = {
+      id             = "https://ibx-fbx-prod-kv.vault.azure.net/keys/conf-sealed/0123456789abcdef0123456789abcdef"
+      versionless_id = "https://ibx-fbx-prod-kv.vault.azure.net/keys/conf-sealed"
+    }
+  }
+  override_resource {
+    target = module.kms.azurerm_key_vault_key.compartment["REGULATED.BOARD_CONFIDENTIAL"]
+    values = {
+      id             = "https://ibx-fbx-prod-kv.vault.azure.net/keys/reg-board/0123456789abcdef0123456789abcdef"
+      versionless_id = "https://ibx-fbx-prod-kv.vault.azure.net/keys/reg-board"
+    }
+  }
+  override_resource {
+    target = module.kms.azurerm_key_vault_key.compartment["REGULATED.SEALED"]
+    values = {
+      id             = "https://ibx-fbx-prod-kv.vault.azure.net/keys/reg-sealed/0123456789abcdef0123456789abcdef"
+      versionless_id = "https://ibx-fbx-prod-kv.vault.azure.net/keys/reg-sealed"
+    }
+  }
+
+  assert {
+    condition = { for s, c in output.storage.compartments : s => c.bucket } == {
+      "CONFIDENTIAL.BOARD_CONFIDENTIAL" = "ibxfbxprodconfb"
+      "CONFIDENTIAL.SEALED"             = "ibxfbxprodconfs"
+      "REGULATED.BOARD_CONFIDENTIAL"    = "ibxfbxprodregb"
+      "REGULATED.SEALED"                = "ibxfbxprodregs"
+    }
+    error_message = "each location has its own storage account, named <compact><class><b or s>"
+  }
+  assert {
+    condition     = length(setintersection(toset([for c in values(output.storage.compartments) : c.bucket]), toset(values(output.storage.buckets)))) == 0
+    error_message = "no compartment account is a class account"
+  }
+  assert {
+    condition = (
+      length(distinct([for c in values(output.storage.compartments) : c.key_id])) == 4 &&
+      !contains([for c in values(output.storage.compartments) : c.key_id], output.kms.platform_key_id)
+    )
+    error_message = "every location has its own key, never the platform key"
+  }
+}
+
+run "compartment_in_general_refused" {
+  command = plan
+  variables {
+    storage_compartments = [{ class = "GENERAL", compartment = "SEALED" }]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+run "unknown_compartment_refused" {
+  command = plan
+  variables {
+    storage_compartments = [{ class = "CONFIDENTIAL", compartment = "PRIVATE" }]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+run "compartment_given_twice_refused" {
+  command = plan
+  variables {
+    storage_compartments = [
+      { class = "REGULATED", compartment = "SEALED" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+# The compartment accounts' controls, on the object_storage module itself (its resources are not
+# visible from the platform's runs).
+run "object_storage_compartment_controls" {
+  command = apply
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    azurerm = azurerm
+  }
+  variables {
+    name                = "infrabyx-ldc-prod"
+    resource_group_name = "infrabyx-ldc-prod"
+    location            = "centralindia"
+    key_id              = "https://ibx-ldc-prod-kv.vault.azure.net/keys/platform"
+    cmk_identity_id     = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mock"
+    allowed_subnet_ids  = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.Network/virtualNetworks/mock/subnets/mock"]
+    retention_years     = { REGULATED = 10 }
+    immutability_locked = true
+    storage_compartments = [
+      { class = "CONFIDENTIAL", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+    compartment_key_ids = {
+      "CONFIDENTIAL.BOARD_CONFIDENTIAL" = "https://ibx-ldc-prod-kv.vault.azure.net/keys/conf-board"
+      "REGULATED.SEALED"                = "https://ibx-ldc-prod-kv.vault.azure.net/keys/reg-sealed"
+    }
+  }
+
+  assert {
+    condition     = output.compartments["CONFIDENTIAL.BOARD_CONFIDENTIAL"].bucket == "ibxldcprodconfb" && output.compartments["REGULATED.SEALED"].bucket == "ibxldcprodregs"
+    error_message = "compartment accounts are named <compact><class><b or s>"
+  }
+  assert {
+    condition = alltrue([for s, c in output.compartments :
+      c.key_id == var.compartment_key_ids[s] &&
+      azurerm_storage_account.this[s].customer_managed_key[0].key_vault_key_id == var.compartment_key_ids[s] &&
+      azurerm_storage_account.this[s].customer_managed_key[0].user_assigned_identity_id == var.cmk_identity_id
+    ])
+    error_message = "each compartment account is encrypted with its own key through the CMK identity, which compartments returns"
+  }
+  assert {
+    condition     = alltrue([for c in ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"] : azurerm_storage_account.this[c].customer_managed_key[0].key_vault_key_id == var.key_id])
+    error_message = "the class accounts keep the platform key"
+  }
+  assert {
+    condition = (
+      azurerm_storage_account.this["CONFIDENTIAL.BOARD_CONFIDENTIAL"].immutability_policy[0].period_since_creation_in_days == 365 &&
+      azurerm_storage_account.this["REGULATED.SEALED"].immutability_policy[0].period_since_creation_in_days == 3650 &&
+      alltrue([for s in keys(output.compartments) : azurerm_storage_account.this[s].immutability_policy[0].state == "Locked" && !azurerm_storage_account.this[s].immutability_policy[0].allow_protected_append_writes])
+    )
+    error_message = "each compartment account has its class's immutability period, locked with the class accounts"
+  }
+  assert {
+    condition = alltrue([for s in keys(output.compartments) :
+      azurerm_storage_account.this[s].account_replication_type == "GZRS" &&
+      azurerm_storage_account.this[s].min_tls_version == "TLS1_2" && azurerm_storage_account.this[s].https_traffic_only_enabled &&
+      !azurerm_storage_account.this[s].allow_nested_items_to_be_public && !azurerm_storage_account.this[s].shared_access_key_enabled &&
+      !azurerm_storage_account.this[s].cross_tenant_replication_enabled && azurerm_storage_account.this[s].infrastructure_encryption_enabled &&
+      azurerm_storage_account.this[s].network_rules[0].default_action == "Deny" &&
+      azurerm_storage_account.this[s].blob_properties[0].versioning_enabled &&
+      azurerm_storage_container.objects[s].container_access_type == "private" &&
+      azurerm_management_lock.this[s].lock_level == "CanNotDelete"
+    ])
+    error_message = "each compartment account is geo-zone-redundant, TLS 1.2 and HTTPS only, Entra ID only, firewalled, versioned, private and delete-locked"
+  }
+  assert {
+    condition     = toset(keys(output.buckets)) == toset(["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"])
+    error_message = "buckets still maps the five classes only"
+  }
+}
+
+run "object_storage_compartment_on_the_platform_key_refused" {
+  command = plan
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    azurerm = azurerm
+  }
+  variables {
+    name                 = "infrabyx-ldc-prod"
+    resource_group_name  = "infrabyx-ldc-prod"
+    location             = "centralindia"
+    key_id               = "https://ibx-ldc-prod-kv.vault.azure.net/keys/platform"
+    cmk_identity_id      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mock"
+    allowed_subnet_ids   = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.Network/virtualNetworks/mock/subnets/mock"]
+    retention_years      = { REGULATED = 10 }
+    storage_compartments = [{ class = "CONFIDENTIAL", compartment = "SEALED" }]
+    compartment_key_ids  = { "CONFIDENTIAL.SEALED" = "https://ibx-ldc-prod-kv.vault.azure.net/keys/platform" }
+  }
+  expect_failures = [terraform_data.compartment_keys]
+}
+
+run "object_storage_compartment_without_a_key_refused" {
+  command = plan
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    azurerm = azurerm
+  }
+  variables {
+    name                 = "infrabyx-ldc-prod"
+    resource_group_name  = "infrabyx-ldc-prod"
+    location             = "centralindia"
+    key_id               = "https://ibx-ldc-prod-kv.vault.azure.net/keys/platform"
+    cmk_identity_id      = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.ManagedIdentity/userAssignedIdentities/mock"
+    allowed_subnet_ids   = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.Network/virtualNetworks/mock/subnets/mock"]
+    retention_years      = { REGULATED = 10 }
+    storage_compartments = [{ class = "REGULATED", compartment = "BOARD_CONFIDENTIAL" }]
+  }
+  expect_failures = [var.compartment_key_ids]
+}
+
+# The compartment keys, on the kms module itself: the platform key's kind, in the primary vault.
+run "kms_compartment_keys" {
+  command = apply
+  module {
+    source = "../kms"
+  }
+  providers = {
+    azurerm = azurerm
+  }
+  variables {
+    name                = "infrabyx-ldc-prod"
+    resource_group_name = "infrabyx-ldc-prod"
+    location            = "centralindia"
+    location_dr         = "southindia"
+    allowed_subnet_ids  = ["/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/infrabyx-ldc-prod/providers/Microsoft.Network/virtualNetworks/mock/subnets/mock"]
+    compartments        = ["CONFIDENTIAL.BOARD_CONFIDENTIAL", "REGULATED.SEALED"]
+  }
+
+  assert {
+    condition = alltrue([for s, k in azurerm_key_vault_key.compartment :
+      k.key_vault_id == azurerm_key_vault.this["primary"].id && k.key_type == "RSA-HSM" && k.key_size == 3072 &&
+      toset(k.key_opts) == toset(["wrapKey", "unwrapKey"]) && k.rotation_policy[0].automatic[0].time_after_creation == "P1Y" &&
+      k.tags["compartment"] == s
+    ]) && length(azurerm_key_vault_key.compartment) == 2
+    error_message = "each compartment key is an RSA-HSM 3072 wrap key in the primary vault, rotated yearly, like the platform key"
+  }
+  assert {
+    condition     = azurerm_key_vault_key.compartment["CONFIDENTIAL.BOARD_CONFIDENTIAL"].name == "conf-board" && azurerm_key_vault_key.compartment["REGULATED.SEALED"].name == "reg-sealed"
+    error_message = "each compartment key is named after its location"
+  }
+}

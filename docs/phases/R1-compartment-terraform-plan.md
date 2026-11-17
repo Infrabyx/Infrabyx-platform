@@ -1,6 +1,6 @@
 # R1 plan: storage compartments in the Terraform modules (PR-LDC-60, wave 15)
 
-Status: drafted 17 Nov 2026 (fifteenth session); to build in wave 15, first item. Decision of record: R1-D-158 (owner-accepted priority; M110). This plan covers only the part R1-D-158 left for wave 15: the OpenTofu modules take compartment buckets and keys as inputs, off by default, under one output contract.
+Status: drafted 17 Nov 2026 (fifteenth session); **built 17 Nov 2026 (sixteenth session, R1-D-170)**, with the two changes recorded in §8. Decision of record: R1-D-158 (owner-accepted priority; M110). This plan covers only the part R1-D-158 left for wave 15: the OpenTofu modules take compartment buckets and keys as inputs, off by default, under one output contract.
 
 ## 1. Scope
 
@@ -60,12 +60,18 @@ The `kms` module returns the compartment keys as a map; `object_storage` takes t
 
 ## 6. Exit gate
 
-- [ ] All three clouds take `storage_compartments`, default `[]`, and return `storage.compartments`.
-- [ ] The tests of §4 pass locally and in the `infra` job.
-- [ ] README "What the … modules set" names the compartment buckets and keys per cloud.
-- [ ] Threat model §3.128 states the modules' controls; product guide §7cd shows the output-to-setting mapping.
-- [ ] No package changes, so no changeset: the PR takes the `no-changeset` label with the reason "infra modules only".
+- [x] All three clouds take `storage_compartments`, default `[]`, and return `storage.compartments`.
+- [x] The tests of §4 pass locally and in the `infra` job.
+- [x] README "What the … modules set" names the compartment buckets and keys per cloud.
+- [x] Threat model §3.128 states the modules' controls; product guide §7cd shows the output-to-setting mapping.
+- [x] No package changes, so no changeset: the PR takes the `no-changeset` label with the reason "infra modules only".
 
 ## 7. Owner decisions needed
 
 None to build: R1-D-158 accepted the compartments and their own keys. Creating them in an environment (and the cost of the extra keys and buckets) is the product owner's production configuration, done in the product's environment stack, never from here.
+
+## 8. As built (R1-D-170)
+
+- **Keys only where the data is:** on Azure each compartment key sits in the primary vault only (a storage account takes one key, and Key Vault replicates the vault to the paired region itself); on GCP only in the multi-region ring (compartments exist in the locked classes, whose dual-region buckets need a key there). AWS keeps the DR replica, which S3 replication needs. An unused key would add cost and nothing else.
+- **No Azure name precondition:** the AzureRM provider already refuses an account name over 24 characters when the configuration is validated (class and compartment accounts alike), and through the `platform` module the longest compartment name is 18 characters; the planned precondition would never fire, so the test of §4 (d) is dropped and the README says so.
+- **Refusals:** a location without a key is refused by a validation of the key-map input; a location whose key equals the platform key or another location's is refused by a precondition (`terraform_data.compartment_keys`), which each cloud's tests exercise on the `object_storage` module directly. Resource-level assertions (encryption, lock, retention, DR, replication grants, key kind) run on the `object_storage` and `kms` modules, because a `platform` run sees only its child modules' outputs.

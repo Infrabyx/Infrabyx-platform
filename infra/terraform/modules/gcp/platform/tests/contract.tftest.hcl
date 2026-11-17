@@ -146,3 +146,254 @@ run "unknown_product_refused" {
   }
   expect_failures = [var.product]
 }
+
+# Storage compartments (PR-LDC-60, R1-D-158): off by default; when on, each location has its own
+# bucket with its class's controls and its own key, never a platform key or another's.
+run "compartments_off_by_default" {
+  command = apply
+
+  assert {
+    condition     = length(output.storage.compartments) == 0 && length(module.kms.compartment_key_ids) == 0
+    error_message = "no compartment bucket or key unless storage_compartments asks for one"
+  }
+  assert {
+    condition     = toset(keys(output.storage.buckets)) == toset(["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"])
+    error_message = "storage.buckets still maps exactly the five classes"
+  }
+}
+
+run "compartments_on" {
+  command = apply
+  variables {
+    storage_compartments = [
+      { class = "CONFIDENTIAL", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "CONFIDENTIAL", compartment = "SEALED" },
+      { class = "REGULATED", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+  }
+  # The mock gives every key one id; real keys are distinct resources, so each gets its own here.
+  override_resource {
+    target = module.kms.google_kms_crypto_key.compartment["CONFIDENTIAL.BOARD_CONFIDENTIAL"]
+    values = { id = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-fbx-prod-geo/cryptoKeys/conf-board" }
+  }
+  override_resource {
+    target = module.kms.google_kms_crypto_key.compartment["CONFIDENTIAL.SEALED"]
+    values = { id = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-fbx-prod-geo/cryptoKeys/conf-sealed" }
+  }
+  override_resource {
+    target = module.kms.google_kms_crypto_key.compartment["REGULATED.BOARD_CONFIDENTIAL"]
+    values = { id = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-fbx-prod-geo/cryptoKeys/reg-board" }
+  }
+  override_resource {
+    target = module.kms.google_kms_crypto_key.compartment["REGULATED.SEALED"]
+    values = { id = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-fbx-prod-geo/cryptoKeys/reg-sealed" }
+  }
+
+  assert {
+    condition = { for s, c in output.storage.compartments : s => c.bucket } == {
+      "CONFIDENTIAL.BOARD_CONFIDENTIAL" = "infrabyx-fbx-prod-conf-board"
+      "CONFIDENTIAL.SEALED"             = "infrabyx-fbx-prod-conf-sealed"
+      "REGULATED.BOARD_CONFIDENTIAL"    = "infrabyx-fbx-prod-reg-board"
+      "REGULATED.SEALED"                = "infrabyx-fbx-prod-reg-sealed"
+    }
+    error_message = "each location has its own bucket, named <name>-<class>-<compartment>"
+  }
+  assert {
+    condition     = length(setintersection(toset([for c in values(output.storage.compartments) : c.bucket]), toset(values(output.storage.buckets)))) == 0
+    error_message = "no compartment bucket is a class bucket"
+  }
+  assert {
+    condition = (
+      length(distinct([for c in values(output.storage.compartments) : c.key_id])) == 4 &&
+      !contains([for c in values(output.storage.compartments) : c.key_id], output.kms.platform_key_id)
+    )
+    error_message = "every location has its own key, never the platform key"
+  }
+}
+
+run "compartment_in_general_refused" {
+  command = plan
+  variables {
+    storage_compartments = [{ class = "GENERAL", compartment = "SEALED" }]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+run "unknown_compartment_refused" {
+  command = plan
+  variables {
+    storage_compartments = [{ class = "CONFIDENTIAL", compartment = "PRIVATE" }]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+run "compartment_given_twice_refused" {
+  command = plan
+  variables {
+    storage_compartments = [
+      { class = "REGULATED", compartment = "SEALED" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+  }
+  expect_failures = [var.storage_compartments]
+}
+
+# The compartment keys, on the kms module itself (its resources are not visible from the
+# platform's runs): the platform key's kind, in the multi-region ring, for the storage agent only.
+run "kms_compartment_keys" {
+  command = apply
+  module {
+    source = "../kms"
+  }
+  providers = {
+    google = google
+  }
+  variables {
+    name         = "infrabyx-ldc-prod"
+    region       = "asia-south1"
+    region_dr    = "asia-south2"
+    compartments = ["CONFIDENTIAL.BOARD_CONFIDENTIAL", "REGULATED.SEALED"]
+  }
+
+  assert {
+    condition = alltrue([for s, k in google_kms_crypto_key.compartment :
+      k.key_ring == google_kms_key_ring.this["geo"].id && k.purpose == "ENCRYPT_DECRYPT" && k.rotation_period == "7776000s" &&
+      k.version_template[0].algorithm == "GOOGLE_SYMMETRIC_ENCRYPTION" && k.version_template[0].protection_level == "HSM"
+    ])
+    error_message = "each compartment key is an HSM key in the multi-region ring, rotated every 90 days, like the platform key"
+  }
+  assert {
+    condition     = google_kms_crypto_key.compartment["CONFIDENTIAL.BOARD_CONFIDENTIAL"].name == "conf-board" && google_kms_crypto_key.compartment["REGULATED.SEALED"].name == "reg-sealed"
+    error_message = "each compartment key is named after its location"
+  }
+  assert {
+    condition = alltrue([for s, m in google_kms_crypto_key_iam_member.compartment_storage :
+      m.member == "serviceAccount:service-123456789012@gs-project-accounts.iam.gserviceaccount.com" && m.role == "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+    ]) && length(google_kms_crypto_key_iam_member.compartment_storage) == 2
+    error_message = "only the storage service agent may encrypt and decrypt with a compartment key"
+  }
+}
+
+# The compartment buckets' controls, on the object_storage module itself.
+run "object_storage_compartment_controls" {
+  command = apply
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    google = google
+  }
+  variables {
+    name                = "infrabyx-ldc-prod"
+    region              = "asia-south1"
+    region_dr           = "asia-south2"
+    key_id              = "projects/infrabyx-mock/locations/asia-south1/keyRings/infrabyx-ldc-prod-primary/cryptoKeys/platform"
+    multi_region_key_id = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/platform"
+    retention_years     = { REGULATED = 10 }
+    storage_compartments = [
+      { class = "CONFIDENTIAL", compartment = "BOARD_CONFIDENTIAL" },
+      { class = "REGULATED", compartment = "SEALED" },
+    ]
+    compartment_key_ids = {
+      "CONFIDENTIAL.BOARD_CONFIDENTIAL" = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/conf-board"
+      "REGULATED.SEALED"                = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/reg-sealed"
+    }
+  }
+
+  assert {
+    condition     = output.compartments["CONFIDENTIAL.BOARD_CONFIDENTIAL"].bucket == "infrabyx-ldc-prod-conf-board" && output.compartments["REGULATED.SEALED"].bucket == "infrabyx-ldc-prod-reg-sealed"
+    error_message = "compartment buckets are named <name>-<class>-<compartment>"
+  }
+  assert {
+    condition = alltrue([for s, c in output.compartments :
+      c.key_id == var.compartment_key_ids[s] && google_storage_bucket.this[s].encryption[0].default_kms_key_name == var.compartment_key_ids[s]
+    ])
+    error_message = "each compartment bucket is encrypted with its own key, which compartments returns"
+  }
+  assert {
+    condition     = alltrue([for c in ["AUDIT", "REGULATED", "CONFIDENTIAL"] : google_storage_bucket.this[c].encryption[0].default_kms_key_name == var.multi_region_key_id])
+    error_message = "the locked class buckets keep the platform key"
+  }
+  assert {
+    condition = (
+      google_storage_bucket.this["CONFIDENTIAL.BOARD_CONFIDENTIAL"].retention_policy[0].retention_period == "31536000" &&
+      google_storage_bucket.this["REGULATED.SEALED"].retention_policy[0].retention_period == "315360000" &&
+      alltrue([for s in keys(output.compartments) : google_storage_bucket.this[s].retention_policy[0].is_locked])
+    )
+    error_message = "each compartment bucket has its class's locked retention"
+  }
+  assert {
+    condition = alltrue([for s in keys(output.compartments) :
+      google_storage_bucket.this[s].location == "ASIA" &&
+      toset(google_storage_bucket.this[s].custom_placement_config[0].data_locations) == toset(["ASIA-SOUTH1", "ASIA-SOUTH2"]) &&
+      google_storage_bucket.this[s].uniform_bucket_level_access && google_storage_bucket.this[s].public_access_prevention == "enforced" &&
+      google_storage_bucket.this[s].versioning[0].enabled && !google_storage_bucket.this[s].force_destroy &&
+      google_storage_bucket.this[s].labels["compartment"] == lower(replace(split(".", s)[1], "_", "-"))
+    ])
+    error_message = "each compartment bucket is dual-region, uniform-access, public-access-prevented and versioned"
+  }
+  assert {
+    condition     = toset(keys(output.buckets)) == toset(["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS"])
+    error_message = "buckets still maps the five classes only"
+  }
+}
+
+run "object_storage_compartment_on_the_platform_key_refused" {
+  command = plan
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    google = google
+  }
+  variables {
+    name                 = "infrabyx-ldc-prod"
+    region               = "asia-south1"
+    region_dr            = "asia-south2"
+    key_id               = "projects/infrabyx-mock/locations/asia-south1/keyRings/infrabyx-ldc-prod-primary/cryptoKeys/platform"
+    multi_region_key_id  = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/platform"
+    retention_years      = { REGULATED = 10 }
+    storage_compartments = [{ class = "CONFIDENTIAL", compartment = "SEALED" }]
+    compartment_key_ids  = { "CONFIDENTIAL.SEALED" = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/platform" }
+  }
+  expect_failures = [terraform_data.compartment_keys]
+}
+
+run "object_storage_compartment_without_a_key_refused" {
+  command = plan
+  module {
+    source = "../object_storage"
+  }
+  providers = {
+    google = google
+  }
+  variables {
+    name                 = "infrabyx-ldc-prod"
+    region               = "asia-south1"
+    region_dr            = "asia-south2"
+    key_id               = "projects/infrabyx-mock/locations/asia-south1/keyRings/infrabyx-ldc-prod-primary/cryptoKeys/platform"
+    multi_region_key_id  = "projects/infrabyx-mock/locations/asia/keyRings/infrabyx-ldc-prod-geo/cryptoKeys/platform"
+    retention_years      = { REGULATED = 10 }
+    storage_compartments = [{ class = "REGULATED", compartment = "BOARD_CONFIDENTIAL" }]
+  }
+  expect_failures = [var.compartment_key_ids]
+}
+
+
+run "kms_unknown_compartment_refused" {
+  command = plan
+  module {
+    source = "../kms"
+  }
+  providers = {
+    google = google
+  }
+  variables {
+    name         = "infrabyx-ldc-prod"
+    region       = "asia-south1"
+    region_dr    = "asia-south2"
+    compartments = ["CONFIDENTIAL.PRIVATE"]
+  }
+  expect_failures = [var.compartments]
+}
