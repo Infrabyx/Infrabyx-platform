@@ -1,5 +1,24 @@
 # @infrabyx/ui
 
+## 1.3.0
+
+### Minor Changes
+
+- 1089dc7: `DataGrid`, an accessible data grid on the WAI-ARIA grid pattern (windowed rows, typed columns with validators, cell edit, row selection), and `ColumnMapper`, a drag-and-drop column mapping with a select-list and keyboard alternative (PR-LDC-32).
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+
 ## 1.2.16
 
 ### Patch Changes

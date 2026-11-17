@@ -1,5 +1,19 @@
 # @infrabyx/contracts
 
+## 1.29.0
+
+### Minor Changes
+
+- 1089dc7: Two port interfaces: `AccountingSinkPort` on `ACCOUNTING` (PR-FBX-46; `post`, `status`, `replay`, `trialBalance`, `assertBalancedBatch`: balanced integer paise, idempotent on journal id and digest) and `CalendarPort` on `CALENDAR` (PR-LDC-53; PKCE connect, idempotent entries by external id, `calendarPayload` detail levels). Both are catalogued with an interface.
+- 1089dc7: `ApprovalRequestInput.levels` (`ApprovalLevelInput`): ordered approval levels on one request (#125, PR-LDC-38).
+- 1089dc7: AV port (IPB-01 AV, IPB-02-44; PR-LDC-41): `FileScanPort.scan(ref)` → `CLEAN`, `INFECTED` or `ERROR` with a reason, and `scanDecision`, the fail-closed mapping (only `CLEAN` releases). `AV` is catalogued with an interface. `PortHealth` gains an optional `detail` (snake_case names, scalar values, at most 16) for operational facts such as the AV adapter's signature age.
+- 1089dc7: `AuditEntryInput.businessIds`, `BUSINESS_ID_PATTERN` and `MAX_BUSINESS_IDS` (PR-LDC-30).
+- 1089dc7: `mfaFloor`, `mfaRequiredBy` and `PLATFORM_MFA_FLOOR` (PR-LDC-55): a tighten-only product MFA floor with SMS-excluded roles. `VerifiedClaims` gains optional `amr` and `acr`.
+- 1089dc7: `ObligationPublishedData` and `obligationPublishedProblems` (Ecosystem Spec v1.5 §6.15; PR-LDC-33, owner answer #127): ids and keys only, no other field, `dataclass = INTERNAL`, the obligation as `subject`; `REPEALED` needs `effective_to`.
+- 1089dc7: `PdfPort.extractText` (optional; PR-LDC-39): text per page with `needsOcr`, from a file the AV port scanned `CLEAN` (`PdfTextRequest`, `PdfTextResult`), under limits capped by platform maxima (`PDF_TEXT_LIMIT_DEFAULTS`, `PDF_TEXT_LIMIT_MAXIMA`, `resolvePdfTextLimits`). `ScanProof` and `assertScannedClean` for every reader of an untrusted upload.
+- 1089dc7: `EvidenceSubmittedData` (§6.15) and `ProviderIncidentData` (§6.16) payload schemas (PR-LDC-45, PR-LDC-51).
+- 1089dc7: Storage compartments (PR-LDC-60): `ObjectMeta.compartment` (`BOARD_CONFIDENTIAL`, `SEALED`) within `CONFIDENTIAL` or `REGULATED`. The S3 and MinIO adapters write each compartment to its own bucket under its own SSE-KMS key (platform or tenant CMK) and refuse a missing or shared bucket or key; `int.storage.bucket.{class}.{compartment}`; `MemoryStorage` keeps the compartment.
+
 ## 1.28.0
 
 ### Minor Changes

@@ -1,5 +1,32 @@
 # @infrabyx/feedback
 
+## 1.0.39
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/ui@1.3.0
+  - @infrabyx/ai@1.1.10
+  - @infrabyx/crypto@1.5.14
+
 ## 1.0.38
 
 ### Patch Changes

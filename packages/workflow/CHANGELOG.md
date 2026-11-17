@@ -1,5 +1,33 @@
 # @infrabyx/workflow
 
+## 1.4.0
+
+### Minor Changes
+
+- 1089dc7: The Work Inbox raises each approval level's items when that level opens (#125).
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.3.9
 
 ### Patch Changes

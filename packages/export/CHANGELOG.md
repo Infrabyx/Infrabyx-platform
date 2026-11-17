@@ -1,5 +1,38 @@
 # @infrabyx/export
 
+## 1.7.0
+
+### Minor Changes
+
+- 1089dc7: `toPdf` draws the Arrows block (U+2190 to U+21FF) from a bundled Noto Sans Math subset, glyph by glyph where Noto Sans has none (PR-LDC-36). The font is embedded only when used; a document without arrows is unchanged byte for byte.
+- 1089dc7: `REF-EXPORT-1.7` (R1-D-163): approval requests carry their ordered `levels` and approval decisions their `level` (`tenancy/0023`, #125). `REF-EXPORT-1.6` stays exported beside it for the 90-day dual run (`REF_EXPORT_MAP_1_6`); the golden archive is `golden/REF-EXPORT-1.7`.
+
+  Customer note: approval requests gain `levels` and approval decisions gain `level`; every other file is unchanged.
+
+  export_map: REF-EXPORT-1.7
+
+- 1089dc7: `toXlsx` workbook forms (PR-LDC-31 writer, M81): column `width`, typed data validations (`list` of values or of a named range, `whole`, `decimal`, `date`, `textLength`, with prompt and error messages), workbook `namedRanges`, and sheet `protection` as lock flags with `editable` columns, never a password. A workbook that uses none of these is unchanged byte for byte.
+- 1089dc7: `readXlsx` and `xlsxRecords`: a bounded, dependency-free XLSX reader for untrusted uploads (PR-LDC-31 reader). It checks the ZIP container's sizes, counts and ratios before inflating, caps every inflate at its declared size, refuses a DOCTYPE, entities and macro projects, and limits sheets, rows, columns and cell length. It returns values only (cached formula results, dates as ISO strings).
+
+### Patch Changes
+
+- 1089dc7: The export map gate reads every column of a multi-column `ALTER TABLE` (`add column a …, add column b …`, `add` without `column`, `if exists`, quoted names), so map fields on later columns are no longer reported as missing (PR-LDC-61).
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.6.0
 
 ### Minor Changes

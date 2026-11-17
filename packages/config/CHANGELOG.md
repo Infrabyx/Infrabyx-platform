@@ -1,5 +1,28 @@
 # @infrabyx/config
 
+## 1.15.0
+
+### Minor Changes
+
+- 1089dc7: Registers `int.av.clamav.enabled` (PLATFORM, default off, R4) for the ClamAV AV adapter (PR-LDC-41).
+- 1089dc7: List settings may declare `minItems`, `maxItems` and `uniqueItems` (`min_items`, `max_items`, `unique_items` in `settings-tree.yaml`; PR-LDC-56), checked on every write path and when a registry is built (`definitionErrors`).
+- 1089dc7: `SettingsService.setIn(tx, key, target, value)`: a UNIT or TENANT write inside the caller's transaction with every check `set` makes; a maker-checker key still answers `pending` (PR-LDC-42).
+- 1089dc7: Storage compartments (PR-LDC-60): `ObjectMeta.compartment` (`BOARD_CONFIDENTIAL`, `SEALED`) within `CONFIDENTIAL` or `REGULATED`. The S3 and MinIO adapters write each compartment to its own bucket under its own SSE-KMS key (platform or tenant CMK) and refuse a missing or shared bucket or key; `int.storage.bucket.{class}.{compartment}`; `MemoryStorage` keeps the compartment.
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.14.0
 
 ### Minor Changes

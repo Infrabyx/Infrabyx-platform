@@ -1,5 +1,36 @@
 # @infrabyx/connectors
 
+## 1.16.0
+
+### Minor Changes
+
+- 1089dc7: `@infrabyx/connectors/av`: the `clamav` AV adapter (clamd `INSTREAM` over TCP, in-cluster addresses only, fail-closed verdicts, stale signatures refused), off behind `int.av.clamav.enabled`; AV in the exit runbook (PR-LDC-41). Its health answer reports signature-database freshness (`signatures_at`, `signature_age_hours`, `max_signature_age_hours`, `signatures_fresh`) and is `degraded` when stale.
+- 1089dc7: `assertMfaForRoles(claims, floor?, { stepUp? })` takes a product floor, refuses SMS-only sessions for excluded roles and can answer in RFC 9470 step-up form (`stepUpChallenge`); `assertStepUpReachable` is the boot check for step-up routes (PR-LDC-55). Unchanged without a floor.
+- 1089dc7: `@infrabyx/connectors/pdf`: the `pdf-text` adapter (`PdfTextExtractor`, PR-LDC-39), a bounded PDF text parser with no dependency (cross-reference tables and streams, object streams, FlateDecode, ToUnicode), run in a worker thread with heap, stack and time limits; refuses unscanned, infected, changed and encrypted files and anything over a limit.
+- 1089dc7: Storage compartments (PR-LDC-60): `ObjectMeta.compartment` (`BOARD_CONFIDENTIAL`, `SEALED`) within `CONFIDENTIAL` or `REGULATED`. The S3 and MinIO adapters write each compartment to its own bucket under its own SSE-KMS key (platform or tenant CMK) and refuse a missing or shared bucket or key; `int.storage.bucket.{class}.{compartment}`; `MemoryStorage` keeps the compartment.
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.15.0
 
 ### Minor Changes

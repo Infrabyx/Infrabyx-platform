@@ -1,5 +1,37 @@
 # @infrabyx/rules
 
+## 1.3.0
+
+### Minor Changes
+
+- 1089dc7: `RulesService.project` for rule sets created with `purpose: "projection"` (PR-LDC-49; migration `rules/0004`): outcomes for up to 1,000 inputs, with no decision record, ledger entry or decision id. `evaluate` refuses projection sets and `project` refuses decision-grade sets.
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/connectors@1.16.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.2.3
 
 ### Patch Changes

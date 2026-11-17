@@ -1,5 +1,39 @@
 # @infrabyx/testing
 
+## 1.16.0
+
+### Minor Changes
+
+- 1089dc7: `FakeAccountingSink` with `accountingContractCases` (PR-FBX-46) and `FakeCalendar` with `calendarContractCases` (PR-LDC-53).
+- 1089dc7: AV port: `FakeFileScan`, `fileScanContractCases(storage)` and the `EICAR` test file; the pinned `clamav` test image (PR-LDC-41). A contract case checks that health reports signature freshness.
+- 1089dc7: `FakePdf(storage)` gains `extractText` (PR-LDC-39), with `pdfFixture` to build test PDFs and `pdfTextContractCases` for adapters that offer the method.
+- 1089dc7: Storage compartments (PR-LDC-60): `ObjectMeta.compartment` (`BOARD_CONFIDENTIAL`, `SEALED`) within `CONFIDENTIAL` or `REGULATED`. The S3 and MinIO adapters write each compartment to its own bucket under its own SSE-KMS key (platform or tenant CMK) and refuse a missing or shared bucket or key; `int.storage.bucket.{class}.{compartment}`; `MemoryStorage` keeps the compartment.
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/audit@1.10.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/crypto@1.5.14
+  - @infrabyx/seed@1.0.39
+
 ## 1.15.0
 
 ### Minor Changes
