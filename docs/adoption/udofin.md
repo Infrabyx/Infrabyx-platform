@@ -34,6 +34,10 @@ Then run `infrabyx-migrate --require-all`. It applies `workflow/0003`, `tenancy/
 
 Then mark PR-UDF-025, 029, 031, 032, 033, 034 and 035 met in `docs/platform-requests.md`. PR-UDF-028 stays open until #99.
 
+## Security patch: `connectors` 1.16.1 (released 17 Nov, run 240; R1-D-166, R1-D-167)
+
+**Take it now if you sign customers in through Zitadel** (`ZitadelCustomerIdentity`): move `@infrabyx/connectors` to 1.16.1 (and `@infrabyx/rules` to 1.3.1, its dependent patch). Before it, while Zitadel's user search lagged, a login just freed with `retireLogin` (a recycled phone number or email) could resolve to the retired account for a moment; the adapter now uses a search hit only after `GET /v2/users/{id}` confirms the account is active under that login, and fails closed when it cannot confirm. No API, setting, migration or environment variable changes; Keycloak users are unaffected. Also run pgvector 0.8.2 or later in every environment (0.8.6 preferred; R1-D-169).
+
 ## 3. Still open on the platform
 
 | Request                                                                                                                                                                                | Recommendation                                                                                                                                                                   |

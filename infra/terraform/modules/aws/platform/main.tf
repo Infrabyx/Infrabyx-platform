@@ -20,10 +20,11 @@ resource "terraform_data" "region_check" {
 }
 
 module "kms" {
-  source    = "../kms"
-  providers = { aws = aws, aws.dr = aws.dr }
-  name      = local.name
-  tags      = local.tags
+  source       = "../kms"
+  providers    = { aws = aws, aws.dr = aws.dr }
+  name         = local.name
+  compartments = [for p in var.storage_compartments : "${p.class}.${p.compartment}"]
+  tags         = local.tags
 }
 
 module "network" {
@@ -84,6 +85,10 @@ module "object_storage" {
   dr_kms_key_arn  = module.kms.dr_key_arn
   retention_years = { REGULATED = var.regulated_retention_years }
   tags            = local.tags
+  # PR-LDC-60 (R1-D-158): compartment buckets, each under its own key; none by default.
+  storage_compartments        = var.storage_compartments
+  compartment_kms_key_arns    = module.kms.compartment_key_arns
+  compartment_dr_kms_key_arns = module.kms.compartment_dr_key_arns
 }
 
 module "dns_cdn_edge" {

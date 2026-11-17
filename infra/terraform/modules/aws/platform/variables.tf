@@ -74,3 +74,20 @@ variable "admin_cidrs" {
   type        = list(string)
   default     = []
 }
+
+variable "storage_compartments" {
+  description = "PR-LDC-60 (R1-D-158): compartment locations to create, each with its own bucket and key; storage.compartments returns them. Off by default."
+  type = list(object({
+    class       = string # REGULATED or CONFIDENTIAL
+    compartment = string # BOARD_CONFIDENTIAL or SEALED
+  }))
+  default = []
+  validation {
+    condition     = alltrue([for p in var.storage_compartments : contains(["REGULATED", "CONFIDENTIAL"], p.class) && contains(["BOARD_CONFIDENTIAL", "SEALED"], p.compartment)])
+    error_message = "a compartment is BOARD_CONFIDENTIAL or SEALED, in the class REGULATED or CONFIDENTIAL."
+  }
+  validation {
+    condition     = length(distinct([for p in var.storage_compartments : "${p.class}.${p.compartment}"])) == length(var.storage_compartments)
+    error_message = "each compartment location (class and compartment) is given once."
+  }
+}

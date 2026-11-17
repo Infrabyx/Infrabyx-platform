@@ -44,3 +44,33 @@ resource "google_kms_crypto_key_iam_member" "agents" {
   role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
   member        = "serviceAccount:${local.agents[each.value.agent]}"
 }
+
+# PR-LDC-60 (R1-D-158): one key per storage compartment location, the same kind as the platform
+# key (HSM, rotated every 90 days) and never shared with it or with another compartment. Only in
+# the multi-region ring: compartments exist in the locked classes, whose buckets are dual-region
+# and must use a key in that location. Only the storage service agent may encrypt and decrypt
+# with them. Off by default.
+locals {
+  cmp_abbrev = { REGULATED = "reg", CONFIDENTIAL = "conf", BOARD_CONFIDENTIAL = "board", SEALED = "sealed" }
+  cmp_keys   = { for s in var.compartments : s => join("-", [for x in split(".", s) : local.cmp_abbrev[x]]) }
+}
+
+resource "google_kms_crypto_key" "compartment" {
+  for_each        = local.cmp_keys
+  name            = each.value
+  key_ring        = google_kms_key_ring.this["geo"].id
+  purpose         = "ENCRYPT_DECRYPT"
+  rotation_period = "7776000s"
+  version_template {
+    algorithm        = "GOOGLE_SYMMETRIC_ENCRYPTION"
+    protection_level = "HSM"
+  }
+  labels = merge(var.tags, { compartment = lower(replace(replace(each.key, ".", "-"), "_", "-")) })
+}
+
+resource "google_kms_crypto_key_iam_member" "compartment_storage" {
+  for_each      = local.cmp_keys
+  crypto_key_id = google_kms_crypto_key.compartment[each.key].id
+  role          = "roles/cloudkms.cryptoKeyEncrypterDecrypter"
+  member        = "serviceAccount:${local.agents.storage}"
+}

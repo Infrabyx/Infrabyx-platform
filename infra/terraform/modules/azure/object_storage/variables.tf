@@ -60,3 +60,30 @@ variable "immutability_locked" {
   type        = bool
   default     = false
 }
+
+variable "storage_compartments" {
+  description = "PR-LDC-60 (R1-D-158): compartment locations to create, each with its own bucket and key. Off by default."
+  type = list(object({
+    class       = string # REGULATED or CONFIDENTIAL
+    compartment = string # BOARD_CONFIDENTIAL or SEALED
+  }))
+  default = []
+  validation {
+    condition     = alltrue([for p in var.storage_compartments : contains(["REGULATED", "CONFIDENTIAL"], p.class) && contains(["BOARD_CONFIDENTIAL", "SEALED"], p.compartment)])
+    error_message = "a compartment is BOARD_CONFIDENTIAL or SEALED, in the class REGULATED or CONFIDENTIAL."
+  }
+  validation {
+    condition     = length(distinct([for p in var.storage_compartments : "${p.class}.${p.compartment}"])) == length(var.storage_compartments)
+    error_message = "each compartment location (class and compartment) is given once."
+  }
+}
+
+variable "compartment_key_ids" {
+  description = "\"<CLASS>.<COMPARTMENT>\" => that location's own key, versionless (the kms module's compartment_key_ids)"
+  type        = map(string)
+  default     = {}
+  validation {
+    condition     = alltrue([for p in var.storage_compartments : contains(keys(var.compartment_key_ids), "${p.class}.${p.compartment}")])
+    error_message = "PR-LDC-60: every compartment location in storage_compartments needs its own key here."
+  }
+}

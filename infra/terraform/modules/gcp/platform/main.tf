@@ -32,6 +32,7 @@ module "kms" {
   region       = var.region_primary
   region_dr    = var.region_dr
   multi_region = var.multi_region
+  compartments = [for p in var.storage_compartments : "${p.class}.${p.compartment}"]
   tags         = local.tags
 }
 
@@ -96,7 +97,10 @@ module "object_storage" {
   multi_region_key_id = module.kms.multi_region_key_id
   retention_years     = { REGULATED = var.regulated_retention_years }
   tags                = local.tags
-  depends_on          = [module.kms]
+  # PR-LDC-60 (R1-D-158): compartment buckets, each under its own key; none by default.
+  storage_compartments = var.storage_compartments
+  compartment_key_ids  = module.kms.compartment_key_ids
+  depends_on           = [module.kms]
 }
 
 module "dns_cdn_edge" {

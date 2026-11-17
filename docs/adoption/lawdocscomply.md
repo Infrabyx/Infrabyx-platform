@@ -141,4 +141,8 @@ What LawDocsComply changes once it moves to the wave 8 release (R1-D-96, R1-D-97
 - **PR-LDC-39 (`contracts`, `connectors`, `testing` minors):** after the AV scan, read a PDF's text with `PdfTextExtractor.extractText({ file, scan })` (`@infrabyx/connectors/pdf`), passing the scan result, and send `needsOcr` pages to your OCR step (product guide §7cf). The parser runs in a worker thread with size, page, depth, inflate and time limits; no setting or migration. **Shim removed:** your local PDF text parser.
 - **REF-EXPORT-1.6 (`export` minor):** tenant archives now carry `business_ids` on audit-trail lines and `cancel_reason` on approval requests, and the archive verifier hashes business ids; 1.5 is still emitted for 90 days. Nothing to change unless you read archives yourself (then accept the two new fields).
 
+## Security patch: `connectors` 1.16.1 (released 17 Nov, run 240; R1-D-166, R1-D-167)
+
+**Take it now if you sign customers in through Zitadel** (`ZitadelCustomerIdentity`): move `@infrabyx/connectors` to 1.16.1 (and `@infrabyx/rules` to 1.3.1, its dependent patch). Before it, while Zitadel's user search lagged, a login just freed with `retireLogin` (a recycled phone number or email) could resolve to the retired account for a moment; the adapter now uses a search hit only after `GET /v2/users/{id}` confirms the account is active under that login, and fails closed when it cannot confirm. No API, setting, migration or environment variable changes; Keycloak users are unaffected. Also run pgvector 0.8.2 or later in every environment (0.8.6 preferred; R1-D-169).
+
 ## Spec event payload schemas (14 Nov, ahead of waves 13 and 14)

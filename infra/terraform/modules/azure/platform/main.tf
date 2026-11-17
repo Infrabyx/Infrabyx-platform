@@ -40,6 +40,7 @@ module "kms" {
   location_dr         = var.region_dr
   allowed_subnet_ids  = [module.network.nodes_subnet_id]
   admin_cidrs         = var.admin_cidrs
+  compartments        = [for p in var.storage_compartments : "${p.class}.${p.compartment}"]
   tags                = local.tags
 }
 
@@ -109,6 +110,9 @@ module "object_storage" {
   retention_years     = { REGULATED = var.regulated_retention_years }
   immutability_locked = var.immutability_locked
   tags                = local.tags
+  # PR-LDC-60 (R1-D-158): compartment accounts, each under its own key; none by default.
+  storage_compartments = var.storage_compartments
+  compartment_key_ids  = module.kms.compartment_key_ids
 }
 
 module "dns_cdn_edge" {
