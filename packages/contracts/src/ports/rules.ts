@@ -229,8 +229,11 @@ export interface Explanation {
   ruleIds: string[];
   /** CEL condition of each matched row. */
   conditions: string[];
-  /** Input names read; values only for INTERNAL or PUBLIC inputs. */
-  inputs: { name: string; value?: unknown }[];
+  /**
+   * Input names read; values only for INTERNAL or PUBLIC inputs, and for the one CONFIDENTIAL input
+   * an entitled reveal names (`revealed: true`; PR-LDC-59, R1-D-173).
+   */
+  inputs: { name: string; value?: unknown; revealed?: true }[];
   help_keys: string[];
   /** Parameter values and where each came from (R1-D-88). */
   parameters?: { name: string; value: unknown; source: "setting" | "default" }[];
@@ -239,6 +242,59 @@ export interface Explanation {
   /** Always "rules": an AI source never produces a decision (IPB-07-16, @IPB-07-AT-11). */
   source: "rules";
 }
+
+/** Purpose of a reveal: 3 to 200 printable characters, recorded in the ledger (R1-D-173). */
+export const REVEAL_PURPOSE_MIN = 3;
+export const REVEAL_PURPOSE_MAX = 200;
+/** How long a reveal grant stays usable, in milliseconds (R1-D-173, single use). */
+export const REVEAL_GRANT_TTL_MS = 60_000;
+
+/** A request to see one CONFIDENTIAL input of one decision (PR-LDC-59, #130, R1-D-157 (1)). */
+export interface RevealRequest {
+  decisionId: string;
+  /** The input's name, as declared in the decision's rule set version. */
+  input: string;
+  /** Why the value is needed, for the ledger (never personal data). */
+  purpose: string;
+}
+
+declare const revealEntitlementBrand: unique symbol;
+/**
+ * An opaque, single-use grant from `entitleReveal`, valid for 60 seconds, for the principal that
+ * asked, in its tenant, for one input of one decision. It is an in-process object: a copy, a
+ * serialised form or a look-alike is refused, and so is a grant from another service instance.
+ */
+export interface RevealEntitlement {
+  readonly [revealEntitlementBrand]: true;
+  /** `rvg_…`, recorded in the ledger entry of the reveal. */
+  readonly id: string;
+  readonly decisionId: string;
+  readonly input: string;
+  /** ISO 8601 instant after which the grant is refused. */
+  readonly expiresAt: string;
+}
+
+export interface ExplainOptions {
+  /** Return the value of the one CONFIDENTIAL input this grant names; ledgered (R1-D-173). */
+  reveal?: RevealEntitlement;
+}
+
+/** Why `entitleReveal` or `explain` refused a reveal (`IPB-RULE-004` `meta.reason`). */
+export const REVEAL_REFUSALS = [
+  "no_reveal_rule",
+  "context_not_allowed",
+  "decision_not_found",
+  "unknown_input",
+  "class_not_revealable",
+  "inputs_not_recorded",
+  "purpose_invalid",
+  "rule_refused",
+  "grant_invalid",
+  "grant_expired",
+  "grant_used",
+  "grant_mismatch",
+] as const;
+export type RevealRefusal = (typeof REVEAL_REFUSALS)[number];
 
 /**
  * The RULES service runs inside tenancy, so every method takes the verified `KernelContext` first
@@ -261,7 +317,12 @@ export interface RulesPort extends Port {
     ref: Required<Pick<RuleSetRef, "ruleSetId" | "version">>,
     inputs: unknown[],
   ): Promise<SimulationReport>;
-  explain(ctx: KernelContext, decisionId: string): Promise<Explanation>;
+  explain(ctx: KernelContext, decisionId: string, opts?: ExplainOptions): Promise<Explanation>;
+  /**
+   * Ask the product's reveal rule for a grant to see one CONFIDENTIAL input of one decision
+   * (PR-LDC-59, R1-D-173). Optional: an implementation without it never reveals a value.
+   */
+  entitleReveal?(ctx: KernelContext, req: RevealRequest): Promise<RevealEntitlement>;
 }
 
 /**

@@ -101,6 +101,7 @@ export const ID_PREFIXES = {
   svw: "saved table view (IPB-07-13)",
   lic: "licence (entitlement) version (PR-FBX-43)",
   lcn: "licence notice to the tenant (PR-FBX-43)",
+  rvg: "rule decision input reveal grant (PR-LDC-59)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

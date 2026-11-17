@@ -1,6 +1,6 @@
 # R1 plan: an entitled reveal of CONFIDENTIAL inputs in `explain` (PR-LDC-59, #130, wave 15)
 
-Status: drafted 17 Nov 2026 (sixteenth session); to build in wave 15 after the PR-LDC-60 Terraform inputs. Decision of record: R1-D-157 (1), the owner's narrow yes to OWNER-QUESTIONS #130 (M109).
+Status: drafted 17 Nov 2026 (sixteenth session); **built 18 Nov 2026 (seventeenth session, R1-D-173)**, with the stricter departures listed there: external principals and `PLT_*` roles are refused, the purpose is ledgered under the entry's digest with the ids as business ids, and the contract runs against the PostgreSQL service (there is no in-memory one). Decision of record: R1-D-157 (1), the owner's narrow yes to OWNER-QUESTIONS #130 (M109).
 
 ## 1. What the owner allowed (R1-D-157 (1)), and nothing more
 
@@ -83,10 +83,10 @@ A new §3.130 covers:
 
 ## 6. Exit gate
 
-- [ ] §4 tests pass locally (`pnpm check:full`) and at the wave 15 gate.
-- [ ] Product guide section on `entitleReveal` and the purpose text; LawDocsComply adoption note.
-- [ ] Threat model §3.130, DECISIONS entry, STATUS.
-- [ ] Changesets: `rules` minor, `contracts` minor (types, `IPB-RULE-004`), `testing` minor (contract case).
+- [x] §4 tests pass locally (`pnpm check:full`); the gate is the PR's `ci:run`.
+- [x] Product guide §7cg on `entitleReveal` and the purpose text; LawDocsComply adoption note.
+- [x] Threat model §3.130, DECISIONS R1-D-173, STATUS.
+- [x] Changesets: `rules` minor, `contracts` minor (types, `IPB-RULE-004`), `testing` minor (contract case).
 
 ## 7. Owner decisions needed
 
