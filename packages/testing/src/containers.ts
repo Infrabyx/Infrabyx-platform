@@ -24,8 +24,8 @@ export const TEST_IMAGES = {
   },
   pgvector: {
     image:
-      "pgvector/pgvector:0.8.1-pg18@sha256:508c5290cda481d4f5f846446a26e9c1b804766828a394a5861de1b348a18b4c",
-    version: "PostgreSQL 18, pgvector 0.8.1",
+      "pgvector/pgvector:0.8.6-pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+    version: "PostgreSQL 18, pgvector 0.8.6",
     role: "platform PostgreSQL with vector search (startPostgres, CI integration; PL4)",
   },
   pgbouncer: {
