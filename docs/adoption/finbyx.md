@@ -133,7 +133,9 @@ What Finbyx removes once it moves to the wave 8 release (R1-D-96, R1-D-97; guide
 
 - **PR-FBX-46 (`contracts`, `testing` minors):** replace your `AccountingSink` interface and fake with `AccountingSinkPort`, `assertBalancedBatch`, `FakeAccountingSink` and `accountingContractCases` (product guide §7br). A changed batch needs a new `journalId`. Keep your TallyPrime JSON file adapter until the platform's TallyPrime adapter ships (wave 15). **Shim removed:** the interface and fake.
 
-## Wave 14 (in progress)
+## Wave 14 (released 17 Nov, run 236)
+
+**Released 17 Nov (run 236).** Adopt with the wave 13 release before your December exit gate: move every `@infrabyx/*` dependency together to the run 236 versions (`contracts` 1.29.0, `tenancy` 1.20.0, `connectors` 1.16.0, `testing` 1.16.0, `config` 1.15.0, `audit` 1.10.0, `export` 1.7.0, `rules` 1.3.0, `ui` 1.3.0, `brand` 1.2.0, `workflow` 1.4.0 (and dependent patches)), run `infrabyx-migrate --require-all` (new: `tenancy/0023`, `tenancy/0024`, `rules/0004`), register the new setting `int.storage.bucket.{class}.{compartment}` only if you use storage compartments, and accept REF-EXPORT-1.7 in anything that reads archives (approval `levels` and `level`; 1.6 is still emitted for 90 days). No new environment variable.
 
 - **PR-FBX-12 item 2 (with LawDocsComply PR-LDC-55; `contracts`, `connectors` minors):** replace `assertStaffMfa` with `mfaFloor` and `assertMfaForRoles(claims, floor)` (product guide §7bt). **Shim removed:** `assertStaffMfa`.
 - **#125 ordered approval levels (`contracts`, `tenancy`, `workflow` minors; migration `tenancy/0023`):** pass `levels` on one request instead of chaining a request per level (product guide §7bu). **Shim removed:** the per-level chaining.

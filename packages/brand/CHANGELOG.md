@@ -1,5 +1,35 @@
 # @infrabyx/brand
 
+## 1.2.0
+
+### Minor Changes
+
+- 1089dc7: The tenant brand layer gains letterhead header and footer text (plain text, at most 2,000 characters each, no markup or running links), a PDF cover asset checked like the letterhead, and a subdomain label served as `<label>.<the pack's app host>` (reserved and `xn--` labels refused, unique group-wide, verified with the app host); `AppliedBrand` returns `letterheadText`, `cover` and `subdomain` (PR-LDC-43).
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/tenancy@1.20.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/ui@1.3.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.1.9
 
 ### Patch Changes
