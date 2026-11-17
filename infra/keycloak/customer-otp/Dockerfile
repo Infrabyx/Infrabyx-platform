@@ -23,9 +23,14 @@ COPY --from=compile --chown=1000:0 /build/ipb-customer-otp.jar /opt/keycloak/pro
 # The bundled breached-password list for the `passwordBlacklist` policy (PR-LDC-04, R1-D-83): a
 # realm applied with `passwordBlacklist: KEYCLOAK_PASSWORD_BLACKLIST` refuses its passwords. Read
 # from the image only; Keycloak calls no third party. Source and licence: password-blacklists/.
-COPY --chown=1000:0 --chmod=0444 password-blacklists/ipb-common-passwords.txt /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt
-COPY --chown=1000:0 --chmod=0444 password-blacklists/LICENSE.SecLists /opt/keycloak/data/password-blacklists/LICENSE.SecLists
-RUN /opt/keycloak/bin/kc.sh build --db=postgres --health-enabled=true
+# The files are made read-only by `chmod`, not `COPY --chmod`: from Docker 29 BuildKit gives the
+# folder COPY creates the same mode, and a 0444 folder cannot be entered, so Keycloak could not
+# read the list (R1-D-164).
+COPY --chown=1000:0 password-blacklists/ipb-common-passwords.txt /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt
+COPY --chown=1000:0 password-blacklists/LICENSE.SecLists /opt/keycloak/data/password-blacklists/LICENSE.SecLists
+RUN chmod 0444 /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt \
+      /opt/keycloak/data/password-blacklists/LICENSE.SecLists \
+    && /opt/keycloak/bin/kc.sh build --db=postgres --health-enabled=true
 USER 1000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD ["/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]

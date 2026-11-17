@@ -4,7 +4,9 @@
 # anonymous pulls), so CI builds MinIO's last community release from source: the tag is cloned,
 # its commit is checked against the pin below, and the binary is kept in the Actions cache
 # (~/.cache/ipb-minio). A third-party mirror is never used. Writes IPB_TEST_MINIO_URL to
-# $GITHUB_ENV once MinIO answers its health probe.
+# $GITHUB_ENV once MinIO answers its health probe, and the server's process id to
+# $RUNNER_TEMP/minio.pid. IPB_MINIO_ADDRESS moves it off 127.0.0.1:9000 (`pnpm check:full` gives
+# it a free port, R1-D-164).
 set -euo pipefail
 
 TAG="RELEASE.2025-09-07T16-13-09Z"
@@ -15,6 +17,7 @@ BIN="$CACHE/minio-$COMMIT"
 USER_="ipb-minio-test"
 PASS_="ipb-minio-test-secret"
 KMS_KEY="ipb-minio-key:$(head -c 32 /dev/urandom | base64)"
+ADDR="${IPB_MINIO_ADDRESS:-127.0.0.1:9000}"
 mkdir -p "$CACHE"
 
 if [ -x "$BIN" ]; then
@@ -34,12 +37,13 @@ fi
 
 mkdir -p "$RUNNER_TEMP/minio-data"
 MINIO_ROOT_USER="$USER_" MINIO_ROOT_PASSWORD="$PASS_" MINIO_KMS_SECRET_KEY="$KMS_KEY" \
-  nohup "$BIN" server "$RUNNER_TEMP/minio-data" --address 127.0.0.1:9000 \
+  nohup "$BIN" server "$RUNNER_TEMP/minio-data" --address "$ADDR" \
   >"$RUNNER_TEMP/minio.log" 2>&1 &
+echo "$!" >"$RUNNER_TEMP/minio.pid"
 
 for _ in $(seq 1 60); do
-  if curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
-    echo "IPB_TEST_MINIO_URL=http://127.0.0.1:9000" >>"$GITHUB_ENV"
+  if curl -fsS "http://$ADDR/minio/health/live" >/dev/null 2>&1; then
+    echo "IPB_TEST_MINIO_URL=http://$ADDR" >>"$GITHUB_ENV"
     exit 0
   fi
   sleep 1

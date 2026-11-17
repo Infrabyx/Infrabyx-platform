@@ -48,6 +48,15 @@ Credentials never go in the committed `.npmrc`: pnpm 10 does not expand `${NODE_
 2. Start the next phase from IPB-14 §14.3: write `docs/phases/PLn-plan.md`, get owner approval, implement, pass the exit gate, publish.
 3. End every session by updating `docs/STATUS.md`.
 
+## Before any push: `pnpm check:full`
+
+Every session runs `pnpm check:full` before any push and pushes only when it passes (OWNER-SPEED-01, R1-D-164). It runs what CI's required jobs check: every step of the `verify` job of `ci.yml` in its order (the secret scan, commitlint and the export-map gate against `origin/main`), the `integration` job (migrate and rls-lint, the golden archive, every package's `test:int`, the AT report), the contract legs of every port in `scripts/port-matrix.mjs` (MinIO started for STORAGE, as in CI) and `consumer-smoke`. Steps run in a bounded parallel pool; every integration suite gets its own PostgreSQL container (CI's pgvector image on PostgreSQL 18) and database, every contract leg its own containers. Each step writes its own log; a summary table closes the run and the exit status is non-zero if any step failed or could not start.
+
+- Needs Docker, a built-or-buildable checkout and Node 24.22.1; the MinIO binary is built from the pinned commit on first use (Go), or found in `IPB_MINIO_CACHE`.
+- `--no-changeset` and `--export-unchanged` mirror the PR labels of the same name: use them only when the PR carries the label. `--pr-body FILE` also runs `pr-checklist`.
+- `--with-a11y`, `--with-scaffold`, `--with-compose` (the `compose` and `reference` jobs) and `--with-images` (`containers`: hadolint, Trivy, image hardening) add the heavy jobs; `--with-heavy` adds all four. The `infra` job (Helm, kubeconform, Kyverno, OpenTofu, tflint) is not run locally.
+- `--sequential` runs one step at a time; `--jobs N` sets the pool; `--list` prints the plan.
+
 ## Layout
 
 `packages/*` publishable packages · `apps/reference` integration app and product template · `apps/public` the group website (Next.js 16) and the template for product sites · `apps/console` the reference Studio console · `infra/` Docker, Helm, Terraform (aws/azure/gcp) · `docs/` spec, status, decisions, phase plans · `.github/workflows` CI and release.
