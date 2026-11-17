@@ -114,3 +114,50 @@ describe("rule parameters (R1-D-88)", () => {
     }
   });
 });
+
+// Dated parameters (LawDocsComply PR-LDC-57, R1-D-175): the RULES service binds the schedule entry
+// in force; the engine only ever sees the value, so the engines agree exactly as for a setting.
+const dated: RuleSetBody = {
+  format: "ipb.decision_table.v1",
+  hit_policy: "first",
+  inputs: [{ name: "turnover", type: "integer", dataClass: "INTERNAL" }],
+  outputs: [{ name: "audit", type: "boolean", dataClass: "INTERNAL", statutory: true }],
+  parameters: [
+    { name: "threshold", type: "integer", schedule: "stat.companies.audit_threshold", min: 0 },
+  ],
+  rows: [
+    { id: "audit", when: "turnover >= threshold", then: { audit: true }, verify: false },
+    { id: "exempt", when: "true", then: { audit: false }, verify: false },
+  ],
+};
+
+describe("dated parameters (PR-LDC-57, R1-D-175)", () => {
+  for (const n of RULE_ENGINES)
+    it(`${n}: evaluates the bound entry's value and agrees with the other engines`, async () => {
+      const e = engines[n]();
+      const low = await (
+        await e.compile(dated, { threshold: 1_000 })
+      ).evaluate({ turnover: 1_500 }, { timeoutMs: 1000 });
+      expect(low).toMatchObject({ outcome: "MATCHED", ruleIds: ["audit"] });
+      const high = await (
+        await e.compile(dated, { threshold: 2_000 })
+      ).evaluate({ turnover: 1_500 }, { timeoutMs: 1000 });
+      expect(high).toMatchObject({ outcome: "MATCHED", ruleIds: ["exempt"] });
+    });
+
+  it("refuses to compile a dated parameter that was not bound: it has no default", async () => {
+    expect(() => prepareTable(dated)).toThrow(/dated parameter has no default/);
+    for (const n of RULE_ENGINES) await expect(engines[n]().compile(dated)).rejects.toThrow();
+  });
+
+  it("checks the bound value against the parameter's own bounds", () => {
+    expect(() => prepareTable(dated, undefined, { threshold: -1 })).toThrow(/below 0/);
+    expect(() => prepareTable(dated, undefined, { threshold: "1000" })).toThrow(/not a number/);
+  });
+
+  it("is never taken as an input", async () => {
+    const c = await new MemoryRuleEngine().compile(dated, { threshold: 1_000 });
+    const r = await c.evaluate({ turnover: 1, threshold: 0 }, { timeoutMs: 1000 });
+    expect(r).toMatchObject({ outcome: "UNDETERMINED", reason: "input_invalid" });
+  });
+});

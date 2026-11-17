@@ -70,7 +70,16 @@ export function prepareTable(
   for (const p of body.parameters ?? []) {
     if (RESERVED_FIELD_NAMES.has(p.name))
       throw new RuleCompileError(null, "reserved_name", `parameter name ${p.name} is reserved`);
-    const v = parameters && p.name in parameters ? parameters[p.name] : p.default;
+    // A dated parameter (PR-LDC-57) has no default: the RULES service binds the schedule entry in
+    // force, and an unbound one is refused here rather than compiled with a guess.
+    const bound = parameters && p.name in parameters;
+    if (!bound && !("default" in p))
+      throw new RuleCompileError(
+        null,
+        "parameter",
+        `parameter ${p.name}: a dated parameter has no default and must be bound`,
+      );
+    const v = bound ? parameters[p.name] : "default" in p ? p.default : undefined;
     const why = ruleParameterValueError(p, v);
     if (why) throw new RuleCompileError(null, "parameter", `parameter ${p.name}: ${why}`);
     consts.set(p.name, v as Literal);
