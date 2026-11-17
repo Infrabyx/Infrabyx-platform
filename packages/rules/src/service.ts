@@ -23,6 +23,8 @@ import type {
   DecisionOutcome,
   ExplainOptions,
   Explanation,
+  ParameterScheduleBody as ParameterScheduleBodyType,
+  ParameterScheduleSummary,
   PortHealth,
   PublishOptions,
   RuleEngine,
@@ -33,15 +35,19 @@ import type {
   RevealRefusal,
   RevealRequest,
   RulesPort,
+  ScheduleCitationTrace,
   SimulationReport,
 } from "@infrabyx/contracts/ports";
 import {
+  isScheduleParameter,
+  ParameterScheduleBody,
   REVEAL_GRANT_TTL_MS,
   REVEAL_PURPOSE_MAX,
   REVEAL_PURPOSE_MIN,
   RuleSetKey,
   ruleParameterValueError,
 } from "@infrabyx/contracts/ports";
+import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import { PRODUCT_ROLE_REGEX, TENANT_ROLES } from "@infrabyx/contracts/roles";
 import { internalEvent } from "@infrabyx/config/events";
 import { canonicalDigest, FIELD_ALG, newId, type SecretKey } from "@infrabyx/crypto";
@@ -70,6 +76,12 @@ export const REVEAL_ACTION = "rules.decision.input_revealed";
 const REVEAL_RULE_ID = /^[a-z][a-z0-9_.-]{2,63}$/;
 /** Platform staff roles never see a tenant's sealed inputs through a reveal (R1-D-173). */
 const PLATFORM_ROLE = /^PLT_/;
+/**
+ * The zone whose calendar day a schedule entry's `effectiveFrom` is compared with (PR-LDC-57,
+ * R1-D-175 [ASSUMED – owner review]): the platform default zone (PL3-D-21, OWNER-QUESTIONS #23).
+ * A product that needs another zone passes `asOf` at that zone's midnight.
+ */
+export const SCHEDULE_ZONE = "Asia/Kolkata";
 /** How far ahead a cut-over may be scheduled (PR-LDC-34). */
 export const MAX_CUTOVER_DAYS = 366;
 /** Most inputs one simulation may run (PL3 plan §4.4). */
@@ -172,11 +184,41 @@ interface VersionRow {
   effective_from: Date | null;
 }
 
+/** How one parameter's value was found, as kept in `rules.decision_log.parameters`. */
+type ParameterTrace =
+  | { value: unknown; source: "setting" | "default" }
+  | { value: unknown; source: "schedule"; schedule: ScheduleCitationTrace };
+
 interface ResolvedParameters {
   values: Record<string, unknown>;
-  trace: Record<string, { value: unknown; source: "setting" | "default" }>;
+  trace: Record<string, ParameterTrace>;
   /** The first parameter whose value is invalid, if any. */
   invalid: string | null;
+  /** The first dated parameter with no schedule entry in force, if any (PR-LDC-57). */
+  notInForce: string | null;
+}
+
+interface ScheduleVersionRow {
+  key: string;
+  version: number;
+  tenant_id: string;
+  state: "draft" | "pending_approval" | "published" | "retired";
+  body: ParameterScheduleBodyType;
+  digest: string;
+  approval_id: string | null;
+  effective_from: Date | null;
+  effective_to: Date | null;
+}
+
+/** One version of a parameter schedule, as `getSchedule` returns it. */
+export interface ParameterScheduleVersion {
+  key: string;
+  version: number;
+  state: ScheduleVersionRow["state"];
+  body: ParameterScheduleBodyType;
+  digest: string;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
 }
 
 interface RuleSetRow {
@@ -242,7 +284,14 @@ export class RulesService implements RulesPort {
             platformCheckerRoles: DEFAULT_PLATFORM_CHECKERS,
           }
         : {}),
-      execute: (tx, payload, request) => this.executePublish(tx, payload, request.id),
+      // One action publishes rule sets and parameter schedules alike (PR-LDC-57, R1-D-175): a
+      // payload without `kind` is a rule set, so requests raised before schedules existed work.
+      execute: (tx, payload, request) =>
+        payload.kind === undefined
+          ? this.executePublish(tx, payload, request.id)
+          : payload.kind === "schedule"
+            ? this.executeSchedulePublish(tx, payload, request.id)
+            : Promise.reject(new IpbError("IPB-RULE-003", { detail: "unknown publication kind" })),
     });
   }
 
@@ -312,8 +361,8 @@ export class RulesService implements RulesPort {
     body: RuleSetBody,
   ): Promise<{ version: number; digest: string }> {
     const set = await this.o.kernel.read(ctx, (tx) => this.loadSet(tx, ruleSetId));
-    await this.validate(body, set);
-    await this.checkParameterSettings(ctx, body);
+    const bind = await this.checkParameters(ctx, body);
+    await this.validate(body, set, bind);
     const digest = canonicalDigest(body);
     return this.o.kernel.mutate(
       ctx,
@@ -382,16 +431,7 @@ export class RulesService implements RulesPort {
             detail: `version ${version} is ${v.state}`,
             meta: { rule_set_id: ruleSetId, version },
           });
-        if (effectiveFrom) {
-          const w = await tx.query<{ ok: boolean }>(
-            `select $1::timestamptz >= now() and $1::timestamptz <= now() + make_interval(days => $2) as ok`,
-            [effectiveFrom, MAX_CUTOVER_DAYS],
-          );
-          if (!w.rows[0]?.ok)
-            throw new IpbError("IPB-RULE-001", {
-              detail: `effectiveFrom must be now or later, at most ${MAX_CUTOVER_DAYS} days ahead`,
-            });
-        }
+        if (effectiveFrom) await this.checkCutover(tx, effectiveFrom);
         await this.refuseScheduled(tx, ruleSetId);
         const current = await this.publishedRow(tx, ruleSetId);
         const { id } = await this.o.approvals.request(tx, {
@@ -502,8 +542,8 @@ export class RulesService implements RulesPort {
     // Compile the new version for this tenant now, outside any evaluation's budget (PR-LDC-25,
     // R1-D-88); a failure is dropped from the cache and retried by the first evaluation.
     const ctx = tx.ctx;
-    void this.resolveParameters(ctx, v.body)
-      .then((p) => (p.invalid ? undefined : this.compiledFor(v, p.values)))
+    void this.resolveParameters(ctx, v.body, null)
+      .then((p) => (p.invalid || p.notInForce ? undefined : this.compiledFor(v, p.values)))
       .catch(() => undefined);
     await this.o.audit.record(tx, {
       action: "rules.ruleset.publish",
@@ -538,6 +578,383 @@ export class RulesService implements RulesPort {
     }
   }
 
+  // Parameter schedules (PR-LDC-57, R1-D-146, R1-D-175): platform-owned, versioned and cited
+  // dated values for dated rule parameters. Written in a platform context only; published through
+  // `rules.ruleset.publish` (R4, the platform checkers, the R4 delay and the scheduled cut-over of
+  // R1-D-113); immutable once published; readable by every tenant.
+
+  /** Create a parameter schedule in `tnt_platform` (a platform context only). */
+  async createSchedule(ctx: KernelContext, input: { key: string }): Promise<{ key: string }> {
+    platformOnly(ctx);
+    if (!RuleSetKey.safeParse(input.key).success)
+      throw new IpbError("IPB-RULE-001", { detail: "schedule key must be dotted lower case" });
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const dup = await tx.query("select 1 from rules.parameter_schedule where key = $1", [
+          input.key,
+        ]);
+        if (dup.rows.length)
+          throw new IpbError("IPB-RULE-003", {
+            detail: `schedule ${input.key} exists`,
+            meta: { schedule: input.key },
+          });
+        await tx.query(
+          `insert into rules.parameter_schedule (key, tenant_id, created_by) values ($1, $2, $3)`,
+          [input.key, PLATFORM_TENANT_ID, ctx.principal.id],
+        );
+        await this.o.audit.record(tx, {
+          action: "rules.schedule.create",
+          resourceType: "parameter_schedule",
+          resourceId: input.key,
+          after: { key: input.key },
+        });
+        return { key: input.key };
+      },
+      { action: "rules.schedule.create" },
+    );
+  }
+
+  /**
+   * Save the open draft of a schedule (or open a new version). The body is checked against
+   * `ipb.parameter_schedule.v1` (sorted, non-overlapping, cited entries of one type); the type is
+   * fixed for the schedule's life; a version after the first needs its `reason`.
+   */
+  async saveScheduleDraft(
+    ctx: KernelContext,
+    key: string,
+    raw: ParameterScheduleBodyType,
+  ): Promise<{ version: number; digest: string }> {
+    platformOnly(ctx);
+    const parsed = ParameterScheduleBody.safeParse(raw);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      throw new IpbError("IPB-RULE-001", {
+        detail:
+          `schedule body: ${issue?.path.join(".") ?? ""} ${issue?.message ?? "invalid"}`.trim(),
+        meta: { schedule: key, path: issue?.path.join(".") ?? "" },
+      });
+    }
+    const body = parsed.data;
+    const digest = canonicalDigest(body);
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        await this.loadSchedule(tx, key);
+        // The versions are locked as a rule set's are; two first drafts at once meet the key.
+        const all = await tx.query<ScheduleVersionRow>(
+          "select * from rules.parameter_schedule_version where key = $1 order by version for update",
+          [key],
+        );
+        const cur = all.rows.find((v) => v.state === "draft" || v.state === "pending_approval");
+        if (cur?.state === "pending_approval")
+          throw new IpbError("IPB-RULE-003", {
+            detail: `version ${cur.version} is pending approval`,
+            meta: { schedule: key, version: cur.version },
+          });
+        const others = all.rows.filter((v) => v !== cur);
+        const typed = others.find((v) => v.body.type !== body.type);
+        if (typed)
+          throw new IpbError("IPB-RULE-001", {
+            detail: `schedule ${key} is ${typed.body.type}; a version cannot change its type`,
+            meta: { schedule: key },
+          });
+        const version = cur?.version ?? (all.rows.at(-1)?.version ?? 0) + 1;
+        if (version > 1 && !body.reason)
+          throw new IpbError("IPB-RULE-001", {
+            detail: `version ${version} of schedule ${key} needs the reason for the correction`,
+            meta: { schedule: key, version },
+          });
+        if (cur)
+          await tx.query(
+            `update rules.parameter_schedule_version set body = $3::jsonb, digest = $4
+              where key = $1 and version = $2`,
+            [key, version, JSON.stringify(body), digest],
+          );
+        else
+          await tx.query(
+            `insert into rules.parameter_schedule_version
+               (key, version, tenant_id, state, body, digest, created_by)
+             values ($1, $2, $3, 'draft', $4::jsonb, $5, $6)`,
+            [key, version, PLATFORM_TENANT_ID, JSON.stringify(body), digest, ctx.principal.id],
+          );
+        await this.o.audit.record(tx, {
+          action: "rules.schedule.draft",
+          resourceType: "parameter_schedule_version",
+          resourceId: `${key}@${version}`,
+          before: cur ? { digest: cur.digest } : undefined,
+          after: { digest, entries: body.entries.length },
+        });
+        return { version, digest };
+      },
+      { action: "rules.schedule.draft" },
+    );
+  }
+
+  /**
+   * Submit a schedule draft for publication: the R4 request `rules.ruleset.publish` with
+   * `{ kind: "schedule", key, version, digest, effectiveFrom? }` (R1-D-175). `effectiveFrom`
+   * schedules the cut-over (R1-D-113); entries inside a version keep their own dates.
+   */
+  async publishSchedule(
+    ctx: KernelContext,
+    key: string,
+    version: number,
+    opts: PublishOptions = {},
+  ): Promise<{ approvalId: string }> {
+    platformOnly(ctx);
+    const effectiveFrom =
+      opts.effectiveFrom === undefined ? null : cutoverInstant(opts.effectiveFrom);
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        await this.loadSchedule(tx, key);
+        const v = await this.loadScheduleVersion(tx, key, version, true);
+        if (v.state !== "draft")
+          throw new IpbError("IPB-RULE-003", {
+            detail: `version ${version} is ${v.state}`,
+            meta: { schedule: key, version },
+          });
+        if (effectiveFrom) await this.checkCutover(tx, effectiveFrom);
+        await this.refuseScheduledSchedule(tx, key);
+        const current = await this.scheduleInForce(tx, key);
+        const { id } = await this.o.approvals.request(tx, {
+          action: PUBLISH_ACTION,
+          riskClass: "R4",
+          payload: {
+            kind: "schedule",
+            key,
+            version,
+            digest: v.digest,
+            ...(effectiveFrom ? { effectiveFrom: effectiveFrom.toISOString() } : {}),
+          },
+          summary:
+            scheduleSummary(key, v, current) +
+            (effectiveFrom ? `, in force from ${effectiveFrom.toISOString()}` : ""),
+        });
+        await tx.query(
+          `update rules.parameter_schedule_version set state = 'pending_approval', approval_id = $3
+            where key = $1 and version = $2`,
+          [key, version, id],
+        );
+        await this.o.audit.record(tx, {
+          action: "rules.schedule.submit",
+          resourceType: "parameter_schedule_version",
+          resourceId: `${key}@${version}`,
+          before: { state: "draft" },
+          after: { state: "pending_approval", approval_id: id, digest: v.digest },
+        });
+        return { approvalId: id };
+      },
+      { action: "rules.schedule.submit" },
+    );
+  }
+
+  /** Return a pending schedule version to draft once its request was rejected, cancelled or expired. */
+  async reopenSchedule(ctx: KernelContext, key: string, version: number): Promise<void> {
+    platformOnly(ctx);
+    const v = await this.o.kernel.read(ctx, (tx) =>
+      this.loadScheduleVersion(tx, key, version, false),
+    );
+    if (v.state !== "pending_approval" || !v.approval_id)
+      throw new IpbError("IPB-RULE-003", { detail: `version ${version} is ${v.state}` });
+    const approval = await this.o.approvals.get(ctx, v.approval_id);
+    if (!["rejected", "cancelled", "expired"].includes(approval.state))
+      throw new IpbError("IPB-RULE-003", {
+        detail: `approval ${approval.id} is ${approval.state}`,
+      });
+    await this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const r = await tx.query(
+          `update rules.parameter_schedule_version set state = 'draft', approval_id = null
+            where key = $1 and version = $2 and state = 'pending_approval' and approval_id = $3`,
+          [key, version, approval.id],
+        );
+        if (!r.rowCount) throw new IpbError("IPB-RULE-003", { detail: "version changed" });
+        await this.o.audit.record(tx, {
+          action: "rules.schedule.reopen",
+          resourceType: "parameter_schedule_version",
+          resourceId: `${key}@${version}`,
+          before: { state: "pending_approval", approval_id: approval.id },
+          after: { state: "draft" },
+        });
+      },
+      { action: "rules.schedule.reopen" },
+    );
+  }
+
+  /** Every parameter schedule, with its versions in force, open and scheduled (any context). */
+  async listSchedules(ctx: KernelContext): Promise<ParameterScheduleSummary[]> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const r = await tx.query<{
+        key: string;
+        published: number | null;
+        draft: number | null;
+        scheduled: number | null;
+        scheduled_from: Date | null;
+      }>(
+        `select s.key,
+                max(v.version) filter (where v.state in ('published', 'retired')
+                  and v.effective_from <= now() and (v.effective_to is null or v.effective_to > now())) as published,
+                max(v.version) filter (where v.state in ('draft', 'pending_approval')) as draft,
+                max(v.version) filter (where v.state = 'published' and v.effective_from > now()) as scheduled,
+                max(v.effective_from) filter (where v.state = 'published' and v.effective_from > now()) as scheduled_from
+           from rules.parameter_schedule s
+           left join rules.parameter_schedule_version v on v.key = s.key
+          group by s.key
+          order by s.key`,
+      );
+      return r.rows.map((x) => ({
+        key: x.key,
+        publishedVersion: x.published,
+        draftVersion: x.draft,
+        scheduledVersion: x.scheduled,
+        scheduledFrom: x.scheduled_from ? x.scheduled_from.toISOString() : null,
+      }));
+    });
+  }
+
+  /** One version of a schedule; without `version`, the one in force now (any context). */
+  async getSchedule(
+    ctx: KernelContext,
+    key: string,
+    version?: number,
+  ): Promise<ParameterScheduleVersion> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      await this.loadSchedule(tx, key);
+      const v =
+        version === undefined
+          ? await this.scheduleInForce(tx, key)
+          : await this.loadScheduleVersion(tx, key, version, false);
+      if (!v)
+        throw new IpbError("IPB-RULE-002", {
+          detail: `schedule ${key} has no version in force`,
+          meta: { schedule: key },
+        });
+      return {
+        key: v.key,
+        version: v.version,
+        state: v.state,
+        body: v.body,
+        digest: v.digest,
+        effectiveFrom: v.effective_from ? v.effective_from.toISOString() : null,
+        effectiveTo: v.effective_to ? v.effective_to.toISOString() : null,
+      };
+    });
+  }
+
+  /** The approved schedule request's executor: publish the version and retire the previous one. */
+  private async executeSchedulePublish(
+    tx: Tx,
+    payload: Record<string, unknown>,
+    approvalId: string,
+  ): Promise<void> {
+    platformOnly(tx.ctx);
+    const key = String(payload.key);
+    const version = Number(payload.version);
+    const v = await this.loadScheduleVersion(tx, key, version, true);
+    if (
+      v.state !== "pending_approval" ||
+      v.approval_id !== approvalId ||
+      v.digest !== payload.digest
+    )
+      throw new IpbError("IPB-RULE-003", {
+        detail: "the schedule version no longer matches the approved request",
+        meta: { schedule: key, version },
+      });
+    await this.refuseScheduledSchedule(tx, key);
+    const requested = typeof payload.effectiveFrom === "string" ? payload.effectiveFrom : null;
+    const cut = (
+      await tx.query<{ cut: Date }>(
+        "select greatest(coalesce($1::timestamptz, now()), now()) as cut",
+        [requested],
+      )
+    ).rows[0]!.cut;
+    const prev = await tx.query<{ version: number }>(
+      `update rules.parameter_schedule_version set state = 'retired', effective_to = $2
+        where key = $1 and state = 'published' returning version`,
+      [key, cut],
+    );
+    const pub = await tx.query<{ effective_from: Date }>(
+      `update rules.parameter_schedule_version
+          set state = 'published', effective_from = $3, published_at = now()
+        where key = $1 and version = $2 returning effective_from`,
+      [key, version, cut],
+    );
+    await this.o.audit.record(tx, {
+      action: "rules.schedule.publish",
+      resourceType: "parameter_schedule_version",
+      resourceId: `${key}@${version}`,
+      before: { state: "pending_approval", retired: prev.rows[0]?.version ?? null },
+      after: {
+        state: "published",
+        digest: v.digest,
+        approval_id: approvalId,
+        effective_from: (pub.rows[0]?.effective_from as Date).toISOString(),
+      },
+    });
+  }
+
+  private async loadSchedule(tx: Tx, key: string): Promise<void> {
+    const r = await tx.query("select key from rules.parameter_schedule where key = $1", [key]);
+    if (!r.rows.length) throw new NotFoundError("parameter schedule");
+  }
+
+  private async loadScheduleVersion(
+    tx: Tx,
+    key: string,
+    version: number,
+    lock: boolean,
+  ): Promise<ScheduleVersionRow> {
+    const r = await tx.query<ScheduleVersionRow>(
+      `select * from rules.parameter_schedule_version where key = $1 and version = $2${lock ? " for update" : ""}`,
+      [key, version],
+    );
+    const row = r.rows[0];
+    if (!row) throw new NotFoundError("parameter schedule version");
+    return row;
+  }
+
+  /** The schedule version in force now: published, or retired with its cut-over still ahead. */
+  private async scheduleInForce(tx: Tx, key: string): Promise<ScheduleVersionRow | null> {
+    const r = await tx.query<ScheduleVersionRow>(
+      `select * from rules.parameter_schedule_version
+        where key = $1 and state in ('published', 'retired')
+          and effective_from <= now() and (effective_to is null or effective_to > now())
+        order by version desc limit 1`,
+      [key],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  /** One scheduled cut-over at a time per schedule, as for rule sets (R1-D-113). */
+  private async refuseScheduledSchedule(tx: Tx, key: string): Promise<void> {
+    const r = await tx.query<{ version: number; effective_from: Date }>(
+      `select version, effective_from from rules.parameter_schedule_version
+        where key = $1 and state = 'published' and effective_from > now()`,
+      [key],
+    );
+    const s = r.rows[0];
+    if (s)
+      throw new IpbError("IPB-RULE-003", {
+        detail: `version ${s.version} comes into force at ${s.effective_from.toISOString()}; publish again after it`,
+        meta: { schedule: key, version: s.version },
+      });
+  }
+
+  /** A requested cut-over is now or later, at most `MAX_CUTOVER_DAYS` ahead (PR-LDC-34). */
+  private async checkCutover(tx: Tx, effectiveFrom: Date): Promise<void> {
+    const w = await tx.query<{ ok: boolean }>(
+      `select $1::timestamptz >= now() and $1::timestamptz <= now() + make_interval(days => $2) as ok`,
+      [effectiveFrom, MAX_CUTOVER_DAYS],
+    );
+    if (!w.rows[0]?.ok)
+      throw new IpbError("IPB-RULE-001", {
+        detail: `effectiveFrom must be now or later, at most ${MAX_CUTOVER_DAYS} days ahead`,
+      });
+  }
+
   async evaluate(ctx: KernelContext, ref: RuleSetRef, input: unknown): Promise<Decision> {
     const asOf = ref.asOf === undefined ? null : asOfInstant(ref);
     const { set, v } = await this.o.kernel.read(ctx, async (tx) => {
@@ -559,10 +976,8 @@ export class RulesService implements RulesPort {
         });
       return { set, v };
     });
-    const params = await this.resolveParameters(ctx, v.body);
-    const result = params.invalid
-      ? undetermined("parameter_invalid")
-      : await this.run(v, input, params.values);
+    const params = await this.resolveParameters(ctx, v.body, asOf);
+    const result = parameterRefusal(params) ?? (await this.run(v, input, params.values));
     const id = newId("dcs");
     const inputs = result.reason === "input_invalid" ? null : splitInputs(v.body, input);
     return this.o.kernel.mutate(
@@ -638,7 +1053,9 @@ export class RulesService implements RulesPort {
             outcome: result.outcome,
             reason: result.reason,
             rule_ids: result.ruleIds,
-            ...(params.invalid ? { parameter: params.invalid } : {}),
+            ...(params.notInForce || params.invalid
+              ? { parameter: params.notInForce ?? params.invalid }
+              : {}),
             ...(asOf ? { as_of: asOf.toISOString() } : {}),
           },
         });
@@ -690,12 +1107,10 @@ export class RulesService implements RulesPort {
         throw new IpbError("IPB-RULE-002", { meta: { rule_set_id: ref.ruleSetId } });
       return v;
     });
-    const params = await this.resolveParameters(ctx, v.body);
+    const params = await this.resolveParameters(ctx, v.body, asOf);
     const results: Projection[] = [];
     for (const input of inputs) {
-      const r = params.invalid
-        ? undetermined("parameter_invalid")
-        : await this.run(v, input, params.values);
+      const r = parameterRefusal(params) ?? (await this.run(v, input, params.values));
       results.push({ outcome: r.outcome, outputs: r.outputs, reason: r.reason });
     }
     return { ruleSetId: ref.ruleSetId, version: v.version, results };
@@ -766,19 +1181,13 @@ export class RulesService implements RulesPort {
       return { v, base: base && base.version !== v.version ? base : null };
     });
     // Both versions run with the tenant's current parameter values (R1-D-88).
-    const pv = await this.resolveParameters(ctx, v.body);
-    const pb = base ? await this.resolveParameters(ctx, base.body) : null;
+    const pv = await this.resolveParameters(ctx, v.body, null);
+    const pb = base ? await this.resolveParameters(ctx, base.body, null) : null;
     const changed: SimulationReport["changed"] = [];
     for (const [index, input] of inputs.entries()) {
-      const after = pv.invalid
-        ? undetermined("parameter_invalid")
-        : await this.run(v, input, pv.values);
+      const after = parameterRefusal(pv) ?? (await this.run(v, input, pv.values));
       const before =
-        base && pb
-          ? pb.invalid
-            ? undetermined("parameter_invalid")
-            : await this.run(base, input, pb.values)
-          : null;
+        base && pb ? (parameterRefusal(pb) ?? (await this.run(base, input, pb.values))) : null;
       if (before && sameResult(before, after)) continue;
       changed.push({
         index,
@@ -988,11 +1397,15 @@ export class RulesService implements RulesPort {
       help_keys: rows.flatMap((x) => (x.help_key ? [x.help_key] : [])),
       ...(d.parameters
         ? {
-            parameters: Object.entries(d.parameters).map(([name, p]) => ({
-              name,
-              value: p.value,
-              source: p.source,
-            })),
+            // In the order the version declares them (jsonb keeps its own key order).
+            parameters: Object.entries(d.parameters)
+              .sort(([a], [b]) => declared(v.body, a) - declared(v.body, b))
+              .map(([name, p]) => ({
+                name,
+                value: p.value,
+                source: p.source,
+                ...(p.source === "schedule" ? { schedule: p.schedule } : {}),
+              })),
           }
         : {}),
       ...(d.as_of ? { asOf: new Date(d.as_of).toISOString() } : {}),
@@ -1026,26 +1439,54 @@ export class RulesService implements RulesPort {
     });
     const failed: string[] = [];
     for (const v of versions) {
-      const ok = await this.resolveParameters(ctx, v.body)
-        .then((p) => (p.invalid ? false : this.compiledFor(v, p.values).then(() => true)))
+      const ok = await this.resolveParameters(ctx, v.body, null)
+        .then((p) =>
+          p.invalid || p.notInForce ? false : this.compiledFor(v, p.values).then(() => true),
+        )
         .catch(() => false);
       if (!ok) failed.push(`${v.rule_set_id}@${v.version}`);
     }
     return { compiled: versions.length - failed.length, failed };
   }
 
-  /** Each parameter's tenant value from settings, else its default; checked against its type. */
+  /**
+   * Each parameter's value, checked against its type and bounds: a setting-backed parameter takes
+   * the tenant's current setting, else its default (R1-D-88); a dated parameter takes the entry of
+   * its schedule in force at `at` (the decision's `asOf`, or now), and is locked: no setting is
+   * read and there is no default (PR-LDC-57, R1-D-175).
+   */
   private async resolveParameters(
     ctx: KernelContext,
     body: RuleSetBody,
+    at: Date | null,
   ): Promise<ResolvedParameters> {
-    const out: ResolvedParameters = { values: {}, trace: {}, invalid: null };
+    const out: ResolvedParameters = { values: {}, trace: {}, invalid: null, notInForce: null };
     const params: readonly RuleParameter[] = body.parameters ?? [];
     if (!params.length) return out;
+    const dated = params.filter(isScheduleParameter);
     const settings = this.o.settings;
-    if (!settings) throw new Error("a rule set with parameters needs the settings option");
+    if (!settings && dated.length < params.length)
+      throw new Error("a rule set with setting-backed parameters needs the settings option");
+    const inForce = dated.length
+      ? await this.scheduleEntriesAt(
+          ctx,
+          dated.map((p) => p.schedule),
+          at,
+        )
+      : new Map<string, { value: unknown; trace: ScheduleCitationTrace }>();
     for (const p of params) {
-      const read = (await settings.explain(ctx, p.setting)).value;
+      if (isScheduleParameter(p)) {
+        const hit = inForce.get(p.schedule);
+        if (!hit) {
+          out.notInForce ??= p.name;
+          continue;
+        }
+        out.values[p.name] = hit.value;
+        out.trace[p.name] = { value: hit.value, source: "schedule", schedule: hit.trace };
+        if (!out.invalid && ruleParameterValueError(p, hit.value)) out.invalid = p.name;
+        continue;
+      }
+      const read = (await settings!.explain(ctx, p.setting)).value;
       const fromSetting = read !== null && read !== undefined;
       const value = fromSetting ? read : p.default;
       out.values[p.name] = value;
@@ -1055,17 +1496,79 @@ export class RulesService implements RulesPort {
     return out;
   }
 
-  /** A draft's parameters must name registered settings (IPB-07: registered before read). */
-  private async checkParameterSettings(ctx: KernelContext, body: RuleSetBody): Promise<void> {
+  /**
+   * The entry in force at `at` (default now) of each schedule: the version whose publication
+   * window holds `at` (as `versionAt` for rule sets), then its last entry whose `effectiveFrom` is
+   * on or before `at`'s calendar day in `SCHEDULE_ZONE`. A schedule with none is absent.
+   */
+  private async scheduleEntriesAt(
+    ctx: KernelContext,
+    keys: readonly string[],
+    at: Date | null,
+  ): Promise<Map<string, { value: unknown; trace: ScheduleCitationTrace }>> {
+    const rows = await this.o.kernel.read(ctx, async (tx) => {
+      if (at) {
+        const now = await tx.query<{ ok: boolean }>("select $1::timestamptz <= now() as ok", [at]);
+        if (!now.rows[0]?.ok)
+          throw new IpbError("IPB-RULE-001", { detail: "asOf must not be in the future" });
+      }
+      return (
+        await tx.query<{
+          key: string;
+          version: number;
+          body: ParameterScheduleBodyType;
+          day: string;
+        }>(
+          `with t as (select coalesce($2::timestamptz, now()) as at)
+           select distinct on (v.key) v.key, v.version, v.body,
+                  to_char(t.at at time zone $3, 'YYYY-MM-DD') as day
+             from rules.parameter_schedule_version v, t
+            where v.key = any($1::text[]) and v.state in ('published', 'retired')
+              and v.effective_from <= t.at and (v.effective_to is null or v.effective_to > t.at)
+            order by v.key, v.version desc`,
+          [[...new Set(keys)], at, SCHEDULE_ZONE],
+        )
+      ).rows;
+    });
+    const out = new Map<string, { value: unknown; trace: ScheduleCitationTrace }>();
+    for (const r of rows) {
+      const e = entryOn(r.body, r.day);
+      if (e)
+        out.set(r.key, {
+          value: e.value,
+          trace: {
+            key: r.key,
+            version: r.version,
+            effectiveFrom: e.effectiveFrom,
+            citation: e.citation,
+          },
+        });
+    }
+    return out;
+  }
+
+  /**
+   * A draft's parameters (IPB-07: registered before read): a setting-backed one names a
+   * registered setting; a dated one names a published schedule of its type whose every entry in
+   * force now or later fits its bounds (PR-LDC-57). Returns a value for each dated parameter, so
+   * every engine can compile the draft.
+   */
+  private async checkParameters(
+    ctx: KernelContext,
+    body: RuleSetBody,
+  ): Promise<Record<string, unknown>> {
     const params = body.parameters ?? [];
-    if (!params.length) return;
-    if (!this.o.settings)
+    const bind: Record<string, unknown> = {};
+    if (!params.length) return bind;
+    const dated = params.filter(isScheduleParameter);
+    if (dated.length < params.length && !this.o.settings)
       throw new IpbError("IPB-RULE-001", {
         detail: "rule parameters need the settings option on the RULES service",
       });
     for (const p of params) {
+      if (isScheduleParameter(p)) continue;
       try {
-        await this.o.settings.explain(ctx, p.setting);
+        await this.o.settings!.explain(ctx, p.setting);
       } catch {
         throw new IpbError("IPB-RULE-001", {
           detail: `parameter ${p.name}: setting ${p.setting} is not registered`,
@@ -1073,6 +1576,46 @@ export class RulesService implements RulesPort {
         });
       }
     }
+    if (!dated.length) return bind;
+    const live = await this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query<{ key: string; version: number; body: ParameterScheduleBodyType }>(
+            `select key, version, body from rules.parameter_schedule_version
+            where key = any($1::text[]) and state in ('published', 'retired')
+              and (effective_to is null or effective_to > now())
+            order by key, version`,
+            [[...new Set(dated.map((p) => p.schedule))]],
+          )
+        ).rows,
+    );
+    for (const p of dated) {
+      const versions = live.filter((v) => v.key === p.schedule);
+      const meta = { parameter: p.name, schedule: p.schedule };
+      if (!versions.length)
+        throw new IpbError("IPB-RULE-001", {
+          detail: `parameter ${p.name}: schedule ${p.schedule} is unknown or has no published version`,
+          meta,
+        });
+      for (const v of versions) {
+        if (v.body.type !== p.type)
+          throw new IpbError("IPB-RULE-001", {
+            detail: `parameter ${p.name} is ${p.type}; schedule ${p.schedule} is ${v.body.type}`,
+            meta,
+          });
+        for (const e of v.body.entries) {
+          const why = ruleParameterValueError(p, e.value);
+          if (why)
+            throw new IpbError("IPB-RULE-001", {
+              detail: `parameter ${p.name}: schedule ${p.schedule} v${v.version} entry from ${e.effectiveFrom} is ${why}`,
+              meta: { ...meta, version: v.version, effective_from: e.effectiveFrom },
+            });
+        }
+      }
+      bind[p.name] = versions.at(-1)!.body.entries.at(-1)!.value;
+    }
+    return bind;
   }
 
   private async run(
@@ -1121,7 +1664,11 @@ export class RulesService implements RulesPort {
     return c;
   }
 
-  private async validate(body: RuleSetBody, set: RuleSetRow): Promise<void> {
+  private async validate(
+    body: RuleSetBody,
+    set: RuleSetRow,
+    bind: Record<string, unknown> = {},
+  ): Promise<void> {
     for (const f of body.inputs)
       if (CLASS_RANK[f.dataClass] > CLASS_RANK[set.data_class])
         throw new IpbError("IPB-RULE-001", {
@@ -1129,7 +1676,7 @@ export class RulesService implements RulesPort {
         });
     for (const e of this.validators) {
       try {
-        await e.compile(body);
+        await e.compile(body, bind);
       } catch (err) {
         if (err instanceof RuleCompileError)
           throw new IpbError("IPB-RULE-001", {
@@ -1206,6 +1753,56 @@ export class RulesService implements RulesPort {
   }
 }
 
+/** Schedules are written in a platform context in `tnt_platform` only (PR-LDC-57). */
+function platformOnly(ctx: KernelContext): void {
+  if (ctx.scope !== "platform" || ctx.tenantId !== PLATFORM_TENANT_ID)
+    throw new IpbError("IPB-UX-011", {
+      detail: "parameter schedules are written in a platform context",
+    });
+}
+
+function scheduleSummary(
+  key: string,
+  v: ScheduleVersionRow,
+  current: ScheduleVersionRow | null,
+): string {
+  const n = v.body.entries.length;
+  if (!current)
+    return `Publish parameter schedule ${key} v${v.version} (${n} entries, first version)`;
+  const before = new Map(current.body.entries.map((e) => [e.effectiveFrom, canonicalDigest(e)]));
+  const after = new Map(v.body.entries.map((e) => [e.effectiveFrom, canonicalDigest(e)]));
+  const added = [...after.keys()].filter((k) => !before.has(k)).length;
+  const removed = [...before.keys()].filter((k) => !after.has(k)).length;
+  const changed = [...after].filter(([k, d]) => before.has(k) && before.get(k) !== d).length;
+  return `Publish parameter schedule ${key} v${v.version} replacing v${current.version} (+${added} −${removed} ~${changed} entries; ${v.body.reason ?? "no reason"})`;
+}
+
+/** UNDETERMINED when a parameter has no entry in force or an invalid value, else null. */
+function parameterRefusal(p: ResolvedParameters): Evaluated | null {
+  if (p.notInForce) return undetermined("parameter_not_in_force");
+  if (p.invalid) return undetermined("parameter_invalid");
+  return null;
+}
+
+/** A parameter's position in the version's declaration (unknown names last). */
+function declared(body: RuleSetBody, name: string): number {
+  const i = (body.parameters ?? []).findIndex((p) => p.name === name);
+  return i < 0 ? Number.MAX_SAFE_INTEGER : i;
+}
+
+/** The last entry whose `effectiveFrom` is on or before `day` (both YYYY-MM-DD), if any. */
+function entryOn(
+  body: ParameterScheduleBodyType,
+  day: string,
+): ParameterScheduleBodyType["entries"][number] | null {
+  let hit: ParameterScheduleBodyType["entries"][number] | null = null;
+  for (const e of body.entries) {
+    if (e.effectiveFrom > day) break;
+    hit = e;
+  }
+  return hit;
+}
+
 const undetermined = (reason: string): Evaluated => ({
   outcome: "UNDETERMINED",
   outputs: {},
@@ -1247,7 +1844,7 @@ interface DecisionRow {
   inputs: Record<string, unknown> | null;
   inputs_enc: Buffer | null;
   inputs_key_id: string | null;
-  parameters: Record<string, { value: unknown; source: "setting" | "default" }> | null;
+  parameters: Record<string, ParameterTrace> | null;
   as_of: Date | null;
 }
 
