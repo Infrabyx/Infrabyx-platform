@@ -1,6 +1,6 @@
 # R1 plan: dated, cited, locked rule parameters (LawDocsComply PR-LDC-57, wave 15)
 
-Status: drafted 18 Nov 2026 (seventeenth session), from the design `docs/phases/R1-dated-parameters-design.md` (R1-D-146, accepted for wave 15, M107). Build next. Packages: `contracts` minor, `rules` minor (migration `rules/0005`), `testing` patch if a helper is needed.
+Status: built 18 Nov 2026 (eighteenth session, R1-D-175); drafted the same day (seventeenth session), from the design `docs/phases/R1-dated-parameters-design.md` (R1-D-146, accepted for wave 15, M107). Build next. Packages: `contracts` minor, `rules` minor (migration `rules/0005`), `testing` patch if a helper is needed.
 
 ## 1. Scope
 
@@ -112,9 +112,17 @@ A new §3.131:
 ## 8. Exit gate
 
 - [ ] §6 tests pass locally (`pnpm check:full`) and at the PR's `ci:run`.
-- [ ] Product guide section (declaring a dated parameter, publishing a schedule, reading the citation in `explain`), with the LawDocsComply adoption note.
-- [ ] Threat model §3.131, DECISIONS, STATUS.
-- [ ] Changesets: `contracts` minor, `rules` minor (migration `rules/0005`).
+- [x] Product guide section (§7ch: declaring a dated parameter, publishing a schedule, reading the citation in `explain`), with the LawDocsComply adoption note.
+- [x] Threat model §3.131, DECISIONS (R1-D-175), STATUS, OWNER-QUESTIONS #133.
+- [x] Changesets: `contracts` minor, `rules` minor (migration `rules/0005`), `connectors` patch (the engines refuse an unbound dated parameter; §10).
+
+## 10. As built (departures from this plan, R1-D-175)
+
+- **`connectors` patch.** The engines bound a parameter's `default` when no value was given; a dated parameter has none, so `prepareTable` now refuses it unbound, and the RULES service compiles a draft on every engine with the schedule's latest value bound.
+- **Added for completeness:** `reopenSchedule` (a rejected or expired request would otherwise block the schedule's one open version for ever), `listSchedules` and `getSchedule` (reads from any context), a schedule's type fixed for its life, and the trigger also keeping a published version's cut-over and a retired version's end.
+- **`explain`** lists parameters in their declared order (jsonb reorders object keys).
+- **Locking:** a draft locks the schedule's version rows, as a rule-set draft does; `app_rw` has no update right on `rules.parameter_schedule`, so it is not locked.
+- **Before the first publication:** a schedule version applies only from its publication, so an `asOf` earlier than that is `parameter_not_in_force`.
 
 ## 9. Owner decisions needed
 

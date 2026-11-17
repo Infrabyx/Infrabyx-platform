@@ -666,6 +666,54 @@ const why = await rules.explain(ctx, decisionId, { reveal: grant }); // inputs[i
 - **Nothing is written back:** show the value and drop it; do not store it unsealed. Test your wiring with `defineRulesRevealContract` from `@infrabyx/testing`.
 - **LawDocsComply:** wire `revealRule` to your board-paper access policy, and use it only where a CONFIDENTIAL input is needed in the classification trace.
 
+## 7ch. Dated, cited and locked rule parameters (PR-LDC-57; R1-D-146, R1-D-175)
+
+A threshold fixed by an instrument (a statute, a regulation, a circular) is not a tenant choice. Declare it as a **dated parameter**: it names a platform parameter schedule instead of a setting, and takes the entry in force on the decision's day.
+
+```ts
+// In the rule set body: no `setting`, no `default`.
+parameters: [{ name: "auditThreshold", type: "integer", schedule: "stat.companies.audit_threshold", min: 0 }],
+```
+
+**Publishing a schedule (platform staff, a platform context).**
+
+```ts
+await rules.createSchedule(platformCtx, { key: "stat.companies.audit_threshold" });
+const { version } = await rules.saveScheduleDraft(platformCtx, "stat.companies.audit_threshold", {
+  format: "ipb.parameter_schedule.v1",
+  type: "integer",
+  entries: [
+    {
+      value: 1000,
+      effectiveFrom: "2025-04-01",
+      citation: { instrumentRef: "…", section: "…", url: "https://…" },
+    },
+    { value: 2000, effectiveFrom: "2026-04-01", citation: { instrumentRef: "…", section: "…" } },
+  ],
+});
+const { approvalId } = await rules.publishSchedule(
+  platformCtx,
+  "stat.companies.audit_threshold",
+  version,
+  {
+    effectiveFrom, // optional cut-over of the version, as for rule sets (§7bk)
+  },
+);
+// A second platform checker approves `rules.ruleset.publish` (R4); it executes after the delay.
+```
+
+- **Entries:** 1 to 500, in strictly ascending `effectiveFrom` (YYYY-MM-DD) without overlap; each value of the schedule's `type`; each with `instrumentRef` (1 to 128 printable characters) and `section` (1 to 64), `url` https only. An entry is in force from 00:00 IST on its date until the next entry's date; the last one is open-ended.
+- **Corrections:** a published version never changes. Save a new version with `reason` (required from version 2 on); the type cannot change. A rejected request is returned to draft with `reopenSchedule`.
+- **Keys:** dotted lower case under your own prefix; never a product or tenant name in platform code.
+
+**Evaluating.** `evaluate(ctx, { ruleSetId, asOf })` takes the entry in force on `asOf`'s calendar day in India time (or today), from the schedule version in force at that instant, so an old decision replays with the value known then. The parameter is locked: a setting of the same name is never read and there is no default. With no entry in force the decision is `UNDETERMINED` with reason `parameter_not_in_force` and goes to the human queue. A schedule version applies only from its publication, so an `asOf` before the schedule's first publication is `parameter_not_in_force` (as a rule set before its first publication is `IPB-RULE-002`). If you work in another time zone, pass `asOf` at your own midnight.
+
+**"Why this?"** `explain` returns, for each dated parameter, `{ name, value, source: "schedule", schedule: { key, version, effectiveFrom, citation } }`. Show the citation beside the value.
+
+**Drafting a rule set** that names a schedule is refused (`IPB-RULE-001`, `meta.parameter`, `meta.schedule`) when the schedule is unknown or has no published version, is of another type, or has an entry in force now or later outside the parameter's `min`, `max` or `values`. Read schedules with `listSchedules(ctx)` and `getSchedule(ctx, key, version?)` from any context.
+
+**LawDocsComply:** move your dated parameter table into platform schedules under your own key prefix, declare those parameters with `schedule`, and remove the shim once every rule set reads them (PR-LDC-57). Migration `rules/0005` comes with `rules` (run `infrabyx-migrate`); no setting or environment variable is added.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

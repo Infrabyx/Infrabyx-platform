@@ -42,6 +42,13 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
+## Eighteenth session (18 Nov, scheduled run)
+
+- **Lock:** taken at 02:42 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all four comments are session reports).
+- **#278** (the seventeenth handover and release run 248's record) had no checks of its own; as its "Next" item 1 says, its docs are carried in this PR (branch `claude/ecstatic-tesla-fpbp66`, `main` plus #278's commit), and #278 is closed in favour of it.
+- **PR-LDC-57 built (this PR; R1-D-175):** dated, cited and locked rule parameters. `contracts` minor (the `RuleParameter` union, `ParameterScheduleBody`, the `schedule` citation in `explain`, reason `parameter_not_in_force`); `rules` minor (migration `rules/0005`: `rules.parameter_schedule` and `rules.parameter_schedule_version` with forced RLS and an immutability trigger; `createSchedule`, `saveScheduleDraft`, `publishSchedule`, `reopenSchedule`, `listSchedules`, `getSchedule`; publication through `rules.ruleset.publish` with `kind: "schedule"`); `connectors` patch (an unbound dated parameter is refused by the engines). Tests: 27 PostgreSQL cases (`rules-schedule.int.test.ts`) and the engines' differential test. Threat model §3.131, product guide §7ch. New owner question #133 (three assumptions, the India-time calendar day first; recommendation: accept).
+- **Products (adopt once released):** LawDocsComply moves its dated parameter table into platform schedules and declares those parameters with `schedule` (guide §7ch); run `infrabyx-migrate` for `rules/0005`.
+
 ## Seventeenth session (18 Nov, scheduled run) — handover
 
 - **Lock:** taken at 00:43 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all three comments are session reports).
