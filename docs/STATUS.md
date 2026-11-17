@@ -41,6 +41,13 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
+## Fifteenth session (17 Nov, scheduled run)
+
+- **Lock:** taken at 20:44 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no new owner answer (the only comment is the fourteenth session's report). OWNER-AUTO-02 (hourly scheduled runs, `trig_01BPYLG75jZ3ZhP66ebgEFdQ`; supersedes OWNER-MANUAL-01) recorded in DECISIONS.
+- **R1-D-166 fixed (security, this PR; R1-D-167, `connectors` patch):** the Zitadel customer adapter uses a user-search hit only after `GET /v2/users/{id}` (which brings Zitadel's user projection up to date before reading; Zitadel v4.19.5 source, cited) shows that account active under the login's username; an account not yet in the search is found by its own id; a lookup Zitadel cannot confirm fails. Four unit cases on a fake Zitadel with a lagging search (all four fail on the old adapter) and a Zitadel contract case that pins the search to its pre-retirement answer. Threat model §3.53.
+- **#259 assessed:** the changesets action SHA `a45c4d5` is the peeled commit of the v1.9.0 tag (benign); `pgvector/pgvector:0.8.6-pg18` (`sha256:2ba9ca5f…`, pushed 13 Aug) passes PL2-D-32. #259 changes only `ci.yml`, while the same image is pinned in `TEST_IMAGES.pgvector` (`testing`), `infra/compose/docker-compose.yml` and `infra/docker/TEST_IMAGES.md`, which `pnpm check:full` uses, so it is not merged as is: the next PR moves all four together (a `testing` patch) and takes the action pin.
+- **Next:** this PR's gate (one `ci:run`) and merge; then the pgvector 0.8.6 PR replacing #259; #258 not taken; wave 15 (#130 explain reveal, PR-LDC-57, PR-LDC-40, PR-LDC-50, the TallyPrime source and image, the PR-LDC-60 Terraform inputs); the 1 Dec waiver question (CVE-2025-6020 to 16 Dec included).
+
 ## Fourteenth session (17 Nov)
 
 - **Owner decisions of 17 Nov:** OWNER-AUTO-01 (one scheduled task, "Infrabyx-platform scheduled run" `trig_01MmMh1gaipxS7ZY3EwMfHSY`, 05:41/11:41/17:41/23:41 IST, a fresh session each firing; the old daily check-in disabled; the 1 Dec and 15 Dec reminders kept), OWNER-LOCK-01 (SESSION LOCK issue #262), OWNER INBOX issue #263 (answers by `lawdocs` only), OWNER-SPEED-01 (`pnpm check:full`).

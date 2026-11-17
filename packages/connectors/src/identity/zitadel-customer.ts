@@ -50,7 +50,16 @@ export interface ZitadelCustomerIdentityOptions extends CustomerIdentityBaseOpti
   loginClient: { userId: string; token: string };
   jwksCacheSeconds?: number;
   allowLoopbackHttp?: boolean;
+  /** Tests only: recorded HTTP fixtures, or a proxy in front of a real instance. */
+  fetchImpl?: typeof fetch;
 }
+
+/**
+ * States of a Zitadel v2 user (`zitadel.user.v2.UserState`, proto/zitadel/user/v2/user.proto at
+ * v4.19.5) in which the account no longer holds its login: deactivated (how a login is retired)
+ * or deleted. A locked or initial account still holds it; Zitadel refuses its sessions itself.
+ */
+const RELEASED_STATES = new Set(["USER_STATE_INACTIVE", "USER_STATE_DELETED"]);
 
 export class ZitadelCustomerIdentity extends CustomerIdentityBase {
   readonly descriptor: AdapterDescriptor = {
@@ -70,7 +79,7 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     super(o);
     this.issuer = o.baseUrl.replace(/\/$/, "");
     this.signInProofTarget = { htm: "POST", htu: `${this.issuer}/oauth/v2/token` };
-    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp);
+    this.egress = zitadelEgress(this.issuer, o.allowLoopbackHttp, o.fetchImpl);
     this.verifier = new TokenVerifier({
       issuer: this.issuer,
       audience: o.projectId,
@@ -138,7 +147,35 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     return (r.body.byteLength ? r.json<T>() : {}) as T;
   }
 
-  /** The account whose username is `username` in the customer organisation (PR-UDF-034). */
+  /**
+   * Whether account `userId` holds `username` now, read with `GET /v2/users/{id}` (R1-D-166).
+   * Zitadel's user search (`POST /v2/users`, `SearchUsers`) reads the user projection as it is, so
+   * just after a login change or retirement it can still return the account under its old
+   * username. `GetUserByID` first triggers the user and login-name projections and waits for them
+   * (`triggerUserProjections`, `handler.WithAwaitRunning()`), so it reads the account's own latest
+   * events. Source: zitadel/zitadel v4.19.5, internal/api/grpc/user/v2/user_query.go
+   * (`GetUserByIDWithPermission(ctx, true, ...)` against `SearchUsers(ctx, ...)`) and
+   * internal/query/user.go and query.go, read 17 Nov 2026. [VERIFY] Zitadel logs a failed trigger
+   * at debug level and reads anyway, so the guarantee is Zitadel's read-your-writes, not a
+   * transaction; no Zitadel document states it as a contract.
+   */
+  private async holds(
+    userId: string,
+    username: string,
+  ): Promise<"holds" | "released" | "other" | "absent"> {
+    const r = await this.call("GET", `/v2/users/${encodeURIComponent(userId)}`);
+    if (r.status === 404) return "absent";
+    if (r.status !== 200) this.fail(r.status, "GET /v2/users/{id}");
+    const u = r.json<{ user?: { userId?: string; username?: string; state?: string } }>().user;
+    if (!u || u.userId !== userId || u.username !== username) return "other";
+    return RELEASED_STATES.has(u.state ?? "") ? "released" : "holds";
+  }
+
+  /**
+   * The active account whose username is `username` in the customer organisation (PR-UDF-034).
+   * A search hit is used only once `holds` confirms it (R1-D-166): a stale hit, such as an account
+   * whose login was just retired or moved on, is never returned.
+   */
   private async userByName(username: string): Promise<string | undefined> {
     const r = await this.api<{ result?: Array<{ userId: string; username?: string }> }>(
       "POST",
@@ -150,8 +187,16 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
         ],
       },
     );
-    return (r.result ?? []).find((u) => u.username === undefined || u.username === username)
-      ?.userId;
+    for (const u of r.result ?? []) {
+      if (u.username !== undefined && u.username !== username) continue;
+      if ((await this.holds(u.userId, username)) === "holds") return u.userId;
+    }
+    return undefined;
+  }
+
+  /** The `n`th id an account for `login` may have: the login's own, then `login#1` to `#4`. */
+  private candidateId(tenantId: string, login: string, n: number): string {
+    return zitadelCustomerUserId(this.o.orgId, tenantId, n === 0 ? login : `${login}#${n}`);
   }
 
   protected async resolveUser(
@@ -165,11 +210,13 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     const found = await this.userByName(username);
     if (found) return found;
     for (let n = 0; n < 5; n++) {
-      const userId =
-        n === 0 ? username : zitadelCustomerUserId(this.o.orgId, tenantId, `${login}#${n}`);
-      // An id held by an account whose login moved on is skipped before trying to create it.
-      const held = await this.call("GET", `/v2/users/${userId}`);
-      if (held.status === 200) continue;
+      const userId = this.candidateId(tenantId, login, n);
+      // The account made under this id may hold the login although the search has not indexed
+      // it yet (R1-D-166); an id held by an account whose login moved on, or was retired, is
+      // skipped before trying to create it.
+      const held = await this.holds(userId, username);
+      if (held === "holds") return userId;
+      if (held !== "absent") continue;
       const email = channel === "email" ? login : `${userId}@customer.invalid`;
       const created = await this.call("POST", "/v2/users/human", {
         userId,
@@ -184,7 +231,9 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
         ],
       });
       if (created.status >= 300) {
-        // A concurrent request created the account first; otherwise report Zitadel's reason.
+        // A concurrent request created the account first (under this id, or under another one
+        // the search finds); otherwise report Zitadel's reason.
+        if ((await this.holds(userId, username)) === "holds") return userId;
         const now = await this.userByName(username);
         if (now) return now;
         if (created.status === 409) continue;
@@ -214,7 +263,20 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
     _channel: CustomerOtpChannel,
     login: string,
   ): Promise<string | undefined> {
-    return this.userByName(zitadelCustomerUserId(this.o.orgId, tenantId, login));
+    const username = zitadelCustomerUserId(this.o.orgId, tenantId, login);
+    const found = await this.userByName(username);
+    if (found) return found;
+    // An account made for this login and not yet in the search is found by its own id (R1-D-166).
+    // Ids are taken in order and the platform never deletes an account, so the walk stops at the
+    // first id nobody has (an account deleted by hand can make it miss; Zitadel's unique usernames
+    // still refuse a second holder).
+    for (let n = 0; n < 5; n++) {
+      const userId = this.candidateId(tenantId, login, n);
+      const held = await this.holds(userId, username);
+      if (held === "holds") return userId;
+      if (held === "absent") return undefined;
+    }
+    return undefined;
   }
 
   /** PR-UDF-034: username, and the verified phone or email, follow the new login. */

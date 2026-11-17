@@ -22,6 +22,7 @@ import {
   generateSeedPassword,
   MemoryReplayStore,
   randomBytes,
+  randomInt,
   sha256,
   toBase64Url,
   toHex,
@@ -38,9 +39,9 @@ import {
 import { MemoryRefreshTokenLedger, MemoryRevocationStore } from "../common.js";
 import { MemoryCustomerAuthStore } from "../customer.js";
 import { scimUserId, ZITADEL_IPB_SETTINGS, ZitadelIdentity } from "../zitadel.js";
-import { ZitadelCustomerIdentity } from "../zitadel-customer.js";
+import { ZitadelCustomerIdentity, zitadelCustomerUserId } from "../zitadel-customer.js";
 import { customerCases } from "./customer.cases.js";
-import { capturingSender } from "./dpop-device.js";
+import { capturingSender, testDevice } from "./dpop-device.js";
 
 let net: { name: string; stop(): Promise<void> };
 let db: StartedService;
@@ -517,6 +518,95 @@ describe("@IPB-01-15 IDENTITY hermetic leg: zitadel v4.19.5", () => {
     customerCases({ inbox: mail.inbox, nativeBinding: false, roles: CUSTOMER_ROLES, pauseMs: 0 }),
     { leg: "hermetic" },
   );
+
+  // R1-D-166: Zitadel's user search can lag behind a retirement. A proxy in front of the instance
+  // answers the login's search with the answer recorded before the retirement, so the stale index
+  // is a fixed state of the case and the instance's own `GET /v2/users/{id}` decides.
+  it("R1-D-166 a just-retired login signs in to a new account even while the search still lists the retired one", async () => {
+    const tenantId = "tnt_a";
+    const login = `+9197${String(randomInt(100_000_000)).padStart(8, "0")}`;
+    const username = zitadelCustomerUserId(customer.orgId, tenantId, login);
+    let stale: string | undefined;
+    const searchOf = (init?: RequestInit) =>
+      typeof init?.body === "string" && init.body.includes(username);
+    const proxy: typeof fetch = async (input, init) => {
+      const u = new URL(typeof input === "string" || input instanceof URL ? input : input.url);
+      if (stale && init?.method === "POST" && u.pathname === "/v2/users" && searchOf(init))
+        return new Response(stale, {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        });
+      return fetch(input, init);
+    };
+    const p = new ZitadelCustomerIdentity({
+      baseUrl: base,
+      orgId: customer.orgId,
+      projectId: customer.projectId,
+      clientId: customer.clientId,
+      clientSecret: customer.clientSecret,
+      redirectUri: "http://localhost/ipb-customer-callback",
+      loginClient: customer.loginClient,
+      store: customerStore,
+      replay: customerReplay,
+      revocations,
+      sender: mail.sender,
+      customerRoles: CUSTOMER_ROLES,
+      allowLoopbackHttp: true,
+      fetchImpl: proxy,
+    });
+    const t = p.signInProofTarget;
+    const signIn = async () => {
+      const device = testDevice();
+      const ch = await p.startChallenge({
+        tenantId,
+        channel: "sms",
+        login,
+        dpopProof: device.proof(t.htm, t.htu),
+      });
+      const s = await p.verifyChallenge({
+        tenantId,
+        challengeId: ch.challengeId,
+        code: mail.inbox.get(login)!,
+        dpopProof: device.proof(t.htm, t.htu),
+        deviceLabel: "contract phone",
+      });
+      const url = "https://api.example.test/v1/me";
+      return (
+        await p.verifyRequest({
+          authorization: `DPoP ${s.accessToken}`,
+          dpopProof: device.proof("GET", url, { accessToken: s.accessToken }),
+          method: "GET",
+          url,
+        })
+      ).sub;
+    };
+    const retired = await signIn();
+    // Record the search's answer once it lists the account, then retire the account.
+    const search = () =>
+      fetch(`${base}/v2/users`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${customer.loginClient.token}`,
+          "content-type": "application/json",
+          "x-zitadel-orgid": customer.orgId,
+        },
+        body: JSON.stringify({
+          queries: [
+            { userNameQuery: { userName: username, method: "TEXT_QUERY_METHOD_EQUALS" } },
+            { organizationIdQuery: { organizationId: customer.orgId } },
+          ],
+        }),
+      }).then((r) => r.text());
+    for (let i = 0; i < 60 && !stale; i++) {
+      const body = await search();
+      if (body.includes(retired)) stale = body;
+      else await new Promise((r) => setTimeout(r, 500));
+    }
+    expect(stale, "the search never listed the new account").toBeDefined();
+    await p.retireLogin({ tenantId, userId: retired, channel: "sms", login });
+    const next = await signIn();
+    expect(next).not.toBe(retired);
+  });
 
   it.skipIf(Boolean(LOCAL))(
     "JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002",
