@@ -60,7 +60,21 @@ export function typeError(def: SettingDef, v: unknown): string | null {
   }
 }
 
+/** The list types `minItems`, `maxItems` and `uniqueItems` apply to (PR-LDC-56). */
+export const LIST_SETTING_TYPES: readonly SettingDef["type"][] = ["string[]", "enum[]", "cidr[]"];
+
+function itemsError(def: SettingDef, v: readonly unknown[]): string | null {
+  if (def.minItems !== undefined && v.length < def.minItems)
+    return `needs at least ${def.minItems} item${def.minItems === 1 ? "" : "s"}`;
+  if (def.maxItems !== undefined && v.length > def.maxItems)
+    return `allows at most ${def.maxItems} item${def.maxItems === 1 ? "" : "s"}`;
+  if (def.uniqueItems && new Set(v.map((x) => JSON.stringify(x))).size !== v.length)
+    return "items must all be different";
+  return null;
+}
+
 export function boundsError(def: SettingDef, v: unknown): string | null {
+  if (Array.isArray(v)) return LIST_SETTING_TYPES.includes(def.type) ? itemsError(def, v) : null;
   if (typeof v !== "number") return null;
   if (def.min !== undefined && v < def.min) return `below floor ${def.min}`;
   if (def.max !== undefined && v > def.max) return `above ceiling ${def.max}`;
@@ -123,4 +137,32 @@ export function assertValid(def: SettingDef, v: unknown): void {
   if (t) throw new IpbError("IPB-UX-008", { detail: `${def.key}: ${t}`, meta: { key: def.key } });
   const b = boundsError(def, v);
   if (b) throw new IpbError("IPB-UX-008", { detail: `${def.key}: ${b}`, meta: { key: def.key } });
+}
+
+/**
+ * A definition's own consistency, checked when a registry is built (PR-LDC-56): item bounds only
+ * on list types, as non-negative integers with `minItems <= maxItems`, and a default that passes
+ * every check a write would make. A product's mistake fails at boot, not on the first write.
+ */
+export function definitionErrors(def: SettingDef): string[] {
+  const out: string[] = [];
+  const hasItems =
+    def.minItems !== undefined || def.maxItems !== undefined || def.uniqueItems !== undefined;
+  if (hasItems && !LIST_SETTING_TYPES.includes(def.type))
+    out.push(`${def.key}: minItems, maxItems and uniqueItems apply to list types only`);
+  for (const [name, n] of [
+    ["minItems", def.minItems],
+    ["maxItems", def.maxItems],
+  ] as const)
+    if (n !== undefined && (!Number.isInteger(n) || n < 0 || n > 10_000))
+      out.push(`${def.key}: ${name} is an integer from 0 to 10000`);
+  if (def.minItems !== undefined && def.maxItems !== undefined && def.minItems > def.maxItems)
+    out.push(`${def.key}: minItems is above maxItems`);
+  if (def.uniqueItems !== undefined && typeof def.uniqueItems !== "boolean")
+    out.push(`${def.key}: uniqueItems is true or false`);
+  if (hasItems && def.default !== null && def.default !== undefined) {
+    const e = typeError(def, def.default) ?? boundsError(def, def.default);
+    if (e) out.push(`${def.key}: default ${e}`);
+  }
+  return out;
 }

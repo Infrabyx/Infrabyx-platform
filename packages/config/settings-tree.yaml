@@ -786,6 +786,16 @@ keys:
       source: "IPB-01 §01.4.4.2 STORAGE",
     }
   - {
+      key: "int.storage.bucket.{class}.{compartment}",
+      tier: "PLATFORM",
+      type: "string",
+      default: null,
+      change: ["PLT_SUPER_ADMIN"],
+      mc: "R4",
+      note: "PR-LDC-60: a compartment's own bucket (confidential or regulated; board_confidential or sealed), distinct from every other bucket",
+      source: "IPB-01 §01.4.4.2 STORAGE; R1-D-158",
+    }
+  - {
       key: int.storage.region,
       tier: "PLATFORM",
       type: "string",

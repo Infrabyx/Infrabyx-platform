@@ -10,6 +10,7 @@ export * from "./outbox.js";
 export * from "./tenant-sweep.js";
 export * from "./eco-inbox.js";
 export * from "./idempotency.js";
+export * from "./rate-limit.js";
 export * from "./approvals/index.js";
 export * from "./breakglass.js";
 export * from "./external.js";

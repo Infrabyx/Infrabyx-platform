@@ -9,9 +9,10 @@ import {
   MandateApprovalSubject,
   type MandateApprovalVerifier,
 } from "@infrabyx/contracts/ports";
-import { isFunctionRole } from "@infrabyx/contracts/roles";
+import { AGENT_ROLE_REGEX, isFunctionRole, RoleSchema } from "@infrabyx/contracts/roles";
 import type {
   ApprovalGateway,
+  ApprovalLevelInput,
   ApprovalRequestInput,
   AuditSink,
   KernelContext,
@@ -60,7 +61,22 @@ export interface ApprovalRecord {
   diff: Record<string, unknown> | null;
   /** Why it was cancelled, when the canceller gave a reason (`cancelIn`; PR-LDC-37). */
   cancelReason: string | null;
+  /** Ordered levels (PR-LDC-38), or null for a single-level request. */
+  levels: readonly ApprovalLevel[] | null;
+  /** The level now deciding (1-based), or null when there are no levels or none is pending. */
+  currentLevel: number | null;
+  /** Approvals already given at `currentLevel`. */
+  currentLevelApprovals: number;
 }
+
+/** One stored level: who may decide and how many distinct checkers it needs. */
+export interface ApprovalLevel {
+  checkerRoles: readonly string[];
+  checkers: number;
+}
+
+export const APPROVAL_MAX_LEVELS = 5;
+export const APPROVAL_MAX_LEVEL_CHECKERS = 3;
 
 export interface ActionPolicy {
   /** Roles that may check. Default: ORG_CHECKER, ORG_ADMIN, ORG_OWNER in a tenant; PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN in a platform context. */
@@ -167,6 +183,7 @@ const CANCEL_ROLES = ["ORG_OWNER", "PLT_SECURITY_OFFICER"];
 
 interface Row {
   cancel_reason?: string | null;
+  levels?: ApprovalLevel[] | null;
   id: string;
   tenant_id: string;
   action: string;
@@ -197,7 +214,20 @@ interface Row {
 const expiresAtOf = (r: Row): Date =>
   r.expires_at ?? new Date(r.created_at.getTime() + APPROVAL_EXPIRY_HOURS.default * 3_600_000);
 
-const toRecord = (r: Row): ApprovalRecord => ({
+/** Which level decides now and how many approvals it has, from the decisions at each level. */
+function levelProgress(
+  levels: readonly ApprovalLevel[] | null | undefined,
+  approvals: ReadonlyMap<number, number>,
+): { current: number | null; done: number } {
+  if (!levels?.length) return { current: null, done: 0 };
+  for (let i = 0; i < levels.length; i++) {
+    const done = approvals.get(i + 1) ?? 0;
+    if (done < levels[i]!.checkers) return { current: i + 1, done };
+  }
+  return { current: null, done: 0 };
+}
+
+const toRecord = (r: Row, approvals: ReadonlyMap<number, number> = new Map()): ApprovalRecord => ({
   id: r.id,
   tenantId: r.tenant_id,
   action: r.action,
@@ -219,6 +249,14 @@ const toRecord = (r: Row): ApprovalRecord => ({
   financial: r.financial,
   diff: r.diff,
   cancelReason: r.cancel_reason ?? null,
+  levels: r.levels?.length ? r.levels : null,
+  ...(() => {
+    const p =
+      r.state === "pending" && !r.expired_at
+        ? levelProgress(r.levels, approvals)
+        : { current: null, done: 0 };
+    return { currentLevel: p.current, currentLevelApprovals: p.done };
+  })(),
 });
 
 const ENCRYPTED: readonly DataClass[] = ["CONFIDENTIAL", "REGULATED"];
@@ -295,7 +333,11 @@ export class ApprovalsEngine implements ApprovalGateway {
     const amount = policy.amountOf?.(input.payload);
     const dual =
       tenant.dualCheckerAbove != null && amount !== undefined && amount > tenant.dualCheckerAbove;
-    const checkers = Math.max(risk.checkers, dual ? 2 : 1);
+    const base = Math.max(risk.checkers, dual ? 2 : 1);
+    const levels = input.levels
+      ? await this.levelsFor(ctx, input.action, input.levels, base)
+      : null;
+    const checkers = levels ? levels.reduce((n, l) => n + l.checkers, 0) : base;
     const financial = policy.financial === true;
     const cls = input.payloadDataClass ?? "INTERNAL";
     if (cls === "SECRET") throw new Error("SECRET data never enters an approval payload");
@@ -318,9 +360,10 @@ export class ApprovalsEngine implements ApprovalGateway {
     await tx.query(
       `insert into tenancy.approval_request
          (id, tenant_id, action, risk_class, payload_digest, payload, payload_enc, payload_key_id, payload_class,
-          summary, maker_id, maker_type, required_checkers, delay_minutes, financial, diff, expires_at)
+          summary, maker_id, maker_type, required_checkers, delay_minutes, financial, diff, expires_at,
+          levels)
        values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16::jsonb,
-               now() + make_interval(hours => $17))`,
+               now() + make_interval(hours => $17), $18::jsonb)`,
       [
         id,
         ctx.tenantId,
@@ -339,13 +382,19 @@ export class ApprovalsEngine implements ApprovalGateway {
         financial,
         JSON.stringify(storedDiff(input.diff, cls)),
         expiryHoursFor(input.riskClass, financial, tenant.expiryHours),
+        levels ? JSON.stringify(levels) : null,
       ],
     );
     await this.o.audit.record(tx, {
       action: "approvals.request.create",
       resourceType: "approval_request",
       resourceId: id,
-      after: { action: input.action, risk_class: input.riskClass, payload_digest: digest },
+      after: {
+        action: input.action,
+        risk_class: input.riskClass,
+        payload_digest: digest,
+        ...(levels ? { levels: levels.length } : {}),
+      },
     });
     await this.emit(tx, "ApprovalRequested", {
       request_id: id,
@@ -362,7 +411,7 @@ export class ApprovalsEngine implements ApprovalGateway {
   }
 
   async get(ctx: KernelContext, id: string): Promise<ApprovalRecord> {
-    return this.o.kernel.read(ctx, async (tx) => toRecord(await this.load(tx, id, false)));
+    return this.o.kernel.read(ctx, async (tx) => this.record(tx, await this.load(tx, id, false)));
   }
 
   /** Approve or reject. Agents never check (IPB-02-10); the maker never checks (IPB-SEC-007). */
@@ -382,16 +431,27 @@ export class ApprovalsEngine implements ApprovalGateway {
         if (row.state !== "pending") throw new ConflictError(`approval ${id} is ${row.state}`);
         if (row.maker_id === ctx.principal.id)
           throw new IpbError("IPB-SEC-007", { meta: { request_id: id } });
-        await this.assertChecker(ctx, row.action);
+        // Ordered levels (PR-LDC-38): the checker decides at the level now open; level 1 keeps the
+        // action's own checker rule, later levels need one of their roles.
+        const level = levelProgress(row.levels, await this.approvalsByLevel(tx, id)).current;
+        if (level === null || level === 1) await this.assertChecker(ctx, row.action);
+        if (level !== null) {
+          const roles = row.levels![level - 1]!.checkerRoles;
+          if (!ctx.principal.roles.some((r) => roles.includes(r)))
+            throw new IpbError("IPB-UX-011", {
+              detail: `level ${level} checker needs one of ${roles.join(", ")}`,
+              meta: { request_id: id, level },
+            });
+        }
         const dup = await tx.query(
           "select 1 from tenancy.approval_decision where request_id = $1 and checker_id = $2",
           [id, ctx.principal.id],
         );
         if (dup.rows.length) throw new ConflictError("this checker has already decided");
         await tx.query(
-          `insert into tenancy.approval_decision (request_id, tenant_id, maker_id, checker_id, decision, reason)
-           values ($1, $2, $3, $4, $5, $6)`,
-          [id, ctx.tenantId, row.maker_id, ctx.principal.id, decision, reason ?? null],
+          `insert into tenancy.approval_decision (request_id, tenant_id, maker_id, checker_id, decision, reason, level)
+           values ($1, $2, $3, $4, $5, $6, $7)`,
+          [id, ctx.tenantId, row.maker_id, ctx.principal.id, decision, reason ?? null, level],
         );
         let next: Row;
         if (decision === "reject") {
@@ -401,21 +461,23 @@ export class ApprovalsEngine implements ApprovalGateway {
             "select count(*) as n from tenancy.approval_decision where request_id = $1 and decision = 'approve'",
             [id],
           );
-          next =
-            Number(n.rows[0]?.n) >= row.required_checkers
-              ? await this.update(
-                  tx,
-                  id,
-                  "state = 'approved', approved_at = now(), delay_until = now() + make_interval(mins => delay_minutes)",
-                )
-              : row;
+          const complete = row.levels?.length
+            ? levelProgress(row.levels, await this.approvalsByLevel(tx, id)).current === null
+            : Number(n.rows[0]?.n) >= row.required_checkers;
+          next = complete
+            ? await this.update(
+                tx,
+                id,
+                "state = 'approved', approved_at = now(), delay_until = now() + make_interval(mins => delay_minutes)",
+              )
+            : row;
         }
         await this.o.audit.record(tx, {
           action: `approvals.request.${decision}`,
           resourceType: "approval_request",
           resourceId: id,
           before: { state: row.state },
-          after: { state: next.state },
+          after: { state: next.state, ...(level !== null ? { level } : {}) },
         });
         await this.emit(tx, "ApprovalDecided", {
           request_id: id,
@@ -426,7 +488,8 @@ export class ApprovalsEngine implements ApprovalGateway {
           checker_id: ctx.principal.id,
           delay_until: next.delay_until?.toISOString() ?? null,
         });
-        for (const ob of this.o.observers ?? []) await ob.onDecided?.(tx, toRecord(next), decision);
+        const rec = await this.record(tx, next);
+        for (const ob of this.o.observers ?? []) await ob.onDecided?.(tx, rec, decision);
         const policy = this.policies.get(row.action);
         if (
           next.state === "approved" &&
@@ -436,7 +499,7 @@ export class ApprovalsEngine implements ApprovalGateway {
         ) {
           next = await this.runExecutor(tx, next);
         }
-        return toRecord(next);
+        return await this.record(tx, next);
       },
       { action: `approvals.request.${decision}` },
     );
@@ -685,7 +748,7 @@ export class ApprovalsEngine implements ApprovalGateway {
           maker_id: row.maker_id,
           expires_at: expiresAtOf(row).toISOString(),
         });
-        const rec = toRecord(next);
+        const rec = await this.record(tx, next);
         for (const ob of this.o.observers ?? []) await ob.onExpired?.(tx, rec);
         return rec;
       },
@@ -708,7 +771,7 @@ export class ApprovalsEngine implements ApprovalGateway {
           resourceId: id,
           after: { reminded: true },
         });
-        const rec = toRecord(next);
+        const rec = await this.record(tx, next);
         for (const ob of this.o.observers ?? []) await ob.onReminded?.(tx, rec);
         return rec;
       },
@@ -747,7 +810,7 @@ export class ApprovalsEngine implements ApprovalGateway {
           escalated_to_role: APPROVAL_ESCALATION_ROLE,
           pending_hours: hours,
         });
-        const rec = toRecord(next);
+        const rec = await this.record(tx, next);
         for (const ob of this.o.observers ?? [])
           await ob.onEscalated?.(tx, rec, APPROVAL_ESCALATION_ROLE);
         return rec;
@@ -784,6 +847,50 @@ export class ApprovalsEngine implements ApprovalGateway {
     if (!own.length) return named;
     const subset = own.filter((f) => named.includes(f));
     return subset.length ? subset : own;
+  }
+
+  /**
+   * Check and store a request's levels (PR-LDC-38, #125): 1 to 5, each 1 to 16 roles and 1 to 3
+   * checkers; no agent role; level 1's roles among the action's checker roles and its checkers at
+   * least the risk class's `base`. A level never loosens the action's rule, so a bad definition is
+   * a programming error and throws.
+   */
+  private async levelsFor(
+    ctx: KernelContext,
+    action: string,
+    input: readonly ApprovalLevelInput[],
+    base: number,
+  ): Promise<ApprovalLevel[]> {
+    const bad = (why: string) => new TypeError(`approval levels for ${action}: ${why}`);
+    if (!Array.isArray(input) || input.length < 1 || input.length > APPROVAL_MAX_LEVELS)
+      throw bad(`1 to ${APPROVAL_MAX_LEVELS} levels`);
+    const allowed = await this.checkerRolesFor(ctx, action);
+    return input.map((l, i) => {
+      const roles: string[] = [...new Set<string>(l?.checkerRoles ?? [])];
+      if (roles.length < 1 || roles.length > 16) throw bad(`level ${i + 1} needs 1 to 16 roles`);
+      for (const r of roles)
+        if (typeof r !== "string" || !RoleSchema.safeParse(r).success || AGENT_ROLE_REGEX.test(r))
+          throw bad(`level ${i + 1}: ${JSON.stringify(r)} cannot check`);
+      if (i === 0 && roles.some((r) => !allowed.includes(r)))
+        throw bad(`level 1 roles must be among the action's checker roles (${allowed.join(", ")})`);
+      const n: number = l.checkers ?? 1;
+      if (!Number.isInteger(n) || n < 1 || n > APPROVAL_MAX_LEVEL_CHECKERS)
+        throw bad(`level ${i + 1} needs 1 to ${APPROVAL_MAX_LEVEL_CHECKERS} checkers`);
+      return { checkerRoles: roles, checkers: i === 0 ? Math.max(n, base) : n };
+    });
+  }
+
+  private async approvalsByLevel(tx: Tx, id: string): Promise<Map<number, number>> {
+    const r = await tx.query<{ level: number; n: string }>(
+      `select level, count(*) as n from tenancy.approval_decision
+        where request_id = $1 and decision = 'approve' and level is not null group by level`,
+      [id],
+    );
+    return new Map(r.rows.map((x) => [Number(x.level), Number(x.n)]));
+  }
+
+  private async record(tx: Tx, row: Row): Promise<ApprovalRecord> {
+    return toRecord(row, row.levels?.length ? await this.approvalsByLevel(tx, row.id) : new Map());
   }
 
   private async assertNotExpired(tx: Tx, row: Row): Promise<void> {

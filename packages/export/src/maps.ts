@@ -12,7 +12,8 @@ export function loadExportMap(path: string | URL): ExportMap {
 }
 
 /**
- * The current reference map. 1.6 (R1-D-161) adds the ledger's `business_ids` (`audit/0010`,
+ * The current reference map. 1.7 (R1-D-163) adds an approval request's ordered `levels` and each
+ * decision's `level` (`tenancy/0023`, #125); 1.6 (R1-D-161) added the ledger's `business_ids` (`audit/0010`,
  * PR-LDC-30), which the chain hashes when they are set, and an approval's `cancel_reason`
  * (`tenancy/0022`, PR-LDC-37); 1.5 (R1-D-95, OWNER-QUESTIONS #110) added the setting change history
  * (`config.setting_change`, config/0003): who changed which setting at which scope, when, from
@@ -23,9 +24,13 @@ export function loadExportMap(path: string | URL): ExportMap {
  * export time to the README.
  */
 export const REF_EXPORT_MAP: ExportMap = loadExportMap(
-  new URL("../maps/REF-EXPORT-1.6.json", import.meta.url),
+  new URL("../maps/REF-EXPORT-1.7.json", import.meta.url),
 );
 /** The previous reference map, still emitted during the dual run. */
+export const REF_EXPORT_MAP_1_6: ExportMap = loadExportMap(
+  new URL("../maps/REF-EXPORT-1.6.json", import.meta.url),
+);
+/** An earlier map (kept for archives built under it). */
 export const REF_EXPORT_MAP_1_5: ExportMap = loadExportMap(
   new URL("../maps/REF-EXPORT-1.5.json", import.meta.url),
 );

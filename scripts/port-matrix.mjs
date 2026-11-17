@@ -35,6 +35,7 @@ export const PORTS = [
   "ESTAMP",
   "DOCGEN",
   "AV",
+  "PDF",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -66,6 +67,13 @@ const EXTRA_PATHS = {
   IMAGE_GEN: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
   // The AV contract and fake are named for what they do, not the catalogue's short name.
   AV: ["packages/contracts/src/ports/file-scan.ts", "packages/testing/src/ports/file-scan"],
+  // PDF text extraction (PR-LDC-39): the port lives beside DOCGEN, and needs a CLEAN scan.
+  PDF: [
+    "packages/contracts/src/ports/docgen.ts",
+    "packages/contracts/src/ports/pdf-text.ts",
+    "packages/contracts/src/ports/file-scan.ts",
+    "packages/testing/src/ports/pdf-text",
+  ],
 };
 
 export const portPaths = (port) => [

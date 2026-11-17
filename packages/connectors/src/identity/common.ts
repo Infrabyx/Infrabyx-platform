@@ -9,8 +9,10 @@ import {
   emailDomainOf,
   IdentityProviderSpec,
   idpUrlAllowed,
-  mfaRequired,
+  mfaRequiredBy,
   parseSecretRef,
+  PLATFORM_MFA_FLOOR,
+  type MfaFloor,
   RoleSchema,
   type IdentityProviderConfig,
   type IdentityProviderInfo,
@@ -51,6 +53,8 @@ export function toVerifiedClaims(raw: Record<string, unknown>): VerifiedClaims {
       : {}),
     ...(typeof raw.bg === "string" ? { bg: raw.bg } : {}),
     mfa: raw.mfa === true || amr.some((a) => MFA_AMR.has(a.toLowerCase())),
+    ...(amr.length ? { amr: amr.slice(0, 16).filter((a) => a.length <= 32) } : {}),
+    ...(typeof raw.acr === "string" && raw.acr.length <= 255 ? { acr: raw.acr } : {}),
     ...(typeof raw.sid === "string" ? { sid: raw.sid } : {}),
     exp: raw.exp,
     iat: raw.iat,
@@ -64,10 +68,131 @@ export function toVerifiedClaims(raw: Record<string, unknown>): VerifiedClaims {
   return r.data!;
 }
 
-/** IPB-02-02 at the API guard: a privileged role without MFA in this session is IPB-SEC-001. */
-export function assertMfaForRoles(claims: VerifiedClaims): void {
-  if (mfaRequired(claims.roles) && claims.mfa !== true)
-    throw new IpbError("IPB-SEC-001", { detail: "this role requires multi-factor authentication" });
+/**
+ * Second factors that count for a role whose floor excludes SMS (RFC 8176 and the IdPs' values):
+ * not `sms`, and not the bare `mfa` or `user` markers, which do not say which factor was used.
+ */
+const NON_SMS_FACTORS = new Set([
+  "otp",
+  "totp",
+  "hwk",
+  "swk",
+  "sc",
+  "pop",
+  "fpt",
+  "face",
+  "webauthn",
+  "passkey",
+]);
+
+export interface MfaCheckOptions {
+  /**
+   * Answer in step-up form (RFC 9470): the error carries `meta.step_up` and `meta.required_acr`,
+   * and `stepUpChallenge` turns it into a 401 with `WWW-Authenticate`, so a BFF can re-run sign-in
+   * with `acr_values`. Without it the answer is the 403 `IPB-SEC-001`.
+   */
+  stepUp?: { acrValues: string };
+}
+
+const ACR_VALUES = /^[\x21\x23-\x5b\x5d-\x7e]{1,255}( [\x21\x23-\x5b\x5d-\x7e]{1,255}){0,7}$/;
+
+/**
+ * IPB-02-02 at the API guard: a role on the floor without MFA in this session is `IPB-SEC-001`.
+ * `floor` (from `mfaFloor`) adds a product's roles and its SMS exclusions; the platform floor always
+ * applies. For an SMS-excluded role the session must name a non-SMS second factor in `amr`, so a
+ * token that only says `mfa: true` is refused for it (fail closed).
+ */
+export function assertMfaForRoles(
+  claims: VerifiedClaims,
+  floor: MfaFloor = PLATFORM_MFA_FLOOR,
+  o: MfaCheckOptions = {},
+): void {
+  if (o.stepUp !== undefined && !ACR_VALUES.test(o.stepUp.acrValues))
+    throw new TypeError("assertMfaForRoles: stepUp.acrValues must be one to eight acr values");
+  if (!mfaRequiredBy(floor, claims.roles)) return;
+  const smsExcluded = floor.smsExcludedRoles.some((r) => claims.roles.includes(r));
+  const strong = (claims.amr ?? []).some((a) => NON_SMS_FACTORS.has(a.toLowerCase()));
+  if (claims.mfa === true && (!smsExcluded || strong)) return;
+  const detail =
+    claims.mfa === true
+      ? "this role requires a second factor other than SMS"
+      : "this role requires multi-factor authentication";
+  throw new IpbError("IPB-SEC-001", {
+    detail,
+    ...(o.stepUp
+      ? {
+          meta: {
+            step_up: true,
+            required_acr: o.stepUp.acrValues,
+            ...(smsExcluded ? { sms_excluded: true } : {}),
+          },
+        }
+      : {}),
+  });
+}
+
+/**
+ * The RFC 9470 answer for a step-up `IPB-SEC-001` from `assertMfaForRoles`: status 401 and
+ * `WWW-Authenticate: Bearer error="insufficient_user_authentication", ..., acr_values="..."`.
+ * Returns null for any other error, which keeps its own status.
+ */
+export function stepUpChallenge(
+  e: unknown,
+): { status: 401; headers: { "www-authenticate": string }; requiredAcr: string } | null {
+  if (!(e instanceof IpbError) || e.code !== "IPB-SEC-001" || e.meta?.step_up !== true) return null;
+  const acr = e.meta.required_acr;
+  if (typeof acr !== "string" || !ACR_VALUES.test(acr)) return null;
+  const description =
+    e.meta.sms_excluded === true
+      ? "A second factor other than SMS is required"
+      : "Multi-factor authentication is required";
+  return {
+    status: 401,
+    requiredAcr: acr,
+    headers: {
+      "www-authenticate": `Bearer error="insufficient_user_authentication", error_description="${description}", acr_values="${acr}"`,
+    },
+  };
+}
+
+/** A route a product serves, as its boot check sees it. */
+export interface RouteGuardEntry {
+  /** The route pattern, e.g. `/oauth/callback` or `/api/v1/cases/:id`. */
+  path: string;
+  /** True when the route is behind `assertMfaForRoles` (the MFA floor). */
+  mfaFloor: boolean;
+  /**
+   * True for a route a session needs in order to step up (sign-in callback, MFA enrolment,
+   * session refresh, sign-out). Unset: decided by `STEP_UP_ROUTE_PATTERNS`. `false` only when a
+   * route matching a pattern really is not one (say so in a review).
+   */
+  stepUp?: boolean;
+}
+
+/** Routes treated as step-up routes unless marked `stepUp: false`. */
+export const STEP_UP_ROUTE_PATTERNS: readonly RegExp[] = [
+  /(^|\/)(oauth|oidc|auth|sso)(\/[^/]+)*\/callback\/?$/i,
+  /(^|\/)(login|signin|sign-in|logout|signout|sign-out)(\/|$)/i,
+  /(^|\/)(mfa|2fa|otp|webauthn|passkeys?)(\/|$)/i,
+  /(^|\/)(session|token)\/(refresh|renew)\/?$/i,
+  /^\/\.well-known\//,
+];
+
+/**
+ * Boot check (PR-LDC-55 item 3): refuses (`TypeError`) when a route a session needs to step up is
+ * guarded by the MFA floor, which would leave a user unable to reach the step that satisfies it.
+ */
+export function assertStepUpReachable(routes: readonly RouteGuardEntry[]): void {
+  const bad = routes.filter(
+    (r) =>
+      r.mfaFloor &&
+      (r.stepUp === true ||
+        (r.stepUp === undefined && STEP_UP_ROUTE_PATTERNS.some((p) => p.test(r.path)))),
+  );
+  if (bad.length)
+    throw new TypeError(
+      `step-up routes are behind the MFA floor: ${bad.map((r) => r.path).join(", ")}`,
+    );
 }
 
 // ---- revocation (IPB-02-05) ---------------------------------------------------------------------

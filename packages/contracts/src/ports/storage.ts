@@ -12,9 +12,36 @@ export const BUCKET_CLASSES = [
 ] as const;
 export type BucketClass = (typeof BUCKET_CLASSES)[number];
 
+/**
+ * Separately keyed compartments within a bucket class (LawDocsComply PR-LDC-60, R1-D-158). An
+ * object in a compartment lives in that compartment's own bucket under its own encryption key,
+ * never one shared with the class's other objects or with another compartment; the class's lock
+ * and retention rules still apply. `BOARD_CONFIDENTIAL`: board papers and unpublished
+ * price-sensitive information. `SEALED`: material sealed by an order or an agreement.
+ */
+export const STORAGE_COMPARTMENTS = ["BOARD_CONFIDENTIAL", "SEALED"] as const;
+export type StorageCompartment = (typeof STORAGE_COMPARTMENTS)[number];
+/** The bucket classes a compartment may be used in. */
+export const COMPARTMENT_CLASSES = [
+  "CONFIDENTIAL",
+  "REGULATED",
+] as const satisfies readonly BucketClass[];
+export type CompartmentClass = (typeof COMPARTMENT_CLASSES)[number];
+
+/** Whether `compartment` may be used in `cls` (no compartment is always allowed). */
+export function compartmentAllowed(cls: BucketClass, compartment?: StorageCompartment): boolean {
+  return (
+    compartment === undefined ||
+    ((STORAGE_COMPARTMENTS as readonly string[]).includes(compartment) &&
+      (COMPARTMENT_CLASSES as readonly string[]).includes(cls))
+  );
+}
+
 export interface ObjectMeta {
   contentType?: string;
   bucketClass: BucketClass;
+  /** PR-LDC-60: a separately keyed compartment of `bucketClass` (`CONFIDENTIAL` or `REGULATED`). */
+  compartment?: StorageCompartment;
   sha256?: string;
   tags?: Record<string, string>;
 }
@@ -36,6 +63,8 @@ export interface ObjectRetention {
 export interface PresignOptions {
   /** Required for `put`; for `get` the adapter finds the object. */
   bucketClass?: BucketClass;
+  /** For `put` into a compartment (PR-LDC-60); the URL then writes under the compartment's key. */
+  compartment?: StorageCompartment;
   /** Required for `put`: signed, so the upload must send exactly this content type. */
   contentType?: string;
 }

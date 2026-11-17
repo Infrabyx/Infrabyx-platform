@@ -25,3 +25,4 @@ export {
   type OfficeProperties,
 } from "./ooxml.js";
 export * from "./xlsx.js";
+export * from "./xlsx-read.js";

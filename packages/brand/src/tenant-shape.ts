@@ -11,6 +11,62 @@ export const COLOUR_TOKENS = ["primary", "accent", "surface", "on_surface"] as c
 export type ColourToken = (typeof COLOUR_TOKENS)[number];
 
 export const TENANT_LOGIN_MESSAGE_MAX = 280;
+/** Letterhead header and footer text (PR-LDC-43): plain text, at most 2,000 characters each. */
+export const TENANT_LETTERHEAD_TEXT_MAX = 2000;
+/**
+ * Subdomain labels a tenant may never take under its product's app host (PR-LDC-43): the
+ * platform's and the product's own service names, and names that read as an official channel.
+ */
+export const RESERVED_SUBDOMAINS: readonly string[] = Object.freeze([
+  "www",
+  "app",
+  "api",
+  "admin",
+  "auth",
+  "id",
+  "login",
+  "sso",
+  "oauth",
+  "account",
+  "accounts",
+  "mail",
+  "email",
+  "smtp",
+  "imap",
+  "mx",
+  "status",
+  "help",
+  "support",
+  "docs",
+  "static",
+  "cdn",
+  "assets",
+  "media",
+  "files",
+  "storage",
+  "public",
+  "trust",
+  "security",
+  "legal",
+  "billing",
+  "pay",
+  "payments",
+  "sandbox",
+  "staging",
+  "dev",
+  "test",
+  "demo",
+  "internal",
+  "platform",
+  "ops",
+  "infrabyx",
+  "ldc",
+  "fbx",
+  "udf",
+  "eqr",
+  "ld",
+  "oh",
+]);
 export const TENANT_FROM_NAME_MAX = 80;
 
 const hex = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "a colour as #RRGGBB");
@@ -37,6 +93,16 @@ export function plainTextProblem(s: string, o: { multiline: boolean }): string |
   if (MARKUP.test(s)) return "markup is not allowed (no <, > or character references)";
   return null;
 }
+
+// A scheme that runs or loads something when text is rendered as a link (PR-LDC-43): letterhead
+// text is shown as text, but a renderer that auto-links must never find one.
+const RUNNING_URL = /\b(?:javascript|vbscript|data|file|blob)\s*:/i;
+
+const label = z
+  .string()
+  .regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/, "one lower-case host label (a-z, 0-9, -)")
+  .refine((l) => !l.startsWith("xn--"), "an internationalised (xn--) label is not allowed")
+  .refine((l) => !RESERVED_SUBDOMAINS.includes(l), "this subdomain is reserved");
 
 const plainText = (max: number, multiline: boolean) =>
   z
@@ -82,6 +148,26 @@ export const TenantLayerBody = z
     domain: hostname.optional(),
     /** Shown on the login screen as plain text. */
     login_message: plainText(TENANT_LOGIN_MESSAGE_MAX, true).optional(),
+    /** Letterhead header and footer as plain text (PR-LDC-43), beside or instead of the asset. */
+    letterhead_text: z
+      .object({
+        header: plainText(TENANT_LETTERHEAD_TEXT_MAX, true)
+          .refine((t) => !RUNNING_URL.test(t), "no javascript:, data: or similar links")
+          .optional(),
+        footer: plainText(TENANT_LETTERHEAD_TEXT_MAX, true)
+          .refine((t) => !RUNNING_URL.test(t), "no javascript:, data: or similar links")
+          .optional(),
+      })
+      .strict()
+      .refine((t) => t.header !== undefined || t.footer !== undefined, "a header or a footer")
+      .optional(),
+    /** The cover of generated PDFs (PR-LDC-43): an asset checked like the letterhead. */
+    cover: MediaRef.optional(),
+    /**
+     * A host label under the product's app host (PR-LDC-43): `acme` serves `acme.<app host>`.
+     * Unique group-wide like a domain; DNS and certificates are the product's deployment.
+     */
+    subdomain: label.optional(),
   })
   .strict();
 export type TenantLayerBody = z.infer<typeof TenantLayerBody>;

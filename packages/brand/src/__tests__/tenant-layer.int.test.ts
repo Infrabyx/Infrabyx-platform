@@ -417,4 +417,30 @@ describe("tenant brand layer: maker-checker, guards, isolation and resolution", 
     expect(served.body.tokens.colour.on_surface).toBe("#111827");
     expect(served.contrast.passed).toBe(true);
   });
+
+  it("serves a subdomain under the pack's app host once approved; another tenant cannot take it (PR-LDC-43)", async () => {
+    const p = await layers.propose(makerB, {
+      domain: "shared.example",
+      subdomain: "firm-b",
+      letterhead_text: { header: "Tenant B Legal", footer: "Registered office: Pune" },
+    });
+    expect((await approve(checkerB, p.approvalId)).state).toBe("executed");
+    const { resolution, brand } = await layers.resolveHost(siteCtx, {
+      host: "firm-b.app.ldc.example",
+    });
+    expect(resolution).toMatchObject({ packId, tenantId: "tnt_b" });
+    expect(brand).toMatchObject({
+      subdomain: "firm-b",
+      domain: "shared.example",
+      letterheadText: { header: "Tenant B Legal", footer: "Registered office: Pune" },
+      cover: null,
+    });
+    const rows = await ledger("tnt_b", "brand.tenant_layer.apply");
+    expect(rows.at(-1)).toBeDefined();
+    // Tenant C cannot claim B's label or its domain; the reserved labels never pass the shape.
+    const c = await layers.current(makerC);
+    expect(c?.status).toBe("active");
+    expect(await code(layers.propose(makerC, { subdomain: "firm-b" }))).toBe("IPB-BRD-002");
+    expect(await code(layers.propose(makerC, { subdomain: "admin" }))).toBe("ZodError");
+  });
 });

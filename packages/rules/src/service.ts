@@ -140,6 +140,17 @@ interface RuleSetRow {
   key: string;
   owner_module: string;
   data_class: DataClass;
+  purpose?: "decision" | "projection";
+}
+
+/** At most this many inputs in one `project` call. */
+export const RULES_PROJECT_MAX_INPUTS = 1000;
+
+/** One projected result: the outcome only, never a decision id (PR-LDC-49). */
+export interface Projection {
+  outcome: DecisionOutcome;
+  outputs: Record<string, unknown>;
+  reason: string;
 }
 
 interface Evaluated {
@@ -195,8 +206,20 @@ export class RulesService implements RulesPort {
   /** Create a rule set in the caller's tenant (platform sets: a platform context in `tnt_platform`). */
   async createRuleSet(
     ctx: KernelContext,
-    input: { key: string; ownerModule: string; dataClass?: DataClass },
+    input: {
+      key: string;
+      ownerModule: string;
+      dataClass?: DataClass;
+      /**
+       * `projection` (PR-LDC-49): evaluated only by `project`, which records nothing. Fixed at
+       * creation; default `decision`, evaluated only by `evaluate`, which always records.
+       */
+      purpose?: "decision" | "projection";
+    },
   ): Promise<{ ruleSetId: string }> {
+    const purpose = input.purpose ?? "decision";
+    if (purpose !== "decision" && purpose !== "projection")
+      throw new IpbError("IPB-RULE-001", { detail: "purpose is decision or projection" });
     if (!RuleSetKey.safeParse(input.key).success)
       throw new IpbError("IPB-RULE-001", { detail: "rule set key must be dotted lower case" });
     const cls = input.dataClass ?? "INTERNAL";
@@ -207,15 +230,20 @@ export class RulesService implements RulesPort {
       async (tx) => {
         const id = newId("rls");
         await tx.query(
-          `insert into rules.rule_set (id, tenant_id, key, owner_module, data_class, created_by)
-           values ($1, $2, $3, $4, $5, $6)`,
-          [id, ctx.tenantId, input.key, input.ownerModule, cls, ctx.principal.id],
+          `insert into rules.rule_set (id, tenant_id, key, owner_module, data_class, created_by, purpose)
+           values ($1, $2, $3, $4, $5, $6, $7)`,
+          [id, ctx.tenantId, input.key, input.ownerModule, cls, ctx.principal.id, purpose],
         );
         await this.o.audit.record(tx, {
           action: "rules.ruleset.create",
           resourceType: "rule_set",
           resourceId: id,
-          after: { key: input.key, owner_module: input.ownerModule, data_class: cls },
+          after: {
+            key: input.key,
+            owner_module: input.ownerModule,
+            data_class: cls,
+            ...(purpose === "projection" ? { purpose } : {}),
+          },
         });
         return { ruleSetId: id };
       },
@@ -463,6 +491,11 @@ export class RulesService implements RulesPort {
     const asOf = ref.asOf === undefined ? null : asOfInstant(ref);
     const { set, v } = await this.o.kernel.read(ctx, async (tx) => {
       const set = await this.loadSet(tx, ref.ruleSetId);
+      if (set.purpose === "projection")
+        throw new IpbError("IPB-RULE-003", {
+          detail: "a projection rule set is evaluated with project, never as a decision",
+          meta: { rule_set_id: ref.ruleSetId },
+        });
       const v =
         asOf !== null
           ? await this.versionAt(tx, ref.ruleSetId, asOf)
@@ -572,6 +605,49 @@ export class RulesService implements RulesPort {
       },
       { action: "rules.decision.record" },
     );
+  }
+
+  /**
+   * Project a batch of inputs through a projection rule set (PR-LDC-49): a read, with no decision
+   * record, no ledger entry and no human queue item; outcomes only, never a decision id. Refused
+   * (`IPB-RULE-003`) for a decision-grade rule set, so a decision is always recorded.
+   */
+  async project(
+    ctx: KernelContext,
+    ref: RuleSetRef,
+    inputs: readonly unknown[],
+  ): Promise<{ ruleSetId: string; version: number; results: Projection[] }> {
+    if (!Array.isArray(inputs) || inputs.length < 1 || inputs.length > RULES_PROJECT_MAX_INPUTS)
+      throw new IpbError("IPB-RULE-001", {
+        detail: `project takes 1 to ${RULES_PROJECT_MAX_INPUTS} inputs`,
+      });
+    const asOf = ref.asOf === undefined ? null : asOfInstant(ref);
+    const v = await this.o.kernel.read(ctx, async (tx) => {
+      const set = await this.loadSet(tx, ref.ruleSetId);
+      if (set.purpose !== "projection")
+        throw new IpbError("IPB-RULE-003", {
+          detail: "only a rule set created for projection is projected; decisions use evaluate",
+          meta: { rule_set_id: ref.ruleSetId },
+        });
+      const v =
+        asOf !== null
+          ? await this.versionAt(tx, ref.ruleSetId, asOf)
+          : ref.version === undefined
+            ? await this.publishedRow(tx, ref.ruleSetId)
+            : await this.loadVersion(tx, ref.ruleSetId, ref.version, false).catch(() => null);
+      if (!v || (ref.version !== undefined && !["published", "retired"].includes(v.state)))
+        throw new IpbError("IPB-RULE-002", { meta: { rule_set_id: ref.ruleSetId } });
+      return v;
+    });
+    const params = await this.resolveParameters(ctx, v.body);
+    const results: Projection[] = [];
+    for (const input of inputs) {
+      const r = params.invalid
+        ? undetermined("parameter_invalid")
+        : await this.run(v, input, params.values);
+      results.push({ outcome: r.outcome, outputs: r.outputs, reason: r.reason });
+    }
+    return { ruleSetId: ref.ruleSetId, version: v.version, results };
   }
 
   /** ORG_CHECKER first; ORG_ADMIN only if the tenant has no checker (OWNER-QUESTIONS #21). */

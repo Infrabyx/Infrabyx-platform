@@ -189,6 +189,26 @@ describe("approvals through the workflow (@IPB-02-AT-11, @IPB-02-AT-12)", () => 
     ]);
   });
 
+  it("ordered levels: each level's checkers get the item in turn (#125, PR-LDC-38)", async () => {
+    const { id } = await make({
+      action: "loans.sanction",
+      riskClass: "R2",
+      payload: { loan: "ln_10" },
+      levels: [{ checkerRoles: ["ORG_CHECKER"] }, { checkerRoles: ["ORG_OWNER"] }],
+    });
+    const mine = async (c: typeof checker) =>
+      (await inbox.list(c)).filter((i) => i.recordRef === id && i.type === "approval");
+    expect(await mine(checker)).toHaveLength(1);
+    expect(await mine(owner)).toEqual([]);
+    expect((await approvals.decide(checker, id, "approve")).currentLevel).toBe(2);
+    expect(await mine(checker)).toEqual([]);
+    const next = await mine(owner);
+    expect(next).toHaveLength(1);
+    expect(next[0]!.title).toMatch(/level 2 of 2/);
+    expect((await approvals.decide(owner, id, "approve")).state).toBe("executed");
+    expect(await mine(owner)).toEqual([]);
+  });
+
   it("reminds at 24 h and escalates at 48 h to ORG_ADMIN by timer; expiry at 72 h for financial R3", async () => {
     notified.length = 0;
     const { id } = await make({

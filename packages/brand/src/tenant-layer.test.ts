@@ -167,6 +167,36 @@ describe("the tenant layer shape and merge", () => {
       ).toBe(false);
   });
 
+  it("keeps letterhead text to plain text without running links, and subdomains to free labels (PR-LDC-43)", () => {
+    const ok = (b: unknown) => TenantLayerBody.safeParse(b).success;
+    expect(
+      ok({ letterhead_text: { header: "Example & Co\nAdvocates", footer: "x".repeat(2000) } }),
+    ).toBe(true);
+    expect(ok({ letterhead_text: { footer: "Visit https://firm.example" } })).toBe(true);
+    for (const t of [
+      "x".repeat(2001),
+      "<b>Firm</b>",
+      "click javascript:alert(1)",
+      "DATA:text/html,x",
+      "a\u202Eb",
+    ])
+      expect(ok({ letterhead_text: { header: t } }), t).toBe(false);
+    expect(ok({ letterhead_text: {} })).toBe(false);
+    expect(ok({ subdomain: "firm-b" })).toBe(true);
+    for (const l of [
+      "www",
+      "api",
+      "admin",
+      "login",
+      "Firm",
+      "-firm",
+      "firm.b",
+      "xn--frm-ula",
+      "a".repeat(64),
+    ])
+      expect(ok({ subdomain: l }), l).toBe(false);
+  });
+
   it("takes a domain as a lower-case host and resolves it only by the Host header", () => {
     for (const domain of [
       "Tenant.Example",
@@ -250,6 +280,11 @@ describe("every guard a pack publish uses, on the tenant layer", () => {
     expect(await code(check({ letterhead: { ...lying, content_type: "application/pdf" } }))).toBe(
       "IPB-SEC-010",
     );
+  });
+
+  it("checks a cover like the letterhead: PDF, PNG, JPEG or a sanitised SVG (PR-LDC-43)", async () => {
+    const html = await put(keyOf("tnt_a", "html"), "<p>x</p>", "text/html");
+    expect(await code(check({ cover: html }))).toBe("IPB-SEC-010");
   });
 
   it("refuses an email identity whose domain is not verified with IPB-BRD-005", async () => {

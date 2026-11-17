@@ -121,22 +121,27 @@ export class ApprovalWorkflow implements ApprovalObserver {
    * Whom an approval's inbox items go to: the holders of the named functions the action requires
    * (`FN:CRO`, …; R1-D-39), or else its checker roles.
    */
-  private async recipients(tx: Tx, action: string): Promise<readonly string[]> {
+  private async recipients(tx: Tx, action: string, r?: ApprovalRecord): Promise<readonly string[]> {
+    // Ordered levels (PR-LDC-38): a later level goes to its own roles only.
+    if (r?.levels && r.currentLevel && r.currentLevel > 1)
+      return r.levels[r.currentLevel - 1]!.checkerRoles;
     const fns = await this.approvals.checkerFunctionsFor(tx.ctx, action);
-    return fns.length ? fns : this.approvals.checkerRolesFor(tx.ctx, action);
+    if (fns.length) return fns;
+    if (r?.levels && r.currentLevel === 1) return r.levels[0]!.checkerRoles;
+    return this.approvals.checkerRolesFor(tx.ctx, action);
   }
 
-  // ------------------------------------------------------------------ observer (same transaction)
-
-  async onRequested(tx: Tx, r: ApprovalRecord): Promise<void> {
-    for (const role of await this.recipients(tx, r.action))
+  private async raiseApproval(tx: Tx, r: ApprovalRecord): Promise<void> {
+    const level =
+      r.levels && r.currentLevel ? ` level ${r.currentLevel} of ${r.levels.length}` : "";
+    for (const role of await this.recipients(tx, r.action, r))
       await this.o.inbox.raise(
         tx,
         {
           type: "approval",
           productModule: "approvals",
           recordRef: r.id,
-          title: `Approval needed: ${r.action} (${r.riskClass})`,
+          title: `Approval needed: ${r.action} (${r.riskClass})${level}`,
           assignee: { kind: "role", id: role },
           severity: r.riskClass === "R4" || r.riskClass === "R5" ? "warning" : "info",
           actionHint: "decide",
@@ -146,6 +151,12 @@ export class ApprovalWorkflow implements ApprovalObserver {
         },
         { excludePrincipal: r.makerId },
       );
+  }
+
+  // ------------------------------------------------------------------ observer (same transaction)
+
+  async onRequested(tx: Tx, r: ApprovalRecord): Promise<void> {
+    await this.raiseApproval(tx, r);
     const remindH = Math.min(
       APPROVAL_REMINDER_HOURS,
       Math.max(1, (await this.o.reminderHours?.(tx.ctx)) ?? APPROVAL_REMINDER_HOURS),
@@ -160,6 +171,12 @@ export class ApprovalWorkflow implements ApprovalObserver {
 
   async onDecided(tx: Tx, r: ApprovalRecord): Promise<void> {
     if (r.state === "rejected") return this.closed(tx, r, "rejected");
+    if (r.state === "pending" && r.levels && r.currentLevel && r.currentLevelApprovals === 0) {
+      // The previous level is complete: its items close and the next level's open.
+      await this.o.inbox.resolveFor(tx, "approvals", r.id, "approved", ["approval"]);
+      await this.raiseApproval(tx, r);
+      return;
+    }
     if (r.state !== "approved") return;
     await this.o.timers.cancel(tx, r.id, PENDING_TIMERS);
     await this.o.inbox.resolveFor(tx, "approvals", r.id, "approved", ["approval", "due"]);

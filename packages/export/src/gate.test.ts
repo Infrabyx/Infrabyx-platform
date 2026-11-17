@@ -202,7 +202,7 @@ alter table if exists only "documents"."document" add column e int, add f int;`,
 });
 
 describe("export maps", () => {
-  it("REF-EXPORT-1.6 matches the platform migrations", async () => {
+  it("REF-EXPORT-1.7 matches the platform migrations", async () => {
     const { readdirSync, readFileSync, existsSync } = await import("node:fs");
     const root = new URL("../../", import.meta.url);
     const all = readdirSync(root)

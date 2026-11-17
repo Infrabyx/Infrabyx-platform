@@ -20,6 +20,10 @@ export const VerifiedClaims = z.object({
   /** Break-glass grant id when the token was issued under break-glass (IPB-02 §02.4.2). */
   bg: z.string().optional(),
   mfa: z.boolean().optional(),
+  /** Authentication methods (RFC 8176), as the IdP reported them; read by the SMS exclusion. */
+  amr: z.array(z.string().max(32)).max(16).optional(),
+  /** Authentication context class (OIDC `acr`), as the IdP reported it. */
+  acr: z.string().max(255).optional(),
   /** Session id, checked against revoked sessions (IPB-02-05). */
   sid: z.string().optional(),
   exp: z.number().int(),

@@ -165,6 +165,21 @@ export interface ApprovalRequestInput {
    * PUBLIC or INTERNAL; above that only the changed field names are kept (PL3 plan §5.2).
    */
   diff?: { before: Record<string, unknown> | null; after: Record<string, unknown> };
+  /**
+   * Ordered approval levels (PR-LDC-38, owner answer #125): 1 to 5 levels decided in order. They
+   * only tighten the action's rule: level 1's roles must be among the action's checker roles and it
+   * needs at least the checkers the risk class asks for; every checker is a different person (never
+   * the maker, an earlier checker or an agent); any rejection ends the request; the delay runs from
+   * the last level's approval.
+   */
+  levels?: readonly ApprovalLevelInput[];
+}
+
+export interface ApprovalLevelInput {
+  /** Roles that may decide at this level (any one); 1 to 16. */
+  checkerRoles: readonly string[];
+  /** Distinct checkers needed at this level, 1 to 3 (default 1). */
+  checkers?: number;
 }
 
 /** Maker-checker gateway used by config for settings that require approval (IPB-07-39). */
