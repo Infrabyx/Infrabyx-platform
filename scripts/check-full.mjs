@@ -434,12 +434,16 @@ function heavySteps(o, ci) {
         `export HADOLINT_IMAGE='${e.HADOLINT_IMAGE}' TRIVY_IMAGE='${e.TRIVY_IMAGE}'`,
         `APPS='${e.APPS}'; NODE_APPS='${e.NODE_APPS}'`,
         'TAG="check-$(git rev-parse --short=12 HEAD)"',
+        // Behind a TLS-inspecting proxy (a session container), IPB_BUILD_CA names its CA bundle: it
+        // is passed as the Dockerfiles' optional `ca` build secret and to Trivy. Unset (CI), the
+        // commands are exactly CI's.
+        'CA_SECRET=(); CA_MOUNT=(); if [ -n "${IPB_BUILD_CA:-}" ]; then CA_SECRET=(--secret "id=ca,src=$IPB_BUILD_CA"); CA_MOUNT=(-v "$IPB_BUILD_CA:/etc/ssl/certs/ca-certificates.crt:ro"); fi',
         'for f in $(git ls-files "*Dockerfile"); do echo "== $f"; docker run --rm -i "$HADOLINT_IMAGE" hadolint - < "$f"; done',
-        'for dir in infra/docker infra/keycloak; do docker run --rm -v "$PWD:/src:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL "/src/$dir"; done',
-        'for app in $APPS; do docker build -f infra/docker/next/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',
-        'for app in $NODE_APPS; do docker build -f infra/docker/node/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',
-        'docker build -t "infrabyx/keycloak-customer:$TAG" infra/keycloak/customer-otp',
-        'for app in ${APPS//\\//-} ${NODE_APPS//\\//-} keycloak-customer; do docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret "infrabyx/$app:$TAG"; done',
+        'for dir in infra/docker infra/keycloak; do docker run --rm "${CA_MOUNT[@]}" -v "$PWD:/src:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL "/src/$dir"; done',
+        'for app in $APPS; do docker build "${CA_SECRET[@]}" -f infra/docker/next/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',
+        'for app in $NODE_APPS; do docker build "${CA_SECRET[@]}" -f infra/docker/node/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',
+        'docker build "${CA_SECRET[@]}" -t "infrabyx/keycloak-customer:$TAG" infra/keycloak/customer-otp',
+        'for app in ${APPS//\\//-} ${NODE_APPS//\\//-} keycloak-customer; do docker run --rm "${CA_MOUNT[@]}" -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret "infrabyx/$app:$TAG"; done',
         'IPB_IMAGES="$(for app in ${APPS//\\//-} ${NODE_APPS//\\//-}; do printf "infrabyx/%s:%s " "$app" "$TAG"; done)" pnpm images:test',
       ],
     );
@@ -707,7 +711,7 @@ async function startPg(run, step, log) {
         log.write(`[check:full] drop database ${db}: ${e.message}\n`);
       }
       try {
-        sh("docker", ["rm", "-f", name]);
+        sh("docker", ["rm", "-f", "-v", name]); // -v: the image declares a data VOLUME
       } catch {
         /* already gone */
       }
@@ -879,7 +883,7 @@ async function main(argv) {
       }
     try {
       const left = sh("docker", ["ps", "-aq", "--filter", `label=ipb-check-full=${id}`]);
-      if (left) sh("docker", ["rm", "-f", ...left.split("\n")]);
+      if (left) sh("docker", ["rm", "-f", "-v", ...left.split("\n")]);
     } catch {
       /* no docker */
     }
