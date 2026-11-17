@@ -20,6 +20,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const ROOT = new URL("..", import.meta.url).pathname.replace(/\/$/, "");
+const { packageManager } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
 
 /** What a bin prints when run with no arguments; the default is its usage line. */
 const RAN = {
@@ -58,7 +59,10 @@ describe("PR-UDF-005 every platform CLI runs as a product starts it", () => {
     );
     writeFileSync(
       join(app, "package.json"),
-      JSON.stringify({ name: "cli-bins", private: true, dependencies }),
+      // The repository's own pnpm (`packageManager`), as a product pins its own: outside this
+      // workspace Corepack would otherwise start the machine's default pnpm, and pnpm 12 writes
+      // shims to the real path (R1-D-168).
+      JSON.stringify({ name: "cli-bins", private: true, packageManager, dependencies }),
     );
     // link: dependencies only, so nothing is fetched; CI=true would otherwise demand a lockfile.
     // (With --ignore-scripts pnpm writes shims to the real path, which hides the fault.)
