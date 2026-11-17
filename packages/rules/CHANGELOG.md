@@ -1,5 +1,20 @@
 # @infrabyx/rules
 
+## 1.4.0
+
+### Minor Changes
+
+- c79fef5: `RulesService` can show one CONFIDENTIAL input of one decision to a caller the product's own rule allows (PR-LDC-59, owner answer #130, R1-D-173; product guide §7cg). Register `revealRule: { id, allows(ctx, req) }`, ask `entitleReveal(ctx, { decisionId, input, purpose })` for a single-use grant valid for 60 seconds, and pass it as `explain(ctx, decisionId, { reveal })`. REGULATED inputs, agents, platform contexts and `PLT_*` roles, break-glass, impersonation and external principals are refused before the product's rule runs (`IPB-RULE-004`). Each reveal is ledgered as `rules.decision.input_revealed` in the same transaction, without the value; nothing is written back. Without a `revealRule`, or without a grant, `explain` is unchanged. No migration.
+
+### Patch Changes
+
+- Updated dependencies [c79fef5]
+  - @infrabyx/contracts@1.30.0
+  - @infrabyx/config@1.15.1
+  - @infrabyx/connectors@1.16.3
+  - @infrabyx/crypto@1.5.15
+  - @infrabyx/tenancy@1.20.1
+
 ## 1.3.2
 
 ### Patch Changes
