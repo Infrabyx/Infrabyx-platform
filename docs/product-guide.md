@@ -640,6 +640,32 @@ Put an object in a compartment with `storage.put(key, body, { bucketClass: "CONF
 
 After the upload passes the AV scan, call `extractText({ file, scan, limits? })` on `PdfTextExtractor` (`@infrabyx/connectors/pdf`, built with your tenant's STORAGE), where `scan` is the `FileScanResult` that `FileScanPort.scan` returned for the same file. You get `{ pages: [{ index, text, needsOcr }], pageCount, truncated? }`: `index` counts from 1, lines end with `\n`, and a page with no readable text layer (a scan, an image, a filter other than FlateDecode) is `needsOcr`, for the OCR port when it comes. `truncated` means the text limit was reached and later pages are missing. Lower the limits for your use if you like (defaults: 25 MiB file, 500 pages, 30 s; the platform caps every limit). Map `IPB-SEC-011` to "this file contains malware", `IPB-SEC-015` to "the file has not been scanned yet, or changed since", `IPB-SEC-013` to "the file is too large or too complex" (`meta.reason` is `limit`, `timeout` or `memory`) and `IPB-SEC-010` to "this is not a readable PDF" (`meta.reason` `encrypted` for a password-protected one). Test against `new FakePdf(storage)` with `pdfFixture(pages)` and `pdfTextContractCases(storage)` (`@infrabyx/testing`). **Shim removed:** your local PDF text parser.
 
+## 7cg. Showing a CONFIDENTIAL input in "Why this?" (PR-LDC-59; owner answer #130; R1-D-173)
+
+`explain` still returns values for PUBLIC and INTERNAL inputs only. To show one CONFIDENTIAL input of one decision to a person your own access policy allows (for example a board secretary reviewing a classification), register your rule once and ask for a grant each time:
+
+```ts
+const rules = new RulesService({
+  ...options,
+  revealRule: {
+    id: "ldc.board.reveal", // your rule's stable id, recorded in the ledger
+    allows: async (ctx, { decisionId, input, purpose }) => myPolicy.canSee(ctx, decisionId, input),
+  },
+});
+const grant = await rules.entitleReveal(ctx, {
+  decisionId,
+  input: "score",
+  purpose: "board review",
+});
+const why = await rules.explain(ctx, decisionId, { reveal: grant }); // inputs[i].revealed === true
+```
+
+- **What is refused** (`IPB-RULE-004`, `meta.reason`): REGULATED, INTERNAL or undeclared inputs, a decision whose inputs were not recorded, another tenant's decision, agents, platform contexts and `PLT_*` roles, break-glass, impersonation and external principals, a purpose outside 3 to 200 printable characters, your rule saying no or throwing; and at `explain`, a grant that is reused, older than 60 seconds, from another service instance, for another decision or principal, or a copy of a grant.
+- **Grants are in-process objects.** Do not send one to a browser or store it; ask and use it in the same request, on the same instance.
+- **Ledger:** each reveal writes `rules.decision.input_revealed` with the decision, grant, `input:<name>` and `rule:<id>` as business ids (`AuditService.history`), and the purpose under the entry's digest. Keep the purpose text in your own record of the request if you need it readable. Never put personal data in the purpose.
+- **Nothing is written back:** show the value and drop it; do not store it unsealed. Test your wiring with `defineRulesRevealContract` from `@infrabyx/testing`.
+- **LawDocsComply:** wire `revealRule` to your board-paper access policy, and use it only where a CONFIDENTIAL input is needed in the classification trace.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

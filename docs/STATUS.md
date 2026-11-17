@@ -1,29 +1,30 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-17
+Updated: 2026-11-18
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                        |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Packages              | Published to GitHub Packages (release run 243, `aba8944`, 17 Nov 2026; before it runs 240 and 236): **1.29.0** contracts; **1.20.0** tenancy; **1.16.1** connectors; **1.16.1** testing; **1.15.0** config; **1.10.0** audit; **1.7.0** export; **1.4.0** workflow; **1.3.1** rules; **1.3.0** ui; **1.2.0** brand; **1.5.14** crypto; **1.3.10** notify; **1.3.7** consent; **1.1.37** cms; **1.1.10** ai; **1.1.8** a11y; **1.0.39** feedback, seed, trust, vidhi; **1.0.0** hlp |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                  |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                      |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                             |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Packages              | Published to GitHub Packages (release run 246, `fcf5cf9`, 17 Nov 2026; before it runs 243, 240 and 236): **1.29.0** contracts; **1.20.0** tenancy; **1.16.2** connectors; **1.16.1** testing; **1.15.0** config; **1.10.0** audit; **1.7.0** export; **1.4.0** workflow; **1.3.2** rules; **1.3.0** ui; **1.2.0** brand; **1.5.14** crypto; **1.3.10** notify; **1.3.7** consent; **1.1.37** cms; **1.1.10** ai; **1.1.8** a11y; **1.0.39** feedback, seed, trust, vidhi; **1.0.0** hlp |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                       |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                           |
 
 ## Waived image findings products carry (10 Nov; PR-FBX-45)
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                         | Expires    | Review                                    | Decision           |
-| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
-| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
-| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+| Finding                          | Where                                            | Expires    | Review                                    | Decision           |
+| -------------------------------- | ------------------------------------------------ | ---------- | ----------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)                          | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)                     | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`)                    | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`)                    | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                  | Debian 12 base (apt)                             | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)                          | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)                          | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                    | Debian 12 base (linux-pam)                       | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+| CVE-2026-112366                  | `picomatch` 4.0.7 (via `vitest`, reference apps) | 2026-12-17 | 1 Dec                                     | R1-D-174           |
 
 ## Wave 13 gate (16 Nov, #252)
 
@@ -40,6 +41,25 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Scan:** Keycloak re-tagged 26.8.2: the planned digest (`sha256:3879c623…`, pushed 5 Nov) is now `26.8.2-0`, and `26.8.2` moved to rebuild `26.8.2-2` (12 Nov). 26.8.1-2, 26.8.2-0, -1 and -2 all show the same six HIGH findings and no CRITICAL (Trivy 0.76.0, database of 12 Nov): nothing new, nothing cleared.
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
+
+## Seventeenth session (18 Nov, scheduled run) — handover
+
+- **Lock:** taken at 00:43 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all three comments are session reports).
+- **Version PR #275 merged** (`fcf5cf9`; one `ci:run`, all 42 checks green; patches only, #81(a)): `connectors` 1.16.2 (the R1-D-171 Zitadel first-session fix, R1-D-172) and `rules` 1.3.2 (dependency only). Released by run 246 (record below).
+- **Release run 244 (after #273) failed** in its `cosign` build step on a transient Go module proxy error (`proxy.golang.org` stream reset while fetching `k8s.io/apimachinery`). That commit had no changeset, so nothing was due to publish; run 245 (after #274) was green and opened #275. Nothing to re-run.
+- **New HIGH waived (R1-D-174):** the first `ci:run` of #276 failed `containers` on CVE-2026-112366 (`picomatch` 4.0.7, a ReDoS that needs an attacker-supplied glob pattern; no fixed version). Not reachable (only the test toolchain under `@infrabyx/testing` carries it; no code matches a request-supplied glob). Reproduced and cleared locally with Trivy 0.76.0 on the deploy outputs; waived to 17 Dec under the standing 30-day rule; second `ci:run` next.
+- **#130 explain reveal built (PR-LDC-59, this PR; R1-D-173):** `revealRule`, `entitleReveal` and `explain(ctx, id, { reveal })` in `rules`; types, `IPB-RULE-004` and the `rvg` prefix in `contracts`; `defineRulesRevealContract` in `testing`. Single-use, 60-second in-process grants for one CONFIDENTIAL input of one decision; ledgered as `rules.decision.input_revealed` without the value; agents, platform contexts and `PLT_*` roles, break-glass, impersonation and external principals refused. Six stricter assumptions for owner review are listed in R1-D-173. Threat model §3.130, product guide §7cg.
+- **PR-LDC-57 build planned** (`docs/phases/R1-dated-parameters-plan.md`, this PR): a `schedule` parameter kind, platform-scope versioned schedules published through `rules.ruleset.publish` (payload `kind: "schedule"`), migration `rules/0005`, `UNDETERMINED`/`parameter_not_in_force`, citations in `explain`. Three assumptions to log when built, the first for the owner's attention: entries compared by calendar day in Asia/Kolkata.
+- **Local check of this PR:** `pnpm check:full` 83 of 85 in 11 min 07 s (Docker contract legs and every integration suite included; `rules` with the 16 reveal cases). The two failures were this PR's own: `pr-checklist` (the body must link `docs/phases/R1-plan.md`) and `scripts-test` (`ipb:check` wants an OWNER-QUESTIONS entry for an `[ASSUMED – owner review]` decision: #132 added). Both re-run green (`pnpm scripts:test` 86/86, `pr:checklist` OK).
+- **Products (adopt):** take `connectors` 1.16.2 wherever Zitadel customer sign-in is used (Finbyx, LawDocsComply, Udofin). LawDocsComply: once this PR is released, wire `revealRule` to your board-paper access policy (product guide §7cg).
+- **Environment notes (add to the sixteenth's):** this container's `/opt/node24` is Node 24.22.3, which the `engines` pin refuses; Node 24.22.1 was taken from nodejs.org (SHA-256 checked against `SHASUMS256.txt`) into `/opt/node-24.22.1`. The container has 4 cores, so `check:full` takes longer.
+- **Next, in order:**
+  1. Gate and merge this PR (one `ci:run`).
+  2. Gate and merge the version PR it opens (`contracts`, `rules`, `testing` minors, #81(a)), and record that release with the LawDocsComply adoption note.
+  3. Build PR-LDC-57 from its plan.
+  4. The rest of wave 15: PR-LDC-40 (threat model §3.125), PR-LDC-50, the TallyPrime source and image (R1-D-137, #128).
+  5. The 1 Dec waiver question (CVE-2025-6020 to 16 Dec included).
+- **Open owner questions:** #132 (the six stricter readings of the #130 answer; recommendation: accept). Nothing is blocked on it.
 
 ## Sixteenth session (17 Nov, scheduled run) — handover
 
@@ -447,6 +467,10 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### Zitadel first-session fix (2026-11-17, PR #274, version PR #275, release run 246)
+
+The R1-D-171 fix (R1-D-172) merged as `bb9f524` (#274) after one `ci:run` run, all checks green. Version PR #275 merged as `fcf5cf9` after its one `ci:run` run, all 42 checks green, under OWNER-QUESTIONS #81(a) (patches only). Release run 246 (19:28 to 19:39 UTC) ran the full port-contract matrix (30 jobs, all green), then published `@infrabyx/connectors` 1.16.2 and `@infrabyx/rules` 1.3.2 (dependency only) with their tags. The BOM was signed keyless, both tarballs attested with `Verified OK`, and the registry checksums compared in the same job (134310981712). Products: Finbyx, LawDocsComply and Udofin take `connectors` 1.16.2 wherever Zitadel customer sign-in is used; a customer's first code no longer fails once under load. No API, setting or migration change.
 
 ### pgvector 0.8.6 test image (2026-11-17, PR #269, version PR #272, release run 243)
 

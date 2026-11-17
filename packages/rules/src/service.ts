@@ -21,6 +21,7 @@ import type {
   CompiledRuleSet,
   Decision,
   DecisionOutcome,
+  ExplainOptions,
   Explanation,
   PortHealth,
   PublishOptions,
@@ -28,13 +29,22 @@ import type {
   RuleSetBody,
   RuleSetRef,
   RuleSetSummary,
+  RevealEntitlement,
+  RevealRefusal,
+  RevealRequest,
   RulesPort,
   SimulationReport,
 } from "@infrabyx/contracts/ports";
-import { RuleSetKey, ruleParameterValueError } from "@infrabyx/contracts/ports";
+import {
+  REVEAL_GRANT_TTL_MS,
+  REVEAL_PURPOSE_MAX,
+  REVEAL_PURPOSE_MIN,
+  RuleSetKey,
+  ruleParameterValueError,
+} from "@infrabyx/contracts/ports";
 import { PRODUCT_ROLE_REGEX, TENANT_ROLES } from "@infrabyx/contracts/roles";
 import { internalEvent } from "@infrabyx/config/events";
-import { canonicalDigest, newId, type SecretKey } from "@infrabyx/crypto";
+import { canonicalDigest, FIELD_ALG, newId, type SecretKey } from "@infrabyx/crypto";
 import {
   APPROVAL_ESCALATION_HOURS,
   DEFAULT_PLATFORM_CHECKERS,
@@ -54,6 +64,12 @@ import {
 } from "@infrabyx/connectors/rules";
 
 export const PUBLISH_ACTION = "rules.ruleset.publish";
+/** Ledger action of an entitled reveal of a CONFIDENTIAL input (PR-LDC-59, R1-D-173). */
+export const REVEAL_ACTION = "rules.decision.input_revealed";
+/** A reveal rule's id: lower case, 3 to 64 characters. */
+const REVEAL_RULE_ID = /^[a-z][a-z0-9_.-]{2,63}$/;
+/** Platform staff roles never see a tenant's sealed inputs through a reveal (R1-D-173). */
+const PLATFORM_ROLE = /^PLT_/;
 /** How far ahead a cut-over may be scheduled (PR-LDC-34). */
 export const MAX_CUTOVER_DAYS = 366;
 /** Most inputs one simulation may run (PL3 plan §4.4). */
@@ -114,6 +130,35 @@ export interface RulesServiceOptions {
    * Platform, agent, service and operations roles are refused. Maker ≠ checker is unchanged.
    */
   publishCheckerRoles?: readonly string[];
+  /**
+   * The product's access rule for an entitled reveal of one CONFIDENTIAL input in `explain`
+   * (PR-LDC-59, R1-D-173). Without it `entitleReveal` always refuses and `explain` stays
+   * name-only above INTERNAL.
+   */
+  revealRule?: RevealRule;
+}
+
+/**
+ * The product's own access rule for reveals (PR-LDC-59, #130, R1-D-157 (1)): may this principal
+ * see this CONFIDENTIAL input of this decision, for this purpose? The platform checks everything
+ * else (context, tenant, input, data class) before it asks.
+ */
+export interface RevealRule {
+  /** Stable id of the rule, recorded in each grant's ledger entry (`^[a-z][a-z0-9_.-]{2,63}$`). */
+  id: string;
+  allows(ctx: KernelContext, req: RevealRequest): Promise<boolean>;
+}
+
+interface RevealGrant {
+  id: string;
+  ruleId: string;
+  tenantId: string;
+  principalId: string;
+  principalType: string;
+  decisionId: string;
+  input: string;
+  purpose: string;
+  expiresAt: number;
 }
 
 interface VersionRow {
@@ -167,6 +212,10 @@ export class RulesService implements RulesPort {
   private readonly timeoutMs: number;
   private readonly celMaxCost: number;
   private readonly cache = new Map<string, Promise<CompiledRuleSet>>();
+  /** Grants this instance issued, keyed by the grant object itself (R1-D-173). */
+  private readonly grants = new WeakMap<object, RevealGrant>();
+  /** Grants already used, so a replay is reported as such. */
+  private readonly usedGrants = new WeakSet<object>();
 
   constructor(opts: RulesServiceOptions) {
     this.o = opts;
@@ -177,6 +226,8 @@ export class RulesService implements RulesPort {
     this.validators =
       opts.engines?.validators ??
       RULE_ENGINES.map((n) => (n === this.primary.name ? this.primary : ruleEngine(n, { limits })));
+    if (opts.revealRule && !REVEAL_RULE_ID.test(opts.revealRule.id))
+      throw new Error(`revealRule.id ${opts.revealRule.id} is not ${REVEAL_RULE_ID.source}`);
     const extra = opts.publishCheckerRoles ?? [];
     for (const r of extra)
       if (
@@ -774,50 +825,179 @@ export class RulesService implements RulesPort {
     return { runId, inputCount: inputs.length, changed };
   }
 
-  /** "Why this?" (IPB-07-16): the matched rows, their conditions and the inputs they read. */
-  async explain(ctx: KernelContext, decisionId: string): Promise<Explanation> {
-    return this.o.kernel.read(ctx, async (tx) => {
-      const r = await tx.query<{
-        rule_set_id: string;
-        version: number;
-        outcome: DecisionOutcome;
-        rule_ids: string[];
-        inputs: Record<string, unknown> | null;
-        parameters: Record<string, { value: unknown; source: "setting" | "default" }> | null;
-        as_of: Date | null;
-      }>(
-        `select rule_set_id, version, outcome, rule_ids, inputs, parameters, as_of
-           from rules.decision_log where id = $1`,
-        [decisionId],
-      );
-      const d = r.rows[0];
-      if (!d) throw new NotFoundError("decision");
-      const v = await this.loadVersion(tx, d.rule_set_id, d.version, false);
-      const rows = v.body.rows.filter((x) => d.rule_ids.includes(x.id));
-      return {
-        decisionId,
-        outcome: d.outcome,
-        ruleIds: d.rule_ids,
-        conditions: rows.map((x) => x.when),
-        inputs: v.body.inputs.map((f) =>
-          CLEAR_CLASSES.includes(f.dataClass) && d.inputs && f.name in d.inputs
-            ? { name: f.name, value: d.inputs[f.name] }
-            : { name: f.name },
-        ),
-        help_keys: rows.flatMap((x) => (x.help_key ? [x.help_key] : [])),
-        ...(d.parameters
-          ? {
-              parameters: Object.entries(d.parameters).map(([name, p]) => ({
-                name,
-                value: p.value,
-                source: p.source,
-              })),
-            }
-          : {}),
-        ...(d.as_of ? { asOf: new Date(d.as_of).toISOString() } : {}),
-        source: "rules",
-      };
+  /**
+   * "Why this?" (IPB-07-16): the matched rows, their conditions and the inputs they read. Values
+   * only for PUBLIC and INTERNAL inputs, unless `opts.reveal` holds a grant from `entitleReveal`:
+   * then the one CONFIDENTIAL input it names is returned too, and the reveal is ledgered in the
+   * same transaction, without the value (PR-LDC-59, R1-D-173).
+   */
+  async explain(
+    ctx: KernelContext,
+    decisionId: string,
+    opts: ExplainOptions = {},
+  ): Promise<Explanation> {
+    if (opts.reveal !== undefined) return this.explainRevealed(ctx, decisionId, opts.reveal);
+    return this.o.kernel.read(ctx, (tx) => this.explanation(tx, decisionId));
+  }
+
+  /**
+   * Step 1 of an entitled reveal (PR-LDC-59, #130, R1-D-157 (1), R1-D-173): a single-use grant,
+   * valid for 60 seconds, for this principal to see one CONFIDENTIAL input of one decision. The
+   * platform refuses an agent, a platform context, platform staff, break-glass, impersonation and
+   * an external principal, a decision outside the tenant, an undeclared input, any class but
+   * CONFIDENTIAL and a decision whose inputs were not recorded, before it asks the product's
+   * `revealRule`. Every refusal is `IPB-RULE-004` with `meta.reason`; nothing is ledgered until
+   * the grant is used.
+   */
+  async entitleReveal(ctx: KernelContext, req: RevealRequest): Promise<RevealEntitlement> {
+    const rule = this.o.revealRule;
+    if (!rule) throw refuse("no_reveal_rule");
+    if (!revealAllowedFor(ctx)) throw refuse("context_not_allowed");
+    if (typeof req !== "object" || req === null) throw refuse("purpose_invalid");
+    const purpose = typeof req.purpose === "string" ? req.purpose.trim() : "";
+    if (
+      purpose.length < REVEAL_PURPOSE_MIN ||
+      purpose.length > REVEAL_PURPOSE_MAX ||
+      /\p{Cc}/u.test(purpose)
+    )
+      throw refuse("purpose_invalid");
+    if (typeof req.decisionId !== "string" || typeof req.input !== "string")
+      throw refuse("decision_not_found");
+    const { decisionId, input } = req;
+    await this.o.kernel.read(ctx, async (tx) => {
+      const d = await this.decisionRow(tx, decisionId);
+      if (!d) throw refuse("decision_not_found");
+      revealableInput(await this.loadVersion(tx, d.rule_set_id, d.version, false), d, input);
     });
+    let allowed: boolean;
+    try {
+      allowed = (await rule.allows(ctx, { decisionId, input, purpose })) === true;
+    } catch {
+      allowed = false;
+    }
+    if (!allowed) throw refuse("rule_refused");
+    const expiresAt = Date.now() + REVEAL_GRANT_TTL_MS;
+    const id = newId("rvg");
+    const grant = Object.freeze({
+      id,
+      decisionId,
+      input,
+      expiresAt: new Date(expiresAt).toISOString(),
+    }) as unknown as RevealEntitlement;
+    this.grants.set(grant, {
+      id,
+      ruleId: rule.id,
+      tenantId: ctx.tenantId,
+      principalId: ctx.principal.id,
+      principalType: ctx.principal.type,
+      decisionId,
+      input,
+      purpose,
+      expiresAt,
+    });
+    return grant;
+  }
+
+  /** Step 2: the grant is used once, checked, the input unsealed and the reveal ledgered. */
+  private async explainRevealed(
+    ctx: KernelContext,
+    decisionId: string,
+    reveal: RevealEntitlement,
+  ): Promise<Explanation> {
+    const key = reveal as unknown as object;
+    const g = typeof key === "object" && key !== null ? this.grants.get(key) : undefined;
+    if (!g) throw refuse(this.usedGrants.has(key) ? "grant_used" : "grant_invalid");
+    this.grants.delete(key);
+    this.usedGrants.add(key);
+    if (!revealAllowedFor(ctx)) throw refuse("context_not_allowed");
+    if (
+      g.tenantId !== ctx.tenantId ||
+      g.principalId !== ctx.principal.id ||
+      g.principalType !== ctx.principal.type ||
+      g.decisionId !== decisionId ||
+      g.ruleId !== this.o.revealRule?.id
+    )
+      throw refuse("grant_mismatch");
+    if (Date.now() > g.expiresAt) throw refuse("grant_expired");
+    const crypto = this.o.fieldCrypto;
+    if (!crypto) throw new Error("an entitled reveal needs FieldCrypto");
+    return this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        const d = await this.decisionRow(tx, decisionId);
+        if (!d) throw refuse("decision_not_found");
+        const v = await this.loadVersion(tx, d.rule_set_id, d.version, false);
+        revealableInput(v, d, g.input);
+        const sealed = JSON.parse(
+          await crypto.decryptFieldText(
+            ctx.tenantId,
+            { enc: new Uint8Array(d.inputs_enc!), keyId: d.inputs_key_id!, alg: FIELD_ALG },
+            { table: "rules.decision_log", column: "inputs_enc", rowId: decisionId },
+          ),
+        ) as Record<string, unknown>;
+        const x = this.explain0(decisionId, d, v);
+        await this.o.audit.record(tx, {
+          action: REVEAL_ACTION,
+          resourceType: "decision",
+          resourceId: decisionId,
+          after: { input: g.input, purpose: g.purpose, rule_id: g.ruleId, grant_id: g.id },
+          // Readable in `AuditService.history`; the purpose is covered by the entry's digest.
+          businessIds: [decisionId, g.id, `input:${g.input}`, `rule:${g.ruleId}`],
+        });
+        return {
+          ...x,
+          inputs: x.inputs.map((f) =>
+            f.name === g.input ? { name: f.name, value: sealed[f.name], revealed: true } : f,
+          ),
+        };
+      },
+      { action: REVEAL_ACTION },
+    );
+  }
+
+  private async decisionRow(tx: Tx, decisionId: string): Promise<DecisionRow | null> {
+    const r = await tx.query<DecisionRow>(
+      `select rule_set_id, version, outcome, rule_ids, inputs, inputs_enc, inputs_key_id,
+              parameters, as_of
+         from rules.decision_log where id = $1`,
+      [decisionId],
+    );
+    return r.rows[0] ?? null;
+  }
+
+  private async explanation(tx: Tx, decisionId: string): Promise<Explanation> {
+    const d = await this.decisionRow(tx, decisionId);
+    if (!d) throw new NotFoundError("decision");
+    const v = await this.loadVersion(tx, d.rule_set_id, d.version, false);
+    return this.explain0(decisionId, d, v);
+  }
+
+  /** The name-only explanation of a decision row (values for PUBLIC and INTERNAL inputs only). */
+  private explain0(decisionId: string, d: DecisionRow, v: VersionRow): Explanation {
+    const rows = v.body.rows.filter((x) => d.rule_ids.includes(x.id));
+    return {
+      decisionId,
+      outcome: d.outcome,
+      ruleIds: d.rule_ids,
+      conditions: rows.map((x) => x.when),
+      inputs: v.body.inputs.map((f) =>
+        CLEAR_CLASSES.includes(f.dataClass) && d.inputs && f.name in d.inputs
+          ? { name: f.name, value: d.inputs[f.name] }
+          : { name: f.name },
+      ),
+      help_keys: rows.flatMap((x) => (x.help_key ? [x.help_key] : [])),
+      ...(d.parameters
+        ? {
+            parameters: Object.entries(d.parameters).map(([name, p]) => ({
+              name,
+              value: p.value,
+              source: p.source,
+            })),
+          }
+        : {}),
+      ...(d.as_of ? { asOf: new Date(d.as_of).toISOString() } : {}),
+      source: "rules",
+    };
   }
 
   /**
@@ -1057,6 +1237,46 @@ function publishSummary(key: string, v: VersionRow, current: VersionRow | null):
   const removed = [...before.keys()].filter((k) => !after.has(k)).length;
   const changed = [...after].filter(([k, d]) => before.has(k) && before.get(k) !== d).length;
   return `Publish ${key} v${v.version} replacing v${current.version} (+${added} −${removed} ~${changed} rows)`;
+}
+
+interface DecisionRow {
+  rule_set_id: string;
+  version: number;
+  outcome: DecisionOutcome;
+  rule_ids: string[];
+  inputs: Record<string, unknown> | null;
+  inputs_enc: Buffer | null;
+  inputs_key_id: string | null;
+  parameters: Record<string, { value: unknown; source: "setting" | "default" }> | null;
+  as_of: Date | null;
+}
+
+function refuse(reason: RevealRefusal): IpbError {
+  return new IpbError("IPB-RULE-004", { meta: { reason } });
+}
+
+/**
+ * Who may hold a reveal grant (R1-D-157 (1), R1-D-173): a user or service principal acting in
+ * its own tenant. Never an agent, a platform context or platform staff, a break-glass session, an
+ * impersonation, or an external principal (which only reads through `ExternalReads`, R1-D-29).
+ */
+function revealAllowedFor(ctx: KernelContext): boolean {
+  const p = ctx.principal;
+  return (
+    (p.type === "user" || p.type === "service") &&
+    ctx.scope !== "platform" &&
+    ctx.breakGlassGrantId === undefined &&
+    ctx.act === undefined &&
+    !p.roles.some((r) => PLATFORM_ROLE.test(r))
+  );
+}
+
+/** The input must be declared in the decision's version, CONFIDENTIAL, and recorded sealed. */
+function revealableInput(v: VersionRow, d: DecisionRow, input: string): void {
+  const f = v.body.inputs.find((x) => x.name === input);
+  if (!f) throw refuse("unknown_input");
+  if (f.dataClass !== "CONFIDENTIAL") throw refuse("class_not_revealable");
+  if (!d.inputs_enc || !d.inputs_key_id) throw refuse("inputs_not_recorded");
 }
 
 /** Inputs at PUBLIC/INTERNAL stay readable for explain; the rest are sealed together. */

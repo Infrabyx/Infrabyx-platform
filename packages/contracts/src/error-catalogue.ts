@@ -505,6 +505,11 @@ export const ERROR_CATALOGUE = {
     title: "Rule set version is not in the state this action needs",
     source: "PL3 plan §10 (PR-017)",
   },
+  "IPB-RULE-004": {
+    status: 403,
+    title: "Reveal refused: no grant for this input of this decision",
+    source: "R1 explain reveal plan §2 (PR-017)",
+  },
   // EXPORT runtime errors (PL3-D-22), under PR-017 like the RULE area.
   "IPB-EXP-001": {
     status: 403,
