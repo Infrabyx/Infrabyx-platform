@@ -3096,6 +3096,60 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 AV; IPB-02-44; PR-LDC-41, R1-D-117 (off until a deployment runs clamd in its cluster with daily signature updates; while off every scan is ERROR and uploads stay quarantined)"
   },
   {
+    "key": "int.egress.governed.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 EGRESS; IPB-04 §04.4.4; IPB-02-43; PR-LDC-40, R1-D-176 (the in-process SSRF guard; off until a deployment's network policy for egress is in place; while off every governed fetch is IPB-PORT-001)"
+  },
+  {
+    "key": "int.web_snapshot.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "PR-LDC-40, R1-D-176; threat model §3.125 (web snapshots kept as evidence; needs int.egress.governed.enabled and the AV port)"
+  },
+  {
+    "key": "int.web_snapshot.allow_hosts",
+    "tier": "TENANT",
+    "type": "string[]",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "PR-LDC-40, R1-D-176; threat model §3.125 (the tenant's egress allow-list for snapshots)",
+    "note": "exact host names or *.suffix; empty means nothing can be archived"
+  },
+  {
+    "key": "int.web_snapshot.per_hour",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 60,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "PR-LDC-40, R1-D-176; threat model §3.124, §3.125",
+    "note": "snapshots per tenant per hour (shared rate limiter)"
+  },
+  {
     "key": "int.captcha.under_attack",
     "tier": "PLATFORM",
     "type": "bool",
@@ -6898,6 +6952,10 @@ export type SettingValueMap = {
   "int.video_meet.livekit.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
   "int.av.clamav.enabled": boolean;
+  "int.egress.governed.enabled": boolean;
+  "int.web_snapshot.enabled": boolean;
+  "int.web_snapshot.allow_hosts": string[];
+  "int.web_snapshot.per_hour": number;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;

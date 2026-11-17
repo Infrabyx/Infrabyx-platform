@@ -714,6 +714,44 @@ const { approvalId } = await rules.publishSchedule(
 
 **LawDocsComply:** move your dated parameter table into platform schedules under your own key prefix, declare those parameters with `schedule`, and remove the shim once every rule set reads them (PR-LDC-57). Migration `rules/0005` comes with `rules` (run `infrabyx-migrate`); no setting or environment variable is added.
 
+## 7ci. Web snapshots as evidence (PR-LDC-40; R1-D-176)
+
+Keep a dated, hashed copy of a public page (a regulator's circular, a notice) with `PlatformWebSnapshot` from `@infrabyx/connectors/web-snapshot`, over the `governed` EGRESS adapter (`@infrabyx/connectors/egress`), your STORAGE and AV adapters and the shared `RateLimiter`:
+
+```ts
+// readSetting: your product's read of a registered setting (SettingsService) for the tenant.
+const egress = new GovernedEgress({
+  enabled: () => readSetting(null, "int.egress.governed.enabled"),
+});
+const snapshots = new PlatformWebSnapshot({
+  kernel,
+  audit,
+  egress,
+  storage,
+  av,
+  rateLimiter,
+  enabled: () => readSetting(null, "int.web_snapshot.enabled"),
+  allowHosts: (tenantId) => readSetting(tenantId, "int.web_snapshot.allow_hosts"),
+  perHour: () => readSetting(null, "int.web_snapshot.per_hour"),
+});
+const s = await snapshots.archive(ctx, {
+  url: "https://www.example.gov.in/notification/123",
+  outputPrefix: `tenant/${ctx.tenantId}/evidence`,
+  reference: obligationId, // ledger business id
+});
+// s.state: RELEASED, QUARANTINED (scan ERROR: call rescan later) or REJECTED (infected)
+const { body, headers } = await snapshots.open(ctx, s.id); // serve exactly these headers
+```
+
+- **Allow-list first.** Nothing is fetched until the tenant's ORG_ADMIN lists hosts in `int.web_snapshot.allow_hosts` (exact names or `*.suffix`; R4 maker-checker). Seed the regulator hosts your product needs per tenant. Both switches (`int.egress.governed.enabled`, `int.web_snapshot.enabled`) are off by default and PLT_SUPER_ADMIN turns them on under R4, once the deployment's network policy for egress is in place.
+- **What is kept.** Only HTTP 200, only HTML, XHTML, plain text, PDF, PNG, JPEG, GIF or WebP (a binary type must start with its signature), at most 10 MB and 20 seconds by default (`limits`, capped at 25 MB and 60 seconds), up to 5 redirects. The record holds the requested and final URL, the redirect chain, the media type, charset, encoding, size, SHA-256 and `fetchedAt`; `fetchedAt` is the evidence time.
+- **Serving a copy.** Always use the headers `open` returns (an attachment, `nosniff`, a sandboxing CSP, `no-store`); never render the HTML inline on your origin.
+- **Retention.** The platform sets none. Pass `retainUntil` for a write-once copy under your retention schedule.
+- **Who.** A tenant user or service in its own tenant. Agents, impersonation, external principals, break-glass and platform staff are refused.
+- **Migration and export.** Run `infrabyx-migrate` for `connectors/0006`, and add `connectors.web_snapshot` to your product's export map (the copies themselves are in your tenant's STORAGE).
+- **Tests.** `defineWebSnapshotContract` and `FakeWebSnapshot` from `@infrabyx/testing`.
+- **Shim removed:** your own fetch-and-store.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

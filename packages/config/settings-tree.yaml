@@ -2133,6 +2133,46 @@ keys:
       source: "IPB-01 AV; IPB-02-44; PR-LDC-41, R1-D-117 (off until a deployment runs clamd in its cluster with daily signature updates; while off every scan is ERROR and uploads stay quarantined)",
     }
 
+  # ---------------------------------------------------------------- R1: EGRESS and web snapshots (IPB-04 §04.4.4; PR-LDC-40, R1-D-176)
+  - {
+      key: int.egress.governed.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 EGRESS; IPB-04 §04.4.4; IPB-02-43; PR-LDC-40, R1-D-176 (the in-process SSRF guard; off until a deployment's network policy for egress is in place; while off every governed fetch is IPB-PORT-001)",
+    }
+  - {
+      key: int.web_snapshot.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "PR-LDC-40, R1-D-176; threat model §3.125 (web snapshots kept as evidence; needs int.egress.governed.enabled and the AV port)",
+    }
+  - {
+      key: int.web_snapshot.allow_hosts,
+      tier: TENANT,
+      type: "string[]",
+      default: [],
+      change: [ORG_ADMIN],
+      mc: R4,
+      note: "exact host names or *.suffix; empty means nothing can be archived",
+      source: "PR-LDC-40, R1-D-176; threat model §3.125 (the tenant's egress allow-list for snapshots)",
+    }
+  - {
+      key: int.web_snapshot.per_hour,
+      tier: PLATFORM,
+      type: int,
+      default: 60,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      note: "snapshots per tenant per hour (shared rate limiter)",
+      source: "PR-LDC-40, R1-D-176; threat model §3.124, §3.125",
+    }
+
   # ---------------------------------------------------------------- R1: CAPTCHA (ADR-0004; R1-D-50)
   - {
       key: int.captcha.under_attack,

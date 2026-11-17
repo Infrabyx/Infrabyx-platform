@@ -136,6 +136,14 @@
       "types": "./dist/av/index.d.ts",
       "default": "./dist/av/index.js"
     },
+    "./egress": {
+      "types": "./dist/egress/index.d.ts",
+      "default": "./dist/egress/index.js"
+    },
+    "./web-snapshot": {
+      "types": "./dist/web-snapshot/index.d.ts",
+      "default": "./dist/web-snapshot/index.js"
+    },
     "./pdf": {
       "types": "./dist/pdf/index.d.ts",
       "default": "./dist/pdf/index.js"

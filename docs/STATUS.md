@@ -42,6 +42,14 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
+## Nineteenth session (18 Nov, scheduled run)
+
+- **Lock:** taken at 04:41 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all five comments are session reports).
+- **#281** (the eighteenth handover and release run 250's record) is carried in this PR (its commit merged into `claude/ecstatic-tesla-p4sohh`), as its "Next" item 1 asks; #281 is closed in favour of it.
+- **PR-LDC-40 planned and built (this PR; R1-D-176; plan `docs/phases/R1-web-snapshot-plan.md`):** web snapshots as evidence. `contracts` minor (`WebSnapshotPort`, the snapshot types and limits, `webSnapshotDownloadHeaders`, the `wsn` prefix; `EgressPort.fetch` gains `maxRedirects`, `allowHosts`, `finalUrl`, `redirects`, `contentEncoding`, all optional); `connectors` minor (the `governed` EGRESS adapter, the platform's first real one: allow-list, public addresses only, pinned connection, redirects re-checked, capped body and decoding; `PlatformWebSnapshot`; migration `connectors/0006`, `connectors.web_snapshot` with forced RLS and an immutability trigger); `config` minor (four settings, all off or empty by default); `testing` minor (`FakeWebSnapshot`, `defineWebSnapshotContract`). Exit runbook: EGRESS `governed`, alternative pending (network layer). Threat model §3.125 (as built), product guide §7ci. New owner question #134 (four assumptions, 200-only first; recommendation: accept).
+- **Not reachable from the session:** www.iana.org and rfc-editor.org (network policy). The refused address ranges follow RFC 6890 and the IANA registries as known, marked `[VERIFY]` in the code and R1-D-176 for the next review.
+- **Products (adopt once released):** LawDocsComply replaces its fetch-and-store with `PlatformWebSnapshot` (guide §7ci), runs `infrabyx-migrate` for `connectors/0006`, seeds each tenant's `int.web_snapshot.allow_hosts` with the regulator hosts it needs, and maps `connectors.web_snapshot` in its export map; the switches stay off until its deployment's egress network policy is in place.
+
 ## Eighteenth session (18 Nov, scheduled run) — handover
 
 - **Lock:** taken at 02:42 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all four comments are session reports).

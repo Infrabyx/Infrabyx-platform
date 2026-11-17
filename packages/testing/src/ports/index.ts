@@ -25,3 +25,4 @@ export * from "./file-scan.js";
 export * from "./pdf-text.js";
 export * from "./accounting.js";
 export * from "./calendar.js";
+export * from "./web-snapshot.js";
