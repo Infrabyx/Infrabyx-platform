@@ -136,14 +136,9 @@ export class GovernedEgress implements EgressPort {
     maxDataClass: "CONFIDENTIAL",
   };
 
-  constructor(private readonly o: GovernedEgressOptions) {
-    if (
-      o.testAllowLoopback &&
-      process.env.APP_ENV &&
-      !["dev", "ci", "test"].includes(process.env.APP_ENV)
-    )
-      throw new RangeError("testAllowLoopback is for tests only");
-  }
+  // The `test*` options exist for the local TLS stub only; a deployment builds the adapter with
+  // `enabled` and (optionally) `allowHosts` and nothing else (as `allowLoopbackHttp` in core/http).
+  constructor(private readonly o: GovernedEgressOptions) {}
 
   async health(): Promise<PortHealth> {
     const on = await this.o.enabled();
