@@ -84,4 +84,7 @@ vulnerabilities:
   - id: CVE-2025-6020
     statement: linux-pam 1.5.2-6+deb12u2 in the Debian 12 base (libpam-modules, libpam-modules-bin, libpam-runtime, libpam0g; Trivy status affected, no fixed version), a directory traversal in pam_namespace. The images run one Node.js process as UID 10001 with a read-only root and no capabilities; nothing logs in, no PAM stack or pam_namespace is used, and no shell or su is reached. Waived 2026-11-16 under the standing 30-day rule (R1-D-162); removed with the first fixed package
     expired_at: 2026-12-16
+  - id: CVE-2026-112366
+    statement: picomatch 4.0.7 (GHSA-fc5q-39xc-vjpf, published 2026-10-19, affected <= 4.0.7, no patched version as of 2026-11-17), a ReDoS when an attacker supplies a single-branch repeated extglob pattern such as +(*). It reaches the reference API image only through vitest, vite and tinyglobby under @infrabyx/testing (whose fakes the reference apps import); no platform or reference code passes a request-supplied pattern to any glob matcher, so the attacker-controlled pattern the advisory needs is never there. Waived 2026-11-18 under the standing 30-day rule (R1-D-174); removed with the first fixed picomatch release
+    expired_at: 2026-12-17
 secrets: []

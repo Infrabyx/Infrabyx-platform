@@ -14,16 +14,17 @@ Updated: 2026-11-18
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                         | Expires    | Review                                    | Decision           |
-| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
-| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
-| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+| Finding                          | Where                                            | Expires    | Review                                    | Decision           |
+| -------------------------------- | ------------------------------------------------ | ---------- | ----------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)                          | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)                     | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`)                    | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`)                    | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                  | Debian 12 base (apt)                             | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)                          | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)                          | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                    | Debian 12 base (linux-pam)                       | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+| CVE-2026-112366                  | `picomatch` 4.0.7 (via `vitest`, reference apps) | 2026-12-17 | 1 Dec                                     | R1-D-174           |
 
 ## Wave 13 gate (16 Nov, #252)
 
@@ -46,6 +47,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Lock:** taken at 00:43 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all three comments are session reports).
 - **Version PR #275 merged** (`fcf5cf9`; one `ci:run`, all 42 checks green; patches only, #81(a)): `connectors` 1.16.2 (the R1-D-171 Zitadel first-session fix, R1-D-172) and `rules` 1.3.2 (dependency only). Released by run 246 (record below).
 - **Release run 244 (after #273) failed** in its `cosign` build step on a transient Go module proxy error (`proxy.golang.org` stream reset while fetching `k8s.io/apimachinery`). That commit had no changeset, so nothing was due to publish; run 245 (after #274) was green and opened #275. Nothing to re-run.
+- **New HIGH waived (R1-D-174):** the first `ci:run` of #276 failed `containers` on CVE-2026-112366 (`picomatch` 4.0.7, a ReDoS that needs an attacker-supplied glob pattern; no fixed version). Not reachable (only the test toolchain under `@infrabyx/testing` carries it; no code matches a request-supplied glob). Reproduced and cleared locally with Trivy 0.76.0 on the deploy outputs; waived to 17 Dec under the standing 30-day rule; second `ci:run` next.
 - **#130 explain reveal built (PR-LDC-59, this PR; R1-D-173):** `revealRule`, `entitleReveal` and `explain(ctx, id, { reveal })` in `rules`; types, `IPB-RULE-004` and the `rvg` prefix in `contracts`; `defineRulesRevealContract` in `testing`. Single-use, 60-second in-process grants for one CONFIDENTIAL input of one decision; ledgered as `rules.decision.input_revealed` without the value; agents, platform contexts and `PLT_*` roles, break-glass, impersonation and external principals refused. Six stricter assumptions for owner review are listed in R1-D-173. Threat model §3.130, product guide §7cg.
 - **PR-LDC-57 build planned** (`docs/phases/R1-dated-parameters-plan.md`, this PR): a `schedule` parameter kind, platform-scope versioned schedules published through `rules.ruleset.publish` (payload `kind: "schedule"`), migration `rules/0005`, `UNDETERMINED`/`parameter_not_in_force`, citations in `explain`. Three assumptions to log when built, the first for the owner's attention: entries compared by calendar day in Asia/Kolkata.
 - **Local check of this PR:** `pnpm check:full` 83 of 85 in 11 min 07 s (Docker contract legs and every integration suite included; `rules` with the 16 reveal cases). The two failures were this PR's own: `pr-checklist` (the body must link `docs/phases/R1-plan.md`) and `scripts-test` (`ipb:check` wants an OWNER-QUESTIONS entry for an `[ASSUMED – owner review]` decision: #132 added). Both re-run green (`pnpm scripts:test` 86/86, `pr:checklist` OK).
