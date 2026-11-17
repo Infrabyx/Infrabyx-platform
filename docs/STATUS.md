@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-17
+Updated: 2026-11-18
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,6 +40,24 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Scan:** Keycloak re-tagged 26.8.2: the planned digest (`sha256:3879c623…`, pushed 5 Nov) is now `26.8.2-0`, and `26.8.2` moved to rebuild `26.8.2-2` (12 Nov). 26.8.1-2, 26.8.2-0, -1 and -2 all show the same six HIGH findings and no CRITICAL (Trivy 0.76.0, database of 12 Nov): nothing new, nothing cleared.
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
+
+## Seventeenth session (18 Nov, scheduled run) — handover
+
+- **Lock:** taken at 00:43 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all three comments are session reports).
+- **Version PR #275 merged** (`fcf5cf9`; one `ci:run`, all 42 checks green; patches only, #81(a)): `connectors` 1.16.2 (the R1-D-171 Zitadel first-session fix, R1-D-172) and `rules` 1.3.2 (dependency only). Release run 246 was publishing at the time of this push; its record follows in this PR.
+- **Release run 244 (after #273) failed** in its `cosign` build step on a transient Go module proxy error (`proxy.golang.org` stream reset while fetching `k8s.io/apimachinery`). That commit had no changeset, so nothing was due to publish; run 245 (after #274) was green and opened #275. Nothing to re-run.
+- **#130 explain reveal built (PR-LDC-59, this PR; R1-D-173):** `revealRule`, `entitleReveal` and `explain(ctx, id, { reveal })` in `rules`; types, `IPB-RULE-004` and the `rvg` prefix in `contracts`; `defineRulesRevealContract` in `testing`. Single-use, 60-second in-process grants for one CONFIDENTIAL input of one decision; ledgered as `rules.decision.input_revealed` without the value; agents, platform contexts and `PLT_*` roles, break-glass, impersonation and external principals refused. Six stricter assumptions for owner review are listed in R1-D-173. Threat model §3.130, product guide §7cg.
+- **PR-LDC-57 build planned** (`docs/phases/R1-dated-parameters-plan.md`, this PR): a `schedule` parameter kind, platform-scope versioned schedules published through `rules.ruleset.publish` (payload `kind: "schedule"`), migration `rules/0005`, `UNDETERMINED`/`parameter_not_in_force`, citations in `explain`. Three assumptions to log when built, the first for the owner's attention: entries compared by calendar day in Asia/Kolkata.
+- **Local check of this PR:** `pnpm check:full` 83 of 85 in 11 min 07 s (Docker contract legs and every integration suite included; `rules` with the 16 reveal cases). The two failures were this PR's own: `pr-checklist` (the body must link `docs/phases/R1-plan.md`) and `scripts-test` (`ipb:check` wants an OWNER-QUESTIONS entry for an `[ASSUMED – owner review]` decision: #132 added). Both re-run green (`pnpm scripts:test` 86/86, `pr:checklist` OK).
+- **Products (adopt):** take `connectors` 1.16.2 wherever Zitadel customer sign-in is used (Finbyx, LawDocsComply, Udofin). LawDocsComply: once this PR is released, wire `revealRule` to your board-paper access policy (product guide §7cg).
+- **Environment notes (add to the sixteenth's):** this container's `/opt/node24` is Node 24.22.3, which the `engines` pin refuses; Node 24.22.1 was taken from nodejs.org (SHA-256 checked against `SHASUMS256.txt`) into `/opt/node-24.22.1`. The container has 4 cores, so `check:full` takes longer.
+- **Next, in order:**
+  1. Gate and merge this PR (one `ci:run`).
+  2. Gate and merge the version PR it opens (`contracts`, `rules`, `testing` minors, #81(a)), and record that release with the LawDocsComply adoption note.
+  3. Build PR-LDC-57 from its plan.
+  4. The rest of wave 15: PR-LDC-40 (threat model §3.125), PR-LDC-50, the TallyPrime source and image (R1-D-137, #128).
+  5. The 1 Dec waiver question (CVE-2025-6020 to 16 Dec included).
+- **Open owner questions:** #132 (the six stricter readings of the #130 answer; recommendation: accept). Nothing is blocked on it.
 
 ## Sixteenth session (17 Nov, scheduled run) — handover
 
