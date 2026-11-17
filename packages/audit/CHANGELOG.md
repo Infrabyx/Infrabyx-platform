@@ -1,5 +1,29 @@
 # @infrabyx/audit
 
+## 1.10.0
+
+### Minor Changes
+
+- 1089dc7: Business ids on ledger entries (PR-LDC-30): `businessIds` on `record`, inside the hash when present; `AuditService.history(ctx, businessId)` and `LedgerFilter.businessId`. Migrations `audit/0010` (column, check, chain trigger) and `audit/0011` (concurrent partial GIN index).
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.9.0
 
 ### Minor Changes

@@ -1,5 +1,31 @@
 # @infrabyx/tenancy
 
+## 1.20.0
+
+### Minor Changes
+
+- 1089dc7: Ordered approval levels (#125, PR-LDC-38; migration `tenancy/0023`): decided in order, tighten-only, a different person at every level, any rejection ends the request, the delay from the last level. `ApprovalRecord` gains `levels`, `currentLevel` and `currentLevelApprovals`.
+- 1089dc7: `ApprovalsEngine.cancelIn(tx, id, reason)`: cancel inside the caller's transaction with `cancel`'s rules, a required reason and never an agent; `cancel` takes an optional reason; `ApprovalRecord.cancelReason`. Migration `tenancy/0022` adds the nullable `cancel_reason` column (PR-LDC-37).
+- 1089dc7: The shared rate limiter (PR-LDC-54; migration `tenancy/0024`): `RateLimiter.hit` and `consume` count per tenant, bucket, keyed-hashed key and fixed window in PostgreSQL (no ledger row per hit; the `svc_rate_limit` role may only count), `rateLimitError` (429 `IPB-SEC-019`) and `rateLimitHeaders`; `RateLimitSweep` deletes only fully expired windows with one ledger entry per run (owner answer #129).
+
+### Patch Changes
+
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+- Updated dependencies [1089dc7]
+  - @infrabyx/contracts@1.29.0
+  - @infrabyx/config@1.15.0
+  - @infrabyx/crypto@1.5.14
+
 ## 1.19.0
 
 ### Minor Changes
