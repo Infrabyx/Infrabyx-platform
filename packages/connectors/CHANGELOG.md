@@ -1,5 +1,16 @@
 # @infrabyx/connectors
 
+## 1.16.4
+
+### Patch Changes
+
+- 32097cb: Rule engines accept dated parameters (PR-LDC-57, R1-D-175): a parameter with a `schedule` has no default, so compiling without a bound value is refused (`RuleCompileError` `parameter`) instead of compiling on a guess. Setting-backed parameters are unchanged.
+- Updated dependencies [32097cb]
+  - @infrabyx/contracts@1.31.0
+  - @infrabyx/config@1.15.2
+  - @infrabyx/crypto@1.5.16
+  - @infrabyx/tenancy@1.20.2
+
 ## 1.16.3
 
 ### Patch Changes

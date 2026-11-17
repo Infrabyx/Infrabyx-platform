@@ -1,5 +1,17 @@
 # @infrabyx/testing
 
+## 1.17.1
+
+### Patch Changes
+
+- Updated dependencies [32097cb]
+  - @infrabyx/contracts@1.31.0
+  - @infrabyx/audit@1.10.2
+  - @infrabyx/config@1.15.2
+  - @infrabyx/crypto@1.5.16
+  - @infrabyx/seed@1.0.41
+  - @infrabyx/tenancy@1.20.2
+
 ## 1.17.0
 
 ### Minor Changes
