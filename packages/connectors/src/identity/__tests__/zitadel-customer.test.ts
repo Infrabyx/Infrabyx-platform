@@ -3,7 +3,10 @@
 // `GET /v2/users/{id}` brings the projection up to date first (zitadel v4.19.5,
 // internal/api/grpc/user/v2/user_query.go). The fake below keeps the two apart: the search answers
 // from a snapshot taken by `index()`, every other route from the live accounts, so a stale search
-// is a fixed state of the test, not a race.
+// is a fixed state of the test, not a race. The session API's user check reads the user
+// projection as it is too (`GetUserByID(ctx, false, ...)`, internal/api/grpc/session/v2/session.go;
+// R1-D-171): the fake lets a session check see an account only after a `GET /v2/users/{id}` for
+// it, the request that brings the projection up to date.
 import { describe, expect, it } from "vitest";
 import type { CustomerOtpChannel } from "@infrabyx/contracts";
 import { MemoryReplayStore } from "@infrabyx/crypto";
@@ -27,6 +30,11 @@ function laggingZitadel() {
   const live = new Map<string, Account>();
   let indexed: Account[] = [];
   const sessions: string[] = [];
+  const sessionAttempts: string[] = [];
+  // Accounts the session API's user check can see (R1-D-171).
+  const projected = new Set<string>();
+  let projectionFrozen = false;
+  let projectionSkips = 0;
   let getStatus: number | undefined;
   const body = (r: RecordedRequest) => r.json as Record<string, unknown>;
   const id = (r: RecordedRequest, at: number) => decodeURIComponent(r.path.split("/")[at]!);
@@ -87,6 +95,10 @@ function laggingZitadel() {
       (r): RecordedReply => {
         if (getStatus !== undefined) return { status: getStatus, body: {} };
         const u = live.get(id(r, 3));
+        if (u && !projectionFrozen) {
+          if (projectionSkips > 0) projectionSkips--;
+          else projected.add(u.userId);
+        }
         return u
           ? { status: 200, body: { user: { ...u, human: {} } } }
           : { status: 404, body: { code: 5, message: "User could not be found" } };
@@ -97,6 +109,9 @@ function laggingZitadel() {
       "/v2/sessions",
       (r): RecordedReply => {
         const userId = (body(r) as { checks: { user: { userId: string } } }).checks.user.userId;
+        sessionAttempts.push(userId);
+        if (!projected.has(userId))
+          return { status: 404, body: { code: 5, message: "User could not be found" } };
         sessions.push(userId);
         return {
           status: 201,
@@ -113,6 +128,15 @@ function laggingZitadel() {
     fetch,
     live,
     sessions,
+    sessionAttempts,
+    /** The projection stops catching up, even on `GET /v2/users/{id}` (a failed trigger). */
+    freezeProjection: () => {
+      projectionFrozen = true;
+    },
+    /** The next `n` reads by id do not bring the projection up to date (a slow trigger). */
+    lagProjection: (n: number) => {
+      projectionSkips = n;
+    },
     /** The search catches up with every write so far. */
     index: () => {
       indexed = [...live.values()].map((u) => ({ ...u }));
@@ -217,6 +241,48 @@ describe("R1-D-166 a lagging user search never resolves a login to an account th
     z.failGets(500);
     // A 5xx is Zitadel unavailable for new sessions; nothing is created on a guess.
     await expect(p.resolve(LOGIN)).rejects.toMatchObject({ code: "IPB-IDN-002" });
+    expect(z.live.size).toBe(1);
+  });
+});
+
+describe("R1-D-171 a new account's first code does not depend on the session API's projection having caught up", () => {
+  const start = (p: Probe, login = LOGIN) => {
+    const device = testDevice();
+    const t = p.signInProofTarget;
+    return p.startChallenge({
+      tenantId: T,
+      channel: "sms",
+      login,
+      dpopProof: device.proof(t.htm, t.htu),
+    });
+  };
+
+  it("a login never seen before gets its account and its code at the first try", async () => {
+    const z = laggingZitadel();
+    const { p } = adapter(z);
+    await start(p);
+    expect(z.sessions).toEqual([firstId(LOGIN)]);
+    // The account was made readable before the session, so the session API never refused it.
+    expect(z.sessionAttempts).toEqual([firstId(LOGIN)]);
+  });
+
+  it("a session refused as not found is retried once after the account is read again", async () => {
+    const z = laggingZitadel();
+    const { p } = adapter(z);
+    z.lagProjection(1);
+    await start(p);
+    expect(z.sessionAttempts).toEqual([firstId(LOGIN), firstId(LOGIN)]);
+    expect(z.sessions).toEqual([firstId(LOGIN)]);
+  });
+
+  it("reports Zitadel unavailable, never guesses, when the account stays unreadable", async () => {
+    const z = laggingZitadel();
+    const { p } = adapter(z);
+    z.freezeProjection();
+    await expect(start(p)).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    // One try, one read by id, one retry; no second account is made.
+    expect(z.sessionAttempts).toEqual([firstId(LOGIN), firstId(LOGIN)]);
+    expect(z.sessions).toEqual([]);
     expect(z.live.size).toBe(1);
   });
 });

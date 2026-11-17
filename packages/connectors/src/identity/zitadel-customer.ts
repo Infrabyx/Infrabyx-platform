@@ -253,6 +253,9 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
           projectId: this.o.projectId,
           roleKeys: [...this.base.customerRoles],
         });
+      // Read the new account by id before its first session (R1-D-171), which brings Zitadel's
+      // user projection up to date for the session API's user check.
+      await this.holds(userId, username);
       return userId;
     }
     this.fail(409, "no free account id for this login");
@@ -316,10 +319,21 @@ export class ZitadelCustomerIdentity extends CustomerIdentityBase {
   }): Promise<{ ref: Record<string, string>; code: string }> {
     const challenge =
       a.channel === "email" ? { otpEmail: { returnCode: {} } } : { otpSms: { returnCode: true } };
-    const r = await this.call("POST", "/v2/sessions", {
-      checks: { user: { userId: a.userId } },
-      challenges: challenge,
-    });
+    const session = () =>
+      this.call("POST", "/v2/sessions", {
+        checks: { user: { userId: a.userId } },
+        challenges: challenge,
+      });
+    let r = await session();
+    // R1-D-171: the session API checks the user against Zitadel's user projection as it is
+    // (`GetUserByID(ctx, false, ...)` in internal/api/grpc/session/v2/session.go, zitadel v4.19.5
+    // at a618740b, read 17 Nov 2026), so an account created or changed a moment ago, here or on
+    // another instance, can be "not found". `GET /v2/users/{id}` brings the projection up to date
+    // first (R1-D-167); after it the session is tried once more, and a second 404 stays an error.
+    if (r.status === 404) {
+      const read = await this.call("GET", `/v2/users/${encodeURIComponent(a.userId)}`);
+      if (read.status === 200) r = await session();
+    }
     if (r.status === 400 || r.status === 412)
       throw new IpbError("IPB-SEC-019", {
         detail: "the identity provider refused a code for this account now",
