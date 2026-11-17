@@ -3,12 +3,7 @@
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { sha256Hex, ulid } from "@infrabyx/crypto";
-import {
-  defineContractSuite,
-  FakeFileScan,
-  MemoryStorage,
-  pdfTextContractCases,
-} from "@infrabyx/testing";
+import { FakeFileScan, MemoryStorage } from "@infrabyx/testing";
 import type { DocFileRef, PdfTextLimits } from "@infrabyx/contracts/ports";
 import { PdfTextExtractor } from "../text.js";
 
@@ -16,7 +11,7 @@ const storage = new MemoryStorage();
 const av = new FakeFileScan(storage);
 const adapter = new PdfTextExtractor({ storage });
 
-defineContractSuite("PDF", () => adapter, pdfTextContractCases(storage));
+// The generic PDF text contract cases run in `pdf.contract.test.ts` (the PDF contract leg).
 
 // ---- fixture builders --------------------------------------------------------------------------
 

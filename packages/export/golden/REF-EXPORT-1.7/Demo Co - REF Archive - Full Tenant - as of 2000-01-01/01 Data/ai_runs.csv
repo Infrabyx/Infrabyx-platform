@@ -1,0 +1,1 @@
+﻿id,feature_key,skill_key,principal_id,principal_type,operation,data_class,band,prompt_ref,prompt_sha256,model_id,adapter_key,byok,outcome,error_code,route_reason,tokens_in,tokens_out,cached_tokens,cost_minor_units,currency,guard_flags,duration_ms,created_at

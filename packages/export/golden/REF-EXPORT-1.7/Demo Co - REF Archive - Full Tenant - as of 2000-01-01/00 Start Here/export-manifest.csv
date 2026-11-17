@@ -1,0 +1,49 @@
+﻿path,sha256,bytes,media_type,record_count,legal_entity,dataset,schema_version,as_of,created_at,source_ids,restricted,retention_class,legal_hold,upsi
+00 Start Here/README.md,cab218298b509c1b03ced19b7456684bb98329f1ac15d2a928d1a1ffe68886ac,3480,text/markdown,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/README.txt,2f9a471598a2850ba41387592026b13dc6b2875d7f04e72bf9ea2edc98baa417,3476,text/plain,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/code-tables/actor_type.csv,fc9d9946103cccd32ff90e522997796875f0520725b5870699107ca5fce96093,115,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/code-tables/decision.csv,a22e21a8b2fa07fe794180ec1527126b23d83d7ea8955cc91628d60f3564f286,50,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/code-tables/residency.csv,82aa885dd3f034129332e80ce64a51728a79911b55807392bafce544a54ae90f,84,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/code-tables/risk_class.csv,d5c5bfb388bca975e7e78e78193c560790c823258f78e3264ef22433ffe75c48,218,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/code-tables/severity.csv,86fd155169d617ef44626452e0b2629f005d7d6947a0467b5e2cad8e429012f9,69,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/data-dictionary.csv,adf9dbbb71257e88bad119944e740bd6cca3682322ba8da45d954193721ddf00,8806,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/relationships.csv,9f77c883ae594b52fa8e4043ef2b16f26890bd96eae75a6c8aa1a0496c3ca424,48,text/csv,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/ai_runs.schema.json,0dd32fe413522d64b9e917221fb7971cae3db2b963342f62199f40db3130ccf0,2963,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/approval_decision.schema.json,34a0954ab496d33db60f4dc634ce95682e3de53d822d034b1c6c17c84f1e2b66,997,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/approval_request.schema.json,a8ae2b4edb4702e04babaa154919907ce3e85fd2c01682713da196c7501c126e,1758,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/audit_event.schema.json,3123e0f718c33a26da9b719b44c89802a670619495c331b77fcd472fae3b5355,2796,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/inbox_item.schema.json,1b7fe000b258f6f992f4f085be6b9a4582025241d8282fa2027ba5d7ab823aba,1615,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/legal_entity.schema.json,899e382a2fdb1068213c96ab00dda906f781fdf187b9bd4578ad98c5d6f5845d,1005,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/membership.schema.json,183ab8c39dea268d66be8a0d1e2da20b48c9ad7e8430f90365bf97b0bb8c250f,836,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/notification.schema.json,6c924cdd0efac3dbd819791aab028e1abcd26e2511a7349abaa88ca676902bf9,848,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/setting.schema.json,ae07d1a62ea4689a51784ef16b6a6958aa306f8ddd89a5a78b52967ddfba2fc2,1089,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/setting_change.schema.json,39d685242cd689aeedc63d189b6d1d3ceb0ab86c60f4568438d407ef30091ac2,1372,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/tenant.schema.json,3169f5a1e41937589c4629d2e74be623abd074817453273d5911a0470d6b1cee,1018,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/schemas/vidhi_actions.schema.json,99cec630dc740130c4f09456f3ae4c82aab58b5c31adc5a1f523e8fceb74f343,1074,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/verify/LICENSE.txt,2f5267944d5e19d53a4d68e3a0866e1b17eb10b027b66e5b90a6ee0c381ab7b5,641,text/plain,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/verify/README.txt,1d63da1a4efdfe8160ca10af3e83cef2a6fa247cb26154e7607d60870a030ee9,507,text/plain,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/verify/export-signing-key.jwk.json,dd9fec0116eb842dc4b3e6a9a7c3838bfc2613f44ec0dbe7ac21894f7ed88bc8,208,application/json,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+00 Start Here/verify/verify.mjs,fa30c115c5cfccae0c2273db62ce0912f169b9b55c0607b29737854e4e29f4f8,8118,text/javascript,,,,,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/ai_runs.csv,41eee4f7f06e9f147bf650a34c5f909a1134fc5abaeefd6e1ecb72a76da3e432,262,text/csv,0,,ai_runs,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/ai_runs.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,ai_runs,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/approval_decision.csv,9e2cf39e89177df50950fbc79e39955b2cef6b3f6307908fd50165446d3f3fa1,65,text/csv,0,,approval_decision,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/approval_decision.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,approval_decision,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/approval_request.csv,bc8455bb0d6a7fc1a4c86126dcd7651f29f163075f85a0e9f2e698727f812642,139,text/csv,0,,approval_request,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/approval_request.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,approval_request,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/inbox_item.csv,3bd3772b3fe050e3d25179572bf3131d38308efb40b2027d6e1eedce7cc2d926,128,text/csv,0,,inbox_item,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/inbox_item.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,inbox_item,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/legal_entity.csv,62f037615b88064b246921514769840495d9943a4b851c67f810b0f7a9d5358d,44,text/csv,0,,legal_entity,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/legal_entity.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,legal_entity,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/membership.csv,6b3f1a57cece2482f5eee718b3e986b8c3911ee253653ca66314e03c66ca9307,671,text/csv,8,,membership,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/membership.jsonl,139a7ffc734308218476987ae5ab5e1625634a6958b202ba9d3a3c2cb2589955,991,application/jsonl,8,,membership,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/notification.csv,fcb22566487171a218b9d0a1b6c94954cfd5d0b40152a81fbad16da784fb10b0,44,text/csv,0,,notification,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/notification.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,notification,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/setting.csv,a677690d8c79e8810a02783a6669e797218860b37e057ea3b6321f0f925da288,61,text/csv,0,,setting,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/setting.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,setting,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/setting_change.csv,5f30c94dcc70ab745db1363405552bd4e4521db1be52e5347a924198e5dee1ee,97,text/csv,0,,setting_change,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/setting_change.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,setting_change,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/tenant.csv,f057f7d3ed0c5d12df9ef72acca3469e8940e1afb1f4535a824c3d5c61e9e624,126,text/csv,1,,tenant,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/tenant.jsonl,56396c53642a074400a6a183d6a34d4bf032138ac6cf77eedd595f9d2b97cf81,151,application/jsonl,1,,tenant,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/vidhi_actions.csv,803f0e1d38226e1727968152e49056e0909fb445424cabb437a63cdadcd1b59d,60,text/csv,0,,vidhi_actions,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+01 Data/vidhi_actions.jsonl,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,0,application/jsonl,0,,vidhi_actions,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N
+02 Audit Trail/audit-events-2000-01.jsonl,2fe8e47690c5f890929ba59cad4bb4bf2be41f240173e17949c4c512ca83c0f6,618,application/jsonl,1,,audit_event,REF-EXPORT-1.7,2000-01-01T00:00:00.000Z,2000-01-01T00:00:00.000Z,,N,audit,N,N

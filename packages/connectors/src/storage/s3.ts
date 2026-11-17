@@ -349,8 +349,8 @@ export class S3Storage implements StoragePort {
   async put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void> {
     this.checkKey(key);
     const slot = slotOf(meta);
-    const Bucket = this.bucket(slot);
-    const sse = this.sse(slot, key);
+    // Where the object already lives is checked first, so a move out of a compartment (or into
+    // one) is always refused as a move, whether or not the target location is configured.
     const found = await this.locate(key, "write");
     if (found) {
       this.refuseRetained(found.head, "overwrite");
@@ -360,6 +360,8 @@ export class S3Storage implements StoragePort {
           detail: "the object exists in another bucket class or compartment",
         });
     }
+    const Bucket = this.bucket(slot);
+    const sse = this.sse(slot, key);
     try {
       await this.client.send(
         new PutObjectCommand({
@@ -465,8 +467,6 @@ export class S3Storage implements StoragePort {
         bucketClass: opts.bucketClass,
         ...(opts.compartment ? { compartment: opts.compartment } : {}),
       });
-      const Bucket = this.bucket(slot);
-      const sse = this.sse(slot, key);
       const found = await this.locate(key);
       if (found) {
         this.refuseRetained(found.head, "upload");
@@ -476,6 +476,8 @@ export class S3Storage implements StoragePort {
             detail: "the object exists in another bucket class or compartment",
           });
       }
+      const Bucket = this.bucket(slot);
+      const sse = this.sse(slot, key);
       return getSignedUrl(
         this.client,
         new PutObjectCommand({

@@ -104,6 +104,21 @@ describe("PR-LDC-60: storage compartments", () => {
     expect(listed).toEqual(expect.arrayContaining([board, general]));
   });
 
+  it("a move is refused as a move even into a location that is not configured", async () => {
+    const { p } = adapter({
+      buckets: { CONFIDENTIAL: "b-conf" },
+      kmsKeyIds: { CONFIDENTIAL: "k-conf" },
+    });
+    const k = key();
+    await p.put(k, enc("a"), { bucketClass: "CONFIDENTIAL", compartment: "BOARD_CONFIDENTIAL" });
+    await expect(p.put(k, enc("b"), { bucketClass: "GENERAL" })).rejects.toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    await expect(
+      p.presign(k, "put", 60, { bucketClass: "GENERAL", contentType: "application/pdf" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+  });
+
   it("an object never moves between compartments or out of one", async () => {
     const { p } = adapter();
     const k = key();
