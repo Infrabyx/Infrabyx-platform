@@ -1,5 +1,22 @@
 # @infrabyx/testing
 
+## 1.21.0
+
+### Minor Changes
+
+- 8afdde2: PR-FBX-48 (R1-D-181): the port fakes and their fixtures now live in the new `@infrabyx/fakes` package, which has no `vitest`, Testcontainers or database driver in its tree. `@infrabyx/testing` depends on it and re-exports every name unchanged (the same runtime and type exports as 1.20.0), so test files need no change. A product that wires fakes in a fixture environment at runtime imports them from `@infrabyx/fakes`, lists it in `dependencies`, and keeps `@infrabyx/testing` in `devDependencies` only; its production tree then no longer carries `vitest` and `picomatch` (GHSA-fc5q-39xc-vjpf).
+
+### Patch Changes
+
+- Updated dependencies [a6929eb]
+  - @infrabyx/contracts@1.35.0
+  - @infrabyx/audit@1.10.6
+  - @infrabyx/config@1.18.1
+  - @infrabyx/crypto@1.6.1
+  - @infrabyx/fakes@1.0.1
+  - @infrabyx/seed@1.0.45
+  - @infrabyx/tenancy@1.20.6
+
 ## 1.20.0
 
 ### Minor Changes
