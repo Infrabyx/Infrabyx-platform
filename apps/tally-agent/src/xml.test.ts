@@ -14,7 +14,7 @@ describe("XML builder and strict reader (R1-D-178)", () => {
 
   it("reads TallyPrime's answers: declaration, BOM, comments, CDATA, references", () => {
     const doc = parseXml(
-      `﻿<?xml version="1.0"?><!-- answer --><ENVELOPE><BODY><DATA a='1'>` +
+      `\ufeff<?xml version="1.0"?><!-- answer --><ENVELOPE><BODY><DATA a='1'>` +
         `<LEDGER NAME="Bank &amp; Cash">&#4; Primary<![CDATA[ <raw> ]]></LEDGER>` +
         `<EMPTY/><N>&#x41;&#66;</N></DATA></BODY></ENVELOPE><!-- end -->`,
     );

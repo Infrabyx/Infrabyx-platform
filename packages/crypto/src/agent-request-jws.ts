@@ -14,9 +14,11 @@
 // The agent's key pair is generated on the agent (P-256, `generateAgentKeyPair`) and only its
 // public JWK leaves it; the private key never reaches the platform.
 import {
+  createPrivateKey,
   createPublicKey,
   generateKeyPairSync,
   sign as nodeSign,
+  timingSafeEqual,
   verify as nodeVerify,
   type KeyObject,
 } from "node:crypto";
@@ -69,6 +71,34 @@ export function generateAgentKeyPair(): AgentKeyPair {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
   const publicJwk = agentPublicJwk(publicKey);
   return { privateKey, publicJwk, thumbprint: jwkThumbprint(publicJwk) };
+}
+
+/**
+ * Whether `value` hashes (SHA-256) to `expectedHex`, compared in constant time: how a one-time
+ * enrolment code is checked against the digest the platform kept of it.
+ */
+export function sha256Matches(value: string, expectedHex: string): boolean {
+  if (!/^[0-9a-f]{64}$/.test(expectedHex)) return false;
+  const a = Buffer.from(sha256Hex(new TextEncoder().encode(value)), "hex");
+  const b = Buffer.from(expectedHex, "hex");
+  return a.byteLength === b.byteLength && timingSafeEqual(a, b);
+}
+
+/** An agent's private key, as `@infrabyx/crypto` hands it out. */
+export type AgentPrivateKey = KeyObject;
+
+/** PKCS #8 PEM of an agent's private key, for the agent's own state file. */
+export function exportAgentPrivateKey(key: AgentPrivateKey): string {
+  if (key.type !== "private") throw new Error("not a private key");
+  agentPublicJwk(key);
+  return key.export({ format: "pem", type: "pkcs8" }).toString();
+}
+
+/** Reads an agent's private key back from PKCS #8 PEM; refuses anything but P-256. */
+export function importAgentPrivateKey(pem: string): AgentPrivateKey {
+  const key = createPrivateKey({ key: pem, format: "pem" });
+  agentPublicJwk(key);
+  return key;
 }
 
 /** The four public members of a P-256 key (a private key's public half). */

@@ -9,7 +9,6 @@
 //      voucher, or the batch is rejected. TallyPrime's own refusals map to reason codes.
 // Nothing is ever altered or deleted in TallyPrime; a rejected batch is replayed by the product
 // and the vouchers already in TallyPrime are found and acknowledged, never created twice.
-import { createPrivateKey, type KeyObject } from "node:crypto";
 import {
   AgentEnrolResponse,
   AgentJobsResponse,
@@ -22,7 +21,13 @@ import {
   type AgentTrialBalanceJob,
   type AgentTrialBalanceResult,
 } from "@infrabyx/contracts/ports";
-import { generateAgentKeyPair, signAgentRequest } from "@infrabyx/crypto";
+import {
+  exportAgentPrivateKey,
+  generateAgentKeyPair,
+  importAgentPrivateKey,
+  signAgentRequest,
+  type AgentPrivateKey,
+} from "@infrabyx/crypto";
 import {
   TallyClient,
   TallyUnavailable,
@@ -90,7 +95,7 @@ export class PlatformRefused extends Error {
 
 export class TallyAgent {
   private readonly fetch: PlatformFetch;
-  private key: KeyObject | null = null;
+  private key: AgentPrivateKey | null = null;
   constructor(private readonly o: TallyAgentOptions) {
     this.fetch = o.fetch ?? (globalThis.fetch as unknown as PlatformFetch);
   }
@@ -117,7 +122,7 @@ export class TallyAgent {
       tenantId: out.tenantId,
       agentId: out.agentId,
       company: out.company,
-      privateKeyPem: pair.privateKey.export({ format: "pem", type: "pkcs8" }).toString(),
+      privateKeyPem: exportAgentPrivateKey(pair.privateKey),
       lastSeq: 0,
       pollTimeoutSeconds: out.pollTimeoutSeconds,
     };
@@ -135,7 +140,7 @@ export class TallyAgent {
   ): Promise<{ status: number; text: string }> {
     const s = await this.o.state.load();
     if (!s) throw new Error("the agent is not enrolled");
-    this.key ??= createPrivateKey(s.privateKeyPem);
+    this.key ??= importAgentPrivateKey(s.privateKeyPem);
     // `seq` only grows, across restarts too: it is saved before the request leaves.
     const seq = Math.max(s.lastSeq + 1, (this.o.now?.() ?? new Date()).getTime());
     await this.o.state.save({ ...s, lastSeq: seq });
@@ -255,7 +260,6 @@ export async function postBatch(tally: TallyClient, job: AgentPostJob): Promise<
 /** TallyPrime's GUID, with the voucher number when it has one. */
 function ledgerRef(v: TallyVoucher, remoteId: string): string {
   const ref = [v.guid ?? remoteId, v.number].filter(Boolean).join("/");
-  // eslint-disable-next-line no-control-regex
   return ref.replace(/[^\x20-\x7e]/g, "?").slice(0, 200);
 }
 

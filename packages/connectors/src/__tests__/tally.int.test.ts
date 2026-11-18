@@ -3,12 +3,11 @@
 // `TallyAccountingSink` with the agent running in-process against the TallyPrime stub (both
 // REMOTEID behaviours), enrolment under maker-checker and its one-time code, the agent API's
 // refusals, one job in flight, expiry, RLS and the immutability triggers.
-import { createPrivateKey } from "node:crypto";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PortError } from "@infrabyx/contracts/errors";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import { TALLY_AGENT_API, type JournalBatch } from "@infrabyx/contracts/ports";
-import { signAgentRequest } from "@infrabyx/crypto";
+import { importAgentPrivateKey, signAgentRequest } from "@infrabyx/crypto";
 import { ApprovalsEngine, PgOutbox } from "@infrabyx/tenancy";
 import {
   accountingContractCases,
@@ -247,7 +246,7 @@ describe("enrolment, the agent API and the tables (connectors/0007)", () => {
     const body = new TextEncoder().encode(o.body ?? "");
     const seq = o.seq ?? ++nextSeq;
     const jws = signAgentRequest({
-      privateKey: createPrivateKey(state.privateKeyPem),
+      privateKey: importAgentPrivateKey(state.privateKeyPem),
       kid: o.kid ?? `${state.tenantId}/${state.agentId}`,
       request: { tenant: state.tenantId, agent: state.agentId, method, path, body },
       seq,

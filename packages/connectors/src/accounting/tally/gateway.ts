@@ -11,7 +11,6 @@
 // on, and the proof must verify under the agent's stored key (`verifyAgentRequest`, the C-22
 // profile) with a `seq` above its last one, stored in the same statement as `svc_tally_poll`.
 // Refusals answer a problem document that does not say which check failed.
-import { timingSafeEqual } from "node:crypto";
 import { PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import {
@@ -35,7 +34,7 @@ import { TENANT_ID_REGEX } from "@infrabyx/contracts/ids";
 import {
   agentRequestKid,
   jwkThumbprint,
-  sha256Hex,
+  sha256Matches,
   verifyAgentRequest,
   type AgentJwk,
 } from "@infrabyx/crypto";
@@ -180,7 +179,7 @@ export class TallyAgentGateway {
           });
           return null;
         }
-        if (!sameHex(sha256Hex(parsed.data.code), a.code_sha256!)) {
+        if (!sha256Matches(parsed.data.code, a.code_sha256!)) {
           await q(tx).query(
             "update connectors.tally_agent set code_failures = code_failures + 1 where id = $1",
             [a.id],
@@ -290,7 +289,6 @@ export class TallyAgentGateway {
   /** Stores `seq` (and the poll time) if it is above the agent's last; the replay check. */
   private async claimSeq(tenantId: string, agentId: string, seq: number): Promise<boolean> {
     const client = await this.o.pool.connect();
-    let ok = false;
     try {
       await client.query("begin");
       await client.query(`set local role ${TALLY_POLL_DB_ROLE}`);
@@ -301,8 +299,7 @@ export class TallyAgentGateway {
         [agentId, seq],
       );
       await client.query("commit");
-      ok = (r.rowCount ?? 0) === 1;
-      return ok;
+      return (r.rowCount ?? 0) === 1;
     } catch (e) {
       await client.query("rollback").catch(() => undefined);
       throw e;
@@ -593,12 +590,6 @@ const readJob = (r: ReadRow, company: string): AgentJob => ({
   company,
   asOf: r.as_of,
 });
-
-function sameHex(a: string, b: string): boolean {
-  const x = Buffer.from(a, "hex");
-  const y = Buffer.from(b, "hex");
-  return x.byteLength === y.byteLength && timingSafeEqual(x, y);
-}
 
 /** Refuses a call the port cannot serve (used by the sink). */
 export const portOff = (detail: string) =>

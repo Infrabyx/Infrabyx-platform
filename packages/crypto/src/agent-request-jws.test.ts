@@ -1,4 +1,4 @@
-import { generateKeyPairSync, sign as nodeSign } from "node:crypto";
+import { createPublicKey, generateKeyPairSync, sign as nodeSign } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import * as jose from "jose";
 import {
@@ -6,12 +6,16 @@ import {
   agentPublicJwk,
   agentRequestKid,
   agentRequestPayload,
+  exportAgentPrivateKey,
   generateAgentKeyPair,
+  importAgentPrivateKey,
+  sha256Matches,
   signAgentRequest,
   verifyAgentRequest,
   type AgentRequest,
 } from "./agent-request-jws.js";
 import { toBase64Url } from "./encoding.js";
+import { sha256Hex } from "./hash.js";
 import { canonicalize } from "./jcs.js";
 import {
   MemoryReplayStore,
@@ -164,6 +168,25 @@ describe("agent request proofs (C-22 profile, R1-D-178)", () => {
         now,
       }),
     ).toMatchObject({ ok: false, reason: "typ" });
+  });
+
+  it("matches a code against its SHA-256 digest", () => {
+    const d = sha256Hex(new TextEncoder().encode("tac1.code"));
+    expect(sha256Matches("tac1.code", d)).toBe(true);
+    expect(sha256Matches("tac1.codf", d)).toBe(false);
+    expect(sha256Matches("tac1.code", d.toUpperCase())).toBe(false);
+    expect(sha256Matches("tac1.code", "")).toBe(false);
+  });
+
+  it("exports and imports the agent key as PKCS #8, P-256 only", () => {
+    const pem = exportAgentPrivateKey(pair.privateKey);
+    expect(pem).toMatch(/^-----BEGIN PRIVATE KEY-----/);
+    expect(agentPublicJwk(importAgentPrivateKey(pem))).toEqual(pair.publicJwk);
+    const p384 = generateKeyPairSync("ec", { namedCurve: "secp384r1" });
+    expect(() =>
+      importAgentPrivateKey(p384.privateKey.export({ format: "pem", type: "pkcs8" }).toString()),
+    ).toThrow(/P-256/);
+    expect(() => exportAgentPrivateKey(createPublicKey(pair.privateKey))).toThrow(/private/);
   });
 
   it("signs only with a P-256 key and a well-formed request", () => {
