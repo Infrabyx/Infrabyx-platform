@@ -126,6 +126,26 @@ export {
   type DpopResult,
 } from "./dpop.js";
 export {
+  signAgentRequest,
+  verifyAgentRequest,
+  agentRequestKid,
+  agentRequestPayload,
+  generateAgentKeyPair,
+  agentPublicJwk,
+  exportAgentPrivateKey,
+  importAgentPrivateKey,
+  sha256Matches,
+  AGENT_REQUEST_JWS_TYP,
+  AGENT_REQUEST_MAX_AGE_SECONDS,
+  AGENT_REQUEST_MAX_SKEW_SECONDS,
+  type AgentRequest,
+  type AgentJwk,
+  type AgentKeyPair,
+  type AgentPrivateKey,
+  type AgentRequestFailure,
+  type AgentRequestResult,
+} from "./agent-request-jws.js";
+export {
   LiveKitCredentials,
   signLiveKitJoinToken,
   signLiveKitServerToken,

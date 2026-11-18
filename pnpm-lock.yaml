@@ -353,6 +353,18 @@ importers:
         specifier: workspace:*
         version: link:../api
 
+  apps/tally-agent:
+    dependencies:
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../../packages/crypto
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+
   packages/a11y:
     dependencies:
       '@infrabyx/contracts':
@@ -661,6 +673,9 @@ importers:
       '@infrabyx/audit':
         specifier: workspace:*
         version: link:../audit
+      '@infrabyx/tally-agent':
+        specifier: workspace:*
+        version: link:../../apps/tally-agent
       '@infrabyx/testing':
         specifier: workspace:*
         version: link:../testing

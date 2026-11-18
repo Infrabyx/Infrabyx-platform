@@ -144,6 +144,10 @@
       "types": "./dist/web-snapshot/index.d.ts",
       "default": "./dist/web-snapshot/index.js"
     },
+    "./accounting": {
+      "types": "./dist/accounting/index.d.ts",
+      "default": "./dist/accounting/index.js"
+    },
     "./pdf": {
       "types": "./dist/pdf/index.d.ts",
       "default": "./dist/pdf/index.js"
@@ -229,6 +233,7 @@
   },
   "devDependencies": {
     "@infrabyx/audit": "workspace:*",
+    "@infrabyx/tally-agent": "workspace:*",
     "@infrabyx/testing": "workspace:*",
     "@types/pg": "8.23.1",
     "pg": "8.23.1",
