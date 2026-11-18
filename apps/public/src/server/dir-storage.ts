@@ -7,7 +7,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ObjectMeta } from "@infrabyx/contracts/ports";
 import { sha256Hex } from "@infrabyx/crypto";
-import { MemoryStorage } from "@infrabyx/testing";
+import { MemoryStorage } from "@infrabyx/fakes";
 
 interface Header {
   key: string;

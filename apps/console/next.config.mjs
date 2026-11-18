@@ -15,7 +15,7 @@ const SERVER_ONLY = [
   "@infrabyx/contracts",
   "@infrabyx/crypto",
   "@infrabyx/tenancy",
-  "@infrabyx/testing",
+  "@infrabyx/fakes",
   "@infrabyx/feedback",
   "@infrabyx/trust",
 ];

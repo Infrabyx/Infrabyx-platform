@@ -13,7 +13,7 @@ import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { StoragePort, VadDocument } from "@infrabyx/contracts/ports";
 import { defineSeedModule, type SeedModuleContext } from "@infrabyx/seed";
-import { FakeTrustFeed, MemoryStorage, fixtureTrustDocuments } from "@infrabyx/testing";
+import { FakeTrustFeed, MemoryStorage, fixtureTrustDocuments } from "@infrabyx/fakes";
 import { TrustMirror } from "@infrabyx/trust";
 import { z } from "zod";
 import { DirStorage } from "../server/dir-storage.ts";

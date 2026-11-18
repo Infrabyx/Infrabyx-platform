@@ -1,0 +1,47 @@
+{
+  "name": "@infrabyx/fakes",
+  "version": "1.0.0",
+  "description": "In-memory port fakes and fixtures for fixture environments, without a test runner (IPB-01-15)",
+  "license": "UNLICENSED",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@infrabyx/config": "workspace:*",
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "4.1.12"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infrabyx/infrabyx-platform.git",
+    "directory": "packages/fakes"
+  },
+  "engines": {
+    "node": "24.22.1"
+  }
+}

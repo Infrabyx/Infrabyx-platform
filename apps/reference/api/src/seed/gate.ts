@@ -11,7 +11,7 @@ import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { VadDocument } from "@infrabyx/contracts/ports";
 import { defineSeedModule, type SeedModule, type SeedModuleContext } from "@infrabyx/seed";
-import { FakeTrustFeed, MemoryStorage } from "@infrabyx/testing";
+import { FakeTrustFeed, MemoryStorage } from "@infrabyx/fakes";
 import { TrustMirror } from "@infrabyx/trust";
 import { fixtureTrustDocumentsFor } from "../services.js";
 

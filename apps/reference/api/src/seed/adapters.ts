@@ -5,7 +5,7 @@
 // own SECRETS adapter so the vault keeps them and the password hash list persists (PL6-D-10).
 import { validateEnv } from "@infrabyx/config/env";
 import { KeycloakIdentity, MemoryRevocationStore } from "@infrabyx/connectors/identity";
-import { MemorySecrets } from "@infrabyx/testing";
+import { MemorySecrets } from "@infrabyx/fakes";
 import { apiEnvSchema, checkApiEnv, FIXTURE_ENVS } from "../env.js";
 
 const r = await validateEnv(apiEnvSchema, { guards: [] });

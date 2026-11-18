@@ -27,7 +27,7 @@ import type {
 } from "@infrabyx/contracts/ports";
 import { FeedbackService } from "@infrabyx/feedback";
 import { PgKernel, PgOutbox } from "@infrabyx/tenancy";
-import { FakeCatalogue, FakeCrm, FakeOhDesk, FakeTrustFeed } from "@infrabyx/testing";
+import { FakeCatalogue, FakeCrm, FakeOhDesk, FakeTrustFeed } from "@infrabyx/fakes";
 import { TrustMirror } from "@infrabyx/trust";
 import { FixtureStudioAuthz } from "./authz.ts";
 import { DirStorage } from "./dir-storage.ts";

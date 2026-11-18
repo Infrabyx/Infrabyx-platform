@@ -21,7 +21,7 @@ import type {
 import { FeedbackService } from "@infrabyx/feedback";
 import { HelpRegistry, loadRegistry, PLATFORM_REGISTRY_DIR } from "@infrabyx/hlp";
 import { PgKernel, PgOutbox } from "@infrabyx/tenancy";
-import { FakeCrm, FakeHr, FakeOhDesk, FakeTrustFeed, MemoryStorage } from "@infrabyx/testing";
+import { FakeCrm, FakeHr, FakeOhDesk, FakeTrustFeed, MemoryStorage } from "@infrabyx/fakes";
 import { TrustMirror } from "@infrabyx/trust";
 import { DirStorage } from "./dir-storage.ts";
 import { siteEnv, type SiteEnv } from "./env.ts";

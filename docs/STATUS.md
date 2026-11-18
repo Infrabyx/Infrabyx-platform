@@ -14,17 +14,16 @@ Updated: 2026-11-18
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                                            | Expires    | Review                                    | Decision           |
-| -------------------------------- | ------------------------------------------------ | ---------- | ----------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)                          | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)                     | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`)                    | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`)                    | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
-| CVE-2026-109518                  | Debian 12 base (apt)                             | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)                          | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)                          | 2026-12-07 | 1 Dec                                     | R1-D-111           |
-| CVE-2025-6020                    | Debian 12 base (linux-pam)                       | 2026-12-16 | 1 Dec                                     | R1-D-162           |
-| CVE-2026-112366                  | `picomatch` 4.0.7 (via `vitest`, reference apps) | 2026-12-17 | 1 Dec                                     | R1-D-174           |
+| Finding                          | Where                         | Expires    | Review                                    | Decision           |
+| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
+| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
 
 ## Wave 13 gate (16 Nov, #252)
 
