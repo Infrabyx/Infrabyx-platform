@@ -41,19 +41,28 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
-## Twenty-second session (18 Nov, owner's chat)
+## Twenty-second session (18 Nov, owner's chat) — handover
 
 - **Lock:** taken at 11:22 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no un-recorded owner comment (all eight comments are session reports).
-- **Owner instructions of 18 Nov (in the chat), recorded in this PR:** OWNER-MANUAL-02 (the hourly scheduled task is off for good; work happens only in chats the owner opens; owner answers come in the chat; the lock rule stays; sessions never create tasks or sessions; the 1 Dec and 15 Dec reminder tasks are off, so the 1 Dec waiver check rests on this file). The answers to #132 to #136 (R1-D-179: all accepted except #132 (4) plus a purpose code, #132 (5) changed to security audit events for refused reveals, #136 (4) changed to DPAPI on Windows with 90-day re-enrolment). The product requests PR-FBX-48, PR-FBX-49 and PR-UDF-037 to PR-UDF-046 copied into `docs/platform-requests.md` and ordered (R1-D-180). The scheduled-task references (trigger ids, check-in lines) are removed from this file; CLAUDE.md had none and gains one line on how sessions start.
-- **#290** (the twenty-first handover and release run 256's record) is carried in this PR (its commit fast-forwarded into `claude/admiring-franklin-508ck2`); #290 is closed in favour of it.
+- **Merged (each after a green `ci:run`):**
+  - **#291** (`7daf602`): OWNER-MANUAL-02; the owner's answers to #132 to #136 (R1-D-179); PR-FBX-48, PR-FBX-49 and PR-UDF-037 to PR-UDF-046 copied into `docs/platform-requests.md` and ordered (R1-D-180); the scheduled-task references removed from this file; #290 carried and closed. It also fixed a time bomb in `ses-inbound.test.ts` (a fixed clock against a certificate minted on the real clock), which had made `main` red from 06:00 UTC.
+  - **#292** (`8afdde2`; PR-FBX-48, priority 1; R1-D-181, ADR-0011, spec request PR-045, owner question #137): the new package `@infrabyx/fakes` 1.0.0 with every port fake; `testing` re-exports it unchanged; the reference API's production tree drops from 635 to 422 packages, with no `vitest`, `picomatch` or Testcontainers; the R1-D-174 waiver is removed.
+  - **#294** (`3a33260`; PR-FBX-49, priority 1; R1-D-182, owner question #138): the realm half of the MFA floor (Keycloak markers, enrolment on create and sync, existing realms reconciled, `requireMfaEnrolment`; Zitadel second factors read back). A real defect was fixed with it: Zitadel's `amr` was collapsed to `mfa`, so every SMS-excluded Zitadel session was refused.
+  - **#295** (`a6929eb`; owner answer #136 (4); R1-D-184, owner question #139): the TallyPrime agent's key under DPAPI on Windows (PowerShell 5.1, key on stdin only), the 0600 file only as a reported fallback, `connectors/0008` `key_protection`, warnings from day 80, refusal from day 90, runbook `docs/runbooks/tally-agent.md`. The #132 (4) and (5) plan (R1-D-183) is in the same PR.
+- **Release:** version PR #293 (`connectors` 1.20.0, `testing` 1.21.0, a `rules` patch, and with #295 a `contracts` minor) is refreshed by the release workflow; its first `ci:run` failed only `compose` on a runner timeout to registry.npmjs.org. `@infrabyx/fakes` 1.0.0 has no changeset: Changesets publishes a package missing from the registry at its version [VERIFY at the release run, and its visibility, #137].
+- **Lessons for the local gate:** run `pnpm check:full --pr-body <file>` (the plan line must cite `docs/phases/R<n>-plan.md`), and the whole unit suite of a changed package, not only its new tests (recorded fixtures broke on new Admin API calls in #294). Docker may stop in the session; `dockerd` restarts by hand. `IPB_BUILD_CA=/root/.ccr/ca-bundle.crt` lets the image builds through the session proxy; free disk before `--with-images`.
 - **Next, in order (R1-D-180):**
-  1. PR-FBX-48: `@infrabyx/testing` without `vitest` in its runtime dependencies (the runtime fakes in an entry point that does not load the contract harness).
-  2. PR-FBX-49: the realm's MFA floor: built (R1-D-182, this PR); owner question #138. PR-FBX-48 merged as #292 (`8afdde2`; R1-D-181, owner question #137).
-  3. The owner's changes: #136 (4) built (R1-D-184, this PR; owner question #139). #132 (4) purpose code and (5) refused reveals as security audit events: planned (R1-D-183, `docs/phases/R1-owner-changes-plan.md` §A, §B), to build next as `contracts`, `audit` and `rules` minors. PR-FBX-49 merged as #294 (`3a33260`; R1-D-182, owner question #138).
-  4. PR-UDF-037 to PR-UDF-046, in order, each planned first.
-  5. PR-LDC-46 (inbox snooze), PR-LDC-52 (`toXlsx` layout), each planned first.
-  6. **1 Dec waiver check (no reminder task; this line is the only reminder):** on 1 Dec, before the base-image and `sqlite-libs` waivers expire (5, 7, 10 Dec), look for fixed images, and put any unfixed finding to the owner with a recommendation; CVE-2025-6020 (16 Dec) and CVE-2026-112366 (17 Dec) join it. The 15 Dec Keycloak re-scan likewise rests on this file.
-  7. When the TallyPrime sandbox company exists (#128, an owner task): run the agent against it and settle R1-D-178's `[VERIFY]` items.
+  1. Gate and merge version PR #293 (minors and patches only, #81(a)), then record its release run here (BOM, attestations, checksums), including whether `@infrabyx/fakes` 1.0.0 was published and its visibility (#137).
+  2. #132 (4) and (5): build R1-D-183 (`docs/phases/R1-owner-changes-plan.md` §A, §B): `contracts`, `audit` (`audit/0011` `security_event`) and `rules` minors.
+  3. PR-UDF-037 to PR-UDF-046, in order, each planned first.
+  4. PR-LDC-46 (inbox snooze), PR-LDC-52 (`toXlsx` layout), each planned first.
+  5. **1 Dec waiver check (no reminder task; this line is the only reminder):** on 1 Dec, before the base-image and `sqlite-libs` waivers expire (5, 7, 10 Dec), look for fixed images and put any unfixed finding to the owner with a recommendation; CVE-2025-6020 (16 Dec) joins it (CVE-2026-112366 is gone with #292). The 15 Dec Keycloak re-scan likewise rests on this file.
+  6. When the TallyPrime sandbox company exists (#128, an owner task): run the agent against it, settle R1-D-178's `[VERIFY]` items, and try the DPAPI path on a Windows host (R1-D-184).
+- **Products (adopt):** Finbyx takes `@infrabyx/fakes` 1.0.0 and `testing` 1.21.0 (guide §7cl) and drops its audit exception; takes `connectors` 1.20.0, passes its `mfaFloor` to `KeycloakRealmSpec` and `KeycloakIdentityOptions`, re-applies its realm and runs `requireMfaEnrolment` once (guide §7bt); with the TallyPrime agent, the next `contracts`/`connectors` minors, `connectors/0008`, agent 1.1.0 and the runbook (guide §7ck). Everyone else takes the patches with the next bump.
+- **Open owner questions:** #137 (the `fakes` package and its visibility), #138 (five realm-floor assumptions), #139 (four agent-key assumptions, refusal from day 90 first); recommendation for all: accept. Nothing is blocked on them.
+- **Branches:** `claude/admiring-franklin-508ck2`, restarted from `main` after each merge; local worktrees only in the session's scratchpad.
+
+HANDOVER READY
 
 ## Twenty-first session (18 Nov) — handover
 
