@@ -65,6 +65,16 @@ export const TALLY_AGENT_KEY_MAX_DAYS = 90;
 /** From this day of a key's life the agent's view carries `rotationDue` (the console warns). */
 export const TALLY_AGENT_KEY_WARN_DAYS = 80;
 /**
+ * The days of a key's life on which the tenant's administrators are notified that it expires
+ * (owner answer #139 (1); R1-D-186): once on day 80 and again on day 85. The notice of a day is
+ * sent at most once per agent; a sweep that first runs later sends only the latest notice due,
+ * and none from day `TALLY_AGENT_KEY_MAX_DAYS` (the gateway refuses the key then).
+ */
+export const TALLY_AGENT_KEY_NOTICE_DAYS = [80, 85] as const;
+export type TallyAgentKeyNoticeDay = (typeof TALLY_AGENT_KEY_NOTICE_DAYS)[number];
+/** The platform notification class of the key notice (`@infrabyx/notify` platform catalogue). */
+export const TALLY_AGENT_KEY_NOTICE_CLASS = "accounting.agent_key_expiring";
+/**
  * How the agent keeps its private key on the tenant's machine (#136 (4)): `dpapi`, under Windows
  * DPAPI for the agent's own account; `file`, a mode-0600 file (other systems, or DPAPI was not
  * available), which the enrolment record carries as a warning.
@@ -287,6 +297,11 @@ export interface TallyAgentView {
   keyExpiresAt: string | null;
   /** Day `TALLY_AGENT_KEY_WARN_DAYS` or later of an active key: enrol a new agent. */
   rotationDue: boolean;
+  /**
+   * The latest key notice the tenant's administrators were sent for this agent (day 80 or 85 of
+   * its key; owner answer #139 (1)), or null before the first.
+   */
+  keyNoticeDay: TallyAgentKeyNoticeDay | null;
   /** Warnings the console shows: `key_unencrypted`, `key_expired`. */
   warnings: readonly ("key_unencrypted" | "key_expired")[];
   /** Whether an unused, unexpired enrolment code exists. */

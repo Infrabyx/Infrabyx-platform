@@ -100,6 +100,13 @@ entries:
     review_by: 2027-10-27
     status: published
     visibility: public
+  - key: hlp.notify.accounting.agent_key_expiring
+    term: "TallyPrime agent key expiring"
+    plain: "The key of your TallyPrime agent expires 90 days after it was enrolled. Enrol the agent again before then, or postings to TallyPrime stop until you do."
+    effective_date: 2026-11-18
+    review_by: 2027-11-18
+    status: published
+    visibility: public
   - key: hlp.notify.vidhi.schedule.paused
     term: "Scheduled task paused"
     plain: "A scheduled Vidhi task was paused, for example after repeated failures or a change of permissions."

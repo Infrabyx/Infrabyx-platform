@@ -41,7 +41,7 @@ import type { DpapiKeyGuard, KeyProtection } from "./keyguard.js";
 /** DPAPI entropy for the agent's key blob: binds the blob to this use (#136 (4)). */
 export const KEY_ENTROPY = "infrabyx-tally-agent/key/v1";
 
-export const AGENT_VERSION = "1.1.0";
+export const AGENT_VERSION = "1.2.0";
 
 /** What the agent keeps between runs (the state file, mode 0600). */
 export interface AgentState {
@@ -63,15 +63,25 @@ export interface AgentState {
 export interface AgentStateStore {
   load(): Promise<AgentState | null>;
   save(s: AgentState): Promise<void>;
+  /** A one-time enrolment code waiting to be used (`<stateDir>/enrol-code`), if any. */
+  enrolCode?(): Promise<string | null>;
+  removeEnrolCode?(): Promise<void>;
 }
 
 export class MemoryStateStore implements AgentStateStore {
   state: AgentState | null = null;
+  code: string | null = null;
   async load() {
     return this.state ? { ...this.state } : null;
   }
   async save(s: AgentState) {
     this.state = { ...s };
+  }
+  async enrolCode() {
+    return this.code;
+  }
+  async removeEnrolCode() {
+    this.code = null;
   }
 }
 
@@ -102,9 +112,31 @@ export interface TallyAgentOptions {
   log?: (line: string) => void;
 }
 
+/** Printable text of a problem document's `title` and `detail`, bounded, for the agent's log. */
+function problemText(body: string | undefined): string | undefined {
+  if (!body) return undefined;
+  try {
+    const p = JSON.parse(body) as { title?: unknown; detail?: unknown };
+    const parts = [p.title, p.detail].filter((x): x is string => typeof x === "string");
+    const text = parts
+      .join(". ")
+      .replace(/[^\x20-\x7E]/g, " ")
+      .slice(0, 1000);
+    return text || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export class PlatformRefused extends Error {
-  constructor(readonly status: number) {
+  /** The platform's own words (the problem's title and detail), when it gave any. */
+  readonly explanation: string | undefined;
+  constructor(
+    readonly status: number,
+    body?: string,
+  ) {
     super(`the platform answered HTTP ${status}`);
+    this.explanation = problemText(body);
   }
 }
 
@@ -207,7 +239,7 @@ export class TallyAgent {
       new Uint8Array(),
       (s.pollTimeoutSeconds + 15) * 1000,
     );
-    if (poll.status !== 200) throw new PlatformRefused(poll.status);
+    if (poll.status !== 200) throw new PlatformRefused(poll.status, poll.text);
     const { job } = AgentJobsResponse.parse(JSON.parse(poll.text));
     if (!job) return "idle";
     const result = await this.runJob(job);
@@ -219,7 +251,7 @@ export class TallyAgent {
       30_000,
     );
     // 409: the job moved on (replayed or re-leased); the next poll brings the current one.
-    if (res.status !== 200 && res.status !== 409) throw new PlatformRefused(res.status);
+    if (res.status !== 200 && res.status !== 409) throw new PlatformRefused(res.status, res.text);
     this.log(`${job.kind} ${job.jobId} attempt ${job.attempt}: ${result.outcome}`);
     return "done";
   }
@@ -228,16 +260,43 @@ export class TallyAgent {
     return job.kind === "post" ? postBatch(this.o.tally, job) : readTrialBalance(this.o.tally, job);
   }
 
+  /**
+   * Re-enrolment without a restart (owner answer #139 (1)): a new one-time code in the state
+   * store replaces this agent's identity and key. A code the platform refuses is removed.
+   */
+  async reenrolIfCode(): Promise<boolean> {
+    const code = await this.o.state.enrolCode?.();
+    if (!code) return false;
+    try {
+      await this.enrol(code);
+    } catch (e) {
+      if (e instanceof PlatformRefused && (e.status === 400 || e.status === 401)) {
+        this.log("the platform refused the enrolment code; ask an admin to issue a new one");
+        await this.o.state.removeEnrolCode?.();
+        return false;
+      }
+      throw e;
+    }
+    await this.o.state.removeEnrolCode?.();
+    return true;
+  }
+
   /** Runs until `signal` aborts; errors back off with jitter from 1 s to 5 minutes. */
   async run(signal: AbortSignal): Promise<void> {
     let backoff = 1_000;
     while (!signal.aborted) {
       try {
+        await this.reenrolIfCode();
         await this.runOnce();
         backoff = 1_000;
       } catch (e) {
         if (e instanceof PlatformRefused && (e.status === 401 || e.status === 403))
-          this.log(`the platform refused this agent (HTTP ${e.status}); enrol it again if revoked`);
+          this.log(
+            `the platform refused this agent (HTTP ${e.status})` +
+              (e.explanation
+                ? `: ${e.explanation}`
+                : "; if it was revoked or its key expired, enrol it again"),
+          );
         else this.log(`turn failed: ${e instanceof Error ? e.message : "error"}`);
         const wait = backoff / 2 + Math.floor(Math.random() * (backoff / 2));
         await new Promise((r) => setTimeout(r, wait));

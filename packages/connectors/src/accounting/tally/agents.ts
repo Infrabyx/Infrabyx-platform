@@ -13,15 +13,21 @@
 //     rotated by enrolling again.
 //   * `revoke` (a tenant admin, or `PLT_SECURITY_OFFICER` in the tenant under break-glass): the
 //     agent's next call is refused. `revoked` is final (database trigger).
+//   * `sendKeyNotices` (a per-tenant scheduled job, owner answer #139 (1); R1-D-186): on day 80
+//     and again on day 85 of an active agent's key, the tenant's administrators are notified
+//     (`accounting.agent_key_expiring`), once each, in the transaction that records it.
 import { IpbError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
 import {
   TALLY_AGENT_ENROL_ACTION,
   TALLY_AGENT_ID_REGEX,
   TALLY_AGENT_KEY_MAX_DAYS,
+  TALLY_AGENT_KEY_NOTICE_CLASS,
+  TALLY_AGENT_KEY_NOTICE_DAYS,
   TALLY_AGENT_KEY_WARN_DAYS,
   TALLY_ENROL_CODE_MINUTES,
   TallyCompany,
+  type TallyAgentKeyNoticeDay,
   type TallyAgentState,
   type TallyAgentView,
   type TallyKeyProtection,
@@ -35,6 +41,22 @@ const REASON = /^[\x20-\x7E]{1,200}$/;
 /** Roles that may issue codes and revoke by default. */
 export const TALLY_AGENT_ADMIN_ROLES = ["ORG_ADMIN", "ORG_OWNER"] as const;
 const SECURITY_OFFICER = "PLT_SECURITY_OFFICER";
+/** Most recipients of one notification (`NotificationRequest.to`). */
+const MAX_RECIPIENTS = 1000;
+
+/** The part of NOTIFY the key notices need (`NotifyService.enqueue`, in the caller's transaction). */
+export interface TallyKeyNotify {
+  enqueue(
+    tx: Tx,
+    n: {
+      class: string;
+      to: { ref: string }[];
+      vars: Record<string, string>;
+      deepLink: string;
+      idempotencyKey: string;
+    },
+  ): Promise<unknown>;
+}
 
 export interface TallyAgentServiceOptions {
   kernel: MutationKernel;
@@ -45,6 +67,10 @@ export interface TallyAgentServiceOptions {
   adminRoles?: readonly string[];
   /** Roles that may check the enrolment (default: the engine's tenant checkers). */
   checkerRoles?: readonly string[];
+  /** NOTIFY, for the day-80 and day-85 key notices (`sendKeyNotices` needs it). */
+  notify?: TallyKeyNotify;
+  /** The product's deep link to an agent in its console (default `/settings/accounting/agents/{id}`). */
+  agentLink?: (agentId: string) => string;
   now?: () => Date;
 }
 
@@ -67,6 +93,7 @@ export interface TallyAgentRow {
   enrolled_at: Date | null;
   revoked_at: Date | null;
   key_protection: TallyKeyProtection | null;
+  key_notice_day: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -74,9 +101,30 @@ const DAY_MS = 86_400_000;
 export const keyExpiresAt = (enrolledAt: Date | string): Date =>
   new Date(new Date(enrolledAt).getTime() + TALLY_AGENT_KEY_MAX_DAYS * DAY_MS);
 
+/**
+ * The key notice due for a key enrolled at `enrolledAt` when `sent` is the latest one sent: the
+ * latest notice day reached and not yet sent, or null (none due, or the key has expired).
+ */
+export function keyNoticeDue(
+  enrolledAt: Date | string,
+  sent: number,
+  now: Date,
+): TallyAgentKeyNoticeDay | null {
+  const age = now.getTime() - new Date(enrolledAt).getTime();
+  if (age >= TALLY_AGENT_KEY_MAX_DAYS * DAY_MS) return null;
+  let due: TallyAgentKeyNoticeDay | null = null;
+  for (const d of TALLY_AGENT_KEY_NOTICE_DAYS) if (age >= d * DAY_MS && d > sent) due = d;
+  return due;
+}
+
+/** Rolls back a key-notice transaction that found nothing due (a mutation must ledger). */
+class NothingDue extends Error {}
+
+const DEFAULT_AGENT_LINK = (agentId: string) => `/settings/accounting/agents/${agentId}`;
+
 export const AGENT_COLUMNS = `id, tenant_id, name, company, state, approval_id, requested_by,
   code_sha256, code_expires_at, code_failures, public_jwk, jkt, last_seq, last_poll_at,
-  agent_version, enrolled_at, revoked_at, key_protection`;
+  agent_version, enrolled_at, revoked_at, key_protection, key_notice_day`;
 
 export function toAgentView(r: TallyAgentRow, now: Date): TallyAgentView {
   return {
@@ -96,6 +144,9 @@ export function toAgentView(r: TallyAgentRow, now: Date): TallyAgentView {
       r.state === "active" &&
       r.enrolled_at !== null &&
       now.getTime() >= new Date(r.enrolled_at).getTime() + TALLY_AGENT_KEY_WARN_DAYS * DAY_MS,
+    keyNoticeDay: (TALLY_AGENT_KEY_NOTICE_DAYS as readonly number[]).includes(r.key_notice_day)
+      ? (r.key_notice_day as TallyAgentKeyNoticeDay)
+      : null,
     warnings: [
       ...(r.enrolled_at && (r.key_protection ?? "file") === "file"
         ? (["key_unencrypted"] as const)
@@ -269,6 +320,102 @@ export class TallyAgentService {
       { action: "connectors.accounting.agent.revoke" },
     );
     return toAgentView(row, this.now());
+  }
+
+  /**
+   * The key notices of one tenant (owner answer #139 (1)): run it daily or more often per tenant,
+   * for example through `TenantSweep.run` from `@infrabyx/tenancy`, as the job's own service
+   * principal. For each active agent whose key reached day 80 or 85 and has not had that notice,
+   * the tenant's active administrators (`adminRoles`) are notified once, the notice is recorded
+   * on the agent and ledgered in the same transaction; a tenant with nothing due writes nothing.
+   */
+  async sendKeyNotices(ctx: KernelContext): Promise<{ notified: number }> {
+    assertTenantCaller(ctx, "send TallyPrime agent key notices", { allowService: true });
+    const notify = this.o.notify;
+    if (!notify)
+      throw new IpbError("IPB-UX-004", {
+        detail: "TallyAgentService needs `notify` to send key notices",
+        meta: { reason: "notify_missing" },
+      });
+    const now = this.now();
+    const candidates = await this.o.kernel.read(ctx, (tx) =>
+      q(tx).query<{ id: string; enrolled_at: Date; key_notice_day: number }>(
+        `select id, enrolled_at, key_notice_day from connectors.tally_agent
+          where state = 'active' and enrolled_at is not null and enrolled_at <= $1
+            and key_notice_day < $2
+          order by enrolled_at limit 200`,
+        [
+          new Date(now.getTime() - TALLY_AGENT_KEY_NOTICE_DAYS[0] * DAY_MS).toISOString(),
+          TALLY_AGENT_KEY_NOTICE_DAYS[TALLY_AGENT_KEY_NOTICE_DAYS.length - 1],
+        ],
+      ),
+    );
+    const roles = [...(this.o.adminRoles ?? TALLY_AGENT_ADMIN_ROLES)];
+    const link = this.o.agentLink ?? DEFAULT_AGENT_LINK;
+    let notified = 0;
+    for (const c of candidates.rows) {
+      if (keyNoticeDue(c.enrolled_at, c.key_notice_day, now) === null) continue;
+      const sent = await this.o.kernel
+        .mutate(
+          ctx,
+          async (tx) => {
+            const r = await q(tx).query<TallyAgentRow>(
+              `select ${AGENT_COLUMNS} from connectors.tally_agent where id = $1 for update`,
+              [c.id],
+            );
+            const a = r.rows[0];
+            const day =
+              a && a.state === "active" && a.enrolled_at
+                ? keyNoticeDue(a.enrolled_at, a.key_notice_day, now)
+                : null;
+            if (!a || day === null) throw new NothingDue();
+            const admins = await q(tx).query<{ user_id: string }>(
+              `select m.user_id from tenancy.membership m
+               join tenancy.user u on u.id = m.user_id
+              where u.status = 'active' and m.roles && $1::text[]
+              order by m.user_id limit ${MAX_RECIPIENTS}`,
+              [roles],
+            );
+            const expires = keyExpiresAt(a.enrolled_at!).toISOString();
+            if (admins.rows.length > 0)
+              await notify.enqueue(tx, {
+                class: TALLY_AGENT_KEY_NOTICE_CLASS,
+                to: admins.rows.map((x) => ({ ref: x.user_id })),
+                vars: {
+                  id: a.id,
+                  name: a.name,
+                  day: String(day),
+                  expires_on: expires.slice(0, 10),
+                },
+                deepLink: link(a.id),
+                idempotencyKey: `${TALLY_AGENT_KEY_NOTICE_CLASS}:${a.id}:${day}`,
+              });
+            await q(tx).query(
+              "update connectors.tally_agent set key_notice_day = $2 where id = $1",
+              [a.id, day],
+            );
+            await this.o.audit.record(tx, {
+              action: "connectors.accounting.agent.key_notice",
+              resourceType: "connectors.tally_agent",
+              resourceId: a.id,
+              before: { key_notice_day: a.key_notice_day },
+              after: {
+                key_notice_day: day,
+                recipients: admins.rows.length,
+                key_expires_at: expires,
+              },
+            });
+            return true;
+          },
+          { action: "connectors.accounting.agent.key_notice" },
+        )
+        .catch((e: unknown) => {
+          if (e instanceof NothingDue) return false;
+          throw e;
+        });
+      if (sent) notified += 1;
+    }
+    return { notified };
   }
 
   async list(ctx: KernelContext): Promise<TallyAgentView[]> {

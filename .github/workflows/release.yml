@@ -145,10 +145,11 @@ jobs:
             echo "- $p: $tgz attested" >> "$GITHUB_STEP_SUMMARY"
           done
       # Gate evidence (PL2-D-67): the registry's own shasum and integrity for each published version,
-      # in the job summary, so a gate report can quote them.
+      # and its visibility (#137 (2), R1-D-186), in the job summary, so a gate report can quote them.
       - name: Registry checksums
         if: steps.changesets.outputs.published == 'true'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PUBLISHED: ${{ steps.changesets.outputs.publishedPackages }}
         run: node scripts/registry-dist.mjs >> "$GITHUB_STEP_SUMMARY"

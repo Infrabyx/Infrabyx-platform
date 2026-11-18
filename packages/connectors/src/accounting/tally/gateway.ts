@@ -84,11 +84,27 @@ const json = (status: number, body: unknown): AgentHttpResponse => ({
   headers: { "content-type": "application/json", "cache-control": "no-store" },
   body: JSON.stringify(body),
 });
-const problem = (status: number, title: string): AgentHttpResponse => ({
+const problem = (status: number, title: string, detail?: string): AgentHttpResponse => ({
   status,
   headers: { "content-type": "application/problem+json", "cache-control": "no-store" },
-  body: JSON.stringify({ type: "about:blank", title, status }),
+  body: JSON.stringify({ type: "about:blank", title, status, ...(detail ? { detail } : {}) }),
 });
+
+/**
+ * What an agent whose key expired is told (owner answer #139 (1)): plainly, how to re-enrol. Only
+ * an agent whose proof verified gets it, so it reveals nothing to anyone else.
+ */
+export function keyExpiredDetail(expiredAt: Date): string {
+  return (
+    `This agent's key expired on ${expiredAt.toISOString().slice(0, 10)}, 90 days after it was ` +
+    "enrolled, so the platform refuses it. To re-enrol: (1) an administrator of your " +
+    "organisation asks for a new TallyPrime agent in the product, and a second person approves " +
+    "it; (2) the administrator issues a one-time enrolment code, valid for 30 minutes; (3) put " +
+    "the code in the file enrol-code in this agent's state directory. The agent enrols again by " +
+    "itself, without a restart, and the old key is revoked. Postings wait until then. See the " +
+    "TallyPrime agent runbook, section 3."
+  );
+}
 const UNAUTHORISED = () => problem(401, "agent request not authenticated");
 
 interface Authed {
@@ -289,7 +305,11 @@ export class TallyAgentGateway {
     if (agent.state === "revoked") return problem(403, "agent revoked");
     // #136 (4): a key lives 90 days from its enrolment; then the agent must be enrolled again.
     if (agent.enrolled_at && this.now() >= keyExpiresAt(agent.enrolled_at))
-      return problem(403, "agent key expired: enrol the agent again");
+      return problem(
+        403,
+        "agent key expired: enrol the agent again",
+        keyExpiredDetail(keyExpiresAt(agent.enrolled_at)),
+      );
     if (!(await this.o.enabled(tenantId))) return problem(403, "TallyPrime is off for this tenant");
     return { ctx, agent };
   }

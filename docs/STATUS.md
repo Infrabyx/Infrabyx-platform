@@ -41,6 +41,16 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
+## Platform backlog (owner-approved, not scheduled)
+
+- **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Twenty-third session (18 Nov, owner's evening chat) — in progress
+
+- **Lock:** taken at 21:57 IST (SESSION LOCK #262 was FREE). Owner instructions of 18 Nov evening: OWNER-MANUAL-02 stays; answers to #137 to #139 (R1-D-185); then STATUS "Next" in order: #132 (4) and (5), PR-UDF-037 to PR-UDF-046, PR-LDC-46, PR-LDC-52; the waiver check (below).
+- **First PR (this one; R1-D-186):** the answers recorded; #139 (1) built (day-80 and day-85 notices to the tenant's administrators, the re-enrolment steps in the 403, agent 1.2.0 re-enrols in place); #137 (2): the release records each package's visibility; #138 (4): guide note and the backlog item above.
+- **Waiver check, owner's order of 18 Nov (no reminder task; this line is the only reminder):** on 1 Dec, **or in the first session on or after 28 Nov if that comes earlier**: look for fixed base images and Keycloak images at least 7 days old; put every finding still unfixed to the owner with a recommendation **before the product gates of 1 to 4 Dec (Finbyx and the one the owner named)**; cover the waivers expiring 5, 7, 10, 16 and 20 Dec (CVE-2025-6020 included), see the table at the top of this file.
+
 ## Twenty-second session (18 Nov, owner's chat) — handover
 
 - **Lock:** taken at 11:22 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no un-recorded owner comment (all eight comments are session reports).
