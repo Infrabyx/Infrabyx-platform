@@ -71,6 +71,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "regulated Ecosystem messages, detached JWS with kid, iat and jti through KMS sign (C-22 profile, R1-D-08)",
       "DPoP proof verification for customer sessions: ES256 only, jkt binding, iat window, jti replay (C-11, R1-D-18)",
       "Apple App Attest assertion and credential-certificate verification, with the counter (C-27, R1-D-59); verify only",
+      "on-premises agent request proofs: the C-22 profile with typ ipb-agent-request+jws, bound to tenant, agent, seq, method, path and body digest; agent-held P-256 keys (TallyPrime agent, R1-D-178)",
     ],
   },
   {
