@@ -1,5 +1,16 @@
 # @infrabyx/crypto
 
+## 1.6.0
+
+### Minor Changes
+
+- 3e69471: Agent request proofs (PR-FBX-46, R1-D-178): `signAgentRequest`, `verifyAgentRequest`, `generateAgentKeyPair` and `agentPublicJwk`, the C-22 profile with its own `typ` (`ipb-agent-request+jws`), bound to tenant, agent, `seq`, method, path and body digest. No new primitive.
+
+### Patch Changes
+
+- Updated dependencies [3e69471]
+  - @infrabyx/contracts@1.34.0
+
 ## 1.5.18
 
 ### Patch Changes

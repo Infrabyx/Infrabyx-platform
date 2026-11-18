@@ -1,5 +1,18 @@
 # @infrabyx/config
 
+## 1.18.0
+
+### Minor Changes
+
+- 3e69471: TallyPrime settings (PR-FBX-46, R1-D-178): `int.accounting.tally.enabled` (TENANT, off, R4), `int.accounting.tally.poll_timeout_seconds` (25, 1 to 55) and `int.accounting.tally.job_expiry_days` (7, 1 to 30).
+
+### Patch Changes
+
+- Updated dependencies [3e69471]
+- Updated dependencies [3e69471]
+  - @infrabyx/contracts@1.34.0
+  - @infrabyx/crypto@1.6.0
+
 ## 1.17.0
 
 ### Minor Changes
