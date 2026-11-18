@@ -49,6 +49,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 - **Lock:** taken at 21:57 IST (SESSION LOCK #262 was FREE). Owner instructions of 18 Nov evening: OWNER-MANUAL-02 stays; answers to #137 to #139 (R1-D-185); then STATUS "Next" in order: #132 (4) and (5), PR-UDF-037 to PR-UDF-046, PR-LDC-46, PR-LDC-52; the waiver check (below).
 - **First PR (this one; R1-D-186):** the answers recorded; #139 (1) built (day-80 and day-85 notices to the tenant's administrators, the re-enrolment steps in the 403, agent 1.2.0 re-enrols in place); #137 (2): the release records each package's visibility; #138 (4): guide note and the backlog item above.
+- **Second PR (R1-D-187):** #132 (4) the purpose code and (5) refused reveals as security events (`audit/0012` `audit.security_event`, `PgSecurityEvents`, the `RevealRefusalsRepeated` alert); `contracts`, `audit`, `rules`, `config`, `testing` minors.
 - **Waiver check, owner's order of 18 Nov (no reminder task; this line is the only reminder):** on 1 Dec, **or in the first session on or after 28 Nov if that comes earlier**: look for fixed base images and Keycloak images at least 7 days old; put every finding still unfixed to the owner with a recommendation **before the product gates of 1 to 4 Dec (Finbyx and the one the owner named)**; cover the waivers expiring 5, 7, 10, 16 and 20 Dec (CVE-2025-6020 included), see the table at the top of this file.
 
 ## Twenty-second session (18 Nov, owner's chat) — handover
