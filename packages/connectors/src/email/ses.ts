@@ -4,6 +4,16 @@
 // after it verifies. The idempotency key travels as the `ipb_idem` message tag (plan §3.5). SES
 // has no message search, so there is no vendor lookup: a send left pending is sent again
 // (at-least-once, PL2-D-64), and status comes from events, not from `getStatus`.
+//
+// Inbound (PR-LDC-50; R1-D-177; plan `docs/phases/R1-inbound-mail-plan.md` §3): SES email
+// receiving publishes a `Received` notification to a separate SNS topic (`inbound.topicArn`), signed
+// and checked as the events are. The message is in `content` (SNS action, at most 150 KB: "You can
+// only publish emails that are 150 KB or less (including the header) to Amazon SNS", SES
+// `SNSAction` API reference, read 18 Nov 2026) or in the configured S3 bucket (S3 action). The
+// verdicts are taken from the signed `receipt` only ("Contents of notifications for Amazon SES email
+// receiving", docs.aws.amazon.com/ses/latest/dg/receiving-email-notifications-contents.html, read
+// 18 Nov 2026), never from headers inside the message.
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   CreateEmailIdentityCommand,
   GetAccountCommand,
@@ -16,8 +26,11 @@ import {
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   EmailMessage,
+  INBOUND_MAIL_LIMITS,
   type AdapterDescriptor,
   type EmailEvent,
+  type InboundAuthResult,
+  type InboundEmail,
   type EmailPort,
   type PortCall,
   type PortHealth,
@@ -54,6 +67,15 @@ export interface SesEmailOptions {
   rawConfigurationSet?: string;
   /** The SNS topic that carries this deployment's SES events. */
   events: { topicArn: string; regions?: readonly string[]; maxAgeSeconds?: number };
+  /**
+   * SES email receiving (PR-LDC-50): the SNS topic of `Received` notifications, which must not be
+   * the events topic, and the S3 bucket of the S3 action (in India) for messages over 150 KB.
+   */
+  inbound?: {
+    topicArn: string;
+    bucket?: { name: string; region: (typeof SES_REGIONS)[number] };
+    maxAgeSeconds?: number;
+  };
   /** Where attachment keys are read from (INTERNAL classes only). */
   storage?: StoragePort;
   /** Tests only: endpoint and static credentials (moto or the SES stub). */
@@ -79,11 +101,12 @@ export class SesEmail implements EmailPort {
     residency: "IN",
     maxDataClass: "INTERNAL",
     // `content`: rendered subject and parts sent as SES simple content (PR-LDC-27; R1-D-90).
-    capabilities: { getStatus: "unsupported", content: "native" },
+    capabilities: { getStatus: "unsupported", content: "native", inbound: "native" },
   };
   private readonly client: SESv2Client;
   private readonly certs = new Map<string, Promise<string>>();
   private readonly egress;
+  private readonly s3?: S3Client;
 
   constructor(private readonly o: SesEmailOptions) {
     if (!(SES_REGIONS as readonly string[]).includes(o.region))
@@ -96,6 +119,25 @@ export class SesEmail implements EmailPort {
       ...(o.endpoint ? { endpoint: o.endpoint } : {}),
       ...(o.credentials ? { credentials: o.credentials } : {}),
     });
+    if (o.inbound) {
+      if (o.inbound.topicArn === o.events.topicArn)
+        throw new PortError("IPB-PORT-003", "EMAIL", {
+          adapter: "ses",
+          detail: "the inbound topic must not be the delivery-events topic",
+        });
+      if (o.inbound.bucket) {
+        if (!(SES_REGIONS as readonly string[]).includes(o.inbound.bucket.region))
+          throw new PortError("IPB-PORT-003", "EMAIL", {
+            adapter: "ses",
+            detail: `inbound bucket region ${o.inbound.bucket.region} is outside India`,
+          });
+        this.s3 = new S3Client({
+          region: o.inbound.bucket.region,
+          ...(o.endpoint ? { endpoint: o.endpoint, forcePathStyle: true } : {}),
+          ...(o.credentials ? { credentials: o.credentials } : {}),
+        });
+      }
+    }
     const regions = o.events.regions ?? SES_REGIONS;
     this.egress = createEgress({
       port: "EMAIL",
@@ -159,11 +201,13 @@ export class SesEmail implements EmailPort {
         }
       : {};
     const utf8 = (Data: string) => ({ Data, Charset: "UTF-8" });
+    const replyTo = m.replyTo ?? b.replyTo;
     const r = await this.client
       .send(
         new SendEmailCommand({
           FromEmailAddress: b.from,
-          ...(b.replyTo ? { ReplyToAddresses: [b.replyTo] } : {}),
+          // A message's own reply address (an inbound reply token, PR-LDC-50) wins over the brand's.
+          ...(replyTo ? { ReplyToAddresses: [replyTo] } : {}),
           Destination: { ToAddresses: m.to, ...(m.cc ? { CcAddresses: m.cc } : {}) },
           Content: m.content
             ? {
@@ -261,6 +305,104 @@ export class SesEmail implements EmailPort {
     return sesEvents(m.MessageId, m.Message);
   }
 
+  /**
+   * SES email receiving (PR-LDC-50): a verified `Received` notification from the inbound topic
+   * becomes one `InboundEmail`. Anything unverified, stale, of another type or another action,
+   * over 10 MiB, or in another bucket is refused (`webhookRefused`, `IPB-SEC-013`).
+   */
+  async verifyInbound(
+    rawBody: Uint8Array,
+    _headers: Readonly<Record<string, string>>,
+  ): Promise<InboundEmail[]> {
+    const inbound = this.o.inbound;
+    if (!inbound)
+      throw new PortError("IPB-PORT-001", "EMAIL", {
+        adapter: "ses",
+        detail: "SES email receiving is not configured (inbound.topicArn)",
+        meta: { reason: "unsupported" },
+      });
+    const m = parseJson("EMAIL", "ses", rawBody) as SnsMessage;
+    const failure = await verifySnsMessage(m, {
+      topicArn: inbound.topicArn,
+      regions: this.o.events.regions ?? SES_REGIONS,
+      fetchCertificate: (u) => this.certificate(u),
+      ...(this.o.now ? { now: this.o.now() } : {}),
+    });
+    if (failure) throw webhookRefused("EMAIL", "ses", `SNS ${failure}`);
+    const now = this.o.now?.() ?? Date.now();
+    if (!withinWindow(Date.parse(m.Timestamp), (inbound.maxAgeSeconds ?? 3600) * 1000, now))
+      throw webhookRefused("EMAIL", "ses", "SNS message outside the timestamp window");
+    if (m.Type === "SubscriptionConfirmation") {
+      if (!m.SubscribeURL) throw webhookRefused("EMAIL", "ses", "no SubscribeURL");
+      const r = await this.egress(m.SubscribeURL);
+      if (r.status !== 200)
+        throw vendorError("EMAIL", "ses", r.status, "subscription confirmation");
+      return [];
+    }
+    if (m.Type !== "Notification") return [];
+    const n = parseReceived(m.Message);
+    let raw: Uint8Array;
+    if (n.action.type === "SNS") {
+      if (typeof n.content !== "string")
+        throw webhookRefused("EMAIL", "ses", "SNS action without content");
+      raw =
+        n.action.encoding === "BASE64"
+          ? new Uint8Array(Buffer.from(n.content, "base64"))
+          : new TextEncoder().encode(n.content);
+    } else if (n.action.type === "S3") {
+      raw = await this.readInbound(n.action.bucketName, n.action.objectKey);
+    } else throw webhookRefused("EMAIL", "ses", `receipt action ${n.action.type} is not taken`);
+    if (raw.byteLength > INBOUND_MAIL_LIMITS.maxBytes)
+      throw new PortError("IPB-SEC-013", "EMAIL", {
+        adapter: "ses",
+        detail: "the received message is over 10 MiB",
+        meta: { reason: "too_large" },
+      });
+    return [
+      {
+        adapter: "ses",
+        vendorMessageId: n.messageId,
+        receivedAt: n.receivedAt,
+        envelopeFrom: n.source,
+        recipients: n.recipients,
+        auth: n.auth,
+        raw,
+      },
+    ];
+  }
+
+  /** The S3 action's object, only from the configured bucket, capped at 10 MiB. */
+  private async readInbound(bucket: unknown, key: unknown): Promise<Uint8Array> {
+    const b = this.o.inbound?.bucket;
+    if (!b || !this.s3) throw webhookRefused("EMAIL", "ses", "no inbound bucket is configured");
+    if (bucket !== b.name || typeof key !== "string" || !/^[A-Za-z0-9!_.*'()/-]{1,1024}$/.test(key))
+      throw webhookRefused("EMAIL", "ses", "the S3 action names another bucket or a bad key");
+    const max = INBOUND_MAIL_LIMITS.maxBytes;
+    const tooLarge = () =>
+      new PortError("IPB-SEC-013", "EMAIL", {
+        adapter: "ses",
+        detail: "the received message is over 10 MiB",
+        meta: { reason: "too_large" },
+      });
+    const r = await this.s3
+      .send(new GetObjectCommand({ Bucket: b.name, Key: key }))
+      .catch((e: unknown) => this.fail(e, "inbound read"));
+    if ((r.ContentLength ?? 0) > max) throw tooLarge();
+    const body = r.Body as AsyncIterable<Uint8Array> | undefined;
+    if (!body) throw vendorError("EMAIL", "ses", 502, "inbound read: no body");
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    for await (const chunk of body) {
+      size += chunk.byteLength;
+      if (size > max) {
+        (body as { destroy?: () => void }).destroy?.();
+        throw tooLarge();
+      }
+      parts.push(chunk);
+    }
+    return new Uint8Array(Buffer.concat(parts));
+  }
+
   async verifyDomain(domain: string): Promise<{
     verified: boolean;
     dnsRecords: Array<{ type: string; name: string; value: string }>;
@@ -314,6 +456,95 @@ export class SesEmail implements EmailPort {
     }
     return { status, latency_ms: Date.now() - t0, checked_at: new Date().toISOString() };
   }
+}
+
+const VERDICT: Readonly<Record<string, InboundAuthResult>> = {
+  PASS: "pass",
+  FAIL: "fail",
+  GRAY: "none",
+  PROCESSING_FAILED: "error",
+};
+/** An SES verdict object; anything missing or unknown is `error` (fail closed). */
+const verdict = (v: unknown): InboundAuthResult => {
+  const s = (v as { status?: unknown } | undefined)?.status;
+  return (typeof s === "string" && VERDICT[s]) || "error";
+};
+const ADDRESS = /^[^\s@<>"]{1,254}@[a-z0-9.-]{1,253}$/;
+
+interface Received {
+  messageId: string;
+  receivedAt: string;
+  source: string;
+  recipients: string[];
+  auth: InboundEmail["auth"];
+  action: { type: string; encoding?: string; bucketName?: unknown; objectKey?: unknown };
+  content?: unknown;
+}
+
+/**
+ * Normalise an SES `Received` notification. The fields are the documented ones; a missing or
+ * malformed field refuses the notification rather than guessing.
+ */
+export function parseReceived(message: string): Received {
+  let n: {
+    notificationType?: unknown;
+    mail?: { messageId?: unknown; timestamp?: unknown; source?: unknown };
+    receipt?: {
+      recipients?: unknown;
+      timestamp?: unknown;
+      spfVerdict?: unknown;
+      dkimVerdict?: unknown;
+      dmarcVerdict?: unknown;
+      action?: { type?: unknown; encoding?: unknown; bucketName?: unknown; objectKey?: unknown };
+    };
+    content?: unknown;
+  };
+  try {
+    n = JSON.parse(message) as typeof n;
+  } catch {
+    throw webhookRefused("EMAIL", "ses", "SES notification is not JSON");
+  }
+  if (n.notificationType !== "Received")
+    throw webhookRefused("EMAIL", "ses", "not an SES Received notification");
+  const r = n.receipt;
+  const messageId = n.mail?.messageId;
+  if (!r || typeof messageId !== "string" || !/^[A-Za-z0-9._-]{1,128}$/.test(messageId))
+    throw webhookRefused("EMAIL", "ses", "the notification has no receipt or message id");
+  const recipients = Array.isArray(r.recipients)
+    ? r.recipients.filter((x): x is string => typeof x === "string").map((x) => x.toLowerCase())
+    : [];
+  if (
+    recipients.length === 0 ||
+    recipients.length > 50 ||
+    !recipients.every((x) => ADDRESS.test(x))
+  )
+    throw webhookRefused("EMAIL", "ses", "the receipt names no valid recipient");
+  const source = typeof n.mail?.source === "string" ? n.mail.source.toLowerCase() : "";
+  const at = typeof n.mail?.timestamp === "string" ? n.mail.timestamp : r.timestamp;
+  const type = typeof r.action?.type === "string" ? r.action.type : "";
+  return {
+    messageId,
+    receivedAt:
+      typeof at === "string" && !Number.isNaN(Date.parse(at))
+        ? new Date(at).toISOString()
+        : new Date(0).toISOString(),
+    source: ADDRESS.test(source) ? source : "",
+    recipients,
+    auth: {
+      spf: verdict(r.spfVerdict),
+      dkimAligned: verdict(r.dkimVerdict),
+      dmarc: verdict(r.dmarcVerdict),
+    },
+    action: {
+      type,
+      ...(typeof r.action?.encoding === "string"
+        ? { encoding: r.action.encoding.toUpperCase() }
+        : {}),
+      bucketName: r.action?.bucketName,
+      objectKey: r.action?.objectKey,
+    },
+    content: n.content,
+  };
 }
 
 interface SesEventJson {
