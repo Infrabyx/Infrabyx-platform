@@ -1,5 +1,20 @@
 # @infrabyx/notify
 
+## 1.4.0
+
+### Minor Changes
+
+- 34f5e49: Inbound mail replies (PR-LDC-50, R1-D-177; migration `notify/0007`): a notification sent with `reply: { threadRef }` gives each email delivery a `reply+<token>@<ntf.reply.domain>` address whose token is stored only as its SHA-256, bound to the thread, the recipient and the address hash (30 days by default, 50 replies). `receiveReplies(messages)` takes what an EMAIL adapter's `verifyInbound` returned and accepts a reply only with a live token, its recipient as the sole `From`, the adapter's DMARC verdict (or, with no enforceable policy, aligned DKIM and strictly aligned SPF), a bounded parse (postal-mime 4.2.1: 10 MiB, 200 parts, depth 10, 64 KiB of headers, 998-octet lines, a charset allow-list) and attachments quarantined and scanned; the text has its quoted history removed. One `notify.reply` row, one ledger entry and one `NotificationReplyReceived` event per accepted reply; everything else is dropped and counted, its body never stored. `getReply(ctx, id)` reads a reply. Products wire `replies: { storage, av }` and map `notify.reply` and `notify.reply_token` in their export maps.
+
+### Patch Changes
+
+- Updated dependencies [34f5e49]
+- Updated dependencies [34f5e49]
+  - @infrabyx/config@1.17.0
+  - @infrabyx/contracts@1.33.0
+  - @infrabyx/tenancy@1.20.4
+  - @infrabyx/crypto@1.5.18
+
 ## 1.3.13
 
 ### Patch Changes

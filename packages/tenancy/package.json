@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/tenancy",
-  "version": "1.20.3",
+  "version": "1.20.4",
   "description": "Tenant/entity context, RLS helpers, RLS lint",
   "license": "UNLICENSED",
   "private": false,

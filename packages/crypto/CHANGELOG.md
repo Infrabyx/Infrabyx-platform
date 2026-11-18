@@ -1,5 +1,12 @@
 # @infrabyx/crypto
 
+## 1.5.18
+
+### Patch Changes
+
+- Updated dependencies [34f5e49]
+  - @infrabyx/contracts@1.33.0
+
 ## 1.5.17
 
 ### Patch Changes
