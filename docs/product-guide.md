@@ -866,7 +866,7 @@ Take `contracts` and `connectors` (the minors after 1.34.0 and 1.19.0), run `inf
 
 The fakes you wire in a fixture environment (below staging) now come from `@infrabyx/fakes`, a package with no `vitest`, Testcontainers or database driver in its tree. `@infrabyx/testing` re-exports the same objects, so test files change nothing.
 
-1. Take `@infrabyx/fakes` 1.0.0 and `@infrabyx/testing` (the minor after 1.20.0).
+1. Take `@infrabyx/fakes` 1.0.1 (its first published version) and `@infrabyx/testing` 1.21.0.
 2. In runtime code, change `import { MemoryStorage, FakeKyc, … } from "@infrabyx/testing"` to `from "@infrabyx/fakes"`.
 3. Put `@infrabyx/fakes` in `dependencies` and move `@infrabyx/testing` to `devDependencies`. If a Next.js app lists server-only packages in `next.config`, list `@infrabyx/fakes` there instead of `@infrabyx/testing`.
 4. Run `pnpm audit --prod --audit-level high`: the `@infrabyx/testing > vitest > picomatch` path (GHSA-fc5q-39xc-vjpf) is gone, so the time-boxed audit exception for it can be removed.
