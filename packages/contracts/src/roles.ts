@@ -57,6 +57,8 @@ export const SERVICE_READER_ROLES = {
     dbRole: "svc_notify_unsubscribe",
     tables: ["notify.unsubscribe_token"],
   },
+  /** The inbound reply route finds a reply token's tenant by its hash (PR-LDC-50; R1-D-177). */
+  SVC_NOTIFY_REPLY: { dbRole: "svc_notify_reply", tables: ["notify.reply_token"] },
   /** Finds approved export jobs to run and expired archives to delete (OWNER-QUESTIONS #24). */
   SVC_EXPORT_SWEEP: {
     dbRole: "svc_export_sweep",
