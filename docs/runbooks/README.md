@@ -30,3 +30,5 @@ Sessions 1 to 4 need none of these.
 2. Under **Deployment branches and tags**, choose **Selected branches and tags** and add `main`, `claude/*` and `cc/*`. Workflows from other branches then cannot read its secrets.
 3. Leave **Required reviewers** off. The nightly run has nobody to approve it.
 4. Add the secrets and variables each runbook names. GitHub shows secret values only as `***`, and the workflows never print them.
+
+- `tally-agent.md`: the TallyPrime agent: install, enrol, the key under DPAPI, rotation every 90 days, revocation if the machine is lost (#136 (4), R1-D-184).

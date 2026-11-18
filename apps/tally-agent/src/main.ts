@@ -7,6 +7,7 @@ import { writeFile } from "node:fs/promises";
 import { PlatformRefused, TallyAgent } from "./agent.js";
 import { DEFAULT_CONFIG_PATH, loadConfig } from "./config.js";
 import { HEARTBEAT_FILE } from "./health.js";
+import { DpapiKeyGuard } from "./keyguard.js";
 import { FileStateStore } from "./state.js";
 import { TallyClient } from "./tally.js";
 
@@ -32,6 +33,11 @@ async function main(): Promise<number> {
     platformUrl: config.platformUrl,
     tally: new TallyClient({ url: config.tallyUrl, timeoutMs: config.tallyTimeoutSeconds * 1000 }),
     state,
+    // #136 (4): DPAPI on Windows for the account the agent's service runs as.
+    keyGuard:
+      process.platform === "win32" && config.keyProtection === "auto"
+        ? new DpapiKeyGuard(config.powershellPath ? { powershellPath: config.powershellPath } : {})
+        : null,
     onTurn: beat,
     log,
   });

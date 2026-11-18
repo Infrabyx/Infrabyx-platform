@@ -57,6 +57,20 @@ export const TALLY_TRIAL_BALANCE_CACHE_MINUTES = 10;
 export const TALLY_POLL_TIMEOUT_SECONDS = { default: 25, min: 1, max: 55 } as const;
 /** Days a posting may wait unclaimed (`int.accounting.tally.job_expiry_days`). */
 export const TALLY_JOB_EXPIRY_DAYS = { default: 7, min: 1, max: 30 } as const;
+/**
+ * An agent's key is valid for this many days from its enrolment; after that its requests are
+ * refused and it must be enrolled again (owner answer #136 (4), R1-D-184).
+ */
+export const TALLY_AGENT_KEY_MAX_DAYS = 90;
+/** From this day of a key's life the agent's view carries `rotationDue` (the console warns). */
+export const TALLY_AGENT_KEY_WARN_DAYS = 80;
+/**
+ * How the agent keeps its private key on the tenant's machine (#136 (4)): `dpapi`, under Windows
+ * DPAPI for the agent's own account; `file`, a mode-0600 file (other systems, or DPAPI was not
+ * available), which the enrolment record carries as a warning.
+ */
+export const TALLY_KEY_PROTECTIONS = ["dpapi", "file"] as const;
+export type TallyKeyProtection = (typeof TALLY_KEY_PROTECTIONS)[number];
 
 export const TALLY_AGENT_ID_REGEX = /^tga_[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
 export const TALLY_READ_ID_REGEX = /^tbr_[0-7][0-9A-HJKMNP-TV-Z]{25}$/;
@@ -132,6 +146,8 @@ export const AgentEnrolRequest = z
     code: internal(z.string().regex(TALLY_ENROL_CODE_REGEX)),
     jwk: AgentPublicJwk,
     agentVersion: AgentVersion,
+    /** Omitted by agents before 1.1.0: read as `file`. */
+    keyProtection: internal(z.enum(TALLY_KEY_PROTECTIONS)).optional(),
   })
   .strict();
 export type AgentEnrolRequest = z.infer<typeof AgentEnrolRequest>;
@@ -265,6 +281,14 @@ export interface TallyAgentView {
   agentVersion: string | null;
   enrolledAt: string | null;
   revokedAt: string | null;
+  /** How the agent keeps its key; `file` is a warning (#136 (4)). Null before enrolment. */
+  keyProtection: TallyKeyProtection | null;
+  /** When the key stops working (enrolment + `TALLY_AGENT_KEY_MAX_DAYS`). */
+  keyExpiresAt: string | null;
+  /** Day `TALLY_AGENT_KEY_WARN_DAYS` or later of an active key: enrol a new agent. */
+  rotationDue: boolean;
+  /** Warnings the console shows: `key_unencrypted`, `key_expired`. */
+  warnings: readonly ("key_unencrypted" | "key_expired")[];
   /** Whether an unused, unexpired enrolment code exists. */
   codeOutstanding: boolean;
 }

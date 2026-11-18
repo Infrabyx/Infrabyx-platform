@@ -39,7 +39,7 @@ import {
   type AgentJwk,
 } from "@infrabyx/crypto";
 import type { PoolLike } from "@infrabyx/tenancy";
-import { AGENT_COLUMNS, type TallyAgentRow } from "./agents.js";
+import { AGENT_COLUMNS, keyExpiresAt, type TallyAgentRow } from "./agents.js";
 import { ADAPTER, PORT, q } from "./shared.js";
 
 /** The database role of the poll path (connectors/0007). */
@@ -155,6 +155,7 @@ export class TallyAgentGateway {
     const ctx = agentContext(code.tenantId, code.agentId);
     const jwk = parsed.data.jwk as AgentJwk;
     const jkt = jwkThumbprint(jwk);
+    const keyProtection = parsed.data.keyProtection ?? "file";
     const out = await this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -202,9 +203,10 @@ export class TallyAgentGateway {
         await q(tx).query(
           `update connectors.tally_agent
               set state = 'active', public_jwk = $2::jsonb, jkt = $3, enrolled_at = now(),
-                  agent_version = $4, code_sha256 = null, code_expires_at = null, last_seq = 0
+                  agent_version = $4, code_sha256 = null, code_expires_at = null, last_seq = 0,
+                  key_protection = $5
             where id = $1`,
-          [a.id, JSON.stringify(jwk), jkt, parsed.data.agentVersion],
+          [a.id, JSON.stringify(jwk), jkt, parsed.data.agentVersion, keyProtection],
         );
         await this.o.audit.record(tx, {
           action: "connectors.accounting.agent.activate",
@@ -215,6 +217,9 @@ export class TallyAgentGateway {
             state: "active",
             key_thumbprint: jkt,
             agent_version: parsed.data.agentVersion,
+            // #136 (4): a key kept in a plain file is on the record as a warning.
+            key_protection: keyProtection,
+            ...(keyProtection === "file" ? { warning: "key_unencrypted" } : {}),
             replaced: prev.rows.map((x) => x.id),
           },
         });
@@ -282,6 +287,9 @@ export class TallyAgentGateway {
     );
     if (!v.ok) return UNAUTHORISED();
     if (agent.state === "revoked") return problem(403, "agent revoked");
+    // #136 (4): a key lives 90 days from its enrolment; then the agent must be enrolled again.
+    if (agent.enrolled_at && this.now() >= keyExpiresAt(agent.enrolled_at))
+      return problem(403, "agent key expired: enrol the agent again");
     if (!(await this.o.enabled(tenantId))) return problem(403, "TallyPrime is off for this tenant");
     return { ctx, agent };
   }

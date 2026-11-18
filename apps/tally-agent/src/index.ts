@@ -3,6 +3,7 @@
 export * from "./agent.js";
 export * from "./amounts.js";
 export * from "./config.js";
+export * from "./keyguard.js";
 export * from "./state.js";
 export * from "./tally.js";
 export * from "./xml.js";

@@ -19,6 +19,13 @@ const Config = z
     platformUrl: z.string().max(2048),
     tallyUrl: z.string().max(2048).default("http://127.0.0.1:9000"),
     stateDir: z.string().min(1).max(1024).default("/data"),
+    /**
+     * `auto` (default): on Windows keep the key under DPAPI for the agent's account, else in the
+     * 0600 state file; `file`: always the file (reported as a warning at enrolment). #136 (4).
+     */
+    keyProtection: z.enum(["auto", "file"]).default("auto"),
+    /** Windows PowerShell 5.1 for the DPAPI calls (default its standard path). */
+    powershellPath: z.string().min(3).max(260).optional(),
     /** Per TallyPrime request, in seconds (default 30). */
     tallyTimeoutSeconds: z.number().int().min(1).max(300).default(30),
   })
