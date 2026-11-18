@@ -48,7 +48,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **#290** (the twenty-first handover and release run 256's record) is carried in this PR (its commit fast-forwarded into `claude/admiring-franklin-508ck2`); #290 is closed in favour of it.
 - **Next, in order (R1-D-180):**
   1. PR-FBX-48: `@infrabyx/testing` without `vitest` in its runtime dependencies (the runtime fakes in an entry point that does not load the contract harness).
-  2. PR-FBX-49: the realm's MFA floor (Keycloak `KeycloakRealmSpec.mfaFloor` and provisioning; Zitadel login policy; per-role excluded factors; `amr`).
+  2. PR-FBX-49: the realm's MFA floor: built (R1-D-182, this PR); owner question #138. PR-FBX-48 merged as #292 (`8afdde2`; R1-D-181, owner question #137).
   3. The owner's changes: #132 (4) purpose code and (5) refused reveals as security audit events; #136 (4) the agent's key under DPAPI on Windows, 90-day re-enrolment, the runbook.
   4. PR-UDF-037 to PR-UDF-046, in order, each planned first.
   5. PR-LDC-46 (inbox snooze), PR-LDC-52 (`toXlsx` layout), each planned first.
