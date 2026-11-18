@@ -2541,6 +2541,50 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-07 §07.5"
   },
   {
+    "key": "ntf.reply.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "PR-LDC-50, R1-D-177; threat model §3.123",
+    "note": "email deliveries of a notification that asks for replies carry a reply address; inbound replies are accepted"
+  },
+  {
+    "key": "ntf.reply.domain",
+    "tier": "TENANT",
+    "type": "string",
+    "default": "",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "PR-LDC-50, R1-D-177; threat model §3.123",
+    "note": "the tenant's reply subdomain (its MX points at the receiving adapter); empty means no reply address"
+  },
+  {
+    "key": "ntf.reply.token_days",
+    "tier": "TENANT",
+    "type": "int",
+    "default": 30,
+    "min": 1,
+    "max": 90,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": false,
+    "source": "PR-LDC-50, R1-D-177",
+    "note": "days a reply address accepts replies (at most 50 replies each)"
+  },
+  {
     "key": "cst.branding.{token}",
     "tier": "TENANT",
     "type": "string",
@@ -6914,6 +6958,9 @@ export type SettingValueMap = {
   "ntf.quiet_hours": string;
   "ntf.org.routing": JsonValue;
   "ntf.org.allow_quiet_hours_bypass": boolean;
+  "ntf.reply.enabled": boolean;
+  "ntf.reply.domain": string;
+  "ntf.reply.token_days": number;
   "cst.terminology.map": JsonValue;
   "cst.nav.hidden": JsonValue;
   "cst.nav.order": JsonValue;
