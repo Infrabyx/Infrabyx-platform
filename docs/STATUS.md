@@ -2,13 +2,13 @@
 
 Updated: 2026-11-18
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                              |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Packages              | Published to GitHub Packages (release run 254, `511bb47`, 18 Nov 2026; before it runs 252, 250 and 248): **1.33.0** contracts; **1.20.4** tenancy; **1.18.0** connectors; **1.19.0** testing; **1.17.0** config; **1.10.4** audit; **1.7.4** export; **1.4.4** workflow; **1.5.2** rules; **1.4.0** notify; **1.3.4** ui; **1.2.4** brand; **1.5.18** crypto; **1.3.11** consent; **1.1.41** cms; **1.1.14** ai; **1.1.12** a11y; **1.0.43** feedback, seed, trust, vidhi; **1.0.0** hlp |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                        |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                            |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                             |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Packages              | Published to GitHub Packages (release run 256, `20707b2`, 18 Nov 2026; before it runs 254, 252 and 250): **1.34.0** contracts; **1.20.5** tenancy; **1.19.0** connectors; **1.20.0** testing; **1.18.0** config; **1.10.5** audit; **1.7.5** export; **1.4.5** workflow; **1.5.3** rules; **1.4.1** notify; **1.3.5** ui; **1.2.5** brand; **1.6.0** crypto; **1.3.12** consent; **1.1.42** cms; **1.1.15** ai; **1.1.13** a11y; **1.0.44** feedback, seed, trust, vidhi; **1.0.0** hlp |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                       |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                           |
 
 ## Waived image findings products carry (10 Nov; PR-FBX-45)
 
@@ -42,7 +42,21 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
-## Twenty-first session (18 Nov, scheduled run)
+## Twenty-second session (18 Nov, owner's chat)
+
+- **Lock:** taken at 11:22 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no un-recorded owner comment (all eight comments are session reports).
+- **Owner instructions of 18 Nov (in the chat), recorded in this PR:** OWNER-MANUAL-02 (the hourly scheduled task is off for good; work happens only in chats the owner opens; owner answers come in the chat; the lock rule stays; sessions never create tasks or sessions; the 1 Dec and 15 Dec reminder tasks are off, so the 1 Dec waiver check rests on this file). The answers to #132 to #136 (R1-D-179: all accepted except #132 (4) plus a purpose code, #132 (5) changed to security audit events for refused reveals, #136 (4) changed to DPAPI on Windows with 90-day re-enrolment). The product requests PR-FBX-48, PR-FBX-49 and PR-UDF-037 to PR-UDF-046 copied into `docs/platform-requests.md` and ordered (R1-D-180). The scheduled-task references (trigger ids, check-in lines) are removed from this file; CLAUDE.md had none and gains one line on how sessions start.
+- **#290** (the twenty-first handover and release run 256's record) is carried in this PR (its commit fast-forwarded into `claude/admiring-franklin-508ck2`); #290 is closed in favour of it.
+- **Next, in order (R1-D-180):**
+  1. PR-FBX-48: `@infrabyx/testing` without `vitest` in its runtime dependencies (the runtime fakes in an entry point that does not load the contract harness).
+  2. PR-FBX-49: the realm's MFA floor (Keycloak `KeycloakRealmSpec.mfaFloor` and provisioning; Zitadel login policy; per-role excluded factors; `amr`).
+  3. The owner's changes: #132 (4) purpose code and (5) refused reveals as security audit events; #136 (4) the agent's key under DPAPI on Windows, 90-day re-enrolment, the runbook.
+  4. PR-UDF-037 to PR-UDF-046, in order, each planned first.
+  5. PR-LDC-46 (inbox snooze), PR-LDC-52 (`toXlsx` layout), each planned first.
+  6. **1 Dec waiver check (no reminder task; this line is the only reminder):** on 1 Dec, before the base-image and `sqlite-libs` waivers expire (5, 7, 10 Dec), look for fixed images, and put any unfixed finding to the owner with a recommendation; CVE-2025-6020 (16 Dec) and CVE-2026-112366 (17 Dec) join it. The 15 Dec Keycloak re-scan likewise rests on this file.
+  7. When the TallyPrime sandbox company exists (#128, an owner task): run the agent against it and settle R1-D-178's `[VERIFY]` items.
+
+## Twenty-first session (18 Nov) — handover
 
 - **Lock:** taken at 08:42 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all seven comments are session reports).
 - **#287** (the twentieth handover and release run 254's record) is carried in this PR (its commit fast-forwarded into `claude/ecstatic-tesla-9vt865`); #287 is closed in favour of it.
@@ -51,7 +65,19 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Local checks so far:** `connectors` `tally.int.test.ts` 20/20 on PostgreSQL (the ACCOUNTING contract cases with the agent in-process under both REMOTEID behaviours); agent 21/21; crypto 9/9 (with a `jose` differential); contracts 5/5; exit 4/4; migration lint 0 findings; the agent image: hadolint and `trivy config` clean, `trivy image` no HIGH or CRITICAL, the hardening test green.
 - **Local gate before the push:** `pnpm check:full` 84 of 84 in 7 min 01 s (every integration suite and Docker contract leg included). The first run was 83 of 84: lint refused `node:crypto` in the agent and the gateway (IPB-12-05), so the key import and export and the constant-time code check moved into `@infrabyx/crypto` (`importAgentPrivateKey`, `exportAgentPrivateKey`, `sha256Matches`, with tests).
 
-## Twentieth session (18 Nov, scheduled run) — handover
+- **#288 merged** (`3e69471`; one `ci:run`, all 42 checks green, `containers` with the new agent image included). **Version PR #289 merged** (`20707b2`; one `ci:run`, all 42 checks green; minors and patches only, #81(a)), released by run 256 (record below). #287 closed (its docs went in with #288).
+- **Products (adopt):** Finbyx takes `connectors` 1.19.0, `contracts` 1.34.0, `crypto` 1.6.0, `config` 1.18.0 and `testing` 1.20.0 (run 256), runs `infrabyx-migrate` for `connectors/0007`, mounts `TallyAgentGateway` under its API, schedules `expireStale`, builds and signs the agent image from `infra/docker/tally-agent/Dockerfile` in its own release, adds `connectors.tally_journal`, `connectors.tally_read` and `connectors.tally_agent` to its export map (product guide §7ck), and pilots against its own TallyPrime test company before turning `int.accounting.tally.enabled` on. Everyone else takes the patches with the next bump.
+- **Branches and PRs:** this handover on `claude/ecstatic-tesla-9vt865`, restarted from `main` after #289 (the remote copy was deleted on merge by the repository setting). #259 can be closed (its change is on `main` via #269); #258 not taken.
+- **Environment notes (add to the twentieth's):** help.tallysolutions.com is blocked by the network policy (search snippets only); allow it if the next review should read Tally's XML documentation from the session. The session's worker restarted once mid-run (the repository, branch and Node 24.22.1 survived; `dockerd` was started again by hand). Trivy and other containers need `--network host` to reach the session proxy.
+- **Next, in order:**
+  1. The rest of wave 15: PR-LDC-46 (inbox snooze, `workflow` minor), PR-LDC-52 (`toXlsx` layout, `export` minor). Each needs its plan (`docs/phases/R1-…-plan.md`) first; carry this handover's docs in the first of those PRs.
+  2. The 1 Dec waiver check: CVE-2025-6020 (16 Dec) and CVE-2026-112366 (17 Dec) join the base-image question.
+  3. When the TallyPrime sandbox company exists (#128, an owner task): run the agent against it, settle every `[VERIFY]` in R1-D-178, then prove the adapter.
+- **Open owner questions:** #132 to #136 (#136: five TallyPrime assumptions, the lookup before every create first); recommendation for all: accept. Nothing is blocked on them.
+
+HANDOVER READY
+
+## Twentieth session (18 Nov) — handover
 
 - **Lock:** taken at 06:41 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all six comments are session reports).
 - **#284** (the nineteenth handover and release run 252's record) is carried in this PR (its commits fast-forwarded into `claude/ecstatic-tesla-ia1983`); #284 is closed in favour of it.
@@ -70,7 +96,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 HANDOVER READY
 
-## Nineteenth session (18 Nov, scheduled run) — handover
+## Nineteenth session (18 Nov) — handover
 
 - **Lock:** taken at 04:41 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all five comments are session reports).
 - **#281** (the eighteenth handover and release run 250's record) is carried in this PR (its commit merged into `claude/ecstatic-tesla-p4sohh`), as its "Next" item 1 asks; #281 is closed in favour of it.
@@ -88,7 +114,7 @@ HANDOVER READY
 
 HANDOVER READY
 
-## Eighteenth session (18 Nov, scheduled run) — handover
+## Eighteenth session (18 Nov) — handover
 
 - **Lock:** taken at 02:42 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all four comments are session reports).
 - **#278** (the seventeenth handover and release run 248's record) had no checks of its own; as its "Next" item 1 says, its docs are carried in this PR (branch `claude/ecstatic-tesla-fpbp66`, `main` plus #278's commit), and #278 is closed in favour of it.
@@ -105,7 +131,7 @@ HANDOVER READY
 
 HANDOVER READY
 
-## Seventeenth session (18 Nov, scheduled run) — handover
+## Seventeenth session (18 Nov) — handover
 
 - **Lock:** taken at 00:43 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (all three comments are session reports).
 - **Version PR #275 merged** (`fcf5cf9`; one `ci:run`, all 42 checks green; patches only, #81(a)): `connectors` 1.16.2 (the R1-D-171 Zitadel first-session fix, R1-D-172) and `rules` 1.3.2 (dependency only). Released by run 246 (record below).
@@ -126,7 +152,7 @@ HANDOVER READY
 
 HANDOVER READY
 
-## Sixteenth session (17 Nov, scheduled run) — handover
+## Sixteenth session (17 Nov) — handover
 
 - **Lock:** taken at 22:42 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no owner answer (both comments are session reports).
 - **Release run 240 recorded** (Releases below): `connectors` 1.16.1 (R1-D-166 security fix) and `rules` 1.3.1; adoption notes for Finbyx, LawDocsComply and Udofin.
@@ -150,9 +176,9 @@ HANDOVER READY
 
 HANDOVER READY
 
-## Fifteenth session (17 Nov, scheduled run) — handover
+## Fifteenth session (17 Nov) — handover
 
-- **Lock:** taken at 20:44 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no new owner answer (the only comment is the fourteenth session's report). OWNER-AUTO-02 (hourly scheduled runs, `trig_01BPYLG75jZ3ZhP66ebgEFdQ`; supersedes OWNER-MANUAL-01) recorded in DECISIONS.
+- **Lock:** taken at 20:44 IST (SESSION LOCK #262 was FREE). OWNER INBOX #263: no new owner answer (the only comment is the fourteenth session's report).
 - **R1-D-166 fixed (security, #268; R1-D-167, `connectors` patch):** the Zitadel customer adapter uses a user-search hit only after `GET /v2/users/{id}` (which brings Zitadel's user projection up to date before reading; Zitadel v4.19.5 source, cited) shows that account active under the login's username; an account not yet in the search is found by its own id; a lookup Zitadel cannot confirm fails. Four unit cases on a fake Zitadel with a lagging search (all four fail on the old adapter) and a Zitadel contract case that pins the search to its pre-retirement answer. Threat model §3.53.
 - **Local check (`pnpm check:full`, 84 steps, 11 min 40 s):** 83 passed, Docker contract legs included (IDENTITY 80/80 with Zitadel from GHCR, STORAGE with MinIO); `scripts-test` failed one case because Corepack ran this container's default pnpm 12 outside the workspace; the test now pins the repository's pnpm (R1-D-168) and `pnpm scripts:test` passes 86/86.
 - **#268 merged** (`07cdac1`; one `ci:run`, all 13 checks green, `contract (IDENTITY)` included): R1-D-166 fixed (R1-D-167) and R1-D-168. Version PR next.
@@ -168,7 +194,7 @@ HANDOVER READY
 
 ## Fourteenth session (17 Nov)
 
-- **Owner decisions of 17 Nov:** OWNER-AUTO-01 (one scheduled task, "Infrabyx-platform scheduled run" `trig_01MmMh1gaipxS7ZY3EwMfHSY`, 05:41/11:41/17:41/23:41 IST, a fresh session each firing; the old daily check-in disabled; the 1 Dec and 15 Dec reminders kept), OWNER-LOCK-01 (SESSION LOCK issue #262), OWNER INBOX issue #263 (answers by `lawdocs` only), OWNER-SPEED-01 (`pnpm check:full`).
+- **Owner decisions of 17 Nov:** OWNER-LOCK-01 (SESSION LOCK issue #262), OWNER INBOX issue #263 (answers by `lawdocs` only), OWNER-SPEED-01 (`pnpm check:full`). (The scheduling decisions of that day are superseded by OWNER-MANUAL-02.)
 - **Wave 14 released** (run 236; record below): the gate's first run failed `contract (STORAGE)`, `contract (PDF)` and `verify`; all three were reproduced locally with Docker (now available in the session container), fixed and recorded (R1-D-163; REF-EXPORT-1.7), and the second run was green on all 42 checks.
 - **Next.js 16.4.5 (security) merged as #266** without Renovate's release-age exception; `ipb:check` now refuses any third-party `minimumReleaseAgeExclude` entry (R1-D-165). #265 is not merged.
 - **OWNER-SPEED-01 (this PR):** `pnpm check:full` runs every local gate, sharded (each integration suite on its own PostgreSQL 18 container, each contract leg with its own containers): 17 min 04 s sequential, 7 min 59 s and 7 min 34 s parallel (R1-D-164). Run it before every push. The Zitadel file of the IDENTITY leg cannot pull its GHCR image in this container (network policy).
@@ -182,14 +208,12 @@ HANDOVER READY
 - **Owner answers (R1-D-157):** #130 yes, narrowly (wave 15: an explicit entitlement per decision and input, every reveal ledgered, never written back unsealed, default name-only, a contract test for the unentitled caller); #131 accepted; PR-LDC-56 to 58 as triaged; PR-LDC-41 ships with the wave 13 gate.
 - **PR-LDC-61 fixed in wave 13** (R1-D-156, `d3e8f72` on #252): the map gate reads every column of a multi-column `ALTER TABLE`.
 - **PR-LDC-60 built in wave 14** (priority, R1-D-158, M110): separately keyed storage compartments `BOARD_CONFIDENTIAL` and `SEALED` within `CONFIDENTIAL`/`REGULATED`; own bucket and SSE-KMS key each (platform or tenant CMK); missing or shared bucket or key refused; guide §7cd, threat model §3.128. Terraform module inputs in wave 15. LawDocsComply may store board papers once the wave 14 release is installed and the compartment buckets and keys exist.
-- **Check-ins moved to this chat:** daily `trig_01QJQjBAGuS7iTniUvdCCfyL` (17:41 IST), 1 Dec `trig_01M9iAzAMRi1gkXvGXjxgDwQ` (ask the owner about the base-image and `sqlite-libs` waivers before 5, 7 and 10 Dec), 15 Dec `trig_014bQx7WfhVq3kvxN88wAZZs`; the twelfth session's three are disabled.
 - **Next (16 Nov):** wave 13 released (run 234; record below; products adopt before their December gates). Wave 14 is built and `main` is merged in: its PR and one `ci:run` gate, then the version PR and release record. Renovate: #259 (pgvector 0.8.6 in CI, `changesets/action` pinned to the v1.9.0 commit rather than the annotated tag object; benign) gets its own gate; #258 is not taken (it pins Terraform `required_version = "1.17.2"`, which OpenTofu would refuse; Renovate to be told to leave `required_version` alone).
 
 ## Handover (2026-11-13, twelfth session)
 
 - **Branches and PRs:** #252 wave 13 (`claude/infrabyx-wave-13-handover-xzu4ib`, ready; gate on or after 16 Nov). #254 spec v1.5 (`claude/spec-v1-5`, docs only, waiting for the owner's one-off bypass; merge it, then tell the owner to remove the bypass). #253 (Keycloak 26.8.2-0 and the `kc-admin-api` fix) merged 13 Nov (`26c3035`) and was released by run 229 (`connectors`, `testing` 1.14.4; `rules` 1.2.1). Wave 14 is `claude/wave-14` (pushed; wave 13 merged in; no PR yet: open it after #252 and #254 merge, merging `main` in first).
 - **Owner answers recorded (R1-D-144):** #127, #128, #129, the Keycloak hold, and PR-FBX-45 asked on 1 Dec. **Open questions:** #130 (PR-LDC-59 CONFIDENTIAL values in `explain`), #131 (the `ProviderIncident` severity scale, R1-D-138).
-- **Check-ins (this chat):** daily `trig_01JY4BzC7QoWVpAfdLHuXYSD` (17:41 IST), 1 Dec `trig_013Rjds88BuhijSkJPnvaJNz`, 15 Dec `trig_01T38v6QcqQyXJwXwfwbWyTM`; the eleventh session's three are disabled.
 - **Local environment notes:** Node 24.22.1 at `/opt/node24/bin`; PostgreSQL 16 needs `service postgresql start`, the `postgres` password set and `postgresql-16-pgvector` installed in a fresh container (`IPB_TEST_PG_URL=postgres://postgres:postgres@127.0.0.1:5432/postgres`, `INFRABYX_TEST_INT=1`); no Docker; www.keycloak.org is not reachable from here (GitHub is).
 
 HANDOVER READY
@@ -244,7 +268,7 @@ HANDOVER READY
 - **Owner (R1-D-107, R1-D-108):** #123 answered (two different platform people, PLT_FINANCE may request, R3/R4, notices, writes refused on lapse); the zlib1g waiver accepted to 5 Dec, reviewed with the apt waiver on 1 Dec.
 - **Built:** M76, `tenancy/0020` and `TenantEntitlements`; `contracts` `module-lifecycle`, PLT_FINANCE, and the `ModuleAttached`, `ModuleDetached` and `LegalHoldChanged` schemas. Guide §7bi; threat model §3.109; Finbyx adoption §12.
 - **Done:** wave 11 merged as #239 (`496180e`; its first run failed `verify` on a typecheck of the new test, fixed in `f2d6df2`; the second run was green), version PR #240 (`65b7d61`, all 40 checks green) and release run 217 (record below); Finbyx adoption §12.
-- **Next:** idle until a product raises a request; the 1 Dec check-in reviews both base waivers (R1-D-99, R1-D-106).
+- **Next:** idle until a product raises a request; the 1 Dec waiver check reviews both base waivers (R1-D-99, R1-D-106).
 
 ## Wave 10 (eighth session, 5 Nov): released (run 214)
 
@@ -253,15 +277,15 @@ HANDOVER READY
 - **Planned:** PR-FBX-43 (module lifecycle, entitlements, module and legal-hold events) in wave 11 (M76), after OWNER-QUESTIONS #123 (who approves an entitlement change).
 - **Gate:** the first `ci:run` run was green except `containers` (a new base advisory, CVE-2026-76844 in `zlib1g`, no fix: waived 30 days under the standing rule, R1-D-106, with the apt waiver to 5 Dec) and `compose` (MinIO's console took a host port already in use before any migration ran: an infrastructure flake, re-run once).
 - **Done:** wave 10 merged as #236 (`e86dedf`; second run all 40 checks green), version PR #237 (`f1ae322`, one green run) and release run 214 (record below); Finbyx adoption §11.
-- **Next:** wave 11 (PR-FBX-43, M76) once the owner answers OWNER-QUESTIONS #123; the 1 Dec check-in covers both base waivers (R1-D-99, R1-D-106).
+- **Next:** wave 11 (PR-FBX-43, M76) once the owner answers OWNER-QUESTIONS #123; the 1 Dec waiver check covers both base waivers (R1-D-99, R1-D-106).
 
 ## Wave 9 (eighth session, 5 Nov): released (run 210)
 
 - **Owner (R1-D-100):** the Repository-admin bypass is removed (the v1.4 and IPB-07-38 one-off is closed); the apt waiver (R1-D-99) accepted to 5 Dec: drop it once a fixed base digest is 7 days old, and tell the owner if 5 Dec comes first.
 - **Built:** M71, `GotenbergDocgen` (`connectors/docgen`, `renderHtml` to PDF and PDF/A through the pinned Gotenberg 8.39.0 with the Noto fonts; `int.docgen.gotenberg.enabled`), `docgenHtmlContractCases` and the `gotenberg` test image (`testing`), a DOCGEN `port-contract` leg and exit entry. Guide §7be; threat model §3.104. No new product requests found (Finbyx's repository is the only one searchable from here).
 - **Done:** wave 9 merged as #232 (`d3888de`; its first run failed `verify` on the exit runbook not regenerated for the DOCGEN entry, fixed; the re-run was green, the DOCGEN hermetic leg against Gotenberg 8.39.0 included), version PR #233 (`dd3020c`, one green run) and release run 210 (record below); adoption notes Finbyx §10 and LawDocsComply §12.
-- **Check-in (5 Nov, evening):** no open PRs; Finbyx raised PR-FBX-39 (retire a statutory-capture registration so an empty table can be dropped): held for the owner, OWNER-QUESTIONS #122 (R1-D-101), as it changes an IPB-02 control. The Node base still has no digest newer than 28 Oct (apt waiver stands).
-- **Next:** idle until a product raises a request. A one-off check-in on 1 Dec looks for a fixed base digest for the apt waiver (R1-D-99, expires 5 Dec) and tells the owner if none is ready.
+- **5 Nov, evening:** no open PRs; Finbyx raised PR-FBX-39 (retire a statutory-capture registration so an empty table can be dropped): held for the owner, OWNER-QUESTIONS #122 (R1-D-101), as it changes an IPB-02 control. The Node base still has no digest newer than 28 Oct (apt waiver stands).
+- **Next:** idle until a product raises a request. On 1 Dec, look for a fixed base digest for the apt waiver (R1-D-99, expires 5 Dec) and tell the owner if none is ready.
 
 ## Wave 8 (eighth session, 5 Nov): released (run 207)
 
@@ -317,7 +341,7 @@ HANDOVER READY
 
 ## Session of 4 Nov (seventh session): v1.3 signed off, wave 3, the 4 Nov requests
 
-- **Start:** `main` at `8769f71`; wave 2 released by run 186 (record below); no other open PR or session branch. Check-ins moved to this chat: `trig_01RwGiJr881dHumgKNtW9mUc` (daily 17:41 IST) and `trig_01UaveHeQh5ffNPXRpMTX2XG` (6 Nov 09:23 UTC, Keycloak re-scan); the old chat's `trig_01WMBtiosKaKjefu4yWvhr6J` and `trig_0184SooqR9dM7WJKU3ULF5Re` are disabled.
+- **Start:** `main` at `8769f71`; wave 2 released by run 186 (record below); no other open PR or session branch.
 - **Owner answer #105 (R1-D-70):** PR-040 signed off with a retention rule; the v1.3 text is applied to `docs/ecosystem/` in its own owner-authorised docs-only PR #210, which the owner merges (CI's `spec-readonly` step refuses it by design).
 - **Wave 3 (one PR, one gate):** M38's request half and failure path (R1-D-70; `contracts`, `tenancy`, `connectors` minors); M40 CEL string functions (R1-D-71; `connectors`, `testing` minors); M41 platform purpose notices, `latestByPrincipal` and #95's purge (R1-D-72; `consent/0004`; `contracts`, `consent`, `testing` minors); M42 `fieldCryptoForTenant` (R1-D-73; `tenancy` minor). Local checks: build, lint, typecheck and unit over every package; integration for tenancy, connectors, rules, testing, vidhi and consent; migration-lint; format; ipb-check. Not runnable here: the `ai` retrieval tests (PostgreSQL 18) and the reference worker's Temporal suite (no container runtime).
 - **Product requests of 4 Nov (R1-D-74):** PR-FBX-34 (1) and (2) accepted as M51, (3) deferred; PR-LDC-17 history accepted as M52, scopes below ENTITY raised as PR-042; PR-LDC-18 answered (no change, guide §7ae); PR-LDC-19 deferred to #106; PR-LDC-20 folded into M50.
@@ -329,7 +353,6 @@ HANDOVER READY
 - **Done:** owner answers #101 to #104, PR-040 and LDC-04/05 recorded (R1-D-65); pull-request CI only on `ci:run` (R1-D-64); #205 merged; wave 1 (#206: the mandate approval action R1-D-66, M37 `TenantBootstrap` R1-D-67, M38 `OperationsHubProvisioning` R1-D-68) merged and released by version PR #208, release run 184 (record below); wave 2 (#207: M39, per-tenant templates and delivery reports by vendor reference, R1-D-69, `notify/0003`) merged as `714ad01`. Wave 2's version PR is labelled `ci:run` at the gate and merged when green; record its release run, and write wave 2's adoption notes (Finbyx: drop the `TenantSms`/`TenantEmail` wrappers and enable WhatsApp, guide §7aa; LawDocsComply: route vendor webhooks through `route*`, deliveries move past `sent`), in the next PR.
 - **Next:** wave 3, one PR and one gate: M40 (PR-LDC-13, CEL `startsWith`, `endsWith`, `contains`, `matches` in the condition IR and in all four RULES engines: `zen`, `json-rules`, `memory`, `table`; `matches` linear-time patterns only, checked at publish), M41 (PR-LDC-14 platform purpose notices and `latestByPrincipal`, with #95's 8-year purge sweep, a `consent` minor), M42 (PR-LDC-16 `fieldCryptoForTenant` over KMS). Then wave 4 (M43 to M48 and M50), then M49 after PR-041 is written.
 - **Open question:** #105 (sign off the PR-040 text). **Owner tasks:** Google Cloud and Apple accounts; CIBIL and Setu sandboxes; Digio mandate and NeSL accounts; the pilot lender's disbursement bank.
-- **Check-ins:** `trig_01WMBtiosKaKjefu4yWvhr6J` (daily 17:41 IST), `trig_0184SooqR9dM7WJKU3ULF5Re` (6 Nov 09:23 UTC, Keycloak re-scan).
 - **Local note:** `scripts/cli-bins.test.mjs` fails in the cloud container on unchanged `main` (an environment difference); CI passes it.
 - **Branches and PRs:** `main` at `714ad01` plus wave 2's version PR; this handover is on `claude/epic-ramanujan-8ybr1r` and rides the wave 3 PR.
 
@@ -340,7 +363,6 @@ HANDOVER READY
 - **Owner answers (R1-D-65):** #101 closed (the apple.com root matches the pin in every field); #102 (no new recurring vendor; PR-LDC-01 answered, MCA adapter waits for a data source); #103 (delegation approved in principle, M49 after wave 4, PR-041 first); #104 (support access as its own flow, M50 in wave 4); PR-040 approved for v1.3, its text in `docs/phases/PR-040-ecosystem-v1.3-draft.md` for sign-off (#105, the only open question); LDC-04 offline list approved. #95's purge sweep ships with PR-LDC-14 in wave 3 (M41).
 - **CI (R1-D-64):** pull-request CI runs only when `ci:run` is added; any other label cancels the run (never a skipped, passing check). #205 was marked ready with no run started. The owner allowed one force-push of this session's own branch (4 Nov) to shorten a commit subject that commitlint refused; `main` untouched.
 - **Wave 1, PR #206 (branch `claude/epic-ramanujan-8ybr1r`):** the mandate approval action (#100's gap, R1-D-66); M37 `TenantBootstrap` (R1-D-67); M38 `OperationsHubProvisioning` (R1-D-68); release run 181 recorded below; adoption notes `docs/adoption/lawdocscomply.md` §4 and `finbyx.md` §5. Expected versions: `contracts` 1.16.0, `tenancy` 1.10.0, `connectors` 1.8.0, `testing` 1.8.0, `config` 1.9.0, patches of the rest.
-- **Check-ins:** `trig_01WMBtiosKaKjefu4yWvhr6J` (daily, 17:41 IST, this chat) and `trig_0184SooqR9dM7WJKU3ULF5Re` (6 Nov 09:23 UTC, Keycloak re-scan, this chat); the old chat's `trig_01Mz6fkEQN7m9vZx96eREqX4` is disabled.
 - **Gate (done):** #205 merged first (its existing green run); #206 merged on one `ci:run` run; version PR #208 merged on one; release run 184 published wave 1 (record below). Wave 2 is PR #207 (M39, R1-D-69), gated the same way.
 - **Next:** wave 2 (M39: PR-FBX-33 and PR-LDC-15), then waves 3 and 4, one gate each; M49 after wave 4.
 - **Owner tasks:** sign off PR-040 (#105); the Google Cloud project and Apple developer account; the CIBIL and Setu sandboxes; the Digio mandate and NeSL accounts; the pilot lender's disbursement bank.
@@ -353,9 +375,8 @@ HANDOVER READY
 
 ## Handover (2026-11-03, fourth session: owner answers #94 to #100, PR-FBX-32 and the stub adapters)
 
-- **Temporal 1.25.0** (check-in `trig_017kWdyDm3yioGbpRrMnu5Zi` at 18:36 UTC; R1-D-60): every `@temporalio` package 1.25.0 (published 27 Oct 18:28 UTC; core-bridge ships `zip` 9.0.5). The four `zip` waivers are dropped. body-parser 2.4.0 and multer 2.5.0 come in by overrides, and their two waivers are dropped (`connectors` patch; guide §7v; threat model §3.45).
+- **Temporal 1.25.0** (18:36 UTC; R1-D-60): every `@temporalio` package 1.25.0 (published 27 Oct 18:28 UTC; core-bridge ships `zip` 9.0.5). The four `zip` waivers are dropped. body-parser 2.4.0 and multer 2.5.0 come in by overrides, and their two waivers are dropped (`connectors` patch; guide §7v; threat model §3.45).
 
-- **Check-ins:** `trig_017kWdyDm3yioGbpRrMnu5Zi` (3 Nov 18:35 UTC, Temporal) and `trig_01Mz6fkEQN7m9vZx96eREqX4` (6 Nov 09:23 UTC, Keycloak) were already on this session and had not fired; nothing re-created.
 - **Owner answers #94 to #100** recorded (R1-D-57); OWNER-QUESTIONS has no open question. Guide §7i gives #94's AWS layout. Follow-ups: the consent purge sweep of #95 (a `consent` minor), #97's and #100's stub adapters, and #99's C-24 widening and C-27 with both adapters.
 - **PR-FBX-32** (R1-D-58, ADR-0005; pilot-critical): chain lanes for the ledger and the capture. 32 lanes per tenant and chain, each the same SHA-256 chain, sealed by the format-3 anchor; `seq` becomes global; existing chains continue as lane 0 (`audit/0006`, `0007`; guide §7u; threat model §3.66; `audit` minor). Load test in CI: 16 writers at 20 ms each, 39 tx/s on one lane against 360 tx/s with lanes. Finbyx adoption note §4. Export map `REF-EXPORT-1.4` (the ledger's lanes in `audit_event`; `export` minor).
 - **#99's adapters** (R1-D-59; Udofin PR-UDF-028): C-24 widened to Play Integrity, C-27 for App Attest in `@infrabyx/crypto`, and the `native` DEVICE_ATTESTATION adapter, off until the owner's Google Cloud project and Apple account exist (guide §7q; threat model §3.62; `crypto`, `connectors`, `testing`, `config` minors). The pinned Apple root is to be confirmed by the owner against apple.com.
@@ -365,7 +386,7 @@ HANDOVER READY
 - **Merged this session:** #196 (owner answers, R1-D-57); #197 (PR-FBX-32, chain lanes); #199 (Temporal 1.25.0, R1-D-60); #200 (#99, device attestation, R1-D-59); #202 (#97, CIBIL and Setu, R1-D-61); and this PR (#100, Digio mandates and NeSL DDE, R1-D-62, with this handover). Version PRs #198 (release run 175) and #201 (release run 178) are recorded below.
 - **CI note:** #202's first `reference` run failed once in the Keycloak second-factor step of the e2e journey (the authenticator setup page did not redirect back); the same job passed on #199, #200, #201 and on #202's next run, and #202 does not touch the reference app. If it recurs, look at the TOTP code being generated near a 30-second boundary in `apps/reference/web/src/__tests__/journey.e2e.test.ts`.
 - **Products can now:** move every `@infrabyx/*` dependency to the run 178 versions, run `infrabyx-migrate --require-all` (`audit/0006`, `0007`), add the body-parser and multer overrides of guide §7v, and follow their note (Finbyx: `docs/adoption/finbyx.md` §4 for the chain lanes). #97's and #100's adapters reach them with the next version PR.
-- **Next:** the version PR for #97 and #100 (connectors, testing and config minors; record its release run here); the 6 Nov 09:23 UTC Keycloak re-scan (`trig_01Mz6fkEQN7m9vZx96eREqX4`); then #95's consent purge sweep (a `consent` minor: 8 years after the relationship ends or consent is withdrawn, ledgered, extended by a legal hold); then a `contracts` minor adding the AA approval URL to the port (R1-D-61).
+- **Next:** the version PR for #97 and #100 (connectors, testing and config minors; record its release run here); the 6 Nov Keycloak re-scan; then #95's consent purge sweep (a `consent` minor: 8 years after the relationship ends or consent is withdrawn, ledgered, extended by a legal hold); then a `contracts` minor adding the AA approval URL to the port (R1-D-61).
 - **Open questions:** #101 (confirm the pinned Apple App Attestation root's SHA-256 against apple.com).
 - **Owner tasks:** the Google Cloud project and Apple developer account (#99); the CIBIL and Setu sandboxes (#97); the Digio mandate and NeSL accounts (#100); the Digio and IDfy KYC sandboxes; Turnstile's site key and secret; the pilot lender's disbursement bank for the payout adapter.
 - **Branches and PRs:** `main` at the merge of this PR; the version PR follows; nothing else open.
@@ -374,10 +395,6 @@ HANDOVER READY
 
 ## Handover (2026-11-03, third session: the owner's order of 3 Nov)
 
-- **Check-ins (this session, branch `claude/inspiring-cray-bfr9s9`; R1-D-56):**
-  - `trig_017kWdyDm3yioGbpRrMnu5Zi`, 3 Nov 18:35 UTC: `@temporalio/*` 1.25.0 and the four `zip` waivers. It was moved from 09:17 because 1.25.0 was published at 18:25:35 UTC on 27 Oct, so pnpm's 7-day gate refuses it until 18:26 UTC;
-  - `trig_01Mz6fkEQN7m9vZx96eREqX4`, 6 Nov 09:23 UTC: the Keycloak re-scan of #93.
-  - The second session's `trig_01PPAoaTPum73NDBdGCwDKCN` and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` are disabled. Finbyx's own Temporal check-in, in its repository's environment, is that product's and keeps running.
 - **#93:** already recorded by #171 (R1-D-36, threat model §3.53, `trivyignore` to 20 Nov). Nothing new.
 - **Merged this session:**
   - #194, PR-UDF-033 and PR-FBX-21 (R1-D-48; `tenancy/0015`);
@@ -389,7 +406,7 @@ HANDOVER READY
   - Finbyx: `docs/adoption/finbyx.md`;
   - Udofin: `docs/adoption/udofin.md`;
   - LawDocsComply: `docs/adoption/lawdocscomply.md` (a first install).
-- **Next:** the 18:35 UTC Temporal check-in (a `connectors` patch release), then the 6 Nov re-scan. After that, only new product requests; R1-D-56 (4) lists the smallest open ones first if the owner wants them taken.
+- **Next:** the Temporal update (a `connectors` patch release), then the 6 Nov re-scan. After that, only new product requests; R1-D-56 (4) lists the smallest open ones first if the owner wants them taken.
 - **Open questions:** #94 to #100, none new.
 - **Owner tasks:** the Digio and IDfy sandboxes; the CIC and AA sandbox documents; Turnstile's site key and secret; a word on #99 (device-attestation cryptography) and #100 (money movement).
 - **Branches and PRs:** `main` at the merge of this PR; nothing else open.
@@ -398,7 +415,6 @@ HANDOVER READY
 
 ## Session log (2026-11-03, second session)
 
-- **Check-ins moved to this session** (branch `claude/compassionate-gates-4ul4ni`): `trig_01PPAoaTPum73NDBdGCwDKCN` (3 Nov 09:17 UTC, `@temporalio/*` 1.25.0 and the four `zip` waivers) and `trig_01VMkfoHbtKdUhJUpWMPdAzQ` (6 Nov 09:23 UTC, the Keycloak base re-scan of #93); the previous session's `trig_01LU4M6td9YBGvQLHvBohkqU` and `trig_015GkkMV5C4Yc5TBZY4iRki1` are disabled. #93 itself was recorded by #171 (R1-D-36).
 - **PR-UDF-031** (R1-D-44): `infrabyx-migrate` runs a no-transaction file one statement at a time, so `CREATE INDEX CONCURRENTLY` on an existing table applies (guide §7p; `tenancy` patch).
 - **PR-FBX-29** (R1-D-52; OWNER-QUESTIONS #100): the ESTAMP, PAYOUTS, DOCGEN and PDF interfaces, NeSL DDE and the mandate lifecycle, with fakes (guide §7r; `contracts`, `testing` minors). No money-moving adapter.
 - **PR-UDF-029 and PR-UDF-028** (R1-D-50, ADR-0004): the CAPTCHA port with Turnstile (the owner's choice) and hCaptcha adapters and the under-attack gate; the DEVICE_ATTESTATION port as interfaces and a fake, its adapters waiting for OWNER-QUESTIONS #99 (cryptography); IPB-01 catalogue rows requested as PR-039 (guide §7q).
@@ -413,7 +429,6 @@ HANDOVER READY
 
 ## Handover (2026-11-03, the owner's orders of 2 Nov: #93, Finbyx PR-FBX-20 to PR-FBX-30, M15, M24, M25)
 
-- **Check-ins (this session):** `trig_01LU4M6td9YBGvQLHvBohkqU` (3 Nov 09:17 UTC: `@temporalio/*` 1.25.0 and the four `zip` waivers; the old `trig_01LrR3ViziZTh7sY6BSGaEUX` is disabled) and `trig_015GkkMV5C4Yc5TBZY4iRki1` (6 Nov 09:23 UTC: re-scan of the five waived Keycloak base findings; any newer finding is not waived without the owner's word).
 - **Merged, in the owner's order (records under "Releases after 1.0.0"):**
   - #171, #93 answered (R1-D-36): the three Keycloak waivers extended to 20 Nov. The owner also approved waiving two new UBI 9 `sqlite-libs` findings on the same terms;
   - #172, PR-FBX-25, blind-index keys above staging (`crypto` 1.3.0; R1-D-37; OWNER-QUESTIONS #94);
@@ -439,10 +454,10 @@ HANDOVER READY
 
 ## Handover (2026-10-30, the Keycloak 26.8.1-1 security update)
 
-- **Done (the owner's 30 Oct check-in):** #168 pinned Keycloak's 26.8.1-1 rebuild once 7 days old (pushed 23 Oct 09:47:48 UTC; pinned after 09:47:48 UTC on 30 Oct) in the customer-otp image, the Compose IdP and the IDENTITY test image (`testing` 1.3.6, version PR #169, run 147). The rebuild cleared only CVE-2026-114406; its waiver is gone. CVE-2026-91403 and CVE-2026-91415 (UBI 9 OpenJDK, no fixed build) and CVE-2026-102554 (Guava 33.6.0 in Keycloak's jars, fixed in 33.7.2, in no Keycloak release yet) keep their waivers, expiring 6 Nov. The same run's `containers` scan also found CVE-2026-115907, -115908 and -115909 in the reference app image's `@temporalio/core-bridge` (the same `zip` 8.5.1 as CVE-2026-115905), waived to 20 Nov (R1-D-35).
+- **Done (the owner's 30 Oct request):** #168 pinned Keycloak's 26.8.1-1 rebuild once 7 days old (pushed 23 Oct 09:47:48 UTC; pinned after 09:47:48 UTC on 30 Oct) in the customer-otp image, the Compose IdP and the IDENTITY test image (`testing` 1.3.6, version PR #169, run 147). The rebuild cleared only CVE-2026-114406; its waiver is gone. CVE-2026-91403 and CVE-2026-91415 (UBI 9 OpenJDK, no fixed build) and CVE-2026-102554 (Guava 33.6.0 in Keycloak's jars, fixed in 33.7.2, in no Keycloak release yet) keep their waivers, expiring 6 Nov. The same run's `containers` scan also found CVE-2026-115907, -115908 and -115909 in the reference app image's `@temporalio/core-bridge` (the same `zip` 8.5.1 as CVE-2026-115905), waived to 20 Nov (R1-D-35).
 - **Products:** move all `@infrabyx/*` to the run 147 versions (only `testing` changed), rebuild the customer image and run the IdP on `keycloak/keycloak@sha256:a78d6b79…` (guide §7d step 7); carry the same three Keycloak waivers in their own image scans.
-- **Open question:** **#93**, answered 2 Nov 2026 (R1-D-36): the three Keycloak waivers are extended to 20 Nov, with a re-scan check-in on 6 Nov 2026 09:23 UTC (`trig_015GkkMV5C4Yc5TBZY4iRki1`); a fixed image is pinned once 7 days old.
-- **Next:** the 3 Nov 09:17 UTC check-in moves `@temporalio/*` to 1.25.0 and drops all four `zip` waivers (its prompt was updated); then the queue below (M15, M24, M25).
+- **Open question:** **#93**, answered 2 Nov 2026 (R1-D-36): the three Keycloak waivers are extended to 20 Nov, with a re-scan on 6 Nov 2026; a fixed image is pinned once 7 days old.
+- **Next:** move `@temporalio/*` to 1.25.0 on 3 Nov and drop all four `zip` waivers; then the queue below (M15, M24, M25).
 - **Branches and PRs:** `main` at the merge of this record PR; no other open PR.
 
 HANDOVER READY
@@ -454,7 +469,7 @@ HANDOVER READY
   2. **M24, V-CIP through Digio in our LiveKit room** (#90 (b)): Digio does liveness and face match on frames only; the recording and all V-CIP data stay in the tenant's storage, and Digio and the host retain nothing; a live official of the regulated entity conducts the call. Build against R1-D-34's clause map (RBI KYC Directions 2025, paras 5(2)(xiv), 23, 26, 27, 44, 47);
   3. **M25, the IDfy KYC adapter** (#91), against a stub first; switch to HyperVerge if the owner says its sandbox came first.
 - **Done this session (records under "Releases after 1.0.0"):**
-  - the two security check-ins moved to this session (Keycloak 26.8.1-1 on 30 Oct 2026 and `@temporalio/*` 1.25.0 with the body-parser and multer waiver check on 3 Nov 2026, both 09:17 UTC, branch `claude/epic-gauss-2qpgc0`); the previous session's two were disabled;
+  - the two security follow-ups (Keycloak 26.8.1-1 on 30 Oct 2026 and `@temporalio/*` 1.25.0 with the body-parser and multer waiver check on 3 Nov 2026, both 09:17 UTC, branch `claude/epic-gauss-2qpgc0`);
   - **PR-FBX-09** (#165; minors, run 144): each item assessed (R1-plan M23). Saved views and the column chooser (`config/0002`, `SavedViews`), the search refusals (`contracts`), the palette and search aggregator, workspace switcher, page states and templates, column chooser, view picker and keyboard map (`ui`) are the platform's. What is searched, the workspace catalogue, the shortcut set and the PAN lookup are Finbyx's (R1-D-32). One CI fix on the way: the column chooser listed the pinned column twice (duplicate id, caught by HTML_CodeSniffer);
   - owner answers **#89 to #92** recorded (R1-D-33) and the V-CIP clause map (R1-D-34); product guide §7h (this PR).
 - **Products can now:** move all `@infrabyx/*` together to the run 144 versions and run `infrabyx-migrate` (`config/0002`). **Finbyx** replaces its `apps/web/src/shell/` shims with the platform's (guide §7h):
@@ -532,6 +547,10 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### TallyPrime adapter and agent (2026-11-18, PR #288, version PR #289, release run 256)
+
+PR-FBX-46 (R1-D-178) merged as `3e69471` (#288) after one `ci:run` run, all 42 checks green. Version PR #289 merged as `20707b2` after its one `ci:run` run, all 42 checks green, under OWNER-QUESTIONS #81(a) (minors and patches only). Release run 256 (04:52 to 05:06 UTC) ran the full port-contract matrix (31 jobs, all green), then published 21 packages with their tags: minors `@infrabyx/contracts` 1.34.0, `@infrabyx/crypto` 1.6.0, `@infrabyx/connectors` 1.19.0 (migration `connectors/0007`), `@infrabyx/config` 1.18.0 and `@infrabyx/testing` 1.20.0, and dependency patches of a11y, ai, audit, brand, cms, consent, export, feedback, notify, rules, seed, tenancy, trust, ui, vidhi and workflow. The BOM was signed keyless, then the tarballs were attested and the registry checksums compared in the same job (134588241219). Products: Finbyx takes the minors for TallyPrime (product guide §7ck) and runs `infrabyx-migrate` for `connectors/0007`; everyone else takes the patches with the next bump. New settings, all off or default: `int.accounting.tally.enabled`, `int.accounting.tally.poll_timeout_seconds`, `int.accounting.tally.job_expiry_days`. The agent (`apps/tally-agent`) is private: it ships as source and its Dockerfile (owner answer #128).
 
 ### Inbound email replies (2026-11-18, PR #285, version PR #286, release run 254)
 
