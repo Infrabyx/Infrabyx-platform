@@ -1,5 +1,17 @@
 # @infrabyx/config
 
+## 1.17.0
+
+### Minor Changes
+
+- 34f5e49: Inbound mail replies (PR-LDC-50, R1-D-177): `ntf.reply.enabled` (TENANT, off, R4), `ntf.reply.domain` (TENANT, empty, R4) and `ntf.reply.token_days` (TENANT, 30, 1 to 90).
+
+### Patch Changes
+
+- Updated dependencies [34f5e49]
+  - @infrabyx/contracts@1.33.0
+  - @infrabyx/crypto@1.5.18
+
 ## 1.16.0
 
 ### Minor Changes

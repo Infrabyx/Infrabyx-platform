@@ -1,5 +1,22 @@
 # @infrabyx/testing
 
+## 1.19.0
+
+### Minor Changes
+
+- 34f5e49: Inbound mail replies (PR-LDC-50, R1-D-177): `FakeInboundEmail` (records sends with their reply address, and an inbound route) and `defineEmailInboundContract`, run against the fake and the SES adapter. The SES and Brevo stubs record the reply address they were sent.
+
+### Patch Changes
+
+- Updated dependencies [34f5e49]
+- Updated dependencies [34f5e49]
+  - @infrabyx/config@1.17.0
+  - @infrabyx/contracts@1.33.0
+  - @infrabyx/audit@1.10.4
+  - @infrabyx/seed@1.0.43
+  - @infrabyx/tenancy@1.20.4
+  - @infrabyx/crypto@1.5.18
+
 ## 1.18.0
 
 ### Minor Changes
