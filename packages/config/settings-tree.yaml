@@ -2204,6 +2204,39 @@ keys:
       note: "snapshots per tenant per hour (shared rate limiter)",
       source: "PR-LDC-40, R1-D-176; threat model §3.124, §3.125",
     }
+  - {
+      key: int.accounting.tally.enabled,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      change: [ORG_ADMIN],
+      mc: R4,
+      source: "IPB-01 ACCOUNTING; PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121 (the tenant's TallyPrime agent may take jobs; off until the tenant has enrolled its agent)",
+    }
+  - {
+      key: int.accounting.tally.poll_timeout_seconds,
+      tier: PLATFORM,
+      type: int,
+      default: 25,
+      min: 1,
+      max: 55,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      note: "how long the agent's job poll is held open before it answers no job",
+      source: "PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121",
+    }
+  - {
+      key: int.accounting.tally.job_expiry_days,
+      tier: PLATFORM,
+      type: int,
+      default: 7,
+      min: 1,
+      max: 30,
+      change: [PLT_SECURITY_OFFICER],
+      mc: false,
+      note: "a posting no agent claimed in this many days is rejected agent_unreachable",
+      source: "PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121",
+    }
 
   # ---------------------------------------------------------------- R1: CAPTCHA (ADR-0004; R1-D-50)
   - {

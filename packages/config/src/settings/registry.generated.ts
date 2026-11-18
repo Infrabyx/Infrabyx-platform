@@ -3194,6 +3194,51 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "snapshots per tenant per hour (shared rate limiter)"
   },
   {
+    "key": "int.accounting.tally.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 ACCOUNTING; PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121 (the tenant's TallyPrime agent may take jobs; off until the tenant has enrolled its agent)"
+  },
+  {
+    "key": "int.accounting.tally.poll_timeout_seconds",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 25,
+    "min": 1,
+    "max": 55,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121",
+    "note": "how long the agent's job poll is held open before it answers no job"
+  },
+  {
+    "key": "int.accounting.tally.job_expiry_days",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 7,
+    "min": 1,
+    "max": 30,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": false,
+    "source": "PR-FBX-46, R1-D-137, R1-D-178; threat model §3.121",
+    "note": "a posting no agent claimed in this many days is rejected agent_unreachable"
+  },
+  {
     "key": "int.captcha.under_attack",
     "tier": "PLATFORM",
     "type": "bool",
@@ -7003,6 +7048,9 @@ export type SettingValueMap = {
   "int.web_snapshot.enabled": boolean;
   "int.web_snapshot.allow_hosts": string[];
   "int.web_snapshot.per_hour": number;
+  "int.accounting.tally.enabled": boolean;
+  "int.accounting.tally.poll_timeout_seconds": number;
+  "int.accounting.tally.job_expiry_days": number;
   "int.captcha.under_attack": boolean;
   "int.captcha.turnstile.enabled": boolean;
   "int.captcha.hcaptcha.enabled": boolean;
