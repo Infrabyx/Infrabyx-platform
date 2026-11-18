@@ -1,5 +1,17 @@
 # @infrabyx/config
 
+## 1.16.0
+
+### Minor Changes
+
+- 6bb68c1: Four settings for web snapshots (PR-LDC-40, R1-D-176): `int.egress.governed.enabled` and `int.web_snapshot.enabled` (PLATFORM, off, R4), `int.web_snapshot.allow_hosts` (TENANT, empty, ORG_ADMIN, R4) and `int.web_snapshot.per_hour` (PLATFORM, 60).
+
+### Patch Changes
+
+- Updated dependencies [6bb68c1]
+  - @infrabyx/contracts@1.32.0
+  - @infrabyx/crypto@1.5.17
+
 ## 1.15.2
 
 ### Patch Changes
