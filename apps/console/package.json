@@ -1,7 +1,7 @@
 {
   "name": "@infrabyx/console",
   "version": "0.0.0",
-  "description": "Reference Studio console on Next.js 16 (PL5 plan \u00a79.6, OWNER-QUESTIONS #41): mounts every @infrabyx/ui/studio screen behind the AUTHZ check, the template product consoles copy",
+  "description": "Reference Studio console on Next.js 16 (PL5 plan §9.6, OWNER-QUESTIONS #41): mounts every @infrabyx/ui/studio screen behind the AUTHZ check, the template product consoles copy",
   "license": "UNLICENSED",
   "private": true,
   "type": "module",
