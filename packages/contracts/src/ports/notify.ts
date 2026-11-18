@@ -146,6 +146,13 @@ export const NotificationCatalogue = z
   .strict();
 export type NotificationCatalogue = z.infer<typeof NotificationCatalogue>;
 
+/** The product's reference of the thread a reply belongs to (a matter, a task, a ticket). */
+export const ReplyThreadRef = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[\x21-\x7e]+$/, "printable ASCII without spaces");
+
 /** A principal reference: `usr_…` or a product `party_ref`; never an address. */
 export const Recipient = z.object({ ref: z.string().min(3).max(120) }).strict();
 export type Recipient = z.infer<typeof Recipient>;
@@ -159,6 +166,12 @@ export const NotificationRequest = z
     deepLink: z.string().regex(/^\/[A-Za-z0-9/_:.?=&%-]*$/),
     locale: z.string().optional(),
     idempotencyKey: z.string().min(8).max(200),
+    /**
+     * Invite a reply by email (PR-LDC-50; R1-D-177): each email delivery carries a reply address
+     * bound to this thread and that recipient. Ignored unless the tenant's `ntf.reply.enabled` is on
+     * and `ntf.reply.domain` is set; never set on a digest.
+     */
+    reply: z.object({ threadRef: ReplyThreadRef }).strict().optional(),
   })
   .strict();
 export type NotificationRequest = z.infer<typeof NotificationRequest>;
@@ -254,6 +267,64 @@ export interface NotifyPort extends Port {
   unsubscribe(token: string): Promise<void>;
   verifySenderDomain(brand: string, domain: string): Promise<DomainCheck>;
   deliveryStatus(ctx: KernelContext, notificationId: string): Promise<DeliveryRecord[]>;
+}
+
+// ------------------------------------------------------------------ inbound replies (PR-LDC-50)
+
+/** Why an inbound message was dropped (design §3; plan `docs/phases/R1-inbound-mail-plan.md` §4). */
+export const INBOUND_DROP_REASONS = [
+  "off",
+  "no_token",
+  "ambiguous",
+  "unknown_token",
+  "expired",
+  "used_up",
+  "domain",
+  "sender",
+  "auth",
+  "too_large",
+  "line_length",
+  "parse",
+  "parts",
+  "depth",
+  "headers",
+  "charset",
+  "attachments",
+  "empty",
+] as const;
+export type InboundDropReason = (typeof INBOUND_DROP_REASONS)[number];
+
+/** The state of a reply's attachment: released only on a `CLEAN` scan (IPB-02-44). */
+export type ReplyAttachmentState = "RELEASED" | "QUARANTINED" | "REJECTED";
+
+export interface ReplyAttachment {
+  storageKey: string;
+  /** The sender's file name, cut to 200 characters; never used as a path. */
+  filename: string | null;
+  /** The declared media type, as sent (lower case); not trusted. */
+  contentType: string;
+  bytes: number;
+  sha256: string;
+  state: ReplyAttachmentState;
+  verdict: string;
+}
+
+/** An accepted reply (`getReply`). The text has its quoted history removed. */
+export interface InboundReply {
+  id: string;
+  threadRef: string;
+  recipientRef: string;
+  text: string;
+  attachments: ReplyAttachment[];
+  receivedAt: string;
+}
+
+export interface ReceiveRepliesResult {
+  /** Ids of the replies accepted by this call. */
+  accepted: string[];
+  /** Redeliveries of a reply already accepted (nothing consumed). */
+  duplicate: number;
+  dropped: Partial<Record<InboundDropReason, number>>;
 }
 
 /** Product-supplied address lookup; addresses never travel through events or queues. */

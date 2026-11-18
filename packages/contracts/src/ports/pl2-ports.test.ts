@@ -66,7 +66,7 @@ describe("@IPB-01-16 data-class floor (PL2-D-03)", () => {
     }
     expect(payloadClass(EmailMessage)).toMatchObject({
       bodyHighest: "INTERNAL",
-      recipientFields: ["to[]", "cc[]"],
+      recipientFields: ["to[]", "cc[]", "replyTo"],
     });
     expect(payloadClass(SmsMessage).recipientFields).toEqual(["to"]);
     expect(payloadClass(OrderSpec).bodyHighest).toBe("REGULATED");
