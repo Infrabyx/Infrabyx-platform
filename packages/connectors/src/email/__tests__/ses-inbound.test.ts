@@ -13,7 +13,10 @@ import { SesEmail, parseReceived } from "../ses.js";
 const EVENTS = "arn:aws:sns:ap-south-1:111122223333:ses-events-ld";
 const INBOUND = "arn:aws:sns:ap-south-1:111122223333:ses-inbound-ld";
 let signer: SnsSigner;
-const NOW = Date.parse("2026-11-18T06:00:00Z");
+// The adapter's clock, a minute after the real one. The throwaway certificate is minted by openssl
+// with the real clock (valid from now, for two days), so a fixed date here stops working once that
+// date is passed or two days old (it broke at 06:00 UTC on 18 Nov 2026).
+const NOW = Date.now() + 60_000;
 
 const adapter = (o: { inbound?: boolean } = {}) =>
   new SesEmail({
