@@ -13,6 +13,7 @@ import type {
   IdentitySessionRefresh,
   SecretRef,
 } from "@infrabyx/contracts/ports";
+import { mfaFloor } from "@infrabyx/contracts";
 import { generateSeedPassword, randomBytes, toHex } from "@infrabyx/crypto";
 import {
   defineContractSuite,
@@ -22,7 +23,12 @@ import {
   type StartedService,
 } from "@infrabyx/testing";
 import { assertMfaForRoles, MemoryRevocationStore } from "../common.js";
-import { KEYCLOAK_IPB_SETTINGS, KEYCLOAK_SESSION_PROFILES, KeycloakIdentity } from "../keycloak.js";
+import {
+  KEYCLOAK_IPB_SETTINGS,
+  KEYCLOAK_MFA_MARKER_ROLE,
+  KEYCLOAK_SESSION_PROFILES,
+  KeycloakIdentity,
+} from "../keycloak.js";
 import { LoginDriver, totp, totpSecretOf } from "./login-driver.js";
 
 const REALM = "ipb-contract";
@@ -493,6 +499,95 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
       spec,
     });
     for (const c of await references()) expect(c.config["default.reference.maxAge"]).toBe(lifetime);
+  });
+
+  it("@IPB-02-AT-02 a product MFA floor applied to an existing realm marks its role, and the realm challenges it (PR-FBX-49)", async () => {
+    const floor = mfaFloor({ roles: ["PRD_MAKER"], smsExcludedRoles: ["PRD_MAKER"] });
+    // The realm exists without the product's roles; applying again with the floor adds them.
+    await KeycloakIdentity.applyRealm({
+      baseUrl: base,
+      masterAdmin: admin,
+      allowLoopbackHttp: true,
+      spec: { ...spec, productRoles: ["PRD_MAKER", "PRD_VIEWER"], mfaFloor: floor },
+    });
+    const tr = await fetch(`${base}/realms/master/protocol/openid-connect/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ grant_type: "password", client_id: "admin-cli", ...admin }),
+    });
+    const auth = {
+      authorization: `Bearer ${((await tr.json()) as { access_token: string }).access_token}`,
+    };
+    const composites = async (role: string) =>
+      (
+        (await (
+          await fetch(`${base}/admin/realms/${REALM}/roles/${role}/composites/realm`, {
+            headers: auth,
+          })
+        ).json()) as Array<{ name: string }>
+      ).map((r) => r.name);
+    expect(await composites("PRD_MAKER")).toContain(KEYCLOAK_MFA_MARKER_ROLE);
+    expect(await composites("PRD_VIEWER")).not.toContain(KEYCLOAK_MFA_MARKER_ROLE);
+    expect(await composites("ORG_ADMIN")).toContain(KEYCLOAK_MFA_MARKER_ROLE);
+
+    // A maker provisioned before the floor (no enrolment action) is caught by the sweep.
+    const before = adapter();
+    const early = email("early-maker");
+    const earlyPw = pw();
+    const { id: earlyId } = await before.provisionUser({
+      email: early,
+      displayName: "Early Maker",
+      tenantId: "tnt_a",
+      roles: ["PRD_MAKER"],
+      password: { value: earlyPw, temporary: false },
+      mfaRequired: false,
+    });
+    const withFloor = new KeycloakIdentity({
+      baseUrl: base,
+      realm: REALM,
+      clientId: API,
+      clientSecret: secrets.clientSecret,
+      adminClientId: "ipb-admin",
+      adminClientSecret: secrets.adminClientSecret,
+      audience: AUDIENCE,
+      revocations,
+      allowLoopbackHttp: true,
+      mfaFloor: floor,
+    });
+    const swept = await withFloor.requireMfaEnrolment();
+    expect(swept.flagged).toBeGreaterThanOrEqual(1);
+    expect((await withFloor.requireMfaEnrolment()).flagged).toBe(0);
+
+    // The realm now challenges both the early maker and a new one at their next sign-in.
+    const fresh = email("maker");
+    const freshPw = pw();
+    await withFloor.provisionUser({
+      email: fresh,
+      displayName: "New Maker",
+      tenantId: "tnt_a",
+      roles: ["PRD_MAKER"],
+      password: { value: freshPw, temporary: false },
+      mfaRequired: false,
+    });
+    for (const [user, password] of [
+      [early, earlyPw],
+      [fresh, freshPw],
+    ] as const) {
+      const r = await new LoginDriver(issuer(), API).login((page, html) => {
+        if (page === "login") return { username: user, password, credentialId: "" };
+        if (page === "configure_totp") {
+          const secret = totpSecretOf(html);
+          return {
+            totp: totp(secret),
+            totpSecret: new TextDecoder().decode(secret),
+            userLabel: "contract",
+          };
+        }
+        throw new Error(`unexpected page ${page}`);
+      });
+      expect(r.pages).toEqual(["login", "configure_totp"]);
+    }
+    expect((await withFloor.getUser(earlyId)).mfaEnrolled).toBe(true);
   });
 
   it("JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002", async () => {

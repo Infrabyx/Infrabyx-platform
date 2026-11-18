@@ -4,7 +4,9 @@
 // metadata and reach the token through the `urn:zitadel:iam:user:metadata` scope; roles are
 // project roles (`urn:zitadel:iam:org:project:roles`). Signing uses an ES256 web key (C-12).
 // Zitadel cannot require MFA per role, so every organisation forces MFA at login (stricter than
-// IPB-02-02, PL2-D-56) and the API guard still refuses privileged roles without it (IPB-SEC-001). RFC 8693 tokens with `act`
+// IPB-02-02, PL2-D-56; so every role of any product floor, PR-FBX-49), with TOTP and U2F as its
+// only second factors (never SMS or email OTP), and the API guard still refuses privileged roles
+// without it (IPB-SEC-001). RFC 8693 tokens with `act`
 // are unsupported here as on Keycloak (PL2-D-55). Zitadel rotates every refresh token but reports a
 // spent one only as invalid, so `refreshSession` detects reuse itself from a ledger of SHA-256
 // hashes (`RefreshTokenLedger`; capability `refreshSession.reuseDetection: emulated`, R1-D-77).
@@ -61,6 +63,7 @@ export const ZITADEL_IPB_SETTINGS = {
     allowRegister: false,
     forceMfa: true,
     passwordlessType: "PASSWORDLESS_TYPE_ALLOWED",
+    secondFactors: ["SECOND_FACTOR_TYPE_OTP", "SECOND_FACTOR_TYPE_U2F"],
   },
   staff: {
     accessTokenLifetime: "300s",
@@ -72,13 +75,24 @@ export const ZITADEL_IPB_SETTINGS = {
     allowRegister: false,
     forceMfa: true,
     passwordlessType: "PASSWORDLESS_TYPE_ALLOWED",
+    secondFactors: ["SECOND_FACTOR_TYPE_OTP", "SECOND_FACTOR_TYPE_U2F"],
   },
 } as const;
 
 const META = "urn:zitadel:iam:user:metadata";
 const ROLES = "urn:zitadel:iam:org:project:roles";
-/** Methods Zitadel reports in `amr` that count as MFA (RFC 8176 and Zitadel's own). */
-const MFA_METHODS = ["mfa", "otp", "hwk", "swk", "user", "u2f", "passkey"];
+/**
+ * `amr` as Zitadel reports it, kept (PR-FBX-49). Zitadel v4 (`internal/api/oidc/amr.go`, tag
+ * v4.19.5, read 18 Nov 2026) sends `pwd`, `user` for a passkey or U2F (both WebAuthn), `otp` for
+ * TOTP, SMS OTP, email OTP or a recovery code, and `mfa` when two factors were checked. The
+ * organisations this adapter sets up allow only TOTP and U2F as second factors
+ * (`ZITADEL_IPB_SETTINGS.*.secondFactors`, read back by `readSettings`), so here `otp` is never SMS;
+ * `user` gains `webauthn`, which names the factor for an SMS-excluded role.
+ */
+function zitadelAmr(raw: unknown): string[] {
+  const amr = (Array.isArray(raw) ? raw : []).filter((a): a is string => typeof a === "string");
+  return [...new Set([...amr, ...(amr.includes("user") ? ["webauthn"] : [])])];
+}
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const unb64 = (s: unknown) =>
@@ -91,14 +105,13 @@ export function zitadelClaims(raw: Record<string, unknown>): Record<string, unkn
     .filter(([k]) => k === ROLES || /^urn:zitadel:iam:org:project:[^:]+:roles$/.test(k))
     .flatMap(([, v]) => (v && typeof v === "object" ? Object.keys(v) : []));
   const scope = unb64(meta.product_scope);
-  const amr = Array.isArray(raw.amr) ? (raw.amr as unknown[]) : [];
   return {
     ...raw,
     tid: unb64(meta.tenant_id),
     ptyp: unb64(meta.principal_type) ?? "user",
     ...(scope ? { product_scope: scope.split(",").filter(Boolean) } : {}),
     roles: [...new Set(roleClaims)],
-    amr: amr.map((a) => (typeof a === "string" && MFA_METHODS.includes(a) ? "mfa" : a)),
+    amr: zitadelAmr(raw.amr),
   };
 }
 
@@ -892,6 +905,8 @@ export class ZitadelIdentity implements IdentityPort {
       allowRegister: login.policy.allowRegister ?? false,
       forceMfa: login.policy.forceMfa ?? false,
       passwordlessType: login.policy.passwordlessType,
+      // PR-FBX-49: TOTP and U2F only; never SECOND_FACTOR_TYPE_OTP_SMS or _OTP_EMAIL.
+      secondFactors: [...((login.policy.secondFactors as string[] | undefined) ?? [])].sort(),
     };
   }
 
@@ -1004,7 +1019,7 @@ export class ZitadelIdentity implements IdentityPort {
       mfaInitSkipLifetime: "0s",
       secondFactorCheckLifetime: "64800s",
       multiFactorCheckLifetime: "43200s",
-      secondFactors: ["SECOND_FACTOR_TYPE_OTP", "SECOND_FACTOR_TYPE_U2F"],
+      secondFactors: [...s.secondFactors],
       multiFactors: ["MULTI_FACTOR_TYPE_U2F_WITH_VERIFICATION"],
     };
     // An organisation policy of its own (create, or update when one exists).

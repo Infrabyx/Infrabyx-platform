@@ -394,6 +394,19 @@ function realmAdmin(initialFlow?: string[], adminApiScope = true) {
     ["PUT", R, { status: 204 }],
     ["GET", `${R}/users/profile`, { status: 200, body: { attributes: [] } }],
     ["PUT", `${R}/users/profile`, { status: 204 }],
+    // PR-FBX-49: roles and MFA markers on a realm applied before (all present, none missing).
+    ["GET", `${R}/roles`, { status: 200, body: [] }],
+    ["POST", `${R}/roles`, { status: 201 }],
+    [
+      "GET",
+      `${R}/roles/ipb-mfa-required`,
+      { status: 200, body: { id: "r-mfa", name: "ipb-mfa-required" } },
+    ],
+    [
+      "GET",
+      /\/roles\/[^/]+\/composites\/realm$/,
+      { status: 200, body: [{ name: "ipb-mfa-required" }] },
+    ],
     [
       "GET",
       /\/authentication\/flows\/(browser|direct%20grant)\/executions$/,

@@ -575,6 +575,28 @@ Pass `businessIds` (1 to 16 ids such as an obligation or matter id; never names 
 
 Build your floor once at boot: `const floor = mfaFloor({ roles: ["<PRODUCT>_PARTNER", ...], smsExcludedRoles: [...] })` (`@infrabyx/contracts`). It holds the platform's roles plus yours and cannot drop one; every SMS-excluded role must be on it. Guard with `assertMfaForRoles(claims, floor, { stepUp: { acrValues: "<your IdP's MFA acr>" } })` (`@infrabyx/connectors/identity`) and map the error with `stepUpChallenge(e)`: when it returns a challenge, answer 401 with its `www-authenticate` header, and your BFF re-runs sign-in with `acr_values=requiredAcr`; otherwise the error keeps its 403. For SMS-excluded roles the IdP must report the factor in `amr` (`otp`, `hwk`, `webauthn`, …); SMS alone, or an `mfa` claim without the factor, is refused. List your routes with `{ path, mfaFloor }` and call `assertStepUpReachable(routes)` in a boot test: it fails when a sign-in callback, MFA enrolment, session refresh or sign-out route is behind the floor (mark a false match `stepUp: false` and say why in review). **Shims removed:** LawDocsComply's product MFA floor; Finbyx's `assertStaffMfa`.
 
+### The realm half (PR-FBX-49; R1-D-182)
+
+Give the IdP the same floor, so it challenges your staff for a second factor instead of the API refusing them:
+
+```ts
+const floor = mfaFloor({
+  roles: ["<PRODUCT>_MAKER", "<PRODUCT>_AUDITOR"],
+  smsExcludedRoles: ["ORG_CHECKER"],
+});
+await KeycloakIdentity.applyRealm({
+  baseUrl,
+  masterAdmin,
+  spec: { ...spec, productRoles, mfaFloor: floor },
+});
+const identity = new KeycloakIdentity({ ...options, mfaFloor: floor });
+await identity.requireMfaEnrolment(); // once after a new or wider floor; ledger the counts
+```
+
+- **Keycloak:** every role on the floor carries the MFA marker role, and a user who gets one (on creation or through a sync) gets the MFA enrolment action; applying the realm again adds missing roles and markers to a realm that already exists (never removes one). A floor role the realm does not have fails `ipbRealm` (add it to `productRoles`). `requireMfaEnrolment()` gives the action to users who already hold a floor role and have no OTP or WebAuthn credential, and returns `{ checked, flagged }`. For an SMS-excluded role the enrolment action is always TOTP or WebAuthn (`KEYCLOAK_NON_SMS_ENROLMENT_ACTIONS`); Keycloak itself offers no SMS factor. Tokens report RFC 8176 `amr` (`pwd`, `otp`, `hwk`).
+- **Zitadel:** every organisation forces MFA for every user, so every floor role is covered, and the only second factors are TOTP and U2F (`readSettings()` reads them back; never SMS or email OTP). The adapter now keeps Zitadel's own `amr` values (`otp`, `user`, plus `webauthn` for `user`), so an SMS-excluded role signs in with TOTP or a security key; with `connectors` 1.19 and earlier every such session was refused (fail closed).
+- **Local stacks:** staff who enrolled a factor by hand keep it; re-apply the realm and run the sweep once.
+
 ## 7bu. Ordered approval levels (PR-LDC-38; owner answer #125; R1-D-136)
 
 Pass `levels` with `approvals.request(tx, { ..., levels: [{ checkerRoles: ["ORG_CHECKER"] }, { checkerRoles: ["<PRODUCT>_PARTNER"], checkers: 2 }] })`: up to five levels, decided in order. Level 1's roles must be among the action's checker roles; its checkers are at least what the risk class asks. Every checker is a different person: never the maker, never someone who decided at an earlier level, never an agent. A rejection at any level ends the request, and the delay window starts only when the last level approves. `ApprovalRecord.currentLevel` and `currentLevelApprovals` show progress; the Work Inbox gives each level's checkers their item when that level opens. Run migration `tenancy/0023`. **Shims removed:** chaining one request per level (LawDocsComply, Finbyx).
