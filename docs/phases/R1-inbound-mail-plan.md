@@ -1,6 +1,6 @@
 # R1 plan: inbound mail replies on the EMAIL port (LawDocsComply PR-LDC-50, wave 15)
 
-Status: drafted 18 Nov 2026 (twentieth session, R1-D-177), from the triage (M98, R1-D-123), the design `docs/phases/R1-inbound-mail-design.md` (R1-D-141) and the threat-model entry written first in wave 14 (§3.123). Packages: `contracts` minor, `connectors` minor, `notify` minor (migration `notify/0007`), `config` minor (three settings), `testing` minor (a fake inbound route and contract cases).
+Status: drafted and built 18 Nov 2026 (twentieth session, R1-D-177), from the triage (M98, R1-D-123), the design `docs/phases/R1-inbound-mail-design.md` (R1-D-141) and the threat-model entry written first in wave 14 (§3.123). Packages: `contracts` minor, `connectors` minor, `notify` minor (migration `notify/0007`), `config` minor (three settings), `testing` minor (a fake inbound route and contract cases).
 
 ## 1. Scope
 
@@ -33,9 +33,9 @@ Not in scope: rendering HTML (it is converted to text, never shown), replies to 
 
 **Minting (inside `deliver`, email channel only).** When the notification carries `reply_thread_ref`, `ntf.reply.enabled` is on and `ntf.reply.domain` is set for the tenant: 20 random bytes (C-06), base32 lower case (32 characters); the row `notify.reply_token` holds only its SHA-256 (`token_hash`), the thread, the recipient reference, the address hash (C-23, the consent key, as the suppression list), the delivery id, `expires_at` (`ntf.reply.token_days`, 1 to 90, default 30) and `max_uses` 50. The message carries `replyTo: reply+<token>@<domain>` (local part 38 characters, under RFC 5321's 64). A failed mint fails the delivery closed (`reply_unavailable`), never sends without the reply address it promised. Digests never mint.
 
-**Receiving (`NotifyService.receiveReplies(adapter, rawBody, headers, meta)`).** The adapter's `verifyInbound` throws on an unverified POST (the product answers 401/400 as for delivery webhooks). Each verified message, in order, is dropped at the first rule it fails:
+**Receiving (`NotifyService.receiveReplies(messages)`).** The product's inbound route calls the adapter's `verifyInbound`, which throws on an unverified POST (the product answers 401/400 as for delivery webhooks), and passes the messages on, as it does for delivery events (`routeEmailEvents`). Each verified message, in order, is dropped at the first rule it fails (an already accepted message is answered as a duplicate before it is parsed):
 
-1. **Token.** Exactly one envelope recipient of the form `reply+<32 base32>@<domain>` (`no_token`, `ambiguous`). Its hash is resolved to a tenant by `notify.reply_token_tenant(hash)` (SECURITY DEFINER; returns only the tenant id) (`unknown_token`). In that tenant: `ntf.reply.enabled` (`off`), the domain equals the tenant's `ntf.reply.domain` (`domain`), the token is unexpired (`expired`) and under its use limit (`used_up`).
+1. **Token.** Exactly one envelope recipient of the form `reply+<32 base32>@<domain>` (`no_token`, `ambiguous`). Its hash is resolved to a tenant by the service reader `SVC_NOTIFY_REPLY` (database role `svc_notify_reply`, granted `token_hash, tenant_id` only; ledgered per tenant, as the unsubscribe link's reader is) (`unknown_token`). In that tenant: `ntf.reply.enabled` (`off`), the domain equals the tenant's `ntf.reply.domain` (`domain`), the token is unexpired (`expired`) and under its use limit (`used_up`).
 2. **Size and shape**, before and during the parse: at most 10 MiB (`too_large`); no line over 998 octets (`line_length`); every declared charset (parameters and RFC 2047 words) on the allow-list (`charset`); postal-mime 4.2.1 (MIT-0, no dependencies) with `maxPartCount` 200 (`parts`), `maxNestingDepth` 10 (`depth`), `maxHeadersSize` 64 KiB (`headers`), `maxRfc822NestingDepth` 0 and `forceRfc822Attachments` (a forwarded message is an attachment, never parsed inline); any other parse failure is `parse`.
 3. **Sender.** Exactly one `From` mailbox, whose address hash equals the token's (`sender`).
 4. **Authentication** (from the adapter, never headers): DMARC `pass`; or DMARC `none` (no enforceable policy) with an aligned DKIM `pass` **and** SPF `pass` whose envelope-from domain equals the `From` domain (strict alignment, so no public-suffix list is needed). Anything else is `auth`.
@@ -44,17 +44,17 @@ Not in scope: rendering HTML (it is converted to text, never shown), replies to 
 
 **Accepting**, in one transaction in the token's tenant (service principal `svc_notify`): the token's use count is incremented under `uses < max_uses` (a race past the limit is `used_up`); the row `notify.reply` (`rpl_` id, token hash, thread, recipient, sender hash, adapter, vendor message id, text, attachments, received at) is inserted with a unique `(tenant_id, adapter, vendor_message_id)` so an SNS redelivery is `duplicate` and consumes nothing; the ledger entry `notify.reply.accept` (thread, token hash prefix, sender hash, attachment digests and states, never the text); the outbox event `NotificationReplyReceived`.
 
-**Drops.** Counted by reason in the result and passed to `onReplyDrop(reason)` (metrics). When the tenant is known (from the token), the first drop per day per `(sender hash, reason)` is ledgered as `notify.reply.drop` (`notify.reply_drop_daily`, upsert); the body is never stored.
+**Drops.** Counted by reason in the result and passed to `replies.onDrop(reason)` (metrics). When the tenant is known (from the token), the first drop of a day per `(sender hash, reason)` is recorded in `notify.reply_drop_daily` with its ledger entry `notify.reply.drop`; later drops that day write nothing, because every kernel mutation must write a ledger entry (IPB-MOD-003). The body is never stored.
 
-**Reading.** `getReply(ctx, id)` returns the reply in the caller's tenant (RLS); `releaseAttachment`-style rescans reuse `FileScanPort` later if a product asks (not in this PR).
+**Reading.** `getReply(ctx, id)` returns the reply in the caller's tenant (RLS). A quarantined attachment can be rescanned later through `FileScanPort` by the product; a platform `rescan` for replies is left until a product asks.
 
 ## 5. Data model (migration `notify/0007_reply.sql`, expand-only)
 
 - `notify.notification.reply_thread_ref text null` (INTERNAL).
 - `notify.reply_token`: `token_hash` (pk, 64 hex), `tenant_id`, `thread_ref`, `recipient_ref`, `address_hash`, `delivery_id`, `expires_at`, `uses`, `max_uses`, `created_at`. Forced RLS by `app.tenant_id`; `select, insert, update (uses)` to `app_rw`; no delete grant.
-- `notify.reply_token_tenant(text)`: SECURITY DEFINER, `search_path` fixed, returns the tenant of a hash or null; execute to `app_rw` only.
+- `svc_notify_reply`: a service reader role (contracts `SERVICE_READER_ROLES.SVC_NOTIFY_REPLY`) with `select (token_hash, tenant_id)` on `notify.reply_token`; the table's read policy admits a platform-scope read, as `notify.unsubscribe_token`'s does.
 - `notify.reply`: `id` (pk), `tenant_id`, `token_hash`, `thread_ref`, `recipient_ref`, `sender_hash`, `adapter`, `vendor_message_id`, `text` (CONFIDENTIAL), `attachments` jsonb (CONFIDENTIAL), `received_at`, `created_at`; unique `(tenant_id, adapter, vendor_message_id)`. Forced RLS; `select, insert` to `app_rw`, `select` to `app_ro`; an immutability trigger (no update).
-- `notify.reply_drop_daily`: `(tenant_id, day, sender_hash, reason)` pk, `count`. Forced RLS; `select, insert, update` to `app_rw`.
+- `notify.reply_drop_daily`: `(tenant_id, day, sender_hash, reason)` pk, `first_at`. Forced RLS; `select, insert` to `app_rw`.
 - Every column carries its data class. Products map `notify.reply` and `notify.reply_token` in their export maps (product guide).
 
 ## 6. Settings (`config` minor)
