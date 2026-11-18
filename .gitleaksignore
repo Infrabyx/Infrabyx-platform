@@ -31,3 +31,9 @@ a621e1eaeb34464a830c39db17bcf53e26f0fe40:packages/config/src/settings/registry.g
 # generic-api-key because the file name "0017_support_access.sql" holds the word "access". It is a
 # file digest, not a credential; the next commit renames the migration to 0017_support_grants.sql.
 d8a2f14ce302e57717d20590892101606cc4c524:packages/tenancy/migrations/checksums.json:generic-api-key:18
+#
+# 2026-11-18: the SHA-256 checksum of migration connectors/0009 in checksums.json, read by
+# generic-api-key because the file name "0009_tally_agent_key_notice.sql" holds the word "key". It
+# is a file digest, not a credential; the next commit renames the migration to
+# 0009_tally_agent_notice.sql before it ships.
+0a9fa12f98efee06c83187c8790dddf1afb01f7d:packages/connectors/migrations/checksums.json:generic-api-key:10
