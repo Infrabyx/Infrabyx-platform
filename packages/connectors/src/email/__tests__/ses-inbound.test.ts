@@ -2,7 +2,12 @@
 // `Received` notification is an SNS message signed with a throwaway certificate (C-13), as the
 // delivery events are. The S3 action is exercised against moto in `email.contract.test.ts`.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createSnsSigner, type SnsSigner } from "@infrabyx/testing";
+import {
+  createSnsSigner,
+  defineEmailInboundContract,
+  type InboundFixture,
+  type SnsSigner,
+} from "@infrabyx/testing";
 import { SesEmail, parseReceived } from "../ses.js";
 
 const EVENTS = "arn:aws:sns:ap-south-1:111122223333:ses-events-ld";
@@ -207,3 +212,46 @@ describe("@IPB-01-15 SES inbound route (PR-LDC-50)", () => {
     expect(n.receivedAt).toBe("2026-11-18T05:59:58.500Z");
   });
 });
+
+/** The shared inbound contract (testing's `defineEmailInboundContract`) on the SES adapter. */
+const sesPost = (f: InboundFixture, tamper = false) => {
+  const message = received(
+    {
+      mail: {
+        messageId: f.vendorMessageId,
+        timestamp: "2026-11-18T05:59:58.000Z",
+        source: f.envelopeFrom,
+      },
+      content: Buffer.from(f.raw).toString("base64"),
+    },
+    {
+      recipients: f.recipients,
+      spfVerdict: {
+        status: { pass: "PASS", fail: "FAIL", none: "GRAY", error: "PROCESSING_FAILED" }[
+          f.auth.spf
+        ],
+      },
+      dkimVerdict: {
+        status: { pass: "PASS", fail: "FAIL", none: "GRAY", error: "PROCESSING_FAILED" }[
+          f.auth.dkimAligned
+        ],
+      },
+      dmarcVerdict: {
+        status: { pass: "PASS", fail: "FAIL", none: "GRAY", error: "PROCESSING_FAILED" }[
+          f.auth.dmarc
+        ],
+      },
+      action: { type: "SNS", topicArn: INBOUND, encoding: "BASE64" },
+    },
+  );
+  const body = post(message);
+  if (!tamper) return { body, headers: {} };
+  const j = JSON.parse(new TextDecoder().decode(body)) as Record<string, string>;
+  j.Message = message.replace(f.vendorMessageId, `${f.vendorMessageId}x`);
+  return { body: new TextEncoder().encode(JSON.stringify(j)), headers: {} };
+};
+defineEmailInboundContract("ses", () => ({
+  port: adapter(),
+  post: (f) => sesPost(f),
+  forge: (f) => sesPost(f, true),
+}));

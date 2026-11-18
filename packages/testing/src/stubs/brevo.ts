@@ -17,6 +17,8 @@ export interface BrevoStubMessage {
   headers: Record<string, string>;
   attachments: Array<{ name: string; bytes: number }>;
   dropped: boolean;
+  /** The `replyTo` address sent, if any (PR-LDC-50). */
+  replyTo?: string;
 }
 
 export interface BrevoStub extends VendorStub {
@@ -54,6 +56,7 @@ export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoSt
         tags?: string[];
         headers?: Record<string, string>;
         attachment?: Array<{ name?: string; content?: string }>;
+        replyTo?: { email?: string };
       }>();
       if (!b.sender?.email || !b.to?.length) return fail(400, "missing_parameter", "sender/to");
       // Without a template Brevo needs a subject and an HTML body (textContent is optional).
@@ -75,6 +78,7 @@ export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoSt
         ...(b.htmlContent !== undefined ? { htmlContent: b.htmlContent } : {}),
         sender: b.sender.email,
         to: b.to.map((x) => x.email),
+        ...(b.replyTo?.email ? { replyTo: b.replyTo.email } : {}),
         params: b.params ?? {},
         tags: b.tags ?? [],
         headers: b.headers ?? {},
