@@ -1,0 +1,36 @@
+{
+  "name": "@infrabyx/tally-agent",
+  "version": "0.0.0",
+  "description": "The TallyPrime agent (Finbyx PR-FBX-46; R1-D-137, R1-D-178): an outbound-only program the tenant runs next to TallyPrime; it long-polls the platform for ACCOUNTING jobs and runs them against TallyPrime's local XML port. Ships as source and a container image (owner answer #128)",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./stub": {
+      "types": "./dist/stub.d.ts",
+      "default": "./dist/stub.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node --enable-source-maps dist/main.js",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "engines": {
+    "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "zod": "4.6.7"
+  }
+}
