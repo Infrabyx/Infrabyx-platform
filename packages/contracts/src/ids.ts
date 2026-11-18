@@ -106,6 +106,7 @@ export const ID_PREFIXES = {
   rpl: "inbound email reply accepted by NOTIFY (PR-LDC-50)",
   tga: "TallyPrime agent enrolled for a tenant's books (PR-FBX-46)",
   tbr: "TallyPrime trial-balance read (PR-FBX-46)",
+  sev: "security audit event, outside the business ledger (owner answer #132 (5))",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

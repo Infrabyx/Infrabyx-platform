@@ -2349,6 +2349,30 @@ keys:
       mc: false,
       source: "IPB-01 §01.4.4.2 RULES",
     }
+  - {
+      key: rules.reveal.refusal_alert_threshold,
+      tier: PLATFORM,
+      type: int,
+      default: 5,
+      min: 2,
+      max: 50,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "the refused reveal by one principal that reaches this count within the window raises RevealRefusalsRepeated, once per window",
+      source: "owner answer #132 (5); R1-D-187; threat model §3.130",
+    }
+  - {
+      key: rules.reveal.refusal_alert_window_minutes,
+      tier: PLATFORM,
+      type: int,
+      default: 15,
+      min: 1,
+      max: 1440,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "the window in which one principal's refused reveals are counted",
+      source: "owner answer #132 (5); R1-D-187; threat model §3.130",
+    }
 
   # ---------------------------------------------------------------- PL3: workflow timers
   - {

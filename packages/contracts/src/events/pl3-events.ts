@@ -87,6 +87,23 @@ export const RuleSetPublishedData = z
   })
   .strict();
 
+/**
+ * `RevealRefusalsRepeated` (owner answer #132 (5); R1-D-187): one principal's refused reveals in
+ * the tenant reached `rules.reveal.refusal_alert_threshold` within the window. Raised at most once
+ * per window, for the product to route to its security on-call. Ids and counts only.
+ */
+export const RevealRefusalsRepeatedData = z
+  .object({
+    principal_id: z.string().min(1).max(128),
+    principal_type: z.string().min(1).max(32),
+    refusals: z.number().int().positive(),
+    window_minutes: z.number().int().positive(),
+    window_ends_at: ISO,
+    last_reason: z.string().regex(/^[a-z_]{1,40}$/),
+  })
+  .strict();
+export type RevealRefusalsRepeatedData = z.infer<typeof RevealRefusalsRepeatedData>;
+
 export const NotificationHeldData = z
   .object({
     notification_id: z.string(),
