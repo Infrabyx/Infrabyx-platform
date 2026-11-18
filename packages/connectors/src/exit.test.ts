@@ -60,6 +60,8 @@ describe("PORT_EXIT (IPB-01 §01.4.13)", () => {
       "PDF",
       // EGRESS: the IPB-01 alternative is the network layer (cloud NAT with egress rules, R1-D-176).
       "EGRESS",
+      // ACCOUNTING: SAP and Zoho Books only when a tenant needs them (R1-D-122, R1-D-178).
+      "ACCOUNTING",
     ]);
   });
 

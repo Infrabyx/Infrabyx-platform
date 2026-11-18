@@ -792,6 +792,50 @@ const reply = await notify.getReply(ctx, replyId); // { threadRef, recipientRef,
 - **Tests.** `FakeInboundEmail` and `defineEmailInboundContract` from `@infrabyx/testing`.
 - **Shim removed:** your own inbound mailbox parser.
 
+## 7ck. Posting to TallyPrime through the agent (PR-FBX-46; R1-D-137, R1-D-178)
+
+Post journal batches into a tenant's TallyPrime books and read the trial balance back, through an agent the tenant runs next to TallyPrime. The agent dials out to your API; nothing dials into the tenant's office.
+
+```ts
+import {
+  TallyAccountingSink,
+  TallyAgentGateway,
+  TallyAgentService,
+} from "@infrabyx/connectors/accounting";
+
+// 1. Enrolment (people only): R3 maker-checker, then a one-time code shown once to an admin.
+const agents = new TallyAgentService({ kernel, audit, approvals });
+const { approvalId, agentId } = await agents.requestEnrolment(ctx, { name: "Head office", company: "Acme Finance Pvt Ltd" });
+// … a different person approves approvalId in the Work Inbox …
+const { code, expiresAt } = await agents.issueCode(adminCtx, agentId); // show once; 30 minutes
+
+// 2. The agent API, mounted under your own API (raw body, lower-case headers).
+const gateway = new TallyAgentGateway({
+  kernel, audit, pool,
+  enabled: (tenantId) => settings.get(tenantCtx(tenantId), "int.accounting.tally.enabled"),
+  pollTimeoutSeconds: () => settings.get(platformCtx, "int.accounting.tally.poll_timeout_seconds"),
+});
+app.all("/v1/accounting/agent/*", async (req, res) => {
+  const r = await gateway.handle({ method: req.method, path: req.path, headers: req.headers, body: req.rawBody });
+  res.status(r.status).set(r.headers).send(r.body);
+});
+
+// 3. The port, as any ACCOUNTING sink.
+const sink = new TallyAccountingSink({ kernel, audit, enabled: (t) => settings.get(…, "int.accounting.tally.enabled") });
+const r = await sink.post(batch); // PENDING until the agent reports; then ACKNOWLEDGED with TallyPrime's GUIDs
+await sink.status(batch.journalId);
+await sink.trialBalance("2026-11-30"); // in paise
+```
+
+- **What the tenant runs.** The image built from `infra/docker/tally-agent/Dockerfile` (build, sign and attest it in your own release, as for your other images), with `config.json` mounted read-only at `/etc/infrabyx-tally-agent/config.json` (`{"platformUrl": "https://<your API>", "tallyUrl": "http://<TallyPrime host>:9000"}`; TallyPrime must be on a loopback or private address), a volume of its own at `/data`, and the one-time code written to `/data/enrol-code`. It listens on no port. No Windows installer is shipped (owner answer #128).
+- **Scheduler.** Call `sink.expireStale(ctx)` per tenant daily: postings no agent took within `int.accounting.tally.job_expiry_days` (7) are rejected `agent_unreachable`, so people see them.
+- **Outcomes.** `REJECTED` carries a reason code: `ledger_unknown`, `voucher_type_unknown`, `period_closed`, `company_not_open`, `duplicate_voucher`, `remote_mismatch` (a different voucher already has the REMOTEID), `remote_duplicate` (two do), `tally_unreachable`, `tally_error`, `agent_unreachable`. Fix the cause and `replay(journalId)`: vouchers already in TallyPrime are found and acknowledged, never created twice. Nothing is ever altered or deleted in TallyPrime.
+- **Settings.** `int.accounting.tally.enabled` (TENANT, off, ORG_ADMIN, R4); `int.accounting.tally.poll_timeout_seconds` (25, 1 to 55); `int.accounting.tally.job_expiry_days` (7, 1 to 30).
+- **Revocation and rotation.** `agents.revoke(ctx, agentId, reason)` refuses the agent's next call; enrolling again replaces the active agent (one per tenant).
+- **Migration and export.** Run `infrabyx-migrate` for `connectors/0007`, and add `connectors.tally_journal`, `connectors.tally_read` and `connectors.tally_agent` to your export map.
+- **Not yet proven.** No real TallyPrime runs in CI: the adapter is tested against a TallyPrime stub and stays off until a sandbox company exists (#128). Run your own pilot against a test company before you turn it on.
+- **Tests.** `TallyPrimeStub` from `@infrabyx/tally-agent/stub` (in this repository) and `accountingContractCases` from `@infrabyx/testing`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

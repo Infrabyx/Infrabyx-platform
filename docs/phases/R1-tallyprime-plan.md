@@ -55,10 +55,10 @@ The official TallyPrime documentation (help.tallysolutions.com) is not reachable
 - **Posting:** per voucher, look up (export of a TDL collection of vouchers filtered by `$RemoteID`), then create only when absent, then read back (§2). Amounts: TallyPrime's sign convention (debit lines negative with `ISDEEMEDPOSITIVE` Yes, credit lines positive with No) converted from integer paise to rupees with two decimals by string arithmetic, never floating point; read back parses back to paise exactly or the voucher is `remote_mismatch`.
 - **Image:** `infra/docker/tally-agent/Dockerfile`, the platform's pinned Node 24.22.1 base, `pnpm deploy --prod`, UID 10001, read-only root, `/data` the only volume, no `EXPOSE`. CI builds it with the other images, runs hadolint, `trivy config`, `trivy image` (HIGH and CRITICAL zero or waived) and its hardening checks (UID, read-only root, nothing listening, the heartbeat health check). Products sign and attest it in their own release, as for the other images.
 
-### 3.5 `testing` minor
+### 3.5 `testing` minor and the stub
 
-- `TallyPrimeStub`: an in-memory TallyPrime speaking the XML envelope on a function or a loopback HTTP server: companies, ledgers, voucher types, a closed period; `REMOTEID` collisions behave as `duplicate` or `alter` (both run); scripted refusals and lost answers (the voucher is created, the answer dropped).
-- `defineTallyAccountingContract` runs `accountingContractCases` against `TallyAccountingSink` with the agent in-process against the stub; `AccountingScript.settle` may now return a promise (the cases await it; the fake is unchanged).
+- As built, `TallyPrimeStub` lives with the agent (`@infrabyx/tally-agent/stub`), not in `testing`: it reads requests with the agent's own XML reader, and `testing` cannot depend on the agent without a cycle. `TallyPrimeStub`: an in-memory TallyPrime speaking the XML envelope through a `fetch` function: companies, ledgers, voucher types, a closed period; `REMOTEID` collisions behave as `duplicate` or `alter` (both run); scripted refusals and lost answers (the voucher is created, the answer dropped).
+- The contract leg runs `accountingContractCases` against `TallyAccountingSink` with the agent in-process against the stub, in `connectors`' PostgreSQL suite (`tally.int.test.ts`); `AccountingScript.settle` may now return a promise (the cases await it; the fake is unchanged).
 
 ## 4. Data model (migration `connectors/0007_tallyprime.sql`, expand-only)
 
@@ -69,7 +69,7 @@ The official TallyPrime documentation (help.tallysolutions.com) is not reachable
 
 ## 5. Settings (`config` minor)
 
-- `int.accounting.tally.enabled` (TENANT, bool, false; ORG_ADMIN; R3).
+- `int.accounting.tally.enabled` (TENANT, bool, false; ORG_ADMIN; R4, since a setting's maker-checker is R2, R4 or R5 and R4 is the stricter of the two the design's R3 falls between).
 - `int.accounting.tally.poll_timeout_seconds` (PLATFORM, int, 25; 1 to 55; PLT_SECURITY_OFFICER).
 - `int.accounting.tally.job_expiry_days` (PLATFORM, int, 7; 1 to 30; PLT_SECURITY_OFFICER).
 

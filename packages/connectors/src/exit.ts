@@ -267,6 +267,18 @@ export const PORT_EXIT: readonly PortExit[] = [
     lockIn: "None: the allow-lists are settings (`int.web_snapshot.allow_hosts`)",
   },
   {
+    port: "ACCOUNTING",
+    primary: "tallyprime",
+    exitTarget: "none",
+    pending:
+      "SAP and Zoho Books adapters are built only when a tenant needs them (R1-D-122); the in-memory fake keeps the contract cases green meanwhile, and TallyPrime itself stays unproven until a sandbox company exists (OWNER-QUESTIONS #128, R1-D-178)",
+    dataMove:
+      "The books stay the tenant's own, in TallyPrime; the platform keeps only the posted batches and their results (`connectors.tally_journal`), which go with the tenant's export",
+    volumeClass: "S",
+    lockIn:
+      "None: every voucher carries the platform's REMOTEID (`ipb:<journal>:<reference>`), so another sink or a person can reconcile what was posted",
+  },
+  {
     port: "RULES",
     primary: "zen",
     exitTarget: "json-rules",
