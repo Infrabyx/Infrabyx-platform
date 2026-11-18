@@ -56,7 +56,7 @@ async function main(): Promise<number> {
       await agent.enrol(code);
       await state.removeEnrolCode();
     } catch (e) {
-      if (e instanceof PlatformRefused && e.status === 401) {
+      if (e instanceof PlatformRefused && (e.status === 400 || e.status === 401)) {
         log("the platform refused the enrolment code; ask an admin to issue a new one");
         await state.removeEnrolCode();
       } else log(`enrolment failed: ${e instanceof Error ? e.message : "error"}; retrying`);

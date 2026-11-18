@@ -596,6 +596,7 @@ await identity.requireMfaEnrolment(); // once after a new or wider floor; ledger
 - **Keycloak:** every role on the floor carries the MFA marker role, and a user who gets one (on creation or through a sync) gets the MFA enrolment action; applying the realm again adds missing roles and markers to a realm that already exists (never removes one). A floor role the realm does not have fails `ipbRealm` (add it to `productRoles`). `requireMfaEnrolment()` gives the action to users who already hold a floor role and have no OTP or WebAuthn credential, and returns `{ checked, flagged }`. For an SMS-excluded role the enrolment action is always TOTP or WebAuthn (`KEYCLOAK_NON_SMS_ENROLMENT_ACTIONS`); Keycloak itself offers no SMS factor. Tokens report RFC 8176 `amr` (`pwd`, `otp`, `hwk`).
 - **Zitadel:** every organisation forces MFA for every user, so every floor role is covered, and the only second factors are TOTP and U2F (`readSettings()` reads them back; never SMS or email OTP). The adapter now keeps Zitadel's own `amr` values (`otp`, `user`, plus `webauthn` for `user`), so an SMS-excluded role signs in with TOTP or a security key; with `connectors` 1.19 and earlier every such session was refused (fail closed).
 - **Local stacks:** staff who enrolled a factor by hand keep it; re-apply the realm and run the sweep once.
+- **Assign floor roles directly (owner answer #138 (4)).** The platform assigns realm roles to users directly, and `requireMfaEnrolment()` reads only direct holders of a floor role: a role granted through a Keycloak group is not seen by the sweep. Do not grant a floor role through a group until the platform's sweep walks groups (a backlog item, built before any tenant needs it).
 
 ## 7bu. Ordered approval levels (PR-LDC-38; owner answer #125; R1-D-136)
 
@@ -861,6 +862,26 @@ await sink.trialBalance("2026-11-30"); // in paise
 ### The agent's key (owner answer #136 (4); R1-D-184)
 
 Take `contracts` and `connectors` (the minors after 1.34.0 and 1.19.0), run `infrabyx-migrate` for `connectors/0008`, and build agent 1.1.0. Show the agent's `warnings` and `rotationDue` (from `TallyAgentService.list` or `get`) in your console: `key_unencrypted` when the agent keeps its key in a file, a rotation notice from day 80, `key_expired` from day 90, when the gateway refuses the agent until it is enrolled again. Give tenants `docs/runbooks/tally-agent.md`: on Windows run the agent as a service under its own account so DPAPI protects the key, re-enrol before day 90, and revoke at once if the machine is lost or compromised.
+
+### Key notices and re-enrolment (owner answer #139 (1); R1-D-186)
+
+Take the `contracts`, `connectors` and `notify` minors after 1.35.0, 1.20.0 and 1.4.2, run `infrabyx-migrate` for `connectors/0009`, and build agent 1.2.0.
+
+```ts
+const agents = new TallyAgentService({
+  kernel,
+  audit,
+  approvals,
+  notify,
+  agentLink: (id) => `/accounting/tally/agents/${id}`,
+});
+// Daily (or hourly), per tenant, as the job's own service principal:
+await new TenantSweep({ kernel, audit }).run((ctx) => agents.sendKeyNotices(ctx));
+```
+
+- **Notices.** On day 80 and again on day 85 of an active agent's key, the tenant's active ORG_ADMIN and ORG_OWNER members (`adminRoles`) get `accounting.agent_key_expiring` (mandatory; in-app and email; variables `id`, `name`, `day`, `expires_on`), once each. Add the email template `accounting.agent_key_expiring` (en, hi) and the in-app title `ntf.accounting.agent_key_expiring.title` to your templates. The view's `keyNoticeDay` is the latest notice sent. Without `notify`, `sendKeyNotices` refuses (`IPB-UX-004`, `notify_missing`).
+- **The 403.** From day 90 the refusal's `detail` tells the agent's operator how to re-enrol; agent 1.2.0 logs it.
+- **Re-enrolment in place.** Agent 1.2.0 takes a new code from `<stateDir>/enrol-code` while it runs; no restart and no deleting of `agent.json`.
 
 ## 7cl. Runtime fakes without the test kit (PR-FBX-48; R1-D-181)
 

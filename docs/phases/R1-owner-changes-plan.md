@@ -1,6 +1,6 @@
 # R1 — the owner's changes to #132 and #136 (18 Nov 2026)
 
-**Decision:** R1-D-179 (answers) · plan decisions R1-D-183 (#132) and R1-D-184 (#136) · **Order:** right after the priority-1 requests (R1-D-180)
+**Decision:** R1-D-179 (answers) · plan decisions R1-D-183 (#132) and R1-D-184 (#136); §D: R1-D-185 (answers #137 to #139) and R1-D-186 · **Order:** right after the priority-1 requests (R1-D-180); §D first in the 18 Nov evening session, then §A and §B
 
 ## A. #132 (4): a purpose code beside the purpose digest (`rules`, `contracts` minor)
 
@@ -26,6 +26,19 @@ Nothing in the platform records security events yet (IPB-02-54 names the SIEM st
 - **The enrolment record:** `AgentEnrolRequest.keyProtection` (`dpapi` or `file`), stored on `connectors.tally_agent.key_protection` (`connectors/0008`, expand-only; existing rows `file`); `TallyAccountingSink.health()` and the agent list carry `keyWarning: "key_unencrypted"` for `file`.
 - **Rotation:** an agent's key is valid 90 days from its activation (`TALLY_AGENT_KEY_MAX_DAYS`); from day 80 its status carries `rotationDue` (the console warns); from day 90 its requests are refused with `agent_key_expired` and it must be enrolled again (enrolment already revokes the previous agent).
 - **Runbook:** `docs/runbooks/tally-agent.md`: run the agent as a dedicated Windows service account; re-enrol before day 90; **revoke the agent at once if its machine is lost or compromised** (`TallyAgentService.revoke`), then enrol a new one from a clean machine.
+
+## D. #139 (1) and #137 (2): hard-to-miss key warnings, and the package visibility on record (`contracts`, `connectors`, `notify` minors; `hlp` patch; agent 1.2.0)
+
+Owner answers of 18 Nov (R1-D-185): the day-90 refusal stays; the console warns from day 80 (built); the tenant's administrators are notified on day 80 and again on day 85; the 403 says plainly how to re-enrol. #137 (2): record which visibility `@infrabyx/fakes` actually has.
+
+- **`TallyAgentService.sendKeyNotices(ctx)`:** a per-tenant job (the product runs it through `TenantSweep`, daily or hourly). It reads the tenant's active agents whose key is 80 days old or more and whose `key_notice_day` is below 85; for each, in one transaction (row locked), the notice due is the latest of 80 and 85 reached and not yet sent, none from day 90 (`keyNoticeDue`). It enqueues `accounting.agent_key_expiring` to the active members holding `adminRoles` (default ORG_ADMIN, ORG_OWNER; at most 1000), with `vars` `id`, `name`, `day`, `expires_on` (INTERNAL only) and the idempotency key `<class>:<agent>:<day>`, sets `key_notice_day` and ledgers `connectors.accounting.agent.key_notice` (before and after day, recipients count). A tenant with nothing due writes nothing (the mutation is rolled back before commit). Without `notify` it refuses (`IPB-UX-004`, `notify_missing`); agent and external principals are refused as for the other calls, a service principal is allowed.
+- **`connectors/0009`** (expand-only): `tally_agent.key_notice_day smallint not null default 0`, check `in (0, 80, 85)`; the guard trigger refuses lowering it.
+- **NOTIFY:** platform class `accounting.agent_key_expiring` (security, mandatory, in-app and email, `resend: safe`), help entry `hlp.notify.accounting.agent_key_expiring`. Products add the email template and in-app title.
+- **The 403:** the problem document gains `detail` with the three re-enrolment steps (`keyExpiredDetail`), sent only after the agent's proof verified.
+- **Agent 1.2.0:** `PlatformRefused` carries the problem's printable `title` and `detail` (1000 characters at most) and the loop logs them; each loop turn first looks for `<stateDir>/enrol-code` and, if present, enrols again in place (a 400 or 401 removes the code). Before, an enrolled agent never read a new code, so the runbook's "enrol again on the same machine" needed `agent.json` moved aside and a restart.
+- **#137 (2):** the release's registry-checksum step also prints each published package's visibility from `GET /orgs/{org}/packages/npm/{name}` (`GITHUB_TOKEN`, then the publishing token), or why it could not be read; the next release record quotes it. The session itself cannot read the package settings (the API answers 403 to the session).
+- **#138 (4):** guide §7bt says floor roles are assigned directly and the sweep does not see group grants; STATUS carries the backlog item (walk Keycloak groups before any tenant grants a floor role through a group).
+- **Tests:** PostgreSQL: day 79 nothing; day 81 one notice to the two active admins (a disabled admin and a checker excluded); once only; day 86 the second; a first run on day 87 sends only 85; none from day 91; through `TenantSweep`; refusal without NOTIFY and for an agent; the guard. The 403's detail; the agent logs it and re-enrols in place, the old agent revoked; a malformed (400) or unknown (401) code dropped.
 
 ## Tests (by item)
 

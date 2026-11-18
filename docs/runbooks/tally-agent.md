@@ -1,6 +1,6 @@
 # Runbook — the TallyPrime agent (`infrabyx-tally-agent`)
 
-For the tenant's IT staff and the product's support team. The agent runs next to TallyPrime on the tenant's machine, dials out to the product's API, and posts journal batches into TallyPrime (PR-FBX-46; R1-D-137, R1-D-178). This runbook covers how the agent keeps its key and how the key is rotated (owner answer #136 (4); R1-D-184).
+For the tenant's IT staff and the product's support team. The agent runs next to TallyPrime on the tenant's machine, dials out to the product's API, and posts journal batches into TallyPrime (PR-FBX-46; R1-D-137, R1-D-178). This runbook covers how the agent keeps its key and how the key is rotated (owner answers #136 (4) and #139 (1); R1-D-184, R1-D-186).
 
 ## 1. Install
 
@@ -19,8 +19,13 @@ Enrolling a new agent revokes the tenant's previous one.
 ## 3. Rotate the key every 90 days
 
 - A key is valid **90 days** from its enrolment. From **day 80** the agent's record shows `rotationDue` and the console warns.
-- From **day 90** the platform refuses the agent's requests (`agent key expired`), and postings wait (they expire after `int.accounting.tally.job_expiry_days`).
-- To rotate, enrol a new agent (section 2) on the same machine, before day 90. The new enrolment revokes the old key.
+- The tenant's administrators (ORG_ADMIN and ORG_OWNER) get a notification, in the product and by email, on **day 80** and again on **day 85** (owner answer #139 (1)).
+- From **day 90** the platform refuses the agent's requests (`agent key expired`), and postings wait (they expire after `int.accounting.tally.job_expiry_days`). The refusal says in the agent's log how to re-enrol.
+- To rotate, before day 90 (or after, to recover):
+  1. An administrator asks for a new agent in the product, and a different person approves it (as in section 2).
+  2. The administrator issues the one-time code (valid 30 minutes).
+  3. Put the code in `<stateDir>/enrol-code` on the machine that runs the agent. The running agent (1.2.0 or later) enrols again by itself within five minutes, without a restart, and removes the file; the new enrolment revokes the old key. Agent 1.1.0 needs a restart after its `agent.json` is moved aside.
+- A code the platform refuses (mistyped, expired or already used) is removed from the file and logged; issue a new one.
 
 ## 4. Revoke at once if the machine is lost or compromised
 
@@ -33,8 +38,9 @@ If the machine that runs the agent is lost, stolen, or may be compromised, or it
 
 ## 5. Troubleshooting
 
-| Symptom in the agent's log                                    | What it means and what to do                                                                                              |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `DPAPI is not available for this account`                     | The service account's profile did not load, or PowerShell is missing or blocked. Fix the service account and enrol again. |
-| `the agent's key is under DPAPI, which is not available here` | The state file was copied to another machine or account. Do not copy it: enrol a new agent on the new machine.            |
-| `the platform answered HTTP 403` after day 90                 | The key expired. Enrol a new agent (section 3).                                                                           |
+| Symptom in the agent's log                                       | What it means and what to do                                                                                              |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `DPAPI is not available for this account`                        | The service account's profile did not load, or PowerShell is missing or blocked. Fix the service account and enrol again. |
+| `the agent's key is under DPAPI, which is not available here`    | The state file was copied to another machine or account. Do not copy it: enrol a new agent on the new machine.            |
+| `the platform refused this agent (HTTP 403): agent key expired…` | The key expired. Follow the steps the message gives (section 3).                                                          |
+| `the platform refused the enrolment code`                        | The code was mistyped, has expired (30 minutes) or was used. Issue a new code and put it in `enrol-code`.                 |
