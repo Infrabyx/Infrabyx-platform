@@ -1736,6 +1736,38 @@ keys:
       source: "IPB-07 §07.5",
     }
   - {
+      key: ntf.reply.enabled,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      change: [ORG_ADMIN],
+      mc: R4,
+      note: "email deliveries of a notification that asks for replies carry a reply address; inbound replies are accepted",
+      source: "PR-LDC-50, R1-D-177; threat model §3.123",
+    }
+  - {
+      key: ntf.reply.domain,
+      tier: TENANT,
+      type: string,
+      default: "",
+      change: [ORG_ADMIN],
+      mc: R4,
+      note: "the tenant's reply subdomain (its MX points at the receiving adapter); empty means no reply address",
+      source: "PR-LDC-50, R1-D-177; threat model §3.123",
+    }
+  - {
+      key: ntf.reply.token_days,
+      tier: TENANT,
+      type: int,
+      default: 30,
+      min: 1,
+      max: 90,
+      change: [ORG_ADMIN],
+      mc: false,
+      note: "days a reply address accepts replies (at most 50 replies each)",
+      source: "PR-LDC-50, R1-D-177",
+    }
+  - {
       key: "cst.branding.{token}",
       tier: TENANT,
       type: string,

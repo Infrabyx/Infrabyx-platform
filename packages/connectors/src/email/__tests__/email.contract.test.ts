@@ -422,6 +422,80 @@ describe("@IPB-01-15 EMAIL hermetic leg: ses raw send and identities on moto 5.2
   });
 });
 
+describe("@IPB-01-15 EMAIL hermetic leg: reply addresses and SES receiving (PR-LDC-50)", () => {
+  const REPLY = "reply+abcdefghijklmnopqrstuvwxyz234567@reply.ld.example.test";
+
+  it("ses and brevo send a message's own reply address in place of the brand's", async () => {
+    await sesAdapter().send(message({ replyTo: REPLY }));
+    expect(ses.messages.at(-1)!.replyTo).toEqual([REPLY]);
+    await sesAdapter().send(message());
+    expect(ses.messages.at(-1)!.replyTo).toBeUndefined();
+    await brevoAdapter().send(message({ replyTo: REPLY }));
+    expect(brevo.messages.at(-1)!.replyTo).toBe(REPLY);
+  });
+
+  it("ses reads an S3-action message from the inbound bucket on moto, and only from it", async () => {
+    const endpoint = `http://${moto.host}:${moto.ports[5000]}`;
+    const { S3Client, CreateBucketCommand, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const s3 = new S3Client({
+      region: "ap-south-1",
+      endpoint,
+      forcePathStyle: true,
+      credentials: CREDS,
+    });
+    await s3.send(
+      new CreateBucketCommand({
+        Bucket: "ld-inbound",
+        CreateBucketConfiguration: { LocationConstraint: "ap-south-1" },
+      }),
+    );
+    const mime = `From: a@client.example\r\nTo: ${REPLY}\r\nSubject: Re\r\n\r\n${"x".repeat(200_000)}\r\n`;
+    await s3.send(new PutObjectCommand({ Bucket: "ld-inbound", Key: "msg-1", Body: mime }));
+    const INBOUND = "arn:aws:sns:ap-south-1:111122223333:ses-inbound-ld";
+    const p = new SesEmail({
+      region: "ap-south-1",
+      brands: {},
+      events: { topicArn: TOPIC },
+      inbound: { topicArn: INBOUND, bucket: { name: "ld-inbound", region: "ap-south-1" } },
+      endpoint,
+      credentials: CREDS,
+      fetchCertificate: async () => signer.certPem,
+    });
+    const note = (bucketName: string, objectKey: string) =>
+      new TextEncoder().encode(
+        JSON.stringify(
+          signer.sign({
+            Type: "Notification",
+            MessageId: ulid(),
+            TopicArn: INBOUND,
+            Message: JSON.stringify({
+              notificationType: "Received",
+              mail: {
+                messageId: "msg-1",
+                timestamp: new Date().toISOString(),
+                source: "a@client.example",
+              },
+              receipt: {
+                recipients: [REPLY],
+                spfVerdict: { status: "PASS" },
+                dkimVerdict: { status: "PASS" },
+                dmarcVerdict: { status: "GRAY" },
+                action: { type: "S3", bucketName, objectKey },
+              },
+            }),
+            Timestamp: new Date().toISOString(),
+          } as Parameters<SnsSigner["sign"]>[0]),
+        ),
+      );
+    const [m] = await p.verifyInbound(note("ld-inbound", "msg-1"), {});
+    expect(new TextDecoder().decode(m!.raw)).toBe(mime);
+    expect(m!.auth).toEqual({ spf: "pass", dkimAligned: "pass", dmarc: "none" });
+    await expect(p.verifyInbound(note("another-bucket", "msg-1"), {})).rejects.toThrow(
+      /another bucket/,
+    );
+  });
+});
+
 describe("@IPB-01-15 EMAIL hermetic leg: brevo (stub)", () => {
   defineContractSuite(
     "EMAIL",

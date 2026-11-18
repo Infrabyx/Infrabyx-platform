@@ -15,6 +15,8 @@ export interface SesStubMessage {
   raw?: Buffer;
   configurationSet?: string;
   tags: Record<string, string>;
+  /** `ReplyToAddresses` as sent (PR-LDC-50). */
+  replyTo?: string[];
   attachments: Array<{ fileName: string; contentType?: string; bytes: number }>;
   suppressed: boolean;
 }
@@ -67,6 +69,7 @@ export async function startSesStub(): Promise<SesStub> {
         };
         ConfigurationSetName?: string;
         EmailTags?: Array<{ Name: string; Value: string }>;
+        ReplyToAddresses?: string[];
       }>();
       const sc = b.Content?.Simple;
       if (sc && (!sc.Subject?.Data || (!sc.Body?.Text?.Data && !sc.Body?.Html?.Data)))
@@ -82,6 +85,7 @@ export async function startSesStub(): Promise<SesStub> {
         messageId,
         ...(b.FromEmailAddress ? { from: b.FromEmailAddress } : {}),
         to,
+        ...(b.ReplyToAddresses?.length ? { replyTo: b.ReplyToAddresses } : {}),
         ...(t?.TemplateName ? { template: t.TemplateName } : {}),
         ...(t?.TemplateData
           ? { templateData: JSON.parse(t.TemplateData) as Record<string, unknown> }

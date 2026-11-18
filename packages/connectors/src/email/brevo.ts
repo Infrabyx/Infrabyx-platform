@@ -218,11 +218,13 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
       ...Object.entries(m.tags ?? {}).map(([k, v]) => `${k}:${v}`),
       ...(call?.idempotencyKey ? [brevoIdempotencyTag(call.idempotencyKey)] : []),
     ];
+    const replyTo = m.replyTo ?? b.replyTo;
     const r = await this.call("POST", "/smtp/email", {
       sender: { email: b.from, ...(b.fromName ? { name: b.fromName } : {}) },
       to: m.to.map((email) => ({ email })),
       ...(m.cc ? { cc: m.cc.map((email) => ({ email })) } : {}),
-      ...(b.replyTo ? { replyTo: { email: b.replyTo } } : {}),
+      // A message's own reply address (an inbound reply token, PR-LDC-50) wins over the brand's.
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
       ...(m.content
         ? {
             subject: m.content.subject,

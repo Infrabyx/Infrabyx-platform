@@ -103,6 +103,7 @@ export const ID_PREFIXES = {
   lcn: "licence notice to the tenant (PR-FBX-43)",
   rvg: "rule decision input reveal grant (PR-LDC-59)",
   wsn: "web snapshot kept as evidence (PR-LDC-40)",
+  rpl: "inbound email reply accepted by NOTIFY (PR-LDC-50)",
 } as const;
 export type IdPrefix = keyof typeof ID_PREFIXES | (string & {});
 

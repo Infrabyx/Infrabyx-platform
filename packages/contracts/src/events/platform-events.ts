@@ -49,6 +49,7 @@ export const PLATFORM_EVENTS = {
   RuleSetPublished: { module: "rules", name: "RuleSetPublished" },
   NotificationDigestSent: { module: "ntf", name: "NotificationDigestSent" },
   NotificationHeld: { module: "ntf", name: "NotificationHeld" },
+  NotificationReplyReceived: { module: "ntf", name: "NotificationReplyReceived" },
   ItemCreated: { module: "inbox", name: "ItemCreated" },
   ItemResolved: { module: "inbox", name: "ItemResolved" },
   ExportMapBumped: { module: "eng", name: "ExportMapBumped" },

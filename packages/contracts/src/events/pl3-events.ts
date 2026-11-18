@@ -3,6 +3,7 @@
 // `ExportCompleted`); internal payloads follow the platform naming (IPB-10-37). Payloads describe
 // a job or a decision, never its content, and carry no address or name in clear.
 import { z } from "zod";
+import { ULID_PATTERN } from "../ids.js";
 
 const ISO = z.iso.datetime({ offset: true });
 const SHA256_HEX = z.string().regex(/^[0-9a-f]{64}$/);
@@ -102,6 +103,20 @@ export const NotificationDigestSentData = z
     channel: z.string(),
     entry_count: z.number().int().positive(),
     digest_date: z.iso.date(),
+  })
+  .strict();
+
+/**
+ * An inbound email reply was accepted (PR-LDC-50; R1-D-177). The text is never in the event; the
+ * product reads it with `NotifyService.getReply` in the tenant.
+ */
+export const NotificationReplyReceivedData = z
+  .object({
+    reply_id: z.string().regex(new RegExp(`^rpl_${ULID_PATTERN}$`)),
+    thread_ref: z.string().min(1).max(120),
+    recipient_ref: z.string().min(3).max(120),
+    attachments: z.number().int().min(0).max(20),
+    received_at: z.iso.datetime({ offset: true }),
   })
   .strict();
 

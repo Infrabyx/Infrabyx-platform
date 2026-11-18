@@ -752,6 +752,46 @@ const { body, headers } = await snapshots.open(ctx, s.id); // serve exactly thes
 - **Tests.** `defineWebSnapshotContract` and `FakeWebSnapshot` from `@infrabyx/testing`.
 - **Shim removed:** your own fetch-and-store.
 
+## 7cj. Inbound email replies (PR-LDC-50; R1-D-177)
+
+Invite a reply by email and receive it as a ledgered, scanned record. Ask for replies on the notification, wire the inbound route, and read each accepted reply:
+
+```ts
+// 1. Ask for replies: each email delivery carries reply+<token>@<ntf.reply.domain>.
+await notify.send(ctx, {
+  class: "matter.note_requested",
+  to: [{ ref: userId }],
+  vars: { matter: "M-42" },
+  deepLink: "/matters/M-42",
+  idempotencyKey: `note-${noteId}`,
+  reply: { threadRef: matterId },
+});
+
+// 2. The inbound webhook route (SES receiving through its own SNS topic).
+const ses = new SesEmail({
+  ...sesOptions,
+  inbound: { topicArn, bucket: { name, region: "ap-south-1" } },
+});
+app.post("/hooks/email/inbound", async (req, res) => {
+  const messages = await ses.verifyInbound(req.rawBody, req.headers); // throws if unverified: answer 400
+  const r = await notify.receiveReplies(messages); // { accepted, duplicate, dropped }
+  res.status(200).end();
+});
+
+// 3. React to the outbox event NotificationReplyReceived { reply_id, thread_ref, recipient_ref, attachments }.
+const reply = await notify.getReply(ctx, replyId); // { threadRef, recipientRef, text, attachments[] }
+```
+
+- **Wiring.** Pass `replies: { storage, av, onDrop }` to `NotifyService` (attachments are quarantined in your tenant's STORAGE and scanned; `onDrop(reason)` feeds your metrics). Without `replies`, a reply with an attachment is dropped.
+- **Settings (per tenant, off by default).** `ntf.reply.enabled` and `ntf.reply.domain` (ORG_ADMIN, R4 maker-checker); `ntf.reply.token_days` (30, 1 to 90). Each address accepts at most 50 replies.
+- **DNS and SES (your production configuration).** Point the reply subdomain's MX at SES receiving in ap-south-1 (`inbound-smtp.ap-south-1.amazonaws.com`), add a receipt rule for that domain with an SNS action (messages up to 150 KB) or an S3 action into a bucket in India (up to 10 MiB), and publish to an SNS topic of its own, never the delivery-events topic. The adapter refuses the events topic for inbound.
+- **What is accepted.** One reply address among the recipients; a live token in the tenant whose `ntf.reply.domain` it names; the original recipient as the only `From`; DMARC pass from SES's signed verdict (or, where the sender's domain has no enforcing policy, aligned DKIM and SPF on the sender's own domain); the size bounds. Everything else is dropped and counted; nothing of it is stored.
+- **What you get.** The reply's own text (quoted history and signature removed, HTML converted to text, at most 20 000 characters) and its attachments with their scan state: only `RELEASED` attachments may be offered for download; `QUARANTINED` ones are rescanned by you later, `REJECTED` ones never served. Treat the text as untrusted input: never render it as HTML.
+- **Migration and export.** Run `infrabyx-migrate` for `notify/0007`, and add `notify.reply` and `notify.reply_token` to your export map. The platform sets no retention on replies; that is your retention schedule.
+- **Brevo.** Brevo sends with the reply address, but has no inbound route (owner question #135).
+- **Tests.** `FakeInboundEmail` and `defineEmailInboundContract` from `@infrabyx/testing`.
+- **Shim removed:** your own inbound mailbox parser.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

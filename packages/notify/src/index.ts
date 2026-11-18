@@ -3,7 +3,8 @@
 // resend classes, the platform suppression list (C-23), marketing consent, `kill.msg.*`, sealed
 // push tokens and the workflow `ApprovalNotifier`.
 // Tenant notification templates behind `TemplateResolver` (`TenantTemplateStore`, PR-LDC-27).
-// Migrations: `notify/0001`–`0004`, applied by `infrabyx-migrate` when this package is installed.
+// Inbound email replies (`NotifyService.receiveReplies`, `getReply`; PR-LDC-50, R1-D-177).
+// Migrations: `notify/0001`–`0007`, applied by `infrabyx-migrate` when this package is installed.
 export const PACKAGE_NAME = "@infrabyx/notify" as const;
 export * from "./catalogue.js";
 export * from "./routing.js";
@@ -13,3 +14,4 @@ export * from "./approval-notifier.js";
 export * from "./otp-sender.js";
 export * from "./template-lint.js";
 export * from "./template-store.js";
+export * from "./reply.js";

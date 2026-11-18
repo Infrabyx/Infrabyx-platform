@@ -118,7 +118,7 @@ export const PORT_EXIT: readonly PortExit[] = [
     dataMove: "Configuration swap; the suppression list exported and imported",
     volumeClass: "S",
     lockIn:
-      "Sending reputation is rebuilt at the target: DKIM and SPF re-verified and volume ramped over about two weeks",
+      "Sending reputation is rebuilt at the target: DKIM and SPF re-verified and volume ramped over about two weeks. Inbound replies (PR-LDC-50, R1-D-177) are SES-only for now: Brevo's inbound parsing carries neither a payload signature nor a receiving-side DMARC verdict, so its route is not offered and an exit leaves replies off (`ntf.reply.enabled`) until another receiving adapter is built",
   },
   {
     port: "SMS",

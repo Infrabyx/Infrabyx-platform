@@ -13,6 +13,13 @@
 //   in the platform, are still written. When the kernel could not read the flag, nothing is sent.
 // Callers pass principal references only; addresses come from the product's `ContactResolver`
 // and are never stored, logged or put on a queue.
+//
+// Inbound replies (PR-LDC-50; R1-D-177; plan `docs/phases/R1-inbound-mail-plan.md` §4): an email
+// delivery of a notification that asks for replies carries `reply+<token>@<tenant reply domain>`;
+// `receiveReplies` takes the messages an EMAIL adapter's `verifyInbound` verified and accepts a
+// reply only with a live token, its recipient as the sole `From`, the adapter's DMARC verdict
+// (`senderAuthenticated`), a bounded parse and scanned attachments; everything else is dropped and
+// counted, its body never stored.
 import { AsyncLocalStorage } from "node:async_hooks";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import {
@@ -27,7 +34,10 @@ import {
   type Tx,
 } from "@infrabyx/contracts/kernel";
 import {
+  INBOUND_MAIL_LIMITS,
   NotificationRequest,
+  isValidStorageKey,
+  scanDecision,
   type AdapterDescriptor,
   type ChannelMatrix,
   type ContactResolver,
@@ -37,18 +47,26 @@ import {
   type EmailEvent,
   type EmailMessage,
   type EmailPort,
+  type FileScanPort,
+  type InboundDropReason,
+  type InboundEmail,
+  type InboundReply,
   type NotificationClass,
   type NotifyChannel,
   type NotifyPort,
   type PortCall,
   type PortHealth,
   type PushPort,
+  type ReceiveRepliesResult,
   type RenderedChannels,
+  type ReplyAttachment,
+  type ReplyAttachmentState,
   type ResolvedTemplate,
   type SendResult,
   type SmsDeliveryReport,
   type SmsMessage,
   type SmsPort,
+  type StoragePort,
   type SuppressionInput,
   type TemplateResolver,
   type WhatsappEvent,
@@ -69,6 +87,16 @@ import { NotFoundError, ServiceReader, type ServiceReadRecord } from "@infrabyx/
 import type { Catalogue } from "./catalogue.js";
 import { assertPreferences, effectiveChannels, isCollectionClass, timing } from "./routing.js";
 import { renderEmailTemplate } from "./template-lint.js";
+import {
+  REPLY_DOMAIN,
+  mintReplyToken,
+  parseInbound,
+  replyAddress,
+  replyRecipient,
+  replyText,
+  senderAuthenticated,
+  singleFrom,
+} from "./reply.js";
 
 /** The context a push token store runs in while NOTIFY delivers (see `PgPushTokenStore`). */
 export const notifyContext = new AsyncLocalStorage<KernelContext>();
@@ -158,7 +186,35 @@ export interface NotifyServiceOptions {
   /** Operational log of the dispatcher's cross-tenant reads (the ledger has them as well). */
   onServiceRead?: (r: ServiceReadRecord) => void;
   pseudonymKey?: SecretKey;
+  /**
+   * Inbound replies (PR-LDC-50): where attachments are quarantined and how they are scanned, and an
+   * operational counter of dropped messages by reason (never given the body).
+   */
+  replies?: {
+    storage: StoragePort;
+    av: FileScanPort;
+    onDrop?: (reason: InboundDropReason) => void;
+  };
   now?: () => Date;
+}
+
+/** At most this many accepted replies per reply address (design §2). */
+export const REPLY_TOKEN_MAX_USES = 50;
+
+interface ReplyRow {
+  id: string;
+  thread_ref: string;
+  recipient_ref: string;
+  text: string;
+  attachments: ReplyAttachment[];
+  received_at: Date;
+}
+
+/** Thrown inside the accepting transaction to roll it back and drop or count the message. */
+class ReplyOutcome extends Error {
+  constructor(readonly outcome: InboundDropReason | "duplicate") {
+    super(outcome);
+  }
 }
 
 interface DeliveryRow {
@@ -182,6 +238,7 @@ interface NotificationRow {
   deep_link: string;
   vars: Record<string, string | number | boolean>;
   locale: string | null;
+  reply_thread_ref?: string | null;
 }
 
 const toRecord = (d: DeliveryRow): DeliveryRecord => ({
@@ -224,8 +281,12 @@ export class NotifyService implements NotifyPort {
 
   private readonly dispatcher: ServiceReader;
   private readonly unsubscribeReader: ServiceReader;
+  private readonly replyReader: ServiceReader;
   constructor(private readonly o: NotifyServiceOptions) {
-    const reader = (role: "SVC_NOTIFY_DISPATCH" | "SVC_NOTIFY_UNSUBSCRIBE", principalId: string) =>
+    const reader = (
+      role: "SVC_NOTIFY_DISPATCH" | "SVC_NOTIFY_UNSUBSCRIBE" | "SVC_NOTIFY_REPLY",
+      principalId: string,
+    ) =>
       new ServiceReader({
         kernel: o.kernel,
         audit: o.audit,
@@ -235,6 +296,7 @@ export class NotifyService implements NotifyPort {
       });
     this.dispatcher = reader("SVC_NOTIFY_DISPATCH", NOTIFY_DISPATCH_PRINCIPAL_ID);
     this.unsubscribeReader = reader("SVC_NOTIFY_UNSUBSCRIBE", "svc_notify_unsubscribe");
+    this.replyReader = reader("SVC_NOTIFY_REPLY", "svc_notify_reply");
   }
 
   private now(): Date {
@@ -334,8 +396,8 @@ export class NotifyService implements NotifyPort {
     }
     const id = newId("ntf");
     await tx.query(
-      `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by)
-       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)`,
+      `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by, reply_thread_ref)
+       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
       [
         id,
         tx.ctx.tenantId,
@@ -345,6 +407,7 @@ export class NotifyService implements NotifyPort {
         JSON.stringify(req.vars),
         req.locale ?? null,
         tx.ctx.principal.id,
+        req.reply?.threadRef ?? null,
       ],
     );
     const deliveries: SendResult["deliveries"] = [];
@@ -602,7 +665,11 @@ export class NotifyService implements NotifyPort {
       }
       case "email": {
         const { port, message } = await this.emailMessage(ctx, cls, n);
-        const r = await port.send({ to: [address as string], ...message }, call);
+        const replyTo = await this.replyTo(ctx, d, n, address as string);
+        const r = await port.send(
+          { to: [address as string], ...message, ...(replyTo ? { replyTo } : {}) },
+          call,
+        );
         return { adapter: port.descriptor.adapter, vendorRef: r.messageId };
       }
       case "sms": {
@@ -1487,6 +1554,328 @@ export class NotifyService implements NotifyPort {
     );
   }
 
+  // -------------------------------------------------------------------------------- inbound replies
+
+  /**
+   * The reply address of one email delivery (PR-LDC-50), or none when the notification asks for no
+   * reply or the tenant has replies off or no reply domain. A new token per send attempt; its
+   * SHA-256, the thread, the recipient and the address hash (C-23) are stored and ledgered. A mint
+   * that fails throws, so the delivery fails closed rather than going out without its reply address.
+   */
+  private async replyTo(
+    ctx: KernelContext,
+    d: DeliveryRow,
+    n: NotificationRow,
+    address: string,
+  ): Promise<string | undefined> {
+    if (!n.reply_thread_ref) return undefined;
+    if ((await this.setting(ctx, "ntf.reply.enabled")) !== true) return undefined;
+    const domain =
+      str(await this.setting(ctx, "ntf.reply.domain"))
+        ?.trim()
+        .toLowerCase() ?? "";
+    if (!REPLY_DOMAIN.test(domain)) return undefined;
+    const days = Math.min(
+      Math.max(Math.trunc(Number(await this.setting(ctx, "ntf.reply.token_days")) || 30), 1),
+      90,
+    );
+    const { token, hash } = mintReplyToken();
+    const expires = new Date(this.now().getTime() + days * 86_400_000);
+    await this.o.kernel.mutate(
+      ctx,
+      async (tx) => {
+        await tx.query(
+          `insert into notify.reply_token (token_hash, tenant_id, thread_ref, recipient_ref, address_hash, delivery_id, expires_at, max_uses)
+           values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            hash,
+            tx.ctx.tenantId,
+            n.reply_thread_ref,
+            d.recipient_ref,
+            addressHash(this.o.consentKey, "email", address),
+            d.id,
+            expires,
+            REPLY_TOKEN_MAX_USES,
+          ],
+        );
+        await this.o.audit.record(tx, {
+          action: "notify.reply_token.create",
+          resourceType: "reply_token",
+          resourceId: hash.slice(0, 16),
+          after: {
+            thread_ref: n.reply_thread_ref,
+            delivery_id: d.id,
+            expires_at: expires.toISOString(),
+          },
+        });
+      },
+      { action: "notify.reply_token.create" },
+    );
+    return replyAddress(token, domain);
+  }
+
+  /**
+   * Inbound replies (PR-LDC-50): the messages an EMAIL adapter's `verifyInbound` returned (the
+   * product's inbound webhook route calls it, as for delivery events). Each is accepted or dropped
+   * at the first rule it fails (plan §4); a redelivery of an accepted message consumes nothing.
+   */
+  async receiveReplies(messages: readonly InboundEmail[]): Promise<ReceiveRepliesResult> {
+    const out: ReceiveRepliesResult = { accepted: [], duplicate: 0, dropped: {} };
+    for (const m of messages) {
+      const r = await this.receiveOne(m);
+      if (r.kind === "accepted") out.accepted.push(r.id);
+      else if (r.kind === "duplicate") out.duplicate += 1;
+      else {
+        out.dropped[r.reason] = (out.dropped[r.reason] ?? 0) + 1;
+        this.o.replies?.onDrop?.(r.reason);
+        if (r.tenantId) await this.recordDrop(r.tenantId, r.reason, r.senderHash ?? "none");
+      }
+    }
+    return out;
+  }
+
+  private async receiveOne(
+    m: InboundEmail,
+  ): Promise<
+    | { kind: "accepted"; id: string }
+    | { kind: "duplicate" }
+    | { kind: "dropped"; reason: InboundDropReason; tenantId?: string; senderHash?: string }
+  > {
+    const drop = (reason: InboundDropReason, tenantId?: string, senderHash?: string) => ({
+      kind: "dropped" as const,
+      reason,
+      ...(tenantId ? { tenantId } : {}),
+      ...(senderHash ? { senderHash } : {}),
+    });
+    // 1. The token: one reply recipient, found by its hash, in a tenant with replies on for that domain.
+    const rcpt = replyRecipient(m.recipients);
+    if ("drop" in rcpt) return drop(rcpt.drop);
+    const hash = sha256Hex(rcpt.token);
+    const owners = await this.replyReader.read<{ tenant_id: string }>(
+      "notify.reply_token",
+      "select tenant_id from notify.reply_token where token_hash = $1",
+      [hash],
+    );
+    const tenantId = owners[0]?.tenant_id;
+    if (!tenantId || owners.length !== 1) return drop("unknown_token");
+    const ctx = serviceContext(tenantId);
+    if ((await this.setting(ctx, "ntf.reply.enabled")) !== true) return drop("off", tenantId);
+    const domain =
+      str(await this.setting(ctx, "ntf.reply.domain"))
+        ?.trim()
+        .toLowerCase() ?? "";
+    if (domain === "" || domain !== rcpt.domain) return drop("domain", tenantId);
+    const token = await this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query<{
+            thread_ref: string;
+            recipient_ref: string;
+            address_hash: string;
+            expires_at: Date;
+            uses: number;
+            max_uses: number;
+          }>(
+            `select thread_ref, recipient_ref, address_hash, expires_at, uses, max_uses
+             from notify.reply_token where token_hash = $1`,
+            [hash],
+          )
+        ).rows[0],
+    );
+    if (!token) return drop("unknown_token");
+    if (new Date(token.expires_at).getTime() <= this.now().getTime())
+      return drop("expired", tenantId);
+    if (token.uses >= token.max_uses) return drop("used_up", tenantId);
+    // A redelivery of a reply already accepted is answered before anything is parsed or stored.
+    if (await this.replyExists(ctx, m)) return { kind: "duplicate" };
+    // 2. Size and shape.
+    const parsed = await parseInbound(m.raw);
+    if ("drop" in parsed) return drop(parsed.drop, tenantId);
+    // 3. The sender is the token's recipient, alone in From.
+    const from = singleFrom(parsed.email);
+    if (!from) return drop("sender", tenantId);
+    const senderHash = addressHash(this.o.consentKey, "email", from);
+    if (senderHash !== token.address_hash) return drop("sender", tenantId, senderHash);
+    // 4. The receiving adapter's verdict, never a header of the message.
+    if (!senderAuthenticated(m, from)) return drop("auth", tenantId, senderHash);
+    // 5. Attachments.
+    const files = parsed.email.attachments;
+    if (files.length > INBOUND_MAIL_LIMITS.maxAttachments || (files.length > 0 && !this.o.replies))
+      return drop("attachments", tenantId, senderHash);
+    // 6. Text.
+    const text = replyText(parsed.email);
+    if (text === "" && files.length === 0) return drop("empty", tenantId, senderHash);
+    const attachments: ReplyAttachment[] = [];
+    for (const f of files) attachments.push(await this.quarantine(tenantId, f));
+    const id = newId("rpl");
+    try {
+      await this.o.kernel.mutate(
+        ctx,
+        async (tx) => {
+          const used = await tx.query(
+            `update notify.reply_token set uses = uses + 1
+              where token_hash = $1 and uses < max_uses and expires_at > now()`,
+            [hash],
+          );
+          if (!used.rowCount) throw new ReplyOutcome("used_up");
+          const ins = await tx.query(
+            `insert into notify.reply (id, tenant_id, token_hash, thread_ref, recipient_ref, sender_hash, adapter, vendor_message_id, text, attachments, received_at)
+             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
+             on conflict (tenant_id, adapter, vendor_message_id) do nothing`,
+            [
+              id,
+              tx.ctx.tenantId,
+              hash,
+              token.thread_ref,
+              token.recipient_ref,
+              senderHash,
+              m.adapter,
+              m.vendorMessageId,
+              text,
+              JSON.stringify(attachments),
+              m.receivedAt,
+            ],
+          );
+          if (!ins.rowCount) throw new ReplyOutcome("duplicate");
+          await this.o.audit.record(tx, {
+            action: "notify.reply.accept",
+            resourceType: "reply",
+            resourceId: id,
+            after: {
+              thread_ref: token.thread_ref,
+              recipient_ref: token.recipient_ref,
+              token: hash.slice(0, 16),
+              sender_hash: senderHash,
+              adapter: m.adapter,
+              attachments: attachments.map((a) => ({ sha256: a.sha256, state: a.state })),
+            },
+          });
+          await this.emit(tx, "NotificationReplyReceived", {
+            reply_id: id,
+            thread_ref: token.thread_ref,
+            recipient_ref: token.recipient_ref,
+            attachments: attachments.length,
+            received_at: new Date(m.receivedAt).toISOString(),
+          });
+        },
+        { action: "notify.reply.accept" },
+      );
+    } catch (e) {
+      if (!(e instanceof ReplyOutcome)) throw e;
+      return e.outcome === "duplicate"
+        ? { kind: "duplicate" }
+        : drop(e.outcome, tenantId, senderHash);
+    }
+    return { kind: "accepted", id };
+  }
+
+  private async replyExists(ctx: KernelContext, m: InboundEmail): Promise<boolean> {
+    return this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query(
+            "select 1 from notify.reply where adapter = $1 and vendor_message_id = $2",
+            [m.adapter, m.vendorMessageId],
+          )
+        ).rows.length > 0,
+    );
+  }
+
+  /** One attachment into the tenant's STORAGE and through the AV port (IPB-02-44). */
+  private async quarantine(
+    tenantId: string,
+    f: { filename: string | null; mimeType: string; content: ArrayBuffer | Uint8Array | string },
+  ): Promise<ReplyAttachment> {
+    const r = this.o.replies as NonNullable<NotifyServiceOptions["replies"]>;
+    const body =
+      typeof f.content === "string"
+        ? new TextEncoder().encode(f.content)
+        : f.content instanceof Uint8Array
+          ? f.content
+          : new Uint8Array(f.content);
+    const sha256 = sha256Hex(body);
+    const storageKey = `tenant/${tenantId}/notify/${newId("rpl").slice(4)}.bin`;
+    if (!isValidStorageKey(storageKey))
+      throw new IpbError("IPB-SEC-018", { meta: { reason: "prefix" } });
+    await r.storage.put(storageKey, body, {
+      contentType: "application/octet-stream",
+      bucketClass: "CONFIDENTIAL",
+      sha256,
+      tags: { kind: "reply_attachment" },
+    });
+    const scan = await r.av.scan({ storageKey, sha256 }, { tenantId });
+    const d = scanDecision(scan);
+    const state: ReplyAttachmentState =
+      d.action === "release" ? "RELEASED" : d.action === "reject" ? "REJECTED" : "QUARANTINED";
+    return {
+      storageKey,
+      filename: f.filename ? [...f.filename].slice(0, 200).join("") : null,
+      contentType: f.mimeType.toLowerCase().slice(0, 120),
+      bytes: body.byteLength,
+      sha256,
+      state,
+      verdict: scan.verdict,
+    };
+  }
+
+  /**
+   * A drop in a known tenant: the first of the day per sender hash and reason is recorded with its
+   * ledger entry; a repeat writes nothing (every mutation is ledgered, so repeats are counted only
+   * in `receiveReplies`' result and `onDrop`).
+   */
+  private async recordDrop(tenantId: string, reason: InboundDropReason, senderHash: string) {
+    const day = this.now().toISOString().slice(0, 10);
+    try {
+      await this.o.kernel.mutate(
+        serviceContext(tenantId),
+        async (tx) => {
+          const r = await tx.query(
+            `insert into notify.reply_drop_daily (tenant_id, day, sender_hash, reason) values ($1, $2, $3, $4)
+             on conflict (tenant_id, day, sender_hash, reason) do nothing`,
+            [tx.ctx.tenantId, day, senderHash, reason],
+          );
+          if (!r.rowCount) throw new ReplyOutcome(reason);
+          await this.o.audit.record(tx, {
+            action: "notify.reply.drop",
+            resourceType: "reply_drop",
+            resourceId: `${day}:${reason}`,
+            after: { reason, sender_hash: senderHash, day },
+          });
+        },
+        { action: "notify.reply.drop" },
+      );
+    } catch (e) {
+      if (!(e instanceof ReplyOutcome)) throw e;
+    }
+  }
+
+  /** An accepted reply in the caller's tenant (RLS), or null. */
+  async getReply(ctx: KernelContext, id: string): Promise<InboundReply | null> {
+    if (!/^rpl_[0-7][0-9A-HJKMNP-TV-Z]{25}$/.test(id)) return null;
+    const row = await this.o.kernel.read(
+      ctx,
+      async (tx) =>
+        (
+          await tx.query<ReplyRow>(
+            "select id, thread_ref, recipient_ref, text, attachments, received_at from notify.reply where id = $1",
+            [id],
+          )
+        ).rows[0],
+    );
+    return row
+      ? {
+          id: row.id,
+          threadRef: row.thread_ref,
+          recipientRef: row.recipient_ref,
+          text: row.text,
+          attachments: row.attachments,
+          receivedAt: new Date(row.received_at).toISOString(),
+        }
+      : null;
+  }
+
   // -------------------------------------------------------------------------------- queries
 
   async deliveryStatus(ctx: KernelContext, notificationId: string): Promise<DeliveryRecord[]> {
@@ -1624,7 +2013,7 @@ export class NotifyService implements NotifyPort {
 
   private async emit(
     tx: Tx,
-    event: "NotificationHeld" | "NotificationDigestSent",
+    event: "NotificationHeld" | "NotificationDigestSent" | "NotificationReplyReceived",
     data: Record<string, unknown>,
   ): Promise<void> {
     if (!this.o.outbox) return;
