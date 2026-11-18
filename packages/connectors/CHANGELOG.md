@@ -1,5 +1,20 @@
 # @infrabyx/connectors
 
+## 1.21.0
+
+### Minor Changes
+
+- 955cc67: TallyPrime agent key notices (owner answer #139 (1); R1-D-186). `TallyAgentService.sendKeyNotices(ctx)` tells the tenant's administrators on day 80 and again on day 85 of an agent's key, once each, through the new platform notification class `accounting.agent_key_expiring` (mandatory, in-app and email); `TallyAgentView.keyNoticeDay`; `TALLY_AGENT_KEY_NOTICE_DAYS` and `TALLY_AGENT_KEY_NOTICE_CLASS`. From day 90 the gateway's 403 says how to re-enrol (`keyExpiredDetail`). Migration `connectors/0009` (expand-only): `tally_agent.key_notice_day`. Help entry `hlp.notify.accounting.agent_key_expiring`.
+
+### Patch Changes
+
+- Updated dependencies [4af2688]
+- Updated dependencies [955cc67]
+  - @infrabyx/contracts@1.36.0
+  - @infrabyx/config@1.19.0
+  - @infrabyx/crypto@1.6.2
+  - @infrabyx/tenancy@1.20.7
+
 ## 1.20.0
 
 ### Minor Changes
