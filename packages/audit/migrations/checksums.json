@@ -9,5 +9,6 @@
   "0008_capture_retirement.sql": "c84449a61b3c1d319614e76be08672534dd9c7a6300bb4e1e556ce62f0c14577",
   "0009_register_outbox.sql": "c682eeba7a30ceeafc4c337eecccbab4e4a2510bf47aadee4108a835e99b2f9b",
   "0010_business_ids.sql": "81177a739fa3406daf8399c291e5bb4af15127209634c253066bc660d5a7ef29",
-  "0011_business_ids_index.sql": "918e08cf904e58e44332d082c68ffde43903e9370577be785307cc31fb42b8e2"
+  "0011_business_ids_index.sql": "918e08cf904e58e44332d082c68ffde43903e9370577be785307cc31fb42b8e2",
+  "0012_security_event.sql": "ad006c9cf3dc87285c4deb1d7487f2843e856ec1fec5b23af2e876b6449fe03e"
 }

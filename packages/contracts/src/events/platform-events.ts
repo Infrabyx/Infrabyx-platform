@@ -31,6 +31,8 @@ export const PLATFORM_EVENTS = {
   LedgerAnchorWritten: { module: "security", name: "LedgerAnchorWritten" },
   LedgerChainBroken: { module: "security", name: "LedgerChainBroken" },
   KillSwitchChanged: { module: "security", name: "KillSwitchChanged" },
+  // Owner answer #132 (5), R1-D-187: one principal's reveal refusals reached the alert threshold.
+  RevealRefusalsRepeated: { module: "security", name: "RevealRefusalsRepeated" },
   // environment and seeds (IPB-11 §11.6)
   ConfigValidated: { module: "eng", name: "ConfigValidated" },
   ConfigGuardFailed: { module: "eng", name: "ConfigGuardFailed" },

@@ -34,6 +34,8 @@ export interface RulesRevealFixture {
 }
 
 const PURPOSE = "board review of the classification";
+/** A platform purpose code (`REVEAL_PURPOSE_CODES`; owner answer #132 (4)). */
+const PURPOSE_CODE = "internal_audit";
 
 const reason = (r: string) => ({ code: "IPB-RULE-004", meta: { reason: r } });
 
@@ -46,6 +48,7 @@ export function defineRulesRevealContract(
       decisionId: f.decisionId,
       input: input ?? f.inputs.confidential,
       purpose: PURPOSE,
+      purposeCode: PURPOSE_CODE,
     });
 
     it("without a grant, explain returns names only above INTERNAL", async () => {
@@ -164,6 +167,18 @@ export function defineRulesRevealContract(
         await expect(
           f.rules.entitleReveal(f.allowed, { ...req(f), purpose }),
         ).rejects.toMatchObject(reason("purpose_invalid"));
+    });
+
+    it("a missing, malformed or unlisted purpose code is refused (#132 (4))", async () => {
+      const f = await setup();
+      const { purposeCode: _omit, ...noCode } = req(f);
+      await expect(f.rules.entitleReveal(f.allowed, noCode)).rejects.toMatchObject(
+        reason("purpose_code_invalid"),
+      );
+      for (const purposeCode of ["", "Internal_Audit", "x", "not_a_listed_code", "a b c"])
+        await expect(
+          f.rules.entitleReveal(f.allowed, { ...req(f), purposeCode }),
+        ).rejects.toMatchObject(reason("purpose_code_invalid"));
     });
   });
 }

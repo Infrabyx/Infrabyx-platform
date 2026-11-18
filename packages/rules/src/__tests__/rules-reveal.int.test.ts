@@ -5,8 +5,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import type { AuditSink, KernelContext } from "@infrabyx/contracts/kernel";
 import type { RevealRequest, RuleSetBody } from "@infrabyx/contracts/ports";
 import { REVEAL_GRANT_TTL_MS } from "@infrabyx/contracts/ports";
-import { localTenantKeyId } from "@infrabyx/crypto";
-import { ApprovalsEngine, FieldCrypto, PgOutbox } from "@infrabyx/tenancy";
+import { PgSecurityEvents } from "@infrabyx/audit";
+import { localBlindIndexRoot, localTenantKeyId } from "@infrabyx/crypto";
+import { ApprovalsEngine, FieldCrypto, PgOutbox, RateLimiter } from "@infrabyx/tenancy";
 import {
   defineRulesRevealContract,
   fakeKms,
@@ -79,6 +80,8 @@ function service(
     fieldCrypto,
     evalTimeoutMs: 2000,
     revealRule,
+    securityEvents: new PgSecurityEvents({ pool: db.pool }),
+    refusalCounter: new RateLimiter({ pool: db.pool, product: "ldc", root: localBlindIndexRoot() }),
     ...over,
   } as RulesServiceOptions);
 }
@@ -109,6 +112,10 @@ beforeAll(async () => {
     fieldCrypto,
     evalTimeoutMs: 2000,
     revealRule,
+    securityEvents: new PgSecurityEvents({ pool: db.pool }),
+    // A high threshold here: the shared contract's refusals must not raise the alert by accident.
+    refusalCounter: new RateLimiter({ pool: db.pool, product: "ldc", root: localBlindIndexRoot() }),
+    revealRefusalAlert: { threshold: 50, windowMinutes: 1 },
   });
   ({ ruleSetId } = await svc.createRuleSet(maker, {
     key: "demo.board.classify",
@@ -160,6 +167,7 @@ describe("explain reveal on the real decision log (R1-D-173)", () => {
     decisionId,
     input: "counterpartyScore",
     purpose: "  board review of the classification  ",
+    purposeCode: "internal_audit",
     ...over,
   });
 
@@ -168,7 +176,12 @@ describe("explain reveal on the real decision log (R1-D-173)", () => {
     const grant = await svc.entitleReveal(reader, req());
     // The rule is told the trimmed purpose.
     expect(asked).toEqual([
-      { decisionId, input: "counterpartyScore", purpose: "board review of the classification" },
+      {
+        decisionId,
+        input: "counterpartyScore",
+        purpose: "board review of the classification",
+        purposeCode: "internal_audit",
+      },
     ]);
     await svc.explain(reader, decisionId, { reveal: grant });
     const row = (
@@ -183,7 +196,13 @@ describe("explain reveal on the real decision log (R1-D-173)", () => {
       actor_type: "user",
       resource_type: "decision",
       resource_id: decisionId,
-      business_ids: [decisionId, grant.id, "input:counterpartyScore", "rule:demo.board.reveal"],
+      business_ids: [
+        decisionId,
+        grant.id,
+        "input:counterpartyScore",
+        "rule:demo.board.reveal",
+        "purpose:internal_audit",
+      ],
     });
     expect(row.after_digest).toMatch(/^[0-9a-f]{64}$/);
     // Nothing else changed: the decision log row is untouched and still sealed.

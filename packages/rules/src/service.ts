@@ -11,6 +11,7 @@ import type {
   KernelContext,
   MutationKernel,
   OutboxWriter,
+  SecurityEventSink,
   Tx,
 } from "@infrabyx/contracts/kernel";
 import type { DataClass } from "@infrabyx/contracts/data-class";
@@ -42,11 +43,14 @@ import {
   isScheduleParameter,
   ParameterScheduleBody,
   REVEAL_GRANT_TTL_MS,
+  REVEAL_PURPOSE_CODE_REGEX,
+  REVEAL_PURPOSE_CODES,
   REVEAL_PURPOSE_MAX,
   REVEAL_PURPOSE_MIN,
   RuleSetKey,
   ruleParameterValueError,
 } from "@infrabyx/contracts/ports";
+import { RevealRefusalsRepeatedData } from "@infrabyx/contracts/events";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import { PRODUCT_ROLE_REGEX, TENANT_ROLES } from "@infrabyx/contracts/roles";
 import { internalEvent } from "@infrabyx/config/events";
@@ -74,6 +78,21 @@ export const PUBLISH_ACTION = "rules.ruleset.publish";
 export const REVEAL_ACTION = "rules.decision.input_revealed";
 /** A reveal rule's id: lower case, 3 to 64 characters. */
 const REVEAL_RULE_ID = /^[a-z][a-z0-9_.-]{2,63}$/;
+/** The ledger action of a raised `RevealRefusalsRepeated` (owner answer #132 (5); R1-D-187). */
+export const REVEAL_REFUSALS_REPEATED_ACTION = "rules.reveal.refusals_repeated";
+/** The security event kind of a refused reveal, and its rate-limit bucket. */
+export const REVEAL_REFUSED_EVENT = "rules.reveal.refused";
+/** Defaults of `rules.reveal.refusal_alert_threshold` and `..._window_minutes` (R1-D-187). */
+export const REVEAL_REFUSAL_ALERT_DEFAULTS = { threshold: 5, windowMinutes: 15 } as const;
+/** The service principal that raises the alert in the tenant (the refused caller may not write). */
+export const REVEAL_ALERT_PRINCIPAL = Object.freeze({
+  id: "svc_rules_security",
+  type: "service" as const,
+  roles: Object.freeze(["SVC_RULES_SECURITY"]),
+});
+/** Names and ids recorded in a refusal's security event (never a value or the purpose text). */
+const SAFE_NAME = /^[A-Za-z_][A-Za-z0-9_.]{0,63}$/;
+const SAFE_ID = /^[A-Za-z0-9_.:@/+=-]{1,128}$/;
 /** Platform staff roles never see a tenant's sealed inputs through a reveal (R1-D-173). */
 const PLATFORM_ROLE = /^PLT_/;
 /**
@@ -148,6 +167,32 @@ export interface RulesServiceOptions {
    * name-only above INTERNAL.
    */
   revealRule?: RevealRule;
+  /**
+   * Where refused reveals are recorded (owner answer #132 (5); R1-D-187): `PgSecurityEvents` from
+   * `@infrabyx/audit`. Required with `revealRule`.
+   */
+  securityEvents?: SecurityEventSink;
+  /**
+   * Counts refusals per principal (`RateLimiter` from `@infrabyx/tenancy`, bucket
+   * `rules.reveal.refused`). Required with `revealRule`, as is `outbox` for the alert.
+   */
+  refusalCounter?: RevealRefusalCounter;
+  /**
+   * `rules.reveal.refusal_alert_threshold` (default 5, 2 to 50) and
+   * `rules.reveal.refusal_alert_window_minutes` (default 15, 1 to 1440): the refusal that reaches
+   * the threshold within one window raises `RevealRefusalsRepeated`, once per window.
+   */
+  revealRefusalAlert?: { threshold?: number; windowMinutes?: number };
+}
+
+/** The part of the shared rate limiter the reveal alert uses (`RateLimiter.hit`). */
+export interface RevealRefusalCounter {
+  hit(
+    ctx: Pick<KernelContext, "tenantId">,
+    bucket: string,
+    key: string,
+    rule: { limit: number; windowSeconds: number },
+  ): Promise<{ allowed: boolean; remaining: number; resetAt: string }>;
 }
 
 /**
@@ -158,7 +203,14 @@ export interface RulesServiceOptions {
 export interface RevealRule {
   /** Stable id of the rule, recorded in each grant's ledger entry (`^[a-z][a-z0-9_.-]{2,63}$`). */
   id: string;
-  allows(ctx: KernelContext, req: RevealRequest): Promise<boolean>;
+  /**
+   * The purpose codes this product accepts (owner answer #132 (4); R1-D-187): non-empty, each
+   * `^[a-z][a-z0-9_]{2,31}$`; default the platform's `REVEAL_PURPOSE_CODES`. Read once, at
+   * construction of `RulesService`.
+   */
+  purposeCodes?: readonly string[];
+  /** Asked only after the platform's checks pass; `req.purposeCode` is a listed code by then. */
+  allows(ctx: KernelContext, req: RevealRequest & { purposeCode: string }): Promise<boolean>;
 }
 
 interface RevealGrant {
@@ -170,6 +222,7 @@ interface RevealGrant {
   decisionId: string;
   input: string;
   purpose: string;
+  purposeCode: string;
   expiresAt: number;
 }
 
@@ -256,8 +309,11 @@ export class RulesService implements RulesPort {
   private readonly cache = new Map<string, Promise<CompiledRuleSet>>();
   /** Grants this instance issued, keyed by the grant object itself (R1-D-173). */
   private readonly grants = new WeakMap<object, RevealGrant>();
-  /** Grants already used, so a replay is reported as such. */
-  private readonly usedGrants = new WeakSet<object>();
+  /** Grants already used, so a replay is reported as such (and recorded with its input). */
+  private readonly usedGrants = new WeakMap<object, RevealGrant>();
+  /** The product's purpose codes, fixed at construction (#132 (4)). */
+  private readonly purposeCodes: ReadonlySet<string>;
+  private readonly refusalAlert: { threshold: number; windowMinutes: number };
 
   constructor(opts: RulesServiceOptions) {
     this.o = opts;
@@ -270,6 +326,27 @@ export class RulesService implements RulesPort {
       RULE_ENGINES.map((n) => (n === this.primary.name ? this.primary : ruleEngine(n, { limits })));
     if (opts.revealRule && !REVEAL_RULE_ID.test(opts.revealRule.id))
       throw new Error(`revealRule.id ${opts.revealRule.id} is not ${REVEAL_RULE_ID.source}`);
+    const codes = [...(opts.revealRule?.purposeCodes ?? REVEAL_PURPOSE_CODES)];
+    if (codes.length === 0) throw new Error("revealRule.purposeCodes is empty");
+    for (const c of codes)
+      if (typeof c !== "string" || !REVEAL_PURPOSE_CODE_REGEX.test(c))
+        throw new Error(
+          `revealRule.purposeCodes: ${String(c)} is not ${REVEAL_PURPOSE_CODE_REGEX.source}`,
+        );
+    this.purposeCodes = new Set(codes);
+    const threshold = opts.revealRefusalAlert?.threshold ?? REVEAL_REFUSAL_ALERT_DEFAULTS.threshold;
+    const windowMinutes =
+      opts.revealRefusalAlert?.windowMinutes ?? REVEAL_REFUSAL_ALERT_DEFAULTS.windowMinutes;
+    if (!Number.isInteger(threshold) || threshold < 2 || threshold > 50)
+      throw new Error("revealRefusalAlert.threshold is a whole number from 2 to 50");
+    if (!Number.isInteger(windowMinutes) || windowMinutes < 1 || windowMinutes > 1440)
+      throw new Error("revealRefusalAlert.windowMinutes is a whole number from 1 to 1440");
+    this.refusalAlert = { threshold, windowMinutes };
+    // #132 (5): a product cannot turn reveals on without recording and alerting on refusals.
+    if (opts.revealRule && (!opts.securityEvents || !opts.refusalCounter || !opts.outbox))
+      throw new Error(
+        "revealRule needs securityEvents, refusalCounter and outbox: refused reveals are recorded and repeated refusals raise an alert (owner answer #132 (5))",
+      );
     const extra = opts.publishCheckerRoles ?? [];
     for (const r of extra)
       if (
@@ -1245,7 +1322,19 @@ export class RulesService implements RulesPort {
     decisionId: string,
     opts: ExplainOptions = {},
   ): Promise<Explanation> {
-    if (opts.reveal !== undefined) return this.explainRevealed(ctx, decisionId, opts.reveal);
+    if (opts.reveal !== undefined) {
+      const reveal = opts.reveal;
+      const g =
+        typeof reveal === "object" && reveal !== null
+          ? (this.grants.get(reveal as unknown as object) ??
+            this.usedGrants.get(reveal as unknown as object))
+          : undefined;
+      return this.recordingRefusals(
+        ctx,
+        { decisionId, input: g?.input, purposeCode: g?.purposeCode },
+        () => this.explainRevealed(ctx, decisionId, reveal),
+      );
+    }
     return this.o.kernel.read(ctx, (tx) => this.explanation(tx, decisionId));
   }
 
@@ -1259,6 +1348,10 @@ export class RulesService implements RulesPort {
    * the grant is used.
    */
   async entitleReveal(ctx: KernelContext, req: RevealRequest): Promise<RevealEntitlement> {
+    return this.recordingRefusals(ctx, req, () => this.entitle(ctx, req));
+  }
+
+  private async entitle(ctx: KernelContext, req: RevealRequest): Promise<RevealEntitlement> {
     const rule = this.o.revealRule;
     if (!rule) throw refuse("no_reveal_rule");
     if (!revealAllowedFor(ctx)) throw refuse("context_not_allowed");
@@ -1270,6 +1363,10 @@ export class RulesService implements RulesPort {
       /\p{Cc}/u.test(purpose)
     )
       throw refuse("purpose_invalid");
+    // #132 (4): a listed purpose code, recorded as a business id beside the purpose's digest.
+    const purposeCode = req.purposeCode;
+    if (typeof purposeCode !== "string" || !this.purposeCodes.has(purposeCode))
+      throw refuse("purpose_code_invalid");
     if (typeof req.decisionId !== "string" || typeof req.input !== "string")
       throw refuse("decision_not_found");
     const { decisionId, input } = req;
@@ -1280,7 +1377,7 @@ export class RulesService implements RulesPort {
     });
     let allowed: boolean;
     try {
-      allowed = (await rule.allows(ctx, { decisionId, input, purpose })) === true;
+      allowed = (await rule.allows(ctx, { decisionId, input, purpose, purposeCode })) === true;
     } catch {
       allowed = false;
     }
@@ -1302,9 +1399,109 @@ export class RulesService implements RulesPort {
       decisionId,
       input,
       purpose,
+      purposeCode,
       expiresAt,
     });
     return grant;
+  }
+
+  /**
+   * Runs one step of a reveal; a refusal (`IPB-RULE-004`) is recorded as a security event before
+   * it is thrown (owner answer #132 (5)): who, when, which decision and input, the reason and the
+   * purpose code, never the value or the purpose text. The refusals of one principal are counted;
+   * the one that reaches the threshold within the window raises `RevealRefusalsRepeated`.
+   */
+  private async recordingRefusals<T>(
+    ctx: KernelContext,
+    target: { decisionId?: unknown; input?: unknown; purposeCode?: unknown },
+    step: () => Promise<T>,
+  ): Promise<T> {
+    try {
+      return await step();
+    } catch (e) {
+      const reason =
+        e instanceof IpbError && e.code === "IPB-RULE-004"
+          ? (e.meta as { reason?: unknown } | undefined)?.reason
+          : undefined;
+      if (typeof reason === "string") await this.recordRefusal(ctx, target, reason);
+      throw e;
+    }
+  }
+
+  private async recordRefusal(
+    ctx: KernelContext,
+    target: { decisionId?: unknown; input?: unknown; purposeCode?: unknown },
+    reason: string,
+  ): Promise<void> {
+    const sink = this.o.securityEvents;
+    if (!sink) return;
+    const str = (v: unknown, re: RegExp) => (typeof v === "string" && re.test(v) ? v : undefined);
+    const input = str(target.input, SAFE_NAME);
+    const code = str(target.purposeCode, REVEAL_PURPOSE_CODE_REGEX);
+    await sink.record(ctx, {
+      kind: REVEAL_REFUSED_EVENT,
+      resourceType: "decision",
+      resourceId: str(target.decisionId, SAFE_ID) ?? null,
+      detail: {
+        reason,
+        ...(input ? { input } : {}),
+        ...(code ? { purpose_code: code } : {}),
+        ...(this.o.revealRule ? { rule_id: this.o.revealRule.id } : {}),
+      },
+    });
+    const counter = this.o.refusalCounter;
+    if (!counter) return;
+    const { threshold, windowMinutes } = this.refusalAlert;
+    const hit = await counter.hit(
+      ctx,
+      REVEAL_REFUSED_EVENT,
+      `${ctx.principal.type}:${ctx.principal.id}`,
+      { limit: threshold, windowSeconds: windowMinutes * 60 },
+    );
+    // The hit that uses up the window's last allowance is the threshold-th: raise once.
+    if (hit.allowed && hit.remaining === 0) await this.raiseRepeated(ctx, reason, hit.resetAt);
+  }
+
+  /** One `RevealRefusalsRepeated` in the tenant, ledgered, as the platform's alert service. */
+  private async raiseRepeated(ctx: KernelContext, reason: string, windowEndsAt: string) {
+    const outbox = this.o.outbox;
+    if (!outbox) return;
+    const { threshold, windowMinutes } = this.refusalAlert;
+    const alertCtx: KernelContext = {
+      tenantId: ctx.tenantId,
+      scope: "tenant",
+      principal: { ...REVEAL_ALERT_PRINCIPAL, roles: [...REVEAL_ALERT_PRINCIPAL.roles] },
+      ...(ctx.traceId ? { traceId: ctx.traceId } : {}),
+    };
+    const data = RevealRefusalsRepeatedData.parse({
+      principal_id: ctx.principal.id,
+      principal_type: ctx.principal.type,
+      refusals: threshold,
+      window_minutes: windowMinutes,
+      window_ends_at: windowEndsAt,
+      last_reason: reason,
+    });
+    await this.o.kernel.mutate(
+      alertCtx,
+      async (tx) => {
+        await this.o.audit.record(tx, {
+          action: REVEAL_REFUSALS_REPEATED_ACTION,
+          resourceType: "principal",
+          resourceId: SAFE_ID.test(ctx.principal.id) ? ctx.principal.id : "unknown",
+          after: data,
+        });
+        await outbox.publish(tx, "rules", {
+          envelope: internalEvent({
+            product: this.o.product,
+            event: "RevealRefusalsRepeated",
+            tenantId: ctx.tenantId,
+            data,
+            ...(ctx.traceId ? { traceId: ctx.traceId } : {}),
+          }),
+        });
+      },
+      { action: REVEAL_REFUSALS_REPEATED_ACTION },
+    );
   }
 
   /** Step 2: the grant is used once, checked, the input unsealed and the reveal ledgered. */
@@ -1317,7 +1514,7 @@ export class RulesService implements RulesPort {
     const g = typeof key === "object" && key !== null ? this.grants.get(key) : undefined;
     if (!g) throw refuse(this.usedGrants.has(key) ? "grant_used" : "grant_invalid");
     this.grants.delete(key);
-    this.usedGrants.add(key);
+    this.usedGrants.set(key, g);
     if (!revealAllowedFor(ctx)) throw refuse("context_not_allowed");
     if (
       g.tenantId !== ctx.tenantId ||
@@ -1349,9 +1546,22 @@ export class RulesService implements RulesPort {
           action: REVEAL_ACTION,
           resourceType: "decision",
           resourceId: decisionId,
-          after: { input: g.input, purpose: g.purpose, rule_id: g.ruleId, grant_id: g.id },
-          // Readable in `AuditService.history`; the purpose is covered by the entry's digest.
-          businessIds: [decisionId, g.id, `input:${g.input}`, `rule:${g.ruleId}`],
+          after: {
+            input: g.input,
+            purpose: g.purpose,
+            purpose_code: g.purposeCode,
+            rule_id: g.ruleId,
+            grant_id: g.id,
+          },
+          // Readable in `AuditService.history`; the purpose text is covered by the entry's digest,
+          // the purpose code is readable beside it (#132 (4)).
+          businessIds: [
+            decisionId,
+            g.id,
+            `input:${g.input}`,
+            `rule:${g.ruleId}`,
+            `purpose:${g.purposeCode}`,
+          ],
         });
         return {
           ...x,

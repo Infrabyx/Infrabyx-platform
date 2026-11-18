@@ -402,6 +402,24 @@ export const REVEAL_PURPOSE_MAX = 200;
 /** How long a reveal grant stays usable, in milliseconds (R1-D-173, single use). */
 export const REVEAL_GRANT_TTL_MS = 60_000;
 
+/** A purpose code: a short enumerated id (owner answer #132 (4); R1-D-187). */
+export const REVEAL_PURPOSE_CODE_REGEX = /^[a-z][a-z0-9_]{2,31}$/;
+/**
+ * The platform's purpose codes for a reveal, the default of `RevealRule.purposeCodes` (#132 (4)).
+ * A product may give its own list; no product name belongs here.
+ */
+export const REVEAL_PURPOSE_CODES = [
+  "customer_request",
+  "complaint",
+  "dispute",
+  "internal_audit",
+  "external_audit",
+  "regulatory_request",
+  "legal_proceedings",
+  "fraud_review",
+  "quality_review",
+] as const;
+
 /** A request to see one CONFIDENTIAL input of one decision (PR-LDC-59, #130, R1-D-157 (1)). */
 export interface RevealRequest {
   decisionId: string;
@@ -409,6 +427,13 @@ export interface RevealRequest {
   input: string;
   /** Why the value is needed, for the ledger (never personal data). */
   purpose: string;
+  /**
+   * Why, as a code from the product's list (`RevealRule.purposeCodes`, default
+   * `REVEAL_PURPOSE_CODES`), recorded as the business id `purpose:<code>` of the reveal's ledger
+   * entry (#132 (4); R1-D-187). Optional in the type, so products compile unchanged, but a request
+   * without a listed code is refused (`purpose_code_invalid`).
+   */
+  purposeCode?: string;
 }
 
 declare const revealEntitlementBrand: unique symbol;
@@ -441,6 +466,7 @@ export const REVEAL_REFUSALS = [
   "class_not_revealable",
   "inputs_not_recorded",
   "purpose_invalid",
+  "purpose_code_invalid",
   "rule_refused",
   "grant_invalid",
   "grant_expired",

@@ -689,6 +689,42 @@ const why = await rules.explain(ctx, decisionId, { reveal: grant }); // inputs[i
 - **Nothing is written back:** show the value and drop it; do not store it unsealed. Test your wiring with `defineRulesRevealContract` from `@infrabyx/testing`.
 - **LawDocsComply:** wire `revealRule` to your board-paper access policy, and use it only where a CONFIDENTIAL input is needed in the classification trace.
 
+### The purpose code and refused reveals (owner answer #132 (4), (5); R1-D-187)
+
+Take the `contracts`, `audit`, `rules`, `config` and `testing` minors after 1.35.0, 1.10.6, 1.5.4, 1.18.1 and 1.21.0, and run `infrabyx-migrate` for `audit/0012`. A service with `revealRule` now needs the security record and the alert, or it refuses to start:
+
+```ts
+import { PgSecurityEvents } from "@infrabyx/audit";
+import { RateLimiter } from "@infrabyx/tenancy";
+
+const rules = new RulesService({
+  ...options, // with `outbox`
+  revealRule: {
+    id: "ldc.board.reveal",
+    purposeCodes: ["board_review", "internal_audit"], // optional; default REVEAL_PURPOSE_CODES
+    allows: async (ctx, { decisionId, input, purposeCode }) =>
+      myPolicy.canSee(ctx, decisionId, input, purposeCode),
+  },
+  securityEvents: new PgSecurityEvents({ pool }),
+  refusalCounter: rateLimiter, // your shared RateLimiter
+  revealRefusalAlert: {
+    threshold: await settings.get(platformCtx, "rules.reveal.refusal_alert_threshold"), // 5
+    windowMinutes: await settings.get(platformCtx, "rules.reveal.refusal_alert_window_minutes"), // 15
+  },
+});
+await rules.entitleReveal(ctx, {
+  decisionId,
+  input: "score",
+  purpose: "board review",
+  purposeCode: "board_review",
+});
+```
+
+- **Purpose code.** Every request names a code from your list (`^[a-z][a-z0-9_]{2,31}$`; the platform list is `customer_request`, `complaint`, `dispute`, `internal_audit`, `external_audit`, `regulatory_request`, `legal_proceedings`, `fraud_review`, `quality_review`). A missing or unlisted code is refused `purpose_code_invalid`. The reveal's ledger entry carries `purpose:<code>` as a business id, readable in `AuditService.history`; the free text stays under the digest.
+- **Refused reveals.** Every refusal (`IPB-RULE-004`) is kept in `audit.security_event` (kind `rules.reveal.refused`): who, when, which decision and input, the reason, the purpose code and your rule's id; never the value or the purpose text, and no business-ledger row. Read it in the tenant's context (RLS); nobody can change or delete a row.
+- **Repeated refusals.** The refusal that reaches the threshold for one principal within the window raises one internal event `in.<product>.security.RevealRefusalsRepeated.v1` (principal, count, window, last reason), once per window, ledgered as `rules.reveal.refusals_repeated` by `svc_rules_security`. Route it to your security on-call as you route `BreakGlassGranted`.
+- **Your own contract tests** (`defineRulesRevealContract`) now send `purposeCode: "internal_audit"`; a fixture with its own `purposeCodes` must include that code.
+
 ## 7ch. Dated, cited and locked rule parameters (PR-LDC-57; R1-D-146, R1-D-175)
 
 A threshold fixed by an instrument (a statute, a regulation, a circular) is not a tenant choice. Declare it as a **dated parameter**: it names a platform parameter schedule instead of a setting, and takes the entry in force on the decision's day.

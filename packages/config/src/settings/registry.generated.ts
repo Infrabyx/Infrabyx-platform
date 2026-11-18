@@ -3390,6 +3390,38 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 RULES"
   },
   {
+    "key": "rules.reveal.refusal_alert_threshold",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 5,
+    "min": 2,
+    "max": 50,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "owner answer #132 (5); R1-D-187; threat model §3.130",
+    "note": "the refused reveal by one principal that reaches this count within the window raises RevealRefusalsRepeated, once per window"
+  },
+  {
+    "key": "rules.reveal.refusal_alert_window_minutes",
+    "tier": "PLATFORM",
+    "type": "int",
+    "default": 15,
+    "min": 1,
+    "max": 1440,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "owner answer #132 (5); R1-D-187; threat model §3.130",
+    "note": "the window in which one principal's refused reveals are counted"
+  },
+  {
     "key": "workflow.timers.engine",
     "tier": "PLATFORM",
     "type": "enum",
@@ -7062,6 +7094,8 @@ export type SettingValueMap = {
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;
   "rules.publish.requires_checker": boolean;
+  "rules.reveal.refusal_alert_threshold": number;
+  "rules.reveal.refusal_alert_window_minutes": number;
   "workflow.timers.engine": "temporal" | "pg";
   "mc.extra_actions": string[];
   "mc.reminder_hours": number;

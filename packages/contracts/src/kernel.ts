@@ -145,6 +145,37 @@ export interface AuditSink {
   record(tx: Tx, entry: AuditEntryInput): Promise<{ id: string }>;
 }
 
+/**
+ * Security audit events (owner answer #132 (5); R1-D-187): attempts the platform refused for
+ * security reasons, kept in `audit.security_event`, outside the hash-chained business ledger and a
+ * tenant's business history. `detail` holds ids, names and codes only, never a value, a free-text
+ * purpose or personal data (each string at most 128 characters; 2 KiB in all).
+ */
+export const SECURITY_EVENT_KINDS = ["rules.reveal.refused"] as const;
+export type SecurityEventKind = (typeof SECURITY_EVENT_KINDS)[number];
+/** Keys and string values of a security event's `detail`. */
+export const SECURITY_EVENT_DETAIL_KEY = /^[a-z][a-z0-9_]{0,31}$/;
+export const SECURITY_EVENT_DETAIL_VALUE = /^[\x20-\x7E]{0,128}$/;
+
+export interface SecurityEventInput {
+  kind: SecurityEventKind;
+  /** What was targeted, e.g. `decision` and its id; null when the target was not a valid id. */
+  resourceType: string;
+  resourceId: string | null;
+  detail: Readonly<Record<string, string | number | boolean>>;
+}
+
+/**
+ * Records a security event for the context's principal in the context's tenant, in its own short
+ * transaction, so a refusal is kept although the refused act rolls back. Writes no ledger row.
+ */
+export interface SecurityEventSink {
+  record(
+    ctx: Pick<KernelContext, "tenantId" | "principal" | "traceId">,
+    event: SecurityEventInput,
+  ): Promise<{ id: string }>;
+}
+
 export interface OutboxEvent {
   /** Internal or ecosystem envelope; validated by the writer. */
   envelope: Record<string, unknown>;
