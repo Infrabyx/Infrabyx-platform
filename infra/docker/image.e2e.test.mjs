@@ -1,10 +1,17 @@
 // Container hardening of every built image (IPB-01-31, PL6 plan §3.3). Runs in the `containers`
 // CI job against the images it built, named in IPB_IMAGES (space-separated); skipped elsewhere.
+// The TallyPrime agent (IPB_AGENT_IMAGE; PR-FBX-46, R1-D-178) listens on no port, so it has its
+// own block: the same user, root and capability checks, nothing listening, and its heartbeat
+// health check while it waits for an enrolment code.
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, writeFileSync, chmodSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, describe, expect, it } from "vitest";
 
 const images = (process.env.IPB_IMAGES ?? "").split(/\s+/).filter(Boolean);
+const agentImage = process.env.IPB_AGENT_IMAGE ?? "";
 const docker = (...args) =>
   execFileSync("docker", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
 const started = [];
@@ -102,4 +109,59 @@ describe.skipIf(images.length === 0)("@IPB-01-AT-15 container hardening", () => 
       }, 180_000);
     });
   }
+});
+
+describe.skipIf(!agentImage)("@IPB-01-AT-15 container hardening: the TallyPrime agent", () => {
+  it("runs as UID 10001 with a HEALTHCHECK, an exec-form entrypoint and no exposed port", () => {
+    const c = JSON.parse(docker("inspect", agentImage, "--format", "{{json .Config}}"));
+    expect(c.User).toBe("10001");
+    expect(c.Healthcheck?.Test?.[0]).toBe("CMD");
+    expect(c.Entrypoint?.[0]).toBe("node");
+    expect(c.ExposedPorts ?? null).toBeNull();
+    expect(Object.keys(c.Volumes ?? {})).toEqual(["/data"]);
+    expect(agentImage).not.toMatch(/:latest$/);
+  });
+
+  it("waits for its code on a read-only root, listens on nothing, and is healthy", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "tally-agent-"));
+    const cfg = join(dir, "config.json");
+    // An unreachable platform on purpose: the agent waits for a code and keeps its heartbeat.
+    writeFileSync(cfg, JSON.stringify({ platformUrl: "https://127.0.0.1:1" }));
+    chmodSync(cfg, 0o644);
+    const id = docker(
+      "run",
+      "-d",
+      "--read-only",
+      "--tmpfs",
+      "/tmp",
+      "--cap-drop",
+      "ALL",
+      "--security-opt",
+      "no-new-privileges",
+      "-v",
+      `${cfg}:/etc/infrabyx-tally-agent/config.json:ro`,
+      agentImage,
+    );
+    started.push(id);
+    let health = "";
+    for (let i = 0; i < 90 && health !== "healthy"; i++) {
+      await sleep(1_000);
+      health = docker("inspect", id, "--format", "{{.State.Health.Status}}");
+    }
+    expect(health).toBe("healthy");
+    expect(docker("exec", id, "id", "-u")).toBe("10001");
+    // No socket in LISTEN (state 0A) in the container's network namespace.
+    const listening = docker(
+      "exec",
+      id,
+      "node",
+      "-e",
+      `const fs=require("node:fs");let n=0;for(const f of ["/proc/net/tcp","/proc/net/tcp6"]){try{for(const l of fs.readFileSync(f,"utf8").split("\\n").slice(1))if(l.trim().split(/\\s+/)[3]==="0A")n++}catch{}}console.log(n)`,
+    );
+    expect(listening).toBe("0");
+    expect(() =>
+      docker("exec", id, "node", "-e", "require('node:fs').writeFileSync('/app/x', '')"),
+    ).toThrow();
+    expect(docker("logs", id)).toMatch(/not enrolled: put the one-time code/);
+  }, 180_000);
 });
