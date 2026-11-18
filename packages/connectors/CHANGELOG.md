@@ -1,5 +1,21 @@
 # @infrabyx/connectors
 
+## 1.19.0
+
+### Minor Changes
+
+- 3e69471: The TallyPrime adapter of the ACCOUNTING sink (PR-FBX-46, R1-D-178), at `@infrabyx/connectors/accounting`: `TallyAccountingSink` (`tallyprime`), `TallyAgentService` (enrolment under R3 maker-checker, one-time codes, revocation) and `TallyAgentGateway` (the framework-free agent API). Migration `connectors/0007` (`tally_agent`, `tally_journal`, `tally_read`, role `svc_tally_poll`). Off until a tenant sets `int.accounting.tally.enabled`; unproven until a TallyPrime sandbox company exists.
+
+### Patch Changes
+
+- Updated dependencies [3e69471]
+- Updated dependencies [3e69471]
+- Updated dependencies [3e69471]
+  - @infrabyx/config@1.18.0
+  - @infrabyx/contracts@1.34.0
+  - @infrabyx/crypto@1.6.0
+  - @infrabyx/tenancy@1.20.5
+
 ## 1.18.0
 
 ### Minor Changes
