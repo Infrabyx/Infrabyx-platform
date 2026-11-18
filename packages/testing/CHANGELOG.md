@@ -1,5 +1,22 @@
 # @infrabyx/testing
 
+## 1.18.0
+
+### Minor Changes
+
+- 6bb68c1: `FakeWebSnapshot` and `defineWebSnapshotContract` (PR-LDC-40, R1-D-176): the web snapshot contract cases every `WebSnapshotPort` passes.
+
+### Patch Changes
+
+- Updated dependencies [6bb68c1]
+- Updated dependencies [6bb68c1]
+  - @infrabyx/config@1.16.0
+  - @infrabyx/contracts@1.32.0
+  - @infrabyx/audit@1.10.3
+  - @infrabyx/seed@1.0.42
+  - @infrabyx/tenancy@1.20.3
+  - @infrabyx/crypto@1.5.17
+
 ## 1.17.1
 
 ### Patch Changes

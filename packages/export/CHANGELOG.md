@@ -1,5 +1,14 @@
 # @infrabyx/export
 
+## 1.7.3
+
+### Patch Changes
+
+- Updated dependencies [6bb68c1]
+  - @infrabyx/contracts@1.32.0
+  - @infrabyx/tenancy@1.20.3
+  - @infrabyx/crypto@1.5.17
+
 ## 1.7.2
 
 ### Patch Changes
