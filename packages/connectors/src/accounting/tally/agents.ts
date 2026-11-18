@@ -18,10 +18,13 @@ import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/con
 import {
   TALLY_AGENT_ENROL_ACTION,
   TALLY_AGENT_ID_REGEX,
+  TALLY_AGENT_KEY_MAX_DAYS,
+  TALLY_AGENT_KEY_WARN_DAYS,
   TALLY_ENROL_CODE_MINUTES,
   TallyCompany,
   type TallyAgentState,
   type TallyAgentView,
+  type TallyKeyProtection,
 } from "@infrabyx/contracts/ports";
 import { newId, randomBytes, sha256Hex, toBase64Url } from "@infrabyx/crypto";
 import type { ApprovalRecord, ApprovalsEngine } from "@infrabyx/tenancy";
@@ -63,11 +66,17 @@ export interface TallyAgentRow {
   agent_version: string | null;
   enrolled_at: Date | null;
   revoked_at: Date | null;
+  key_protection: TallyKeyProtection | null;
 }
+
+const DAY_MS = 86_400_000;
+/** When an agent's key stops working (#136 (4)): enrolment plus `TALLY_AGENT_KEY_MAX_DAYS`. */
+export const keyExpiresAt = (enrolledAt: Date | string): Date =>
+  new Date(new Date(enrolledAt).getTime() + TALLY_AGENT_KEY_MAX_DAYS * DAY_MS);
 
 export const AGENT_COLUMNS = `id, tenant_id, name, company, state, approval_id, requested_by,
   code_sha256, code_expires_at, code_failures, public_jwk, jkt, last_seq, last_poll_at,
-  agent_version, enrolled_at, revoked_at`;
+  agent_version, enrolled_at, revoked_at, key_protection`;
 
 export function toAgentView(r: TallyAgentRow, now: Date): TallyAgentView {
   return {
@@ -81,6 +90,20 @@ export function toAgentView(r: TallyAgentRow, now: Date): TallyAgentView {
     agentVersion: r.agent_version,
     enrolledAt: iso(r.enrolled_at),
     revokedAt: iso(r.revoked_at),
+    keyProtection: r.enrolled_at ? (r.key_protection ?? "file") : null,
+    keyExpiresAt: r.enrolled_at ? iso(keyExpiresAt(r.enrolled_at)) : null,
+    rotationDue:
+      r.state === "active" &&
+      r.enrolled_at !== null &&
+      now.getTime() >= new Date(r.enrolled_at).getTime() + TALLY_AGENT_KEY_WARN_DAYS * DAY_MS,
+    warnings: [
+      ...(r.enrolled_at && (r.key_protection ?? "file") === "file"
+        ? (["key_unencrypted"] as const)
+        : []),
+      ...(r.state === "active" && r.enrolled_at && now >= keyExpiresAt(r.enrolled_at)
+        ? (["key_expired"] as const)
+        : []),
+    ],
     codeOutstanding:
       r.state === "approved" &&
       r.code_sha256 !== null &&

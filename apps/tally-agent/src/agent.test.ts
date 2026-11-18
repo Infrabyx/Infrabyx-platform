@@ -1,3 +1,4 @@
+import { DpapiKeyGuard, WINDOWS_POWERSHELL, type Runner } from "./keyguard.js";
 import { mkdtemp, stat, writeFile, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -201,6 +202,7 @@ describe("configuration", () => {
       platformUrl: "https://api.example.in",
       tallyUrl: "http://192.168.1.20:9000",
       stateDir: "/data",
+      keyProtection: "auto",
       tallyTimeoutSeconds: 30,
     });
     for (const c of [
@@ -245,7 +247,7 @@ describe("the state file", () => {
     expect((await stat(store.file)).mode & 0o777).toBe(0o600);
     const s = await store.load();
     expect(s).toMatchObject({ tenantId: "tnt_acme", company: COMPANY, lastSeq: 0 });
-    expect(s!.privateKeyPem).toMatch(/^-----BEGIN PRIVATE KEY-----/);
+    expect(s!.privateKeyPem).toMatch(/^-{5}BEGIN PRIVATE KEY-{5}/);
     expect(platform.bodies[0]).not.toContain("PRIVATE");
     await chmod(store.file, 0o644);
     await expect(store.load()).rejects.toThrow(/chmod 600/);
@@ -254,6 +256,108 @@ describe("the state file", () => {
     await store.removeEnrolCode();
     expect(await store.enrolCode()).toBeNull();
     expect(mem.state).toBeNull();
+  });
+});
+
+describe("the key under DPAPI (#136 (4), R1-D-184)", () => {
+  /** A stand-in for Windows PowerShell: "protects" by reversing the bytes, and records each call. */
+  function fakePowerShell(o: { fail?: boolean } = {}) {
+    const calls: Array<{ exe: string; args: readonly string[]; stdin: string }> = [];
+    const run: Runner = async (exe, args, stdin) => {
+      calls.push({ exe, args, stdin });
+      if (o.fail) return { code: 1, stdout: "" };
+      const [data] = stdin.split(" ");
+      return { code: 0, stdout: Buffer.from(data!, "base64").reverse().toString("base64") };
+    };
+    return { run, calls };
+  }
+  const CODE = "tac1.tnt_acme.tga_01JAAAAAAAAAAAAAAAAAAAAAAA." + "A".repeat(43);
+
+  it("keeps a DPAPI blob, never the PEM, and says so at enrolment", async () => {
+    const ps = fakePowerShell();
+    const state = new MemoryStateStore();
+    const platform = fakePlatform();
+    const agent = new TallyAgent({
+      platformUrl: "https://api.example.in",
+      tally: new TallyClient({ url: "http://127.0.0.1:9000" }),
+      state,
+      fetch: platform,
+      keyGuard: new DpapiKeyGuard({ run: ps.run }),
+    });
+    await agent.enrol(CODE);
+    expect(state.state!.privateKeyPem).toBeUndefined();
+    expect(state.state!.privateKeyDpapi).toMatch(/^[A-Za-z0-9+/]+=*$/);
+    expect(state.state!.keyProtection).toBe("dpapi");
+    expect(JSON.parse(platform.bodies[0]!)).toMatchObject({ keyProtection: "dpapi" });
+    // The self-test protects and unprotects once each, through Windows PowerShell by path.
+    expect(ps.calls.map((c) => c.args.at(-1)!.includes("::Protect("))).toEqual([true, false]);
+    for (const c of ps.calls) {
+      expect(c.exe).toBe(WINDOWS_POWERSHELL);
+      expect(c.args.slice(0, 4)).toEqual(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command"]);
+      expect(c.args.at(-1)).toContain("DataProtectionScope]::CurrentUser");
+      // The key travels on standard input only: never in an argument or the script.
+      expect(c.args.join(" ")).not.toContain(c.stdin.split(" ")[0]!);
+      expect(c.args.join(" ")).not.toMatch(/PRIVATE KEY/);
+    }
+    expect(Buffer.from(ps.calls[0]!.stdin.split(" ")[0]!, "base64").toString()).toMatch(
+      /^-{5}BEGIN PRIVATE KEY-{5}/,
+    );
+  });
+
+  it("signs with the key it unprotects", async () => {
+    const ps = fakePowerShell();
+    const state = new MemoryStateStore();
+    const platform = fakePlatform();
+    const o = {
+      platformUrl: "https://api.example.in",
+      tally: new TallyClient({ url: "http://127.0.0.1:9000" }),
+      state,
+      fetch: platform,
+      keyGuard: new DpapiKeyGuard({ run: ps.run }),
+    };
+    await new TallyAgent(o).enrol(CODE);
+    // A fresh agent (a restart) reads the blob and unprotects it before its first request.
+    const seen: Record<string, string>[] = [];
+    const restarted = new TallyAgent({
+      ...o,
+      fetch: async (_u, init) => {
+        seen.push(init.headers);
+        return { status: 204, text: async () => "" };
+      },
+    });
+    await restarted.runOnce().catch(() => undefined);
+    expect(ps.calls.at(-1)!.args.at(-1)).toContain("::Unprotect(");
+    expect(seen[0]?.authorization).toMatch(/^IPB-Agent /);
+  });
+
+  it("falls back to the 0600 file, with a warning on the record, when DPAPI fails", async () => {
+    const ps = fakePowerShell({ fail: true });
+    const state = new MemoryStateStore();
+    const platform = fakePlatform();
+    const lines: string[] = [];
+    await new TallyAgent({
+      platformUrl: "https://api.example.in",
+      tally: new TallyClient({ url: "http://127.0.0.1:9000" }),
+      state,
+      fetch: platform,
+      keyGuard: new DpapiKeyGuard({ run: ps.run }),
+      log: (l) => lines.push(l),
+    }).enrol(CODE);
+    expect(state.state!.privateKeyPem).toMatch(/^-{5}BEGIN PRIVATE KEY-{5}/);
+    expect(state.state!.keyProtection).toBe("file");
+    expect(JSON.parse(platform.bodies[0]!)).toMatchObject({ keyProtection: "file" });
+    expect(lines.join("\n")).toMatch(/DPAPI is not available/);
+  });
+
+  it("without DPAPI (other systems) the enrolment reports the file", async () => {
+    const platform = fakePlatform();
+    await new TallyAgent({
+      platformUrl: "https://api.example.in",
+      tally: new TallyClient({ url: "http://127.0.0.1:9000" }),
+      state: new MemoryStateStore(),
+      fetch: platform,
+    }).enrol(CODE);
+    expect(JSON.parse(platform.bodies[0]!)).toMatchObject({ keyProtection: "file" });
   });
 });
 

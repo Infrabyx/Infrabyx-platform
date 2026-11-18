@@ -9,16 +9,28 @@ import { join } from "node:path";
 import { z } from "zod";
 import type { AgentState, AgentStateStore } from "./agent.js";
 
+// #136 (4), R1-D-184: on Windows the key is a DPAPI blob (`privateKeyDpapi`) for the agent's own
+// account; the PEM (`privateKeyPem`) is the fallback, reported as a warning at enrolment.
+
 const State = z
   .object({
     tenantId: z.string().min(5).max(64),
     agentId: z.string().regex(/^tga_[0-7][0-9A-HJKMNP-TV-Z]{25}$/),
     company: z.string().min(1).max(120),
-    privateKeyPem: z.string().startsWith("-----BEGIN PRIVATE KEY-----").max(4096),
+    privateKeyPem: z.string().startsWith("-----BEGIN PRIVATE KEY-----").max(4096).optional(),
+    privateKeyDpapi: z
+      .string()
+      .regex(/^[A-Za-z0-9+/]+={0,2}$/)
+      .max(8192)
+      .optional(),
+    keyProtection: z.enum(["dpapi", "file"]).optional(),
     lastSeq: z.number().int().min(0),
     pollTimeoutSeconds: z.number().int().min(1).max(55),
   })
-  .strict();
+  .strict()
+  .refine((s) => (s.privateKeyPem === undefined) !== (s.privateKeyDpapi === undefined), {
+    message: "exactly one of privateKeyPem and privateKeyDpapi",
+  });
 
 export class FileStateStore implements AgentStateStore {
   readonly file: string;
@@ -35,7 +47,7 @@ export class FileStateStore implements AgentStateStore {
     }
     if ((st.mode & 0o077) !== 0)
       throw new Error(`${this.file} is readable by other users; chmod 600 it`);
-    return State.parse(JSON.parse(await readFile(this.file, "utf8")));
+    return State.parse(JSON.parse(await readFile(this.file, "utf8"))) as AgentState;
   }
 
   async save(s: AgentState): Promise<void> {

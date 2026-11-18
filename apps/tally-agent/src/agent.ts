@@ -36,16 +36,26 @@ import {
   sameVoucher,
   type TallyVoucher,
 } from "./tally.js";
+import type { DpapiKeyGuard, KeyProtection } from "./keyguard.js";
 
-export const AGENT_VERSION = "1.0.0";
+/** DPAPI entropy for the agent's key blob: binds the blob to this use (#136 (4)). */
+export const KEY_ENTROPY = "infrabyx-tally-agent/key/v1";
+
+export const AGENT_VERSION = "1.1.0";
 
 /** What the agent keeps between runs (the state file, mode 0600). */
 export interface AgentState {
   tenantId: string;
   agentId: string;
   company: string;
-  /** PKCS #8 PEM of the agent's P-256 key; it never leaves the tenant's machine. */
-  privateKeyPem: string;
+  /**
+   * The agent's P-256 key, which never leaves the tenant's machine: a DPAPI blob (Windows) or,
+   * as the fallback, its PKCS #8 PEM. Exactly one of the two (#136 (4)).
+   */
+  privateKeyDpapi?: string;
+  privateKeyPem?: string;
+  /** What the agent reported at enrolment. */
+  keyProtection?: KeyProtection;
   lastSeq: number;
   pollTimeoutSeconds: number;
 }
@@ -82,6 +92,11 @@ export interface TallyAgentOptions {
   state: AgentStateStore;
   fetch?: PlatformFetch;
   now?: () => Date;
+  /**
+   * DPAPI on Windows (#136 (4)); null or absent keeps the key in the 0600 state file, which the
+   * agent reports at enrolment so the platform's record carries a warning.
+   */
+  keyGuard?: DpapiKeyGuard | null;
   /** Called after each loop turn (the heartbeat). */
   onTurn?: () => void | Promise<void>;
   log?: (line: string) => void;
@@ -107,8 +122,18 @@ export class TallyAgent {
   /** Claims an enrolment code with a fresh key; the state is saved before anything else runs. */
   async enrol(code: string): Promise<AgentState> {
     const pair = generateAgentKeyPair();
+    const pem = exportAgentPrivateKey(pair.privateKey);
+    // DPAPI first (protect, unprotect, compare), so the enrolment says how the key is kept.
+    const blob = this.o.keyGuard ? await this.o.keyGuard.selfTest(pem, KEY_ENTROPY) : null;
+    const keyProtection: KeyProtection = blob ? "dpapi" : "file";
+    if (!blob)
+      this.log(
+        this.o.keyGuard
+          ? "warning: DPAPI is not available for this account; the key is kept in the 0600 state file"
+          : "warning: the key is kept in the 0600 state file (no DPAPI on this system)",
+      );
     const body = new TextEncoder().encode(
-      JSON.stringify({ code, jwk: pair.publicJwk, agentVersion: AGENT_VERSION }),
+      JSON.stringify({ code, jwk: pair.publicJwk, agentVersion: AGENT_VERSION, keyProtection }),
     );
     const res = await this.fetch(`${this.o.platformUrl}${TALLY_AGENT_API.enrol}`, {
       method: "POST",
@@ -122,7 +147,8 @@ export class TallyAgent {
       tenantId: out.tenantId,
       agentId: out.agentId,
       company: out.company,
-      privateKeyPem: exportAgentPrivateKey(pair.privateKey),
+      ...(blob ? { privateKeyDpapi: blob } : { privateKeyPem: pem }),
+      keyProtection,
       lastSeq: 0,
       pollTimeoutSeconds: out.pollTimeoutSeconds,
     };
@@ -130,6 +156,13 @@ export class TallyAgent {
     this.key = pair.privateKey;
     this.log(`enrolled as ${out.agentId} for company "${out.company}"`);
     return state;
+  }
+
+  private async privateKeyPem(s: AgentState): Promise<string> {
+    if (s.privateKeyPem) return s.privateKeyPem;
+    if (!s.privateKeyDpapi || !this.o.keyGuard)
+      throw new Error("the agent's key is under DPAPI, which is not available here");
+    return this.o.keyGuard.unprotect(s.privateKeyDpapi, KEY_ENTROPY);
   }
 
   private async call(
@@ -140,7 +173,7 @@ export class TallyAgent {
   ): Promise<{ status: number; text: string }> {
     const s = await this.o.state.load();
     if (!s) throw new Error("the agent is not enrolled");
-    this.key ??= importAgentPrivateKey(s.privateKeyPem);
+    this.key ??= importAgentPrivateKey(await this.privateKeyPem(s));
     // `seq` only grows, across restarts too: it is saved before the request leaves.
     const seq = Math.max(s.lastSeq + 1, (this.o.now?.() ?? new Date()).getTime());
     await this.o.state.save({ ...s, lastSeq: seq });

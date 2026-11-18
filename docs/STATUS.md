@@ -49,7 +49,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Next, in order (R1-D-180):**
   1. PR-FBX-48: `@infrabyx/testing` without `vitest` in its runtime dependencies (the runtime fakes in an entry point that does not load the contract harness).
   2. PR-FBX-49: the realm's MFA floor: built (R1-D-182, this PR); owner question #138. PR-FBX-48 merged as #292 (`8afdde2`; R1-D-181, owner question #137).
-  3. The owner's changes: #132 (4) purpose code and (5) refused reveals as security audit events; #136 (4) the agent's key under DPAPI on Windows, 90-day re-enrolment, the runbook.
+  3. The owner's changes: #136 (4) built (R1-D-184, this PR; owner question #139). #132 (4) purpose code and (5) refused reveals as security audit events: planned (R1-D-183, `docs/phases/R1-owner-changes-plan.md` §A, §B), to build next as `contracts`, `audit` and `rules` minors. PR-FBX-49 merged as #294 (`3a33260`; R1-D-182, owner question #138).
   4. PR-UDF-037 to PR-UDF-046, in order, each planned first.
   5. PR-LDC-46 (inbox snooze), PR-LDC-52 (`toXlsx` layout), each planned first.
   6. **1 Dec waiver check (no reminder task; this line is the only reminder):** on 1 Dec, before the base-image and `sqlite-libs` waivers expire (5, 7, 10 Dec), look for fixed images, and put any unfixed finding to the owner with a recommendation; CVE-2025-6020 (16 Dec) and CVE-2026-112366 (17 Dec) join it. The 15 Dec Keycloak re-scan likewise rests on this file.

@@ -858,6 +858,10 @@ await sink.trialBalance("2026-11-30"); // in paise
 - **Not yet proven.** No real TallyPrime runs in CI: the adapter is tested against a TallyPrime stub and stays off until a sandbox company exists (#128). Run your own pilot against a test company before you turn it on.
 - **Tests.** `TallyPrimeStub` from `@infrabyx/tally-agent/stub` (in this repository) and `accountingContractCases` from `@infrabyx/testing`.
 
+### The agent's key (owner answer #136 (4); R1-D-184)
+
+Take `contracts` and `connectors` (the minors after 1.34.0 and 1.19.0), run `infrabyx-migrate` for `connectors/0008`, and build agent 1.1.0. Show the agent's `warnings` and `rotationDue` (from `TallyAgentService.list` or `get`) in your console: `key_unencrypted` when the agent keeps its key in a file, a rotation notice from day 80, `key_expired` from day 90, when the gateway refuses the agent until it is enrolled again. Give tenants `docs/runbooks/tally-agent.md`: on Windows run the agent as a service under its own account so DPAPI protects the key, re-enrol before day 90, and revoke at once if the machine is lost or compromised.
+
 ## 7cl. Runtime fakes without the test kit (PR-FBX-48; R1-D-181)
 
 The fakes you wire in a fixture environment (below staging) now come from `@infrabyx/fakes`, a package with no `vitest`, Testcontainers or database driver in its tree. `@infrabyx/testing` re-exports the same objects, so test files change nothing.

@@ -246,7 +246,7 @@ describe("enrolment, the agent API and the tables (connectors/0007)", () => {
     const body = new TextEncoder().encode(o.body ?? "");
     const seq = o.seq ?? ++nextSeq;
     const jws = signAgentRequest({
-      privateKey: importAgentPrivateKey(state.privateKeyPem),
+      privateKey: importAgentPrivateKey(state.privateKeyPem!),
       kid: o.kid ?? `${state.tenantId}/${state.agentId}`,
       request: { tenant: state.tenantId, agent: state.agentId, method, path, body },
       seq,
