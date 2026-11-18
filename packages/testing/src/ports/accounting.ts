@@ -166,7 +166,11 @@ export class FakeAccountingSink implements AccountingSinkPort {
 /** Scripts outcomes on the adapter under test (the fake's own controls, or a sandbox's). */
 export interface AccountingScript {
   script(journalId: string, ...outcomes: ScriptedPosting[]): void;
-  settle(journalId: string, outcome: "acknowledge" | "reject"): void;
+  /**
+   * Settles a pending journal. An adapter whose answer comes from elsewhere (the TallyPrime
+   * agent, R1-D-178) may return a promise that resolves once the answer is in; the cases await it.
+   */
+  settle(journalId: string, outcome: "acknowledge" | "reject"): void | Promise<void>;
 }
 
 let n = 0;
@@ -234,7 +238,7 @@ export function accountingContractCases(s: AccountingScript): ContractCase<Accou
         expect(r.reasonCode).toMatch(/^[a-z_]+$/);
         const again = await p.replay(b.journalId);
         expect(again).toMatchObject({ state: "PENDING", attempts: 2, digest: r.digest });
-        s.settle(b.journalId, "acknowledge");
+        await s.settle(b.journalId, "acknowledge");
         expect((await p.status(b.journalId)).state).toBe("ACKNOWLEDGED");
         expect(await code(p.replay(b.journalId))).toBe("IPB-PORT-003");
       },
