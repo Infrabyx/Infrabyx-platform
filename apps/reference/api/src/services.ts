@@ -39,7 +39,7 @@ import {
   fakeKms,
   fixtureTrustDocuments,
   MemoryStorage,
-} from "@infrabyx/testing";
+} from "@infrabyx/fakes";
 import { TrustMirror } from "@infrabyx/trust";
 import { Autonomy, SkillRegistry, TaskRuntime } from "@infrabyx/vidhi";
 import { fileURLToPath } from "node:url";

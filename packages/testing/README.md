@@ -1,6 +1,6 @@
 # @infrabyx/testing
 
-The test kit every product installs as a devDependency: a PostgreSQL test database with the platform migrations, context builders, port fakes, the NN pattern suites, the port contract harness, `migration-lint`, the acceptance-test report and the IPB ESLint plugin.
+The test kit every product installs as a devDependency (runtime fakes for fixture environments come from `@infrabyx/fakes`, which this package re-exports unchanged; PR-FBX-48, R1-D-181): a PostgreSQL test database with the platform migrations, context builders, port fakes, the NN pattern suites, the port contract harness, `migration-lint`, the acceptance-test report and the IPB ESLint plugin.
 
 **Specified by:** `docs/ipb/` — IPB-01 §01.4.2, IPB-01-15 (port contracts), IPB-09-31 and §09.4.6.2–3 (migration lint), IPB-14 §14.5 item 4 (NN suites). Plan: `docs/phases/PL1-plan.md` §10. Decisions PL1-D-02 (D-05: lint rules published here), PL1-D-04 (NN tags).
 

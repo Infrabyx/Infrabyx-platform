@@ -836,6 +836,17 @@ await sink.trialBalance("2026-11-30"); // in paise
 - **Not yet proven.** No real TallyPrime runs in CI: the adapter is tested against a TallyPrime stub and stays off until a sandbox company exists (#128). Run your own pilot against a test company before you turn it on.
 - **Tests.** `TallyPrimeStub` from `@infrabyx/tally-agent/stub` (in this repository) and `accountingContractCases` from `@infrabyx/testing`.
 
+## 7cl. Runtime fakes without the test kit (PR-FBX-48; R1-D-181)
+
+The fakes you wire in a fixture environment (below staging) now come from `@infrabyx/fakes`, a package with no `vitest`, Testcontainers or database driver in its tree. `@infrabyx/testing` re-exports the same objects, so test files change nothing.
+
+1. Take `@infrabyx/fakes` 1.0.0 and `@infrabyx/testing` (the minor after 1.20.0).
+2. In runtime code, change `import { MemoryStorage, FakeKyc, … } from "@infrabyx/testing"` to `from "@infrabyx/fakes"`.
+3. Put `@infrabyx/fakes` in `dependencies` and move `@infrabyx/testing` to `devDependencies`. If a Next.js app lists server-only packages in `next.config`, list `@infrabyx/fakes` there instead of `@infrabyx/testing`.
+4. Run `pnpm audit --prod --audit-level high`: the `@infrabyx/testing > vitest > picomatch` path (GHSA-fc5q-39xc-vjpf) is gone, so the time-boxed audit exception for it can be removed.
+
+Contract cases (`kycContractCases`, `defineContractSuite`, …), the NN suites, `startPostgres` and the vendor stubs stay in `@infrabyx/testing`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

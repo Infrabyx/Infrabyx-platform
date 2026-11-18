@@ -16,7 +16,7 @@ const SERVER_ONLY = [
   "@infrabyx/hlp",
   "@infrabyx/seed",
   "@infrabyx/tenancy",
-  "@infrabyx/testing",
+  "@infrabyx/fakes",
   "@infrabyx/trust",
 ];
 const external = (request) =>

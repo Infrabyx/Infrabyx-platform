@@ -40,6 +40,7 @@
     "@infrabyx/config": "workspace:*",
     "@infrabyx/contracts": "workspace:*",
     "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/fakes": "workspace:*",
     "@infrabyx/seed": "workspace:*",
     "@infrabyx/tenancy": "workspace:*",
     "@testcontainers/postgresql": "12.2.1",
