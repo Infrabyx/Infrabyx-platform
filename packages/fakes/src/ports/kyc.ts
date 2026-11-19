@@ -124,7 +124,8 @@ export class FakeKyc implements KycPort {
 
   async verifyAadhaarOffline(raw: Parameters<KycPort["verifyAadhaarOffline"]>[0]) {
     const r = AadhaarOfflineCheck.parse(raw);
-    if (r.shareCode !== this.fx.aadhaar.shareCode)
+    const kind = r.kind ?? "xml_zip";
+    if (kind === "xml_zip" && r.shareCode !== this.fx.aadhaar.shareCode)
       throw new PortError("IPB-PORT-001", "KYC", {
         adapter: "fake-kyc",
         detail: "the share code does not open the file",
@@ -132,6 +133,7 @@ export class FakeKyc implements KycPort {
       });
     return {
       ...this.ev(),
+      kind,
       signatureValid: r.file.sha256 === this.fx.aadhaar.file.sha256,
       aadhaarLast4: "9012",
       name: this.fx.pan.name,

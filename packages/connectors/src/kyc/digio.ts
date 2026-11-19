@@ -211,6 +211,9 @@ export class DigioKyc implements KycPort {
   ): Promise<AadhaarOfflineResult> {
     await this.guard();
     const r = AadhaarOfflineCheck.parse(raw);
+    // Digio's offline e-KYC call takes the ZIP and its share code; the Secure QR is not verified
+    // here until its path is checked against UIDAI's Secure QR specification (PR-UDF-039, R1-D-190).
+    if (r.kind === "secure_qr") return this.unsupported("verifyAadhaarOffline (secure_qr)");
     const tenant = this.tenant(call);
     const o = await this.o.storage.get(r.file.storageKey);
     if (sha256Hex(o.body) !== r.file.sha256)
@@ -249,6 +252,7 @@ export class DigioKyc implements KycPort {
       : undefined;
     return {
       ...this.evidence(v.id, v.model_version),
+      kind: "xml_zip",
       signatureValid: v.signature_valid === true,
       aadhaarLast4: last4,
       name: d.name,

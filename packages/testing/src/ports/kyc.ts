@@ -87,6 +87,34 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
         await expect(
           p.verifyAadhaarOffline({ file: fx.aadhaar.file, shareCode: fx.aadhaar.wrongShareCode }),
         ).rejects.toMatchObject({ code: "IPB-PORT-001" });
+        expect(r.kind ?? "xml_zip").toBe("xml_zip");
+      },
+    },
+    {
+      name: "verifyAadhaarOffline (PR-UDF-039): the ZIP needs its share code, a Secure QR has none and is verified or refused as unsupported",
+      method: "verifyAadhaarOffline",
+      invoke: (p) =>
+        p.verifyAadhaarOffline({ file: fx.aadhaar.file, shareCode: fx.aadhaar.shareCode }),
+      async run(p) {
+        await expect(p.verifyAadhaarOffline({ file: fx.aadhaar.file })).rejects.toThrow();
+        await expect(
+          p.verifyAadhaarOffline({
+            kind: "secure_qr",
+            file: fx.aadhaar.file,
+            shareCode: fx.aadhaar.shareCode,
+          }),
+        ).rejects.toThrow();
+        const qr = await p.verifyAadhaarOffline({ kind: "secure_qr", file: fx.aadhaar.file }).then(
+          (v) => ({ ok: true as const, v }),
+          (e: { code?: string; meta?: { reason?: string } }) => ({ ok: false as const, e }),
+        );
+        if (qr.ok) {
+          expect(qr.v.kind).toBe("secure_qr");
+          expect(qr.v.aadhaarLast4).toMatch(/^[0-9]{4}$/);
+          noAadhaar(qr.v);
+        } else {
+          expect(qr.e).toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+        }
       },
     },
     {

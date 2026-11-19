@@ -26,6 +26,7 @@ Today a `read` inside `ambient` opens its own read-only transaction on another c
 - **Hash check, stated and tested:** the adapter reads the object from its STORAGE and refuses `IPB-PORT-002` `meta.reason: "hash_mismatch"` when its SHA-256 differs from `KycFileRef.sha256`, before any parse or vendor call. **Digits:** no result field carries more than the last four digits of an Aadhaar number (`maskedUid` is `XXXXXXXX1234`).
 - **Secure QR verification** follows UIDAI's published Secure QR format (the decimal-encoded, compressed payload with UIDAI's signature over it) [VERIFY against UIDAI's Secure QR specification before the adapter path is turned on; until then the Digio and IDfy adapters answer `unsupported` for `secure_qr`, and the in-platform verifier is built only if the specification can be read from the session].
 - **Contract suite:** `kycPortContract` gains a hash-mismatch case and a no-12-digit-run sweep over every result field (shared helper from F).
+- **As built (R1-D-190):** `kind` optional (default `xml_zip`) and `shareCode` optional in the type with a refinement, so no caller breaks; the hash check was already in the Digio adapter and its test (R1-D-24), and every result was already swept by `noAadhaar` in `kycContractCases`; the new case accepts a verified Secure QR or an `unsupported` refusal. uidai.gov.in is outside the session's network, so no in-platform Secure QR verifier.
 
 ## D. PR-UDF-040 — DigiLocker start, evidence, idempotency (`contracts`, `testing`, `connectors` minors)
 

@@ -948,6 +948,14 @@ From `contracts` 1.37.0, `toProblem` adds two RFC 9457 extension members, and le
 - `problemHeaders(problem)` returns `{ "Retry-After": "<n>" }` when the wait is set. Set it on the response with the status, as the reference API's `ProblemFilter` now does.
 - **Udofin:** its own `ProblemFilter` additions (UDF-D-146) can go; keep only the call to `problemHeaders`.
 
+## 7co. The Aadhaar Secure QR beside the Offline e-KYC ZIP (PR-UDF-039; R1-D-190)
+
+From the `contracts` minor that carries PR-UDF-039 (its version is in the STATUS release record), `kyc.verifyAadhaarOffline({ kind, file, shareCode })` names the form: `xml_zip` (the default, with its four-digit share code) or `secure_qr` (no share code; one is refused). The result's `kind` says which was verified.
+
+- The adapter checks the stored object's SHA-256 against `file.sha256` before it parses or sends anything, and refuses a mismatch (`meta.reason: "hash_mismatch"`). No result field carries more than the last four digits (`aadhaarLast4`).
+- **Secure QR is not verified by any platform adapter yet:** Digio and IDfy refuse it with `meta.reason: "unsupported"`, so keep offering the ZIP. `FakeKyc` accepts both forms, so a product can build the Secure QR path below staging now.
+- **Udofin:** no shim to remove; offer the Secure QR only once an adapter verifies it.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
