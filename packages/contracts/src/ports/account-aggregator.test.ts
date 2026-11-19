@@ -8,6 +8,7 @@ import {
   AaConsentRequest,
   aaApprovalUrlAllowed,
   aaFiuMismatch,
+  isRfc9562Uuid,
 } from "./account-aggregator.js";
 
 const now = Date.parse("2026-11-19T00:00:00Z");
@@ -38,21 +39,27 @@ describe("AA_FIU consent request (PR-UDF-050)", () => {
   it("keeps the old request working and takes a FIU and a product artefact", () => {
     expect(AaConsentRequest.safeParse(req()).success).toBe(true);
     const r = AaConsentRequest.parse(
-      req({ fiuId: "udofin-re.fiu-1", consentRef: { kind: "udf.purpose_consent", id: "pcn-1" } }),
+      req({
+        fiuId: "udofin-re.fiu-1",
+        consentArtefact: { kind: "udf.purpose_consent", id: "pcn-1" },
+      }),
     );
     expect(r.fiuId).toBe("udofin-re.fiu-1");
-    expect(r.consentRef).toEqual({ kind: "udf.purpose_consent", id: "pcn-1" });
+    expect(r.consentRef).toBe("cpr_01JA0000000000000000000000");
+    expect(r.consentArtefact).toEqual({ kind: "udf.purpose_consent", id: "pcn-1" });
   });
 
-  it("refuses a malformed FIU id and a malformed consent reference", () => {
+  it("refuses a malformed FIU id, consent reference or consent artefact", () => {
     for (const fiuId of ["x", "-fiu", "fiu-", "fiu id", "fiu@aa", "f".repeat(101), 7])
       expect(AaConsentRequest.safeParse(req({ fiuId })).success, String(fiuId)).toBe(false);
-    for (const consentRef of [
+    for (const consentRef of ["pcn-1", { kind: "udf.consent", id: "pcn-1" }])
+      expect(AaConsentRequest.safeParse(req({ consentRef })).success).toBe(false);
+    for (const consentArtefact of [
       "pcn-1",
       { kind: "cpr", id: "pcn-1" },
       { kind: "udf.consent", id: `pcn-${aadhaarLike()}` },
     ])
-      expect(AaConsentRequest.safeParse(req({ consentRef })).success).toBe(false);
+      expect(AaConsentRequest.safeParse(req({ consentArtefact })).success).toBe(false);
   });
 });
 
@@ -93,5 +100,56 @@ describe("the approval link check (PR-UDF-050)", () => {
     ])
       expect(aaApprovalUrlAllowed(bad, hosts), bad.slice(0, 60)).toBe(false);
     expect(aaApprovalUrlAllowed("https://fiu.setu.co/c/1", [])).toBe(false);
+  });
+
+  it("accepts any RFC 9562 UUID in the link, an all-digit last group included (owner answer #154)", () => {
+    const a = aadhaarLike();
+    for (const ok of [
+      "https://fiu.setu.co/consents/webview/3f2c9a1e-7b4d-4e8a-9c1f-123456789012",
+      "https://fiu.setu.co/consents/webview/3F2C9A1E-7B4D-4E8A-9C1F-ABCDEF012345",
+      "https://fiu.setu.co/c/00000000-0000-0000-0000-000000000000",
+      "https://fiu.setu.co/c/ffffffff-ffff-ffff-ffff-ffffffffffff",
+      "https://fiu.setu.co/c/12345678-1234-1234-1234-123456789012?ref=90123456-7890-1234-5678-901234567890",
+      // The digits are a UUID's last group, not a number standing alone.
+      `https://fiu.setu.co/c/3f2c9a1e-7b4d-4e8a-9c1f-${a}`,
+      `https://fiu.setu.co/c/3f2c9a1e-7b4d-4e8a-9c1f-123456789012#x`,
+    ])
+      expect(aaApprovalUrlAllowed(ok, hosts), ok).toBe(true);
+  });
+
+  it("still refuses a 12-digit run or an Aadhaar-like number outside a UUID", () => {
+    const a = aadhaarLike();
+    const uuid = "3f2c9a1e-7b4d-4e8a-9c1f-123456789012";
+    for (const bad of [
+      `https://fiu.setu.co/c/${uuid}/123456789012`,
+      `https://fiu.setu.co/c/${uuid}?n=${a}`,
+      `https://fiu.setu.co/c/${uuid}?n=${a.slice(0, 4)}-${a.slice(4, 8)}-${a.slice(8)}`,
+      // Not a UUID (a missing group, or joined to more characters): its 12 digits stand alone.
+      "https://fiu.setu.co/c/3f2c9a1e-7b4d-9c1f-123456789012",
+      `https://fiu.setu.co/c/x${uuid}`,
+      `https://fiu.setu.co/c/${uuid}-1`,
+      `https://${uuid}.fiu.setu.co/c/1`,
+      `http://fiu.setu.co/c/${uuid}`,
+    ])
+      expect(aaApprovalUrlAllowed(bad, hosts), bad).toBe(false);
+  });
+
+  it("reads a UUID by RFC 9562's layout and any hex digits", () => {
+    for (const ok of [
+      "3f2c9a1e-7b4d-4e8a-9c1f-123456789012",
+      "00000000-0000-0000-0000-000000000000",
+      "FFFFFFFF-FFFF-FFFF-FFFF-FFFFFFFFFFFF",
+      "01937f2a-1c3b-7d4e-8f90-0123456789ab",
+    ])
+      expect(isRfc9562Uuid(ok), ok).toBe(true);
+    for (const bad of [
+      "3f2c9a1e7b4d4e8a9c1f123456789012",
+      "3f2c9a1e-7b4d-4e8a-9c1f-12345678901",
+      "3f2c9a1e-7b4d-4e8a-9c1f-1234567890123",
+      "3f2c9a1g-7b4d-4e8a-9c1f-123456789012",
+      "{3f2c9a1e-7b4d-4e8a-9c1f-123456789012}",
+      " 3f2c9a1e-7b4d-4e8a-9c1f-123456789012",
+    ])
+      expect(isRfc9562Uuid(bad), bad).toBe(false);
   });
 });

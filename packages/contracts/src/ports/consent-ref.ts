@@ -1,17 +1,19 @@
-// The consent reference a port call carries (Udofin PR-UDF-049, PR-UDF-050; R1-D-203, R1-D-204):
-// the platform's purpose-consent receipt (`cpr_<ULID>`, `@infrabyx/consent` `PurposeConsents`) or
-// a product's own consent artefact (`{ kind, id }`), so a product with its own purpose-consent
-// ledger does not mint a second id. The Ecosystem Spec makes the capturing product the owner of
-// the artefact and its `consentref` (Part 5.2 row 29, Principle 5).
+// A product's own consent artefact on a port call (Udofin PR-UDF-049, PR-UDF-050; R1-D-203,
+// R1-D-204, owner answer #153). `consentRef` stays exactly as it was (the platform's purpose-consent
+// receipt, `cpr_<ULID>`, a required string), so no adapter or caller outside the platform breaks;
+// a call may also carry an optional `consentArtefact: { kind, id }`, the product's own artefact
+// for the same consent. An adapter keeps and echoes the artefact when present, else `consentRef`
+// (`consentInForce`). The Ecosystem Spec makes the capturing product the owner of the artefact and
+// its `consentref` (Part 5.2 row 29, Principle 5).
 //
 // What the platform verifies for a product artefact is its shape only, here, before anything
 // leaves: it cannot look the artefact up, so the product asserts by passing it that the artefact
 // exists, is granted, names the purpose, the RE and the categories, is unexpired and not withdrawn,
 // and the reference is echoed on the answer so the product's own ledger records it
-// ([ASSUMED – owner review] #153). The same holds for a `cpr_` (the port checks its format; the
-// product checks it with `PurposeConsents`). Neither form is sent to a vendor.
+// (owner answer #153). The same holds for a `cpr_` (the port checks its format; the product checks
+// it with `PurposeConsents`). Neither is sent to a vendor.
 //
-// A product reference holds no personal data: its `kind` is a fixed label and its `id` a bounded
+// An artefact holds no personal data: its `kind` is a fixed label and its `id` a bounded
 // identifier, and both are refused when they hold a run of 10 or more digits standing alone (a
 // mobile, account, Aadhaar or VID number; digits inside a run of letters and digits, as in a ULID,
 // are part of that run), anything `findAadhaarLike` finds anywhere (grouped forms included), or a
@@ -31,11 +33,11 @@ export const PRODUCT_CONSENT_ID_REGEX = /^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-
 export const PRODUCT_CONSENT_KIND_MAX = 64;
 export const PRODUCT_CONSENT_ID_MAX = 128;
 
-/** Kinds kept for the platform's own artefacts: a `cpr_` (or `cns_`) goes as the plain string. */
+/** Kinds kept for the platform's own artefacts: a `cpr_` goes in `consentRef`. */
 export const RESERVED_CONSENT_KINDS = ["cpr", "cns"] as const;
 
-/** The fixed label of each way a product reference is refused (the Zod issue's message). */
-export const PRODUCT_CONSENT_REF_REFUSALS = [
+/** The fixed label of each way an artefact is refused (the Zod issue's message). */
+export const CONSENT_ARTEFACT_REFUSALS = [
   "consent_kind_invalid",
   "consent_kind_reserved",
   "consent_id_invalid",
@@ -44,19 +46,19 @@ export const PRODUCT_CONSENT_REF_REFUSALS = [
   "consent_ref_aadhaar_like",
   "consent_ref_pan_like",
 ] as const;
-export type ProductConsentRefRefusal = (typeof PRODUCT_CONSENT_REF_REFUSALS)[number];
+export type ConsentArtefactRefusal = (typeof CONSENT_ARTEFACT_REFUSALS)[number];
 
 const LONG_DIGIT_RUN = /(?<![A-Za-z0-9])[0-9]{10,}(?![A-Za-z0-9])/;
 const PAN_SHAPED = /(?<![A-Za-z0-9])[A-Z]{5}[0-9]{4}[A-Z](?![A-Za-z0-9])/;
 
 /**
- * Why `{ kind, id }` is not an acceptable product consent reference, as a fixed label, or
+ * Why `{ kind, id }` is not an acceptable consent artefact, as a fixed label, or
  * `undefined` when it is. The Zod schema below reports the same labels.
  */
-export function productConsentRefProblem(
+export function consentArtefactProblem(
   kind: string,
   id: string,
-): ProductConsentRefRefusal | undefined {
+): ConsentArtefactRefusal | undefined {
   if (
     kind.length < 3 ||
     kind.length > PRODUCT_CONSENT_KIND_MAX ||
@@ -77,52 +79,46 @@ export function productConsentRefProblem(
 }
 
 /** A product's own consent artefact: which ledger (`kind`) and its id there. */
-export const ProductConsentRef = z
+export const ConsentArtefact = z
   .object({
     kind: z.string().max(PRODUCT_CONSENT_KIND_MAX),
     id: z.string().max(PRODUCT_CONSENT_ID_MAX),
   })
   .strict()
   .superRefine((r, ctx) => {
-    const problem = productConsentRefProblem(r.kind, r.id);
+    const problem = consentArtefactProblem(r.kind, r.id);
     if (problem) ctx.addIssue({ code: "custom", message: problem });
   });
-export type ProductConsentRef = z.infer<typeof ProductConsentRef>;
+export type ConsentArtefact = z.infer<typeof ConsentArtefact>;
 
-/** What a port's `consentRef` accepts: a `cpr_` receipt, or a product's own artefact. */
-export const PortConsentRef = z.union([ConsentReceiptRef, ProductConsentRef]);
-export type PortConsentRef = z.input<typeof PortConsentRef>;
-
-export function isProductConsentRef(ref: PortConsentRef): ref is ProductConsentRef {
-  return typeof ref === "object" && ref !== null;
-}
-
-/**
- * The reference as text: a `cpr_` unchanged, a product artefact as `<kind>:<id>`. Unambiguous,
- * since neither part holds a colon and a `cpr_` never does. What a result's `consentRef` carries.
- */
-export function consentRefText(ref: PortConsentRef): string {
-  return isProductConsentRef(ref) ? `${ref.kind}:${ref.id}` : ref;
-}
-
-/** Reads `consentRefText`'s answer back, or `undefined` when it is neither form. */
-export function parseConsentRefText(text: string): PortConsentRef | undefined {
-  if (CONSENT_RECEIPT_REF_REGEX.test(text)) return text;
-  const at = text.indexOf(":");
-  if (at < 0) return undefined;
-  const ref = { kind: text.slice(0, at), id: text.slice(at + 1) };
-  return productConsentRefProblem(ref.kind, ref.id) === undefined ? ref : undefined;
-}
-
-/**
- * What an answer echoes of the request's consent: `consentRef` as text, and `productConsentRef`
- * (a copy) only when the product form was used, so a `cpr_` answer is exactly as before.
- */
-export function consentRefEcho(ref: PortConsentRef): {
+/** What a port request carries of its consent (BUREAU, AA_FIU). */
+export interface ConsentOnCall {
   consentRef: string;
-  productConsentRef?: ProductConsentRef;
+  consentArtefact?: ConsentArtefact | undefined;
+}
+
+/**
+ * The consent a call is made under, as text: the artefact (`<kind>:<id>`) when present, else
+ * `consentRef`. Unambiguous, since neither part of an artefact holds a colon and a `cpr_` never
+ * does. What an adapter keys or keeps the call by.
+ */
+export function consentInForce(c: ConsentOnCall): string {
+  return c.consentArtefact ? `${c.consentArtefact.kind}:${c.consentArtefact.id}` : c.consentRef;
+}
+
+/**
+ * What an answer echoes of the request's consent: `consentRef` exactly as asked, and
+ * `consentArtefact` (a copy) only when the request carried one, so an answer to a call without it
+ * is exactly as before.
+ */
+export function consentEcho(c: ConsentOnCall): {
+  consentRef: string;
+  consentArtefact?: ConsentArtefact;
 } {
-  return isProductConsentRef(ref)
-    ? { consentRef: consentRefText(ref), productConsentRef: { kind: ref.kind, id: ref.id } }
-    : { consentRef: ref };
+  return c.consentArtefact
+    ? {
+        consentRef: c.consentRef,
+        consentArtefact: { kind: c.consentArtefact.kind, id: c.consentArtefact.id },
+      }
+    : { consentRef: c.consentRef };
 }

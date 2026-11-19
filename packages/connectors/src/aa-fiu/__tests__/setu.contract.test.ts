@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
   accountAggregatorContractCases,
-  contractProductConsentRef,
+  contractConsentArtefact,
   defineContractSuite,
   MemoryStorage,
   startSetuAaStub,
@@ -202,10 +202,29 @@ describe("R1-D-61 the Setu AA adapter", () => {
     }
   });
 
+  it("accepts an approval link whose consent UUID has an all-digit last group (owner answer #154)", async () => {
+    const id = "3f2c9a1e-7b4d-4e8a-9c1f-123456789012";
+    stub.nextConsentId(id);
+    const consents = new Map<string, SetuConsentRecord>();
+    const c = await make(consents).requestConsent(ask());
+    expect(c.consentId).toBe(id);
+    expect(c.approvalUrl).toBe(`https://fiu-sandbox.setu.co/consents/webview/${id}`);
+    expect(consents.has(id)).toBe(true);
+    // The same twelve digits standing alone in a link are still refused.
+    stub.linkBase("https://fiu-sandbox.setu.co/consents/webview/123456789012/");
+    try {
+      await expect(make().requestConsent(ask())).rejects.toMatchObject({
+        meta: { reason: "approval_url_not_allowed" },
+      });
+    } finally {
+      stub.linkBase(undefined);
+    }
+  });
+
   it("never sends a product's own consent artefact to Setu (PR-UDF-050)", async () => {
-    const ref = contractProductConsentRef();
+    const ref = contractConsentArtefact();
     const before = stub.requests.length;
-    const c = await make().requestConsent({ ...ask(), consentRef: ref });
+    const c = await make().requestConsent({ ...ask(), consentArtefact: ref });
     expect(c.state).toBe("PENDING");
     for (const x of stub.requests.slice(before)) {
       expect(x.body.toString("utf8")).not.toContain(ref.id);

@@ -11,7 +11,7 @@
 import { z } from "zod";
 import { findAadhaarLike } from "../aadhaar.js";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
-import { PortConsentRef } from "./consent-ref.js";
+import { ConsentArtefact } from "./consent-ref.js";
 import { digilockerReturnUrlAllowed } from "./kyc.js";
 import { classed } from "./payload-class.js";
 
@@ -65,16 +65,31 @@ export function aaFiuMismatch(asked: string | undefined, reported: string | unde
 }
 
 /**
- * True when `url` may be an AA's customer approval page for an adapter built with `hosts`: as a
- * DigiLocker return address (`digilockerReturnUrlAllowed`: `https:`, no user information, no
- * 12-digit run, a host equal to one of `hosts`, exact names only), and no Aadhaar-like number.
+ * An RFC 9562 UUID standing alone: 8-4-4-4-12 hex digits in either case, any version or variant
+ * (the Nil and Max UUIDs included), and any hex digits in each group, so a last group of 12 decimal
+ * digits is still a UUID (owner answer #154). Not part of a longer run of letters, digits or hyphens.
+ */
+export const RFC9562_UUID =
+  /(?<![0-9A-Za-z-])[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(?![0-9A-Za-z-])/g;
+
+/** True when `s` is exactly one RFC 9562 UUID (see `RFC9562_UUID`). */
+export function isRfc9562Uuid(s: string): boolean {
+  return /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/.test(s);
+}
+
+/**
+ * True when `url` may be an AA's customer approval page for an adapter built with `hosts`:
+ * `https:`, no user information, a host equal to one of `hosts` (exact names only), at most 2,048
+ * characters, and, once every RFC 9562 UUID in it is set aside (an AA's consent and link ids are
+ * UUIDs, whose last group may be all digits; owner answer #154), no 12-digit run and no
+ * Aadhaar-like number anywhere else.
  */
 export function aaApprovalUrlAllowed(url: string, hosts: readonly string[]): boolean {
-  return (
-    url.length <= 2048 &&
-    digilockerReturnUrlAllowed(url, hosts) &&
-    findAadhaarLike(url).length === 0
-  );
+  if (url.length > 2048) return false;
+  const masked = url.replace(RFC9562_UUID, "uuid");
+  // The host, scheme and user-information rules are DigiLocker's (`digilockerReturnUrlAllowed`),
+  // applied to the masked text so a UUID's digits are not read as a 12-digit run.
+  return digilockerReturnUrlAllowed(masked, hosts) && findAadhaarLike(masked).length === 0;
 }
 const DURATION = z
   .object({ unit: z.enum(["DAY", "MONTH", "YEAR", "INF"]), value: z.number().int().min(0) })
@@ -86,12 +101,13 @@ export const AaConsentRequest = z
     customerHandle: regulated(z.string().regex(/^[A-Za-z0-9._-]{3,60}@[a-z0-9-]{2,30}$/)),
     /** The product's own reference for the customer. */
     subjectRef: z.string().min(3).max(200),
+    /** The product's consent receipt for asking (`cpr_…`). */
+    consentRef: z.string().regex(/^cpr_[0-7][0-9A-HJKMNP-TV-Z]{25}$/),
     /**
-     * The product's consent for asking: the platform's receipt (`cpr_…`) or its own artefact
-     * (`{ kind, id }`, PR-UDF-050; its shape only is checked, see `consent-ref.ts`). Never sent to
-     * the AA.
+     * The product's own consent artefact for asking (PR-UDF-050; its shape only is checked, see
+     * `consent-ref.ts`). Kept in place of `consentRef` when present. Never sent to the AA.
      */
-    consentRef: PortConsentRef,
+    consentArtefact: ConsentArtefact.optional(),
     /**
      * The FIU (the RE) the consent is for (PR-UDF-050). When given, a consent the AA reports for
      * another FIU, or for none, is refused `fiu_mismatch` before anything is stored or returned,

@@ -2,15 +2,15 @@
 // R1-D-43, ADR-0003). A pull from one of the four credit information companies, routed per tenant
 // (`int.bureau.<cic>.enabled`, registered with the first adapter). Every request and
 // result is REGULATED and stays `IN`. A pull needs the product's recorded consent receipt for it
-// (`PurposeConsents`, PR-FBX-26), or the product's own consent artefact (`{ kind, id }`, PR-UDF-049),
-// and is refused without one. The subject travels by reference and
+// (`PurposeConsents`, PR-FBX-26) and is refused without one; it may also carry the product's own
+// consent artefact (`consentArtefact: { kind, id }`, PR-UDF-049). The subject travels by reference and
 // its identifiers in a REGULATED schema; the CIC's raw report goes to STORAGE with its SHA-256, and
 // the result carries a normalised summary in integer paise. Vendor adapters wait for the owner's
 // sandbox documents and accounts; the fake in @infrabyx/testing and the contract cases define the
 // behaviour every adapter must keep.
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
-import { PortConsentRef, type ProductConsentRef } from "./consent-ref.js";
+import { ConsentArtefact } from "./consent-ref.js";
 import { PAN } from "./kyc.js";
 import { classed } from "./payload-class.js";
 
@@ -61,12 +61,14 @@ export const BureauPullRequest = z
     bureau: z.enum(CREDIT_BUREAUS),
     enquiry: z.enum(ENQUIRY_TYPES),
     purpose: z.enum(BUREAU_PURPOSES),
+    /** The product's consent receipt for this pull (`cpr_…`); a pull without one is refused. */
+    consentRef: z.string().regex(/^cpr_[0-7][0-9A-HJKMNP-TV-Z]{25}$/),
     /**
-     * The consent for this pull: the platform's receipt (`cpr_…`) or the product's own artefact
-     * (`{ kind, id }`, PR-UDF-049; its shape only is checked, see `consent-ref.ts`). A pull without
-     * one is refused. Never sent to the CIC.
+     * The product's own consent artefact for this pull (PR-UDF-049; its shape only is checked, see
+     * `consent-ref.ts`). Kept by the adapter in place of `consentRef` when present, and echoed beside
+     * it. Never sent to the CIC.
      */
-    consentRef: PortConsentRef,
+    consentArtefact: ConsentArtefact.optional(),
     /** Loan amount enquired for, in integer paise (hard enquiries). */
     amountPaise: z.number().int().positive().max(1e14).optional(),
     subject: BureauSubject,
@@ -123,10 +125,10 @@ export interface BureauReport extends BureauEvidence {
   /** `ready`, or `pending` until the CIC's webhook or a poll completes it. */
   state: "ready" | "pending" | "no_hit";
   pullId: string;
-  /** The request's consent as text (`consentRefText`): a `cpr_` unchanged, else `<kind>:<id>`. */
+  /** The request's consent receipt (`cpr_…`), as asked. */
   consentRef: string;
-  /** The product's own artefact, when the request named one (PR-UDF-049). */
-  productConsentRef?: ProductConsentRef;
+  /** The product's own artefact, when the request carried one (PR-UDF-049). */
+  consentArtefact?: ConsentArtefact;
   /** The CIC's raw report in STORAGE (absent while pending or on no hit). */
   report?: BureauFileRef;
   summary?: BureauSummary;

@@ -25,9 +25,9 @@ import { PortError } from "@infrabyx/contracts/errors";
 import {
   BureauPullRequest,
   DPD_BUCKETS,
-  consentRefEcho,
-  parseConsentRefText,
+  consentEcho,
   type AdapterDescriptor,
+  type ConsentArtefact,
   type BureauReport,
   type BureauSummary,
   type CreditBureauPort,
@@ -51,8 +51,9 @@ const PAN_LIKE = /[A-Z]{5}[0-9]{4}[A-Z]/;
 export interface CibilPullRecord {
   requestId: string;
   reportPrefix: string;
-  /** The request's consent as text (`consentRefText`): a `cpr_`, or a product's `<kind>:<id>`. */
   consentRef: string;
+  /** The product's own consent artefact, when the request carried one (PR-UDF-049). */
+  consentArtefact?: ConsentArtefact;
   enquiry: EnquiryType;
 }
 
@@ -214,12 +215,6 @@ export function cibilEventPullId(body: unknown): string | undefined {
   return typeof id === "string" && /^bpl_[0-9A-HJKMNP-TV-Z]{26}$/.test(id) ? id : undefined;
 }
 
-/** The record's consent text echoed as the request named it (PR-UDF-049); never sent to CIBIL. */
-const consentEcho = (text: string) => {
-  const ref = parseConsentRefText(text);
-  return ref === undefined ? { consentRef: text } : consentRefEcho(ref);
-};
-
 const refused = (detail: string, reason: string): PortError =>
   new PortError("IPB-PORT-001", PORT, {
     adapter: ADAPTER,
@@ -282,7 +277,8 @@ export class CibilBureau implements CreditBureauPort {
       bureau: "cibil" as const,
       enquiry: rec.enquiry,
       pullId,
-      ...consentEcho(rec.consentRef),
+      // The consent as the request named it (PR-UDF-049); never sent to CIBIL.
+      ...consentEcho(rec),
     };
     if (a.status === "PENDING") return { ...base, state: "pending" };
     if (a.status === "NO_HIT") return { ...base, state: "no_hit" };
@@ -341,7 +337,7 @@ export class CibilBureau implements CreditBureauPort {
     const rec: CibilPullRecord = {
       requestId: a.requestId,
       reportPrefix: r.reportPrefix,
-      consentRef: consentRefEcho(r.consentRef).consentRef,
+      ...consentEcho(r),
       enquiry: r.enquiry,
     };
     await this.o.pulls.set(pullId, rec);

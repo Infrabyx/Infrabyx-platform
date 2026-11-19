@@ -24,6 +24,8 @@ export interface SetuAaStub extends VendorStub {
   reportFiu(consentId: string, fiuId: string | undefined): void;
   /** Test hook: the base of the approval links of the next consents (undefined: the default). */
   linkBase(base: string | undefined): void;
+  /** Test hook: the id of the next consent (once; then random again). */
+  nextConsentId(id: string): void;
 }
 
 interface Consent {
@@ -37,15 +39,12 @@ interface Consent {
 }
 
 /**
- * A random UUID-shaped id, as Setu's ids are. Never one whose last group is all digits: a link
- * holding it would be a 12-digit run, which the adapter refuses (and so would a test, by chance).
+ * A random UUID, as Setu's ids are (any hex digits: a last group of 12 decimal digits is a valid
+ * UUID too, and the adapter accepts it in a link; owner answer #154).
  */
 const randomUUID = (): string => {
-  for (;;) {
-    const h = toHex(randomBytes(16));
-    if (/^[0-9]{12}$/.test(h.slice(20))) continue;
-    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-  }
+  const h = toHex(randomBytes(16));
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
 };
 
 const DEFAULT_LINK_BASE = "https://fiu-sandbox.setu.co/consents/webview/";
@@ -66,6 +65,7 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
   const sessions = new Map<string, { consentId: string; reads: number }>();
   let pending = 0;
   let base = DEFAULT_LINK_BASE;
+  let forcedId: string | undefined;
   const fiuId = "setu-stub-fiu";
   const consentBody = (c: Consent) => ({
     id: c.id,
@@ -103,7 +103,8 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
         !b.purpose?.code
       )
         return { status: 400, body: { errorCode: "BadRequest" } };
-      const id = randomUUID();
+      const id = forcedId ?? randomUUID();
+      forcedId = undefined;
       const c: Consent = {
         id,
         status: "PENDING",
@@ -194,6 +195,9 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
     },
     linkBase(next: string | undefined) {
       base = next ?? DEFAULT_LINK_BASE;
+    },
+    nextConsentId(id: string) {
+      forcedId = id;
     },
   });
   return ref.s;
