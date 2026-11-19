@@ -8,6 +8,7 @@
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed } from "./payload-class.js";
+import { verhoeffValid } from "../search-refusal.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
 
@@ -24,6 +25,7 @@ export const KYC_METHODS = [
   "bank_account",
   "ovd_ocr",
   "aml_screen",
+  "aadhaar_otp",
 ] as const;
 export type KycMethod = (typeof KYC_METHODS)[number];
 
@@ -133,6 +135,78 @@ export function digilockerReturnUrlAllowed(url: string, hosts: readonly string[]
   return hosts.some((h) => h.toLowerCase() === host);
 }
 
+// ---- Aadhaar OTP e-KYC (PR-UDF-041; R1-D-194) ----------------------------------------------------
+
+/** What the resident gives for an OTP e-KYC: the Aadhaar number or a Virtual ID. */
+export const AADHAAR_UID_KINDS = ["AADHAAR", "VID"] as const;
+export type AadhaarUidKind = (typeof AADHAAR_UID_KINDS)[number];
+
+/**
+ * True when `uid` is a well-formed number of its kind: an Aadhaar number is 12 digits, the first 2
+ * to 9, with a valid Verhoeff check digit; a Virtual ID is 16 digits with a valid Verhoeff check
+ * digit. Digits only: a grouped form (`2345 6789 0124`, `2345-6789-0124`) is refused, so the
+ * product strips spaces and hyphens before the call and nothing else is ever guessed at.
+ */
+export function aadhaarUidValid(uid: string, kind: AadhaarUidKind): boolean {
+  const shape = kind === "AADHAAR" ? /^[2-9][0-9]{11}$/ : /^[0-9]{16}$/;
+  return shape.test(uid) && verhoeffValid(uid);
+}
+
+/**
+ * The fixed `meta.reason` labels of an Aadhaar OTP refusal (PR-UDF-041), each definite:
+ * `uid_invalid` (the number or VID is malformed, or UIDAI does not know it), `mobile_not_linked`
+ * (no mobile number is linked to it, so no OTP can be sent), `otp_invalid` (the code is wrong),
+ * `otp_expired` (the transaction expired, was used, or is not known), `not_configured` (the adapter
+ * was not built for a notified reporting entity, or lacks its KUA set-up).
+ */
+export const AADHAAR_OTP_REFUSALS = [
+  "uid_invalid",
+  "mobile_not_linked",
+  "otp_invalid",
+  "otp_expired",
+  "not_configured",
+] as const;
+export type AadhaarOtpRefusal = (typeof AADHAAR_OTP_REFUSALS)[number];
+
+/**
+ * Ask UIDAI, through the adapter's KUA, to send an OTP to the mobile linked to `uid`. Only a
+ * reporting entity notified under PML Act s.11A may use Aadhaar OTP e-KYC (KYC Directions 2025 para
+ * 23 proviso (i) [VERIFY the paragraph against the Directions as published]); an adapter not built
+ * with `notifiedEntity: true` refuses every call `not_configured` before any vendor call. `uid` is
+ * REGULATED: it goes to the KUA and nowhere else, never into an answer, an error, a log or a stored
+ * row, and the adapter drops it once the call returns. A `uid` that is not `aadhaarUidValid` is
+ * refused `uid_invalid` before any vendor call.
+ */
+export const AadhaarOtpRequest = z
+  .object({
+    uid: regulated(z.string().max(64)),
+    uidKind: classed(z.enum(AADHAAR_UID_KINDS), "INTERNAL"),
+    /** The resident's consent to the e-KYC, as the product recorded it. */
+    consent: classed(
+      z
+        .object({
+          /** The version of the consent text shown. */
+          version: z.string().min(1).max(50),
+          /** SHA-256 of the consent text shown. */
+          textHash: z.string().regex(/^[0-9a-f]{64}$/),
+          /** When the resident consented (ISO 8601). */
+          at: z.iso.datetime({ offset: true }),
+        })
+        .strict(),
+      "INTERNAL",
+    ),
+  })
+  .strict();
+
+/** Verify the OTP the resident received; `otp` is UIDAI's six-digit code. */
+export const AadhaarOtpVerify = z
+  .object({
+    /** The transaction `aadhaarOtpRequest` returned. */
+    txn: regulated(z.string().min(8).max(200)),
+    otp: regulated(z.string().regex(/^[0-9]{6}$/)),
+  })
+  .strict();
+
 export const CKYC_ID_TYPES = [
   "PAN",
   "PASSPORT",
@@ -239,6 +313,28 @@ export interface AadhaarOfflineResult extends KycEvidence {
   photo?: KycFileRef;
   /** When UIDAI generated the file (the 3-working-day window is the product's rule). */
   generatedAt: string;
+}
+
+/** An OTP sent by `aadhaarOtpRequest` (PR-UDF-041). */
+export interface AadhaarOtpStart extends KycEvidence {
+  /** The KUA's transaction handle, to pass to `aadhaarOtpVerify`; carries no 12-digit run. */
+  txn: string;
+  /** When the OTP can no longer be verified (ISO 8601). */
+  expiresAt: string;
+}
+
+/** A verified Aadhaar OTP e-KYC (PR-UDF-041). No field carries a 12-digit or 16-digit run. */
+export interface AadhaarOtpResult extends KycEvidence {
+  /**
+   * UIDAI's signed e-KYC response as the KUA returned it, written unchanged to the STORAGE the
+   * adapter was built with, under the call's tenant and REGULATED, with its SHA-256. The platform's
+   * adapters refuse to store a response that carries an Aadhaar number or VID (R1-D-194).
+   */
+  ekyc: KycFileRef;
+  /** UIDAI's signature on the response as the KUA checked it; `null` when it does not report it. */
+  signatureValid: boolean | null;
+  /** The last four digits of the Aadhaar number (for a VID too); never more of it. */
+  uidLast4: string;
 }
 
 /** A consent session started with `startDigilocker` (PR-UDF-040). */
@@ -384,6 +480,30 @@ export interface KycPort extends Port {
     req: z.infer<typeof DigilockerPull>,
     call?: PortCall,
   ): Promise<DigilockerDocument[]>;
+  /**
+   * Aadhaar OTP e-KYC, step one (PR-UDF-041; see `AadhaarOtpRequest`): UIDAI sends an OTP to the
+   * resident's linked mobile, and the answer is the transaction to verify and its expiry. Refusals,
+   * all definite: `not_configured`, `uid_invalid`, `mobile_not_linked`. Each call is a new
+   * transaction. Optional on the interface so an implementer outside the platform does not break in
+   * a minor; every platform adapter and the fake provide it.
+   */
+  aadhaarOtpRequest?(
+    req: z.infer<typeof AadhaarOtpRequest>,
+    call?: PortCall,
+  ): Promise<AadhaarOtpStart>;
+  /**
+   * Step two: verify the OTP; UIDAI's signed e-KYC response goes to the adapter's STORAGE and the
+   * answer carries its reference, the signature result and the last four digits only. Refusals, all
+   * definite: `not_configured`, `otp_invalid`, `otp_expired` (expired, used or unknown). Idempotent
+   * on `call.idempotencyKey`: a retry with the same key and request returns the first answer (a
+   * result, or an `otp_invalid` or `otp_expired` refusal) without a new vendor call; the same key
+   * with another code or transaction is `IPB-PORT-004` (`meta.reason: "idempotency_conflict"`).
+   * The platform adapters keep a key for 24 hours.
+   */
+  aadhaarOtpVerify?(
+    req: z.infer<typeof AadhaarOtpVerify>,
+    call?: PortCall,
+  ): Promise<AadhaarOtpResult>;
   ckycSearch(req: z.infer<typeof CkycSearch>, call?: PortCall): Promise<CkycSearchResult>;
   ckycDownload(req: z.infer<typeof CkycDownload>, call?: PortCall): Promise<CkycRecord>;
   /** Start a V-CIP session in a VIDEO_MEET room; the result is read back with `vcipStatus`. */

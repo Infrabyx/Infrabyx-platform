@@ -18,7 +18,13 @@ import {
   type KycFixtures,
 } from "@infrabyx/testing";
 import { DigioKyc } from "../digio.js";
-import { IdfyKyc, mapIdfyPan, mapIdfyScore } from "../idfy.js";
+import {
+  IdfyKyc,
+  mapIdfyAadhaarOtpRefusal,
+  mapIdfyAadhaarOtpVerify,
+  mapIdfyPan,
+  mapIdfyScore,
+} from "../idfy.js";
 import { kycMethodRouter } from "../routing.js";
 
 let idfy: IdfyKycStub;
@@ -44,6 +50,15 @@ beforeAll(async () => {
       other: await put(idfy.faces.other),
     },
     frames: await Promise.all(idfy.frames.map(put)),
+    aadhaarOtp: {
+      ...idfy.aadhaarOtp,
+      notNotified: () => ({
+        port: make({ notifiedEntity: false }),
+        vendorCalls: () => idfy.requests.length,
+      }),
+      vendorCalls: () => idfy.requests.length,
+      expire: (_p, txn) => idfy.expireAadhaarOtp(txn),
+    },
   };
 });
 afterAll(async () => {
@@ -52,21 +67,25 @@ afterAll(async () => {
 });
 
 let enabled = true;
-const make = () =>
+const make = (over: Partial<ConstructorParameters<typeof IdfyKyc>[0]> = {}) =>
   new IdfyKyc({
     storage,
     enabled: () => enabled,
     accountId: () => idfy.accountId,
     apiKey: () => idfy.apiKey,
+    currentTenant: () => "tnt_kyc",
+    // Built for a notified entity, so the Aadhaar OTP cases run (PR-UDF-041).
+    notifiedEntity: true,
     baseUrl: idfy.url,
     allowLoopbackHttp: true,
+    ...over,
   });
 
 describe("@IPB-01-15 KYC hermetic leg (IDfy stub)", () => {
   const cases = kycContractCases(
     new Proxy({} as KycFixtures, { get: (_t, k) => fixtures[k as keyof KycFixtures] }),
   );
-  defineContractSuite("KYC", make, cases, { leg: "hermetic" });
+  defineContractSuite("KYC", () => make(), cases, { leg: "hermetic" });
 });
 
 describe("R1-D-45 IDfy KYC behind its flag, by reference", () => {
@@ -181,5 +200,108 @@ describe("PR-FBX-24 per-method KYC routing: Digio first, IDfy second", () => {
     expect(() => kycMethodRouter({ adapters: [make()], order: { pan: ["nobody"] } })).toThrow(
       /unknown adapter/,
     );
+  });
+});
+
+describe("PR-UDF-041 IDfy Aadhaar OTP e-KYC for a notified RE", () => {
+  const consent = { version: "1.0", textHash: "cd".repeat(32), at: "2026-11-19T05:00:00Z" };
+
+  it("is off by default: not_configured before any request", async () => {
+    const before = idfy.requests.length;
+    const p = new IdfyKyc({
+      storage,
+      enabled: () => true,
+      accountId: () => idfy.accountId,
+      apiKey: () => idfy.apiKey,
+      baseUrl: idfy.url,
+      allowLoopbackHttp: true,
+    });
+    await expect(
+      p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
+    ).rejects.toMatchObject({ meta: { reason: "not_configured", definite: true } });
+    await expect(p.aadhaarOtpVerify({ txn: "TXN0000000001", otp: "123456" })).rejects.toMatchObject(
+      { meta: { reason: "not_configured" } },
+    );
+    expect(idfy.requests.length).toBe(before);
+  });
+
+  it("stores the e-KYC under the tenant, REGULATED, and refuses one that carries the number", async () => {
+    const p = make();
+    const s = await p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.vid, uidKind: "VID", consent });
+    const sent = idfy.requests.at(-1)!.json() as { data: Record<string, string> };
+    expect(sent.data).toMatchObject({
+      id_type: "vid",
+      id_number: idfy.aadhaarOtp.vid,
+      consent: "Y",
+    });
+    const r = await p.aadhaarOtpVerify(
+      { txn: s.txn, otp: idfy.aadhaarOtp.otp },
+      { tenantId: "tnt_other" },
+    );
+    expect(r).toMatchObject({
+      adapter: "idfy-kyc",
+      signatureValid: true,
+      uidLast4: idfy.aadhaarOtp.uid.slice(-4),
+    });
+    const o = await storage.get(r.ekyc.storageKey);
+    expect(r.ekyc.storageKey).toMatch(/^tenant\/tnt_other\/kyc\//);
+    expect(o.meta.bucketClass).toBe("REGULATED");
+    expect(sha256Hex(o.body)).toBe(r.ekyc.sha256);
+    const t = await p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent });
+    idfy.ekycWithNumberOnce(idfy.aadhaarOtp.uid);
+    await expect(
+      p.aadhaarOtpVerify({ txn: t.txn, otp: idfy.aadhaarOtp.otp }),
+    ).rejects.toMatchObject({
+      meta: { reason: "ekyc_holds_number" },
+    });
+  });
+
+  it("maps the stub-shaped answers conservatively", () => {
+    expect(mapIdfyAadhaarOtpRefusal({ error: "INVALID_ID" })).toBe("uid_invalid");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "MOBILE_NOT_LINKED" })).toBe("mobile_not_linked");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "TRANSACTION_NOT_FOUND" })).toBe("otp_expired");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "INVALID_OTP" })).toBe("otp_invalid");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "BAD_REQUEST" })).toBeUndefined();
+    expect(() =>
+      mapIdfyAadhaarOtpVerify({ aadhaar_last_4: "12345", ekyc_xml: "PEt5Yz4=" }),
+    ).toThrow();
+    expect(mapIdfyAadhaarOtpVerify({ aadhaar_last_4: "1234", ekyc_xml: "PEt5Yz4=" })).toMatchObject(
+      {
+        uidLast4: "1234",
+        signatureValid: null,
+      },
+    );
+  });
+
+  it("the router sends the OTP and its verify to the same adapter, and a not_configured refusal is final", async () => {
+    const notified = new DigioKyc({
+      storage,
+      consents: new MemoryReplayStore(),
+      enabled: () => false,
+      clientId: () => dg.clientId,
+      clientSecret: () => dg.clientSecret,
+      currentTenant: () => "tnt_kyc",
+      notifiedEntity: true,
+      baseUrl: dg.url,
+      allowLoopbackHttp: true,
+    });
+    // Digio is off: the router falls through to IDfy for both steps.
+    const k = kycMethodRouter({ adapters: [notified, make()] });
+    const s = await k.aadhaarOtpRequest!({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent });
+    expect(s.adapter).toBe("idfy-kyc");
+    expect((await k.aadhaarOtpVerify!({ txn: s.txn, otp: idfy.aadhaarOtp.otp })).adapter).toBe(
+      "idfy-kyc",
+    );
+    // Not notified is the RE's answer, not an outage: never retried at the next adapter.
+    const before = idfy.requests.length;
+    const plain = make({ notifiedEntity: false });
+    const unnotified: KycPort = Object.assign(Object.create(plain) as KycPort, {
+      descriptor: { ...plain.descriptor, adapter: "idfy-unnotified" },
+    });
+    const strict = kycMethodRouter({ adapters: [unnotified, make()] });
+    await expect(
+      strict.aadhaarOtpRequest!({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
+    ).rejects.toMatchObject({ meta: { reason: "not_configured" } });
+    expect(idfy.requests.length).toBe(before);
   });
 });

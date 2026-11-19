@@ -11,10 +11,15 @@
 // - starting a DigiLocker session (PR-UDF-040): `POST /client/kyc/v2/request/with_template` with the
 //   tenant's template, answered with the request id and an access token with its expiry; the
 //   customer signs in at Digio's gateway, which sends them back to the return address;
-// - a DigiLocker file's issuer signature result as `signature_valid` beside the file.
-// Each of these shapes lives in one small function below (`digioDigilockerStart*`), so the sandbox
-// corrects it in one place.
-// This adapter provides DigiLocker and Aadhaar offline only. Every other method is `unsupported`,
+// - a DigiLocker file's issuer signature result as `signature_valid` beside the file;
+// - Aadhaar OTP e-KYC (PR-UDF-041), as a KUA for a notified RE: `POST /client/kyc/v2/aadhaar_otp/
+//   request` with the number or VID and the consent, answered with the transaction and the OTP's
+//   expiry, then `POST /client/kyc/v2/aadhaar_otp/verify` with the transaction and the code,
+//   answered with UIDAI's signed e-KYC XML (base64), the signature result and the masked number;
+//   refusals by `code` (`INVALID_AADHAAR`, `MOBILE_NOT_LINKED`, `INVALID_OTP`, `OTP_EXPIRED`).
+// Each of these shapes lives in one small function below (`digioDigilockerStart*`,
+// `digioAadhaarOtp*`), so the sandbox corrects it in one place.
+// This adapter provides DigiLocker, Aadhaar offline and Aadhaar OTP (off unless `notifiedEntity`). Every other method is `unsupported`,
 // so routing (`int.kyc.<method>.provider`) chooses another adapter for it. V-CIP waits for the
 // owner (OWNER-QUESTIONS #90): Digio's video KYC records on Digio's side, while the port runs
 // the call in a VIDEO_MEET room with no provider copy. Results never carry an Aadhaar number:
@@ -22,12 +27,18 @@
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   AadhaarOfflineCheck,
+  AadhaarOtpRequest,
+  AadhaarOtpVerify,
+  aadhaarUidValid,
   DIGILOCKER_RETURN_URL_REFUSED,
   DigilockerPull,
   StartDigilocker,
   digilockerReturnUrlAllowed,
   storageKey,
   type AadhaarOfflineResult,
+  type AadhaarOtpRefusal,
+  type AadhaarOtpResult,
+  type AadhaarOtpStart,
   type AdapterDescriptor,
   type DigilockerDocument,
   type DigilockerStart,
@@ -42,6 +53,14 @@ import { newId, sha256Hex, type ReplayStore } from "@infrabyx/crypto";
 import { createEgress } from "../core/http.js";
 import { vendorError } from "../messaging/common.js";
 import {
+  aadhaarOtpRefused,
+  assertNotifiedEntity,
+  holdsAadhaarNumber,
+  keyedAadhaarOtpVerify,
+  MemoryAadhaarOtpVerifyStore,
+  type AadhaarOtpVerifyStore,
+} from "./aadhaar-otp.js";
+import {
   MemoryDigilockerPullStore,
   type DigilockerPullRequest,
   type DigilockerPullStore,
@@ -55,6 +74,9 @@ const GATEWAY_HOSTS = { sandbox: "ext.digio.in", production: "app.digio.in" } as
 /** A consent session is claimed once and remembered for longer than any Digio request lives. */
 const CONSENT_MEMORY_MS = 400 * 24 * 3600 * 1000;
 const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
+/** A 12-digit or 16-digit run outside a SHA-256 (PR-UDF-041). */
+const UID_LIKE = /(?<![0-9])(?:[0-9]{12}|[0-9]{16})(?![0-9])/;
+const uidLike = (v: unknown) => UID_LIKE.test(JSON.stringify(v).replace(/[0-9a-f]{64}/g, ""));
 
 const UNSUPPORTED = [
   "verifyPan",
@@ -94,6 +116,17 @@ export interface DigioKycOptions {
     readonly string[] | ((tenantId: string) => readonly string[] | Promise<readonly string[]>);
   /** The tenant's Digio KYC template with the DigiLocker step; without it `startDigilocker` is `not_configured`. */
   digilockerTemplate?: (tenantId: string) => string | undefined | Promise<string | undefined>;
+  /**
+   * Aadhaar OTP e-KYC (PR-UDF-041): `true` only for a reporting entity notified under PML Act
+   * s.11A (KYC Directions 2025 para 23 proviso (i) [VERIFY]). Default false: every Aadhaar OTP call
+   * is refused `not_configured` before any vendor call.
+   */
+  notifiedEntity?: boolean;
+  /**
+   * Keyed Aadhaar OTP verifies (PR-UDF-041): `PgAadhaarOtpVerifyStore` in production, so a retry on
+   * any instance gets the first answer. Default: an in-memory store of this adapter instance.
+   */
+  aadhaarOtpVerifies?: AadhaarOtpVerifyStore;
   /** Test mode until the owner's account exists (default `sandbox`). */
   mode?: "sandbox" | "production";
   /** Tests only: the Digio stub. */
@@ -134,6 +167,15 @@ interface DigioOfflineAadhaar {
   };
 }
 
+/** The reply's JSON, or undefined when it is not JSON. */
+const safeJson = (res: { json(): unknown }): unknown => {
+  try {
+    return res.json();
+  } catch {
+    return undefined;
+  }
+};
+
 const refused = (detail: string, reason: string, definite = true): PortError =>
   new PortError("IPB-PORT-001", KYC, { adapter: ADAPTER, detail, meta: { reason, definite } });
 
@@ -171,6 +213,86 @@ export function mapDigioDigilockerStart(
   return { consentSession: id, signInUrl: u.toString(), expiresAt: new Date(exp).toISOString() };
 }
 
+// ---- Aadhaar OTP e-KYC: stub-shaped, to confirm against the sandbox ([VERIFY]) ------------------
+
+/**
+ * [VERIFY] The body of Digio's OTP request: the number or VID by `id_type` and `id_number`, and the
+ * resident's consent as `consent: "Y"` with the text's version, hash and time [VERIFY the field
+ * names, and whether Digio takes the consent text's hash or needs the text itself].
+ */
+export function digioAadhaarOtpRequestBody(
+  r: ReturnType<typeof AadhaarOtpRequest.parse>,
+): Record<string, string> {
+  return {
+    id_type: r.uidKind === "VID" ? "vid" : "aadhaar",
+    id_number: r.uid,
+    consent: "Y",
+    consent_text_version: r.consent.version,
+    consent_text_hash: r.consent.textHash,
+    consent_at: r.consent.at,
+  };
+}
+
+/** [VERIFY] Digio's refusal codes on the OTP calls, as the port's fixed labels. */
+export function mapDigioAadhaarOtpRefusal(
+  status: number,
+  json: unknown,
+): AadhaarOtpRefusal | undefined {
+  if (status === 404) return "otp_expired";
+  if (status !== 400 && status !== 422) return undefined;
+  const code = String((json as { code?: unknown } | undefined)?.code ?? "").toUpperCase();
+  if (/INVALID_(AADHAAR|VID|UID)/.test(code)) return "uid_invalid";
+  if (/MOBILE_NOT_LINKED/.test(code)) return "mobile_not_linked";
+  if (/OTP_EXPIRED|TXN_EXPIRED|TRANSACTION_EXPIRED|ALREADY_USED/.test(code)) return "otp_expired";
+  if (/INVALID_OTP|OTP_MISMATCH/.test(code)) return "otp_invalid";
+  return undefined;
+}
+
+/**
+ * [VERIFY] Digio's OTP verify answer: `{ id, signature_valid?, model_version?, details: {
+ * aadhaar_last_digits, ekyc_xml } }`, `ekyc_xml` being UIDAI's signed e-KYC response in base64
+ * [VERIFY whether Digio returns UIDAI's signed XML unchanged, and whether it carries the full
+ * number, which the adapter then refuses to store].
+ */
+export function mapDigioAadhaarOtpVerify(json: unknown): {
+  vendorRef: string;
+  modelVersion: string;
+  ekyc: Buffer;
+  signatureValid: boolean | null;
+  uidLast4: string;
+} {
+  const v = json as {
+    id?: unknown;
+    signature_valid?: unknown;
+    model_version?: unknown;
+    details?: { aadhaar_last_digits?: unknown; ekyc_xml?: unknown };
+  };
+  const last =
+    typeof v?.details?.aadhaar_last_digits === "string" ? v.details.aadhaar_last_digits : "";
+  const last4 = /(?<![0-9])([0-9]{4})$/.exec(last)?.[1];
+  const xml =
+    typeof v?.details?.ekyc_xml === "string"
+      ? Buffer.from(v.details.ekyc_xml, "base64")
+      : undefined;
+  if (typeof v?.id !== "string" || !/^[A-Za-z0-9_-]{8,200}$/.test(v.id) || !last4 || !xml?.length)
+    throw vendorError(
+      KYC,
+      ADAPTER,
+      502,
+      "Aadhaar OTP verify without its id, e-KYC or masked number",
+    );
+  if (UID_LIKE.test(last))
+    throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+  return {
+    vendorRef: v.id,
+    modelVersion:
+      typeof v.model_version === "string" ? v.model_version.slice(0, 100) : "aadhaar-otp-v2",
+    ekyc: xml,
+    signatureValid: typeof v.signature_valid === "boolean" ? v.signature_valid : null,
+    uidLast4: last4,
+  };
+}
+
 export class DigioKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
     port: KYC,
@@ -183,6 +305,7 @@ export class DigioKyc implements KycPort {
   private readonly base: string;
   private readonly now: () => Date;
   private readonly pulls: DigilockerPullStore;
+  private readonly otpVerifies: AadhaarOtpVerifyStore;
   private readonly gatewayHost: string;
 
   constructor(private readonly o: DigioKycOptions) {
@@ -190,6 +313,8 @@ export class DigioKyc implements KycPort {
     this.base = (o.baseUrl ?? `https://${HOSTS[mode]}`).replace(/\/$/, "");
     this.now = o.now ?? (() => new Date());
     this.pulls = o.pulls ?? new MemoryDigilockerPullStore({ now: () => this.now() });
+    this.otpVerifies =
+      o.aadhaarOtpVerifies ?? new MemoryAadhaarOtpVerifyStore({ now: () => this.now() });
     this.gatewayHost = GATEWAY_HOSTS[mode];
     this.egress = createEgress({
       port: KYC,
@@ -223,9 +348,9 @@ export class DigioKyc implements KycPort {
 
   /** Write a vendor file to STORAGE (REGULATED, under the tenant) and return its reference. */
   private async store(tenant: string, body: Uint8Array, ext: string, contentType: string) {
-    // No storage key carries a 12-digit run (PR-UDF-040): a ULID that would is drawn again.
+    // No storage key carries a 12- or 16-digit run (PR-UDF-040, -041): such a ULID is drawn again.
     let key = storageKey(tenant, "kyc", newId("kyc").slice(4), ext);
-    while (AADHAAR_LIKE.test(key)) key = storageKey(tenant, "kyc", newId("kyc").slice(4), ext);
+    while (UID_LIKE.test(key)) key = storageKey(tenant, "kyc", newId("kyc").slice(4), ext);
     const sha256 = sha256Hex(body);
     await this.o.storage.put(key, body, { bucketClass: "REGULATED", contentType, sha256 });
     return { storageKey: key, sha256 } satisfies KycFileRef;
@@ -365,6 +490,111 @@ export class DigioKyc implements KycPort {
       });
     }
     return keyed && pullId ? this.pulls.complete(keyed, pullId, out) : out;
+  }
+
+  async aadhaarOtpRequest(
+    raw: Parameters<NonNullable<KycPort["aadhaarOtpRequest"]>>[0],
+    call?: PortCall,
+  ): Promise<AadhaarOtpStart> {
+    // Fail closed first: nothing is read, and nothing is sent, for an RE that is not notified.
+    assertNotifiedEntity(ADAPTER, this.o.notifiedEntity);
+    await this.guard();
+    const r = AadhaarOtpRequest.parse(raw);
+    if (!aadhaarUidValid(r.uid, r.uidKind))
+      throw aadhaarOtpRefused(ADAPTER, "uid_invalid", "not a well-formed Aadhaar number or VID");
+    this.tenant(call);
+    // The number goes in this one request body and nowhere else; it is not kept.
+    const res = await this.egress(`${this.base}/client/kyc/v2/aadhaar_otp/request`, {
+      method: "POST",
+      headers: {
+        authorization: await this.basic(),
+        accept: "application/json",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(digioAadhaarOtpRequestBody(r)),
+    });
+    const json = safeJson(res);
+    const refusal = mapDigioAadhaarOtpRefusal(res.status, json);
+    if (refusal === "uid_invalid" || refusal === "mobile_not_linked")
+      throw aadhaarOtpRefused(ADAPTER, refusal, `Digio refused the OTP request (${refusal})`);
+    if (res.status === 400 || res.status === 422)
+      throw refused("Digio refused the Aadhaar OTP request", "invalid_request");
+    if (res.status !== 200) throw vendorError(KYC, ADAPTER, res.status, "Digio Aadhaar OTP");
+    const j = json as { id?: unknown; otp_valid_till?: unknown };
+    const till = typeof j?.otp_valid_till === "string" ? Date.parse(j.otp_valid_till) : NaN;
+    if (
+      typeof j?.id !== "string" ||
+      !/^[A-Za-z0-9_-]{8,200}$/.test(j.id) ||
+      !Number.isFinite(till) ||
+      till <= this.now().getTime()
+    )
+      throw vendorError(KYC, ADAPTER, 502, "Aadhaar OTP request without its transaction or expiry");
+    const out = {
+      ...this.evidence(j.id, "aadhaar-otp-v2"),
+      txn: j.id,
+      expiresAt: new Date(till).toISOString(),
+    };
+    if (uidLike(out))
+      throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+    return out;
+  }
+
+  async aadhaarOtpVerify(
+    raw: Parameters<NonNullable<KycPort["aadhaarOtpVerify"]>>[0],
+    call?: PortCall,
+  ): Promise<AadhaarOtpResult> {
+    assertNotifiedEntity(ADAPTER, this.o.notifiedEntity);
+    await this.guard();
+    const r = AadhaarOtpVerify.parse(raw);
+    const tenant = this.tenant(call);
+    return keyedAadhaarOtpVerify({
+      store: this.otpVerifies,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : { tenantId: tenant, adapter: ADAPTER, idempotencyKey: call.idempotencyKey, ...r },
+      verify: async () => {
+        const res = await this.egress(`${this.base}/client/kyc/v2/aadhaar_otp/verify`, {
+          method: "POST",
+          headers: {
+            authorization: await this.basic(),
+            accept: "application/json",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ id: r.txn, otp: r.otp }),
+        });
+        const json = safeJson(res);
+        const refusal = mapDigioAadhaarOtpRefusal(res.status, json);
+        if (refusal === "otp_invalid" || refusal === "otp_expired")
+          throw aadhaarOtpRefused(ADAPTER, refusal, `Digio refused the OTP (${refusal})`);
+        if (res.status === 400 || res.status === 422)
+          throw refused("Digio refused the Aadhaar OTP verify", "invalid_request");
+        if (res.status !== 200) throw vendorError(KYC, ADAPTER, res.status, "Digio Aadhaar OTP");
+        return this.ekycResult(tenant, mapDigioAadhaarOtpVerify(json));
+      },
+    });
+  }
+
+  /** Store UIDAI's e-KYC response unchanged, unless it carries a number (R1-D-194). */
+  private async ekycResult(
+    tenant: string,
+    v: ReturnType<typeof mapDigioAadhaarOtpVerify>,
+  ): Promise<AadhaarOtpResult> {
+    if (holdsAadhaarNumber(v.ekyc.toString("latin1")))
+      throw refused(
+        "the e-KYC response carries an Aadhaar number or VID; it is not stored outside the RE's vault",
+        "ekyc_holds_number",
+      );
+    const ekyc = await this.store(tenant, v.ekyc, "xml", "application/xml");
+    const result: AadhaarOtpResult = {
+      ...this.evidence(v.vendorRef, v.modelVersion),
+      ekyc,
+      signatureValid: v.signatureValid,
+      uidLast4: v.uidLast4,
+    };
+    if (uidLike(result))
+      throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+    return result;
   }
 
   async verifyAadhaarOffline(

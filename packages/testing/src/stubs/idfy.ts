@@ -3,6 +3,7 @@
 // headers; `POST /v3/tasks/sync/<action>/<type>` with `{ task_id, group_id, data }`, answered with
 // `{ request_id, status, result }`). Proves adapter logic only; the sandbox leg proves the vendor
 // once the owner's IDfy sandbox exists. Test identities only.
+import { aadhaarOtpStub, type AadhaarOtpStubFixtures } from "./aadhaar-otp.js";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
 
 export interface IdfyKycStub extends VendorStub {
@@ -13,6 +14,12 @@ export interface IdfyKycStub extends VendorStub {
   /** Face images: `a` and `same` are one person, `other` another; frames read as live. */
   faces: { a: Buffer; same: Buffer; other: Buffer };
   frames: Buffer[];
+  /** Aadhaar OTP e-KYC test numbers and codes (PR-UDF-041); synthetic, never real. */
+  aadhaarOtp: AadhaarOtpStubFixtures;
+  /** Expire an Aadhaar OTP transaction now. */
+  expireAadhaarOtp(txn: string): void;
+  /** The next e-KYC the stub answers carries this full number. */
+  ekycWithNumberOnce(n: string): void;
 }
 
 let seq = 0;
@@ -25,6 +32,7 @@ const tokens = (s: string) =>
 
 export async function startIdfyKycStub(): Promise<IdfyKycStub> {
   const ref: { s?: IdfyKycStub } = {};
+  const otp = aadhaarOtpStub("TXN", () => ++seq);
   const stub = await startStub((r) => {
     const s = ref.s!;
     if (r.headers["account-id"] !== s.accountId || r.headers["api-key"] !== s.apiKey)
@@ -72,6 +80,25 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
         model_version: "face-compare-stub-1",
       });
     }
+    if (task === "aadhaar_otp_request/ind_aadhaar") {
+      const out = otp.request(b.data.id_type ?? "", b.data.id_number ?? "", b.data.consent ?? "");
+      if (!out.ok)
+        return {
+          status: 422,
+          body: { error: out.code.startsWith("INVALID_") ? "INVALID_ID" : out.code },
+        };
+      return done({ transaction_id: out.txn, otp_valid_till: out.validTill });
+    }
+    if (task === "aadhaar_otp_verify/ind_aadhaar") {
+      const out = otp.verify(b.data.transaction_id ?? "", b.data.otp ?? "");
+      if (!out.ok) return { status: 422, body: { error: out.code } };
+      return done({
+        ekyc_xml: Buffer.from(out.ekycXml).toString("base64"),
+        aadhaar_last_4: out.last4,
+        signature_status: "valid",
+        model_version: "aadhaar-otp-stub-1",
+      });
+    }
     if (task === "check_photo_liveness/face") {
       const live = s.frames.some((f) => f.equals(img("document1")));
       return done({ liveness_score: live ? 0.91 : 0.3, model_version: "liveness-stub-1" });
@@ -88,6 +115,9 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
       other: Buffer.from("idfy-stub-face-b"),
     },
     frames: [1, 2, 3].map((i) => Buffer.from(`idfy-stub-frame-${i}`)),
+    aadhaarOtp: otp.fixtures,
+    expireAadhaarOtp: otp.expire,
+    ekycWithNumberOnce: otp.embedNumberOnce,
   });
   return ref.s;
 }
