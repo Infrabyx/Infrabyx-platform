@@ -28,9 +28,20 @@ COPY --from=compile --chown=1000:0 /build/ipb-customer-otp.jar /opt/keycloak/pro
 # read the list (R1-D-164).
 COPY --chown=1000:0 password-blacklists/ipb-common-passwords.txt /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt
 COPY --chown=1000:0 password-blacklists/LICENSE.SecLists /opt/keycloak/data/password-blacklists/LICENSE.SecLists
+# CVE-2026-114938 ("Java4Shell"; owner answer #143, OWNER-WAIVER-CRIT-01, R1-D-192): the HotSpot
+# Base64 intrinsic is off on every start and every host, whatever the CPU. The ENV covers a
+# deployment that calls kc.sh itself; the entrypoint (ipb-kc.sh) appends the flag last whatever the
+# deployment sets, and refuses a JVM variable that names it. The build fails unless this image's JVM
+# resolves the flag to false from the command line. Remove with the waiver, once a fixed Keycloak
+# image is pinned.
+COPY --chown=1000:0 ipb-kc.sh /opt/keycloak/bin/ipb-kc.sh
+ENV JAVA_OPTS_APPEND="-XX:-UseBASE64Intrinsics"
 RUN chmod 0444 /opt/keycloak/data/password-blacklists/ipb-common-passwords.txt \
       /opt/keycloak/data/password-blacklists/LICENSE.SecLists \
+    && chmod 0555 /opt/keycloak/bin/ipb-kc.sh \
+    && /opt/keycloak/bin/ipb-kc.sh --ipb-verify-jvm \
     && /opt/keycloak/bin/kc.sh build --db=postgres --health-enabled=true
 USER 1000
+ENTRYPOINT ["/opt/keycloak/bin/ipb-kc.sh"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
   CMD ["/bin/bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.0\\r\\n\\r\\n' >&3 && grep -q '\"UP\"' <&3"]
