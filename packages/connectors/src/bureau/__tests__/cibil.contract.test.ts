@@ -6,10 +6,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
-  contractProductConsentRef,
+  contractConsentArtefact,
   creditBureauContractCases,
   CREDIT_BUREAU_FAKE_FIXTURES,
-  malformedProductConsentRefs,
+  malformedConsentArtefacts,
   defineContractSuite,
   MemoryStorage,
   startCibilStub,
@@ -157,28 +157,36 @@ describe("R1-D-61 the CIBIL adapter", () => {
       baseUrl: stub.url,
       allowLoopbackHttp: true,
     });
-    const ref = contractProductConsentRef();
+    const ref = contractConsentArtefact();
     const before = stub.requests.length;
-    const r = await p.pull(
-      req(stub.subjects.known.pan, stub.subjects.known.name, { consentRef: ref }),
-    );
-    expect(r).toMatchObject({ consentRef: `${ref.kind}:${ref.id}`, productConsentRef: ref });
-    expect(pulls.get(r.pullId)?.consentRef).toBe(`${ref.kind}:${ref.id}`);
+    const asked = req(stub.subjects.known.pan, stub.subjects.known.name, { consentArtefact: ref });
+    const r = await p.pull(asked);
+    expect(r).toMatchObject({ consentRef: asked.consentRef, consentArtefact: ref });
+    expect(pulls.get(r.pullId)).toMatchObject({
+      consentRef: asked.consentRef,
+      consentArtefact: ref,
+    });
+    expect(await p.status(r.pullId)).toMatchObject({
+      consentRef: asked.consentRef,
+      consentArtefact: ref,
+    });
     const sent = stub.requests.slice(before).map((x) => x.body.toString("utf8"));
     for (const text of sent) {
       expect(text).not.toContain(ref.id);
       expect(text).not.toContain(ref.kind);
+      expect(text).not.toContain(asked.consentRef);
     }
-    // A record written before PR-UDF-049 (a bare `cpr_`) reads back exactly as before.
+    // A pull without an artefact, and a record written before PR-UDF-049, read back as before.
     const plain = await p.pull(req(stub.subjects.known.pan, stub.subjects.known.name));
-    expect(await p.status(plain.pullId)).not.toHaveProperty("productConsentRef");
+    expect(pulls.get(plain.pullId)).not.toHaveProperty("consentArtefact");
+    expect(await p.status(plain.pullId)).not.toHaveProperty("consentArtefact");
   });
 
-  it("refuses a malformed product consent reference before anything reaches CIBIL", async () => {
+  it("refuses a malformed consent artefact before anything reaches CIBIL", async () => {
     const before = stub.requests.length;
-    for (const consentRef of malformedProductConsentRefs())
+    for (const consentArtefact of malformedConsentArtefacts())
       await expect(
-        make().pull(req(stub.subjects.known.pan, stub.subjects.known.name, { consentRef })),
+        make().pull(req(stub.subjects.known.pan, stub.subjects.known.name, { consentArtefact })),
       ).rejects.toThrow();
     expect(stub.requests.length).toBe(before);
   });

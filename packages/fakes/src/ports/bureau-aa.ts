@@ -12,8 +12,8 @@ import {
   aaApprovalUrlAllowed,
   aaFiuMismatch,
   BureauPullRequest,
-  consentRefEcho,
-  consentRefText,
+  consentEcho,
+  consentInForce,
   type AaConsent,
   type AaFetchResult,
   type AaNotification,
@@ -128,14 +128,14 @@ export class FakeCreditBureau implements CreditBureauPort {
   async pull(raw: Parameters<CreditBureauPort["pull"]>[0]): Promise<BureauReport> {
     const r = BureauPullRequest.parse(raw);
     const pan = r.subject.pan ?? "";
-    const pullId = `pul_${sha256Hex(`${consentRefText(r.consentRef)}:${++this.n}`).slice(0, 24)}`;
+    const pullId = `pul_${sha256Hex(`${consentInForce(r)}:${++this.n}`).slice(0, 24)}`;
     // The consent's shape was checked by the schema; it is echoed, never looked up (PR-UDF-049).
     const base = {
       ...this.ev(),
       bureau: r.bureau,
       enquiry: r.enquiry,
       pullId,
-      ...consentRefEcho(r.consentRef),
+      ...consentEcho(r),
     };
     if (pan !== this.fx.known.pan && !this.pending.has(pan)) {
       const out: BureauReport = { ...base, state: "no_hit" };
@@ -321,7 +321,7 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     const r = AaConsentRequest.parse(raw);
     // The AA records the consent for the FIU behind the credentials; checked before anything is kept.
     if (aaFiuMismatch(r.fiuId, this.fiuId)) throw this.fiuRefused();
-    const consentId = `aac_${sha256Hex(`${consentRefText(r.consentRef)}:${++this.n}`).slice(0, 24)}`;
+    const consentId = `aac_${sha256Hex(`${consentInForce(r)}:${++this.n}`).slice(0, 24)}`;
     const link = `https://${this.approvalHost}/consents/${letters(sha256Hex(`link:${consentId}`).slice(0, 32))}`;
     if (!aaApprovalUrlAllowed(link, [this.approvalHost]))
       throw fail(

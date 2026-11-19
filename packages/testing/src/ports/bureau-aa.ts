@@ -34,7 +34,7 @@ const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
 
 let productRefs = 0;
 /** A product's own consent artefact (PR-UDF-049): the platform checks its shape only. */
-export const contractProductConsentRef = (): { kind: string; id: string } => ({
+export const contractConsentArtefact = (): { kind: string; id: string } => ({
   kind: "udf.purpose_consent",
   id: `pcn-contract-${(++productRefs).toString(36)}`,
 });
@@ -46,8 +46,8 @@ function aadhaarLikeForTest(): string {
   throw new Error("unreachable: one check digit always fits");
 }
 
-/** Product references every port refuses (PR-UDF-049): bad shape, reserved, or personal data. */
-export function malformedProductConsentRefs(): unknown[] {
+/** Consent artefacts every port refuses (PR-UDF-049): bad shape, reserved, or personal data. */
+export function malformedConsentArtefacts(): unknown[] {
   const a = aadhaarLikeForTest();
   return [
     { kind: "udf.purpose_consent" },
@@ -106,35 +106,44 @@ export function creditBureauContractCases(
       },
     },
     {
-      name: "a `cpr_` consent answers as before; a product's own artefact is accepted and echoed (PR-UDF-049)",
+      name: "a pull without an artefact answers as before; a product's own artefact is kept and echoed beside `consentRef` (PR-UDF-049)",
       async run(p) {
         const plain = req(fx.known.pan, fx.known.name);
         const a = await p.pull(plain);
         expect(a.consentRef).toBe(plain.consentRef);
-        expect("productConsentRef" in a).toBe(false);
-        const ref = contractProductConsentRef();
-        const b = await p.pull({ ...req(fx.known.pan, fx.known.name), consentRef: ref });
-        expect(b.consentRef).toBe(`${ref.kind}:${ref.id}`);
-        expect(b.productConsentRef).toEqual(ref);
+        expect("consentArtefact" in a).toBe(false);
+        const ref = contractConsentArtefact();
+        const withRef = { ...req(fx.known.pan, fx.known.name), consentArtefact: ref };
+        const b = await p.pull(withRef);
+        expect(b.consentRef).toBe(withRef.consentRef);
+        expect(b.consentArtefact).toEqual(ref);
         const back = await p.status(b.pullId);
-        expect(back.consentRef).toBe(b.consentRef);
-        expect(back.productConsentRef).toEqual(ref);
-        const none = await p.pull({ ...req(fx.noHit.pan, fx.noHit.name), consentRef: ref });
-        expect(none).toMatchObject({ state: "no_hit", productConsentRef: ref });
+        expect(back.consentRef).toBe(withRef.consentRef);
+        expect(back.consentArtefact).toEqual(ref);
+        expect("consentArtefact" in (await p.status(a.pullId))).toBe(false);
+        const none = await p.pull({ ...req(fx.noHit.pan, fx.noHit.name), consentArtefact: ref });
+        expect(none).toMatchObject({ state: "no_hit", consentArtefact: ref });
+        // `consentRef` stays required and a `cpr_` even when an artefact is given.
+        const { consentRef: _c, ...artefactOnly } = withRef;
+        await expect(p.pull(artefactOnly as never)).rejects.toThrow();
+        await expect(p.pull({ ...withRef, consentRef: ref as never })).rejects.toThrow();
         for (const r of [a, b, back, none]) expectNoAadhaarLike(r);
       },
     },
     {
-      name: "a malformed product consent reference is refused, with no personal data in it (PR-UDF-049)",
+      name: "a malformed consent artefact is refused, with no personal data in it (PR-UDF-049)",
       async run(p) {
-        for (const consentRef of malformedProductConsentRefs()) {
+        for (const consentArtefact of malformedConsentArtefacts()) {
           const err = await p
-            .pull({ ...req(fx.known.pan, fx.known.name), consentRef: consentRef as never })
+            .pull({
+              ...req(fx.known.pan, fx.known.name),
+              consentArtefact: consentArtefact as never,
+            })
             .then(
               () => undefined,
               (e: unknown) => e,
             );
-          expect(err, JSON.stringify(consentRef)).toBeInstanceOf(Error);
+          expect(err, JSON.stringify(consentArtefact)).toBeInstanceOf(Error);
           expectNoAadhaarLike(err);
         }
       },
@@ -255,19 +264,26 @@ export function accountAggregatorContractCases(
       },
     },
     {
-      name: "a `cpr_` consent asks as before; a product's own artefact is accepted; a malformed one is refused (PR-UDF-050)",
+      name: "a consent asked without an artefact works as before; a product's own artefact is accepted; a malformed one is refused (PR-UDF-050)",
       async run(p) {
         const a = await p.requestConsent(ask());
         expect(a.state).toBe("PENDING");
-        const b = await p.requestConsent(ask({ consentRef: contractProductConsentRef() }));
+        const b = await p.requestConsent(ask({ consentArtefact: contractConsentArtefact() }));
         expect(b.state).toBe("PENDING");
         expect((await p.consentStatus(b.consentId)).consentId).toBe(b.consentId);
-        for (const consentRef of malformedProductConsentRefs()) {
-          const err = await p.requestConsent(ask({ consentRef: consentRef as never })).then(
-            () => undefined,
-            (e: unknown) => e,
-          );
-          expect(err, JSON.stringify(consentRef)).toBeInstanceOf(Error);
+        // `consentRef` stays required and a `cpr_` even when an artefact is given.
+        const { consentRef: _c, ...artefactOnly } = ask({
+          consentArtefact: contractConsentArtefact(),
+        });
+        await expect(p.requestConsent(artefactOnly as never)).rejects.toThrow();
+        for (const consentArtefact of malformedConsentArtefacts()) {
+          const err = await p
+            .requestConsent(ask({ consentArtefact: consentArtefact as never }))
+            .then(
+              () => undefined,
+              (e: unknown) => e,
+            );
+          expect(err, JSON.stringify(consentArtefact)).toBeInstanceOf(Error);
           expectNoAadhaarLike(err);
         }
         for (const c of [a, b]) expectNoAadhaarLike(c);
