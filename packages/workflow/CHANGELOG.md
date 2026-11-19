@@ -1,5 +1,32 @@
 # @infrabyx/workflow
 
+## 1.5.0
+
+### Minor Changes
+
+- 4a85288: Work Inbox snooze, ordering and the by-record list (LawDocsComply PR-LDC-46; R1-D-206). `InboxService.snooze(ctx, id, until)` hides an open item from the caller only (per person: other holders of a role item still see it) until `until`, at most `INBOX_SNOOZE_MAX_DAYS` (30) days ahead and never after the item's `dueAt`; `unsnooze(ctx, id)` clears it. Only someone who sees the item may snooze it (the inbox's existing rule: the user assignee or a holder of the assignee role, never the excluded principal; anything else is `NotFoundError`). An escalated item and an escalation (the item raised for ORG_ADMIN) are refused `ConflictError`, as is an item past its due time; a bad time is a `RangeError`. Every read compares the snooze with `now()`, so the item reappears at its time with no timer, and a snooze stops hiding the item once it is escalated or past due. Both writes are ledgered (`inbox.item.snooze`, `inbox.item.unsnooze`). `InboxItem.snoozedUntil` is the caller's active snooze. `list` gains `productModule`, `recordRef`, `orderBy` (`newest` by default, `due`, `severity`) and `snoozed` (`exclude` by default, `include`, `only`); `badgeCount` leaves the caller's snoozed items out. Migration `workflow/0005_inbox_snooze.sql` (new table `workflow.inbox_snooze`, forced RLS, no delete grant).
+
+### Patch Changes
+
+- Updated dependencies [82dc7ef]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [2f9d3f8]
+- Updated dependencies [b0e0b72]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [9e626ef]
+- Updated dependencies [aac1c2c]
+- Updated dependencies [62dc1eb]
+- Updated dependencies [d58d5f0]
+- Updated dependencies [dbaecff]
+- Updated dependencies [80a843a]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [ff2a74b]
+- Updated dependencies [d35f7e9]
+  - @infrabyx/contracts@1.37.0
+  - @infrabyx/tenancy@1.21.0
+  - @infrabyx/crypto@1.7.0
+  - @infrabyx/config@1.20.0
+
 ## 1.4.7
 
 ### Patch Changes

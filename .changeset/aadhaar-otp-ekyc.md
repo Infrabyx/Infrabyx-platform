@@ -1,8 +1,0 @@
----
-"@infrabyx/contracts": minor
-"@infrabyx/fakes": minor
-"@infrabyx/testing": minor
-"@infrabyx/connectors": minor
----
-
-Aadhaar OTP e-KYC for a notified reporting entity (Udofin PR-UDF-041; R1-D-194). `KycPort.aadhaarOtpRequest({ uid, uidKind, consent }, call)` returns `{ txn, expiresAt }` with the evidence and `aadhaarOtpVerify({ txn, otp }, call)` returns `{ ekyc, signatureValid, uidLast4 }` with the evidence; both optional on the interface, provided by `FakeKyc`, `DigioKyc`, `IdfyKyc` and `kycMethodRouter` (the new `aadhaar_otp` method). Every call is refused `not_configured` before any vendor call unless the adapter is built with `notifiedEntity: true`. `contracts` adds `AadhaarOtpRequest`, `AadhaarOtpVerify`, `AADHAAR_UID_KINDS`, `AADHAAR_OTP_REFUSALS` (`uid_invalid`, `mobile_not_linked`, `otp_invalid`, `otp_expired`, `not_configured`) and `aadhaarUidValid` (12-digit Aadhaar number with first digit 2 to 9, or 16-digit VID, each with the Verhoeff check; grouped forms refused). The e-KYC response is written to the adapter's STORAGE; one that carries a full number is refused `ekyc_holds_number`. `aadhaarOtpVerify` is idempotent on `call.idempotencyKey` for 24 hours: a retry gets the first answer, the same key with another code or transaction is `IPB-PORT-004`. `connectors` adds `AadhaarOtpVerifyStore`, `PgAadhaarOtpVerifyStore`, `MemoryAadhaarOtpVerifyStore` and the migration `0011_kyc_aadhaar_otp_verify.sql` (`connectors.kyc_aadhaar_otp_verify`, forced RLS); `IdfyKyc` gains `currentTenant`. `fakes` adds `FAKE_AADHAAR_OTP`, `syntheticUid`, `AadhaarOtpFixtures` and `KycFixtures.aadhaarOtp`; `testing` adds five contract cases and the Digio and IDfy stubs' Aadhaar OTP.

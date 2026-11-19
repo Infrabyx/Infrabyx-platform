@@ -1,5 +1,30 @@
 # @infrabyx/rules
 
+## 1.6.1
+
+### Patch Changes
+
+- Updated dependencies [82dc7ef]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [2f9d3f8]
+- Updated dependencies [b0e0b72]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [9e626ef]
+- Updated dependencies [aac1c2c]
+- Updated dependencies [62dc1eb]
+- Updated dependencies [d58d5f0]
+- Updated dependencies [7d70042]
+- Updated dependencies [dbaecff]
+- Updated dependencies [80a843a]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [ff2a74b]
+- Updated dependencies [d35f7e9]
+  - @infrabyx/contracts@1.37.0
+  - @infrabyx/connectors@1.22.0
+  - @infrabyx/tenancy@1.21.0
+  - @infrabyx/crypto@1.7.0
+  - @infrabyx/config@1.20.0
+
 ## 1.6.0
 
 ### Minor Changes

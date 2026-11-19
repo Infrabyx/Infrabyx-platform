@@ -1,5 +1,31 @@
 # @infrabyx/export
 
+## 1.8.0
+
+### Minor Changes
+
+- 8356473: The `toXlsx` layout options (LawDocsComply PR-LDC-52; R1-D-207), with no dependency. `XlsxSheet.freezeColumns` (the first n columns frozen beside the header row), `autoFilter` (over the header and data rows, with Excel's hidden `_xlnm._FilterDatabase`), `rowLayout` (per data row: `outlineLevel` 0 to 7 and a `fill`) and `outlineSummary` (`below` or `above`), `headerFill`, `XlsxColumn.fill` (a row fill wins), `page` (`paper` A4, A3, letter or legal; `orientation`; `fitToWidth`; `repeatHeader`, written as `_xlnm.Print_Titles`; `printArea`, a range or `true`, as `_xlnm.Print_Area`) and `conditionalFormats` (typed rules only: `column` by key or header, `when` a comparison, `between` / `notBetween`, `containsText`, `blank` / `notBlank`, with values typed as the column and `{ today: n }` on date columns; `style` a fill, font colour or bold; `wholeRow`, `stopIfTrue`; the writer builds each expression). Formula cells: `xlsxFormula(formula, { result? })` returns a frozen `XlsxFormula` that a cell of any column may hold; only a value it made counts (`isXlsxFormula`, by identity), so a string or a look-alike object from data is never a formula. A formula is 1 to 8 192 characters with no leading `=`, and outside its string literals holds no `[`, `]` or `|` and calls none of `XLSX_BLOCKED_FUNCTIONS` (`WEBSERVICE`, `IMAGE`, `HYPERLINK`, `RTD`, `CALL`, `REGISTER`, `REGISTER.ID`, `EXEC`, `STOCKHISTORY`, `INFO`, `CELL`); its `result`, of the column's type, is the cached value, and a workbook with a formula asks Excel to recalculate on load. New refusal reasons `layout_invalid`, `conditional_format_invalid` and `formula_invalid`. String cells keep `neutraliseFormula`, and a workbook that uses none of this is byte-for-byte as before.
+
+### Patch Changes
+
+- Updated dependencies [82dc7ef]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [2f9d3f8]
+- Updated dependencies [b0e0b72]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [9e626ef]
+- Updated dependencies [aac1c2c]
+- Updated dependencies [62dc1eb]
+- Updated dependencies [d58d5f0]
+- Updated dependencies [dbaecff]
+- Updated dependencies [80a843a]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [ff2a74b]
+- Updated dependencies [d35f7e9]
+  - @infrabyx/contracts@1.37.0
+  - @infrabyx/tenancy@1.21.0
+  - @infrabyx/crypto@1.7.0
+
 ## 1.7.7
 
 ### Patch Changes
