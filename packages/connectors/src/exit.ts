@@ -173,7 +173,7 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Configuration swap per method for new checks (`kycMethodRouter` order); documents and results are already held in STORAGE and the product's records. IDfy covers PAN, face match and liveness today; DigiLocker and Aadhaar offline at IDfy are added when its sandbox confirms them",
     volumeClass: "S",
     lockIn:
-      "KYC requests the customer has not completed at cut-over are started again at the target",
+      "KYC requests the customer has not completed at cut-over are started again at the target; a keyed DigiLocker pull is retried at the adapter that made it, whose records (`connectors.kyc_digilocker_pull`) live 24 hours and do not move",
   },
   {
     port: "BUREAU",

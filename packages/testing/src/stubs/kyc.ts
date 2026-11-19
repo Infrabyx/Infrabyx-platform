@@ -14,6 +14,10 @@ export interface DigioKycStub extends VendorStub {
   completedDigilocker(docTypes: string[]): string;
   /** A KYC request still waiting for the customer. */
   pendingDigilocker(): string;
+  /** The template name the stub's DigiLocker start accepts (PR-UDF-040). */
+  digilockerTemplate: string;
+  /** The customer completes a started request's DigiLocker step with these documents. */
+  completeDigilocker(requestId: string, docTypes: string[]): void;
 }
 
 let seq = 0;
@@ -23,6 +27,7 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     string,
     { status: string; files: Array<{ doc_type: string; file_id: string }> }
   >();
+  const template = "ipb-digilocker-stub";
   const media = new Map<string, Buffer>();
   const ref: { s?: DigioKycStub } = {};
   const stub = await startStub((r) => {
@@ -43,7 +48,12 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
             {
               type: "digilocker",
               status: k.status === "approved" ? "success" : "requested",
-              sub_files: k.files.map((f) => ({ ...f, issuer: "digilocker-stub" })),
+              // The issuer's signature result for every type but DRVLC, so "not reported" is seen.
+              sub_files: k.files.map((f) => ({
+                ...f,
+                issuer: "digilocker-stub",
+                ...(f.doc_type === "DRVLC" ? {} : { signature_valid: true }),
+              })),
             },
           ],
         },
@@ -57,6 +67,23 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
         status: 200,
         body: b.toString("latin1"),
         headers: { "content-type": "application/pdf" },
+      };
+    }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/request/with_template") {
+      const b = r.json<{ template_name?: string; generate_access_token?: boolean }>();
+      if (b.template_name !== template || b.generate_access_token !== true)
+        return { status: 400, body: { code: "INVALID_TEMPLATE" } };
+      const id = create("requested", []);
+      return {
+        status: 200,
+        body: {
+          id,
+          status: "requested",
+          access_token: {
+            id: `GWT${String(++seq).padStart(10, "0")}`,
+            valid_till: new Date(Date.now() + 15 * 60_000).toISOString(),
+          },
+        },
       };
     }
     if (r.method === "POST" && r.path === "/client/kyc/v2/offline_aadhaar/verify") {
@@ -84,14 +111,15 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     }
     return { status: 404, body: { code: "NOT_FOUND" } };
   });
-  const create = (status: string, docTypes: string[]) => {
-    const id = `KID${String(++seq).padStart(10, "0")}`;
-    const files = docTypes.map((t) => {
+  const filesOf = (id: string, docTypes: string[]) =>
+    docTypes.map((t) => {
       const file_id = `FIL${String(++seq).padStart(10, "0")}`;
       media.set(file_id, Buffer.from(`%PDF-1.7\n% ${t} from DigiLocker stub ${id}\n%%EOF\n`));
       return { doc_type: t, file_id };
     });
-    requests.set(id, { status, files });
+  const create = (status: string, docTypes: string[]) => {
+    const id = `KID${String(++seq).padStart(10, "0")}`;
+    requests.set(id, { status, files: filesOf(id, docTypes) });
     return id;
   };
   ref.s = Object.assign(stub, {
@@ -101,6 +129,12 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     offlineZip: Buffer.from(`PK\u0003\u0004 offline e-KYC stub ${stubCredential().slice(0, 8)}`),
     completedDigilocker: (docTypes: string[]) => create("approved", docTypes),
     pendingDigilocker: () => create("requested", []),
+    digilockerTemplate: template,
+    completeDigilocker: (requestId: string, docTypes: string[]) => {
+      const k = requests.get(requestId);
+      if (!k) throw new Error(`no Digio KYC request ${requestId}`);
+      requests.set(requestId, { status: "approved", files: filesOf(requestId, docTypes) });
+    },
   });
   return ref.s;
 }

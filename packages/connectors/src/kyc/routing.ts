@@ -11,7 +11,7 @@ import type { AdapterDescriptor, KycMethod, KycPort, PortHealth } from "@infraby
 export const KYC_METHOD_FNS = {
   pan: ["verifyPan"],
   aadhaar_offline: ["verifyAadhaarOffline"],
-  digilocker: ["digilockerPull"],
+  digilocker: ["startDigilocker", "digilockerPull"],
   ckyc_search: ["ckycSearch"],
   ckyc_download: ["ckycDownload"],
   vcip: ["startVcip", "vcipStatus", "handleWebhook"],
@@ -57,7 +57,12 @@ export function kycMethodRouter(o: KycMethodRouterOptions): KycPort {
     const names = o.order?.[methodOf.get(fn) as KycMethod] ?? fallback;
     return names
       .map((n) => byName.get(n) as KycPort)
-      .filter((a) => a.descriptor.capabilities?.[fn] !== "unsupported");
+      .filter(
+        (a) =>
+          a.descriptor.capabilities?.[fn] !== "unsupported" &&
+          // An optional method an adapter outside the platform does not have (startDigilocker).
+          typeof a[fn] === "function",
+      );
   };
 
   const call = async (fn: Fn, args: unknown[]): Promise<unknown> => {

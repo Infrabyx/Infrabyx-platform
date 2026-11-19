@@ -21,16 +21,49 @@ import {
   OvdOcr,
   PanCheck,
   payloadClass,
+  type DigilockerDocument,
   type KycPort,
 } from "@infrabyx/contracts/ports";
 import type { ContractCase } from "../contract.js";
-import { type KycFixtures } from "@infrabyx/fakes";
-export { type KycFixtures, KYC_FAKE_FIXTURES, FakeKyc } from "@infrabyx/fakes";
+import { DIGILOCKER_CONTRACT_RETURN_URL, type KycFixtures } from "@infrabyx/fakes";
+export {
+  type KycFixtures,
+  DIGILOCKER_CONTRACT_RETURN_URL,
+  KYC_FAKE_FIXTURES,
+  FakeKyc,
+} from "@infrabyx/fakes";
 const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
+let dlKey = 0;
 
 /** The KYC contract: one list for the fake now and for every adapter later. */
 export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> {
   const noAadhaar = (v: unknown) => expect(JSON.stringify(v)).not.toMatch(AADHAAR_LIKE);
+  const returnUrl = () => fx.digilockerReturnUrl ?? DIGILOCKER_CONTRACT_RETURN_URL;
+  const start = (p: KycPort) => {
+    expect(typeof p.startDigilocker).toBe("function");
+    return (p.startDigilocker as NonNullable<KycPort["startDigilocker"]>).bind(p);
+  };
+  // A fresh key per run (the platform adapters keep a key for 24 hours).
+  const key = () => `dl-contract-${Date.now().toString(36)}-${++dlKey}`;
+  const refusal = (p: Promise<unknown>) =>
+    p.then(
+      () => ({ code: "resolved", reason: undefined }),
+      (e: { code?: string; meta?: { reason?: string } }) => ({
+        code: e.code,
+        reason: e.meta?.reason,
+      }),
+    );
+  // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
+  const noRunInKeys = (docs: DigilockerDocument[]) => {
+    for (const d of docs)
+      for (const s of [
+        d.file.storageKey,
+        d.issuer,
+        d.issuedAt ?? "",
+        ...Object.values(d.evidence ?? {}),
+      ])
+        expect(s).not.toMatch(AADHAAR_LIKE);
+  };
   return [
     {
       name: "every request schema classes its identity fields REGULATED; the adapter stays IN",
@@ -129,6 +162,101 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
         for (const d of docs) expect(d.file.sha256).toMatch(/^[0-9a-f]{64}$/);
         noAadhaar(docs);
         await expect(p.digilockerPull({ consentSession, docTypes: ["PANCR"] })).rejects.toThrow();
+      },
+    },
+    {
+      name: "startDigilocker (PR-UDF-040): a consent session, an https sign-in address and its expiry; a return address that is not https or not on the allowed hosts is refused",
+      method: "startDigilocker",
+      invoke: (p) => start(p)({ docTypes: ["PANCR"], returnUrl: returnUrl() }),
+      async run(p) {
+        const s = await start(p)({ docTypes: ["PANCR", "ADHAR"], returnUrl: returnUrl() });
+        expect(s.consentSession.length).toBeGreaterThanOrEqual(8);
+        expect(s.consentSession.length).toBeLessThanOrEqual(200);
+        expect(new URL(s.signInUrl).protocol).toBe("https:");
+        expect(Date.parse(s.expiresAt)).toBeGreaterThan(Date.now());
+        expect(s.vendorRef).not.toBe("");
+        expect(s.adapter).toBe(p.descriptor.adapter);
+        noAadhaar(s);
+        const ok = new URL(returnUrl());
+        for (const bad of [
+          returnUrl().replace(/^https:/, "http:"),
+          `https://not-listed.example.net${ok.pathname}`,
+          `https://${ok.hostname}.not-listed.example.net${ok.pathname}`,
+          `https://user:pw@${ok.host}${ok.pathname}`,
+        ])
+          await expect(start(p)({ docTypes: ["PANCR"], returnUrl: bad })).rejects.toMatchObject({
+            code: "IPB-PORT-001",
+            meta: { reason: "return_url_not_allowed" },
+          });
+        // Not completed yet: refused, and the product may try again within the session.
+        for (let i = 0; i < 2; i++)
+          expect(
+            await refusal(
+              p.digilockerPull({ consentSession: s.consentSession, docTypes: ["PANCR"] }),
+            ),
+          ).toEqual({ code: "IPB-PORT-001", reason: "consent_incomplete" });
+      },
+    },
+    {
+      name: "digilockerPull (PR-UDF-040): each document carries its evidence and the issuer's signature result; no storage key or issuer carries a 12-digit run",
+      method: "digilockerPull",
+      invoke: (p) =>
+        p.digilockerPull({ consentSession: fx.digilockerConsent(), docTypes: ["PANCR"] }),
+      async run(p) {
+        const docs = await p.digilockerPull({
+          consentSession: fx.digilockerConsent(),
+          docTypes: ["PANCR", "ADHAR"],
+        });
+        expect(docs.length).toBeGreaterThan(0);
+        for (const d of docs) {
+          expect(d.evidence).toMatchObject({ adapter: p.descriptor.adapter });
+          expect(d.evidence?.vendorRef).not.toBe("");
+          expect(d.evidence?.modelVersion).not.toBe("");
+          expect(Number.isNaN(Date.parse(d.evidence?.checkedAt ?? ""))).toBe(false);
+          expect(d.signatureValid === null || typeof d.signatureValid === "boolean").toBe(true);
+        }
+        noRunInKeys(docs);
+      },
+    },
+    {
+      name: "digilockerPull (PR-UDF-040): a retry with the same key returns the same documents; the same key with another session or other types is IPB-PORT-004",
+      method: "digilockerPull",
+      invoke: (p) =>
+        p.digilockerPull({ consentSession: fx.digilockerConsent(), docTypes: ["PANCR"] }),
+      async run(p) {
+        const idempotencyKey = key();
+        const consentSession = fx.digilockerConsent();
+        const first = await p.digilockerPull(
+          { consentSession, docTypes: ["PANCR", "ADHAR"] },
+          { idempotencyKey },
+        );
+        const again = await p.digilockerPull(
+          { consentSession, docTypes: ["ADHAR", "PANCR"] },
+          { idempotencyKey },
+        );
+        expect(again).toEqual(first);
+        // Without the key the session is still single use.
+        expect(
+          await refusal(p.digilockerPull({ consentSession, docTypes: ["PANCR", "ADHAR"] })),
+        ).toEqual({ code: "IPB-PORT-001", reason: "consent_used" });
+        await expect(
+          p.digilockerPull(
+            { consentSession: fx.digilockerConsent(), docTypes: ["PANCR", "ADHAR"] },
+            { idempotencyKey },
+          ),
+        ).rejects.toMatchObject({ code: "IPB-PORT-004" });
+        await expect(
+          p.digilockerPull({ consentSession, docTypes: ["PANCR"] }, { idempotencyKey }),
+        ).rejects.toMatchObject({ code: "IPB-PORT-004" });
+        // A new key on a used session is refused, never served from another key's pull.
+        expect(
+          await refusal(
+            p.digilockerPull(
+              { consentSession, docTypes: ["PANCR", "ADHAR"] },
+              { idempotencyKey: key() },
+            ),
+          ),
+        ).toEqual({ code: "IPB-PORT-001", reason: "consent_used" });
       },
     },
     {

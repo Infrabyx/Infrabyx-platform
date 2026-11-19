@@ -95,6 +95,44 @@ export const DigilockerPull = z
   })
   .strict();
 
+/**
+ * Start a DigiLocker consent session (PR-UDF-040; R1-D-193). The adapter builds the vendor's
+ * request, so a product never does. `returnUrl` is where DigiLocker sends the customer back: it
+ * must be `https:`, carry no user name or password and no 12-digit run, and its host must be one of
+ * the hosts the adapter was built with (exact names, none by default); anything else is refused
+ * `IPB-PORT-001` with `meta.reason: "return_url_not_allowed"` before any vendor call.
+ */
+export const StartDigilocker = z
+  .object({
+    docTypes: z.array(z.enum(DIGILOCKER_DOC_TYPES)).min(1).max(5),
+    /** The product's own page; it may carry the product's journey id, so CONFIDENTIAL. */
+    returnUrl: classed(z.string().min(9).max(2048), "CONFIDENTIAL"),
+  })
+  .strict();
+
+/** The fixed `meta.reason` of a refused `returnUrl` (PR-UDF-040). */
+export const DIGILOCKER_RETURN_URL_REFUSED = "return_url_not_allowed";
+
+const TWELVE_DIGIT_RUN = /(?<![0-9])[0-9]{12}(?![0-9])/;
+
+/**
+ * True when `url` may be a DigiLocker return address for an adapter built with `hosts`: `https:`,
+ * no user information, no 12-digit run anywhere, and a host equal (ignoring case) to one of `hosts`.
+ * Exact names only: no wildcard and no suffix match. Every platform adapter uses this check.
+ */
+export function digilockerReturnUrlAllowed(url: string, hosts: readonly string[]): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" || u.username !== "" || u.password !== "") return false;
+  if (TWELVE_DIGIT_RUN.test(url)) return false;
+  const host = u.hostname.toLowerCase();
+  return hosts.some((h) => h.toLowerCase() === host);
+}
+
 export const CKYC_ID_TYPES = [
   "PAN",
   "PASSPORT",
@@ -203,11 +241,37 @@ export interface AadhaarOfflineResult extends KycEvidence {
   generatedAt: string;
 }
 
+/** A consent session started with `startDigilocker` (PR-UDF-040). */
+export interface DigilockerStart extends KycEvidence {
+  /** The session to pass to `digilockerPull` once the customer is back. */
+  consentSession: string;
+  /** The vendor's DigiLocker sign-in address for the customer (`https:`). */
+  signInUrl: string;
+  /** When the session can no longer be completed (ISO 8601). */
+  expiresAt: string;
+}
+
+/**
+ * A document pulled from DigiLocker. `file` is in the STORAGE the adapter was built with, under the
+ * call's tenant and REGULATED; no storage key or `issuer` carries a 12-digit run.
+ */
 export interface DigilockerDocument {
   docType: (typeof DIGILOCKER_DOC_TYPES)[number];
   file: KycFileRef;
   issuer: string;
   issuedAt?: string;
+  /**
+   * The vendor's reference, adapter, model version and time of the pull (PR-UDF-040). The
+   * platform's adapters and the fake always set it; optional in the type only so an implementer
+   * outside the platform does not break in a minor (as `AadhaarOfflineResult.kind`).
+   */
+  evidence?: KycEvidence;
+  /**
+   * The issuer's signature on the document as the vendor checked it (KYC Directions 2025 paras
+   * 17(11) and 23 proviso (iii) ask the RE to verify it); `null` when the vendor does not report it,
+   * which the product records as "not reported". Always set by the platform's adapters and the fake.
+   */
+  signatureValid?: boolean | null;
 }
 
 export interface CkycSearchResult extends KycEvidence {
@@ -297,7 +361,25 @@ export interface KycPort extends Port {
     req: z.infer<typeof AadhaarOfflineCheck>,
     call?: PortCall,
   ): Promise<AadhaarOfflineResult>;
-  /** Documents written to STORAGE; the consent session is single use. */
+  /**
+   * Start a DigiLocker consent session (PR-UDF-040): the adapter builds the vendor's request and
+   * checks `returnUrl` (see `StartDigilocker`). Each call is a new session; one that is not
+   * completed simply expires. Optional on the interface so an implementer outside the platform does
+   * not break in a minor; every platform adapter and the fake provide it (an adapter without
+   * DigiLocker refuses it `unsupported`).
+   */
+  startDigilocker?(req: z.infer<typeof StartDigilocker>, call?: PortCall): Promise<DigilockerStart>;
+  /**
+   * Pull the documents of a completed consent session. They are written to the STORAGE the adapter
+   * was built with, under the call's tenant and REGULATED, and returned by reference; no storage
+   * key or issuer carries a 12-digit run. The consent session is single use: a second pull is
+   * refused `consent_used`. A session the customer has not completed yet is refused
+   * `consent_incomplete`, which does not use it up: the product may retry within the session.
+   * Idempotent on `call.idempotencyKey` (PR-UDF-040): a retry with the same key and request returns
+   * the documents the first pull stored, without a new vendor pull, instead of `consent_used`; the
+   * same key with another session or other document types is refused `IPB-PORT-004`
+   * (`meta.reason: "idempotency_conflict"`). The platform adapters keep a key for 24 hours.
+   */
   digilockerPull(
     req: z.infer<typeof DigilockerPull>,
     call?: PortCall,

@@ -10,16 +10,21 @@ import {
   BankAccountCheck,
   CkycDownload,
   CkycSearch,
+  DIGILOCKER_RETURN_URL_REFUSED,
   DigilockerPull,
   FaceMatch,
   LivenessCheck,
   OvdOcr,
   PanCheck,
+  StartDigilocker,
   VcipSession,
+  digilockerReturnUrlAllowed,
   type AdapterDescriptor,
+  type DigilockerDocument,
   type KycFileRef,
   type KycPort,
   type NameMatch,
+  type PortCall,
   type PortHealth,
   type ScoreResult,
   type VcipManifest,
@@ -32,6 +37,11 @@ export interface KycFixtures {
   pan: { pan: string; name: string; unknownPan: string };
   aadhaar: { file: KycFileRef; shareCode: string; wrongShareCode: string };
   digilockerConsent: () => string;
+  /**
+   * A return address on the adapter's allowed hosts (PR-UDF-040); the contract cases derive the
+   * refused ones from it. Omitted: `DIGILOCKER_CONTRACT_RETURN_URL`, which the fake allows.
+   */
+  digilockerReturnUrl?: string;
   ckyc: { idNumber: string; ckycNumber: string; authFactor: string };
   bank: { ifsc: string; accountNumber: string; name: string };
   aml: { listedName: string; cleanName: string };
@@ -45,12 +55,16 @@ const ref = (label: string): KycFileRef => ({
   sha256: sha256Hex(label),
 });
 
+/** The return address the contract cases use when the fixtures name none (PR-UDF-040). */
+export const DIGILOCKER_CONTRACT_RETURN_URL = "https://kyc-return.example.com/digilocker/done";
+
 let consent = 0;
 /** The fake's fixtures (no real identity: test PANs and accounts of the fake only). */
 export const KYC_FAKE_FIXTURES: KycFixtures = {
   pan: { pan: "AAAPZ1234C", name: "Asha Rao", unknownPan: "ZZZPZ9999Z" },
   aadhaar: { file: ref("aadhaar-offline.zip"), shareCode: "1234", wrongShareCode: "9999" },
   digilockerConsent: () => `dl-consent-${++consent}`,
+  digilockerReturnUrl: DIGILOCKER_CONTRACT_RETURN_URL,
   ckyc: { idNumber: "AAAPZ1234C", ckycNumber: "10000000000001", authFactor: "1990-01-01" },
   bank: { ifsc: "HDFC0000001", accountNumber: "000123456789", name: "Asha Rao" },
   aml: { listedName: "Listed Person", cleanName: "Asha Rao" },
@@ -74,7 +88,10 @@ const nameMatch = (a: string, b: string): NameMatch =>
 
 /**
  * In-memory KYC fake. `completeVcip` plays the official's side of a V-CIP call; the fixtures'
- * `faces.same` matches `faces.a`. Scores come from a hash, so they are stable across runs.
+ * `faces.same` matches `faces.a`. Scores come from a hash, so they are stable across runs. A
+ * DigiLocker session from `startDigilocker` stays incomplete until `completeDigilocker`; any other
+ * consent string is taken as completed (the fixtures' `dl-consent-<n>`). `digilockerPull` is
+ * idempotent on the call's key, as the platform adapters are.
  */
 export class FakeKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
@@ -86,11 +103,24 @@ export class FakeKyc implements KycPort {
   };
   private readonly fx: KycFixtures;
   private readonly usedConsents = new Set<string>();
+  private readonly pendingConsents = new Set<string>();
+  private readonly pulls = new Map<string, { request: string; docs: DigilockerDocument[] }>();
+  private readonly returnHosts: readonly string[];
   private readonly vcips = new Map<string, VcipManifest>();
   private n = 0;
-  constructor(o: { fixtures?: KycFixtures; now?: () => Date } = {}) {
+  constructor(
+    o: {
+      fixtures?: KycFixtures;
+      now?: () => Date;
+      /** Hosts a DigiLocker return address may name (default: the fixtures' return address). */
+      digilockerReturnHosts?: readonly string[];
+    } = {},
+  ) {
     this.fx = o.fixtures ?? KYC_FAKE_FIXTURES;
     this.now = o.now ?? (() => new Date());
+    this.returnHosts = o.digilockerReturnHosts ?? [
+      new URL(this.fx.digilockerReturnUrl ?? DIGILOCKER_CONTRACT_RETURN_URL).hostname,
+    ];
   }
   private readonly now: () => Date;
 
@@ -147,8 +177,50 @@ export class FakeKyc implements KycPort {
     };
   }
 
-  async digilockerPull(raw: Parameters<KycPort["digilockerPull"]>[0]) {
+  async startDigilocker(raw: Parameters<NonNullable<KycPort["startDigilocker"]>>[0]) {
+    const r = StartDigilocker.parse(raw);
+    if (!digilockerReturnUrlAllowed(r.returnUrl, this.returnHosts))
+      throw new PortError("IPB-PORT-001", "KYC", {
+        adapter: "fake-kyc",
+        detail: "the return address is not https on an allowed host",
+        meta: { reason: DIGILOCKER_RETURN_URL_REFUSED, definite: true },
+      });
+    const ev = this.ev();
+    const consentSession = `dl-session-${ev.vendorRef}`;
+    this.pendingConsents.add(consentSession);
+    return {
+      ...ev,
+      consentSession,
+      signInUrl: `https://digilocker.fake.example/signin/${encodeURIComponent(consentSession)}`,
+      expiresAt: new Date(this.now().getTime() + 10 * 60_000).toISOString(),
+    };
+  }
+
+  /** Test helper: the customer signs in to DigiLocker and shares the documents. */
+  completeDigilocker(consentSession: string): void {
+    this.pendingConsents.delete(consentSession);
+  }
+
+  async digilockerPull(raw: Parameters<KycPort["digilockerPull"]>[0], call?: PortCall) {
     const r = DigilockerPull.parse(raw);
+    const request = JSON.stringify([r.consentSession, [...r.docTypes].sort()]);
+    const key = call?.idempotencyKey;
+    const prior = key === undefined ? undefined : this.pulls.get(key);
+    if (prior) {
+      if (prior.request !== request)
+        throw new PortError("IPB-PORT-004", "KYC", {
+          adapter: "fake-kyc",
+          detail: "idempotency key reused with a different DigiLocker pull",
+          meta: { reason: "idempotency_conflict" },
+        });
+      return structuredClone(prior.docs);
+    }
+    if (this.pendingConsents.has(r.consentSession))
+      throw new PortError("IPB-PORT-001", "KYC", {
+        adapter: "fake-kyc",
+        detail: "the customer has not completed the DigiLocker step",
+        meta: { reason: "consent_incomplete", definite: true },
+      });
     if (this.usedConsents.has(r.consentSession))
       throw new PortError("IPB-PORT-001", "KYC", {
         adapter: "fake-kyc",
@@ -156,14 +228,19 @@ export class FakeKyc implements KycPort {
         meta: { reason: "consent_used", definite: true },
       });
     this.usedConsents.add(r.consentSession);
-    return r.docTypes.map((docType) => ({
+    const evidence = this.ev();
+    const docs: DigilockerDocument[] = r.docTypes.map((docType) => ({
       docType,
       file: {
         storageKey: `tenant/tnt_kyc/kyc/digilocker/${r.consentSession}/${docType}.pdf`,
         sha256: sha256Hex(`${r.consentSession}:${docType}`),
       },
       issuer: "fake-issuer",
+      evidence,
+      signatureValid: true,
     }));
+    if (key !== undefined) this.pulls.set(key, { request, docs: structuredClone(docs) });
+    return docs;
   }
 
   async ckycSearch(raw: Parameters<KycPort["ckycSearch"]>[0]) {
