@@ -163,6 +163,74 @@ class PgTx implements Tx {
     this.assertOpen();
     await applySettings(this.client, ctx, m);
   }
+
+  /**
+   * Kernel only: a read joined to an ambient mutation (PR-UDF-037; R1-D-188). `fn` runs in a
+   * savepoint as `role`, read-only, with the read's own `app.*` settings; the savepoint is always
+   * rolled back, which undoes the role, the read-only flag and the settings (each set with SET
+   * LOCAL inside it), so the ambient transaction carries on as it was.
+   */
+  async readUnit<T>(
+    role: string,
+    ctx: KernelContext,
+    fn: () => Promise<T>,
+  ): Promise<UnitOutcome<T>> {
+    this.assertOpen();
+    if (this.readOnly) throw new KernelGuardError("units are for mutations");
+    if (++this.units > MAX_UNITS_PER_TX)
+      throw new KernelGuardError(`a transaction opens at most ${MAX_UNITS_PER_TX} units`);
+    const name = `ipb_unit_${this.depth}`;
+    const auditedBefore = this._audited;
+    this.depth++;
+    await this.client.query(`savepoint ${name}`);
+    try {
+      await this.client.query(`set local role ${quoteIdent(role)}`);
+      await this.client.query("set local transaction_read_only = on");
+      await applySettings(this.client, ctx, {});
+      return { ok: true, value: await fn() };
+    } catch (error) {
+      return { ok: false, error };
+    } finally {
+      // A failed rollback (a broken connection) fails the whole transaction.
+      await this.client.query(`rollback to savepoint ${name}`);
+      await this.client.query(`release savepoint ${name}`);
+      this._audited = auditedBefore;
+      this.depth--;
+    }
+  }
+}
+
+/**
+ * A read joined to an ambient mutation (PR-UDF-037; R1-D-188): its statements run on the ambient
+ * connection inside a read unit, so they see the ambient transaction's uncommitted writes. Like a
+ * `read`'s transaction it opens no units and its ledger mark counts for nothing.
+ */
+class JoinedReadTx implements Tx {
+  private ended = false;
+  constructor(
+    private readonly parent: PgTx,
+    readonly ctx: KernelContext,
+  ) {}
+  /** Kernel only: the read is over; its tx may not be used again (R1-D-92). */
+  end(): void {
+    this.ended = true;
+  }
+  query<R = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<QueryResult<R>> {
+    if (this.ended) return Promise.reject(new KernelGuardError(ENDED));
+    return this.parent.query<R>(text, params);
+  }
+  markAudited(): void {
+    // A read writes no ledger entry; its unit is rolled back, so nothing it wrote would survive.
+  }
+  get audited(): boolean {
+    return false;
+  }
+  unit<T>(): Promise<UnitOutcome<T>> {
+    return Promise.reject(new KernelGuardError("units are for mutations"));
+  }
 }
 
 /**
@@ -213,6 +281,20 @@ interface AmbientScope {
   inflight: Set<Promise<unknown>>;
   /** Set when the ambient mutation ends: a joined call that starts later is refused. */
   ended: boolean;
+  /** Reads join too (`AmbientOptions.joinReads`; PR-UDF-037, R1-D-188). */
+  joinReads: boolean;
+}
+
+/** Options of `PgKernel.ambient`: the mutation's own, and whether reads join it. */
+export interface AmbientOptions extends MutateOptions {
+  /**
+   * When true, a `read` made within the callback joins the ambient transaction (PR-UDF-037;
+   * R1-D-188): it sees the transaction's uncommitted writes, runs read-only as the read role, and
+   * runs one at a time with the joined mutations. A `snapshot` read, a read for another tenant,
+   * principal, scope or grant, and a support, external or platform service read keep their own
+   * transaction. Default false: every read keeps its own transaction, as before 1.21.
+   */
+  joinReads?: boolean;
 }
 interface AmbientFrame {
   scope: AmbientScope;
@@ -350,7 +432,7 @@ export class PgKernel implements MutationKernel {
     if (opts.reason !== undefined && (opts.reason.length < 1 || opts.reason.length > 500))
       throw new RangeError("a mutation's reason has 1 to 500 characters");
     const frame = this.ambientFrame.getStore();
-    if (frame) return this.joined(frame, ctx, role, fn, opts);
+    if (frame) return this.joined(frame, () => this.joinedCall(frame, ctx, role, fn, opts));
     return this.run(
       ctx,
       role,
@@ -377,12 +459,13 @@ export class PgKernel implements MutationKernel {
    * check: when it throws, only its writes roll back and the error reaches its caller; the ambient
    * settings are restored after it. A joined call must be the ambient one's tenant, principal,
    * scope and break-glass grant, runs as the app role, and joined calls run one at a time. Reads
-   * are not joined: `read` keeps its own read-only transaction.
+   * join only with `opts.joinReads` (PR-UDF-037; R1-D-188); otherwise `read` keeps its own
+   * read-only transaction.
    */
   async ambient<T>(
     ctx: KernelContext,
     fn: (tx: Tx) => Promise<T>,
-    opts: MutateOptions = {},
+    opts: AmbientOptions = {},
   ): Promise<T> {
     if (this.ambientFrame.getStore())
       throw new KernelGuardError("an ambient mutation is already open");
@@ -401,6 +484,7 @@ export class PgKernel implements MutationKernel {
           stack: [token],
           inflight: new Set(),
           ended: false,
+          joinReads: opts.joinReads === true,
         };
         let value: T | undefined;
         let failure: { error: unknown } | undefined;
@@ -427,17 +511,11 @@ export class PgKernel implements MutationKernel {
     );
   }
 
-  private async joined<T>(
-    frame: AmbientFrame,
-    ctx: KernelContext,
-    role: string,
-    fn: (tx: Tx) => Promise<T>,
-    opts: MutateOptions,
-  ): Promise<T> {
+  private async joined<T>(frame: AmbientFrame, call: () => Promise<T>): Promise<T> {
     const { scope } = frame;
     if (scope.ended)
       throw new KernelGuardError("the ambient mutation has ended: a joined call cannot start");
-    const p = this.joinedCall(frame, ctx, role, fn, opts);
+    const p = call();
     scope.inflight.add(p);
     void p.then(
       () => scope.inflight.delete(p),
@@ -496,6 +574,47 @@ export class PgKernel implements MutationKernel {
     return out.value;
   }
 
+  /** Whether a read made inside `scope` joins it (PR-UDF-037; R1-D-188). */
+  private joinsRead(scope: AmbientScope, ctx: KernelContext, opts: ReadOptions): boolean {
+    if (!scope.joinReads || opts.snapshot) return false;
+    if (isSupportContext(ctx) || isExternal(ctx) || serviceReaderRole(ctx)) return false;
+    const a = scope.ctx;
+    return (
+      ctx.tenantId === a.tenantId &&
+      ctx.principal.id === a.principal.id &&
+      (ctx.scope ?? "tenant") === (a.scope ?? "tenant") &&
+      (ctx.breakGlassGrantId ?? "") === (a.breakGlassGrantId ?? "")
+    );
+  }
+
+  private async joinedRead<T>(
+    frame: AmbientFrame,
+    ctx: KernelContext,
+    fn: (tx: Tx) => Promise<T>,
+  ): Promise<T> {
+    const { scope } = frame;
+    if (scope.stack.at(-1) !== frame.token)
+      throw new KernelGuardError("calls joined to an ambient mutation run one at a time");
+    const token = Symbol("joined-read");
+    scope.stack.push(token);
+    let child: JoinedReadTx | undefined;
+    let out: UnitOutcome<T>;
+    try {
+      out = await scope.tx.readUnit(this.readRole, ctx, async () => {
+        // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
+        child = new JoinedReadTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
+        const c = child;
+        return this.ambientFrame.run({ scope, token }, () => fn(c));
+      });
+    } finally {
+      child?.end();
+      const i = scope.stack.lastIndexOf(token);
+      if (i >= 0) scope.stack.splice(i, 1);
+    }
+    if (!out.ok) throw out.error;
+    return out.value;
+  }
+
   async read<T>(
     ctx: KernelContext,
     fn: (tx: Tx) => Promise<T>,
@@ -503,6 +622,9 @@ export class PgKernel implements MutationKernel {
   ): Promise<T> {
     assertValidContext(ctx);
     assertExternalGated(ctx, fn);
+    const frame = this.ambientFrame.getStore();
+    if (frame && this.joinsRead(frame.scope, ctx, opts))
+      return this.joined(frame, () => this.joinedRead(frame, ctx, fn));
     // A support principal reads only through SupportReads, which ledgers every read (R1-D-76).
     const gate = isSupportContext(ctx) ? supportGateOf(fn) : undefined;
     if (isSupportContext(ctx) && gate !== "read" && gate !== "manage")

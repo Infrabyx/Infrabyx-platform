@@ -3,7 +3,7 @@
 // as a generic 500 with no internals. The trace id is the request's `traceparent` trace.
 import { Catch, HttpException, type ArgumentsHost, type ExceptionFilter } from "@nestjs/common";
 import type { Request, Response } from "express";
-import { toProblem, type Problem } from "@infrabyx/contracts/errors";
+import { problemHeaders, toProblem, type Problem } from "@infrabyx/contracts/errors";
 import { NotFoundError } from "@infrabyx/tenancy";
 
 export const PROBLEM_TYPE_BASE = "https://help.infrabyx.in/errors";
@@ -58,8 +58,10 @@ export class ProblemFilter implements ExceptionFilter {
       instance: req.originalUrl ?? req.url,
       ...(traceId ? { traceId } : {}),
     });
+    res.status(p.status);
+    // Retry-After with a 429 or 503 that says how long to wait (PR-UDF-038).
+    for (const [name, value] of Object.entries(problemHeaders(p))) res.setHeader(name, value);
     res
-      .status(p.status)
       .setHeader("content-type", "application/problem+json")
       .setHeader("cache-control", "no-store")
       .send(JSON.stringify(p));

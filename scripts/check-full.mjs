@@ -302,6 +302,7 @@ export function plan(o, ci = readCi()) {
     ["journeys-lint", "journeys:lint"],
     ["ai-prompt-lint", "ai:prompt-lint"],
     ["ai-eval-gate", "ai:eval-gate"],
+    ["aadhaar-scan", "aadhaar:scan"],
   ])
     add({ id, name: ciName(id), deps: afterBuild, est: 10, cmd: `pnpm ${script}` });
   add({

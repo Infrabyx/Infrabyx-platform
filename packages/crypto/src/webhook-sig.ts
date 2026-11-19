@@ -222,3 +222,80 @@ export function verifyLeegalityMac(
     .digest();
   return got !== null && equal(got, want);
 }
+
+// ---- Standard Webhooks v1 (IPB-10-21; C-13; PR-UDF-046, R1-D-199) ------------------------------
+
+/** The Standard Webhooks timestamp window, either way: five minutes (IPB-10-21). */
+export const STANDARD_WEBHOOK_TOLERANCE_SECONDS = 300;
+/** At most this many signatures in one `webhook-signature` header are tried (rotation needs two). */
+export const STANDARD_WEBHOOK_MAX_SIGNATURES = 8;
+
+export interface StandardWebhookHeaders {
+  /** `webhook-id`: the delivery id, the same on every retry of one event. */
+  id: string;
+  /** `webhook-timestamp`: unix seconds. */
+  timestamp: string;
+  /** `webhook-signature`: space-separated `v1,<base64>` entries. */
+  signature: string;
+}
+
+export type StandardWebhookFailure = "headers" | "timestamp" | "signature";
+
+/**
+ * The key of a Standard Webhooks secret: `whsec_` and the base64 of 24 to 64 bytes (the
+ * specification's range); anything else is a configuration fault and throws `RangeError`.
+ */
+function standardWebhookKey(secret: string): Buffer {
+  const b = secret.startsWith("whsec_") ? decodeBase64(secret.slice(6)) : null;
+  if (b === null || b.byteLength < 24 || b.byteLength > 64)
+    throw new RangeError("a Standard Webhooks secret is whsec_ and the base64 of 24 to 64 bytes");
+  return b;
+}
+
+/**
+ * Verify a Standard Webhooks v1 delivery (IPB-10-21), as C-13 verifies a vendor's HMAC-SHA-256:
+ * the base64 HMAC-SHA-256 of `<webhook-id>.<webhook-timestamp>.<raw body>` with any of `secrets`
+ * (two during rotation), compared in constant time with each `v1` entry of the header, and the
+ * timestamp inside ±`toleranceSeconds` (default 300) of now. Only `v1` is read: `v1a` (Ed25519) is
+ * not an approved algorithm, so a header with no `v1` entry fails. Returns null when valid, else
+ * the failure. Verification only: nothing here signs an outbound delivery.
+ */
+export function verifyStandardWebhook(
+  secrets: readonly string[],
+  rawBody: Uint8Array,
+  h: StandardWebhookHeaders,
+  opts: { now?: number; toleranceSeconds?: number } = {},
+): StandardWebhookFailure | null {
+  const keys = secrets.map(standardWebhookKey);
+  if (keys.length === 0) throw new RangeError("no Standard Webhooks secret");
+  if (!/^[\x21-\x7e]{1,256}$/.test(h.id) || h.signature.length > 4096) return "headers";
+  if (!/^[0-9]{1,12}$/.test(h.timestamp)) return "headers";
+  const tsMs = Number(h.timestamp) * 1000;
+  const window = (opts.toleranceSeconds ?? STANDARD_WEBHOOK_TOLERANCE_SECONDS) * 1000;
+  if (Math.abs((opts.now ?? Date.now()) - tsMs) > window) return "timestamp";
+  const given = h.signature
+    .split(" ")
+    .filter((s) => s.startsWith("v1,"))
+    .slice(0, STANDARD_WEBHOOK_MAX_SIGNATURES)
+    .map((s) => decodeBase64(s.slice(3)))
+    .filter((s): s is Buffer => s !== null);
+  if (given.length === 0) return "signature";
+  const signed = Buffer.concat([Buffer.from(`${h.id}.${h.timestamp}.`, "ascii"), rawBody]);
+  let ok = false;
+  for (const k of keys) {
+    const want = mac(k, signed);
+    for (const g of given) ok = equal(g, want) || ok;
+  }
+  return ok ? null : "signature";
+}
+
+/** Tests and the hermetic leg only: the `webhook-signature` a Standard Webhooks sender would send. */
+export function signStandardWebhookForTest(
+  secret: string,
+  id: string,
+  timestamp: string,
+  rawBody: Uint8Array,
+): string {
+  const signed = Buffer.concat([Buffer.from(`${id}.${timestamp}.`, "ascii"), rawBody]);
+  return `v1,${mac(standardWebhookKey(secret), signed).toString("base64")}`;
+}

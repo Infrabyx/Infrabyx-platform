@@ -3,6 +3,8 @@
 // headers; `POST /v3/tasks/sync/<action>/<type>` with `{ task_id, group_id, data }`, answered with
 // `{ request_id, status, result }`). Proves adapter logic only; the sandbox leg proves the vendor
 // once the owner's IDfy sandbox exists. Test identities only.
+import { aadhaarOtpStub, type AadhaarOtpStubFixtures } from "./aadhaar-otp.js";
+import { bankAccountStub, type BankAccountStubFixtures } from "./bank-account.js";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
 
 export interface IdfyKycStub extends VendorStub {
@@ -13,6 +15,21 @@ export interface IdfyKycStub extends VendorStub {
   /** Face images: `a` and `same` are one person, `other` another; frames read as live. */
   faces: { a: Buffer; same: Buffer; other: Buffer };
   frames: Buffer[];
+  /** Aadhaar OTP e-KYC test numbers and codes (PR-UDF-041); synthetic, never real. */
+  aadhaarOtp: AadhaarOtpStubFixtures;
+  /** Expire an Aadhaar OTP transaction now. */
+  expireAadhaarOtp(txn: string): void;
+  /** The next e-KYC the stub answers carries this full number. */
+  ekycWithNumberOnce(n: string): void;
+  /** Bank accounts the stub knows (PR-UDF-043); test accounts only. */
+  bankAccount: BankAccountStubFixtures;
+  /** The pennyless account checks the stub answered. */
+  bankAccountChecks(): number;
+  /** The photo liveness and face compare tasks the stub answered (PR-UDF-044). */
+  livenessChecks(): number;
+  faceMatches(): number;
+  /** The next liveness or face score the stub answers is this raw value (off the 0-1 scale). */
+  scoreOnce(raw: unknown): void;
 }
 
 let seq = 0;
@@ -25,6 +42,17 @@ const tokens = (s: string) =>
 
 export async function startIdfyKycStub(): Promise<IdfyKycStub> {
   const ref: { s?: IdfyKycStub } = {};
+  const otp = aadhaarOtpStub("TXN", () => ++seq);
+  const bank = bankAccountStub();
+  let liveness = 0;
+  let faces = 0;
+  const nextScore: { raw?: unknown; set: boolean } = { set: false };
+  // The stub's scores are 0 to 1 (IDFY_SCORE_SCALE [VERIFY]); `scoreOnce` replaces the next one.
+  const scored = (v: number): unknown => {
+    if (!nextScore.set) return v;
+    nextScore.set = false;
+    return nextScore.raw;
+  };
   const stub = await startStub((r) => {
     const s = ref.s!;
     if (r.headers["account-id"] !== s.accountId || r.headers["api-key"] !== s.apiKey)
@@ -67,14 +95,53 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
       const one = img("document1");
       const two = img("document2");
       const person = (x: Buffer) => x.equals(s.faces.a) || x.equals(s.faces.same);
+      faces++;
       return done({
-        match_score: person(one) && person(two) ? 0.94 : 0.18,
+        match_score: scored(person(one) && person(two) ? 0.94 : 0.18),
         model_version: "face-compare-stub-1",
       });
     }
+    if (task === "aadhaar_otp_request/ind_aadhaar") {
+      const out = otp.request(b.data.id_type ?? "", b.data.id_number ?? "", b.data.consent ?? "");
+      if (!out.ok)
+        return {
+          status: 422,
+          body: { error: out.code.startsWith("INVALID_") ? "INVALID_ID" : out.code },
+        };
+      return done({ transaction_id: out.txn, otp_valid_till: out.validTill });
+    }
+    if (task === "aadhaar_otp_verify/ind_aadhaar") {
+      const out = otp.verify(b.data.transaction_id ?? "", b.data.otp ?? "");
+      if (!out.ok) return { status: 422, body: { error: out.code } };
+      return done({
+        ekyc_xml: Buffer.from(out.ekycXml).toString("base64"),
+        aadhaar_last_4: out.last4,
+        signature_status: "valid",
+        model_version: "aadhaar-otp-stub-1",
+      });
+    }
+    if (task === "verify_with_source/validate_bank_account") {
+      // nf_verification "true" is IDfy's non-financial (pennyless) check [VERIFY].
+      if (b.data.nf_verification !== "true")
+        return { status: 422, body: { error: "UNSUPPORTED_VERIFICATION" } };
+      if (!b.data.bank_account_no || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(b.data.bank_ifsc_code ?? ""))
+        return { status: 422, body: { error: "INVALID_ID" } };
+      const out = bank.check(b.data.bank_ifsc_code ?? "", b.data.bank_account_no);
+      return done(
+        out.status === "not_found"
+          ? { status: "id_not_found", account_exists: "NO" }
+          : {
+              status: "id_found",
+              account_exists: "YES",
+              account_status: out.status === "closed" ? "closed" : "active",
+              name_at_bank: out.nameAtBank,
+            },
+      );
+    }
     if (task === "check_photo_liveness/face") {
       const live = s.frames.some((f) => f.equals(img("document1")));
-      return done({ liveness_score: live ? 0.91 : 0.3, model_version: "liveness-stub-1" });
+      liveness++;
+      return done({ liveness_score: scored(live ? 0.91 : 0.3), model_version: "liveness-stub-1" });
     }
     return { status: 404, body: { error: "NOT_FOUND" } };
   });
@@ -88,6 +155,17 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
       other: Buffer.from("idfy-stub-face-b"),
     },
     frames: [1, 2, 3].map((i) => Buffer.from(`idfy-stub-frame-${i}`)),
+    aadhaarOtp: otp.fixtures,
+    expireAadhaarOtp: otp.expire,
+    ekycWithNumberOnce: otp.embedNumberOnce,
+    bankAccount: bank.fixtures,
+    bankAccountChecks: bank.checks,
+    livenessChecks: () => liveness,
+    faceMatches: () => faces,
+    scoreOnce: (raw: unknown) => {
+      nextScore.raw = raw;
+      nextScore.set = true;
+    },
   });
   return ref.s;
 }

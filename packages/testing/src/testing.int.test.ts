@@ -13,6 +13,7 @@ import {
   describeTenantIsolation,
 } from "./nn.js";
 import { startPostgres, type TestDatabase } from "./postgres.js";
+import { scanDatabaseForAadhaar } from "./aadhaar-scan/index.js";
 import { newId } from "@infrabyx/crypto";
 
 let db: TestDatabase;
@@ -28,7 +29,11 @@ const settings = () =>
   });
 
 beforeAll(async () => {
-  db = await startPostgres();
+  // Every NN suite below writes this database; before it is dropped, no text column of any table
+  // may hold what reads as an Aadhaar number or VID (PR-UDF-042, R1-D-195).
+  db = await startPostgres({
+    beforeDrop: async (admin) => expect(await scanDatabaseForAadhaar(admin)).toEqual([]),
+  });
   engine = new ApprovalsEngine({ kernel: db.kernel, audit: db.audit, outbox, product: "LD" });
   await db.admin.query(
     "insert into tenancy.tenant (id, product, name) values ('tnt_platform', 'PLATFORM', 'Infrabyx'), ('tnt_a', 'LD', 'A'), ('tnt_b', 'LD', 'B')",

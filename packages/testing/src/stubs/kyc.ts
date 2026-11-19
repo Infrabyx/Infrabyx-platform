@@ -1,6 +1,8 @@
 // Digio KYC stub (R1-plan M16), from the request and response shapes the adapter documents as
 // [VERIFY]. Proves adapter logic only; the sandbox leg proves the vendor once the owner's Digio
 // account exists. Test identities only: the masked number is the stub's own, never a real one.
+import { aadhaarOtpStub, type AadhaarOtpStubFixtures } from "./aadhaar-otp.js";
+import { bankAccountStub, type BankAccountStubFixtures } from "./bank-account.js";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
 
 export interface DigioKycStub extends VendorStub {
@@ -14,6 +16,20 @@ export interface DigioKycStub extends VendorStub {
   completedDigilocker(docTypes: string[]): string;
   /** A KYC request still waiting for the customer. */
   pendingDigilocker(): string;
+  /** The template name the stub's DigiLocker start accepts (PR-UDF-040). */
+  digilockerTemplate: string;
+  /** The customer completes a started request's DigiLocker step with these documents. */
+  completeDigilocker(requestId: string, docTypes: string[]): void;
+  /** Aadhaar OTP e-KYC test numbers and codes (PR-UDF-041); synthetic, never real. */
+  aadhaarOtp: AadhaarOtpStubFixtures;
+  /** Expire an Aadhaar OTP transaction now. */
+  expireAadhaarOtp(txn: string): void;
+  /** The next e-KYC the stub answers carries this full number. */
+  ekycWithNumberOnce(n: string): void;
+  /** Bank accounts the stub knows (PR-UDF-043); test accounts only. */
+  bankAccount: BankAccountStubFixtures;
+  /** The pennyless account checks the stub answered. */
+  bankAccountChecks(): number;
 }
 
 let seq = 0;
@@ -23,7 +39,10 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     string,
     { status: string; files: Array<{ doc_type: string; file_id: string }> }
   >();
+  const template = "ipb-digilocker-stub";
   const media = new Map<string, Buffer>();
+  const otp = aadhaarOtpStub("AOT", () => ++seq);
+  const bank = bankAccountStub();
   const ref: { s?: DigioKycStub } = {};
   const stub = await startStub((r) => {
     const s = ref.s!;
@@ -43,7 +62,12 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
             {
               type: "digilocker",
               status: k.status === "approved" ? "success" : "requested",
-              sub_files: k.files.map((f) => ({ ...f, issuer: "digilocker-stub" })),
+              // The issuer's signature result for every type but DRVLC, so "not reported" is seen.
+              sub_files: k.files.map((f) => ({
+                ...f,
+                issuer: "digilocker-stub",
+                ...(f.doc_type === "DRVLC" ? {} : { signature_valid: true }),
+              })),
             },
           ],
         },
@@ -57,6 +81,73 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
         status: 200,
         body: b.toString("latin1"),
         headers: { "content-type": "application/pdf" },
+      };
+    }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/request/with_template") {
+      const b = r.json<{ template_name?: string; generate_access_token?: boolean }>();
+      if (b.template_name !== template || b.generate_access_token !== true)
+        return { status: 400, body: { code: "INVALID_TEMPLATE" } };
+      const id = create("requested", []);
+      return {
+        status: 200,
+        body: {
+          id,
+          status: "requested",
+          access_token: {
+            id: `GWT${String(++seq).padStart(10, "0")}`,
+            valid_till: new Date(Date.now() + 15 * 60_000).toISOString(),
+          },
+        },
+      };
+    }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/aadhaar_otp/request") {
+      const b = r.json<{ id_type?: string; id_number?: string; consent?: string }>();
+      const out = otp.request(b.id_type ?? "", b.id_number ?? "", b.consent ?? "");
+      if (!out.ok) return { status: 400, body: { code: out.code } };
+      return { status: 200, body: { id: out.txn, otp_valid_till: out.validTill } };
+    }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/aadhaar_otp/verify") {
+      const b = r.json<{ id?: string; otp?: string }>();
+      const out = otp.verify(b.id ?? "", b.otp ?? "");
+      if (!out.ok)
+        return out.code === "TRANSACTION_NOT_FOUND"
+          ? { status: 404, body: { code: "NOT_FOUND" } }
+          : { status: 400, body: { code: out.code } };
+      return {
+        status: 200,
+        body: {
+          id: b.id,
+          signature_valid: true,
+          model_version: "aadhaar-otp-stub-1",
+          details: {
+            aadhaar_last_digits: `xxxx-xxxx-${out.last4}`,
+            ekyc_xml: Buffer.from(out.ekycXml).toString("base64"),
+          },
+        },
+      };
+    }
+    if (r.method === "POST" && r.path === "/client/verify/bank_account") {
+      const b = r.json<{
+        beneficiary_account_no?: string;
+        beneficiary_ifsc?: string;
+        validation_mode?: string;
+      }>();
+      if (b.validation_mode !== "PENNY_LESS")
+        return { status: 400, body: { code: "UNSUPPORTED_VALIDATION_MODE" } };
+      if (!b.beneficiary_account_no || !b.beneficiary_ifsc)
+        return { status: 400, body: { code: "INVALID_REQUEST" } };
+      const out = bank.check(b.beneficiary_ifsc, b.beneficiary_account_no);
+      return {
+        status: 200,
+        body: {
+          id: `BAV${String(++seq).padStart(10, "0")}`,
+          verified: out.status === "valid",
+          account_status:
+            out.status === "valid" ? "ACTIVE" : out.status === "closed" ? "CLOSED" : "NOT_FOUND",
+          ...(out.nameAtBank ? { beneficiary_name_with_bank: out.nameAtBank } : {}),
+          validation_mode: "PENNY_LESS",
+          verified_at: new Date().toISOString(),
+        },
       };
     }
     if (r.method === "POST" && r.path === "/client/kyc/v2/offline_aadhaar/verify") {
@@ -84,14 +175,15 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     }
     return { status: 404, body: { code: "NOT_FOUND" } };
   });
-  const create = (status: string, docTypes: string[]) => {
-    const id = `KID${String(++seq).padStart(10, "0")}`;
-    const files = docTypes.map((t) => {
+  const filesOf = (id: string, docTypes: string[]) =>
+    docTypes.map((t) => {
       const file_id = `FIL${String(++seq).padStart(10, "0")}`;
       media.set(file_id, Buffer.from(`%PDF-1.7\n% ${t} from DigiLocker stub ${id}\n%%EOF\n`));
       return { doc_type: t, file_id };
     });
-    requests.set(id, { status, files });
+  const create = (status: string, docTypes: string[]) => {
+    const id = `KID${String(++seq).padStart(10, "0")}`;
+    requests.set(id, { status, files: filesOf(id, docTypes) });
     return id;
   };
   ref.s = Object.assign(stub, {
@@ -101,6 +193,17 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     offlineZip: Buffer.from(`PK\u0003\u0004 offline e-KYC stub ${stubCredential().slice(0, 8)}`),
     completedDigilocker: (docTypes: string[]) => create("approved", docTypes),
     pendingDigilocker: () => create("requested", []),
+    digilockerTemplate: template,
+    completeDigilocker: (requestId: string, docTypes: string[]) => {
+      const k = requests.get(requestId);
+      if (!k) throw new Error(`no Digio KYC request ${requestId}`);
+      requests.set(requestId, { status: "approved", files: filesOf(requestId, docTypes) });
+    },
+    aadhaarOtp: otp.fixtures,
+    expireAadhaarOtp: otp.expire,
+    ekycWithNumberOnce: otp.embedNumberOnce,
+    bankAccount: bank.fixtures,
+    bankAccountChecks: bank.checks,
   });
   return ref.s;
 }

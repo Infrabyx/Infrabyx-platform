@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { ERROR_CATALOGUE, IpbError, PortError, Problem, toProblem } from "./errors.js";
+import {
+  ERROR_CATALOGUE,
+  IpbError,
+  PortError,
+  Problem,
+  problemHeaders,
+  toProblem,
+} from "./errors.js";
 
 describe("error catalogue", () => {
   it("uses IPB-AREA-NNN codes with a status for every entry", () => {
@@ -57,5 +64,42 @@ describe("RFC 9457 problems (IPB-10-04)", () => {
     expect(e.httpStatus).toBe(500);
     expect(e.port).toBe("STORAGE");
     expect(e.message).toContain("IPB-PORT-005");
+  });
+});
+
+describe("reason and retry_after_seconds (PR-UDF-038)", () => {
+  it("carries a fixed refusal label and drops anything that is not one", () => {
+    const p = toProblem(new IpbError("IPB-PORT-002", { meta: { reason: "hash_mismatch" } }));
+    expect(p.reason).toBe("hash_mismatch");
+    expect(Problem.parse(p)).toEqual(p);
+    for (const reason of ["Has Space", "x".repeat(65), "1digit", "a@b.c", "123456789012", 7])
+      expect(toProblem(new IpbError("IPB-PORT-002", { meta: { reason } })).reason).toBeUndefined();
+    expect(toProblem(new IpbError("IPB-PORT-002")).reason).toBeUndefined();
+  });
+
+  it("carries the wait on a 429 or 503 only, as whole seconds from 1 to 86400, with Retry-After", () => {
+    const p = toProblem(new IpbError("IPB-SEC-019", { meta: { retryAfterSeconds: 30 } }));
+    expect(p.status).toBe(429);
+    expect(p.retry_after_seconds).toBe(30);
+    expect(problemHeaders(p)).toEqual({ "Retry-After": "30" });
+    expect(
+      toProblem(new IpbError("IPB-SEC-019", { meta: { retry_after_seconds: 5 } }))
+        .retry_after_seconds,
+    ).toBe(5);
+    for (const v of [0, -1, 1.5, 86_401, "30", Number.NaN])
+      expect(
+        toProblem(new IpbError("IPB-SEC-019", { meta: { retryAfterSeconds: v } }))
+          .retry_after_seconds,
+      ).toBeUndefined();
+    const notRetry = toProblem(new IpbError("IPB-SEC-007", { meta: { retryAfterSeconds: 30 } }));
+    expect(notRetry.status).toBe(409);
+    expect(notRetry.retry_after_seconds).toBeUndefined();
+    expect(problemHeaders(notRetry)).toEqual({});
+  });
+
+  it("leaves other meta and unknown errors unchanged", () => {
+    const p = toProblem(new IpbError("IPB-SEC-019", { meta: { principal: "usr_secret" } }));
+    expect(JSON.stringify(p)).not.toContain("usr_secret");
+    expect(toProblem(new Error("x"))).not.toHaveProperty("reason");
   });
 });

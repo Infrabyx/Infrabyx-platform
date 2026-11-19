@@ -78,6 +78,71 @@ export interface ApprovalLevel {
 export const APPROVAL_MAX_LEVELS = 5;
 export const APPROVAL_MAX_LEVEL_CHECKERS = 3;
 
+/**
+ * A pending request the signed-in principal may check now (PR-UDF-047, R1-D-200). What a checker's
+ * list shows, and nothing more: **never** the sealed payload, its digest or data class, or the diff;
+ * the checker opens the request with `get` (or the product's own screen) to see the change.
+ */
+export interface CheckableApproval {
+  id: string;
+  action: string;
+  summary: string | null;
+  riskClass: Risk;
+  makerId: string;
+  createdAt: Date;
+  expiresAt: Date;
+  /** The level now deciding (1-based), or null for a single-level request. */
+  currentLevel: number | null;
+  /** Distinct approvals the request needs in all (for a levelled request, the sum of its levels). */
+  requiredCheckers: number;
+  /** Approvals given so far (at every level). */
+  approvals: number;
+}
+
+export interface CheckablePage {
+  items: CheckableApproval[];
+  /** Opaque; pass it back as `cursor` for the next page. Null when there is none. */
+  nextCursor: string | null;
+}
+
+export interface CheckableQuery {
+  /** A `nextCursor` from the previous page. */
+  cursor?: string;
+  /** 1 to `CHECKABLE_MAX_LIMIT`; default `CHECKABLE_DEFAULT_LIMIT`. */
+  limit?: number;
+}
+
+export const CHECKABLE_DEFAULT_LIMIT = 25;
+export const CHECKABLE_MAX_LIMIT = 100;
+
+/** The keyset position: `created_at` to the microsecond, in UTC, and the request id. */
+const CURSOR_KEY = /^(2\d{3}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z)\|(apr_[0-9A-HJKMNP-TV-Z]{26})$/;
+const BASE64URL = /^[A-Za-z0-9_-]{1,128}$/;
+
+const encodeCursor = (createdKey: string, id: string): string =>
+  Buffer.from(`${createdKey}|${id}`, "utf8").toString("base64url");
+
+/** A cursor `listCheckable` handed out, or a RangeError (a definite refusal) for any other. */
+function decodeCursor(cursor: string): { createdKey: string; id: string } {
+  const bad = () => new RangeError("invalid checkable-approvals cursor");
+  if (typeof cursor !== "string" || !BASE64URL.test(cursor)) throw bad();
+  const m = CURSOR_KEY.exec(Buffer.from(cursor, "base64url").toString("utf8"));
+  // Only the canonical encoding of a well-formed pair: no padding, trailing bits or other spelling.
+  if (!m || encodeCursor(m[1]!, m[2]!) !== cursor) throw bad();
+  // A real calendar time (no 30 February, no hour 24), so the database never sees a bad timestamp.
+  const second = m[1]!.slice(0, 19);
+  const t = new Date(`${second}Z`);
+  if (Number.isNaN(t.getTime()) || t.toISOString().slice(0, 19) !== second) throw bad();
+  return { createdKey: m[1]!, id: m[2]! };
+}
+
+function checkableLimit(limit: number | undefined): number {
+  if (limit === undefined) return CHECKABLE_DEFAULT_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > CHECKABLE_MAX_LIMIT)
+    throw new RangeError(`limit is an integer from 1 to ${CHECKABLE_MAX_LIMIT}`);
+  return limit;
+}
+
 export interface ActionPolicy {
   /** Roles that may check. Default: ORG_CHECKER, ORG_ADMIN, ORG_OWNER in a tenant; PLT_SECURITY_OFFICER, PLT_SUPER_ADMIN in a platform context. */
   checkerRoles?: readonly string[];
@@ -208,6 +273,21 @@ interface Row {
   escalated_at: Date | null;
   financial: boolean;
   diff: Record<string, unknown> | null;
+}
+
+/** The columns `listCheckable` reads: never the payload, its digest or class, or the diff. */
+interface CheckableRow {
+  id: string;
+  action: string;
+  summary: string | null;
+  risk_class: Risk;
+  maker_id: string;
+  created_at: Date;
+  expires_at: Date;
+  required_checkers: number;
+  levels: ApprovalLevel[] | null;
+  created_key: string;
+  approvals: number;
 }
 
 /** Requests made before tenancy 0002 have no `expires_at`: they expire 7 days after creation. */
@@ -414,6 +494,110 @@ export class ApprovalsEngine implements ApprovalGateway {
     return this.o.kernel.read(ctx, async (tx) => this.record(tx, await this.load(tx, id, false)));
   }
 
+  /**
+   * The tenant's pending, unexpired requests that `ctx`'s principal may check now (Udofin
+   * PR-UDF-047, R1-D-200), oldest first, paged by `(created_at, id)`: not the principal's own
+   * (maker ≠ checker), not one they have decided, and only where `decide`'s own rule
+   * (`checkerRefusal`: the action's checker roles after the tenant's narrowing and its functions,
+   * and the open level's roles) lets them decide. It only lists: who may check, the levels and
+   * every decision path are unchanged, and `decide` still checks everything again. Read through the
+   * kernel, so RLS keeps it to the tenant. An agent never checks (IPB-02-10), so it gets an empty
+   * list. A bad `cursor` or `limit` is refused with a RangeError before any read.
+   */
+  async listCheckable(ctx: KernelContext, q: CheckableQuery = {}): Promise<CheckablePage> {
+    const limit = checkableLimit(q.limit);
+    let after = q.cursor === undefined ? null : decodeCursor(q.cursor);
+    if (isAgentPrincipal(ctx)) return { items: [], nextCursor: null };
+    const me = ctx.principal.id;
+    return this.o.kernel.read(ctx, async (tx) => {
+      // The action rule (roles after the tenant's narrowing, functions) once per action per call.
+      const byAction = new Map<string, Promise<IpbError | null>>();
+      const actionRule = (a: string) => {
+        let p = byAction.get(a);
+        if (!p) byAction.set(a, (p = this.actionRefusal(ctx, a)));
+        return p;
+      };
+      const open = await tx.query<{ action: string }>(
+        `select distinct action from tenancy.approval_request
+          where state = 'pending' and expired_at is null and maker_id <> $1`,
+        [me],
+      );
+      const actions: string[] = [];
+      for (const { action } of open.rows) if (!(await actionRule(action))) actions.push(action);
+      const found: (CheckableApproval & { key: string })[] = [];
+      const batch = limit + 1;
+      for (;;) {
+        const r = await tx.query<CheckableRow>(
+          `select r.id, r.action, r.summary, r.risk_class, r.maker_id, r.created_at,
+                  coalesce(r.expires_at, r.created_at + make_interval(hours => $2)) as expires_at,
+                  r.required_checkers, r.levels,
+                  to_char(r.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as created_key,
+                  (select count(*) from tenancy.approval_decision d
+                    where d.request_id = r.id and d.decision = 'approve')::int as approvals
+             from tenancy.approval_request r
+            where r.state = 'pending' and r.expired_at is null
+              and coalesce(r.expires_at, r.created_at + make_interval(hours => $2)) > now()
+              and r.maker_id <> $1
+              and not exists (select 1 from tenancy.approval_decision d
+                               where d.request_id = r.id and d.checker_id = $1)
+              and (r.levels is not null or r.action = any($3::text[]))
+              and ($4::timestamptz is null or (r.created_at, r.id) > ($4::timestamptz, $5::text))
+            order by r.created_at, r.id
+            limit $6`,
+          [
+            me,
+            APPROVAL_EXPIRY_HOURS.default,
+            actions,
+            after?.createdKey ?? null,
+            after?.id ?? null,
+            batch,
+          ],
+        );
+        const levelled = r.rows.filter((x) => x.levels?.length).map((x) => x.id);
+        const byLevel = new Map<string, Map<number, number>>();
+        if (levelled.length) {
+          const lv = await tx.query<{ request_id: string; level: number; n: number }>(
+            `select request_id, level, count(*)::int as n from tenancy.approval_decision
+              where request_id = any($1::text[]) and decision = 'approve' and level is not null
+              group by request_id, level`,
+            [levelled],
+          );
+          for (const x of lv.rows) {
+            const m = byLevel.get(x.request_id) ?? new Map<number, number>();
+            m.set(Number(x.level), Number(x.n));
+            byLevel.set(x.request_id, m);
+          }
+        }
+        for (const x of r.rows) {
+          const level = levelProgress(x.levels, byLevel.get(x.id) ?? new Map()).current;
+          if (await this.checkerRefusal(ctx, x, level, actionRule)) continue;
+          found.push({
+            id: x.id,
+            action: x.action,
+            summary: x.summary,
+            riskClass: x.risk_class,
+            makerId: x.maker_id,
+            createdAt: x.created_at,
+            expiresAt: x.expires_at,
+            currentLevel: level,
+            requiredCheckers: x.required_checkers,
+            approvals: Number(x.approvals),
+            key: encodeCursor(x.created_key, x.id),
+          });
+          if (found.length > limit) break;
+        }
+        const last = r.rows[r.rows.length - 1];
+        if (found.length > limit || r.rows.length < batch || !last) break;
+        after = { createdKey: last.created_key, id: last.id };
+      }
+      const page = found.slice(0, limit);
+      return {
+        items: page.map(({ key: _key, ...item }) => item),
+        nextCursor: found.length > limit ? (page[page.length - 1]?.key ?? null) : null,
+      };
+    });
+  }
+
   /** Approve or reject. Agents never check (IPB-02-10); the maker never checks (IPB-SEC-007). */
   async decide(
     ctx: KernelContext,
@@ -431,18 +615,10 @@ export class ApprovalsEngine implements ApprovalGateway {
         if (row.state !== "pending") throw new ConflictError(`approval ${id} is ${row.state}`);
         if (row.maker_id === ctx.principal.id)
           throw new IpbError("IPB-SEC-007", { meta: { request_id: id } });
-        // Ordered levels (PR-LDC-38): the checker decides at the level now open; level 1 keeps the
-        // action's own checker rule, later levels need one of their roles.
+        // Ordered levels (PR-LDC-38): the checker decides at the level now open.
         const level = levelProgress(row.levels, await this.approvalsByLevel(tx, id)).current;
-        if (level === null || level === 1) await this.assertChecker(ctx, row.action);
-        if (level !== null) {
-          const roles = row.levels![level - 1]!.checkerRoles;
-          if (!ctx.principal.roles.some((r) => roles.includes(r)))
-            throw new IpbError("IPB-UX-011", {
-              detail: `level ${level} checker needs one of ${roles.join(", ")}`,
-              meta: { request_id: id, level },
-            });
-        }
+        const refusal = await this.checkerRefusal(ctx, row, level);
+        if (refusal) throw refusal;
         const dup = await tx.query(
           "select 1 from tenancy.approval_decision where request_id = $1 and checker_id = $2",
           [id, ctx.principal.id],
@@ -905,17 +1081,46 @@ export class ApprovalsEngine implements ApprovalGateway {
     return at <= (now.rows[0]?.now as Date);
   }
 
-  private async assertChecker(ctx: KernelContext, action: string): Promise<void> {
+  /**
+   * Why `ctx`'s principal may not check a request at `level` now, or null when it may: the one rule
+   * `decide` refuses by and `listCheckable` lists by (PR-UDF-047), so the two cannot drift. With no
+   * level, or at level 1, the action's own checker rule applies (`actionRefusal`); at any level,
+   * one of that level's roles. `actionRule` lets a caller reuse the action rule's answer per action.
+   */
+  private async checkerRefusal(
+    ctx: KernelContext,
+    row: Pick<Row, "id" | "action" | "levels">,
+    level: number | null,
+    actionRule: (action: string) => Promise<IpbError | null> = (a) => this.actionRefusal(ctx, a),
+  ): Promise<IpbError | null> {
+    if (level === null || level === 1) {
+      const refused = await actionRule(row.action);
+      if (refused) return refused;
+    }
+    if (level !== null) {
+      const roles = row.levels![level - 1]!.checkerRoles;
+      if (!ctx.principal.roles.some((r) => roles.includes(r)))
+        return new IpbError("IPB-UX-011", {
+          detail: `level ${level} checker needs one of ${roles.join(", ")}`,
+          meta: { request_id: row.id, level },
+        });
+    }
+    return null;
+  }
+
+  /** The action's checker rule: one of its roles after the tenant's narrowing, and its functions. */
+  private async actionRefusal(ctx: KernelContext, action: string): Promise<IpbError | null> {
     const allowed = await this.checkerRolesFor(ctx, action);
     if (!ctx.principal.roles.some((r) => allowed.includes(r))) {
-      throw new IpbError("IPB-UX-011", { detail: `checker needs one of ${allowed.join(", ")}` });
+      return new IpbError("IPB-UX-011", { detail: `checker needs one of ${allowed.join(", ")}` });
     }
     const fns = await this.checkerFunctionsFor(ctx, action);
     if (fns.length && !ctx.principal.roles.some((r) => fns.includes(r))) {
-      throw new IpbError("IPB-UX-011", {
+      return new IpbError("IPB-UX-011", {
         detail: `checker must hold the function ${fns.join(" or ")}`,
       });
     }
+    return null;
   }
 
   private async runExecutor(tx: Tx, row: Row): Promise<Row> {

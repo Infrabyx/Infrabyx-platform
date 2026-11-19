@@ -11,6 +11,7 @@ import {
   syntheticGstin,
 } from "@infrabyx/testing";
 import { checkOutput, classifyInput, RESERVED_ADVICE_NOTICE } from "./guard.js";
+import { findAadhaarLike } from "@infrabyx/contracts/aadhaar";
 import { gstinValid, luhnValid, Scrubber, verhoeffValid } from "./scrub.js";
 
 const scrubber = new Scrubber();
@@ -62,6 +63,45 @@ describe("scrubber (IPB-03-27)", () => {
     expect(scrubber.classOf("AADHAAR")).toBe("REGULATED");
     expect(scrubber.classOf("PAN")).toBe("REGULATED");
     expect(scrubber.classOf("MOBILE")).toBe("CONFIDENTIAL");
+  });
+});
+
+describe("PR-UDF-042 the AADHAAR scrub is the shared rule (R1-D-195)", () => {
+  const aadhaar = syntheticAadhaar("23456789012");
+  /** A 16-digit Verhoeff number that is not Luhn-valid (a card would be CARD first). */
+  const vid = (() => {
+    for (let s = 912345678901230; ; s++) {
+      const v = `${s}${[...Array(10).keys()].find((d) => verhoeffValid(`${s}${d}`))}`;
+      if (!luhnValid(v)) return v;
+    }
+  })();
+  const kinds = (t: string) => scrubber.detect(t).map((d) => d.kind);
+
+  it("finds what findAadhaarLike finds, at the same places", () => {
+    const other = syntheticAadhaar("98765432101");
+    const text = `a ${aadhaar} b ${other.replace(/(\d{4})(?=\d)/g, "$1-")} c ${aadhaar}`;
+    expect(findAadhaarLike(text)).toHaveLength(3);
+    const s = scrubber.session();
+    const out = s.scrub(text);
+    expect(out).toBe("a <PII:AADHAAR:1> b <PII:AADHAAR:2> c <PII:AADHAAR:1>");
+    expect(s.restore(out)).toBe(text);
+  });
+
+  it("looser than before: a 16-digit VID is AADHAAR (REGULATED)", () => {
+    expect(kinds(`vid ${vid} on file`)).toEqual(["AADHAAR"]);
+    expect(kinds(`vid ${vid.replace(/(\d{4})(?=\d)/g, "$1 ")} on file`)).toEqual(["AADHAAR"]);
+    expect(scrubber.session().scrub(`vid ${vid}`)).toBe("vid <PII:AADHAAR:1>");
+  });
+
+  it("looser than before: a + right before the twelve digits no longer hides them", () => {
+    expect(kinds(`ref +${aadhaar}`)).toEqual(["AADHAAR"]);
+  });
+
+  it("unchanged: letters bound the number; longer runs and a bad check digit are not AADHAAR", () => {
+    expect(kinds(`id:A${aadhaar}B`)).toEqual(["AADHAAR"]);
+    expect(kinds(`ref ${aadhaar}7`)).not.toContain("AADHAAR");
+    expect(kinds(`ref ${aadhaar.slice(0, 11)}${(Number(aadhaar[11]) + 1) % 10}`)).toEqual([]);
+    expect(verhoeffValid(aadhaar.replace(/(\d{4})(?=\d)/g, "$1 "))).toBe(true);
   });
 });
 

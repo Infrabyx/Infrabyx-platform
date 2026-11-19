@@ -259,6 +259,12 @@ export const PORT_CATALOGUE = {
     ownerFile: "ADR-0010 (Finbyx PR-FBX-44; Ecosystem Spec 8.9)",
     interfaceDefined: true,
   },
+  STATEMENT_ANALYSIS: {
+    tier: 2,
+    configPrefix: "int.statement_analysis.",
+    ownerFile: "ADR-0012 (Udofin PR-UDF-048)",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
@@ -277,7 +283,8 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * upload scan, with a fake and the in-cluster ClamAV adapter; R1-D-122: Finbyx PR-FBX-46's ACCOUNTING
  * sink, fake and contract cases, the TallyPrime adapter in wave 15; R1-D-126: LawDocsComply
  * PR-LDC-53's CALENDAR, fake and contract cases, the Microsoft 365 and Google adapters off until the
- * owner registers their OAuth applications).
+ * owner registers their OAuth applications; R1-D-202: Udofin PR-UDF-048's STATEMENT_ANALYSIS, ADR-0012,
+ * a fake, contract cases, an in-platform reference and a vendor-neutral HTTP alternative, both off).
  */
 export const R1_PORTS = [
   "KYC",
@@ -299,4 +306,5 @@ export const R1_PORTS = [
   "AV",
   "ACCOUNTING",
   "CALENDAR",
+  "STATEMENT_ANALYSIS",
 ] as const satisfies readonly PortName[];

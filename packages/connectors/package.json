@@ -106,6 +106,10 @@
       "types": "./dist/aa-fiu/index.d.ts",
       "default": "./dist/aa-fiu/index.js"
     },
+    "./statement-analysis": {
+      "types": "./dist/statement-analysis/index.d.ts",
+      "default": "./dist/statement-analysis/index.js"
+    },
     "./estamp": {
       "types": "./dist/estamp/index.d.ts",
       "default": "./dist/estamp/index.js"

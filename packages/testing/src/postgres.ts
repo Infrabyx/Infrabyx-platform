@@ -45,6 +45,12 @@ export interface StartPostgresOptions {
    */
   requirePlatform?: boolean;
   image?: string;
+  /**
+   * Run by `end()` before the suite's database is dropped, given the superuser client (PR-UDF-042):
+   * for a last check over every table, such as `scanDatabaseForAadhaar(admin)`. If it throws, `end()`
+   * still drops the database (and stops the container), then rejects with the hook's error.
+   */
+  beforeDrop?: (admin: pg.Client) => Promise<void> | void;
 }
 
 export interface TestDatabase {
@@ -125,14 +131,25 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
     kernel: new PgKernel({ pool }),
     audit: new PgAuditSink(),
     async end() {
+      let hook: { error: unknown } | undefined;
+      if (o.beforeDrop)
+        try {
+          await o.beforeDrop(admin);
+        } catch (error) {
+          hook = { error };
+        }
       ending = true;
-      await pool.end();
-      await admin.end();
-      const r = new pg.Client({ connectionString: server.url });
-      await r.connect();
-      await r.query(`drop database if exists ${name} with (force)`);
-      await r.end();
-      await server.stop?.();
+      try {
+        await pool.end();
+        await admin.end();
+        const r = new pg.Client({ connectionString: server.url });
+        await r.connect();
+        await r.query(`drop database if exists ${name} with (force)`);
+        await r.end();
+      } finally {
+        await server.stop?.();
+      }
+      if (hook) throw hook.error;
     },
   };
 }

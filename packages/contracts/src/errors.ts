@@ -84,8 +84,42 @@ export const Problem = z.object({
     .optional(),
   trace_id: z.string().optional(),
   errors: z.array(ProblemFieldError).optional(),
+  /**
+   * The refusal's fixed label from the error's `meta.reason` (PR-UDF-038; R1-D-189), e.g.
+   * `hash_mismatch`: a code a client may branch on, never a value.
+   */
+  reason: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,63}$/)
+    .optional(),
+  /** For a 429 or 503: how many seconds to wait before retrying (with `Retry-After`; RFC 9110 §10.2.3). */
+  retry_after_seconds: z.number().int().min(1).max(86_400).optional(),
 });
 export type Problem = z.infer<typeof Problem>;
+
+/** A `meta.reason` that may leave the platform: a fixed snake-case label (PR-UDF-038). */
+const REASON_LABEL = /^[a-z][a-z0-9_]{0,63}$/;
+/** Statuses whose problem may say when to retry (RFC 9110 §10.2.3; RFC 6585 §4). */
+const RETRY_STATUSES: ReadonlySet<number> = new Set([429, 503]);
+
+function retryAfterOf(
+  status: number,
+  meta: Record<string, unknown> | undefined,
+): number | undefined {
+  if (!RETRY_STATUSES.has(status) || !meta) return undefined;
+  const v = meta.retryAfterSeconds ?? meta.retry_after_seconds;
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= 86_400 ? v : undefined;
+}
+
+/**
+ * Response headers a problem calls for (PR-UDF-038): `Retry-After` in delay-seconds when the
+ * problem carries `retry_after_seconds`. Set them with the problem's status and body.
+ */
+export function problemHeaders(p: Problem): Record<string, string> {
+  return p.retry_after_seconds !== undefined
+    ? { "Retry-After": String(p.retry_after_seconds) }
+    : {};
+}
 
 export interface ToProblemOptions {
   /** Base URL of help pages; `type` = `${typeBase}/${code}`. */
@@ -121,5 +155,11 @@ export function toProblem(err: unknown, opts: ToProblemOptions = {}): Problem {
   if (opts.instance !== undefined) p.instance = opts.instance;
   if (opts.traceId !== undefined) p.trace_id = opts.traceId;
   if (err.errors !== undefined) p.errors = err.errors;
+  // Two safe members from meta (PR-UDF-038; R1-D-189): a fixed refusal label and, for a 429 or
+  // 503, the wait; anything else in meta stays inside the platform.
+  const reason = err.meta?.reason;
+  if (typeof reason === "string" && REASON_LABEL.test(reason)) p.reason = reason;
+  const retry = retryAfterOf(err.httpStatus, err.meta);
+  if (retry !== undefined) p.retry_after_seconds = retry;
   return p;
 }

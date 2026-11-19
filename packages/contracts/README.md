@@ -18,5 +18,6 @@ The shared vocabulary of the Infrabyx platform: data classes and residency, iden
 | `@infrabyx/contracts/modules`    | `defineModule()` manifest schema                                            |
 | `@infrabyx/contracts/kernel`     | `MutationKernel`, `Tx`, `AuditSink`, `ApprovalGateway` interfaces           |
 | `@infrabyx/contracts/ports`      | Port conventions, catalogue, SECRETS, KMS, STORAGE, FEATURE_FLAG, IDENTITY  |
+| `@infrabyx/contracts/aadhaar`    | `findAadhaarLike()` (the shared no-Aadhaar rule, masked), `verhoeffValid()` |
 
 Cross-product events must use `EcosystemEnvelope`; `InternalEnvelope` rejects `in.infrabyx.*` types (decision D-13).

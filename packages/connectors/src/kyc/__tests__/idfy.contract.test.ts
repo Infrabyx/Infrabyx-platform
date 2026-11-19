@@ -3,7 +3,12 @@
 // `unproven` and off. Also the per-method router (PR-FBX-24: Digio first, IDfy second).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PortError } from "@infrabyx/contracts/errors";
-import type { KycFileRef, KycPort } from "@infrabyx/contracts/ports";
+import {
+  KYC_ADAPTER_FUNDING,
+  KYC_ADAPTER_RETENTION,
+  type KycFileRef,
+  type KycPort,
+} from "@infrabyx/contracts/ports";
 import { MemoryReplayStore, sha256Hex } from "@infrabyx/crypto";
 import {
   defineContractSuite,
@@ -18,8 +23,17 @@ import {
   type KycFixtures,
 } from "@infrabyx/testing";
 import { DigioKyc } from "../digio.js";
-import { IdfyKyc, mapIdfyPan, mapIdfyScore } from "../idfy.js";
+import {
+  IDFY_SCORE_SCALE,
+  IdfyKyc,
+  mapIdfyBankAccount,
+  mapIdfyAadhaarOtpRefusal,
+  mapIdfyAadhaarOtpVerify,
+  mapIdfyPan,
+  mapIdfyScore,
+} from "../idfy.js";
 import { kycMethodRouter } from "../routing.js";
+import { MemoryKycScoreCheckStore } from "../score-checks.js";
 
 let idfy: IdfyKycStub;
 let dg: DigioKycStub;
@@ -44,6 +58,37 @@ beforeAll(async () => {
       other: await put(idfy.faces.other),
     },
     frames: await Promise.all(idfy.frames.map(put)),
+    aadhaarOtp: {
+      ...idfy.aadhaarOtp,
+      notNotified: () => ({
+        port: make({ notifiedEntity: false }),
+        vendorCalls: () => idfy.requests.length,
+      }),
+      vendorCalls: () => idfy.requests.length,
+      expire: (_p, txn) => idfy.expireAadhaarOtp(txn),
+    },
+    bank: {
+      ifsc: idfy.bankAccount.ifsc,
+      accountNumber: idfy.bankAccount.accountNumber,
+      name: idfy.bankAccount.name,
+    },
+    bankAccount: {
+      configuredMode: "pennyless",
+      modes: ["pennyless"],
+      unknownAccountNumber: idfy.bankAccount.unknownAccountNumber,
+      // The platform's adapter makes no penny drop (R1-D-196).
+      refusing: () => ({ port: make(), mode: "penny_drop", vendorCalls: idfy.bankAccountChecks }),
+      vendorCalls: () => idfy.bankAccountChecks(),
+    },
+    scores: {
+      configuredMode: "passive",
+      modes: ["passive"],
+      // IDfy's photo liveness is passive (R1-D-197).
+      refusing: () => ({ port: make(), mode: "active_gesture", vendorCalls: idfy.livenessChecks }),
+      livenessVendorCalls: () => idfy.livenessChecks(),
+      faceMatchVendorCalls: () => idfy.faceMatches(),
+      offScaleNext: () => idfy.scoreOnce(87),
+    },
   };
 });
 afterAll(async () => {
@@ -52,21 +97,25 @@ afterAll(async () => {
 });
 
 let enabled = true;
-const make = () =>
+const make = (over: Partial<ConstructorParameters<typeof IdfyKyc>[0]> = {}) =>
   new IdfyKyc({
     storage,
     enabled: () => enabled,
     accountId: () => idfy.accountId,
     apiKey: () => idfy.apiKey,
+    currentTenant: () => "tnt_kyc",
+    // Built for a notified entity, so the Aadhaar OTP cases run (PR-UDF-041).
+    notifiedEntity: true,
     baseUrl: idfy.url,
     allowLoopbackHttp: true,
+    ...over,
   });
 
 describe("@IPB-01-15 KYC hermetic leg (IDfy stub)", () => {
   const cases = kycContractCases(
     new Proxy({} as KycFixtures, { get: (_t, k) => fixtures[k as keyof KycFixtures] }),
   );
-  defineContractSuite("KYC", make, cases, { leg: "hermetic" });
+  defineContractSuite("KYC", () => make(), cases, { leg: "hermetic" });
 });
 
 describe("R1-D-45 IDfy KYC behind its flag, by reference", () => {
@@ -120,7 +169,7 @@ describe("R1-D-45 IDfy KYC behind its flag, by reference", () => {
     });
     expect(mapIdfyPan({ source_output: { status: "something_else" } }).status).toBe("invalid");
     expect(() => mapIdfyPan({})).toThrow();
-    expect(mapIdfyScore({ match_score: 87 }, "match_score").score).toBeCloseTo(0.87);
+    expect(mapIdfyScore({ match_score: 87 }, "match_score", 100).score).toBeCloseTo(0.87);
     expect(() => mapIdfyScore({}, "liveness_score")).toThrow();
   });
 });
@@ -181,5 +230,338 @@ describe("PR-FBX-24 per-method KYC routing: Digio first, IDfy second", () => {
     expect(() => kycMethodRouter({ adapters: [make()], order: { pan: ["nobody"] } })).toThrow(
       /unknown adapter/,
     );
+  });
+});
+
+describe("PR-UDF-041 IDfy Aadhaar OTP e-KYC for a notified RE", () => {
+  const consent = { version: "1.0", textHash: "cd".repeat(32), at: "2026-11-19T05:00:00Z" };
+
+  it("is off by default: not_configured before any request", async () => {
+    const before = idfy.requests.length;
+    const p = new IdfyKyc({
+      storage,
+      enabled: () => true,
+      accountId: () => idfy.accountId,
+      apiKey: () => idfy.apiKey,
+      baseUrl: idfy.url,
+      allowLoopbackHttp: true,
+    });
+    await expect(
+      p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
+    ).rejects.toMatchObject({ meta: { reason: "not_configured", definite: true } });
+    await expect(p.aadhaarOtpVerify({ txn: "TXN0000000001", otp: "123456" })).rejects.toMatchObject(
+      { meta: { reason: "not_configured" } },
+    );
+    expect(idfy.requests.length).toBe(before);
+  });
+
+  it("stores the e-KYC under the tenant, REGULATED, and refuses one that carries the number", async () => {
+    const p = make();
+    const s = await p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.vid, uidKind: "VID", consent });
+    const sent = idfy.requests.at(-1)!.json() as { data: Record<string, string> };
+    expect(sent.data).toMatchObject({
+      id_type: "vid",
+      id_number: idfy.aadhaarOtp.vid,
+      consent: "Y",
+    });
+    const r = await p.aadhaarOtpVerify(
+      { txn: s.txn, otp: idfy.aadhaarOtp.otp },
+      { tenantId: "tnt_other" },
+    );
+    expect(r).toMatchObject({
+      adapter: "idfy-kyc",
+      signatureValid: true,
+      uidLast4: idfy.aadhaarOtp.uid.slice(-4),
+    });
+    const o = await storage.get(r.ekyc.storageKey);
+    expect(r.ekyc.storageKey).toMatch(/^tenant\/tnt_other\/kyc\//);
+    expect(o.meta.bucketClass).toBe("REGULATED");
+    expect(sha256Hex(o.body)).toBe(r.ekyc.sha256);
+    const t = await p.aadhaarOtpRequest({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent });
+    idfy.ekycWithNumberOnce(idfy.aadhaarOtp.uid);
+    await expect(
+      p.aadhaarOtpVerify({ txn: t.txn, otp: idfy.aadhaarOtp.otp }),
+    ).rejects.toMatchObject({
+      meta: { reason: "ekyc_holds_number" },
+    });
+  });
+
+  it("maps the stub-shaped answers conservatively", () => {
+    expect(mapIdfyAadhaarOtpRefusal({ error: "INVALID_ID" })).toBe("uid_invalid");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "MOBILE_NOT_LINKED" })).toBe("mobile_not_linked");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "TRANSACTION_NOT_FOUND" })).toBe("otp_expired");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "INVALID_OTP" })).toBe("otp_invalid");
+    expect(mapIdfyAadhaarOtpRefusal({ error: "BAD_REQUEST" })).toBeUndefined();
+    expect(() =>
+      mapIdfyAadhaarOtpVerify({ aadhaar_last_4: "12345", ekyc_xml: "PEt5Yz4=" }),
+    ).toThrow();
+    expect(mapIdfyAadhaarOtpVerify({ aadhaar_last_4: "1234", ekyc_xml: "PEt5Yz4=" })).toMatchObject(
+      {
+        uidLast4: "1234",
+        signatureValid: null,
+      },
+    );
+  });
+
+  it("the router sends the OTP and its verify to the same adapter, and a not_configured refusal is final", async () => {
+    const notified = new DigioKyc({
+      storage,
+      consents: new MemoryReplayStore(),
+      enabled: () => false,
+      clientId: () => dg.clientId,
+      clientSecret: () => dg.clientSecret,
+      currentTenant: () => "tnt_kyc",
+      notifiedEntity: true,
+      baseUrl: dg.url,
+      allowLoopbackHttp: true,
+    });
+    // Digio is off: the router falls through to IDfy for both steps.
+    const k = kycMethodRouter({ adapters: [notified, make()] });
+    const s = await k.aadhaarOtpRequest!({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent });
+    expect(s.adapter).toBe("idfy-kyc");
+    expect((await k.aadhaarOtpVerify!({ txn: s.txn, otp: idfy.aadhaarOtp.otp })).adapter).toBe(
+      "idfy-kyc",
+    );
+    // Not notified is the RE's answer, not an outage: never retried at the next adapter.
+    const before = idfy.requests.length;
+    const plain = make({ notifiedEntity: false });
+    const unnotified: KycPort = Object.assign(Object.create(plain) as KycPort, {
+      descriptor: { ...plain.descriptor, adapter: "idfy-unnotified" },
+    });
+    const strict = kycMethodRouter({ adapters: [unnotified, make()] });
+    await expect(
+      strict.aadhaarOtpRequest!({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
+    ).rejects.toMatchObject({ meta: { reason: "not_configured" } });
+    expect(idfy.requests.length).toBe(before);
+  });
+});
+
+describe("PR-UDF-043 IDfy pennyless bank account checks and the router", () => {
+  const acct = () => ({
+    ifsc: idfy.bankAccount.ifsc,
+    accountNumber: idfy.bankAccount.accountNumber,
+    name: idfy.bankAccount.name,
+  });
+
+  it("sends IDfy's non-financial check only, with no personal data in the task ids", async () => {
+    const r = await make().bankAccountVerify(acct());
+    const sent = idfy.requests.at(-1)!;
+    expect(sent.path).toBe("/v3/tasks/sync/verify_with_source/validate_bank_account");
+    const body = sent.json<{ task_id: string; group_id: string; data: Record<string, string> }>();
+    expect(body.data).toEqual({
+      bank_account_no: idfy.bankAccount.accountNumber,
+      bank_ifsc_code: idfy.bankAccount.ifsc,
+      nf_verification: "true",
+    });
+    expect(body.task_id + body.group_id).not.toContain(idfy.bankAccount.accountNumber);
+    expect(r).toMatchObject({ adapter: "idfy-kyc", status: "valid", mode: "pennyless" });
+    expect(r.vendorRef).toMatch(/^REQ/);
+    expect(
+      (
+        await make().bankAccountVerify({
+          ifsc: idfy.bankAccount.ifsc,
+          accountNumber: idfy.bankAccount.closedAccountNumber,
+        })
+      ).status,
+    ).toBe("closed");
+    const before = idfy.requests.length;
+    await expect(make().bankAccountVerify({ ...acct(), mode: "penny_drop" })).rejects.toMatchObject(
+      { code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } },
+    );
+    expect(idfy.requests.length).toBe(before);
+  });
+
+  it("maps the stub-shaped results conservatively, and states its funding as unknown until verified", () => {
+    expect(mapIdfyBankAccount({ status: "id_found", account_exists: "YES" })).toEqual({
+      status: "valid",
+    });
+    expect(
+      mapIdfyBankAccount({ status: "id_found", account_exists: "YES", account_status: "Closed" })
+        .status,
+    ).toBe("closed");
+    expect(mapIdfyBankAccount({ status: "id_not_found" }).status).toBe("not_found");
+    expect(mapIdfyBankAccount({ status: "id_found", account_exists: "NO" }).status).toBe(
+      "not_found",
+    );
+    expect(mapIdfyBankAccount({ status: "source_down" }).status).toBe("invalid");
+    expect(() => mapIdfyBankAccount({})).toThrow();
+    expect(() =>
+      mapIdfyBankAccount({ status: "id_found", account_exists: "YES", name_at_bank: "A 1234567" }),
+    ).toThrow();
+    expect(KYC_ADAPTER_FUNDING["idfy-kyc"]).toMatchObject({ pennyDrop: "unknown" });
+    expect(KYC_ADAPTER_FUNDING["idfy-kyc"]!.source).toContain("[VERIFY]");
+  });
+
+  it("the router moves a penny drop past an adapter that cannot honour it; a keyed check never fails over on an unavailable adapter", async () => {
+    const fake = new FakeKyc();
+    const k = kycMethodRouter({
+      adapters: [make(), fake],
+      order: { bank_account: ["idfy-kyc", "fake-kyc"] },
+    });
+    const before = idfy.requests.length;
+    const pd = await k.bankAccountVerify({
+      ifsc: KYC_FAKE_FIXTURES.bank.ifsc,
+      accountNumber: KYC_FAKE_FIXTURES.bank.accountNumber,
+      mode: "penny_drop",
+    });
+    expect(pd).toMatchObject({ adapter: "fake-kyc", mode: "penny_drop" });
+    expect(idfy.requests.length).toBe(before);
+    expect((await k.bankAccountVerify(acct())).adapter).toBe("idfy-kyc");
+    // An unavailable adapter: an unkeyed pennyless check moves on, a keyed one does not.
+    idfy.failNext(1, 503);
+    expect((await k.bankAccountVerify(acct())).adapter).toBe("fake-kyc");
+    idfy.failNext(1, 503);
+    const calls = fake.bankAccountVendorCalls;
+    await expect(
+      k.bankAccountVerify(acct(), { idempotencyKey: "router-bank-1" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    expect(fake.bankAccountVendorCalls).toBe(calls);
+  });
+});
+
+describe("PR-UDF-044 IDfy liveness by mode, applied thresholds, keyed retries and the score scale", () => {
+  it("refuses an active mode mode_unsupported before the flag, the store or any request; reports passive and the thresholds", async () => {
+    enabled = false;
+    try {
+      const before = idfy.requests.length;
+      const scoreChecks = new MemoryKycScoreCheckStore();
+      for (const mode of ["active_gesture", "active_voice"] as const)
+        await expect(
+          make({ scoreChecks }).livenessCheck(
+            { frames: fixtures.frames, mode },
+            { idempotencyKey: "live-active-1" },
+          ),
+        ).rejects.toMatchObject({ code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } });
+      expect(
+        (
+          await scoreChecks.reserve({
+            tenantId: "tnt_kyc",
+            adapter: "idfy-kyc",
+            method: "liveness",
+            idempotencyKey: "live-active-1",
+            files: fixtures.frames,
+            mode: "passive",
+          })
+        ).kind,
+      ).toBe("new");
+      await expect(make().livenessCheck({ frames: fixtures.frames })).rejects.toMatchObject({
+        meta: { reason: "adapter_disabled" },
+      });
+      expect(idfy.requests.length).toBe(before);
+    } finally {
+      enabled = true;
+    }
+    const p = make({ livenessThreshold: 0.95, faceMatchThreshold: 0.5 });
+    const l = await p.livenessCheck({ frames: fixtures.frames });
+    expect(l).toMatchObject({ mode: "passive", threshold: 0.95, score: 0.91, passed: false });
+    const f = await p.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.other });
+    expect(f).toMatchObject({ threshold: 0.5, score: 0.18, passed: false });
+    expect(f).not.toHaveProperty("mode");
+    expect(
+      (await make().faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).threshold,
+    ).toBe(0.8);
+    for (const t of [-0.1, 1.5, NaN, 80])
+      expect(() => make({ livenessThreshold: t })).toThrow(RangeError);
+  });
+
+  it("a keyed retry on another instance with a shared store sends nothing; a vendor failure is asked again", async () => {
+    const scoreChecks = new MemoryKycScoreCheckStore();
+    const first = await make({ scoreChecks }).livenessCheck(
+      { frames: fixtures.frames },
+      { idempotencyKey: "live-k-1" },
+    );
+    const before = idfy.requests.length;
+    expect(
+      await make({ scoreChecks }).livenessCheck(
+        { frames: fixtures.frames, mode: "passive" },
+        { idempotencyKey: "live-k-1" },
+      ),
+    ).toEqual(first);
+    expect(idfy.requests.length).toBe(before);
+    const q = make({ scoreChecks });
+    idfy.failNext(1, 503);
+    await expect(
+      q.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same }, { idempotencyKey: "face-k-2" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    const n = idfy.faceMatches();
+    expect(
+      (
+        await q.faceMatch(
+          { a: fixtures.faces.a, b: fixtures.faces.same },
+          { idempotencyKey: "face-k-2" },
+        )
+      ).passed,
+    ).toBe(true);
+    expect(idfy.faceMatches()).toBe(n + 1);
+  });
+
+  it("reads scores on the scale given and refuses one off it, never clamped; states its retention as unknown", async () => {
+    expect(IDFY_SCORE_SCALE).toBe(1);
+    expect(mapIdfyScore({ liveness_score: 0.91 }, "liveness_score").score).toBe(0.91);
+    expect(mapIdfyScore({ liveness_score: 1 }, "liveness_score").score).toBe(1);
+    expect(mapIdfyScore({ liveness_score: 0 }, "liveness_score").score).toBe(0);
+    const thrown = (f: () => unknown): unknown => {
+      try {
+        f();
+      } catch (e) {
+        return e;
+      }
+      return undefined;
+    };
+    for (const raw of [87, 1.01, -0.2, "0.9", true, Number.MAX_VALUE])
+      expect(thrown(() => mapIdfyScore({ liveness_score: raw }, "liveness_score"))).toMatchObject({
+        code: "IPB-PORT-003",
+        meta: { reason: "score_out_of_range" },
+      });
+    expect(thrown(() => mapIdfyScore({ match_score: 100.5 }, "match_score", 100))).toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    expect(thrown(() => mapIdfyScore({}, "match_score"))).toMatchObject({ code: "IPB-PORT-002" });
+    // A 0-to-100 sandbox: the option reads it, and a 0-to-1 answer then reads as low, never high.
+    const hundred = make({ scoreScale: 100 });
+    idfy.scoreOnce(94);
+    expect(
+      (await hundred.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).score,
+    ).toBeCloseTo(0.94);
+    idfy.scoreOnce(101);
+    await expect(
+      hundred.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003", meta: { reason: "score_out_of_range" } });
+    expect(KYC_ADAPTER_RETENTION["idfy-kyc"]).toMatchObject({ template: "unknown" });
+    expect(KYC_ADAPTER_RETENTION["idfy-kyc"]!.source).toContain("[VERIFY]");
+  });
+
+  it("the router moves an active liveness check past IDfy to an adapter that honours it; a keyed check never fails over on an unavailable adapter", async () => {
+    const fake = new FakeKyc();
+    const k = kycMethodRouter({
+      adapters: [make(), fake],
+      order: { liveness: ["idfy-kyc", "fake-kyc"], face_match: ["idfy-kyc", "fake-kyc"] },
+    });
+    const before = idfy.requests.length;
+    const active = await k.livenessCheck({
+      frames: KYC_FAKE_FIXTURES.frames,
+      mode: "active_voice",
+    });
+    expect(active).toMatchObject({ adapter: "fake-kyc", mode: "active_voice" });
+    expect(idfy.requests.length).toBe(before);
+    expect((await k.livenessCheck({ frames: fixtures.frames })).adapter).toBe("idfy-kyc");
+    // Unavailable: an unkeyed check moves on, a keyed one stays with its adapter.
+    idfy.failNext(1, 503);
+    expect((await k.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).adapter).toBe(
+      "fake-kyc",
+    );
+    const calls = [fake.livenessVendorCalls, fake.faceMatchVendorCalls];
+    for (const keyed of [
+      () => k.livenessCheck({ frames: fixtures.frames }, { idempotencyKey: "router-live-1" }),
+      () =>
+        k.faceMatch(
+          { a: fixtures.faces.a, b: fixtures.faces.same },
+          { idempotencyKey: "router-face-1" },
+        ),
+    ]) {
+      idfy.failNext(1, 503);
+      await expect(keyed()).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    }
+    expect([fake.livenessVendorCalls, fake.faceMatchVendorCalls]).toEqual(calls);
   });
 });
