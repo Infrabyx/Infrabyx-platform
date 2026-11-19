@@ -410,8 +410,10 @@ function inlineStr(ref: string, text: string, style = 0): string {
 /** Excel's limit on the characters of a formula. */
 export const XLSX_MAX_FORMULA_CHARS = 8192;
 /**
- * Functions a formula may not call: they fetch from or link outside the workbook, or run code
- * (with or without the `_xlfn.` / `_xlws.` prefix).
+ * Functions a formula may not call: they fetch from or link outside the workbook, run code, or
+ * reveal the workbook and its environment (`INFO`, `CELL`: the file's path, the operating system,
+ * the directory; owner answer #156), with or without the `_xlfn.` / `_xlws.` prefix. A `|`
+ * outside string literals (a DDE link such as `cmd|' /C …'!A0`) is refused separately.
  */
 export const XLSX_BLOCKED_FUNCTIONS: readonly string[] = [
   "WEBSERVICE",
@@ -423,6 +425,8 @@ export const XLSX_BLOCKED_FUNCTIONS: readonly string[] = [
   "REGISTER.ID",
   "EXEC",
   "STOCKHISTORY",
+  "INFO",
+  "CELL",
 ];
 const BLOCKED_RE = new RegExp(
   `(?:^|[^A-Za-z0-9_.])(?:_xlfn\\.|_xlws\\.)?(?:${XLSX_BLOCKED_FUNCTIONS.map((f) => f.replace(".", "\\.")).join("|")})\\s*\\(`,
@@ -473,7 +477,9 @@ export function xlsxFormula(
   if (formula.startsWith("=")) throw formulaBad("is written without a leading =");
   if (dropInvalidXml(formula) !== formula) throw formulaBad("holds a control character");
   const code = outsideLiterals(formula);
-  if (/[[\]|]/.test(code)) throw formulaBad("refers outside the workbook ([, ] or |)");
+  if (/[[\]]/.test(code)) throw formulaBad("refers outside the workbook ([ or ])");
+  // A `|` outside string literals is a DDE link to another application (owner answer #156).
+  if (code.includes("|")) throw formulaBad("holds a | outside a string literal (DDE)");
   if (BLOCKED_RE.test(code)) throw formulaBad("calls a function that reaches outside the workbook");
   const r = o.result;
   if (

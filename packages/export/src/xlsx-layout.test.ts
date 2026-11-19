@@ -459,6 +459,42 @@ describe("toXlsx layout refusals (PR-LDC-52)", () => {
     expect(() => xlsxFormula("XHYPERLINK(A1)+HYPERLINKS(A1)")).not.toThrow();
   });
 
+  it("refuses INFO, CELL and any | outside string literals (owner answer #156)", () => {
+    const f = (formula: string) => reason(() => xlsxFormula(formula));
+    expect(XLSX_BLOCKED_FUNCTIONS).toEqual(expect.arrayContaining(["INFO", "CELL"]));
+    // INFO and CELL reveal the workbook's path and the environment it is opened in.
+    for (const formula of [
+      'INFO("osversion")',
+      'INFO("directory")',
+      'info ("system")',
+      'IF(A1,CELL("filename",A1),"")',
+      'cell("address",B2)',
+      '1+_xlfn.CELL("filename")',
+      'CONCAT("x",INFO("release"))',
+    ])
+      expect(f(formula), formula).toBe("formula_invalid");
+    expect(() => xlsxFormula('INFO("osversion")')).toThrow(/reaches outside the workbook/);
+    // A | outside string literals is a DDE link, wherever it is.
+    for (const formula of [
+      "cmd|' /C calc'!A0",
+      "A1|B1",
+      "SUM(A1:A3)+msexcel|'x'!A1",
+      'IF(A1="a",B1,C1)|D1',
+      '"x"|"y"',
+      "|",
+    ])
+      expect(f(formula), formula).toBe("formula_invalid");
+    expect(() => xlsxFormula("A1|B1")).toThrow(/DDE/);
+    // Inside a string literal both are only text, and longer names are other functions.
+    for (const ok of [
+      'IF(A1="INFO(x) | CELL(y)",1,0)',
+      'CONCAT("a|b","""|""")',
+      "INFORMATION(A1)+CELLS(A1)+XCELL(A1)",
+      "SUM(INFO_RATE,CELL_COUNT)",
+    ])
+      expect(() => xlsxFormula(ok), ok).not.toThrow();
+  });
+
   it("refuses a cached result that does not fit its column", () => {
     const one =
       (type: XlsxSheet["columns"][number]["type"], result: number | string | boolean) => () =>
