@@ -444,7 +444,8 @@ function heavySteps(o, ci) {
         'for app in $NODE_APPS; do docker build "${CA_SECRET[@]}" -f infra/docker/node/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',
         'docker build "${CA_SECRET[@]}" -t "infrabyx/keycloak-customer:$TAG" infra/keycloak/customer-otp',
         'for app in ${APPS//\\//-} ${NODE_APPS//\\//-} keycloak-customer; do docker run --rm "${CA_MOUNT[@]}" -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/infra/docker:/cfg:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" image --exit-code 1 --severity HIGH,CRITICAL --ignorefile /cfg/trivyignore.yaml --scanners vuln,secret "infrabyx/$app:$TAG"; done',
-        'IPB_IMAGES="$(for app in ${APPS//\\//-} ${NODE_APPS//\\//-}; do printf "infrabyx/%s:%s " "$app" "$TAG"; done)" pnpm images:test',
+        // The JVM mitigation of CVE-2026-114938 on the live JVMs, as in CI (R1-D-192).
+        'IPB_IMAGES="$(for app in ${APPS//\\//-} ${NODE_APPS//\\//-}; do printf "infrabyx/%s:%s " "$app" "$TAG"; done)" IPB_KEYCLOAK_IMAGE="infrabyx/keycloak-customer:$TAG" IPB_JVM_IMAGES=1 pnpm images:test',
       ],
     );
   }

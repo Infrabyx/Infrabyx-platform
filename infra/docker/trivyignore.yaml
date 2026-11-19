@@ -84,4 +84,17 @@ vulnerabilities:
   - id: CVE-2025-6020
     statement: linux-pam 1.5.2-6+deb12u2 in the Debian 12 base (libpam-modules, libpam-modules-bin, libpam-runtime, libpam0g; Trivy status affected, no fixed version), a directory traversal in pam_namespace. The images run one Node.js process as UID 10001 with a read-only root and no capabilities; nothing logs in, no PAM stack or pam_namespace is used, and no shell or su is reached. Waived 2026-11-16 under the standing 30-day rule (R1-D-162); removed with the first fixed package
     expired_at: 2026-12-16
+  # OWNER-WAIVER-CRIT-01 (owner answer #143, 19 Nov 2026; R1-D-192): the only CRITICAL ever waived
+  # here, and only for CVE-2026-114938 in the OpenJDK package of the pinned Keycloak 26.8.2-0 base
+  # (the purl pins that exact build, so any other package or build fails the job again). Valid only
+  # while the mitigation test passes: the customer image's build refuses to finish, and the
+  # `containers` job fails, unless every JVM the platform ships runs with -XX:-UseBASE64Intrinsics
+  # (infra/keycloak/customer-otp/ipb-kc.sh, infra/docker/jvm-mitigation*.test.mjs). Ends on the
+  # earlier of the day a fixed Keycloak or Red Hat build is published (moved to in its own PR, which
+  # removes this entry) and 15 Dec 2026; if none exists by 12 Dec, the owner is asked (STATUS "Next").
+  - id: CVE-2026-114938
+    purls:
+      - "pkg:rpm/redhat/java-21-openjdk-headless@21.0.13.0.9-1.2.el9?epoch=1"
+    statement: OpenJDK HotSpot Base64 intrinsic memory corruption on x86-64 CPUs with AVX-512 VBMI ("Java4Shell"), in java-21-openjdk-headless 1:21.0.13.0.9-1.2.el9 of the Keycloak 26.8.2-0 base (UBI 9.8; Trivy status affected, no fixed build). Keycloak decodes Base64 from requests before authentication, so it is reachable; mitigated, not accepted; the image turns the intrinsic off with -XX:-UseBASE64Intrinsics on every start and every host, and the build and the containers job fail without it. CRITICAL waiver OWNER-WAIVER-CRIT-01 (owner, 19 Nov 2026; R1-D-192); removed with the first fixed Keycloak image, 15 Dec at the latest
+    expired_at: 2026-12-15
 secrets: []

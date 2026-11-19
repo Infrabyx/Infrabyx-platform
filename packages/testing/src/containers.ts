@@ -125,6 +125,46 @@ export const TEST_IMAGES = {
 } as const satisfies Record<string, TestImage>;
 export type TestImageName = keyof typeof TEST_IMAGES;
 
+/**
+ * The JVM option the platform sets on every image that carries an OpenJDK runtime: the HotSpot
+ * Base64 intrinsic off on every host, whatever the CPU (CVE-2026-114938, "Java4Shell"; owner answer
+ * #143, waiver OWNER-WAIVER-CRIT-01, R1-D-192). Remove with the waiver once fixed images are pinned.
+ */
+export const JVM_BASE64_INTRINSIC_OFF = "-XX:-UseBASE64Intrinsics";
+
+/**
+ * The variable each JVM-carrying test image reads the option from: Keycloak's kc.sh appends
+ * `JAVA_OPTS_APPEND` last; Gotenberg (pdftk) and LocalStack start their JVMs as child processes,
+ * which inherit `JAVA_TOOL_OPTIONS` (the JVM reads it itself, also when embedded). The other test
+ * images carry no JVM (scan of 19 Nov 2026, R1-D-192). infra/compose/docker-compose.yml sets the
+ * same values; infra/docker/jvm-mitigation.test.mjs keeps the two in step, and the `containers`
+ * job reads the flag from the live JVMs.
+ */
+export const TEST_IMAGE_JVM_OPTIONS_VAR: Readonly<Partial<Record<TestImageName, string>>> = {
+  keycloak: "JAVA_OPTS_APPEND",
+  gotenberg: "JAVA_TOOL_OPTIONS",
+  localstack: "JAVA_TOOL_OPTIONS",
+};
+
+/**
+ * `env` with {@link JVM_BASE64_INTRINSIC_OFF} appended last to the image's JVM options variable (a
+ * caller's own value is kept in front of it; HotSpot takes the last value of a repeated flag).
+ * Images without a JVM get `env` unchanged.
+ */
+export function withJvmMitigation(
+  name: TestImageName,
+  env: Readonly<Record<string, string>> = {},
+): Record<string, string> {
+  const variable = TEST_IMAGE_JVM_OPTIONS_VAR[name];
+  if (!variable) return { ...env };
+  const current = env[variable]?.trim() ?? "";
+  if (current.endsWith(JVM_BASE64_INTRINSIC_OFF)) return { ...env };
+  return {
+    ...env,
+    [variable]: current ? `${current} ${JVM_BASE64_INTRINSIC_OFF}` : JVM_BASE64_INTRINSIC_OFF,
+  };
+}
+
 export interface StartedService {
   host: string;
   /** Mapped host port for each requested container port. */
@@ -212,7 +252,9 @@ export async function startService(
           .build(`ipb-test-${name}-built:local`, { deleteOnExit: false })
       : new GenericContainer(TEST_IMAGES[name].image)
   ).withExposedPorts(...opts.ports);
-  if (opts.env) c = c.withEnvironment(opts.env);
+  // Every start carries the JVM mitigation, built images included (R1-D-192).
+  const env = withJvmMitigation(name, opts.env);
+  if (Object.keys(env).length > 0) c = c.withEnvironment(env);
   if (opts.command) c = c.withCommand([...opts.command]);
   if (opts.readyLog) c = c.withWaitStrategy(Wait.forLogMessage(opts.readyLog));
   if (opts.readyHttp)
