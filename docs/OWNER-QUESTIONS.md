@@ -4,9 +4,9 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question                                                                       |
-| --- | -------- | ------------------------------------------------------------------------------ |
-| —   | —        | None open (20 Nov 2026: #144 to #156 answered in the chat, R1-D-211, R1-D-212) |
+| #   | Decision | Question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| --- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 157 | R1-D-217 | **`EligibilityCheck` as a synchronous call (PR-UDF-051).** The Specification lists it as `POST /v1/eligibility-checks` with an `Idempotency-Key`, at most 3 s, and "timeout = lender unavailable" (§6.2, Part 10.3), and also marks the row "(E)". Default taken: a synchronous call, with request and answer schemas and the timeout as the fixed outcome `lender_unavailable`; no event pair. Udofin's 3 s assumption matches. Impact if changed to an event pair: two new event types and an async answer in the mock lender (a minor). Reverse: add `EligibilityCheckRequested`/`EligibilityCheckAnswered` in a later minor. Recommendation: accept |
 
 ## Answered
 

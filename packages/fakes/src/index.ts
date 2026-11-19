@@ -31,3 +31,4 @@ export * from "./ports/statement-analysis.js";
 export * from "./ports/telephony.js";
 export * from "./ports/video-meet.js";
 export * from "./ports/web-snapshot.js";
+export * from "./lender.js";

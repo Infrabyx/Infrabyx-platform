@@ -28,3 +28,4 @@ export * from "./accounting.js";
 export * from "./calendar.js";
 export * from "./web-snapshot.js";
 export * from "./email-inbound.js";
+export * from "./lender.js";

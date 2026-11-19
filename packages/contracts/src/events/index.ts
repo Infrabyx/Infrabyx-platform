@@ -7,3 +7,4 @@ export * from "./regulated.js";
 export * from "./provisioning.js";
 export * from "./module-events.js";
 export * from "./spec-events.js";
+export * from "./origination.js";

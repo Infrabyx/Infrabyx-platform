@@ -10,7 +10,13 @@
 //     `iat` outside a short window and a `jti` it has already accepted.
 // The protected header holds `alg`, `kid`, `typ`, `iat` and `jti` only; `b64`, `crit`, `jku`,
 // `jwk`, `x5u`, `x5c` and anything else is refused, as is an attached payload or a DER signature.
-import { createPublicKey, verify as nodeVerify, type KeyObject } from "node:crypto";
+import {
+  createPublicKey,
+  generateKeyPairSync,
+  sign as nodeSign,
+  verify as nodeVerify,
+  type KeyObject,
+} from "node:crypto";
 import { derToJose, cloudEventSigningPayload, type DerSigner } from "./detached-jws.js";
 import { toBase64Url } from "./encoding.js";
 import { canonicalize } from "./jcs.js";
@@ -190,4 +196,26 @@ export async function verifyRegulatedMessage(
   if (!(await o.replay.claim(jti, new Date(issued.getTime() + maxAge + skew))))
     return fail("replay");
   return { ok: true, kid, jti, iat: issued };
+}
+
+/**
+ * An ES256 signer on a key made in memory, for tests and fakes only (`@infrabyx/fakes` `FakeLender`;
+ * PR-UDF-051, R1-D-217): the same algorithm and DER output as a KMS `sign`, so a message it signs
+ * verifies with `verifyRegulatedMessage` and the returned public key exactly as a real one. The
+ * private key never leaves the object. Never use it in production configuration: a real producer
+ * signs with its KMS key (C-22).
+ */
+export function localRegulatedSigner(kid: string): {
+  kid: string;
+  sign: DerSigner;
+  /** The public key as SPKI DER, for a `RegulatedKeyRing`. */
+  publicKey: Uint8Array;
+} {
+  if (!KID.test(kid)) throw new Error("invalid kid");
+  const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  return {
+    kid,
+    sign: async (input) => new Uint8Array(nodeSign("sha256", input, privateKey)),
+    publicKey: new Uint8Array(publicKey.export({ format: "der", type: "spki" })),
+  };
 }
