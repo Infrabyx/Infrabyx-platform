@@ -49,6 +49,8 @@ Udofin's Phase 6 step 6.6 analyses a borrower's bank statements (FI data fetched
 
 **Owner decisions needed** (#152, none blocking): which analyser the reference should be (a vendor, or a deeper in-platform analysis), and its webhook scheme; the defaults taken: no vendor name, the checksum-only reference, the HTTP shapes `[VERIFY]`, `handleWebhook` `unsupported` on the real adapters, 24-hour records, a plain SHA-256 request binding, and up to 24 inputs.
 
+**As built (R1-D-202):** as planned, with these choices made at build time: the port's class check (`assertStatementAnalysisClass`) and shape check (`statementInputFormat`) live in `contracts` so the fake and both adapters share them; inputs are read and checked before the store's record is made, so a refused call leaves no record; `analyse`, `status` and `handleWebhook` never fail over; a record with no answer (a call that failed before one) answers `status` `unknown_analysis`, and a keyed retry of it runs again with the same analysis id; the HTTP adapter sends an `idempotency-key` header equal to the analysis id and never the subject reference, retries a status read once and never a create; the vendor reference is CONFIDENTIAL in the table; the ADR is ADR-0012 and the IPB-01 catalogue row is requested as platform request PR-046. `[ASSUMED – owner review]` #152.
+
 ## B. PR-UDF-049 — BUREAU `consentRef` accepts a product's own consent artefact (`contracts`, `fakes` minors)
 
 Planned in the next PR.

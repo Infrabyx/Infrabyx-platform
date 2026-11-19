@@ -36,6 +36,7 @@ export const PORTS = [
   "DOCGEN",
   "AV",
   "PDF",
+  "STATEMENT_ANALYSIS",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -73,6 +74,11 @@ const EXTRA_PATHS = {
     "packages/contracts/src/ports/pdf-text.ts",
     "packages/contracts/src/ports/file-scan.ts",
     "packages/testing/src/ports/pdf-text",
+  ],
+  // PR-UDF-048: the fake lives in @infrabyx/fakes; the migration under connectors/migrations.
+  STATEMENT_ANALYSIS: [
+    "packages/fakes/src/ports/statement-analysis.ts",
+    "packages/connectors/migrations/0014_statement_analysis.sql",
   ],
 };
 

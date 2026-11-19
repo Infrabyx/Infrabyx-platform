@@ -8,6 +8,7 @@ import {
   QueueJobData,
   RefundSpec,
   SmsMessage,
+  StatementAnalysisRequest,
   WhatsappSessionMessage,
   WhatsappTemplateMessage,
 } from "@infrabyx/contracts/ports";
@@ -126,6 +127,19 @@ export const PORT_METHODS: Readonly<Record<string, Readonly<Record<string, Metho
     verifySignature: { kind: "read", noFailover: true },
     reconcile: read,
     lookup: read,
+  },
+  // REGULATED and kept in India (PR-UDF-048, R1-D-202): the payload and the call's class decide the
+  // admissible adapter; nothing moves to a secondary (a keyed analysis or a pending one belongs to
+  // the analyser that took it, and each adapter keeps its own records).
+  STATEMENT_ANALYSIS: {
+    analyse: {
+      kind: "write",
+      callArg: 1,
+      payload: { arg: 0, schema: StatementAnalysisRequest },
+      noFailover: true,
+    },
+    status: { kind: "read", callArg: 1, noFailover: true },
+    handleWebhook: { kind: "write", noFailover: true },
   },
   // Provisional until PL4 (`ai`) defines the LLM interface; lets @IPB-01-AT-06 run at the router.
   LLM: {
