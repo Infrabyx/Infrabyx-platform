@@ -52,6 +52,7 @@ export const SHARED_PATHS = [
   "packages/contracts/src/routing.ts",
   "packages/testing/src/contract.ts",
   "packages/testing/src/containers.ts",
+  "packages/testing/src/images.ts",
   "packages/testing/src/ports/",
   "packages/crypto/src/",
   "pnpm-lock.yaml",
