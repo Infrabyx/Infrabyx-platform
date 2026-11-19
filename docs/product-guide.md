@@ -163,7 +163,7 @@ create policy journal_line_external on books.journal_line as restrictive for sel
 ## 7g. Idempotent API calls and break-glass notices
 
 - **`Idempotency-Key` (IPB-10-07, R1-D-27).** Register `IdempotencyKeyInterceptor` (`@infrabyx/tenancy/nest`) on your API. In each POST or PATCH handler, wrap the change: `kernel.mutate(ctx, (tx) => idempotent(tx, req.idempotency, work, { audit }))`, where `work` returns `{ status, body }`. A replay returns the first response; another body under the key is 409. Schedule `new IdempotencyExpiry({ kernel, audit }).sweep(tenantSweep)` daily (`tenancy/0008`).
-- **Services that open their own mutation (PR-UDF-033, PR-FBX-21; R1-D-48).** Use `kernel.ambient(ctx, (tx) => idempotent(tx, req.idempotency, work, { audit }), { action })` in place of `kernel.mutate`. Every `kernel.mutate` your services and the platform's engines make inside `work`, on the same `PgKernel`, then joins that transaction in a kernel savepoint. Each joined call keeps its own action, reason and ledger check. A joined call that throws rolls back alone, and the handler decides. Joined calls must be the same tenant and person, and run one at a time (no `Promise.all`). Reads keep their own read-only transaction, so they do not see the handler's uncommitted writes. Run `infrabyx-migrate` (`tenancy/0015`): keys now belong to the person who first used them. `IdempotencyKeyInterceptor` hashes the route parameters too, so a request in flight across the upgrade may get 409 instead of a replay.
+- **Services that open their own mutation (PR-UDF-033, PR-FBX-21; R1-D-48).** Use `kernel.ambient(ctx, (tx) => idempotent(tx, req.idempotency, work, { audit }), { action })` in place of `kernel.mutate`. Every `kernel.mutate` your services and the platform's engines make inside `work`, on the same `PgKernel`, then joins that transaction in a kernel savepoint. Each joined call keeps its own action, reason and ledger check. A joined call that throws rolls back alone, and the handler decides. Joined calls must be the same tenant and person, and run one at a time (no `Promise.all`). Reads keep their own read-only transaction, so they do not see the handler's uncommitted writes, unless the handler passes `joinReads: true` (§7cm). Run `infrabyx-migrate` (`tenancy/0015`): keys now belong to the person who first used them. `IdempotencyKeyInterceptor` hashes the route parameters too, so a request in flight across the upgrade may get 409 instead of a replay.
 - **Udofin and Finbyx.** Udofin can retire `AmbientKernel` (`apps/api/src/ambient-kernel.ts`) and its principal-in-hash shim (UDF-D-122). Finbyx can retire `FbxKernel`'s first-mutation claim, `respondFrom` and `IdempotentScope`'s path re-hash (PR-FBX-21).
 - **Break-glass in your tenants (R1-D-28).** Every use of a platform break-glass grant on a tenant is recorded there (`tenancy/0009`). Schedule `new BreakGlassTenantNotices({ kernel, audit, outbox, product }).sweep(tenantSweep)` every few minutes; on `BreakGlassUsed`, notify the tenant's administrators. Show `list` on the tenant's security page.
 
@@ -929,6 +929,24 @@ The fakes you wire in a fixture environment (below staging) now come from `@infr
 4. Run `pnpm audit --prod --audit-level high`: the `@infrabyx/testing > vitest > picomatch` path (GHSA-fc5q-39xc-vjpf) is gone, so the time-boxed audit exception for it can be removed.
 
 Contract cases (`kycContractCases`, `defineContractSuite`, …), the NN suites, `startPostgres` and the vendor stubs stay in `@infrabyx/testing`.
+
+## 7cm. Reads that see the handler's own writes (PR-UDF-037; R1-D-188)
+
+From `tenancy` 1.21.0, `kernel.ambient(ctx, fn, { action, joinReads: true })` makes every `kernel.read` inside `fn` join the handler's transaction, so a later read sees an earlier call's uncommitted write. Without `joinReads` nothing changes.
+
+- A joined read runs read-only, as the kernel's read role, with its own `app.*` settings, in a savepoint that is always rolled back: a write inside it fails (`25006`) and the handler's transaction carries on as it was.
+- Joined reads run one at a time with the joined mutations, as joined mutations already do: no `Promise.all` of reads inside a `joinReads` handler (the second is refused with "one at a time"). A read inside a joined mutation is fine.
+- A `snapshot` read, a read for another tenant, person, scope or break-glass grant, and a support, external or platform service read keep their own transaction.
+- **Udofin:** with `joinReads: true` on the handlers that need it, `AmbientKernel` (UDF-D-142) can go.
+
+## 7cn. Refusal codes and retry waits in problem responses (PR-UDF-038; R1-D-189)
+
+From `contracts` 1.37.0, `toProblem` adds two RFC 9457 extension members, and leaves the rest of `meta` inside the platform as before:
+
+- `reason`: the error's `meta.reason` when it is a fixed snake-case label (`hash_mismatch`, `purpose_code_invalid`), so a client can branch on it. Anything else (a value, a sentence) is left out.
+- `retry_after_seconds`: on a 429 or 503 whose `meta.retryAfterSeconds` is a whole number of seconds from 1 to 86400 (for example `IPB-SEC-019` from the customer sign-in limits).
+- `problemHeaders(problem)` returns `{ "Retry-After": "<n>" }` when the wait is set. Set it on the response with the status, as the reference API's `ProblemFilter` now does.
+- **Udofin:** its own `ProblemFilter` additions (UDF-D-146) can go; keep only the call to `problemHeaders`.
 
 ## 8. Adopting 1.0.0
 

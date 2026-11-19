@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-18
+Updated: 2026-11-19
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -45,12 +45,20 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
 
-## Twenty-third session (18 Nov, owner's evening chat) — in progress
+## Twenty-fourth session (19 Nov, owner's morning chat) — in progress
 
-- **Lock:** taken at 21:57 IST (SESSION LOCK #262 was FREE). Owner instructions of 18 Nov evening: OWNER-MANUAL-02 stays; answers to #137 to #139 (R1-D-185); then STATUS "Next" in order: #132 (4) and (5), PR-UDF-037 to PR-UDF-046, PR-LDC-46, PR-LDC-52; the waiver check (below).
-- **First PR (this one; R1-D-186):** the answers recorded; #139 (1) built (day-80 and day-85 notices to the tenant's administrators, the re-enrolment steps in the 403, agent 1.2.0 re-enrols in place); #137 (2): the release records each package's visibility; #138 (4): guide note and the backlog item above.
-- **Second PR (R1-D-187):** #132 (4) the purpose code and (5) refused reveals as security events (`audit/0012` `audit.security_event`, `PgSecurityEvents`, the `RevealRefusalsRepeated` alert); `contracts`, `audit`, `rules`, `config`, `testing` minors.
-- **Waiver check, owner's order of 18 Nov (no reminder task; this line is the only reminder):** on 1 Dec, **or in the first session on or after 28 Nov if that comes earlier**: look for fixed base images and Keycloak images at least 7 days old; put every finding still unfixed to the owner with a recommendation **before the product gates of 1 to 4 Dec (Finbyx and the one the owner named)**; cover the waivers expiring 5, 7, 10, 16 and 20 Dec (CVE-2025-6020 included), see the table at the top of this file.
+- **Lock:** taken at 07:23 IST: SESSION LOCK #262 still named the twenty-third session, last heartbeat 18 Nov 23:12 IST (over 90 minutes old; OWNER-LOCK-01). Owner instructions of 19 Nov: OWNER-MANUAL-02 stays; pick up the twenty-third session first; add PR-UDF-047 after PR-UDF-046; then "Next" in order (PR-UDF-037 to PR-UDF-047, each planned first, then PR-LDC-46 and PR-LDC-52); the waiver check as below. Udofin will raise PR-UDF-048 (a statement-analysis port) at its Phase 6 step 6.6, through the owner.
+- **Picked up:** #297 and #298 were on `main`; nothing redone. Version PR #299 had one failed check, `infra` (a TCP reset fetching the `azurerm` provider from the registry, a runner network fault with nothing to reproduce locally, as the twenty-second session's `compose` timeout); its failed job was re-run once (attempt 2: all 42 green) and #299 merged as `8d6345b` under #81(a). Release record below.
+- **This PR (R1-D-188, R1-D-189):** the plan for PR-UDF-037 to PR-UDF-047 (`docs/phases/R1-udofin-phase5-plan.md`); PR-UDF-047 added to `docs/platform-requests.md`; PR-UDF-037 built (`tenancy` minor: `ambient(..., { joinReads: true })`, guide §7cm) and PR-UDF-038 built (`contracts` minor: `reason`, `retry_after_seconds`, `problemHeaders`, guide §7cn). Owner questions #140 and #141 (two defaults; recommendation: accept).
+- **Waiver check, owner's order of 18 Nov (no reminder task; this line is the only reminder):** on 1 Dec, **or in the first session on or after 28 Nov if that comes earlier**: look for fixed base images and Keycloak images at least 7 days old; put every finding still unfixed to the owner with a recommendation **before the product gates of 1 to 4 Dec (Finbyx and ComplyCl)**; cover the waivers expiring 5, 7, 10, 16 and 20 Dec (CVE-2025-6020 included), see the table at the top of this file.
+
+## Twenty-third session (18 Nov, owner's evening chat) — handover (written by the twenty-fourth)
+
+The session took the lock at 21:57 IST and stopped after its last heartbeat at 23:12 IST without writing a handover or freeing the lock; the twenty-fourth session wrote this from the repository and GitHub.
+
+- **Merged (each after a green `ci:run`):** **#297** (`955cc67`; R1-D-185, R1-D-186): the owner's answers to #137 to #139 recorded; #139 (1) built (the day-80 and day-85 key notices to the tenant's administrators, `connectors/0009`, the re-enrolment steps in the day-90 403, agent 1.2.0 re-enrols in place); #137 (2): the release prints each package's visibility; #138 (4): guide §7bt and the backlog item. **#298** (`4af2688`; R1-D-187): #132 (4) the purpose code and (5) refused reveals as security events (`audit/0012` `audit.security_event`, `PgSecurityEvents`, the `RevealRefusalsRepeated` alert).
+- **Left:** version PR #299 open with `ci:run`, its first run failed on `infra` only (above); no release record; this handover; SESSION LOCK #262 not freed. PR-UDF-037 onwards not started (no plan, no branch). The release of #299's minors (`contracts` 1.36.0, `audit` 1.11.0, `config` 1.19.0, `connectors` 1.21.0, `notify` 1.5.0, `rules` 1.6.0, `testing` 1.22.0, `hlp` 1.0.1 and patches) is recorded below by the twenty-fourth session.
+- **Branches:** none left open by it; `claude/admiring-franklin-508ck2` is at `dd44ea2` (the twenty-second session's, already merged).
 
 ## Twenty-second session (18 Nov, owner's chat) — handover
 
