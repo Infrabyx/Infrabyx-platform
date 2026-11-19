@@ -110,9 +110,9 @@ export const VERIFY_NOT_LOCAL = {
     "reads the PR description; runs here only with --pr-body FILE (CI always runs it)",
 };
 
-/** Pinned images of packages/testing/src/containers.ts, by name. */
+/** Pinned images of packages/testing/src/images.ts (re-exported by containers.ts), by name. */
 export function testImages() {
-  const src = readFileSync(join(ROOT, "packages/testing/src/containers.ts"), "utf8");
+  const src = readFileSync(join(ROOT, "packages/testing/src/images.ts"), "utf8");
   const out = {};
   for (const m of src.matchAll(/^ {2}([a-z0-9]+): \{\s*image:\s*"([^"]+)"/gms)) out[m[1]] = m[2];
   return out;
@@ -177,7 +177,7 @@ export function plan(o, ci = readCi()) {
   const images = Object.values(testImages());
   add({
     id: "images",
-    name: "pull the pinned test images (packages/testing containers.ts)",
+    name: "pull the pinned test images (packages/testing images.ts)",
     group: "prepare",
     soft: true,
     weight: 0,
