@@ -170,10 +170,10 @@ export const PORT_EXIT: readonly PortExit[] = [
     primary: "digio-kyc",
     exitTarget: "idfy-kyc",
     dataMove:
-      "Configuration swap per method for new checks (`kycMethodRouter` order); documents and results are already held in STORAGE and the product's records. IDfy covers PAN, face match and liveness today; DigiLocker and Aadhaar offline at IDfy are added when its sandbox confirms them",
+      "Configuration swap per method for new checks (`kycMethodRouter` order); documents and results are already held in STORAGE and the product's records. IDfy covers PAN, face match, liveness, Aadhaar OTP (for a notified RE) and pennyless bank account checks today; DigiLocker and Aadhaar offline at IDfy are added when its sandbox confirms them",
     volumeClass: "S",
     lockIn:
-      "KYC requests the customer has not completed at cut-over are started again at the target",
+      "KYC requests the customer has not completed at cut-over are started again at the target; a keyed DigiLocker pull is retried at the adapter that made it, whose records (`connectors.kyc_digilocker_pull`) live 24 hours and do not move; an Aadhaar OTP sent but not verified at cut-over is requested again at the target, and a keyed verify's record (`connectors.kyc_aadhaar_otp_verify`, 24 hours) stays with its adapter; a keyed bank account check is retried at the adapter that made it, whose record (`connectors.kyc_bank_account_verify`, 24 hours) does not move; a keyed liveness check or face match is retried at the adapter that made it, whose record (`connectors.kyc_score_check`, 24 hours) does not move",
   },
   {
     port: "BUREAU",
@@ -198,6 +198,16 @@ export const PORT_EXIT: readonly PortExit[] = [
     volumeClass: "S",
     lockIn:
       "Consents live at the AA and the FIU's provider: customers approve again through the target; open consents are revoked at the source",
+  },
+  {
+    port: "STATEMENT_ANALYSIS",
+    primary: "platform-statement",
+    exitTarget: "http-statement",
+    dataMove:
+      "Configuration swap for new analyses; statements and reports are already in the tenant's STORAGE, and the analysis records live 24 hours",
+    volumeClass: "S",
+    lockIn:
+      "Report formats differ between analysers (the in-platform report is a checksum summary, not a credit analysis): a product re-runs an analysis at the target rather than converting reports; pending analyses finish at the source",
   },
   {
     port: "ESTAMP",

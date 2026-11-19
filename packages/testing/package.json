@@ -17,11 +17,16 @@
       "types": "./dist/migration-lint/index.d.ts",
       "default": "./dist/migration-lint/index.js"
     },
+    "./aadhaar-scan": {
+      "types": "./dist/aadhaar-scan/index.d.ts",
+      "default": "./dist/aadhaar-scan/index.js"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
     "infrabyx-migration-lint": "./dist/migration-lint/cli.js",
-    "infrabyx-at-report": "./dist/at-report/cli.js"
+    "infrabyx-at-report": "./dist/at-report/cli.js",
+    "infrabyx-aadhaar-scan": "./dist/aadhaar-scan/cli.js"
   },
   "files": [
     "dist",

@@ -4,12 +4,15 @@
 // the tenant process. It is never stored, logged or traced. Scrubbing never lowers a request's
 // data class (IPB-03-28): the gateway raises the class from what was detected before it scrubs.
 //
-// Detectors (owner list, 27 Oct 2026, plus IPB-03-27): Aadhaar (Verhoeff check; the masked form
-// XXXX XXXX 1234; any 12-digit number after the word Aadhaar), PAN, Indian mobile numbers, e-mail
-// addresses, UPI ids, bank account numbers (after an account keyword, or anywhere in a text that
-// also carries an IFSC) and IFSC, card numbers (Luhn), voter ID (EPIC), passport, driving licence,
-// GSTIN (checksum), date of birth (after a DOB keyword), JWTs, PEM private keys and API-key shapes.
+// Detectors (owner list, 27 Oct 2026, plus IPB-03-27): Aadhaar (the platform's shared rule,
+// `findAadhaarLike` in `@infrabyx/contracts/aadhaar`: 12 digits with Verhoeff and a 16-digit VID,
+// PR-UDF-042; the masked form XXXX XXXX 1234; any 12-digit number after the word Aadhaar), PAN,
+// Indian mobile numbers, e-mail addresses, UPI ids, bank account numbers (after an account keyword,
+// or anywhere in a text that also carries an IFSC) and IFSC, card numbers (Luhn), voter ID (EPIC),
+// passport, driving licence, GSTIN (checksum), date of birth (after a DOB keyword), JWTs, PEM
+// private keys and API-key shapes.
 // `ai.scrub.patterns` adds detectors; the built-in list always applies first.
+import { findAadhaarLike, verhoeffValid as verhoeffDigits } from "@infrabyx/contracts/aadhaar";
 import type { DataClass } from "@infrabyx/contracts/data-class";
 
 export const PII_KINDS = [
@@ -62,7 +65,9 @@ export interface ScrubPattern {
 
 interface Detector {
   kind: string;
-  re: RegExp;
+  /** What the detector matches; or `find`, which returns the spans itself (the shared Aadhaar rule). */
+  re?: RegExp;
+  find?: (text: string) => readonly { start: number; end: number }[];
   /** Replace only this capture group (context-anchored detectors). */
   group?: number;
   valid?: (value: string) => boolean;
@@ -72,37 +77,13 @@ interface Detector {
 
 const digits = (s: string) => s.replace(/\D/g, "");
 
-// Verhoeff (Aadhaar's check digit).
-const VD = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
-  [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
-  [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
-  [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
-  [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
-  [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
-  [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
-  [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
-  [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-];
-const VP = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
-  [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
-  [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
-  [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
-  [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
-  [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
-  [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
-];
+/**
+ * Verhoeff (Aadhaar's check digit) over the digits of `num`, separators dropped: the shared check
+ * (`verhoeffValid` in `@infrabyx/contracts/aadhaar`, PR-UDF-042), with this export's behaviour
+ * unchanged (it has always ignored non-digits; no digit at all is false).
+ */
 export function verhoeffValid(num: string): boolean {
-  const d = digits(num);
-  if (!d) return false;
-  let c = 0;
-  [...d].reverse().forEach((ch, i) => {
-    c = VD[c]![VP[i % 8]![Number(ch)]!]!;
-  });
-  return c === 0;
+  return verhoeffDigits(digits(num));
 }
 
 export function luhnValid(num: string): boolean {
@@ -168,11 +149,9 @@ const BUILT_IN: readonly Detector[] = [
       return n >= 13 && n <= 19 && luhnValid(v);
     },
   },
-  {
-    kind: "AADHAAR",
-    re: new RegExp(`${NUM_START}[2-9]\\d{3}[\\s-]?\\d{4}[\\s-]?\\d{4}${NUM_END}`, "g"),
-    valid: verhoeffValid,
-  },
+  // The shared rule (PR-UDF-042, R1-D-195): a 12-digit Aadhaar number or a 16-digit VID, plain or
+  // grouped, Verhoeff-checked, bounded by any non-digit.
+  { kind: "AADHAAR", find: (t) => findAadhaarLike(t) },
   // The masked form printed on e-Aadhaar and in KYC records.
   { kind: "AADHAAR", re: /(?<![\w*•])[Xx*•]{4}[\s-]?[Xx*•]{4}[\s-]?\d{4}(?!\d)/g },
   {
@@ -258,8 +237,18 @@ export class ScrubSession {
     let out = o.defuse === false ? text : text.replace(/<PII:/g, "<PII_:");
     for (const d of this.detectors) {
       if (d.when && !d.when.test(out)) continue;
-      d.re.lastIndex = 0;
-      out = out.replace(d.re, (m: string, ...rest: unknown[]) => {
+      if (d.find) {
+        const spans = d.find(out);
+        // Tokens in reading order (as `replace` numbers them), then spliced from the end.
+        const tokens = spans.map((x) => this.tokenFor(d.kind, out.slice(x.start, x.end)));
+        for (let i = spans.length - 1; i >= 0; i--)
+          out = out.slice(0, spans[i]!.start) + tokens[i]! + out.slice(spans[i]!.end);
+        continue;
+      }
+      const re = d.re;
+      if (!re) continue;
+      re.lastIndex = 0;
+      out = out.replace(re, (m: string, ...rest: unknown[]) => {
         const value = d.group ? (rest[d.group - 1] as string | undefined) : m;
         if (!value || (d.valid && !d.valid(value))) return m;
         const token = this.tokenFor(d.kind, value);
