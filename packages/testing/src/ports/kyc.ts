@@ -23,14 +23,21 @@ import {
   OvdOcr,
   PanCheck,
   BANK_ACCOUNT_STATUSES,
+  LIVENESS_MODES,
+  LaunchVcip,
+  VCIP_HANDOFF_MAX_LIFETIME_SECONDS,
+  VCIP_REASON_CODES,
   kycScoreValid,
   payloadClass,
+  vcipLaunchUrlAllowed,
   type BankAccountMode,
   type DigilockerDocument,
   type KycFileRef,
   type KycPort,
   type LivenessMode,
   type ScoreResult,
+  type VcipHandoffContext,
+  type VcipManifest,
 } from "@infrabyx/contracts/ports";
 import { findAadhaarLike } from "@infrabyx/contracts/aadhaar";
 import type { ContractCase } from "../contract.js";
@@ -40,12 +47,18 @@ import {
   type BankAccountFixtures,
   type KycFixtures,
   type ScoreFixtures,
+  type VcipLaunchFixtures,
 } from "@infrabyx/fakes";
 export {
   type AadhaarOtpFixtures,
   type BankAccountFixtures,
   type KycFixtures,
   type ScoreFixtures,
+  type VcipLaunchFixtures,
+  FAKE_VCIP_HANDOFF,
+  fakeVcipHandoffContext,
+  fakeVcipHandoffKeys,
+  signFakeVcipHandoff,
   FAKE_AADHAAR_OTP,
   syntheticUid,
   DIGILOCKER_CONTRACT_RETURN_URL,
@@ -154,6 +167,33 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
     expect(r.modelVersion).not.toBe("");
   };
   const offScale = { code: "IPB-PORT-003", meta: { reason: "score_out_of_range" } };
+  // PR-UDF-045: the RE-hosted V-CIP launcher.
+  const launchFx = (): VcipLaunchFixtures => {
+    expect(fx.vcipLaunch, "KycFixtures.vcipLaunch for an adapter with launchVcip").toBeDefined();
+    return fx.vcipLaunch!;
+  };
+  const launcher = (p: KycPort) => {
+    expect(typeof p.launchVcip).toBe("function");
+    return (p.launchVcip as NonNullable<KycPort["launchVcip"]>).bind(p);
+  };
+  /** A well-formed hand-off for the unsupported check: it never reaches a verifier. */
+  const staticHandoff = (): VcipHandoffContext => {
+    const at = new Date();
+    return {
+      tenantId: "tnt_kyc",
+      reId: "re_contract",
+      lspId: "lsp_contract",
+      customerRef: "cus_contract",
+      journeyId: "jrn_contract",
+      issuedAt: at.toISOString(),
+      expiresAt: new Date(at.getTime() + 60_000).toISOString(),
+      nonce: "contract-nonce-AAAAAAAAAA",
+    };
+  };
+  const handoffRefused = (reason: string) => ({
+    code: "IPB-PORT-001",
+    meta: { reason, definite: true },
+  });
   // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
   const noRunInKeys = (docs: DigilockerDocument[]) => {
     for (const d of docs)
@@ -789,6 +829,161 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
           officialRef: "usr_official",
         });
         await expect(p.vcipStatus("vcip_missing")).rejects.toMatchObject({ code: "IPB-PORT-001" });
+      },
+    },
+    {
+      name: "launchVcip (PR-UDF-045): a signed hand-off schedules a session with an https launch address on the adapter's hosts, lapsing no later than the hand-off; it reads back under the call's tenant only",
+      method: "launchVcip",
+      invoke: (p) => launcher(p)({ context: staticHandoff(), jws: "e30..c2lnbmF0dXJl" }),
+      async run(p) {
+        const l = launchFx();
+        const launch = launcher(p);
+        expect(payloadClass(LaunchVcip)).toMatchObject({ complete: true, unannotated: [] });
+        const c = l.context();
+        const before = l.vendorCalls(p);
+        const r = await launch({ context: c, jws: await l.sign(c) }, { tenantId: c.tenantId });
+        expect(l.vendorCalls(p)).toBe(before + 1);
+        expect(r.vcipId).not.toBe("");
+        expect(vcipLaunchUrlAllowed(r.launchUrl, l.launchHosts), r.launchUrl).toBe(true);
+        expect(Date.parse(r.expiresAt)).toBeLessThanOrEqual(Date.parse(c.expiresAt));
+        expect(Date.parse(r.expiresAt)).toBeGreaterThan(Date.now());
+        expect(r.adapter).toBe(p.descriptor.adapter);
+        const m = await p.vcipStatus(r.vcipId, { tenantId: c.tenantId });
+        expect(m).toMatchObject({ vcipId: r.vcipId, sessionId: c.journeyId, state: "scheduled" });
+        await expect(
+          p.vcipStatus(r.vcipId, { tenantId: "tnt_someone_else" }),
+        ).rejects.toMatchObject({ code: "IPB-PORT-001" });
+        for (const v of [r, m]) expect(findAadhaarLike(JSON.stringify(v))).toEqual([]);
+      },
+    },
+    {
+      name: "launchVcip (PR-UDF-045): a replayed, expired, stale, tampered, mismatched, untrusted, other-tenant, other-RE or overlong hand-off is refused with its fixed label, definite, before any vendor call",
+      method: "launchVcip",
+      invoke: (p) => launcher(p)({ context: staticHandoff(), jws: "e30..c2lnbmF0dXJl" }),
+      async run(p) {
+        const l = launchFx();
+        const launch = launcher(p);
+        const now = Date.now();
+        const min = 60_000;
+        // Replay: the same signed hand-off twice.
+        const c1 = l.context();
+        const j1 = await l.sign(c1);
+        await launch({ context: c1, jws: j1 });
+        const calls = l.vendorCalls(p);
+        const cases: Array<[string, () => Promise<unknown>]> = [
+          ["handoff_replayed", () => launch({ context: c1, jws: j1 })],
+          [
+            "handoff_expired",
+            async () => {
+              const c = l.context({}, new Date(now - 20 * min));
+              return launch({ context: c, jws: await l.sign(c) });
+            },
+          ],
+          [
+            "handoff_expired",
+            async () => {
+              const c = l.context();
+              return launch({ context: c, jws: await l.sign(c, new Date(now - 10 * min)) });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context();
+              const j = await l.sign(c);
+              const i = j.length - 20;
+              const t = `${j.slice(0, i)}${j[i] === "A" ? "B" : "A"}${j.slice(i + 1)}`;
+              return launch({ context: c, jws: t });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context();
+              const j = await l.sign(c);
+              return launch({ context: { ...c, customerRef: "cus_someone_else" }, jws: j });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context();
+              return launch({ context: c, jws: await l.signUntrusted(c) });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context();
+              return launch({ context: c, jws: await l.sign(c) }, { tenantId: "tnt_someone_else" });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context({ reId: "re_someone_else" });
+              return launch({ context: c, jws: await l.sign(c) });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = l.context();
+              const long = {
+                ...c,
+                expiresAt: new Date(
+                  Date.parse(c.issuedAt) + (VCIP_HANDOFF_MAX_LIFETIME_SECONDS + 60) * 1000,
+                ).toISOString(),
+              };
+              return launch({ context: long, jws: await l.sign(long) });
+            },
+          ],
+          [
+            "handoff_invalid",
+            async () => {
+              const c = { ...l.context(), name: "Asha Rao" } as VcipHandoffContext;
+              return launch({ context: c, jws: await l.sign(c) });
+            },
+          ],
+          ["handoff_invalid", () => launch({ context: l.context(), jws: "not-a-jws" })],
+        ];
+        for (const [reason, go] of cases) {
+          let thrown: unknown;
+          await go().then(
+            () => undefined,
+            (e: unknown) => (thrown = e),
+          );
+          expect(thrown, reason).toMatchObject(handoffRefused(reason));
+          expect(findAadhaarLike(errorText(thrown))).toEqual([]);
+        }
+        expect(l.vendorCalls(p)).toBe(calls);
+      },
+    },
+    {
+      name: "vcipStatus (PR-UDF-045): no manifest field carries a 12-digit run or an Aadhaar-like number; an ended session's reason is a code and its liveness mode one of the modes",
+      method: "launchVcip",
+      invoke: (p) => launcher(p)({ context: staticHandoff(), jws: "e30..c2lnbmF0dXJl" }),
+      async run(p) {
+        const l = launchFx();
+        const launch = launcher(p);
+        const manifests: VcipManifest[] = [];
+        const ended = ["completed", "rejected", "dropped"] as const;
+        for (const state of [undefined, ...(l.finish ? ended : [])]) {
+          const c = l.context();
+          const r = await launch({ context: c, jws: await l.sign(c) }, { tenantId: c.tenantId });
+          if (state) await l.finish!(p, r.vcipId, state);
+          const m = await p.vcipStatus(r.vcipId, { tenantId: c.tenantId });
+          if (state) expect(m.state).toBe(state);
+          manifests.push(m);
+        }
+        for (const m of manifests) {
+          const text = JSON.stringify(m);
+          expect(text.replace(SHA256_HEX, "")).not.toMatch(AADHAAR_LIKE);
+          expect(findAadhaarLike(text, { letters: "join" })).toEqual([]);
+          if (m.reasonCode !== undefined) expect(VCIP_REASON_CODES).toContain(m.reasonCode);
+          if (m.state === "rejected" || m.state === "dropped") expect(m.reasonCode).toBeDefined();
+          if (m.liveness?.mode !== undefined) expect(LIVENESS_MODES).toContain(m.liveness.mode);
+        }
       },
     },
     {

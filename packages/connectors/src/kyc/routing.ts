@@ -8,7 +8,9 @@
 // before any vendor call: a bank account check's mode, PR-UDF-043; a liveness check's, PR-UDF-044).
 // A keyed bank account check, liveness check or face match, and a penny drop, do not move on when
 // an adapter is unavailable, as the first one may have reached its vendor: a key gets one answer,
-// from one adapter, and an account is never verified, or credited, twice for one key.
+// from one adapter, and an account is never verified, or credited, twice for one key. A V-CIP
+// launch never moves on when its adapter is unavailable (PR-UDF-045): the hand-off is single use
+// and the first adapter may have scheduled the session.
 import { PortError, isIpbError } from "@infrabyx/contracts/errors";
 import {
   KYC_MODE_UNSUPPORTED,
@@ -25,7 +27,7 @@ export const KYC_METHOD_FNS = {
   digilocker: ["startDigilocker", "digilockerPull"],
   ckyc_search: ["ckycSearch"],
   ckyc_download: ["ckycDownload"],
-  vcip: ["startVcip", "vcipStatus", "handleWebhook"],
+  vcip: ["startVcip", "launchVcip", "vcipStatus", "handleWebhook"],
   liveness: ["livenessCheck"],
   face_match: ["faceMatch"],
   bank_account: ["bankAccountVerify"],
@@ -47,6 +49,7 @@ function passOn(e: unknown, fn: Fn, args: unknown[]): boolean {
   if (!isIpbError(e)) return false;
   const reason = (e as { meta?: { reason?: unknown } }).meta?.reason;
   if (e.code === "IPB-PORT-002") {
+    if (fn === "launchVcip") return false;
     if (reason === KYC_MODE_UNSUPPORTED || !KEYED_STAYS.has(fn)) return true;
     const req = args[0] as { mode?: unknown } | undefined;
     const call = args[1] as { idempotencyKey?: unknown } | undefined;
@@ -83,7 +86,7 @@ export function kycMethodRouter(o: KycMethodRouterOptions): KycPort {
         (a) =>
           a.descriptor.capabilities?.[fn] !== "unsupported" &&
           // An optional method an adapter outside the platform does not have (startDigilocker,
-          // aadhaarOtpRequest, aadhaarOtpVerify).
+          // aadhaarOtpRequest, aadhaarOtpVerify, launchVcip).
           typeof a[fn] === "function",
       );
   };

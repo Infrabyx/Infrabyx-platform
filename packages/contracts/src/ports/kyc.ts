@@ -8,7 +8,7 @@
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed } from "./payload-class.js";
-import { verhoeffValid } from "../aadhaar.js";
+import { findAadhaarLike, verhoeffValid } from "../aadhaar.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
 
@@ -243,8 +243,156 @@ export const VcipSession = z
     roomId: z.string().min(3).max(200),
     /** Documents the official checks against (OVD, PAN image), in STORAGE. */
     documents: z.array(KycFileRef).max(10),
+    /**
+     * A session `launchVcip` scheduled (PR-UDF-045): the call starts that session instead of a new
+     * one. Its `tenantId` and `customerRef` must be the hand-off's; it keeps the hand-off's journey
+     * id as its `sessionId`. Omitted, a new session is started, as before.
+     */
+    vcipId: z.string().min(3).max(200).optional(),
   })
   .strict();
+
+// ---- The RE-hosted V-CIP launcher (PR-UDF-045; R1-D-198) ----------------------------------------
+
+/**
+ * The longest a V-CIP hand-off may live, from `issuedAt` to `expiresAt`: 15 minutes. The signature
+ * over it must also be fresh when it is presented (`verifyRegulatedMessage`'s `iat` window, five
+ * minutes by default), so an LSP signs the hand-off right before it hands the customer over.
+ */
+export const VCIP_HANDOFF_MAX_LIFETIME_SECONDS = 900;
+/** Clock skew allowed on a hand-off's `issuedAt` (as the regulated-message `iat` window's). */
+export const VCIP_HANDOFF_MAX_SKEW_SECONDS = 60;
+
+/**
+ * The fixed `meta.reason` of a refused hand-off (`IPB-PORT-001`, definite), sent before any vendor
+ * call: `handoff_invalid`, the context is malformed, outlives the bound, names another tenant or
+ * RE or an LSP the adapter does not trust, or its signature does not verify over it (a tampered
+ * JWS, or a JWS over another context); `handoff_replayed`, the signature's `jti` was accepted
+ * before (a hand-off is single use); `handoff_expired`, the context or the signature is no longer
+ * fresh.
+ */
+export const VCIP_HANDOFF_REFUSALS = [
+  "handoff_invalid",
+  "handoff_replayed",
+  "handoff_expired",
+] as const;
+export type VcipHandoffRefusal = (typeof VCIP_HANDOFF_REFUSALS)[number];
+/** The fixed `meta.reason` (`IPB-PORT-003`) of a launch address that is not `vcipLaunchUrlAllowed`. */
+export const VCIP_LAUNCH_URL_REFUSED = "launch_url_invalid";
+
+const HANDOFF_ID = z
+  .string()
+  .min(3)
+  .max(200)
+  .regex(/^[A-Za-z0-9._:-]+$/, "an id: letters, digits and . _ : - only");
+const HANDOFF_NONCE = z.string().regex(/^[A-Za-z0-9_-]{22,64}$/, "22 to 64 base64url characters");
+const HANDOFF_TIME = z.iso.datetime({ offset: true });
+const holdsNumber = (v: string) => TWELVE_DIGIT_RUN.test(v) || findAadhaarLike(v).length > 0;
+
+/**
+ * What an LSP hands the RE's V-CIP when it hands a customer over (PR-UDF-045; KYC Directions 2025
+ * para 27(1)(i): the RE conducts V-CIP, the LSP hosts no V-CIP component). Ids and times only:
+ * the platform tenant, the RE, the LSP, the LSP's customer reference and journey id, when it was
+ * issued and when it expires (at most `VCIP_HANDOFF_MAX_LIFETIME_SECONDS` later), and a fresh nonce.
+ * Strict: no other field, no name, number or document. A field that carries a 12-digit run or an
+ * Aadhaar-like number (`findAadhaarLike`) is refused. The LSP signs it with `signRegulatedMessage`
+ * (the context as the signed object, its KMS key's `kid`); the RE side verifies it with
+ * `verifyRegulatedMessage` and a replay store before anything else.
+ */
+export const VcipHandoffContext = z
+  .object({
+    tenantId: classed(HANDOFF_ID, "INTERNAL"),
+    /** The regulated entity whose V-CIP the customer is handed to. */
+    reId: classed(HANDOFF_ID, "INTERNAL"),
+    /** The lending service provider that hands the customer over and signs the hand-off. */
+    lspId: classed(HANDOFF_ID, "INTERNAL"),
+    /** The LSP's own reference for the customer (never an identity number). */
+    customerRef: classed(HANDOFF_ID, "CONFIDENTIAL"),
+    /** The LSP's journey; the scheduled session's `sessionId`. */
+    journeyId: classed(HANDOFF_ID, "CONFIDENTIAL"),
+    issuedAt: classed(HANDOFF_TIME, "INTERNAL"),
+    expiresAt: classed(HANDOFF_TIME, "INTERNAL"),
+    nonce: classed(HANDOFF_NONCE, "INTERNAL"),
+  })
+  .strict()
+  .superRefine((c, ctx) => {
+    for (const [k, v] of Object.entries(c))
+      if (holdsNumber(v))
+        ctx.addIssue({ code: "custom", path: [k], message: "no 12-digit run or Aadhaar number" });
+    const life = Date.parse(c.expiresAt) - Date.parse(c.issuedAt);
+    if (!(life > 0 && life <= VCIP_HANDOFF_MAX_LIFETIME_SECONDS * 1000))
+      ctx.addIssue({
+        code: "custom",
+        path: ["expiresAt"],
+        message: `a hand-off expires after its issue and within ${VCIP_HANDOFF_MAX_LIFETIME_SECONDS} s`,
+      });
+  });
+export type VcipHandoffContext = z.infer<typeof VcipHandoffContext>;
+
+/** `launchVcip`'s request: the hand-off context and the LSP's detached JWS over it. */
+export const LaunchVcip = z
+  .object({
+    context: VcipHandoffContext,
+    jws: classed(z.string().min(10).max(4096), "CONFIDENTIAL"),
+  })
+  .strict();
+
+/**
+ * The time checks of a hand-off whose signature verified, at `now`: issued no later than
+ * `VCIP_HANDOFF_MAX_SKEW_SECONDS` ahead, and not yet expired. Undefined when both pass.
+ */
+export function vcipHandoffTimeRefusal(
+  c: Pick<VcipHandoffContext, "issuedAt" | "expiresAt">,
+  now: Date,
+): VcipHandoffRefusal | undefined {
+  const t = now.getTime();
+  if (Date.parse(c.issuedAt) > t + VCIP_HANDOFF_MAX_SKEW_SECONDS * 1000) return "handoff_invalid";
+  if (Date.parse(c.expiresAt) <= t) return "handoff_expired";
+  return undefined;
+}
+
+/**
+ * The hand-off label for a failed `verifyRegulatedMessage` (its `reason`): `replay` is
+ * `handoff_replayed`, `stale` is `handoff_expired`, every other failure is `handoff_invalid`.
+ */
+export function vcipHandoffFailure(jwsFailure: string): VcipHandoffRefusal {
+  if (jwsFailure === "replay") return "handoff_replayed";
+  if (jwsFailure === "stale") return "handoff_expired";
+  return "handoff_invalid";
+}
+
+/**
+ * True when `url` may be a V-CIP launch address: as a DigiLocker return address
+ * (`digilockerReturnUrlAllowed`: `https:`, no user information, no 12-digit run, a host equal to
+ * one of `hosts`), and no Aadhaar-like number anywhere in it.
+ */
+export function vcipLaunchUrlAllowed(url: string, hosts: readonly string[]): boolean {
+  return digilockerReturnUrlAllowed(url, hosts) && findAadhaarLike(url).length === 0;
+}
+
+/**
+ * Why a session was rejected, dropped or expired (PR-UDF-045): a code, never free text, so nothing
+ * an official types reaches the manifest's readers. `official_rejected`, the official rejected it
+ * on grounds no other code names; `liveness_failed`; `face_mismatch`; `document_mismatch`, the
+ * document shown does not match the record; `outside_india`, the customer's geo-tag; `customer_declined`,
+ * the customer declined or withdrew consent; `customer_left`; `connection_lost`, the call broke;
+ * `official_unavailable`; `launch_expired`, a launched session no official started before the
+ * hand-off expired; `other`.
+ */
+export const VCIP_REASON_CODES = [
+  "official_rejected",
+  "liveness_failed",
+  "face_mismatch",
+  "document_mismatch",
+  "outside_india",
+  "customer_declined",
+  "customer_left",
+  "connection_lost",
+  "official_unavailable",
+  "launch_expired",
+  "other",
+] as const;
+export type VcipReasonCode = (typeof VCIP_REASON_CODES)[number];
 
 // ---- A mode the adapter cannot honour (PR-UDF-043, PR-UDF-044) ----------------------------------
 
@@ -582,6 +730,16 @@ export interface VcipStart extends KycEvidence {
   state: VcipState;
 }
 
+/** A launched V-CIP session (PR-UDF-045): where the customer goes, and until when. */
+export interface VcipLaunch extends KycEvidence {
+  /** The scheduled session; read it with `vcipStatus`. */
+  vcipId: string;
+  /** The RE's V-CIP page for this customer: `https:`, on the adapter's hosts (`vcipLaunchUrlAllowed`). */
+  launchUrl: string;
+  /** When the launch lapses: never later than the hand-off's `expiresAt`. */
+  expiresAt: string;
+}
+
 export const VCIP_STATES = [
   "scheduled",
   "in_progress",
@@ -597,8 +755,10 @@ export interface VcipManifest extends KycEvidence {
   vcipId: string;
   sessionId: string;
   state: VcipState;
+  /** The official conducting the call; empty for a launched session no official has started yet. */
   officialRef: string;
-  liveness?: { score: number; passed: boolean };
+  /** `mode` (PR-UDF-045) is the liveness mode used (`LIVENESS_MODES`), where the scorer reported it. */
+  liveness?: { score: number; passed: boolean; mode?: LivenessMode };
   faceMatch?: { score: number; passed: boolean };
   /** Geo-tag of the customer during the call. */
   geo?: { lat: number; lon: number; country: string; capturedAt: string };
@@ -609,7 +769,13 @@ export interface VcipManifest extends KycEvidence {
     kind: "video" | "audio" | "screenshot" | "document" | "transcript";
     file: KycFileRef;
   }>;
-  /** Why a session was rejected or dropped. */
+  /** Why a session was rejected, dropped or expired (PR-UDF-045), from `VCIP_REASON_CODES`. */
+  reasonCode?: VcipReasonCode;
+  /**
+   * @deprecated Since PR-UDF-045: read `reasonCode`. The old free text, kept so no reader breaks;
+   * never show it to anyone (an official may have typed anything). The platform's conductor leaves
+   * it out when it holds a 12-digit run or an Aadhaar-like number.
+   */
   reason?: string;
 }
 
@@ -701,7 +867,25 @@ export interface KycPort extends Port {
   ckycDownload(req: z.infer<typeof CkycDownload>, call?: PortCall): Promise<CkycRecord>;
   /** Start a V-CIP session in a VIDEO_MEET room; the result is read back with `vcipStatus`. */
   startVcip(session: z.infer<typeof VcipSession>, call?: PortCall): Promise<VcipStart>;
-  vcipStatus(vcipId: string): Promise<VcipManifest>;
+  /**
+   * Hand a customer to an RE-hosted V-CIP (PR-UDF-045; see `VcipHandoffContext`): the LSP hosts no
+   * V-CIP component and never needs an official or a room. Before any vendor call the adapter
+   * parses the request, checks the context names the call's tenant (when given), its RE and an LSP
+   * it trusts, and verifies `jws` over the context with `verifyRegulatedMessage` and its replay
+   * store (so the verified payload is the context given), then that the context is fresh; anything
+   * else is refused `IPB-PORT-001` with a `VCIP_HANDOFF_REFUSALS` label, definite. The answer is a
+   * `scheduled` session, an `https:` launch address and its expiry. A hand-off is single use: a
+   * second call with the same JWS is `handoff_replayed`; to retry, sign a fresh hand-off. Optional
+   * on the interface so an implementer outside the platform does not break in a minor; the fake
+   * provides it, and an adapter without an RE-hosted launcher refuses it `unsupported`.
+   */
+  launchVcip?(req: z.infer<typeof LaunchVcip>, call?: PortCall): Promise<VcipLaunch>;
+  /**
+   * The session manifest. `call` (PR-UDF-045, optional so no caller breaks) carries the tenant:
+   * an adapter reads the session under `call.tenantId` (else its tenancy context), and a session
+   * of another tenant is not found. No field of a manifest carries a 12-digit run.
+   */
+  vcipStatus(vcipId: string, call?: PortCall): Promise<VcipManifest>;
   /**
    * Liveness on frames (see `LivenessCheck` for `mode`). Idempotent on `call.idempotencyKey`
    * (PR-UDF-044): a retry with the same key and request returns the first answer without a new

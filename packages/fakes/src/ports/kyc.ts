@@ -22,6 +22,11 @@ import {
   KYC_MODE_UNSUPPORTED,
   KYC_SCORE_OUT_OF_RANGE,
   kycScoreValid,
+  LaunchVcip,
+  VCIP_LAUNCH_URL_REFUSED,
+  vcipHandoffFailure,
+  vcipHandoffTimeRefusal,
+  vcipLaunchUrlAllowed,
   LIVENESS_MODES,
   LivenessCheck,
   OvdOcr,
@@ -42,10 +47,24 @@ import {
   type PortCall,
   type PortHealth,
   type ScoreResult,
+  type VcipHandoffContext,
+  type VcipHandoffRefusal,
+  type VcipLaunch,
   type VcipManifest,
+  type VcipReasonCode,
   type VcipState,
 } from "@infrabyx/contracts/ports";
-import { sha256Hex } from "@infrabyx/crypto";
+import {
+  LocalKms,
+  MemoryReplayStore,
+  RegulatedKeyRing,
+  randomBytes,
+  sha256Hex,
+  signRegulatedMessage,
+  toBase64Url,
+  verifyRegulatedMessage,
+  type ReplayStore,
+} from "@infrabyx/crypto";
 
 /** Inputs a KYC adapter's contract run needs: the vendor sandbox's own test identities. */
 export interface KycFixtures {
@@ -81,6 +100,82 @@ export interface KycFixtures {
    * break in a minor; the cases need it wherever the adapter provides `livenessCheck`.
    */
   scores?: ScoreFixtures;
+  /**
+   * The RE-hosted V-CIP launcher (PR-UDF-045): a signer the adapter trusts and the hooks the
+   * contract cases use. Optional in the type so a caller outside the platform does not break in a
+   * minor; the cases need it wherever the adapter provides `launchVcip`.
+   */
+  vcipLaunch?: VcipLaunchFixtures;
+}
+
+/** The V-CIP launcher part of `KycFixtures` (PR-UDF-045). Test keys and ids only. */
+export interface VcipLaunchFixtures {
+  /** A hand-off for the adapter's RE from an LSP it trusts, issued at `now`, with a fresh nonce. */
+  context: (over?: Partial<VcipHandoffContext>, now?: Date) => VcipHandoffContext;
+  /** Sign `context` as that LSP does (`signRegulatedMessage`, its key's `kid`), at `now`. */
+  sign: (context: VcipHandoffContext, now?: Date) => Promise<string>;
+  /** Sign `context` with a key the adapter does not trust. */
+  signUntrusted: (context: VcipHandoffContext) => Promise<string>;
+  /** The hosts a launch address may name. */
+  launchHosts: readonly string[];
+  /** The launches `port` asked its vendor for so far, so a refusal can be shown to have sent none. */
+  vendorCalls: (port: KycPort) => number;
+  /** End a session with this outcome (a stub or fake hook); omitted, the ended manifest is not swept. */
+  finish?: (
+    port: KycPort,
+    vcipId: string,
+    state: Extract<VcipState, "completed" | "rejected" | "dropped">,
+  ) => void | Promise<void>;
+}
+
+/**
+ * The fake's V-CIP hand-off (PR-UDF-045): the RE it serves, the LSP it trusts, that LSP's
+ * development signing key (a `LocalKms` key: it protects nothing) and the launch host.
+ */
+export const FAKE_VCIP_HANDOFF = {
+  reId: "re_fake",
+  lspId: "lsp_fake",
+  kid: "local:sign:fake-vcip-lsp",
+  untrustedKid: "local:sign:fake-vcip-untrusted",
+  launchHost: "vcip-launch.example.com",
+} as const;
+
+const devKms = new LocalKms();
+/** Sign a hand-off with a `LocalKms` development key (`FAKE_VCIP_HANDOFF.kid` by default). Tests only. */
+export function signFakeVcipHandoff(
+  context: VcipHandoffContext,
+  o: { kid?: string; now?: Date } = {},
+): Promise<string> {
+  const kid = o.kid ?? FAKE_VCIP_HANDOFF.kid;
+  return signRegulatedMessage({
+    event: context,
+    kid,
+    sign: (m) => devKms.sign(kid, m, "ecdsa-p256-sha256"),
+    ...(o.now ? { now: o.now } : {}),
+  });
+}
+
+/** A key ring that trusts the `LocalKms` development key `kid`. Tests only. */
+export async function fakeVcipHandoffKeys(kid: string = FAKE_VCIP_HANDOFF.kid) {
+  return new RegulatedKeyRing([{ kid, key: await devKms.getPublicKey(kid) }]);
+}
+
+/** A hand-off from the fake's LSP to the fake's RE, issued at `now`, living ten minutes. */
+export function fakeVcipHandoffContext(
+  over: Partial<VcipHandoffContext> = {},
+  now: Date = new Date(),
+): VcipHandoffContext {
+  return {
+    tenantId: "tnt_kyc",
+    reId: FAKE_VCIP_HANDOFF.reId,
+    lspId: FAKE_VCIP_HANDOFF.lspId,
+    customerRef: "cus_handoff_1",
+    journeyId: `jrn_${toBase64Url(randomBytes(9)).replace(/[^A-Za-z]/g, "x")}`,
+    issuedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 10 * 60_000).toISOString(),
+    nonce: toBase64Url(randomBytes(16)),
+    ...over,
+  };
 }
 
 /** The liveness and face-match part of `KycFixtures` (PR-UDF-044). Test files only. */
@@ -206,6 +301,14 @@ export const KYC_FAKE_FIXTURES: KycFixtures = {
     faceMatchVendorCalls: (p) => (p as FakeKyc).faceMatchVendorCalls,
     offScaleNext: (p) => (p as FakeKyc).offScaleNext(),
   },
+  vcipLaunch: {
+    context: fakeVcipHandoffContext,
+    sign: (c, now) => signFakeVcipHandoff(c, now ? { now } : {}),
+    signUntrusted: (c) => signFakeVcipHandoff(c, { kid: FAKE_VCIP_HANDOFF.untrustedKid }),
+    launchHosts: [FAKE_VCIP_HANDOFF.launchHost],
+    vendorCalls: (p) => (p as FakeKyc).vcipLaunchVendorCalls,
+    finish: (p, vcipId, state) => (p as FakeKyc).completeVcip(vcipId, { state }),
+  },
 };
 
 const norm = (s: string) =>
@@ -247,6 +350,15 @@ const nameMatch = (a: string, b: string): NameMatch =>
  * idempotent on the call's key, a key scoped to its method. `offScaleNext` makes the next score
  * fall off the 0-to-1 scale, which the fake refuses `IPB-PORT-003` as the adapters do. The fake
  * keeps no image, template or embedding (`KYC_ADAPTER_RETENTION`: none).
+ *
+ * The RE-hosted V-CIP launcher (PR-UDF-045): the fake serves `FAKE_VCIP_HANDOFF.reId` and trusts
+ * `FAKE_VCIP_HANDOFF.lspId`'s development key unless built with `vcipHandoff`. `launchVcip` checks
+ * the request, the call's tenant, the RE and the LSP, verifies the JWS with
+ * `verifyRegulatedMessage` and its replay store and checks the hand-off is fresh, all before its
+ * count of vendor calls moves; it answers a `scheduled` session with an `https:` launch address
+ * that lapses with the hand-off. `startVcip` with that `vcipId` starts it. A scheduled session
+ * reads back `expired` (`launch_expired`) once the hand-off lapses. `vcipStatus` reads under the
+ * call's tenant. Every ended session carries a `reasonCode` and the liveness mode used.
  */
 export class FakeKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
@@ -262,6 +374,18 @@ export class FakeKyc implements KycPort {
   private readonly pulls = new Map<string, { request: string; docs: DigilockerDocument[] }>();
   private readonly returnHosts: readonly string[];
   private readonly vcips = new Map<string, VcipManifest>();
+  private readonly vcipMeta = new Map<
+    string,
+    { tenantId: string; customerRef: string; launchExpiresAt?: string }
+  >();
+  /** Launches that passed the fake's own checks (PR-UDF-045): what an adapter would ask its vendor. */
+  vcipLaunchVendorCalls = 0;
+  private readonly handoffReId: string;
+  private readonly handoffIssuers:
+    | Readonly<Record<string, RegulatedKeyRing>>
+    | Promise<Readonly<Record<string, RegulatedKeyRing>>>;
+  private readonly handoffReplay: ReplayStore;
+  private readonly launchHosts: readonly string[];
   private readonly otpTxns = new Map<string, { expiresAt: number; used: boolean; last4: string }>();
   private readonly otpVerifies = new Map<
     string,
@@ -304,6 +428,17 @@ export class FakeKyc implements KycPort {
       /** Pass marks, 0 to 1 (default 0.8 each). */
       livenessThreshold?: number;
       faceMatchThreshold?: number;
+      /**
+       * The RE-hosted V-CIP launcher (PR-UDF-045): the RE the fake serves, the key ring of each LSP
+       * it trusts (by `lspId`), the replay store and the hosts of its launch address. Default: the
+       * development key of `FAKE_VCIP_HANDOFF`.
+       */
+      vcipHandoff?: {
+        reId?: string;
+        issuers?: Readonly<Record<string, RegulatedKeyRing>>;
+        replay?: ReplayStore;
+        launchHosts?: readonly string[];
+      };
     } = {},
   ) {
     this.livenessModes = o.livenessModes ?? LIVENESS_MODES;
@@ -324,6 +459,12 @@ export class FakeKyc implements KycPort {
     this.returnHosts = o.digilockerReturnHosts ?? [
       new URL(this.fx.digilockerReturnUrl ?? DIGILOCKER_CONTRACT_RETURN_URL).hostname,
     ];
+    this.handoffReId = o.vcipHandoff?.reId ?? FAKE_VCIP_HANDOFF.reId;
+    this.handoffIssuers =
+      o.vcipHandoff?.issuers ??
+      fakeVcipHandoffKeys().then((k) => ({ [FAKE_VCIP_HANDOFF.lspId]: k }));
+    this.handoffReplay = o.vcipHandoff?.replay ?? new MemoryReplayStore(() => this.now());
+    this.launchHosts = o.vcipHandoff?.launchHosts ?? [FAKE_VCIP_HANDOFF.launchHost];
   }
   private readonly now: () => Date;
 
@@ -552,10 +693,44 @@ export class FakeKyc implements KycPort {
     };
   }
 
+  private vcipRefused(reason: string, detail: string): PortError {
+    return new PortError("IPB-PORT-001", "KYC", {
+      adapter: "fake-kyc",
+      detail,
+      meta: { reason, definite: true },
+    });
+  }
+
   async startVcip(raw: Parameters<KycPort["startVcip"]>[0]) {
     const s = VcipSession.parse(raw);
-    const vcipId = `vcip_${++this.n}`;
     const ev = this.ev();
+    if (s.vcipId !== undefined) {
+      // A session launchVcip scheduled (PR-UDF-045): the hand-off's tenant and customer only.
+      const v = this.vcips.get(s.vcipId);
+      const meta = this.vcipMeta.get(s.vcipId);
+      if (!v || !meta || meta.tenantId !== s.tenantId)
+        throw this.vcipRefused("not_found", "no such V-CIP session");
+      this.lapse(s.vcipId);
+      const now = this.vcips.get(s.vcipId)!;
+      if (now.state !== "scheduled")
+        throw this.vcipRefused(
+          now.state === "expired" ? "launch_expired" : "wrong_state",
+          `the session is ${now.state}`,
+        );
+      if (meta.customerRef !== s.customerRef)
+        throw this.vcipRefused(
+          "customer_mismatch",
+          "the session was launched for another customer",
+        );
+      this.vcips.set(s.vcipId, {
+        ...now,
+        state: "in_progress",
+        officialRef: s.officialRef,
+        startedAt: ev.checkedAt,
+      });
+      return { ...ev, vcipId: s.vcipId, state: "in_progress" as const };
+    }
+    const vcipId = `vcip_${++this.n}`;
     this.vcips.set(vcipId, {
       ...ev,
       vcipId,
@@ -565,13 +740,82 @@ export class FakeKyc implements KycPort {
       startedAt: ev.checkedAt,
       artefacts: [],
     });
+    this.vcipMeta.set(vcipId, { tenantId: s.tenantId, customerRef: s.customerRef });
     return { ...ev, vcipId, state: "in_progress" as const };
+  }
+
+  private handoffRefused(reason: VcipHandoffRefusal, detail: string): PortError {
+    return this.vcipRefused(reason, detail);
+  }
+
+  async launchVcip(
+    raw: Parameters<NonNullable<KycPort["launchVcip"]>>[0],
+    call?: PortCall,
+  ): Promise<VcipLaunch> {
+    const r = LaunchVcip.safeParse(raw);
+    if (!r.success) throw this.handoffRefused("handoff_invalid", "not a valid V-CIP hand-off");
+    const { context: c, jws } = r.data;
+    if (call?.tenantId !== undefined && call.tenantId !== c.tenantId)
+      throw this.handoffRefused("handoff_invalid", "the hand-off names another tenant");
+    if (c.reId !== this.handoffReId)
+      throw this.handoffRefused("handoff_invalid", "the hand-off names another RE");
+    const issuers = await this.handoffIssuers;
+    const keys = Object.hasOwn(issuers, c.lspId) ? issuers[c.lspId] : undefined;
+    if (!keys) throw this.handoffRefused("handoff_invalid", "the hand-off's LSP is not trusted");
+    const now = this.now();
+    const v = await verifyRegulatedMessage(c as unknown as Record<string, unknown>, jws, {
+      keys,
+      replay: this.handoffReplay,
+      now,
+    });
+    if (!v.ok)
+      throw this.handoffRefused(vcipHandoffFailure(v.reason), "the hand-off did not verify");
+    const late = vcipHandoffTimeRefusal(c, now);
+    if (late) throw this.handoffRefused(late, "the hand-off is not fresh");
+    this.vcipLaunchVendorCalls++;
+    const ev = this.ev();
+    const vcipId = `vcip_${++this.n}`;
+    const launchUrl = `https://${this.launchHosts[0] ?? ""}/v/${vcipId}`;
+    if (!vcipLaunchUrlAllowed(launchUrl, this.launchHosts))
+      throw new PortError("IPB-PORT-003", "KYC", {
+        adapter: "fake-kyc",
+        detail: "the launch address is not allowed",
+        meta: { reason: VCIP_LAUNCH_URL_REFUSED },
+      });
+    this.vcips.set(vcipId, {
+      ...ev,
+      vcipId,
+      sessionId: c.journeyId,
+      state: "scheduled",
+      officialRef: "",
+      artefacts: [],
+    });
+    this.vcipMeta.set(vcipId, {
+      tenantId: c.tenantId,
+      customerRef: c.customerRef,
+      launchExpiresAt: c.expiresAt,
+    });
+    return { ...ev, vcipId, launchUrl, expiresAt: c.expiresAt };
+  }
+
+  /** A scheduled session whose hand-off lapsed is expired (`launch_expired`). */
+  private lapse(vcipId: string): void {
+    const v = this.vcips.get(vcipId);
+    const at = this.vcipMeta.get(vcipId)?.launchExpiresAt;
+    if (v?.state === "scheduled" && at && Date.parse(at) <= this.now().getTime())
+      this.vcips.set(vcipId, { ...v, state: "expired", reasonCode: "launch_expired" });
   }
 
   /** Test helper: the official ends the call with this outcome. */
   completeVcip(
     vcipId: string,
-    o: { state: Extract<VcipState, "completed" | "rejected" | "dropped">; reason?: string },
+    o: {
+      state: Extract<VcipState, "completed" | "rejected" | "dropped">;
+      /** Default: `official_rejected` for a rejection, `connection_lost` for a drop. */
+      reasonCode?: VcipReasonCode;
+      /** @deprecated The old free text (PR-UDF-045): kept on the manifest, never shown. */
+      reason?: string;
+    },
   ): void {
     const v = this.vcips.get(vcipId);
     if (!v) throw new Error(`no V-CIP ${vcipId}`);
@@ -579,11 +823,19 @@ export class FakeKyc implements KycPort {
       storageKey: `tenant/tnt_kyc/vcip/${vcipId}/${k}`,
       sha256: sha256Hex(`${vcipId}:${k}`),
     });
+    const reasonCode =
+      o.reasonCode ??
+      (o.state === "rejected"
+        ? "official_rejected"
+        : o.state === "dropped"
+          ? "connection_lost"
+          : undefined);
     this.vcips.set(vcipId, {
       ...v,
       state: o.state,
+      ...(v.startedAt ? {} : { startedAt: this.now().toISOString() }),
       endedAt: this.now().toISOString(),
-      liveness: { score: 0.97, passed: true },
+      liveness: { score: 0.97, passed: true, mode: this.livenessMode },
       faceMatch: { score: 0.93, passed: true },
       geo: { lat: 19.07, lon: 72.87, country: "IN", capturedAt: this.now().toISOString() },
       artefacts: [
@@ -591,19 +843,19 @@ export class FakeKyc implements KycPort {
         { kind: "audio", file: key("audio.ogg") },
         { kind: "screenshot", file: key("face.jpg") },
       ],
+      ...(reasonCode ? { reasonCode } : {}),
       ...(o.reason ? { reason: o.reason } : {}),
     });
   }
 
-  async vcipStatus(vcipId: string) {
+  async vcipStatus(vcipId: string, call?: PortCall) {
     const v = this.vcips.get(vcipId);
-    if (!v)
-      throw new PortError("IPB-PORT-001", "KYC", {
-        adapter: "fake-kyc",
-        detail: "no such V-CIP session",
-        meta: { reason: "not_found", definite: true },
-      });
-    return { ...v, artefacts: [...v.artefacts] };
+    const meta = this.vcipMeta.get(vcipId);
+    if (!v || (call?.tenantId !== undefined && meta?.tenantId !== call.tenantId))
+      throw this.vcipRefused("not_found", "no such V-CIP session");
+    this.lapse(vcipId);
+    const now = this.vcips.get(vcipId)!;
+    return { ...now, artefacts: [...now.artefacts] };
   }
 
   /** Test helper: the next score the fake's "vendor" gives is off its 0-to-1 scale. */
