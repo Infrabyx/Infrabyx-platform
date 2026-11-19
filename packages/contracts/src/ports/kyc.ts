@@ -246,8 +246,100 @@ export const VcipSession = z
   })
   .strict();
 
-export const LivenessCheck = z.object({ frames: z.array(KycFileRef).min(1).max(30) }).strict();
+// ---- A mode the adapter cannot honour (PR-UDF-043, PR-UDF-044) ----------------------------------
+
+/**
+ * The fixed `meta.reason` of an `IPB-PORT-002` refusal from an adapter that cannot honour the mode a
+ * call asked for (a bank account check's `mode`, a liveness check's `mode`). Definite, sent before
+ * any vendor call, never followed by a fallback to another mode. The core router's breaker does not
+ * count it and the KYC router moves on to the next adapter in the method's order.
+ */
+export const KYC_MODE_UNSUPPORTED = "mode_unsupported";
+
+// ---- Liveness and face match (PR-UDF-044; R1-D-197) ---------------------------------------------
+
+/**
+ * How liveness is checked: `passive`, from the frames alone (no action asked of the customer);
+ * `active_gesture`, the customer follows a prompted gesture other than a blink (a head turn, a
+ * hand movement); `active_voice`, the customer reads out a prompted phrase. A product asks for a
+ * non-blink check by naming it (RBC para 105), rather than relying on adapter configuration.
+ */
+export const LIVENESS_MODES = ["passive", "active_gesture", "active_voice"] as const;
+export type LivenessMode = (typeof LIVENESS_MODES)[number];
+
+/**
+ * A liveness check on frames in STORAGE. `mode` (PR-UDF-044) asks for a liveness mode: an adapter
+ * that cannot honour it refuses the call `IPB-PORT-002` with `meta.reason: "mode_unsupported"`
+ * (`KYC_MODE_UNSUPPORTED`) before any vendor call and never falls back to another mode. Omitted,
+ * the adapter uses its configured mode. The answer names the mode used (`ScoreResult.mode`).
+ */
+export const LivenessCheck = z
+  .object({
+    frames: z.array(KycFileRef).min(1).max(30),
+    mode: classed(z.enum(LIVENESS_MODES), "INTERNAL").optional(),
+  })
+  .strict();
 export const FaceMatch = z.object({ a: KycFileRef, b: KycFileRef }).strict();
+
+/** The fixed `meta.reason` of an `IPB-PORT-003` refusal of a vendor score off its scale (PR-UDF-044). */
+export const KYC_SCORE_OUT_OF_RANGE = "score_out_of_range";
+
+/**
+ * True when `score` is what `ScoreResult.score` must be: a finite number from 0 to 1. An adapter
+ * normalises a vendor score whose scale it knows and refuses any other `IPB-PORT-003` with
+ * `meta.reason: "score_out_of_range"`; it never clamps.
+ */
+export function kycScoreValid(score: unknown): score is number {
+  return typeof score === "number" && Number.isFinite(score) && score >= 0 && score <= 1;
+}
+
+/**
+ * Whether a vendor keeps a face template or embedding beyond the call (PR-UDF-044; CF para 14(3)):
+ * `none`, the vendor states in writing that it keeps none; `kept`, it keeps one; `unknown`, no
+ * written statement from the vendor has been seen.
+ */
+export type BiometricRetention = "none" | "kept" | "unknown";
+
+export interface KycAdapterRetention {
+  /** A face template or embedding derived from the frames or images sent. */
+  template: BiometricRetention;
+  /** Where the statement comes from, or what is still to be verified. */
+  source: string;
+}
+
+/**
+ * Per adapter (by descriptor name), whether its vendor keeps a template or embedding beyond the
+ * call (PR-UDF-044), so a product can record it. A statement only: it changes nothing that is sent
+ * or kept, and the platform keeps no image, template or embedding itself (a keyed check's record
+ * holds an HMAC binding and the answer; R1-D-197). An adapter not listed is `unknown`.
+ */
+export const KYC_ADAPTER_RETENTION: Readonly<Record<string, KycAdapterRetention>> = {
+  "digio-kyc": {
+    template: "unknown",
+    source:
+      "[VERIFY] against a written statement from Digio; the adapter makes no liveness or face-match call (both unsupported), though Digio receives documents that carry a photo",
+  },
+  "idfy-kyc": {
+    template: "unknown",
+    source:
+      "[VERIFY] against a written statement from IDfy on its face compare and photo liveness tasks; no such statement is held in the repository",
+  },
+  "fake-kyc": {
+    template: "none",
+    source:
+      "The fake's own statement: it scores from the files' SHA-256 and keeps only a keyed retry's answer, in memory",
+  },
+};
+
+/** The retention statement for an adapter; `unknown` for one not listed. */
+export function kycAdapterRetention(adapter: string): KycAdapterRetention {
+  return (
+    KYC_ADAPTER_RETENTION[adapter] ?? {
+      template: "unknown",
+      source: "No statement for this adapter (KYC_ADAPTER_RETENTION)",
+    }
+  );
+}
 
 // ---- Bank account verification (PR-UDF-043; R1-D-196) --------------------------------------------
 
@@ -263,8 +355,11 @@ export type BankAccountMode = (typeof BANK_ACCOUNT_MODES)[number];
 export const BANK_ACCOUNT_STATUSES = ["valid", "invalid", "closed", "not_found"] as const;
 export type BankAccountStatus = (typeof BANK_ACCOUNT_STATUSES)[number];
 
-/** The fixed `meta.reason` of an adapter that cannot honour the mode asked (PR-UDF-043). */
-export const BANK_ACCOUNT_MODE_UNSUPPORTED = "mode_unsupported";
+/**
+ * The fixed `meta.reason` of an adapter that cannot honour the mode asked (PR-UDF-043); the same
+ * label as `KYC_MODE_UNSUPPORTED`, which a liveness check uses too (PR-UDF-044).
+ */
+export const BANK_ACCOUNT_MODE_UNSUPPORTED = KYC_MODE_UNSUPPORTED;
 
 /**
  * Verify a bank account. `mode` (PR-UDF-043) asks for a verification mode: an adapter that cannot
@@ -458,10 +553,28 @@ export interface CkycRecord extends KycEvidence {
 }
 
 export interface ScoreResult extends KycEvidence {
-  /** 0 to 1. */
+  /**
+   * A finite number from 0 to 1 (`kycScoreValid`): the adapter normalises a vendor score whose
+   * scale it knows, and refuses any other `IPB-PORT-003` (`meta.reason: "score_out_of_range"`).
+   */
   score: number;
-  /** Against the tenant's threshold (`int.kyc.vcip.liveness_threshold` and its face-match peer). */
+  /**
+   * `score >= threshold`, against the tenant's threshold (`int.kyc.vcip.liveness_threshold` and its
+   * face-match peer).
+   */
   passed: boolean;
+  /**
+   * The threshold the adapter applied, from 0 to 1 (PR-UDF-044). The platform's adapters and the
+   * fake always set it; optional in the type only so an implementer outside the platform does not
+   * break in a minor (as `AadhaarOfflineResult.kind`).
+   */
+  threshold?: number;
+  /**
+   * For `livenessCheck` only: the mode used (PR-UDF-044), the one asked or the adapter's configured
+   * mode when none was. Always set by the platform's adapters and the fake for a liveness check;
+   * never set for a face match.
+   */
+  mode?: LivenessMode;
 }
 
 export interface VcipStart extends KycEvidence {
@@ -589,7 +702,21 @@ export interface KycPort extends Port {
   /** Start a V-CIP session in a VIDEO_MEET room; the result is read back with `vcipStatus`. */
   startVcip(session: z.infer<typeof VcipSession>, call?: PortCall): Promise<VcipStart>;
   vcipStatus(vcipId: string): Promise<VcipManifest>;
+  /**
+   * Liveness on frames (see `LivenessCheck` for `mode`). Idempotent on `call.idempotencyKey`
+   * (PR-UDF-044): a retry with the same key and request returns the first answer without a new
+   * vendor call; the same key with other frames or another mode (an omitted mode is the configured
+   * one) is refused `IPB-PORT-004` (`meta.reason: "idempotency_conflict"`). A key is scoped to its
+   * method: the same key on `faceMatch` is another check. A call left unfinished (a vendor error) is
+   * asked again on its retry. The answer's `score` is from 0 to 1, with the `threshold` applied and
+   * the `mode` used. The platform adapters keep a key for 24 hours.
+   */
   livenessCheck(req: z.infer<typeof LivenessCheck>, call?: PortCall): Promise<ScoreResult>;
+  /**
+   * Compare two face images. Idempotent on `call.idempotencyKey` as `livenessCheck` is (PR-UDF-044):
+   * the same key with other images is `IPB-PORT-004`. The answer's `score` is from 0 to 1, with the
+   * `threshold` applied; it has no `mode`.
+   */
   faceMatch(req: z.infer<typeof FaceMatch>, call?: PortCall): Promise<ScoreResult>;
   /**
    * Verify a bank account (see `BankAccountCheck` for `mode`). Idempotent on `call.idempotencyKey`

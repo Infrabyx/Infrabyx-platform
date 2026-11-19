@@ -15,7 +15,12 @@
 // - PAN: `verify_with_source/ind_pan`, data `{ id_number, full_name, dob }`, result
 //   `source_output.{ status: id_found|id_not_found, name_match_score, dob_match, aadhaar_seeding_status }`;
 // - face match: `compare/face`, data `{ document1, document2 }` (base64), result `{ match_score }`;
-// - liveness: `check_photo_liveness/face`, data `{ document1 }`, result `{ liveness_score }`;
+// - liveness: `check_photo_liveness/face`, data `{ document1 }`, result `{ liveness_score }`, a
+//   passive check on one photo (no gesture or voice prompt), so the adapter honours `passive` only
+//   and refuses an active mode `mode_unsupported` (PR-UDF-044);
+// - the scale of `match_score` and `liveness_score`: 0 to 1 (`IDFY_SCORE_SCALE`; the option
+//   `scoreScale: 100` if the sandbox shows 0 to 100); a score off the scale is refused
+//   `IPB-PORT-003` `score_out_of_range`, never clamped (PR-UDF-044);
 // - Aadhaar OTP e-KYC (PR-UDF-041), as a KUA for a notified RE: `aadhaar_otp_request/ind_aadhaar`,
 //   data `{ id_number, id_type, consent, consent_text_version, consent_text_hash, consent_at }`,
 //   result `{ transaction_id, otp_valid_till }`; then `aadhaar_otp_verify/ind_aadhaar`, data
@@ -27,7 +32,9 @@
 //   result `{ status: id_found|id_not_found, account_exists: YES|NO, account_status?, name_at_bank? }`.
 // Images are read from STORAGE and checked against their SHA-256 before they leave; nothing the
 // vendor returns is stored, except UIDAI's signed e-KYC response (written to STORAGE unchanged,
-// unless it carries a number). Results never carry an Aadhaar number.
+// unless it carries a number). Results never carry an Aadhaar number. Liveness and face match are
+// idempotent on the call's key (`KycScoreCheckStore`, PR-UDF-044); whether IDfy keeps a face
+// template or embedding beyond the call is `unknown` [VERIFY] (`KYC_ADAPTER_RETENTION`).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   AadhaarOtpRequest,
@@ -46,6 +53,7 @@ import {
   type BankAccountStatus,
   type KycFileRef,
   type KycPort,
+  type LivenessMode,
   type NameMatch,
   type PanResult,
   type PortCall,
@@ -72,6 +80,14 @@ import {
   PLATFORM_BANK_ACCOUNT_MODES,
   type BankAccountVerifyStore,
 } from "./bank-account.js";
+import {
+  keyedScoreCheck,
+  livenessMode,
+  MemoryKycScoreCheckStore,
+  scoreOnScale,
+  scoreThreshold,
+  type KycScoreCheckStore,
+} from "./score-checks.js";
 
 const KYC = "KYC";
 const ADAPTER = "idfy-kyc";
@@ -80,6 +96,11 @@ const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
 /** A 12-digit or 16-digit run outside a SHA-256 (PR-UDF-041). */
 const UID_LIKE = /(?<![0-9])(?:[0-9]{12}|[0-9]{16})(?![0-9])/;
 const uidLike = (v: unknown) => UID_LIKE.test(JSON.stringify(v).replace(/[0-9a-f]{64}/g, ""));
+
+/** IDfy's photo liveness is passive: the one mode this adapter honours (PR-UDF-044) [VERIFY]. */
+export const IDFY_LIVENESS_MODES: readonly LivenessMode[] = ["passive"];
+/** [VERIFY] The scale of IDfy's `match_score` and `liveness_score`: 0 to 1, as the stub answers. */
+export const IDFY_SCORE_SCALE = 1;
 
 const UNSUPPORTED = [
   "verifyAadhaarOffline",
@@ -101,9 +122,22 @@ export interface IdfyKycOptions {
   /** `secrets/<env>/kyc/idfy/account_id` and `api_key`. */
   accountId: () => Promise<string> | string;
   apiKey: () => Promise<string> | string;
-  /** Pass marks for the scores (the tenant's thresholds); 0.8 each by default. */
+  /**
+   * Pass marks for the scores (the tenant's thresholds), from 0 to 1; 0.8 each by default. Each
+   * answer reports the threshold applied (PR-UDF-044).
+   */
   faceMatchThreshold?: number;
   livenessThreshold?: number;
+  /**
+   * The scale IDfy reports its scores on (default `IDFY_SCORE_SCALE`, 1 [VERIFY]); 100 if the
+   * sandbox shows 0 to 100. A score off the scale is refused `IPB-PORT-003`.
+   */
+  scoreScale?: 1 | 100;
+  /**
+   * Keyed liveness and face-match checks (PR-UDF-044): `PgKycScoreCheckStore` in production, so a
+   * retry on any instance gets the first answer. Default: an in-memory store of this instance.
+   */
+  scoreChecks?: KycScoreCheckStore;
   /**
    * Aadhaar OTP e-KYC (PR-UDF-041): `true` only for a reporting entity notified under PML Act
    * s.11A (KYC Directions 2025 para 23 proviso (i) [VERIFY]). Default false: every Aadhaar OTP call
@@ -149,20 +183,25 @@ export function mapIdfyPan(result: unknown): Omit<PanResult, keyof EvidenceKeys>
   };
 }
 
-/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: a 0–1 score from a face task's result. */
+/**
+ * STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: a 0–1 score from a face task's result, read on the
+ * scale given (`IDFY_SCORE_SCALE` [VERIFY]). A missing score is a vendor fault (502); a score that
+ * is not a finite number from 0 to `scale` is refused `IPB-PORT-003` (`score_out_of_range`), never
+ * clamped or rescaled by guess (PR-UDF-044).
+ */
 export function mapIdfyScore(
   result: unknown,
   field: "match_score" | "liveness_score",
+  scale: number = IDFY_SCORE_SCALE,
 ): { score: number; modelVersion: string } {
   const r = result as Record<string, unknown> | undefined;
   const raw = r?.[field];
-  if (typeof raw !== "number" || !Number.isFinite(raw))
+  if (raw === undefined || raw === null)
     throw vendorError(KYC, ADAPTER, 502, `face result without ${field}`);
-  // IDfy may report 0–100; the port's scores are 0–1.
-  const score = raw > 1 ? raw / 100 : raw;
   return {
-    score: Math.min(1, Math.max(0, score)),
-    modelVersion: typeof r?.model_version === "string" ? r.model_version : `idfy-${field}`,
+    score: scoreOnScale(ADAPTER, field, raw, scale),
+    modelVersion:
+      typeof r?.model_version === "string" ? r.model_version.slice(0, 100) : `idfy-${field}`,
   };
 }
 
@@ -255,8 +294,14 @@ export class IdfyKyc implements KycPort {
   private readonly now: () => Date;
   private readonly otpVerifies: AadhaarOtpVerifyStore;
   private readonly bankVerifies: BankAccountVerifyStore;
+  private readonly scoreChecks: KycScoreCheckStore;
+  private readonly livenessThreshold: number;
+  private readonly faceMatchThreshold: number;
 
   constructor(private readonly o: IdfyKycOptions) {
+    this.livenessThreshold = scoreThreshold(ADAPTER, o.livenessThreshold, 0.8);
+    this.faceMatchThreshold = scoreThreshold(ADAPTER, o.faceMatchThreshold, 0.8);
+    this.scoreChecks = o.scoreChecks ?? new MemoryKycScoreCheckStore({ now: () => this.now() });
     this.base = (o.baseUrl ?? `https://${HOST}`).replace(/\/$/, "");
     this.now = o.now ?? (() => new Date());
     this.otpVerifies =
@@ -345,46 +390,94 @@ export class IdfyKyc implements KycPort {
     return { ...this.evidence(ref, "ind_pan-v3"), ...mapIdfyPan(result) };
   }
 
-  async faceMatch(
-    raw: Parameters<KycPort["faceMatch"]>[0],
-    _call?: PortCall,
-  ): Promise<ScoreResult> {
+  /** Keyed face matches are answered from the store (PR-UDF-044). */
+  async faceMatch(raw: Parameters<KycPort["faceMatch"]>[0], call?: PortCall): Promise<ScoreResult> {
     const r = FaceMatch.parse(raw);
     await this.guard();
-    const [a, b] = [await this.image(r.a), await this.image(r.b)];
-    const { ref, result } = await this.task("compare/face", { document1: a, document2: b });
-    const { score, modelVersion } = mapIdfyScore(result, "match_score");
-    return {
-      ...this.evidence(ref, modelVersion),
-      score,
-      passed: score >= (this.o.faceMatchThreshold ?? 0.8),
-    };
+    const threshold = this.faceMatchThreshold;
+    return keyedScoreCheck({
+      store: this.scoreChecks,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : {
+              tenantId: this.tenant(call),
+              adapter: ADAPTER,
+              method: "face_match",
+              idempotencyKey: call.idempotencyKey,
+              files: [r.a, r.b],
+            },
+      check: async () => {
+        const [a, b] = [await this.image(r.a), await this.image(r.b)];
+        const { ref, result } = await this.task("compare/face", { document1: a, document2: b });
+        const { score, modelVersion } = mapIdfyScore(result, "match_score", this.scale());
+        return {
+          ...this.evidence(ref, modelVersion),
+          score,
+          passed: score >= threshold,
+          threshold,
+        };
+      },
+    });
   }
 
-  /** Each frame is checked; the session scores its weakest frame. */
+  /**
+   * Each frame is checked; the session scores its weakest frame. The mode is checked first, before
+   * the flag or any vendor call: IDfy's photo liveness is passive, so an active mode is refused
+   * `mode_unsupported` (PR-UDF-044). Keyed checks are answered from the store.
+   */
   async livenessCheck(
     raw: Parameters<KycPort["livenessCheck"]>[0],
-    _call?: PortCall,
+    call?: PortCall,
   ): Promise<ScoreResult> {
     const r = LivenessCheck.parse(raw);
+    const mode = livenessMode(ADAPTER, r.mode, {
+      honoured: IDFY_LIVENESS_MODES,
+      configured: "passive",
+    });
     await this.guard();
-    let min = 1;
-    let ref = "";
-    let modelVersion = "";
-    for (const f of r.frames) {
-      const t = await this.task("check_photo_liveness/face", { document1: await this.image(f) });
-      const s = mapIdfyScore(t.result, "liveness_score");
-      if (s.score <= min) {
-        min = s.score;
-        ref = t.ref;
-      }
-      modelVersion = s.modelVersion;
-    }
-    return {
-      ...this.evidence(ref, modelVersion),
-      score: min,
-      passed: min >= (this.o.livenessThreshold ?? 0.8),
-    };
+    const threshold = this.livenessThreshold;
+    return keyedScoreCheck({
+      store: this.scoreChecks,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : {
+              tenantId: this.tenant(call),
+              adapter: ADAPTER,
+              method: "liveness",
+              idempotencyKey: call.idempotencyKey,
+              files: r.frames,
+              mode,
+            },
+      check: async () => {
+        let min = 1;
+        let ref = "";
+        let modelVersion = "";
+        for (const f of r.frames) {
+          const t = await this.task("check_photo_liveness/face", {
+            document1: await this.image(f),
+          });
+          const s = mapIdfyScore(t.result, "liveness_score", this.scale());
+          if (s.score <= min) {
+            min = s.score;
+            ref = t.ref;
+          }
+          modelVersion = s.modelVersion;
+        }
+        return {
+          ...this.evidence(ref, modelVersion),
+          score: min,
+          passed: min >= threshold,
+          threshold,
+          mode,
+        };
+      },
+    });
+  }
+
+  private scale(): number {
+    return this.o.scoreScale ?? IDFY_SCORE_SCALE;
   }
 
   private tenant(call?: PortCall): string {

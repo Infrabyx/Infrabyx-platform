@@ -1,6 +1,7 @@
 // KYC port schemas for DigiLocker (PR-UDF-040, R1-D-193): the start request and its return address;
 // for Aadhaar OTP e-KYC (PR-UDF-041, R1-D-194): the number check and the two requests; and for the
-// bank account check (PR-UDF-043, R1-D-196): the mode, the status set and the funding statement.
+// bank account check (PR-UDF-043, R1-D-196): the mode, the status set and the funding statement;
+// and for liveness and face match (PR-UDF-044, R1-D-197): the mode, the score and the retention.
 import { describe, expect, it } from "vitest";
 import { payloadClass } from "./payload-class.js";
 import { verhoeffValid } from "../search-refusal.js";
@@ -14,6 +15,14 @@ import {
   BankAccountCheck,
   KYC_ADAPTER_FUNDING,
   kycAdapterFunding,
+  FaceMatch,
+  KYC_ADAPTER_RETENTION,
+  KYC_MODE_UNSUPPORTED,
+  KYC_SCORE_OUT_OF_RANGE,
+  kycAdapterRetention,
+  kycScoreValid,
+  LIVENESS_MODES,
+  LivenessCheck,
   AadhaarOtpRequest,
   AadhaarOtpVerify,
   KYC_METHODS,
@@ -211,5 +220,59 @@ describe("PR-UDF-043: the bank account check's mode, status set and funding stat
     // Twelve digits, but a leading 0 is never an Aadhaar number (first digit 2 to 9).
     expect(findAadhaarLike(check.accountNumber)).toEqual([]);
     expect(findAadhaarLike(`acct ${check.accountNumber} ifsc ${check.ifsc}`)).toEqual([]);
+  });
+});
+
+describe("PR-UDF-044: the liveness mode, the score and the retention statement", () => {
+  const ref = { storageKey: "tenant/tnt_kyc/kyc/f1.jpg", sha256: "a".repeat(64) };
+
+  it("the liveness mode is optional, one of three, and INTERNAL; the requests stay REGULATED", () => {
+    expect([...LIVENESS_MODES]).toEqual(["passive", "active_gesture", "active_voice"]);
+    expect(LivenessCheck.parse({ frames: [ref] })).toEqual({ frames: [ref] });
+    for (const mode of LIVENESS_MODES)
+      expect(LivenessCheck.parse({ frames: [ref], mode })).toEqual({ frames: [ref], mode });
+    for (const mode of ["blink", "PASSIVE", "active", "", 1])
+      expect(LivenessCheck.safeParse({ frames: [ref], mode }).success).toBe(false);
+    expect(LivenessCheck.safeParse({ frames: [ref], threshold: 0.5 }).success).toBe(false);
+    expect(FaceMatch.safeParse({ a: ref, b: ref, mode: "passive" }).success).toBe(false);
+    for (const s of [LivenessCheck, FaceMatch]) {
+      expect(payloadClass(s).bodyHighest).toBe("REGULATED");
+      expect(payloadClass(s)).toMatchObject({ complete: true, unannotated: [] });
+    }
+  });
+
+  it("one mode_unsupported label for every mode, and the score label, leave as the problem's reason", () => {
+    expect(KYC_MODE_UNSUPPORTED).toBe("mode_unsupported");
+    expect(BANK_ACCOUNT_MODE_UNSUPPORTED).toBe(KYC_MODE_UNSUPPORTED);
+    expect(KYC_SCORE_OUT_OF_RANGE).toBe("score_out_of_range");
+    const p = toProblem(
+      new PortError("IPB-PORT-003", "KYC", { meta: { reason: KYC_SCORE_OUT_OF_RANGE } }),
+    );
+    expect(p).toMatchObject({ code: "IPB-PORT-003", reason: "score_out_of_range" });
+  });
+
+  it("a score is a finite number from 0 to 1, never anything else", () => {
+    for (const ok of [0, 0.5, 0.8, 1]) expect(kycScoreValid(ok)).toBe(true);
+    for (const bad of [-0.01, 1.0001, 87, NaN, Infinity, -Infinity, "0.9", null, undefined])
+      expect(kycScoreValid(bad)).toBe(false);
+  });
+
+  it("every adapter states whether its vendor keeps a template; the real adapters are unknown until a written statement", () => {
+    for (const [adapter, r] of Object.entries(KYC_ADAPTER_RETENTION)) {
+      expect(["none", "kept", "unknown"]).toContain(r.template);
+      expect(r.source.length).toBeGreaterThan(10);
+      if (adapter !== "fake-kyc") {
+        expect(r.template).toBe("unknown");
+        expect(r.source).toContain("[VERIFY]");
+      }
+    }
+    expect(Object.keys(KYC_ADAPTER_RETENTION).sort()).toEqual([
+      "digio-kyc",
+      "fake-kyc",
+      "idfy-kyc",
+    ]);
+    expect(KYC_ADAPTER_RETENTION["fake-kyc"]!.template).toBe("none");
+    expect(kycAdapterRetention("idfy-kyc")).toBe(KYC_ADAPTER_RETENTION["idfy-kyc"]);
+    expect(kycAdapterRetention("someone-else").template).toBe("unknown");
   });
 });

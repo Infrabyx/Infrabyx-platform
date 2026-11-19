@@ -4,13 +4,14 @@
 // It moves to the next adapter only when one does not provide the method, is switched off, or is
 // unavailable (`IPB-PORT-002`); a vendor's answer about the customer (a refusal, a not-found, a
 // failed check) is final and never retried elsewhere. Each result names the adapter that gave it.
-// A bank account check (PR-UDF-043) moves on when an adapter cannot honour the mode asked
-// (`mode_unsupported`, refused before any vendor call); a keyed check or a penny drop does not move
-// on when an adapter is unavailable, as the first one may have reached its vendor and the account
-// is never verified, or credited, twice for one key.
+// Any method moves on when an adapter cannot honour the mode asked (`mode_unsupported`, refused
+// before any vendor call: a bank account check's mode, PR-UDF-043; a liveness check's, PR-UDF-044).
+// A keyed bank account check, liveness check or face match, and a penny drop, do not move on when
+// an adapter is unavailable, as the first one may have reached its vendor: a key gets one answer,
+// from one adapter, and an account is never verified, or credited, twice for one key.
 import { PortError, isIpbError } from "@infrabyx/contracts/errors";
 import {
-  BANK_ACCOUNT_MODE_UNSUPPORTED,
+  KYC_MODE_UNSUPPORTED,
   type AdapterDescriptor,
   type KycMethod,
   type KycPort,
@@ -39,14 +40,18 @@ type Fn = (typeof KYC_METHOD_FNS)[KycMethod][number];
 /** Fall through on these refusals only: the adapter cannot take the call at all. */
 const FALL_THROUGH = new Set(["unsupported", "adapter_disabled"]);
 
+/** Methods whose keyed call stays with its adapter when that one is unavailable (one answer per key). */
+const KEYED_STAYS: ReadonlySet<Fn> = new Set(["bankAccountVerify", "livenessCheck", "faceMatch"]);
+
 function passOn(e: unknown, fn: Fn, args: unknown[]): boolean {
   if (!isIpbError(e)) return false;
   const reason = (e as { meta?: { reason?: unknown } }).meta?.reason;
   if (e.code === "IPB-PORT-002") {
-    if (fn !== "bankAccountVerify" || reason === BANK_ACCOUNT_MODE_UNSUPPORTED) return true;
+    if (reason === KYC_MODE_UNSUPPORTED || !KEYED_STAYS.has(fn)) return true;
     const req = args[0] as { mode?: unknown } | undefined;
     const call = args[1] as { idempotencyKey?: unknown } | undefined;
-    return req?.mode !== "penny_drop" && call?.idempotencyKey === undefined;
+    if (call?.idempotencyKey !== undefined) return false;
+    return !(fn === "bankAccountVerify" && req?.mode === "penny_drop");
   }
   return e.code === "IPB-PORT-001" && typeof reason === "string" && FALL_THROUGH.has(reason);
 }

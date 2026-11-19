@@ -25,6 +25,11 @@ export interface IdfyKycStub extends VendorStub {
   bankAccount: BankAccountStubFixtures;
   /** The pennyless account checks the stub answered. */
   bankAccountChecks(): number;
+  /** The photo liveness and face compare tasks the stub answered (PR-UDF-044). */
+  livenessChecks(): number;
+  faceMatches(): number;
+  /** The next liveness or face score the stub answers is this raw value (off the 0-1 scale). */
+  scoreOnce(raw: unknown): void;
 }
 
 let seq = 0;
@@ -39,6 +44,15 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
   const ref: { s?: IdfyKycStub } = {};
   const otp = aadhaarOtpStub("TXN", () => ++seq);
   const bank = bankAccountStub();
+  let liveness = 0;
+  let faces = 0;
+  const nextScore: { raw?: unknown; set: boolean } = { set: false };
+  // The stub's scores are 0 to 1 (IDFY_SCORE_SCALE [VERIFY]); `scoreOnce` replaces the next one.
+  const scored = (v: number): unknown => {
+    if (!nextScore.set) return v;
+    nextScore.set = false;
+    return nextScore.raw;
+  };
   const stub = await startStub((r) => {
     const s = ref.s!;
     if (r.headers["account-id"] !== s.accountId || r.headers["api-key"] !== s.apiKey)
@@ -81,8 +95,9 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
       const one = img("document1");
       const two = img("document2");
       const person = (x: Buffer) => x.equals(s.faces.a) || x.equals(s.faces.same);
+      faces++;
       return done({
-        match_score: person(one) && person(two) ? 0.94 : 0.18,
+        match_score: scored(person(one) && person(two) ? 0.94 : 0.18),
         model_version: "face-compare-stub-1",
       });
     }
@@ -125,7 +140,8 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
     }
     if (task === "check_photo_liveness/face") {
       const live = s.frames.some((f) => f.equals(img("document1")));
-      return done({ liveness_score: live ? 0.91 : 0.3, model_version: "liveness-stub-1" });
+      liveness++;
+      return done({ liveness_score: scored(live ? 0.91 : 0.3), model_version: "liveness-stub-1" });
     }
     return { status: 404, body: { error: "NOT_FOUND" } };
   });
@@ -144,6 +160,12 @@ export async function startIdfyKycStub(): Promise<IdfyKycStub> {
     ekycWithNumberOnce: otp.embedNumberOnce,
     bankAccount: bank.fixtures,
     bankAccountChecks: bank.checks,
+    livenessChecks: () => liveness,
+    faceMatches: () => faces,
+    scoreOnce: (raw: unknown) => {
+      nextScore.raw = raw;
+      nextScore.set = true;
+    },
   });
   return ref.s;
 }
