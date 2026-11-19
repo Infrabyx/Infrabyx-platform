@@ -1027,6 +1027,16 @@ From the next release (`contracts`, `fakes`, `testing` and `connectors` minors; 
 - **Reading the session:** `kyc.vcipStatus(vcipId, { tenantId })` now takes the call; another tenant's session is not found. Read `reasonCode` (one of `VCIP_REASON_CODES`) for why a session was rejected, dropped or expired, and `liveness.mode` for the mode used. The old free-text `reason` is deprecated: never show it to anyone. On the conductor, pass `reasonCode` to `complete` and `drop` (defaults `official_rejected` and `connection_lost`); a rejection reason holding an identity number is refused `reason_unsafe`.
 - **Tests:** `FakeKyc` takes hand-offs signed with `signFakeVcipHandoff(fakeVcipHandoffContext())` (a development key, `FAKE_VCIP_HANDOFF`) or, with `new FakeKyc({ vcipHandoff: { reId, issuers, replay, launchHosts } })`, your own; it counts `vcipLaunchVendorCalls`. `KycFixtures.vcipLaunch` (optional in the type) drives three new contract cases.
 
+## 7cx. The approvals a checker may check, paged (PR-UDF-047; R1-D-200)
+
+From the next release (`tenancy` minor; versions in the STATUS release record), a checker can find the requests they may decide without being given an id.
+
+- **Listing:** `engine.listCheckable(ctx, { limit?, cursor? })` answers `{ items, nextCursor }`: the tenant's pending, unexpired requests that the signed-in principal may decide now, oldest first. A request is left out when the principal made it, has already decided it, or `decide` would refuse them its checker rule (the action's checker roles after your tenant's `mc.checker_roles.<action>`, its checker functions, and for a levelled request the open level's roles). An agent gets an empty list.
+- **Each item:** `id`, `action`, `summary`, `riskClass`, `makerId`, `createdAt`, `expiresAt`, `currentLevel` (null for a single-level request), `requiredCheckers` and `approvals` (given so far, at every level). It never carries the payload, its digest or data class, or the diff: open the request with `get(ctx, id)` or your own screen to show the change, and decide with `decide` as before (it checks everything again).
+- **Paging:** `limit` 1 to 100 (default 25); pass `nextCursor` back as `cursor` until it is null. The cursor is opaque: do not build or change one. A bad cursor or limit throws a `RangeError` before any read: answer it with a 400.
+- **Migration:** run `infrabyx-migrate` for `tenancy/0025` (a partial index built concurrently; no table or column, so your export map is unchanged).
+- **Work Inbox:** `InboxService` is unchanged and takes no other sources; your checkers' approval items still come from `ApprovalWorkflow`. For a page of requests to check (Udofin's Approvals page), call `listCheckable` directly, and retire any list you keep of your own held decisions.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
