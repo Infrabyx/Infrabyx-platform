@@ -200,6 +200,16 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Consents live at the AA and the FIU's provider: customers approve again through the target; open consents are revoked at the source",
   },
   {
+    port: "STATEMENT_ANALYSIS",
+    primary: "platform-statement",
+    exitTarget: "http-statement",
+    dataMove:
+      "Configuration swap for new analyses; statements and reports are already in the tenant's STORAGE, and the analysis records live 24 hours",
+    volumeClass: "S",
+    lockIn:
+      "Report formats differ between analysers (the in-platform report is a checksum summary, not a credit analysis): a product re-runs an analysis at the target rather than converting reports; pending analyses finish at the source",
+  },
+  {
     port: "ESTAMP",
     primary: "nesl-dde",
     exitTarget: "fake-estamp",

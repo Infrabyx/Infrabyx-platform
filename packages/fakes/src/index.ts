@@ -27,6 +27,7 @@ export * from "./ports/media.js";
 export * from "./ports/odr.js";
 export * from "./ports/pdf-text.js";
 export * from "./ports/rules.js";
+export * from "./ports/statement-analysis.js";
 export * from "./ports/telephony.js";
 export * from "./ports/video-meet.js";
 export * from "./ports/web-snapshot.js";

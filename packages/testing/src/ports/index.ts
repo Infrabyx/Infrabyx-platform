@@ -14,6 +14,7 @@ export * from "./court-data.js";
 export * from "./odr.js";
 export * from "./video-meet.js";
 export * from "./bureau-aa.js";
+export * from "./statement-analysis.js";
 export * from "./documents-money.js";
 export * from "./captcha.js";
 export * from "./device-attestation.js";

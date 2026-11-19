@@ -3101,6 +3101,47 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.3 AA_FIU; R1-D-61 (Setu FIU, off until the owner's Setu sandbox exists)"
   },
   {
+    "key": "int.statement_analysis.platform.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (reference adapter, off until the owner chooses an analyser, #152)",
+    "note": "the in-platform checksum-summary analyser (no vendor, no egress); a summary, not a credit analysis"
+  },
+  {
+    "key": "int.statement_analysis.http.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (vendor-neutral HTTP alternative, off and unproven until a vendor's sandbox exists, #152)"
+  },
+  {
+    "key": "int.statement_analysis.http.host",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (the HTTP alternative's only egress host)",
+    "note": "the analyser's exact host name, India-resident; empty refuses every call (adapter_unconfigured)"
+  },
+  {
     "key": "int.video_meet.livekit.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -7073,6 +7114,9 @@ export type SettingValueMap = {
   "int.kyc.idfy.enabled": boolean;
   "int.bureau.cibil.enabled": boolean;
   "int.aa_fiu.setu.enabled": boolean;
+  "int.statement_analysis.platform.enabled": boolean;
+  "int.statement_analysis.http.enabled": boolean;
+  "int.statement_analysis.http.host": string;
   "int.video_meet.livekit.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
   "int.av.clamav.enabled": boolean;

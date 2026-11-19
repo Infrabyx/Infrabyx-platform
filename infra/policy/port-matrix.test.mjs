@@ -10,6 +10,13 @@ describe("port-contract matrix path filters (PL2-D-13)", () => {
       ["FEATURE_FLAG"],
     );
     expect(selectPorts(["docs/STATUS.md"])).toEqual([]);
+    // PR-UDF-048: the port's contract, its fake and its adapters select its leg alone.
+    for (const f of [
+      "packages/contracts/src/ports/statement-analysis.ts",
+      "packages/fakes/src/ports/statement-analysis.ts",
+      "packages/connectors/src/statement-analysis/http.ts",
+    ])
+      expect(selectPorts([f])).toEqual(["STATEMENT_ANALYSIS"]);
   });
   it("runs every port for a shared change, nightly and before a release", () => {
     expect(selectPorts(["packages/connectors/src/core/router.ts"])).toEqual(PORTS);
