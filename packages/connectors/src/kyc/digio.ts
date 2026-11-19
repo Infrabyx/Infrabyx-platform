@@ -29,7 +29,9 @@
 // match among them, with no liveness mode or threshold here (PR-UDF-044; whether Digio keeps a face
 // template is `unknown` [VERIFY] in `KYC_ADAPTER_RETENTION`). V-CIP waits for the
 // owner (OWNER-QUESTIONS #90): Digio's video KYC records on Digio's side, while the port runs
-// the call in a VIDEO_MEET room with no provider copy. Results never carry an Aadhaar number:
+// the call in a VIDEO_MEET room with no provider copy; no RE-hosted V-CIP launcher is known at
+// Digio, so `launchVcip` is `unsupported` too (PR-UDF-045; `VcipConductor` takes hand-offs [VERIFY]
+// whether Digio offers one). Results never carry an Aadhaar number:
 // only its last four digits, and any twelve-digit run in vendor text is refused.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
@@ -102,6 +104,7 @@ const UNSUPPORTED = [
   "ckycDownload",
   "startVcip",
   "vcipStatus",
+  "launchVcip",
   "livenessCheck",
   "faceMatch",
   "ovdOcr",
@@ -844,6 +847,10 @@ export class DigioKyc implements KycPort {
   }
   vcipStatus(): Promise<never> {
     return this.unsupported("vcipStatus");
+  }
+  /** No RE-hosted V-CIP launcher is known at this vendor (PR-UDF-045). */
+  launchVcip(): Promise<never> {
+    return this.unsupported("launchVcip");
   }
   livenessCheck(): Promise<never> {
     return this.unsupported("livenessCheck");

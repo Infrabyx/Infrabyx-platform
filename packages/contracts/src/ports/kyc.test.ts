@@ -1,7 +1,8 @@
 // KYC port schemas for DigiLocker (PR-UDF-040, R1-D-193): the start request and its return address;
 // for Aadhaar OTP e-KYC (PR-UDF-041, R1-D-194): the number check and the two requests; and for the
 // bank account check (PR-UDF-043, R1-D-196): the mode, the status set and the funding statement;
-// and for liveness and face match (PR-UDF-044, R1-D-197): the mode, the score and the retention.
+// and for liveness and face match (PR-UDF-044, R1-D-197): the mode, the score and the retention;
+// and for the RE-hosted V-CIP launcher (PR-UDF-045, R1-D-198): the hand-off, its bound and the codes.
 import { describe, expect, it } from "vitest";
 import { payloadClass } from "./payload-class.js";
 import { verhoeffValid } from "../search-refusal.js";
@@ -31,6 +32,16 @@ import {
   DigilockerPull,
   StartDigilocker,
   digilockerReturnUrlAllowed,
+  LaunchVcip,
+  VCIP_HANDOFF_MAX_LIFETIME_SECONDS,
+  VCIP_HANDOFF_REFUSALS,
+  VCIP_LAUNCH_URL_REFUSED,
+  VCIP_REASON_CODES,
+  VcipHandoffContext,
+  VcipSession,
+  vcipHandoffFailure,
+  vcipHandoffTimeRefusal,
+  vcipLaunchUrlAllowed,
 } from "./kyc.js";
 
 const hosts = ["kyc.example.com"];
@@ -274,5 +285,141 @@ describe("PR-UDF-044: the liveness mode, the score and the retention statement",
     expect(KYC_ADAPTER_RETENTION["fake-kyc"]!.template).toBe("none");
     expect(kycAdapterRetention("idfy-kyc")).toBe(KYC_ADAPTER_RETENTION["idfy-kyc"]);
     expect(kycAdapterRetention("someone-else").template).toBe("unknown");
+  });
+});
+
+describe("PR-UDF-045: the V-CIP hand-off, its lifetime bound, the launch address and the reason codes", () => {
+  const issued = new Date("2026-11-19T10:00:00Z");
+  const ctx = (over: Record<string, unknown> = {}) => ({
+    tenantId: "tnt_kyc",
+    reId: "re_nbfc_one",
+    lspId: "lsp_udofin",
+    customerRef: "cus_01JD00000000000000000000AB",
+    journeyId: "jrn_01JD00000000000000000000CD",
+    issuedAt: issued.toISOString(),
+    expiresAt: new Date(issued.getTime() + 10 * 60_000).toISOString(),
+    nonce: "n0nce-AAAAAAAAAAAAAAAAAAAA",
+    ...over,
+  });
+  /** A synthetic Aadhaar-like number: never committed as a literal. */
+  const aadhaarLike = (() => {
+    for (let d = 0; d < 10; d++) if (verhoeffValid(`99990000011${d}`)) return `99990000011${d}`;
+    throw new Error("no check digit");
+  })();
+
+  it("the context is ids and times only, strict, and every field is classed", () => {
+    expect(VcipHandoffContext.parse(ctx())).toEqual(ctx());
+    expect(Object.keys(VcipHandoffContext.shape).sort()).toEqual(
+      [
+        "customerRef",
+        "expiresAt",
+        "issuedAt",
+        "journeyId",
+        "lspId",
+        "nonce",
+        "reId",
+        "tenantId",
+      ].sort(),
+    );
+    for (const bad of [
+      ctx({ name: "Asha Rao" }),
+      ctx({ pan: "AAAPZ1234C" }),
+      ctx({ customerRef: "Asha Rao" }),
+      ctx({ customerRef: "cus/1" }),
+      ctx({ journeyId: "" }),
+      ctx({ nonce: "short" }),
+      ctx({ issuedAt: "yesterday" }),
+      ctx({ tenantId: undefined }),
+    ])
+      expect(VcipHandoffContext.safeParse(bad).success).toBe(false);
+    expect(payloadClass(VcipHandoffContext)).toMatchObject({ complete: true, unannotated: [] });
+    expect(payloadClass(LaunchVcip)).toMatchObject({ complete: true, unannotated: [] });
+    expect(LaunchVcip.safeParse({ context: ctx(), jws: "a.b.c", extra: 1 }).success).toBe(false);
+  });
+
+  it(`a hand-off lives at most ${VCIP_HANDOFF_MAX_LIFETIME_SECONDS} s and expires after its issue`, () => {
+    expect(VCIP_HANDOFF_MAX_LIFETIME_SECONDS).toBe(900);
+    const at = (s: number) => new Date(issued.getTime() + s * 1000).toISOString();
+    expect(VcipHandoffContext.safeParse(ctx({ expiresAt: at(900) })).success).toBe(true);
+    for (const s of [901, 3600, 0, -60])
+      expect(VcipHandoffContext.safeParse(ctx({ expiresAt: at(s) })).success).toBe(false);
+  });
+
+  it("no field may carry a 12-digit run or an Aadhaar-like number", () => {
+    const good = ctx();
+    expect(findAadhaarLike(JSON.stringify(good))).toEqual([]);
+    for (const k of ["tenantId", "reId", "lspId", "customerRef", "journeyId"] as const) {
+      for (const v of [
+        `cus_${aadhaarLike}`,
+        `x-${aadhaarLike.slice(0, 4)}-${aadhaarLike.slice(4, 8)}-${aadhaarLike.slice(8)}`,
+        `c.123456789012`,
+      ])
+        expect(VcipHandoffContext.safeParse(ctx({ [k]: v })).success, `${k}=${v}`).toBe(false);
+    }
+    expect(VcipHandoffContext.safeParse(ctx({ nonce: `AAAAAAAAAA${aadhaarLike}` })).success).toBe(
+      false,
+    );
+  });
+
+  it("the time checks, the JWS failure labels and the fixed refusal labels", () => {
+    expect([...VCIP_HANDOFF_REFUSALS]).toEqual([
+      "handoff_invalid",
+      "handoff_replayed",
+      "handoff_expired",
+    ]);
+    const c = ctx();
+    expect(vcipHandoffTimeRefusal(c, issued)).toBeUndefined();
+    expect(vcipHandoffTimeRefusal(c, new Date(issued.getTime() + 9 * 60_000))).toBeUndefined();
+    expect(vcipHandoffTimeRefusal(c, new Date(issued.getTime() + 10 * 60_000))).toBe(
+      "handoff_expired",
+    );
+    expect(vcipHandoffTimeRefusal(c, new Date(issued.getTime() - 2 * 60_000))).toBe(
+      "handoff_invalid",
+    );
+    expect(vcipHandoffFailure("replay")).toBe("handoff_replayed");
+    expect(vcipHandoffFailure("stale")).toBe("handoff_expired");
+    for (const r of ["format", "header", "alg", "typ", "kid", "signature", "future"])
+      expect(vcipHandoffFailure(r)).toBe("handoff_invalid");
+    const p = toProblem(
+      new PortError("IPB-PORT-001", "KYC", {
+        meta: { reason: "handoff_replayed", definite: true },
+      }),
+    );
+    expect(p).toMatchObject({ code: "IPB-PORT-001", reason: "handoff_replayed" });
+  });
+
+  it("a launch address is https, on the hosts, with no user information and no number", () => {
+    const h = ["vcip.re.example.com"];
+    expect(VCIP_LAUNCH_URL_REFUSED).toBe("launch_url_invalid");
+    expect(vcipLaunchUrlAllowed("https://vcip.re.example.com/v/vcp_01JD", h)).toBe(true);
+    for (const bad of [
+      "http://vcip.re.example.com/v/1",
+      "https://user:pw@vcip.re.example.com/v/1",
+      "https://other.example.com/v/1",
+      "https://vcip.re.example.com.evil.example/v/1",
+      `https://vcip.re.example.com/v/${aadhaarLike}`,
+      `https://vcip.re.example.com/v/x${aadhaarLike.slice(0, 4)} ${aadhaarLike.slice(4)}`,
+      "javascript:alert(1)",
+      "not a url",
+    ])
+      expect(vcipLaunchUrlAllowed(bad, h), bad).toBe(false);
+  });
+
+  it("the reason codes are fixed; a scheduled session's id is optional on VcipSession", () => {
+    expect(VCIP_REASON_CODES).toContain("official_rejected");
+    expect(VCIP_REASON_CODES).toContain("launch_expired");
+    expect(VCIP_REASON_CODES).toContain("other");
+    expect(new Set(VCIP_REASON_CODES).size).toBe(VCIP_REASON_CODES.length);
+    for (const c of VCIP_REASON_CODES) expect(c).toMatch(/^[a-z_]+$/);
+    const s = {
+      sessionId: "sess_1",
+      tenantId: "tnt_kyc",
+      customerRef: "cus_1",
+      officialRef: "usr_official",
+      roomId: "room_1",
+      documents: [],
+    };
+    expect(VcipSession.parse(s)).toEqual(s);
+    expect(VcipSession.parse({ ...s, vcipId: "vcp_1" })).toEqual({ ...s, vcipId: "vcp_1" });
   });
 });

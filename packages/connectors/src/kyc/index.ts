@@ -10,7 +10,8 @@
 // `BankAccountVerifyStore` (`PgBankAccountVerifyStore`, `connectors.kyc_bank_account_verify`;
 // PR-UDF-043). Liveness checks are by mode (IDfy: passive), every score carries the threshold
 // applied, and keyed liveness and face-match checks are kept in a `KycScoreCheckStore`
-// (`PgKycScoreCheckStore`, `connectors.kyc_score_check`; PR-UDF-044).
+// (`PgKycScoreCheckStore`, `connectors.kyc_score_check`; PR-UDF-044). An LSP's signed V-CIP
+// hand-off lands on `VcipConductor.launchVcip` (the RE side; Digio and IDfy refuse it; PR-UDF-045).
 export * from "./aadhaar-otp.js";
 export * from "./bank-account.js";
 export * from "./digio.js";

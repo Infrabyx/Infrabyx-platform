@@ -4,7 +4,8 @@
 // It provides the methods the Digio reference lacks, so the KYC port has a second source for each:
 // PAN verification, face match and photo liveness; and pennyless bank account checks (PR-UDF-043;
 // a penny drop is refused `mode_unsupported`, R1-D-196). Every other method is `unsupported` (DigiLocker
-// too, start and pull, until IDfy's sandbox confirms its DigiLocker flow; PR-UDF-040), and
+// too, start and pull, until IDfy's sandbox confirms its DigiLocker flow; PR-UDF-040; and the V-CIP
+// launcher, PR-UDF-045, as no RE-hosted launcher is known at IDfy [VERIFY]), and
 // `KycMethodRouter` sends it to an adapter that has it.
 //
 // Vendor facts below are STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX ([VERIFY]); each one lives in
@@ -110,6 +111,7 @@ const UNSUPPORTED = [
   "ckycDownload",
   "startVcip",
   "vcipStatus",
+  "launchVcip",
   "ovdOcr",
   "amlScreen",
   "handleWebhook",
@@ -686,6 +688,10 @@ export class IdfyKyc implements KycPort {
   }
   vcipStatus(): Promise<never> {
     return this.unsupported("vcipStatus");
+  }
+  /** No RE-hosted V-CIP launcher is known at this vendor (PR-UDF-045). */
+  launchVcip(): Promise<never> {
+    return this.unsupported("launchVcip");
   }
   ovdOcr(): Promise<never> {
     return this.unsupported("ovdOcr");
