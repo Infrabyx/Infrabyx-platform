@@ -7,6 +7,9 @@
 // Usernames are derived from the tenant and the login (`cus` + 40 hex), so one person is one
 // account per tenant and the login is never a username. The realm carries no `amr` mapper: a
 // one-time code is not MFA (IPB-02-02).
+// Run that image as built: its entrypoint turns the HotSpot Base64 intrinsic off on every node
+// (CVE-2026-114938, owner answer #143, R1-D-192; product guide §7cp). With the stock Keycloak image,
+// JAVA_OPTS_APPEND must end with -XX:-UseBASE64Intrinsics on every node.
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
