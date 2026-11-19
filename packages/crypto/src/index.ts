@@ -71,11 +71,17 @@ export {
   verifySnsMessage,
   verifyWebhookSecret,
   verifyLeegalityMac,
+  verifyStandardWebhook,
+  signStandardWebhookForTest,
+  STANDARD_WEBHOOK_TOLERANCE_SECONDS,
+  STANDARD_WEBHOOK_MAX_SIGNATURES,
   snsCertUrlAllowed,
   generateWebhookSecret,
   type SnsMessage,
   type SnsVerifyOptions,
   type SnsFailure,
+  type StandardWebhookHeaders,
+  type StandardWebhookFailure,
 } from "./webhook-sig.js";
 export { encodeKmsContext, decodeKmsContext, assertKmsContext } from "./kms-context.js";
 export { addressHash, normaliseAddress, type AddressKind } from "./address-hash.js";

@@ -33,7 +33,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     usedFor: [
       "ip_hash/ua_hash/actor pseudonyms (C-02)",
       "blind index (C-05)",
-      "vendor webhook signatures: Razorpay, Cashfree, Meta (C-13)",
+      "vendor webhook signatures: Razorpay, Cashfree, Meta, Standard Webhooks v1 (C-13; R1-D-199, owner review #150)",
       "telemetry and flag-context ID hashes, 128-bit truncation (C-21)",
       "suppression and marketing-consent address hash (C-23)",
       "LiveKit only, as HS256 JWTs: join tokens (≤ 300 s, one room, one identity), server-API tokens (≤ 60 s, one grant) and webhook verification (C-26); never for any other token",
