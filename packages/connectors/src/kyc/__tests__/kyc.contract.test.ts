@@ -351,6 +351,10 @@ describe("PR-UDF-041 Digio Aadhaar OTP e-KYC for a notified RE", () => {
     expect(holdsAadhaarNumber(`uid="xxxxxxxx${dg.aadhaarOtp.uid.slice(-4)}"`)).toBe(false);
     expect(holdsAadhaarNumber(`h=ab${dg.aadhaarOtp.uid}cd`)).toBe(false);
     expect(holdsAadhaarNumber(` ${dg.aadhaarOtp.vid} `)).toBe(true);
+    // The shared rule (PR-UDF-042, R1-D-195): a grouped number is refused too.
+    expect(
+      holdsAadhaarNumber(`<uid>${dg.aadhaarOtp.uid.replace(/(\d{4})(?=\d)/g, "$1 ")}</uid>`),
+    ).toBe(true);
   });
 
   it("a keyed retry on another instance with a shared store makes no vendor call", async () => {

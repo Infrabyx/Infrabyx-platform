@@ -991,6 +991,17 @@ From the next release (`contracts`, `fakes`, `testing` and `connectors` minors; 
 - **Tests:** `new FakeKyc({ notifiedEntity: true })` sends any well-formed number an OTP that `FAKE_AADHAAR_OTP` verifies (the fixtures' `unlinkedUid` has no mobile; `fake.expireAadhaarOtp(txn)` expires one). `KycFixtures.aadhaarOtp` (optional in the type; `syntheticUid(body)` makes test numbers) drives five new contract cases.
 - **Udofin:** `AadhaarOtpEkycPort` can call these with the semantics of its UDF-D-152. The vendor request and response shapes are `[VERIFY]` and built against stubs only; both adapters stay off until the sandboxes confirm them.
 
+## 7cs. One no-Aadhaar rule, a scanner and a test-database sweep (PR-UDF-042; R1-D-195)
+
+From the next release (`contracts`, `testing` and `ai` minors, a `connectors` patch; versions in the STATUS release record), the platform has one rule for what reads as an Aadhaar number or a VID, and the tools to keep them out of your fixtures and test data.
+
+- **The rule:** `findAadhaarLike(text, { letters? })` from `@infrabyx/contracts/aadhaar` returns `{ kind: "AADHAAR" | "VID", start, end, masked }[]`: 12 digits with the first 2 to 9 and a valid Verhoeff digit, or 16 Verhoeff digits, plain or grouped in fours (one space, other whitespace character or hyphen per gap), bounded by a non-digit on both sides (a letter or `+` is a boundary; a longer digit run is never split). `masked` is `XXXX XXXX dddd` (or four groups for a VID); nothing returns more digits. `letters: "join"` reads a letter as part of the run, so a hash or base64 run does not count. `holdsAadhaarLike(text)` is the yes-or-no form; `verhoeffValid` now lives here too (the old imports still work).
+- **The AI scrubber** uses it: a 16-digit VID is now tokenised as `AADHAAR`, and twelve digits right after a `+` are no longer missed. Expect a few more `<PII:AADHAAR:n>` tokens, never fewer.
+- **The e-KYC check** (§7cr) uses it with `letters: "join"`: a grouped number in the response is now refused `ekyc_holds_number` too.
+- **Scan your repository:** `infrabyx-aadhaar-scan <path>...` (in `@infrabyx/testing`'s bin) prints `file:line: KIND masked` and exits 1 on a find, 0 on none, 2 on a usage error. It skips `node_modules`, `.git`, `dist`, symbolic links, binary files and files over 5 MiB (`--max-bytes`), naming each skipped file; `--letters boundary` reads letters as the scrubber does. Add it to CI over your fixtures and recorded responses, as the platform's `pnpm aadhaar:scan` does; it also reads log files.
+- **Sweep your test databases:** `startPostgres({ beforeDrop: async (admin) => expect(await scanDatabaseForAadhaar(admin)).toEqual([]) })`. `beforeDrop(admin)` runs in `end()` before the database is dropped; if it throws, the database is still dropped and `end()` rejects with its error. `scanDatabaseForAadhaar(admin, { skip: ["schema.table", "schema.table.column"] })` reads every text-like column of every table as the superuser (test databases only).
+- **Udofin:** its own detector script and its `startPostgres` wrapper (UDF-D-153) can give way to `findAadhaarLike`, `infrabyx-aadhaar-scan` and `beforeDrop`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
