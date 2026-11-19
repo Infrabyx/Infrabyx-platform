@@ -2,8 +2,10 @@
 // DigiLocker and Aadhaar offline, and `idfy-kyc`, the alternative for PAN, face match and
 // liveness. Both are off behind `int.kyc.<vendor>.enabled` and `unproven` until the owner's
 // accounts exist. `kycMethodRouter` routes each method to the first adapter that provides it
-// (Digio first, IDfy second; Finbyx PR-FBX-24).
+// (Digio first, IDfy second; Finbyx PR-FBX-24). Keyed DigiLocker pulls are kept in a
+// `DigilockerPullStore` (`PgDigilockerPullStore` on `connectors.kyc_digilocker_pull`; PR-UDF-040).
 export * from "./digio.js";
+export * from "./digilocker-pulls.js";
 export * from "./idfy.js";
 export * from "./routing.js";
 export * from "./vcip.js";

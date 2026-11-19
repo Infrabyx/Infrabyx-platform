@@ -2,7 +2,8 @@
 // task API over the egress client, no SDK. India-hosted (IN). Off behind `int.kyc.idfy.enabled`
 // (default false) and `unproven` until the owner's IDfy sandbox exists and its sandbox leg runs.
 // It provides the methods the Digio reference lacks, so the KYC port has a second source for each:
-// PAN verification, face match and photo liveness. Every other method is `unsupported`, and
+// PAN verification, face match and photo liveness. Every other method is `unsupported` (DigiLocker
+// too, start and pull, until IDfy's sandbox confirms its DigiLocker flow; PR-UDF-040), and
 // `KycMethodRouter` sends it to an adapter that has it.
 //
 // Vendor facts below are STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX ([VERIFY]); each one lives in
@@ -42,6 +43,7 @@ const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
 
 const UNSUPPORTED = [
   "verifyAadhaarOffline",
+  "startDigilocker",
   "digilockerPull",
   "ckycSearch",
   "ckycDownload",
@@ -276,6 +278,10 @@ export class IdfyKyc implements KycPort {
   }
   verifyAadhaarOffline(): Promise<never> {
     return this.unsupported("verifyAadhaarOffline");
+  }
+  /** IDfy's DigiLocker flow is added when its sandbox confirms it (PR-UDF-040; exit.ts). */
+  startDigilocker(): Promise<never> {
+    return this.unsupported("startDigilocker");
   }
   digilockerPull(): Promise<never> {
     return this.unsupported("digilockerPull");
