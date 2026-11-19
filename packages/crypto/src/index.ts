@@ -107,6 +107,7 @@ export {
   signRegulatedMessage,
   verifyRegulatedMessage,
   RegulatedKeyRing,
+  localRegulatedSigner,
   MemoryReplayStore,
   REGULATED_JWS_TYP,
   REGULATED_JWS_MAX_AGE_SECONDS,

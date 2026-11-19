@@ -1120,6 +1120,16 @@ overrides:
 - Each override goes once its parent ships the fixed major (`unleash-client` on `make-fetch-happen` 16, `testcontainers` on `archiver` 8); the STATUS release record says when the platform drops them.
 - The same release moves `fast-uri` to 3.1.9 (four advisories, via `ajv`); a lockfile refresh (`pnpm update fast-uri`) does the same for you.
 
+## 7de. The origination contract and the mock lender (PR-UDF-051; R1-D-217)
+
+From the next release (`contracts`, `crypto`, `fakes` and `testing` minors), `@infrabyx/contracts/events` carries the loan journey of Ecosystem Specification §6.2 and §6.3, and `@infrabyx/fakes` a mock lender that plays Finbyx's side of it.
+
+- **`EligibilityCheck` is a synchronous call** (`POST /v1/eligibility-checks`, `EligibilityCheckRequest` and `EligibilityCheckAnswer`), with an `Idempotency-Key` header and a 3 s budget (`ELIGIBILITY_CHECK_BUDGET_MS`); past it, treat the lender as unavailable (`ELIGIBILITY_LENDER_UNAVAILABLE`). There is no event pair (owner question #157).
+- **Events, v1:** `ORIGINATION_EVENTS` gives each type, its data schema, the Specification's idempotency fields and its direction. Money is integer paise, rates `apr_bp` (basis points), hashes SHA-256 hex, applicants `applicant_ref` only. `BorrowerAccepted` needs `explanation_acknowledged: true`.
+- **Regulated:** `DecisionMade`, `KFSIssued`, `SanctionLetterIssued` and `LoanDisbursed` (`ORIGINATION_REGULATED`) come with a detached JWS (`X-Infrabyx-JWS`); verify each with `verifyRegulatedMessage` against the lender's key ring before you act on it, and store the JWS with the event.
+- **Testing:** `new FakeLender()` answers `eligibilityCheck`, takes `submitApplication(ApplicationSubmitted)`, `accept(BorrowerAccepted)`, `coolingOffExit(CoolingOffExitRequested)`, and `disburse(applicationId)`; read what it sent with `outbox()` and verify with `fake.keys`. `script({ decision, infoRequest, latencyMs, outcome })` steers the next calls. Build your own messages with `lspEvent(name, data)` from `@infrabyx/testing`, and run `lenderContractCases()` against any lender client you write.
+- **Udofin:** `u21_connector/port.ts` can import these types instead of its local copies.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
