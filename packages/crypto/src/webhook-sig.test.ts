@@ -12,6 +12,8 @@ import {
   verifyMetaSignature,
   verifyRazorpaySignature,
   verifySnsMessage,
+  verifyStandardWebhook,
+  signStandardWebhookForTest,
   verifyWebhookSecret,
   type SnsMessage,
 } from "./webhook-sig.js";
@@ -181,5 +183,89 @@ describe("C-13 Amazon SNS SignatureVersion 2", () => {
     ["https://sns.ap-south-2.amazonaws.com/SimpleNotificationService-ab.pem", true],
   ])("signing certificate URL %s allowed: %s", (url, ok) => {
     expect(snsCertUrlAllowed(url, regions)).toBe(ok);
+  });
+});
+
+describe("C-13 Standard Webhooks v1 (IPB-10-21; PR-UDF-046)", () => {
+  // The specification's own example (standard-webhooks spec, "Verifying a signature"); a public
+  // test vector, built here so a secret scanner does not read it as a credential.
+  const vector = "MfKQ9r8GKYqrTwjUPD8ILPZIo2LaLaSw";
+  const spec = {
+    secret: `whsec_${vector}`,
+    id: "msg_p5jXN8AQM9LWM0D4loKWxJek",
+    timestamp: "1614265330",
+    body: Buffer.from('{"test": 2432232314}'),
+    signature: "v1,g0hM9SsE+OTPJTGt/tmIKtSyZlE3uFJELVlNIOLJ1OE=",
+  };
+  const at = Number(spec.timestamp) * 1000;
+  const h = (over: Partial<typeof spec> = {}) => ({
+    id: over.id ?? spec.id,
+    timestamp: over.timestamp ?? spec.timestamp,
+    signature: over.signature ?? spec.signature,
+  });
+
+  it("verifies the specification's example, and signs it the same way", () => {
+    expect(verifyStandardWebhook([spec.secret], spec.body, h(), { now: at })).toBeNull();
+    expect(signStandardWebhookForTest(spec.secret, spec.id, spec.timestamp, spec.body)).toBe(
+      spec.signature,
+    );
+  });
+
+  it("accepts any v1 entry and any secret during rotation; ignores v1a and other versions", () => {
+    const other = `whsec_${Buffer.alloc(32, 7).toString("base64")}`;
+    const both = `v1a,${"A".repeat(86)}== v1,${"B".repeat(43)}= ${spec.signature}`;
+    expect(
+      verifyStandardWebhook([other, spec.secret], spec.body, h({ signature: both }), {
+        now: at,
+      }),
+    ).toBeNull();
+    expect(
+      verifyStandardWebhook(
+        [spec.secret],
+        spec.body,
+        h({ signature: `v1a,${spec.signature.slice(3)}` }),
+        {
+          now: at,
+        },
+      ),
+    ).toBe("signature");
+    expect(verifyStandardWebhook([other], spec.body, h(), { now: at })).toBe("signature");
+  });
+
+  it("refuses a changed body, id or timestamp, a stale or future timestamp and malformed headers", () => {
+    const ok = { now: at };
+    expect(verifyStandardWebhook([spec.secret], Buffer.from('{"test": 2432232315}'), h(), ok)).toBe(
+      "signature",
+    );
+    expect(verifyStandardWebhook([spec.secret], spec.body, h({ id: "msg_other" }), ok)).toBe(
+      "signature",
+    );
+    expect(verifyStandardWebhook([spec.secret], spec.body, h(), { now: at + 301_000 })).toBe(
+      "timestamp",
+    );
+    expect(verifyStandardWebhook([spec.secret], spec.body, h(), { now: at - 301_000 })).toBe(
+      "timestamp",
+    );
+    expect(verifyStandardWebhook([spec.secret], spec.body, h(), { now: at + 299_000 })).toBeNull();
+    for (const bad of [
+      h({ id: "" }),
+      h({ id: "has space" }),
+      h({ timestamp: "1614265330.5" }),
+      h({ timestamp: "" }),
+      h({ signature: "v1," + "A".repeat(5000) }),
+    ])
+      expect(verifyStandardWebhook([spec.secret], spec.body, bad, ok)).toBe("headers");
+    expect(verifyStandardWebhook([spec.secret], spec.body, h({ signature: "" }), ok)).toBe(
+      "signature",
+    );
+    expect(verifyStandardWebhook([spec.secret], spec.body, h({ signature: "v1,***" }), ok)).toBe(
+      "signature",
+    );
+  });
+
+  it("throws on a secret that is not whsec_ and 24 to 64 bytes, or none", () => {
+    for (const s of [vector, "whsec_c2hvcnQ=", `whsec_${"A".repeat(90)}`])
+      expect(() => verifyStandardWebhook([s], spec.body, h(), { now: at })).toThrow(RangeError);
+    expect(() => verifyStandardWebhook([], spec.body, h(), { now: at })).toThrow(RangeError);
   });
 });

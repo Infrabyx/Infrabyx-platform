@@ -25,6 +25,8 @@ import {
   BANK_ACCOUNT_STATUSES,
   LIVENESS_MODES,
   LaunchVcip,
+  KYC_WEBHOOK_MAX_BODY_BYTES,
+  KYC_WEBHOOK_REFUSALS,
   VCIP_HANDOFF_MAX_LIFETIME_SECONDS,
   VCIP_REASON_CODES,
   kycScoreValid,
@@ -46,10 +48,14 @@ import {
   type AadhaarOtpFixtures,
   type BankAccountFixtures,
   type KycFixtures,
+  type KycWebhookFixtures,
   type ScoreFixtures,
   type VcipLaunchFixtures,
 } from "@infrabyx/fakes";
 export {
+  type KycWebhookFixtures,
+  FAKE_KYC_WEBHOOK,
+  signFakeKycWebhook,
   type AadhaarOtpFixtures,
   type BankAccountFixtures,
   type KycFixtures,
@@ -194,6 +200,20 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
     code: "IPB-PORT-001",
     meta: { reason, definite: true },
   });
+  // PR-UDF-046: webhook verification without a vendor call.
+  const hookFx = (): KycWebhookFixtures => {
+    expect(fx.webhook, "KycFixtures.webhook for an adapter with verifyWebhook").toBeDefined();
+    return fx.webhook!;
+  };
+  const verifier = (p: KycPort) => {
+    expect(typeof p.verifyWebhook).toBe("function");
+    return (p.verifyWebhook as NonNullable<KycPort["verifyWebhook"]>).bind(p);
+  };
+  const hookRefused = (reason: string) => ({
+    code: "IPB-API-018",
+    meta: { reason, definite: true },
+  });
+  const minutes = (n: number) => new Date(Date.now() + n * 60_000);
   // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
   const noRunInKeys = (docs: DigilockerDocument[]) => {
     for (const d of docs)
@@ -984,6 +1004,86 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
           if (m.state === "rejected" || m.state === "dropped") expect(m.reasonCode).toBeDefined();
           if (m.liveness?.mode !== undefined) expect(LIVENESS_MODES).toContain(m.liveness.mode);
         }
+      },
+    },
+    {
+      name: "verifyWebhook (PR-UDF-046): a signed event answers its delivery id, the session and the time only, with no vendor call; a provider's retry verifies again; handleWebhook verifies, then reads back",
+      method: "verifyWebhook",
+      invoke: (p) => verifier(p)(new TextEncoder().encode("{}"), {}),
+      async run(p) {
+        const w = hookFx();
+        const verify = verifier(p);
+        const vcipId = await w.session(p);
+        const body = w.body(vcipId);
+        const id = `msg_contract_${Date.now().toString(36)}`;
+        const before = w.vendorCalls(p);
+        const r = await verify(body, w.sign(body, { id }));
+        expect(Object.keys(r).sort()).toEqual(["eventId", "receivedAt", "vcipId"]);
+        expect(r).toMatchObject({ eventId: id, vcipId });
+        expect(Math.abs(Date.parse(r.receivedAt) - Date.now())).toBeLessThan(60_000);
+        expect(w.vendorCalls(p)).toBe(before);
+        expect(findAadhaarLike(JSON.stringify(r), { letters: "join" })).toEqual([]);
+        // A provider's retry of the same event: the same id, a new timestamp and signature.
+        const retry = await verify(body, w.sign(body, { id, at: minutes(-1) }));
+        expect(retry.eventId).toBe(id);
+        expect(w.vendorCalls(p)).toBe(before);
+        const m = await p.handleWebhook(body, w.sign(body));
+        expect(m.vcipId).toBe(vcipId);
+        expect(w.vendorCalls(p)).toBeGreaterThan(before);
+      },
+    },
+    {
+      name: "verifyWebhook (PR-UDF-046): a forged, tampered, unsigned, stale, future, replayed or oversize event is refused IPB-API-018 with its fixed label, definite, by verifyWebhook and handleWebhook alike, with no vendor call",
+      method: "verifyWebhook",
+      invoke: (p) => verifier(p)(new TextEncoder().encode("{}"), {}),
+      async run(p) {
+        const w = hookFx();
+        const verify = verifier(p);
+        const vcipId = await w.session(p);
+        const body = w.body(vcipId);
+        const replayed = w.sign(body);
+        await verify(body, replayed);
+        const tampered = new TextEncoder().encode(
+          new TextDecoder().decode(body).replace(vcipId, `${vcipId}x`),
+        );
+        const big = new Uint8Array(KYC_WEBHOOK_MAX_BODY_BYTES + 1).fill(0x20);
+        big.set(body);
+        const noSignature = Object.fromEntries(
+          Object.entries(w.sign(body)).filter(([k]) => k.toLowerCase() !== "webhook-signature"),
+        );
+        const cases: Array<[string, Uint8Array, Record<string, string>]> = [
+          ["signature_invalid", body, w.signUntrusted(body)],
+          ["signature_invalid", tampered, w.sign(body)],
+          ["signature_invalid", body, {}],
+          ["signature_invalid", body, noSignature],
+          ["timestamp_stale", body, w.sign(body, { at: minutes(-6) })],
+          ["timestamp_stale", body, w.sign(body, { at: minutes(6) })],
+          ["event_replayed", body, replayed],
+          ["body_too_large", big, w.sign(big)],
+        ];
+        const calls = w.vendorCalls(p);
+        for (const [reason, b, h] of cases) {
+          expect(KYC_WEBHOOK_REFUSALS).toContain(reason);
+          for (const go of [() => verify(b, h), () => p.handleWebhook(b, h)]) {
+            let thrown: unknown;
+            await go().then(
+              () => undefined,
+              (e: unknown) => (thrown = e),
+            );
+            expect(thrown, reason).toMatchObject(hookRefused(reason));
+            const text = errorText(thrown);
+            expect(text).not.toContain(vcipId);
+            expect(findAadhaarLike(text)).toEqual([]);
+          }
+        }
+        expect(w.vendorCalls(p)).toBe(calls);
+        // A verified event that names no session is malformed, and nothing is read back.
+        const empty = new TextEncoder().encode("{}");
+        await expect(verify(empty, w.sign(empty))).rejects.toMatchObject({
+          code: "IPB-PORT-001",
+          meta: { reason: "malformed_event", definite: true },
+        });
+        expect(w.vendorCalls(p)).toBe(calls);
       },
     },
     {

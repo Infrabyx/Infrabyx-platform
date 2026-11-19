@@ -10,7 +10,9 @@
 // an adapter is unavailable, as the first one may have reached its vendor: a key gets one answer,
 // from one adapter, and an account is never verified, or credited, twice for one key. A V-CIP
 // launch never moves on when its adapter is unavailable (PR-UDF-045): the hand-off is single use
-// and the first adapter may have scheduled the session.
+// and the first adapter may have scheduled the session. A webhook refused `IPB-API-018`
+// (`verifyWebhook`, `handleWebhook`) is final (PR-UDF-046); a product with two providers sends
+// each provider's webhooks to that provider's adapter, not through the router.
 import { PortError, isIpbError } from "@infrabyx/contracts/errors";
 import {
   KYC_MODE_UNSUPPORTED,
@@ -27,7 +29,7 @@ export const KYC_METHOD_FNS = {
   digilocker: ["startDigilocker", "digilockerPull"],
   ckyc_search: ["ckycSearch"],
   ckyc_download: ["ckycDownload"],
-  vcip: ["startVcip", "launchVcip", "vcipStatus", "handleWebhook"],
+  vcip: ["startVcip", "launchVcip", "vcipStatus", "verifyWebhook", "handleWebhook"],
   liveness: ["livenessCheck"],
   face_match: ["faceMatch"],
   bank_account: ["bankAccountVerify"],
@@ -86,7 +88,7 @@ export function kycMethodRouter(o: KycMethodRouterOptions): KycPort {
         (a) =>
           a.descriptor.capabilities?.[fn] !== "unsupported" &&
           // An optional method an adapter outside the platform does not have (startDigilocker,
-          // aadhaarOtpRequest, aadhaarOtpVerify, launchVcip).
+          // aadhaarOtpRequest, aadhaarOtpVerify, launchVcip, verifyWebhook).
           typeof a[fn] === "function",
       );
   };

@@ -34,6 +34,7 @@ import {
   StartDigilocker,
   VcipSession,
   digilockerReturnUrlAllowed,
+  verifyKycWebhookWith,
   type AadhaarOtpRefusal,
   type AadhaarOtpResult,
   type AdapterDescriptor,
@@ -42,6 +43,7 @@ import {
   type DigilockerDocument,
   type KycFileRef,
   type KycPort,
+  type KycWebhookReceipt,
   type LivenessMode,
   type NameMatch,
   type PortCall,
@@ -53,16 +55,20 @@ import {
   type VcipManifest,
   type VcipReasonCode,
   type VcipState,
+  type WebhookRequestMeta,
 } from "@infrabyx/contracts/ports";
 import {
   LocalKms,
   MemoryReplayStore,
   RegulatedKeyRing,
   randomBytes,
+  sha256,
   sha256Hex,
   signRegulatedMessage,
+  signStandardWebhookForTest,
   toBase64Url,
   verifyRegulatedMessage,
+  verifyStandardWebhook,
   type ReplayStore,
 } from "@infrabyx/crypto";
 
@@ -106,6 +112,27 @@ export interface KycFixtures {
    * minor; the cases need it wherever the adapter provides `launchVcip`.
    */
   vcipLaunch?: VcipLaunchFixtures;
+  /**
+   * Webhook verification without a vendor call (PR-UDF-046): deliveries signed as the provider
+   * signs them, and the hooks the contract cases use. Optional in the type so a caller outside the
+   * platform does not break in a minor; the cases need it wherever the adapter provides
+   * `verifyWebhook`.
+   */
+  webhook?: KycWebhookFixtures;
+}
+
+/** The webhook part of `KycFixtures` (PR-UDF-046). Test secrets and ids only. */
+export interface KycWebhookFixtures {
+  /** A session the provider knows, for an event to name. */
+  session: (port: KycPort) => Promise<string>;
+  /** The provider's event body about `vcipId`. */
+  body: (vcipId: string) => Uint8Array;
+  /** The headers the provider sends with `body`: delivery `id` (fresh when omitted), sent `at`. */
+  sign: (body: Uint8Array, o?: { id?: string; at?: Date }) => Record<string, string>;
+  /** The same, signed with a secret the adapter does not hold. */
+  signUntrusted: (body: Uint8Array, o?: { id?: string; at?: Date }) => Record<string, string>;
+  /** The read-backs and other vendor calls `port` made so far. */
+  vendorCalls: (port: KycPort) => number;
 }
 
 /** The V-CIP launcher part of `KycFixtures` (PR-UDF-045). Test keys and ids only. */
@@ -154,6 +181,43 @@ export function signFakeVcipHandoff(
     ...(o.now ? { now: o.now } : {}),
   });
 }
+
+const devWebhookSecret = (label: string) =>
+  `whsec_${Buffer.from(sha256(`infrabyx/fake-kyc/webhook/${label}`)).toString("base64")}`;
+/**
+ * The fake's Standard Webhooks secrets (PR-UDF-046): derived from fixed labels, so they protect
+ * nothing. `secret` is the one the fake holds; `untrustedSecret` signs a forged delivery.
+ */
+export const FAKE_KYC_WEBHOOK = {
+  secret: devWebhookSecret("provider"),
+  untrustedSecret: devWebhookSecret("untrusted"),
+} as const;
+
+let webhookDelivery = 0;
+/**
+ * The Standard Webhooks headers a provider sends with `body` (PR-UDF-046): delivery `id` (fresh
+ * when omitted), timestamp `at` (default now), signed with `secret` (default
+ * `FAKE_KYC_WEBHOOK.secret`). Tests only.
+ */
+export function signFakeKycWebhook(
+  body: Uint8Array,
+  o: { id?: string; at?: Date; secret?: string } = {},
+): Record<string, string> {
+  const id = o.id ?? `msg_fake_${Date.now().toString(36)}_${++webhookDelivery}`;
+  const timestamp = String(Math.floor((o.at ?? new Date()).getTime() / 1000));
+  return {
+    "webhook-id": id,
+    "webhook-timestamp": timestamp,
+    "webhook-signature": signStandardWebhookForTest(
+      o.secret ?? FAKE_KYC_WEBHOOK.secret,
+      id,
+      timestamp,
+      body,
+    ),
+  };
+}
+
+let webhookSession = 0;
 
 /** A key ring that trusts the `LocalKms` development key `kid`. Tests only. */
 export async function fakeVcipHandoffKeys(kid: string = FAKE_VCIP_HANDOFF.kid) {
@@ -309,6 +373,24 @@ export const KYC_FAKE_FIXTURES: KycFixtures = {
     vendorCalls: (p) => (p as FakeKyc).vcipLaunchVendorCalls,
     finish: (p, vcipId, state) => (p as FakeKyc).completeVcip(vcipId, { state }),
   },
+  webhook: {
+    session: async (p) =>
+      (
+        await p.startVcip({
+          sessionId: `vcs_webhook_${++webhookSession}`,
+          tenantId: "tnt_kyc",
+          customerRef: "cus_webhook",
+          officialRef: "usr_official",
+          roomId: `room_webhook_${webhookSession}`,
+          documents: [],
+        })
+      ).vcipId,
+    body: (vcipId) => new TextEncoder().encode(JSON.stringify({ vcipId, state: "completed" })),
+    sign: (body, o) => signFakeKycWebhook(body, o),
+    signUntrusted: (body, o) =>
+      signFakeKycWebhook(body, { ...o, secret: FAKE_KYC_WEBHOOK.untrustedSecret }),
+    vendorCalls: (p) => (p as FakeKyc).vcipStatusVendorCalls,
+  },
 };
 
 const norm = (s: string) =>
@@ -359,6 +441,11 @@ const nameMatch = (a: string, b: string): NameMatch =>
  * that lapses with the hand-off. `startVcip` with that `vcipId` starts it. A scheduled session
  * reads back `expired` (`launch_expired`) once the hand-off lapses. `vcipStatus` reads under the
  * call's tenant. Every ended session carries a `reasonCode` and the liveness mode used.
+ *
+ * Webhooks (PR-UDF-046): `verifyWebhook` verifies Standard Webhooks with `FAKE_KYC_WEBHOOK.secret`
+ * unless built with `webhook`, in the order `verifyKycWebhookWith` fixes, and reads nothing back;
+ * `handleWebhook` is `verifyWebhook` and then `vcipStatus`, so an unsigned event is refused
+ * (`signFakeKycWebhook` signs one). `vcipStatusVendorCalls` counts the read-backs.
  */
 export class FakeKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
@@ -380,6 +467,10 @@ export class FakeKyc implements KycPort {
   >();
   /** Launches that passed the fake's own checks (PR-UDF-045): what an adapter would ask its vendor. */
   vcipLaunchVendorCalls = 0;
+  /** `vcipStatus` reads (PR-UDF-046): what an adapter would ask its vendor, webhooks' read-backs too. */
+  vcipStatusVendorCalls = 0;
+  private readonly webhookSecrets: readonly string[];
+  private readonly webhookReplay: ReplayStore;
   private readonly handoffReId: string;
   private readonly handoffIssuers:
     | Readonly<Record<string, RegulatedKeyRing>>
@@ -439,6 +530,11 @@ export class FakeKyc implements KycPort {
         replay?: ReplayStore;
         launchHosts?: readonly string[];
       };
+      /**
+       * Webhooks (PR-UDF-046): the provider's Standard Webhooks secrets (two during rotation) and
+       * the deliveries' replay store. Default: `FAKE_KYC_WEBHOOK.secret` and an in-memory store.
+       */
+      webhook?: { secrets?: readonly string[]; replay?: ReplayStore };
     } = {},
   ) {
     this.livenessModes = o.livenessModes ?? LIVENESS_MODES;
@@ -464,6 +560,8 @@ export class FakeKyc implements KycPort {
       o.vcipHandoff?.issuers ??
       fakeVcipHandoffKeys().then((k) => ({ [FAKE_VCIP_HANDOFF.lspId]: k }));
     this.handoffReplay = o.vcipHandoff?.replay ?? new MemoryReplayStore(() => this.now());
+    this.webhookSecrets = o.webhook?.secrets ?? [FAKE_KYC_WEBHOOK.secret];
+    this.webhookReplay = o.webhook?.replay ?? new MemoryReplayStore(() => this.now());
     this.launchHosts = o.vcipHandoff?.launchHosts ?? [FAKE_VCIP_HANDOFF.launchHost];
   }
   private readonly now: () => Date;
@@ -849,6 +947,7 @@ export class FakeKyc implements KycPort {
   }
 
   async vcipStatus(vcipId: string, call?: PortCall) {
+    this.vcipStatusVendorCalls++;
     const v = this.vcips.get(vcipId);
     const meta = this.vcipMeta.get(vcipId);
     if (!v || (call?.tenantId !== undefined && meta?.tenantId !== call.tenantId))
@@ -1013,23 +1112,30 @@ export class FakeKyc implements KycPort {
     return { ...this.ev(), hits, lists };
   }
 
-  private malformed(): PortError {
-    return new PortError("IPB-PORT-001", "KYC", {
+  async verifyWebhook(
+    rawBody: Uint8Array,
+    headers: Readonly<Record<string, string>>,
+    _meta?: WebhookRequestMeta,
+  ): Promise<KycWebhookReceipt> {
+    const now = this.now();
+    return verifyKycWebhookWith({
       adapter: "fake-kyc",
-      detail: "a V-CIP event names its session",
-      meta: { reason: "malformed_event", definite: true },
+      rawBody,
+      headers,
+      verify: (h) => verifyStandardWebhook(this.webhookSecrets, rawBody, h, { now: now.getTime() }),
+      replay: this.webhookReplay,
+      vcipIdOf: (b) => (b as { vcipId?: unknown }).vcipId,
+      now,
     });
   }
 
-  async handleWebhook(rawBody: Uint8Array, _headers?: Readonly<Record<string, string>>) {
-    let id: unknown;
-    try {
-      id = (JSON.parse(new TextDecoder().decode(rawBody)) as { vcipId?: unknown }).vcipId;
-    } catch {
-      throw this.malformed();
-    }
-    if (typeof id !== "string") throw this.malformed();
+  async handleWebhook(
+    rawBody: Uint8Array,
+    headers: Readonly<Record<string, string>> = {},
+    meta?: WebhookRequestMeta,
+  ) {
+    const r = await this.verifyWebhook(rawBody, headers, meta);
     // Only the state read back is trusted, never the event's own claims.
-    return this.vcipStatus(id);
+    return this.vcipStatus(r.vcipId);
   }
 }

@@ -2,7 +2,8 @@
 // for Aadhaar OTP e-KYC (PR-UDF-041, R1-D-194): the number check and the two requests; and for the
 // bank account check (PR-UDF-043, R1-D-196): the mode, the status set and the funding statement;
 // and for liveness and face match (PR-UDF-044, R1-D-197): the mode, the score and the retention;
-// and for the RE-hosted V-CIP launcher (PR-UDF-045, R1-D-198): the hand-off, its bound and the codes.
+// and for the RE-hosted V-CIP launcher (PR-UDF-045, R1-D-198): the hand-off, its bound and the codes;
+// and for webhook verification without a vendor call (PR-UDF-046, R1-D-199): the order and labels.
 import { describe, expect, it } from "vitest";
 import { payloadClass } from "./payload-class.js";
 import { verhoeffValid } from "../search-refusal.js";
@@ -33,6 +34,11 @@ import {
   StartDigilocker,
   digilockerReturnUrlAllowed,
   LaunchVcip,
+  KYC_WEBHOOK_MAX_BODY_BYTES,
+  KYC_WEBHOOK_REFUSALS,
+  kycWebhookRefused,
+  verifyKycWebhookWith,
+  type KycWebhookCheck,
   VCIP_HANDOFF_MAX_LIFETIME_SECONDS,
   VCIP_HANDOFF_REFUSALS,
   VCIP_LAUNCH_URL_REFUSED,
@@ -421,5 +427,112 @@ describe("PR-UDF-045: the V-CIP hand-off, its lifetime bound, the launch address
     };
     expect(VcipSession.parse(s)).toEqual(s);
     expect(VcipSession.parse({ ...s, vcipId: "vcp_1" })).toEqual({ ...s, vcipId: "vcp_1" });
+  });
+});
+
+describe("verifyKycWebhookWith (PR-UDF-046)", () => {
+  const enc = (v: unknown) =>
+    new TextEncoder().encode(typeof v === "string" ? v : JSON.stringify(v));
+  const now = new Date("2026-11-19T06:00:00Z");
+  const ts = String(now.getTime() / 1000);
+  const headers = { "Webhook-Id": "msg_1", "webhook-timestamp": ts, "webhook-signature": "v1,x" };
+  const make = (over: Partial<KycWebhookCheck> = {}) => {
+    const seen = new Set<string>();
+    const calls: string[] = [];
+    const o: KycWebhookCheck = {
+      adapter: "test-kyc",
+      rawBody: enc({ vcipId: "vcip_1" }),
+      headers,
+      verify: () => (calls.push("verify"), null),
+      replay: {
+        claim: async (k) => (calls.push("claim"), seen.has(k) ? false : (seen.add(k), true)),
+      },
+      vcipIdOf: (b) => (calls.push("parse"), (b as { vcipId?: unknown }).vcipId),
+      now,
+      ...over,
+    };
+    return { o, calls };
+  };
+  const refused = (reason: string) => ({
+    code: "IPB-API-018",
+    meta: { reason, definite: true },
+  });
+
+  it("returns the delivery id, the session and the time only, checking in order", async () => {
+    const { o, calls } = make();
+    const r = await verifyKycWebhookWith(o);
+    expect(r).toEqual({ eventId: "msg_1", vcipId: "vcip_1", receivedAt: now.toISOString() });
+    expect(calls).toEqual(["verify", "claim", "parse"]);
+    expect(findAadhaarLike(JSON.stringify(r))).toEqual([]);
+  });
+
+  it("refuses an oversize body before reading a header, and replays, stale and bad signatures before parsing", async () => {
+    const big = make({ rawBody: new Uint8Array(KYC_WEBHOOK_MAX_BODY_BYTES + 1) });
+    await expect(verifyKycWebhookWith(big.o)).rejects.toMatchObject(refused("body_too_large"));
+    expect(big.calls).toEqual([]);
+    const edge = make({
+      rawBody: enc(`{"vcipId":"vcip_1","pad":"${"x".repeat(KYC_WEBHOOK_MAX_BODY_BYTES - 30)}"}`),
+    });
+    expect(edge.o.rawBody.byteLength).toBeLessThanOrEqual(KYC_WEBHOOK_MAX_BODY_BYTES);
+    await expect(verifyKycWebhookWith(edge.o)).resolves.toMatchObject({ vcipId: "vcip_1" });
+    for (const missing of ["webhook-id", "webhook-timestamp", "webhook-signature"]) {
+      const h = Object.fromEntries(
+        Object.entries(headers).filter(([k]) => k.toLowerCase() !== missing),
+      );
+      const m = make({ headers: h });
+      await expect(verifyKycWebhookWith(m.o)).rejects.toMatchObject(refused("signature_invalid"));
+      expect(m.calls).toEqual([]);
+    }
+    for (const [failure, reason] of [
+      ["signature", "signature_invalid"],
+      ["headers", "signature_invalid"],
+      ["timestamp", "timestamp_stale"],
+    ] as const) {
+      const m = make({ verify: () => failure });
+      await expect(verifyKycWebhookWith(m.o)).rejects.toMatchObject(refused(reason));
+      expect(m.calls).toEqual([]);
+    }
+    const once = make();
+    await verifyKycWebhookWith(once.o);
+    await expect(verifyKycWebhookWith(once.o)).rejects.toMatchObject(refused("event_replayed"));
+    expect(once.calls).toEqual(["verify", "claim", "parse", "verify", "claim"]);
+    // A provider's retry: the same id with a new timestamp is a new delivery.
+    await expect(
+      verifyKycWebhookWith({
+        ...once.o,
+        headers: { ...headers, "webhook-timestamp": String(Number(ts) - 30) },
+      }),
+    ).resolves.toMatchObject({ eventId: "msg_1" });
+  });
+
+  it("a verified body naming no well-formed session is malformed_event, definite", async () => {
+    for (const body of [
+      "not json",
+      "{}",
+      { vcipId: 7 },
+      { vcipId: "x" },
+      { vcipId: "vcip 1" },
+      { vcipId: "vcip_123456789012" },
+    ]) {
+      const m = make({ rawBody: enc(body) });
+      await expect(verifyKycWebhookWith(m.o)).rejects.toMatchObject({
+        code: "IPB-PORT-001",
+        meta: { reason: "malformed_event", definite: true },
+      });
+    }
+    const bad = make({ rawBody: new Uint8Array([0x7b, 0xff, 0x7d]) });
+    await expect(verifyKycWebhookWith(bad.o)).rejects.toMatchObject({ code: "IPB-PORT-001" });
+  });
+
+  it("the labels are fixed and the refusal is a 401 that carries no body", () => {
+    expect(KYC_WEBHOOK_REFUSALS).toEqual([
+      "body_too_large",
+      "signature_invalid",
+      "timestamp_stale",
+      "event_replayed",
+    ]);
+    const e = kycWebhookRefused("test-kyc", "signature_invalid");
+    expect(e).toBeInstanceOf(PortError);
+    expect(toProblem(e).status).toBe(401);
   });
 });
