@@ -6,7 +6,14 @@ The test kit every product installs as a devDependency (runtime fakes for fixtur
 
 ## Database
 
-`startPostgres({ migrations? })` creates a fresh database, applies the platform migrations (tenancy → audit → config → seed → connectors) then the product's, and returns `{ pool, admin, kernel, audit, end }`. With `IPB_TEST_PG_URL` set (CI's PostgreSQL 18 service with pgvector) it uses that server; otherwise it starts the pinned `pgvector` image (PostgreSQL 18 with pgvector) through Testcontainers. `APP_ENV` defaults to `test`.
+`startPostgres({ migrations? })` creates a fresh database, applies the platform migrations (tenancy → audit → config → seed → connectors) then the product's, and returns `{ pool, admin, kernel, audit, end }`. With `IPB_TEST_PG_URL` set (CI's PostgreSQL 18 service with pgvector) it uses that server; otherwise it starts the pinned `pgvector` image (PostgreSQL 18 with pgvector) through Testcontainers. `APP_ENV` defaults to `test`. `beforeDrop(admin)` (PR-UDF-042) runs in `end()` before the database is dropped, with the superuser client; if it throws, `end()` still drops the database, then rejects with the hook's error.
+
+## No-Aadhaar sweep (PR-UDF-042)
+
+The platform's shared rule (`findAadhaarLike` in `@infrabyx/contracts/aadhaar`: 12-digit Aadhaar numbers, first digit 2 to 9, and 16-digit VIDs, Verhoeff-checked, plain or grouped in fours) over files and databases; a find is masked (`XXXX XXXX dddd`), never more. The sweep joins letters to digits (so a hex hash or base64 run is not a number; `--letters boundary` reads as the AI gateway's scrubber) and blanks UUIDs first.
+
+- `infrabyx-aadhaar-scan [--letters join|boundary] [--max-bytes N] <file or directory>...` prints `file:line: KIND masked` for each find and exits 1 on any, 0 on none, 2 on a usage error. It skips `node_modules`, `.git` and `dist` directories, symbolic links, binary files (a NUL byte in the first 8 KiB) and files over 5 MiB (`--max-bytes`), naming each skipped file on stderr. The platform's CI runs it as `pnpm aadhaar:scan` over its fixtures, recorded stubs and golden sets.
+- `scanDatabaseForAadhaar(admin, { skip? })` (also `@infrabyx/testing/aadhaar-scan`) reads every text-like column (string types and domains over them, `json`, `jsonb`, arrays of them) of every table outside the system schemas: `startPostgres({ beforeDrop: async (admin) => expect(await scanDatabaseForAadhaar(admin)).toEqual([]) })`.
 
 ## NN pattern suites (IPB-14 §14.5 item 4)
 

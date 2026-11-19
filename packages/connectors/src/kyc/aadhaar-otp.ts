@@ -14,7 +14,7 @@
 // and a single process.
 import { PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
-import { verhoeffValid } from "@infrabyx/contracts";
+import { holdsAadhaarLike } from "@infrabyx/contracts/aadhaar";
 import type { AadhaarOtpRefusal, AadhaarOtpResult } from "@infrabyx/contracts/ports";
 import { canonicalize, hmacSha256Hex, newId, SecretKey, sha256, sha256Hex } from "@infrabyx/crypto";
 
@@ -41,21 +41,16 @@ export function assertNotifiedEntity(adapter: string, notifiedEntity: boolean | 
     );
 }
 
-const bounded = (n: number) => new RegExp(`(?<![0-9A-Za-z])[0-9]{${n}}(?![0-9A-Za-z])`, "g");
-const TWELVE = bounded(12);
-const SIXTEEN = bounded(16);
-
 /**
  * True when `text` holds what reads as an Aadhaar number (12 digits, the first 2 to 9, Verhoeff) or
- * a VID (16 digits, Verhoeff), standing alone (not inside a longer run of letters or digits, so a
- * hash or a base64 run does not count). The adapter refuses to store an e-KYC response that does
- * (the number belongs in the RE's Aadhaar Data Vault, not in general STORAGE; R1-D-194, #145).
+ * a VID (16 digits, Verhoeff), plain or grouped in fours, standing alone (not inside a longer run of
+ * letters or digits, so a hash or a base64 run does not count): the platform's shared rule,
+ * `findAadhaarLike` with `letters: "join"` (PR-UDF-042, R1-D-195). The adapter refuses to store an
+ * e-KYC response that does (the number belongs in the RE's Aadhaar Data Vault, not in general
+ * STORAGE; R1-D-194, #145).
  */
 export function holdsAadhaarNumber(text: string): boolean {
-  for (const m of text.matchAll(TWELVE))
-    if (/^[2-9]/.test(m[0]) && verhoeffValid(m[0])) return true;
-  for (const m of text.matchAll(SIXTEEN)) if (verhoeffValid(m[0])) return true;
-  return false;
+  return holdsAadhaarLike(text, { letters: "join" });
 }
 
 export interface AadhaarOtpVerifyRequest {

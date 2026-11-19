@@ -75,6 +75,10 @@
     "./search-refusal": {
       "types": "./dist/search-refusal.d.ts",
       "default": "./dist/search-refusal.js"
+    },
+    "./aadhaar": {
+      "types": "./dist/aadhaar.d.ts",
+      "default": "./dist/aadhaar.js"
     }
   },
   "files": [

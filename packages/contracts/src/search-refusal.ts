@@ -2,6 +2,11 @@
 // Finbyx PR-FBX-09, R1-D-32). One function for the browser, the server and the saved-view store,
 // so an Aadhaar number, a VID, a card number or a PAN never reaches a search index, a log, history,
 // analytics or a stored filter. The refusal carries the pattern class only, never the text.
+// `verhoeffValid` lives with the shared no-Aadhaar rule (`./aadhaar.js`, PR-UDF-042) and is
+// re-exported here unchanged for the callers that import it from this module.
+import { verhoeffValid } from "./aadhaar.js";
+
+export { verhoeffValid };
 
 export const SEARCH_PATTERN_CLASSES = ["aadhaar_pattern", "pan_pattern", "card_pattern"] as const;
 export type SearchPatternClass = (typeof SEARCH_PATTERN_CLASSES)[number];
@@ -11,39 +16,6 @@ export interface SearchRefusal {
   patternClass: SearchPatternClass;
   /** "Search by name or reference instead" (IPB-07-17); a message key for products' catalogues. */
   messageKey: "ui.search.refused";
-}
-
-// Verhoeff tables (dihedral group D5): multiplication, permutation.
-const D = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
-  [2, 3, 4, 0, 1, 7, 8, 9, 5, 6],
-  [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
-  [4, 0, 1, 2, 3, 9, 5, 6, 7, 8],
-  [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
-  [6, 5, 9, 8, 7, 1, 0, 4, 3, 2],
-  [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
-  [8, 7, 6, 5, 9, 3, 2, 1, 0, 4],
-  [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
-] as const;
-const P = [
-  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
-  [5, 8, 0, 3, 7, 9, 6, 1, 4, 2],
-  [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
-  [9, 4, 5, 3, 1, 2, 6, 8, 7, 0],
-  [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
-  [2, 7, 9, 3, 8, 0, 6, 4, 1, 5],
-  [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
-] as const;
-
-/** True when the digit string carries a valid Verhoeff check digit (Aadhaar and VID). */
-export function verhoeffValid(digits: string): boolean {
-  if (!/^\d+$/.test(digits)) return false;
-  let c = 0;
-  const rev = [...digits].reverse();
-  for (let i = 0; i < rev.length; i++) c = D[c]![P[i % 8]![Number(rev[i])]!]!;
-  return c === 0;
 }
 
 /** True when the digit string passes the Luhn check (payment card numbers). */

@@ -161,6 +161,8 @@ jobs:
         run: pnpm ai:prompt-lint
       - name: ai-eval-gate (IPB-03-41; golden sets on the scripted fake model, baseline and committed results)
         run: pnpm ai:eval-gate
+      - name: aadhaar-scan (PR-UDF-042; no Aadhaar number or VID in the fixtures, recorded stubs and golden sets)
+        run: pnpm aadhaar:scan
       - name: export-map-gate (IPB-09-34, @IPB-09-AT-14; IPB-ENG-006)
         if: github.event_name == 'pull_request'
         env:

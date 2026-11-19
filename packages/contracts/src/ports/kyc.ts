@@ -8,7 +8,7 @@
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed } from "./payload-class.js";
-import { verhoeffValid } from "../search-refusal.js";
+import { verhoeffValid } from "../aadhaar.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
 

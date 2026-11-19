@@ -17,3 +17,12 @@ export * from "./connector-manifest.js";
 export * from "./export.js";
 export * from "./vidhi.js";
 export * from "./search-refusal.js";
+// `verhoeffValid` comes through ./search-refusal.js (the same function).
+export {
+  AADHAAR_LIKE_KINDS,
+  findAadhaarLike,
+  holdsAadhaarLike,
+  type AadhaarLikeFind,
+  type AadhaarLikeKind,
+  type FindAadhaarOptions,
+} from "./aadhaar.js";
