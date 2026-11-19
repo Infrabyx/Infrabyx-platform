@@ -20,6 +20,13 @@ import {
   RegulatedKeyRing,
 } from "@infrabyx/crypto";
 import type { FakeLender, FakeLenderScript, LenderMessage } from "@infrabyx/fakes";
+export {
+  FakeLender,
+  LenderRefusal,
+  type FakeLenderOptions,
+  type FakeLenderScript,
+  type LenderMessage,
+} from "@infrabyx/fakes";
 import type { ContractCase } from "../contract.js";
 
 /** What the cases drive: the LSP-facing calls, the lender's sent messages and its key ring. */
