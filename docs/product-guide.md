@@ -1104,6 +1104,22 @@ From the next `export` minor (version in the STATUS release record; no migration
 - **Formulas:** put `xlsxFormula("SUM(D2:D200)", { result: 1234 })` in a cell (no leading `=`). Never build the formula text from user input without quoting it yourself; external references, any `|` outside a string literal (DDE), and `WEBSERVICE`, `IMAGE`, `HYPERLINK`, `INFO`, `CELL` and the other `XLSX_BLOCKED_FUNCTIONS` are refused `formula_invalid`. Formula text is yours alone: user text goes in ordinary cells, where the writer's formula-injection protection stays on. A string such as `"=SUM(A1)"` from your data is still written as text with a leading apostrophe.
 - **Refusals:** `OfficeExportError` with `layout_invalid`, `conditional_format_invalid` or `formula_invalid` (and `cell_invalid` for a cached result of the wrong type).
 
+## 7dd. glob and minimatch on their fixed majors (PR-FBX-50; R1-D-216)
+
+The platform's own tree is clear of GHSA-3g3m-2fjr-6pw4 (glob) and GHSA-g3hv-75wg-m249 (minimatch) from the next release, through three `pnpm` overrides; the published `@infrabyx/*` packages keep their dependency ranges, so **your lockfile resolves the old majors until you add the same overrides** (overrides are not inherited from a dependency). In your `pnpm-workspace.yaml`:
+
+```yaml
+overrides:
+  unleash-client>make-fetch-happen: ^16.0.1
+  archiver-utils>glob: ^14.0.3
+  "minimatch@>=7.0.0 <11.0.1": ^11.0.8
+```
+
+- `make-fetch-happen` 16 is the same HTTP client on `cacache` 21, whose glob is 14; the FEATURE_FLAG `unleash` contract leg passes on it. `archiver-utils` (under `testcontainers`, tests only) calls glob's `sync`, which glob 14 still exports for CommonJS.
+- Run `pnpm install` and `pnpm audit`; both advisories should be gone. Finbyx can then drop its SEC-08 waiver.
+- Each override goes once its parent ships the fixed major (`unleash-client` on `make-fetch-happen` 16, `testcontainers` on `archiver` 8); the STATUS release record says when the platform drops them.
+- The same release moves `fast-uri` to 3.1.9 (four advisories, via `ajv`); a lockfile refresh (`pnpm update fast-uri`) does the same for you.
+
 ## 7de. The origination contract and the mock lender (PR-UDF-051; R1-D-217)
 
 From the next release (`contracts`, `crypto`, `fakes` and `testing` minors), `@infrabyx/contracts/events` carries the loan journey of Ecosystem Specification §6.2 and §6.3, and `@infrabyx/fakes` a mock lender that plays Finbyx's side of it.

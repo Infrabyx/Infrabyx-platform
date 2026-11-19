@@ -1,5 +1,30 @@
 # @infrabyx/tenancy
 
+## 1.21.0
+
+### Minor Changes
+
+- 1cdbf0f: Reads joined to an ambient mutation (Udofin PR-UDF-037; R1-D-188). `PgKernel.ambient(ctx, fn, { joinReads: true })` (`AmbientOptions`) makes each `read` inside `fn` for the same tenant, principal, scope and grant run on the ambient transaction, so it sees that transaction's uncommitted writes: read-only, as the read role, with its own `app.*` settings, in a savepoint that is always rolled back, and one at a time with the joined mutations. Snapshot, support, external and platform service reads, and reads for another tenant or principal, keep their own transaction. Without `joinReads` nothing changes.
+- 62dc1eb: The approvals a signed-in checker may check, paged (Udofin PR-UDF-047; R1-D-200). `ApprovalsEngine.listCheckable(ctx, { cursor?, limit? }) → { items: CheckableApproval[], nextCursor }` lists the tenant's pending, unexpired requests that the principal may decide now: never their own (maker ≠ checker), never one they have decided, and only where `decide`'s own rule lets them (the action's checker roles after the tenant's `mc.checker_roles` narrowing and its checker functions, and for a levelled request the open level's roles). An agent gets an empty list. `CheckableApproval` carries `id`, `action`, `summary`, `riskClass`, `makerId`, `createdAt`, `expiresAt`, `currentLevel`, `requiredCheckers` and `approvals`; never the payload, its digest or data class, or the diff. Oldest first, keyset pages on `(created_at, id)`, `limit` 1 to `CHECKABLE_MAX_LIMIT` (100, default `CHECKABLE_DEFAULT_LIMIT` 25), an opaque base64url `nextCursor`; a bad cursor or limit is refused with a `RangeError` before any read. Read through the kernel, so RLS keeps it to the tenant. `decide` now takes its checker rule from the same private function the list uses; who may check, the levels and every decision path are unchanged. Migration `tenancy/0025` adds a partial keyset index on pending, unexpired requests, built concurrently (run `infrabyx-migrate`; no column, policy or grant changes, export map unchanged).
+
+### Patch Changes
+
+- Updated dependencies [82dc7ef]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [2f9d3f8]
+- Updated dependencies [b0e0b72]
+- Updated dependencies [9e626ef]
+- Updated dependencies [aac1c2c]
+- Updated dependencies [d58d5f0]
+- Updated dependencies [dbaecff]
+- Updated dependencies [80a843a]
+- Updated dependencies [1cdbf0f]
+- Updated dependencies [ff2a74b]
+- Updated dependencies [d35f7e9]
+  - @infrabyx/contracts@1.37.0
+  - @infrabyx/crypto@1.7.0
+  - @infrabyx/config@1.20.0
+
 ## 1.20.7
 
 ### Patch Changes
