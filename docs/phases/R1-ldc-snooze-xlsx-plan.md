@@ -76,3 +76,11 @@ LawDocsComply lays out its registers with its own ExcelJS code on top of the pla
 **Exit checklist:** `export` unit, lint, typecheck; the existing `export` integration suite and `test:golden`; `pnpm ipb:check`; `pnpm aadhaar:scan`; `npx prettier --check .`; the exit runbook check; a Changeset; DECISIONS R1-D-207; OWNER-QUESTIONS #156; threat model §3.148; product guide §7dc; the request row marked built.
 
 **Owner decisions needed** (#156, none blocking): the blocked function list and the bracket and bar rule (a deny list rather than an allow list); refusing a leading `=` rather than stripping it; `fullCalcOnLoad` when no result is given; conditional formats as typed rules only (no free expression); no collapsed outline groups (levels only).
+
+**As built (R1-D-207):**
+
+- As planned, with these choices made at build time. Every conditional format is an `expression` rule on `$<column>2` (the column absolute, the row relative), so one form serves a column and a whole row; comparisons on number and date columns are wrapped in `ISNUMBER` so blank cells never match, a datetime column is compared by its day (`INT`), and `containsText` escapes SEARCH's wildcards.
+- A filled cell with no value is written as an empty styled cell, so a row or column fill shows across the table; rows beyond the data (`validationRows`) are not filled.
+- The cached `result` is checked against the column's type when the cell is written (`cell_invalid`), and any formula, with or without a result, adds `fullCalcOnLoad`, so Excel never shows a stale cached value as computed.
+- `xl/styles.xml` and `xl/workbook.xml` keep their place in the archive but are written after the sheets, which register the fills, `dxfs`, print and filter names and formulas they need.
+- The layout was also opened and recalculated in LibreOffice by hand (not a CI check). `[ASSUMED – owner review]` #156.

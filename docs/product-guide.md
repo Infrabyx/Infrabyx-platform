@@ -1075,6 +1075,17 @@ From the next `workflow` minor (version in the STATUS release record; migration 
 - **Reads:** `list(ctx, { productModule, recordRef, orderBy, snoozed })`: `orderBy` is `newest` (default, as before), `due` (soonest due first, none last, then severity) or `severity` (critical first, then due time); `snoozed` is `exclude` (default), `include` or `only` (a "Snoozed" tab). `badgeCount` leaves the caller's snoozed items out.
 - **Audit:** `inbox.item.snooze` and `inbox.item.unsnooze` ledger entries, in the same transaction.
 
+## 7dc. Layout and formula cells in `toXlsx` (PR-LDC-52; R1-D-207)
+
+From the next `export` minor (version in the STATUS release record; no migration, no setting), `toXlsx` lays a register out the way your own ExcelJS code did. Remove that code; nothing changes for a workbook that uses none of it (the bytes are the same).
+
+- **Freeze and filter:** `freezeColumns: n` keeps the first n columns in view beside the frozen header row; `autoFilter: true` adds filter buttons over the header and data rows.
+- **Grouping and fills:** `rowLayout[i] = { outlineLevel, fill }` for data row i (0 is the row under the header; levels 0 to 7), `outlineSummary: "above"` when the group's summary row is above it; `headerFill` and a column's `fill` take six hex digits (`"FFF2CC"`), and a row fill wins over a column fill. Dates keep their format when filled.
+- **Printing:** `page: { paper: "A4", orientation: "landscape", fitToWidth: true, repeatHeader: true, printArea: true }` (`printArea` may also be a range such as `"A1:F200"`).
+- **Conditional formats:** `conditionalFormats: [{ column: "due", when: { op: "lt", value: { today: 0 } }, style: { fill: "F8CBAD", bold: true }, wholeRow: true }]`. `column` is a key or header; comparisons take a value of the column's type (a number, a `yyyy-mm-dd` date or `{ today: n }`, text, a boolean); also `between`, `notBetween`, `containsText`, `blank`, `notBlank`. There is no free expression: if a rule you need is missing, raise a platform request.
+- **Formulas:** put `xlsxFormula("SUM(D2:D200)", { result: 1234 })` in a cell (no leading `=`). Never build the formula text from user input without quoting it yourself; external references, DDE and `WEBSERVICE`, `IMAGE`, `HYPERLINK` and the other `XLSX_BLOCKED_FUNCTIONS` are refused `formula_invalid`. A string such as `"=SUM(A1)"` from your data is still written as text with a leading apostrophe.
+- **Refusals:** `OfficeExportError` with `layout_invalid`, `conditional_format_invalid` or `formula_invalid` (and `cell_invalid` for a cached result of the wrong type).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
