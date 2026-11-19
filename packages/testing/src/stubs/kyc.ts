@@ -2,6 +2,7 @@
 // [VERIFY]. Proves adapter logic only; the sandbox leg proves the vendor once the owner's Digio
 // account exists. Test identities only: the masked number is the stub's own, never a real one.
 import { aadhaarOtpStub, type AadhaarOtpStubFixtures } from "./aadhaar-otp.js";
+import { bankAccountStub, type BankAccountStubFixtures } from "./bank-account.js";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
 
 export interface DigioKycStub extends VendorStub {
@@ -25,6 +26,10 @@ export interface DigioKycStub extends VendorStub {
   expireAadhaarOtp(txn: string): void;
   /** The next e-KYC the stub answers carries this full number. */
   ekycWithNumberOnce(n: string): void;
+  /** Bank accounts the stub knows (PR-UDF-043); test accounts only. */
+  bankAccount: BankAccountStubFixtures;
+  /** The pennyless account checks the stub answered. */
+  bankAccountChecks(): number;
 }
 
 let seq = 0;
@@ -37,6 +42,7 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
   const template = "ipb-digilocker-stub";
   const media = new Map<string, Buffer>();
   const otp = aadhaarOtpStub("AOT", () => ++seq);
+  const bank = bankAccountStub();
   const ref: { s?: DigioKycStub } = {};
   const stub = await startStub((r) => {
     const s = ref.s!;
@@ -120,6 +126,30 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
         },
       };
     }
+    if (r.method === "POST" && r.path === "/client/verify/bank_account") {
+      const b = r.json<{
+        beneficiary_account_no?: string;
+        beneficiary_ifsc?: string;
+        validation_mode?: string;
+      }>();
+      if (b.validation_mode !== "PENNY_LESS")
+        return { status: 400, body: { code: "UNSUPPORTED_VALIDATION_MODE" } };
+      if (!b.beneficiary_account_no || !b.beneficiary_ifsc)
+        return { status: 400, body: { code: "INVALID_REQUEST" } };
+      const out = bank.check(b.beneficiary_ifsc, b.beneficiary_account_no);
+      return {
+        status: 200,
+        body: {
+          id: `BAV${String(++seq).padStart(10, "0")}`,
+          verified: out.status === "valid",
+          account_status:
+            out.status === "valid" ? "ACTIVE" : out.status === "closed" ? "CLOSED" : "NOT_FOUND",
+          ...(out.nameAtBank ? { beneficiary_name_with_bank: out.nameAtBank } : {}),
+          validation_mode: "PENNY_LESS",
+          verified_at: new Date().toISOString(),
+        },
+      };
+    }
     if (r.method === "POST" && r.path === "/client/kyc/v2/offline_aadhaar/verify") {
       const b = r.json<{ file_data?: string; share_code?: string }>();
       if (!b.file_data || Buffer.from(b.file_data, "base64").compare(s.offlineZip) !== 0)
@@ -172,6 +202,8 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
     aadhaarOtp: otp.fixtures,
     expireAadhaarOtp: otp.expire,
     ekycWithNumberOnce: otp.embedNumberOnce,
+    bankAccount: bank.fixtures,
+    bankAccountChecks: bank.checks,
   });
   return ref.s;
 }

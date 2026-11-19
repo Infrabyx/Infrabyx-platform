@@ -17,9 +17,14 @@
 //   expiry, then `POST /client/kyc/v2/aadhaar_otp/verify` with the transaction and the code,
 //   answered with UIDAI's signed e-KYC XML (base64), the signature result and the masked number;
 //   refusals by `code` (`INVALID_AADHAAR`, `MOBILE_NOT_LINKED`, `INVALID_OTP`, `OTP_EXPIRED`).
+// - a pennyless bank account check (PR-UDF-043): `POST /client/verify/bank_account` with
+//   `{ beneficiary_account_no, beneficiary_ifsc, beneficiary_name?, validation_mode: "PENNY_LESS" }`,
+//   answered `{ id, verified, account_status, beneficiary_name_with_bank?, verified_at }`.
 // Each of these shapes lives in one small function below (`digioDigilockerStart*`,
-// `digioAadhaarOtp*`), so the sandbox corrects it in one place.
-// This adapter provides DigiLocker, Aadhaar offline and Aadhaar OTP (off unless `notifiedEntity`). Every other method is `unsupported`,
+// `digioAadhaarOtp*`, `digioBankAccount*`), so the sandbox corrects it in one place.
+// This adapter provides DigiLocker, Aadhaar offline, Aadhaar OTP (off unless `notifiedEntity`) and
+// pennyless bank account checks (a penny drop is refused `mode_unsupported`: it would move money,
+// which the platform does not do; R1-D-196). Every other method is `unsupported`,
 // so routing (`int.kyc.<method>.provider`) chooses another adapter for it. V-CIP waits for the
 // owner (OWNER-QUESTIONS #90): Digio's video KYC records on Digio's side, while the port runs
 // the call in a VIDEO_MEET room with no provider copy. Results never carry an Aadhaar number:
@@ -30,6 +35,7 @@ import {
   AadhaarOtpRequest,
   AadhaarOtpVerify,
   aadhaarUidValid,
+  BankAccountCheck,
   DIGILOCKER_RETURN_URL_REFUSED,
   DigilockerPull,
   StartDigilocker,
@@ -40,6 +46,8 @@ import {
   type AadhaarOtpResult,
   type AadhaarOtpStart,
   type AdapterDescriptor,
+  type BankAccountResult,
+  type BankAccountStatus,
   type DigilockerDocument,
   type DigilockerStart,
   type KycEvidence,
@@ -60,6 +68,14 @@ import {
   MemoryAadhaarOtpVerifyStore,
   type AadhaarOtpVerifyStore,
 } from "./aadhaar-otp.js";
+import {
+  bankAccountMode,
+  bankNameMatch,
+  keyedBankAccountVerify,
+  MemoryBankAccountVerifyStore,
+  PLATFORM_BANK_ACCOUNT_MODES,
+  type BankAccountVerifyStore,
+} from "./bank-account.js";
 import {
   MemoryDigilockerPullStore,
   type DigilockerPullRequest,
@@ -86,7 +102,6 @@ const UNSUPPORTED = [
   "vcipStatus",
   "livenessCheck",
   "faceMatch",
-  "bankAccountVerify",
   "ovdOcr",
   "amlScreen",
   "handleWebhook",
@@ -127,6 +142,11 @@ export interface DigioKycOptions {
    * any instance gets the first answer. Default: an in-memory store of this adapter instance.
    */
   aadhaarOtpVerifies?: AadhaarOtpVerifyStore;
+  /**
+   * Keyed bank account checks (PR-UDF-043): `PgBankAccountVerifyStore` in production, so a retry on
+   * any instance gets the first answer. Default: an in-memory store of this adapter instance.
+   */
+  bankAccountVerifies?: BankAccountVerifyStore;
   /** Test mode until the owner's account exists (default `sandbox`). */
   mode?: "sandbox" | "production";
   /** Tests only: the Digio stub. */
@@ -293,6 +313,59 @@ export function mapDigioAadhaarOtpVerify(json: unknown): {
   };
 }
 
+// ---- Bank account check: stub-shaped, to confirm against the sandbox ([VERIFY]) ----------------
+
+/**
+ * [VERIFY] The body of Digio's pennyless check. Only `PENNY_LESS` is ever sent: the adapter refuses
+ * a penny drop before it builds a body (R1-D-196).
+ */
+export function digioBankAccountBody(
+  r: ReturnType<typeof BankAccountCheck.parse>,
+): Record<string, string> {
+  return {
+    beneficiary_account_no: r.accountNumber,
+    beneficiary_ifsc: r.ifsc,
+    ...(r.name ? { beneficiary_name: r.name } : {}),
+    validation_mode: "PENNY_LESS",
+  };
+}
+
+/**
+ * [VERIFY] Digio's answer: `verified: true` is `valid`; otherwise `account_status` `CLOSED` is
+ * `closed`, `NOT_FOUND` (or `INVALID_ACCOUNT`) is `not_found`, and anything else is `invalid`. The
+ * name at the bank is kept only when it carries no run of six or more digits.
+ */
+export function mapDigioBankAccount(json: unknown): {
+  vendorRef: string;
+  status: BankAccountStatus;
+  nameAtBank?: string;
+} {
+  const v = json as {
+    id?: unknown;
+    verified?: unknown;
+    account_status?: unknown;
+    beneficiary_name_with_bank?: unknown;
+  };
+  if (typeof v?.id !== "string" || !/^[A-Za-z0-9_-]{8,200}$/.test(v.id))
+    throw vendorError(KYC, ADAPTER, 502, "bank account check without its id");
+  const acct = String(v.account_status ?? "").toUpperCase();
+  const status: BankAccountStatus =
+    v.verified === true
+      ? "valid"
+      : acct === "CLOSED"
+        ? "closed"
+        : acct === "NOT_FOUND" || acct === "INVALID_ACCOUNT"
+          ? "not_found"
+          : "invalid";
+  const name =
+    typeof v.beneficiary_name_with_bank === "string"
+      ? v.beneficiary_name_with_bank.trim().slice(0, 200)
+      : "";
+  if (/[0-9]{6}/.test(name))
+    throw vendorError(KYC, ADAPTER, 502, "the reply's account name carried a number");
+  return { vendorRef: v.id, status, ...(name ? { nameAtBank: name } : {}) };
+}
+
 export class DigioKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
     port: KYC,
@@ -306,6 +379,7 @@ export class DigioKyc implements KycPort {
   private readonly now: () => Date;
   private readonly pulls: DigilockerPullStore;
   private readonly otpVerifies: AadhaarOtpVerifyStore;
+  private readonly bankVerifies: BankAccountVerifyStore;
   private readonly gatewayHost: string;
 
   constructor(private readonly o: DigioKycOptions) {
@@ -315,6 +389,8 @@ export class DigioKyc implements KycPort {
     this.pulls = o.pulls ?? new MemoryDigilockerPullStore({ now: () => this.now() });
     this.otpVerifies =
       o.aadhaarOtpVerifies ?? new MemoryAadhaarOtpVerifyStore({ now: () => this.now() });
+    this.bankVerifies =
+      o.bankAccountVerifies ?? new MemoryBankAccountVerifyStore({ now: () => this.now() });
     this.gatewayHost = GATEWAY_HOSTS[mode];
     this.egress = createEgress({
       port: KYC,
@@ -597,6 +673,63 @@ export class DigioKyc implements KycPort {
     return result;
   }
 
+  /**
+   * A pennyless check (PR-UDF-043). The mode is checked first, before the flag or any vendor call:
+   * a penny drop is refused `mode_unsupported`. Keyed checks are answered from the store.
+   */
+  async bankAccountVerify(
+    raw: Parameters<KycPort["bankAccountVerify"]>[0],
+    call?: PortCall,
+  ): Promise<BankAccountResult> {
+    const r = BankAccountCheck.parse(raw);
+    const mode = bankAccountMode(ADAPTER, r.mode, {
+      honoured: PLATFORM_BANK_ACCOUNT_MODES,
+      configured: "pennyless",
+    });
+    await this.guard();
+    // A keyed check is kept under its tenant; an unkeyed one needs none.
+    return keyedBankAccountVerify({
+      store: this.bankVerifies,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : {
+              tenantId: this.tenant(call),
+              adapter: ADAPTER,
+              idempotencyKey: call.idempotencyKey,
+              ifsc: r.ifsc,
+              accountNumber: r.accountNumber,
+              ...(r.name !== undefined ? { name: r.name } : {}),
+              mode,
+            },
+      verify: async () => {
+        const res = await this.egress(`${this.base}/client/verify/bank_account`, {
+          method: "POST",
+          headers: {
+            authorization: await this.basic(),
+            accept: "application/json",
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(digioBankAccountBody(r)),
+        });
+        if (res.status === 400 || res.status === 422)
+          throw refused("Digio refused the bank account check", "invalid_request");
+        if (res.status !== 200) throw vendorError(KYC, ADAPTER, res.status, "Digio bank account");
+        const v = mapDigioBankAccount(safeJson(res));
+        const result: BankAccountResult = {
+          ...this.evidence(v.vendorRef, "bank-account-pennyless-v1"),
+          status: v.status,
+          mode,
+          ...(v.nameAtBank ? { nameAtBank: v.nameAtBank } : {}),
+          ...(v.nameAtBank && r.name ? { nameMatch: bankNameMatch(r.name, v.nameAtBank) } : {}),
+        };
+        if (AADHAAR_LIKE.test(JSON.stringify(result)))
+          throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+        return result;
+      },
+    });
+  }
+
   async verifyAadhaarOffline(
     raw: Parameters<KycPort["verifyAadhaarOffline"]>[0],
     call?: PortCall,
@@ -715,9 +848,6 @@ export class DigioKyc implements KycPort {
   }
   faceMatch(): Promise<never> {
     return this.unsupported("faceMatch");
-  }
-  bankAccountVerify(): Promise<never> {
-    return this.unsupported("bankAccountVerify");
   }
   ovdOcr(): Promise<never> {
     return this.unsupported("ovdOcr");

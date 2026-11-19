@@ -2,7 +2,8 @@
 // task API over the egress client, no SDK. India-hosted (IN). Off behind `int.kyc.idfy.enabled`
 // (default false) and `unproven` until the owner's IDfy sandbox exists and its sandbox leg runs.
 // It provides the methods the Digio reference lacks, so the KYC port has a second source for each:
-// PAN verification, face match and photo liveness. Every other method is `unsupported` (DigiLocker
+// PAN verification, face match and photo liveness; and pennyless bank account checks (PR-UDF-043;
+// a penny drop is refused `mode_unsupported`, R1-D-196). Every other method is `unsupported` (DigiLocker
 // too, start and pull, until IDfy's sandbox confirms its DigiLocker flow; PR-UDF-040), and
 // `KycMethodRouter` sends it to an adapter that has it.
 //
@@ -20,7 +21,10 @@
 //   result `{ transaction_id, otp_valid_till }`; then `aadhaar_otp_verify/ind_aadhaar`, data
 //   `{ transaction_id, otp }`, result `{ ekyc_xml (base64), aadhaar_last_4, signature_status,
 //   model_version }`; refusals 422 with `error` (`INVALID_ID`, `MOBILE_NOT_LINKED`, `INVALID_OTP`,
-//   `OTP_EXPIRED`, `TRANSACTION_NOT_FOUND`). Off unless the adapter is built with `notifiedEntity`.
+//   `OTP_EXPIRED`, `TRANSACTION_NOT_FOUND`). Off unless the adapter is built with `notifiedEntity`;
+// - bank account (PR-UDF-043), pennyless only: `verify_with_source/validate_bank_account`, data
+//   `{ bank_account_no, bank_ifsc_code, nf_verification: "true" }` (IDfy's non-financial check),
+//   result `{ status: id_found|id_not_found, account_exists: YES|NO, account_status?, name_at_bank? }`.
 // Images are read from STORAGE and checked against their SHA-256 before they leave; nothing the
 // vendor returns is stored, except UIDAI's signed e-KYC response (written to STORAGE unchanged,
 // unless it carries a number). Results never carry an Aadhaar number.
@@ -29,6 +33,7 @@ import {
   AadhaarOtpRequest,
   AadhaarOtpVerify,
   aadhaarUidValid,
+  BankAccountCheck,
   FaceMatch,
   LivenessCheck,
   PanCheck,
@@ -37,6 +42,8 @@ import {
   type AadhaarOtpResult,
   type AadhaarOtpStart,
   type AdapterDescriptor,
+  type BankAccountResult,
+  type BankAccountStatus,
   type KycFileRef,
   type KycPort,
   type NameMatch,
@@ -57,6 +64,14 @@ import {
   MemoryAadhaarOtpVerifyStore,
   type AadhaarOtpVerifyStore,
 } from "./aadhaar-otp.js";
+import {
+  bankAccountMode,
+  bankNameMatch,
+  keyedBankAccountVerify,
+  MemoryBankAccountVerifyStore,
+  PLATFORM_BANK_ACCOUNT_MODES,
+  type BankAccountVerifyStore,
+} from "./bank-account.js";
 
 const KYC = "KYC";
 const ADAPTER = "idfy-kyc";
@@ -74,7 +89,6 @@ const UNSUPPORTED = [
   "ckycDownload",
   "startVcip",
   "vcipStatus",
-  "bankAccountVerify",
   "ovdOcr",
   "amlScreen",
   "handleWebhook",
@@ -98,6 +112,8 @@ export interface IdfyKycOptions {
   notifiedEntity?: boolean;
   /** Keyed Aadhaar OTP verifies: `PgAadhaarOtpVerifyStore` in production (default in memory). */
   aadhaarOtpVerifies?: AadhaarOtpVerifyStore;
+  /** Keyed bank account checks (PR-UDF-043): `PgBankAccountVerifyStore` in production (default in memory). */
+  bankAccountVerifies?: BankAccountVerifyStore;
   /** The tenant when the call names none (the tenancy context); the e-KYC is stored under it. */
   currentTenant?: () => string | undefined;
   /** Tests only: the IDfy stub. */
@@ -188,6 +204,35 @@ export function mapIdfyAadhaarOtpVerify(result: unknown): {
   };
 }
 
+/**
+ * STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: the bank account result. `id_not_found` or
+ * `account_exists: NO` is `not_found`; a found account whose status reads closed is `closed`; one
+ * that exists and is not closed is `valid`; anything else is `invalid`. The name at the bank is
+ * kept only when it carries no run of six or more digits.
+ */
+export function mapIdfyBankAccount(result: unknown): {
+  status: BankAccountStatus;
+  nameAtBank?: string;
+} {
+  const r = result as Record<string, unknown> | undefined;
+  if (!r || typeof r.status !== "string")
+    throw vendorError(KYC, ADAPTER, 502, "bank account result without its status");
+  const exists = String(r.account_exists ?? "").toUpperCase();
+  const acct = String(r.account_status ?? "").toLowerCase();
+  const status: BankAccountStatus =
+    r.status === "id_not_found" || exists === "NO"
+      ? "not_found"
+      : r.status === "id_found" && exists === "YES"
+        ? acct === "closed"
+          ? "closed"
+          : "valid"
+        : "invalid";
+  const name = typeof r.name_at_bank === "string" ? r.name_at_bank.trim().slice(0, 200) : "";
+  if (/[0-9]{6}/.test(name))
+    throw vendorError(KYC, ADAPTER, 502, "the reply's account name carried a number");
+  return { status, ...(name ? { nameAtBank: name } : {}) };
+}
+
 type EvidenceKeys = { vendorRef: string; adapter: string; modelVersion: string; checkedAt: string };
 
 const refused = (detail: string, reason: string): PortError =>
@@ -209,12 +254,15 @@ export class IdfyKyc implements KycPort {
   private readonly base: string;
   private readonly now: () => Date;
   private readonly otpVerifies: AadhaarOtpVerifyStore;
+  private readonly bankVerifies: BankAccountVerifyStore;
 
   constructor(private readonly o: IdfyKycOptions) {
     this.base = (o.baseUrl ?? `https://${HOST}`).replace(/\/$/, "");
     this.now = o.now ?? (() => new Date());
     this.otpVerifies =
       o.aadhaarOtpVerifies ?? new MemoryAadhaarOtpVerifyStore({ now: () => this.now() });
+    this.bankVerifies =
+      o.bankAccountVerifies ?? new MemoryBankAccountVerifyStore({ now: () => this.now() });
     this.egress = createEgress({
       port: KYC,
       adapter: ADAPTER,
@@ -447,6 +495,56 @@ export class IdfyKyc implements KycPort {
     });
   }
 
+  /**
+   * A pennyless check (PR-UDF-043). The mode is checked first, before the flag or any vendor call:
+   * a penny drop is refused `mode_unsupported`. Keyed checks are answered from the store.
+   */
+  async bankAccountVerify(
+    raw: Parameters<KycPort["bankAccountVerify"]>[0],
+    call?: PortCall,
+  ): Promise<BankAccountResult> {
+    const r = BankAccountCheck.parse(raw);
+    const mode = bankAccountMode(ADAPTER, r.mode, {
+      honoured: PLATFORM_BANK_ACCOUNT_MODES,
+      configured: "pennyless",
+    });
+    await this.guard();
+    // A keyed check is kept under its tenant; an unkeyed one needs none.
+    return keyedBankAccountVerify({
+      store: this.bankVerifies,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : {
+              tenantId: this.tenant(call),
+              adapter: ADAPTER,
+              idempotencyKey: call.idempotencyKey,
+              ifsc: r.ifsc,
+              accountNumber: r.accountNumber,
+              ...(r.name !== undefined ? { name: r.name } : {}),
+              mode,
+            },
+      verify: async () => {
+        const { ref, result } = await this.task("verify_with_source/validate_bank_account", {
+          bank_account_no: r.accountNumber,
+          bank_ifsc_code: r.ifsc,
+          nf_verification: "true",
+        });
+        const v = mapIdfyBankAccount(result);
+        const out: BankAccountResult = {
+          ...this.evidence(ref, "validate_bank_account-nf-v3"),
+          status: v.status,
+          mode,
+          ...(v.nameAtBank ? { nameAtBank: v.nameAtBank } : {}),
+          ...(v.nameAtBank && r.name ? { nameMatch: bankNameMatch(r.name, v.nameAtBank) } : {}),
+        };
+        if (AADHAAR_LIKE.test(JSON.stringify(out)))
+          throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+        return out;
+      },
+    });
+  }
+
   async health(): Promise<PortHealth> {
     const started = performance.now();
     let status: PortHealth["status"] = "up";
@@ -495,9 +593,6 @@ export class IdfyKyc implements KycPort {
   }
   vcipStatus(): Promise<never> {
     return this.unsupported("vcipStatus");
-  }
-  bankAccountVerify(): Promise<never> {
-    return this.unsupported("bankAccountVerify");
   }
   ovdOcr(): Promise<never> {
     return this.unsupported("ovdOcr");

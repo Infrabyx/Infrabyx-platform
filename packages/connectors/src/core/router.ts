@@ -90,9 +90,14 @@ const reportFor = (s: z.ZodType): PayloadClassReport => {
   return r;
 };
 
-/** Errors that say the adapter is unhealthy, as opposed to a refused or invalid request. */
+/**
+ * Errors that say the adapter is unhealthy, as opposed to a refused or invalid request. An
+ * `IPB-PORT-002` with `meta.reason: "mode_unsupported"` (PR-UDF-043: the adapter cannot honour the
+ * mode asked, and said so before any vendor call) is about the request, so it does not count.
+ */
 export function tripsBreaker(e: unknown): boolean {
-  return !isIpbError(e) || e.code === "IPB-PORT-002";
+  if (!isIpbError(e)) return true;
+  return e.code === "IPB-PORT-002" && e.meta?.reason !== "mode_unsupported";
 }
 
 export class Router {

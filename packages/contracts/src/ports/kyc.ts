@@ -249,13 +249,86 @@ export const VcipSession = z
 export const LivenessCheck = z.object({ frames: z.array(KycFileRef).min(1).max(30) }).strict();
 export const FaceMatch = z.object({ a: KycFileRef, b: KycFileRef }).strict();
 
+// ---- Bank account verification (PR-UDF-043; R1-D-196) --------------------------------------------
+
+/**
+ * How an account is verified: `pennyless`, a lookup at the bank (no credit to the account), or
+ * `penny_drop`, a small credit to the account whose reply names the holder. Which party funds a
+ * penny drop is each adapter's fact, stated in `KYC_ADAPTER_FUNDING`; the platform moves no money.
+ */
+export const BANK_ACCOUNT_MODES = ["pennyless", "penny_drop"] as const;
+export type BankAccountMode = (typeof BANK_ACCOUNT_MODES)[number];
+
+/** The account statuses a verification answers (unchanged by PR-UDF-043). */
+export const BANK_ACCOUNT_STATUSES = ["valid", "invalid", "closed", "not_found"] as const;
+export type BankAccountStatus = (typeof BANK_ACCOUNT_STATUSES)[number];
+
+/** The fixed `meta.reason` of an adapter that cannot honour the mode asked (PR-UDF-043). */
+export const BANK_ACCOUNT_MODE_UNSUPPORTED = "mode_unsupported";
+
+/**
+ * Verify a bank account. `mode` (PR-UDF-043) asks for a verification mode: an adapter that cannot
+ * honour it refuses the call `IPB-PORT-002` with `meta.reason: "mode_unsupported"` before any
+ * vendor call, and never falls back to another mode (the KYC router may then try the next adapter
+ * in the method's order, which honours the mode or refuses it too). Omitted, the adapter uses its
+ * configured mode. The answer names the mode used (`BankAccountResult.mode`).
+ */
 export const BankAccountCheck = z
   .object({
     ifsc: regulated(z.string().regex(IFSC)),
     accountNumber: regulated(z.string().regex(/^[0-9A-Z]{6,20}$/)),
     name: regulated(z.string().min(1).max(200)).optional(),
+    mode: classed(z.enum(BANK_ACCOUNT_MODES), "INTERNAL").optional(),
   })
   .strict();
+
+/** Who funds a penny-drop credit with an adapter (PR-UDF-043): a statement, never a payment. */
+export type PennyDropFunding = "provider" | "tenant" | "unknown";
+
+export interface KycAdapterFunding {
+  /**
+   * `provider`: the KYC provider credits the account from its own funds (the RE pays the provider's
+   * fee); `tenant`: the credit is made from the tenant's (the RE's) own account; `unknown`: not yet
+   * confirmed from the provider's documentation and the RE's agreement with it.
+   */
+  pennyDrop: PennyDropFunding;
+  /** Where the statement comes from, or what is still to be verified. */
+  source: string;
+}
+
+/**
+ * Per adapter (by descriptor name), who funds a penny drop (PR-UDF-043; CF para 10(1)-(3): no LSP
+ * account in the flow of funds), so an LSP agreement can record it. A statement only: no money moves
+ * through the platform, and the platform's Digio and IDfy adapters make no penny drop at all (they
+ * refuse `penny_drop` with `mode_unsupported`; R1-D-196). An adapter not listed is `unknown`.
+ */
+export const KYC_ADAPTER_FUNDING: Readonly<Record<string, KycAdapterFunding>> = {
+  "digio-kyc": {
+    pennyDrop: "unknown",
+    source:
+      "[VERIFY] against Digio's published bank account verification reference and the RE's agreement with Digio; the adapter makes pennyless checks only",
+  },
+  "idfy-kyc": {
+    pennyDrop: "unknown",
+    source:
+      "[VERIFY] against IDfy's published bank account verification reference and the RE's agreement with IDfy; the adapter makes pennyless checks only",
+  },
+  "fake-kyc": {
+    pennyDrop: "provider",
+    source:
+      "The fake's own statement: its penny drop is simulated as made by the provider, and nothing is credited",
+  },
+};
+
+/** The funding statement for an adapter; `unknown` for one not listed. */
+export function kycAdapterFunding(adapter: string): KycAdapterFunding {
+  return (
+    KYC_ADAPTER_FUNDING[adapter] ?? {
+      pennyDrop: "unknown",
+      source: "No statement for this adapter (KYC_ADAPTER_FUNDING)",
+    }
+  );
+}
 
 export const OVD_TYPES = [
   "AADHAAR",
@@ -427,8 +500,15 @@ export interface VcipManifest extends KycEvidence {
   reason?: string;
 }
 
+/** No field carries a 12-digit run or the account number asked (PR-UDF-043). */
 export interface BankAccountResult extends KycEvidence {
-  status: "valid" | "invalid" | "closed" | "not_found";
+  status: BankAccountStatus;
+  /**
+   * The mode used (PR-UDF-043): the one asked, or the adapter's configured mode when none was. The
+   * platform's adapters and the fake always set it; optional in the type only so an implementer
+   * outside the platform does not break in a minor (as `AadhaarOfflineResult.kind`).
+   */
+  mode?: BankAccountMode;
   nameAtBank?: string;
   nameMatch?: NameMatch;
 }
@@ -511,6 +591,16 @@ export interface KycPort extends Port {
   vcipStatus(vcipId: string): Promise<VcipManifest>;
   livenessCheck(req: z.infer<typeof LivenessCheck>, call?: PortCall): Promise<ScoreResult>;
   faceMatch(req: z.infer<typeof FaceMatch>, call?: PortCall): Promise<ScoreResult>;
+  /**
+   * Verify a bank account (see `BankAccountCheck` for `mode`). Idempotent on `call.idempotencyKey`
+   * (PR-UDF-043): a retry with the same key and request returns the first answer without a new
+   * vendor call, so an account is never verified, and above all never credited, twice for one key;
+   * the same key with another account, IFSC, name or mode (an omitted mode is the configured one)
+   * is refused `IPB-PORT-004` (`meta.reason: "idempotency_conflict"`). A keyed penny drop whose first
+   * call did not finish is never sent again: its retry is refused `IPB-PORT-002`
+   * (`meta.reason: "pending_unresolved"`) for a person to check with the provider. The platform
+   * adapters keep a key for 24 hours.
+   */
   bankAccountVerify(
     req: z.infer<typeof BankAccountCheck>,
     call?: PortCall,

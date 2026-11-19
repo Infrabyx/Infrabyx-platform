@@ -11,6 +11,7 @@ export * from "./esign.js";
 export * from "./ai.js";
 export * from "./kyc.js";
 export * from "./aadhaar-otp.js";
+export * from "./bank-account.js";
 export * from "./captcha.js";
 export * from "./idfy.js";
 export * from "./play-integrity.js";

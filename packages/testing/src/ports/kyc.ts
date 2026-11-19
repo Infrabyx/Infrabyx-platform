@@ -22,18 +22,23 @@ import {
   LivenessCheck,
   OvdOcr,
   PanCheck,
+  BANK_ACCOUNT_STATUSES,
   payloadClass,
+  type BankAccountMode,
   type DigilockerDocument,
   type KycPort,
 } from "@infrabyx/contracts/ports";
+import { findAadhaarLike } from "@infrabyx/contracts/aadhaar";
 import type { ContractCase } from "../contract.js";
 import {
   DIGILOCKER_CONTRACT_RETURN_URL,
   type AadhaarOtpFixtures,
+  type BankAccountFixtures,
   type KycFixtures,
 } from "@infrabyx/fakes";
 export {
   type AadhaarOtpFixtures,
+  type BankAccountFixtures,
   type KycFixtures,
   FAKE_AADHAAR_OTP,
   syntheticUid,
@@ -47,6 +52,7 @@ const UID_LIKE = /(?<![0-9])(?:[0-9]{12}|[0-9]{16})(?![0-9])/;
 const SHA256_HEX = /[0-9a-f]{64}/g;
 let dlKey = 0;
 let otpKey = 0;
+let bankKey = 0;
 
 /** What an error shows anywhere: message, stack and every own field (code, detail, meta, cause). */
 const errorText = (e: unknown): string => {
@@ -104,6 +110,23 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
     expect(text.replace(SHA256_HEX, "")).not.toMatch(UID_LIKE);
     for (const n of numbers) expect(text).not.toContain(n);
   };
+  // PR-UDF-043: the bank account check's mode and keyed retries.
+  const bankFx = (): BankAccountFixtures => {
+    expect(
+      fx.bankAccount,
+      "KycFixtures.bankAccount for an adapter with bank accounts",
+    ).toBeDefined();
+    return fx.bankAccount!;
+  };
+  const bankCallKey = () => `bank-contract-${Date.now().toString(36)}-${++bankKey}`;
+  const account = (mode?: BankAccountMode) => ({
+    ifsc: fx.bank.ifsc,
+    accountNumber: fx.bank.accountNumber,
+    name: fx.bank.name,
+    ...(mode ? { mode } : {}),
+  });
+  const modeUnsupported = { code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } };
+  const idemConflict = { code: "IPB-PORT-004", meta: { reason: "idempotency_conflict" } };
   // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
   const noRunInKeys = (docs: DigilockerDocument[]) => {
     for (const d of docs)
@@ -555,6 +578,132 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
           officialRef: "usr_official",
         });
         await expect(p.vcipStatus("vcip_missing")).rejects.toMatchObject({ code: "IPB-PORT-001" });
+      },
+    },
+    {
+      name: "bankAccountVerify (PR-UDF-043): the mode asked is the mode used; omitted, the configured mode is reported; the status is one of the four",
+      method: "bankAccountVerify",
+      invoke: (p) => p.bankAccountVerify(account()),
+      async run(p) {
+        const b = bankFx();
+        expect(b.modes).toContain(b.configuredMode);
+        for (const mode of b.modes) {
+          const r = await p.bankAccountVerify(account(mode));
+          expect(r).toMatchObject({ status: "valid", mode, nameMatch: "match" });
+          expect(r.nameAtBank).toBeTypeOf("string");
+        }
+        expect(await p.bankAccountVerify(account())).toMatchObject({
+          status: "valid",
+          mode: b.configuredMode,
+        });
+        const unknown = await p.bankAccountVerify({
+          ifsc: fx.bank.ifsc,
+          accountNumber: b.unknownAccountNumber,
+        });
+        expect(BANK_ACCOUNT_STATUSES).toContain(unknown.status);
+        expect(unknown.status).not.toBe("valid");
+        expect(unknown.mode).toBe(b.configuredMode);
+        await expect(
+          p.bankAccountVerify({ ...account(), mode: "penny" as BankAccountMode }),
+        ).rejects.toThrow();
+      },
+    },
+    {
+      name: "bankAccountVerify (PR-UDF-043): a mode the adapter cannot honour is refused mode_unsupported before any vendor call, keyed or not",
+      method: "bankAccountVerify",
+      invoke: (p) => p.bankAccountVerify(account()),
+      async run() {
+        const { port, mode, vendorCalls } = bankFx().refusing();
+        const before = vendorCalls();
+        await expect(port.bankAccountVerify(account(mode))).rejects.toMatchObject(modeUnsupported);
+        const idempotencyKey = bankCallKey();
+        await expect(
+          port.bankAccountVerify(account(mode), { idempotencyKey }),
+        ).rejects.toMatchObject(modeUnsupported);
+        expect(vendorCalls()).toBe(before);
+        // Refused, not used up: the key still serves a mode the adapter honours.
+        const ok = await port.bankAccountVerify(account(), { idempotencyKey });
+        expect(ok.mode).not.toBe(mode);
+        expect(vendorCalls()).toBe(before + 1);
+      },
+    },
+    {
+      name: "bankAccountVerify (PR-UDF-043): a retry with the same key returns the first answer with exactly one vendor call; the same key with another account, IFSC, name or mode is IPB-PORT-004",
+      method: "bankAccountVerify",
+      invoke: (p) => p.bankAccountVerify(account()),
+      async run(p) {
+        const b = bankFx();
+        const idempotencyKey = bankCallKey();
+        const before = b.vendorCalls(p);
+        const first = await p.bankAccountVerify(account(), { idempotencyKey });
+        expect(b.vendorCalls(p)).toBe(before + 1);
+        expect(await p.bankAccountVerify(account(), { idempotencyKey })).toEqual(first);
+        // An omitted mode is the configured one: the same request.
+        expect(await p.bankAccountVerify(account(b.configuredMode), { idempotencyKey })).toEqual(
+          first,
+        );
+        expect(b.vendorCalls(p)).toBe(before + 1);
+        for (const other of [
+          { ...account(), accountNumber: b.unknownAccountNumber },
+          { ...account(), ifsc: fx.bank.ifsc.replace(/.$/, (c) => (c === "9" ? "8" : "9")) },
+          { ...account(), name: `${fx.bank.name} X` },
+          { ifsc: fx.bank.ifsc, accountNumber: fx.bank.accountNumber },
+          ...b.modes.filter((m) => m !== b.configuredMode).map((m) => account(m)),
+        ])
+          await expect(p.bankAccountVerify(other, { idempotencyKey })).rejects.toMatchObject(
+            idemConflict,
+          );
+        expect(b.vendorCalls(p)).toBe(before + 1);
+        // Another key is a new check.
+        const again = await p.bankAccountVerify(account(), { idempotencyKey: bankCallKey() });
+        expect(again.status).toBe(first.status);
+        expect(b.vendorCalls(p)).toBe(before + 2);
+        // A not-found answer is the key's first answer too.
+        const k2 = bankCallKey();
+        const nf = { ifsc: fx.bank.ifsc, accountNumber: b.unknownAccountNumber };
+        const miss = await p.bankAccountVerify(nf, { idempotencyKey: k2 });
+        expect(await p.bankAccountVerify(nf, { idempotencyKey: k2 })).toEqual(miss);
+        expect(b.vendorCalls(p)).toBe(before + 3);
+      },
+    },
+    {
+      name: "bankAccountVerify (PR-UDF-043): no field of any answer or error carries an Aadhaar-like number, a 12-digit run or the account number",
+      method: "bankAccountVerify",
+      invoke: (p) => p.bankAccountVerify(account()),
+      async run(p) {
+        const b = bankFx();
+        // The fixtures' accounts are not Aadhaar-like themselves, or the sweep would be empty.
+        for (const n of [fx.bank.accountNumber, b.unknownAccountNumber])
+          expect(findAadhaarLike(n)).toEqual([]);
+        const seen: unknown[] = [];
+        const take = async (x: Promise<unknown>) =>
+          x.then(
+            (v) => seen.push(v),
+            (e: unknown) => seen.push(errorText(e)),
+          );
+        const k = bankCallKey();
+        for (const mode of [undefined, ...b.modes]) await take(p.bankAccountVerify(account(mode)));
+        await take(p.bankAccountVerify(account(), { idempotencyKey: k }));
+        await take(p.bankAccountVerify(account(), { idempotencyKey: k }));
+        await take(
+          p.bankAccountVerify(
+            { ...account(), accountNumber: b.unknownAccountNumber },
+            { idempotencyKey: k },
+          ),
+        );
+        await take(
+          p.bankAccountVerify({ ifsc: fx.bank.ifsc, accountNumber: b.unknownAccountNumber }),
+        );
+        const r = b.refusing();
+        await take(r.port.bankAccountVerify(account(r.mode)));
+        expect(seen.length).toBe(b.modes.length + 6);
+        for (const v of seen) {
+          const text = typeof v === "string" ? v : JSON.stringify(v);
+          expect(findAadhaarLike(text)).toEqual([]);
+          expect(text).not.toContain(fx.bank.accountNumber);
+          expect(text).not.toContain(b.unknownAccountNumber);
+          if (typeof v !== "string") noAadhaar(v);
+        }
       },
     },
     {
