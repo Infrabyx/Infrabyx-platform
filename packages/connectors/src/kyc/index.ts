@@ -6,8 +6,11 @@
 // `DigilockerPullStore` (`PgDigilockerPullStore` on `connectors.kyc_digilocker_pull`; PR-UDF-040).
 // Aadhaar OTP e-KYC is off unless an adapter is built with `notifiedEntity: true`; keyed verifies
 // are kept in an `AadhaarOtpVerifyStore` (`PgAadhaarOtpVerifyStore`, `connectors.kyc_aadhaar_otp_verify`;
-// PR-UDF-041).
+// PR-UDF-041). Bank account checks are pennyless only, by mode, and keyed checks are kept in a
+// `BankAccountVerifyStore` (`PgBankAccountVerifyStore`, `connectors.kyc_bank_account_verify`;
+// PR-UDF-043).
 export * from "./aadhaar-otp.js";
+export * from "./bank-account.js";
 export * from "./digio.js";
 export * from "./digilocker-pulls.js";
 export * from "./idfy.js";

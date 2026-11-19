@@ -9,7 +9,13 @@ import { CircuitBreaker } from "./breaker.js";
 import { HealthRegistry } from "./health.js";
 import { createEgress, hostAllowed } from "./http.js";
 import { MemoryIdempotencyStore, runIdempotent, type IdempotencyRequest } from "./idempotency.js";
-import { Router, type AdapterFactory, type RouterOptions, type RoutingEvent } from "./router.js";
+import {
+  Router,
+  tripsBreaker,
+  type AdapterFactory,
+  type RouterOptions,
+  type RoutingEvent,
+} from "./router.js";
 import { acceptWebhook } from "./webhooks.js";
 
 const up = (): PortHealth => ({
@@ -99,6 +105,21 @@ describe("@IPB-01-18 circuit breaker", () => {
     });
     // 3 failures in 6 calls reaches 50 % with the sample at the 5-call minimum.
     expect(transitions).toEqual([undefined, undefined, undefined, undefined, undefined, "opened"]);
+  });
+
+  it("counts an unavailable adapter, not a refused request: mode_unsupported does not trip it (PR-UDF-043)", () => {
+    expect(tripsBreaker(new Error("socket hang up"))).toBe(true);
+    expect(tripsBreaker(new PortError("IPB-PORT-002", "KYC", { detail: "503" }))).toBe(true);
+    expect(
+      tripsBreaker(
+        new PortError("IPB-PORT-002", "KYC", { meta: { reason: "pending_unresolved" } }),
+      ),
+    ).toBe(true);
+    expect(
+      tripsBreaker(new PortError("IPB-PORT-002", "KYC", { meta: { reason: "mode_unsupported" } })),
+    ).toBe(false);
+    expect(tripsBreaker(new PortError("IPB-PORT-001", "KYC"))).toBe(false);
+    expect(tripsBreaker(new PortError("IPB-PORT-004", "KYC"))).toBe(false);
   });
 
   it("a failure during half-open reopens", () => {

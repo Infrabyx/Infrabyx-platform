@@ -4,8 +4,18 @@
 // It moves to the next adapter only when one does not provide the method, is switched off, or is
 // unavailable (`IPB-PORT-002`); a vendor's answer about the customer (a refusal, a not-found, a
 // failed check) is final and never retried elsewhere. Each result names the adapter that gave it.
+// A bank account check (PR-UDF-043) moves on when an adapter cannot honour the mode asked
+// (`mode_unsupported`, refused before any vendor call); a keyed check or a penny drop does not move
+// on when an adapter is unavailable, as the first one may have reached its vendor and the account
+// is never verified, or credited, twice for one key.
 import { PortError, isIpbError } from "@infrabyx/contracts/errors";
-import type { AdapterDescriptor, KycMethod, KycPort, PortHealth } from "@infrabyx/contracts/ports";
+import {
+  BANK_ACCOUNT_MODE_UNSUPPORTED,
+  type AdapterDescriptor,
+  type KycMethod,
+  type KycPort,
+  type PortHealth,
+} from "@infrabyx/contracts/ports";
 
 /** The port's method names by `KycMethod` (the `int.kyc.<method>.provider` vocabulary). */
 export const KYC_METHOD_FNS = {
@@ -29,10 +39,15 @@ type Fn = (typeof KYC_METHOD_FNS)[KycMethod][number];
 /** Fall through on these refusals only: the adapter cannot take the call at all. */
 const FALL_THROUGH = new Set(["unsupported", "adapter_disabled"]);
 
-function passOn(e: unknown): boolean {
+function passOn(e: unknown, fn: Fn, args: unknown[]): boolean {
   if (!isIpbError(e)) return false;
-  if (e.code === "IPB-PORT-002") return true;
   const reason = (e as { meta?: { reason?: unknown } }).meta?.reason;
+  if (e.code === "IPB-PORT-002") {
+    if (fn !== "bankAccountVerify" || reason === BANK_ACCOUNT_MODE_UNSUPPORTED) return true;
+    const req = args[0] as { mode?: unknown } | undefined;
+    const call = args[1] as { idempotencyKey?: unknown } | undefined;
+    return req?.mode !== "penny_drop" && call?.idempotencyKey === undefined;
+  }
   return e.code === "IPB-PORT-001" && typeof reason === "string" && FALL_THROUGH.has(reason);
 }
 
@@ -75,7 +90,7 @@ export function kycMethodRouter(o: KycMethodRouterOptions): KycPort {
       try {
         return await (a[fn] as (...x: unknown[]) => Promise<unknown>).apply(a, args);
       } catch (e) {
-        if (!passOn(e)) throw e;
+        if (!passOn(e, fn, args)) throw e;
         last = e;
       }
     }

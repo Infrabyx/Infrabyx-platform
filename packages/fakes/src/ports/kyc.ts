@@ -11,6 +11,8 @@ import {
   AadhaarOtpVerify,
   aadhaarUidValid,
   AmlParty,
+  BANK_ACCOUNT_MODE_UNSUPPORTED,
+  BANK_ACCOUNT_MODES,
   BankAccountCheck,
   CkycDownload,
   CkycSearch,
@@ -26,6 +28,8 @@ import {
   type AadhaarOtpRefusal,
   type AadhaarOtpResult,
   type AdapterDescriptor,
+  type BankAccountMode,
+  type BankAccountResult,
   type DigilockerDocument,
   type KycFileRef,
   type KycPort,
@@ -60,6 +64,26 @@ export interface KycFixtures {
    * does not break in a minor; the cases need it wherever the adapter provides the methods.
    */
   aadhaarOtp?: AadhaarOtpFixtures;
+  /**
+   * The bank account check's mode and keyed retries (PR-UDF-043): what the adapter honours and the
+   * hooks the contract cases use. Optional in the type so a caller outside the platform does not
+   * break in a minor; the cases need it wherever the adapter provides `bankAccountVerify`.
+   */
+  bankAccount?: BankAccountFixtures;
+}
+
+/** The bank account part of `KycFixtures` (PR-UDF-043). Test accounts only. */
+export interface BankAccountFixtures {
+  /** The mode the adapter uses when a check names none. */
+  configuredMode: BankAccountMode;
+  /** Every mode the adapter honours (the configured one among them). */
+  modes: readonly BankAccountMode[];
+  /** An account (on `bank.ifsc`) the vendor does not know, answered `not_found`. */
+  unknownAccountNumber: string;
+  /** An adapter that cannot honour `mode`, and the verifications it sent its vendor. */
+  refusing: () => { port: KycPort; mode: BankAccountMode; vendorCalls: () => number };
+  /** The account verifications `port` sent its vendor so far (one per check made). */
+  vendorCalls: (port: KycPort) => number;
 }
 
 /** The Aadhaar OTP part of `KycFixtures` (PR-UDF-041). Test numbers only, never a real one. */
@@ -112,6 +136,7 @@ export const KYC_FAKE_FIXTURES: KycFixtures = {
   digilockerConsent: () => `dl-consent-${++consent}`,
   digilockerReturnUrl: DIGILOCKER_CONTRACT_RETURN_URL,
   ckyc: { idNumber: "AAAPZ1234C", ckycNumber: "10000000000001", authFactor: "1990-01-01" },
+  // Twelve digits with a leading 0: never Aadhaar-like, so the no-Aadhaar sweep stays meaningful.
   bank: { ifsc: "HDFC0000001", accountNumber: "000123456789", name: "Asha Rao" },
   aml: { listedName: "Listed Person", cleanName: "Asha Rao" },
   frames: [ref("frame-1.jpg"), ref("frame-2.jpg"), ref("frame-3.jpg")],
@@ -129,6 +154,16 @@ export const KYC_FAKE_FIXTURES: KycFixtures = {
     },
     vendorCalls: (p) => (p as FakeKyc).aadhaarOtpVendorCalls,
     expire: (p, txn) => (p as FakeKyc).expireAadhaarOtp(txn),
+  },
+  bankAccount: {
+    configuredMode: "pennyless",
+    modes: BANK_ACCOUNT_MODES,
+    unknownAccountNumber: "000999999990",
+    refusing: () => {
+      const f = new FakeKyc({ bankAccountModes: ["pennyless"] });
+      return { port: f, mode: "penny_drop", vendorCalls: () => f.bankAccountVendorCalls };
+    },
+    vendorCalls: (p) => (p as FakeKyc).bankAccountVendorCalls,
   },
 };
 
@@ -158,6 +193,11 @@ const nameMatch = (a: string, b: string): NameMatch =>
  * wrong code leaves it live). A transaction lives ten minutes, or until `expireAadhaarOtp`. A verify
  * is idempotent on the call's key. The fake keeps no number: a transaction remembers the last four
  * digits only (of the fixtures' `uid` for a VID).
+ *
+ * Bank accounts (PR-UDF-043): the fake honours both modes unless built with `bankAccountModes`, and
+ * uses `bankAccountMode` (default `pennyless`) when a check names none; a mode it does not honour is
+ * refused `mode_unsupported` before its count of vendor calls moves. A check is idempotent on the
+ * call's key. Nothing is ever credited: the fake's penny drop is a simulation.
  */
 export class FakeKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
@@ -181,6 +221,11 @@ export class FakeKyc implements KycPort {
   private readonly notifiedEntity: boolean;
   /** Aadhaar OTP calls that passed the fake's own checks: what an adapter would send its KUA. */
   aadhaarOtpVendorCalls = 0;
+  /** Bank account checks that passed the fake's own checks: what an adapter would send its vendor. */
+  bankAccountVendorCalls = 0;
+  private readonly bankModes: readonly BankAccountMode[];
+  private readonly bankMode: BankAccountMode;
+  private readonly bankVerifies = new Map<string, { request: string; result: BankAccountResult }>();
   private n = 0;
   constructor(
     o: {
@@ -190,8 +235,16 @@ export class FakeKyc implements KycPort {
       digilockerReturnHosts?: readonly string[];
       /** Aadhaar OTP e-KYC for a reporting entity notified under PML Act s.11A (default false). */
       notifiedEntity?: boolean;
+      /** The bank account modes the fake honours (default both; PR-UDF-043). */
+      bankAccountModes?: readonly BankAccountMode[];
+      /** The mode a check without one uses (default `pennyless`); must be honoured. */
+      bankAccountMode?: BankAccountMode;
     } = {},
   ) {
+    this.bankModes = o.bankAccountModes ?? BANK_ACCOUNT_MODES;
+    this.bankMode = o.bankAccountMode ?? "pennyless";
+    if (!this.bankModes.includes(this.bankMode))
+      throw new RangeError("the configured bank account mode is not one the fake honours");
     this.fx = o.fixtures ?? KYC_FAKE_FIXTURES;
     this.notifiedEntity = o.notifiedEntity === true;
     this.now = o.now ?? (() => new Date());
@@ -501,16 +554,44 @@ export class FakeKyc implements KycPort {
     );
   }
 
-  async bankAccountVerify(raw: Parameters<KycPort["bankAccountVerify"]>[0]) {
+  async bankAccountVerify(
+    raw: Parameters<KycPort["bankAccountVerify"]>[0],
+    call?: PortCall,
+  ): Promise<BankAccountResult> {
     const r = BankAccountCheck.parse(raw);
-    if (r.ifsc !== this.fx.bank.ifsc || r.accountNumber !== this.fx.bank.accountNumber)
-      return { ...this.ev(), status: "not_found" as const };
-    return {
-      ...this.ev(),
-      status: "valid" as const,
-      nameAtBank: this.fx.bank.name.toUpperCase(),
-      ...(r.name ? { nameMatch: nameMatch(r.name, this.fx.bank.name) } : {}),
-    };
+    const mode = r.mode ?? this.bankMode;
+    if (!this.bankModes.includes(mode))
+      throw new PortError("IPB-PORT-002", "KYC", {
+        adapter: "fake-kyc",
+        detail: `the fake does not verify bank accounts by ${mode}`,
+        meta: { reason: BANK_ACCOUNT_MODE_UNSUPPORTED, definite: true },
+      });
+    const key = call?.idempotencyKey;
+    // Keyed by the call's key, and in memory only (the platform adapters keep an HMAC; R1-D-196).
+    const request = sha256Hex(JSON.stringify([key, r.ifsc, r.accountNumber, r.name ?? null, mode]));
+    const prior = key === undefined ? undefined : this.bankVerifies.get(key);
+    if (prior) {
+      if (prior.request !== request)
+        throw new PortError("IPB-PORT-004", "KYC", {
+          adapter: "fake-kyc",
+          detail: "idempotency key reused with another bank account check",
+          meta: { reason: "idempotency_conflict" },
+        });
+      return structuredClone(prior.result);
+    }
+    this.bankAccountVendorCalls++;
+    const result: BankAccountResult =
+      r.ifsc !== this.fx.bank.ifsc || r.accountNumber !== this.fx.bank.accountNumber
+        ? { ...this.ev(), status: "not_found", mode }
+        : {
+            ...this.ev(),
+            status: "valid",
+            mode,
+            nameAtBank: this.fx.bank.name.toUpperCase(),
+            ...(r.name ? { nameMatch: nameMatch(r.name, this.fx.bank.name) } : {}),
+          };
+    if (key !== undefined) this.bankVerifies.set(key, { request, result: structuredClone(result) });
+    return result;
   }
 
   async ovdOcr(raw: Parameters<KycPort["ovdOcr"]>[0]) {

@@ -12,15 +12,23 @@ import {
   type DigioKycStub,
   type KycFixtures,
 } from "@infrabyx/testing";
+import { KYC_ADAPTER_FUNDING } from "@infrabyx/contracts/ports";
 import {
   DigioKyc,
   digioAadhaarOtpRequestBody,
+  digioBankAccountBody,
+  mapDigioBankAccount,
   mapDigioAadhaarOtpRefusal,
   mapDigioAadhaarOtpVerify,
   mapDigioDigilockerStart,
 } from "../digio.js";
 import { MemoryDigilockerPullStore } from "../digilocker-pulls.js";
 import { holdsAadhaarNumber, MemoryAadhaarOtpVerifyStore } from "../aadhaar-otp.js";
+import {
+  bankAccountRequestHash,
+  keyedBankAccountVerify,
+  MemoryBankAccountVerifyStore,
+} from "../bank-account.js";
 
 let dg: DigioKycStub;
 const storage = new MemoryStorage();
@@ -45,6 +53,19 @@ beforeAll(async () => {
       notNotified: () => ({ port: digio(), vendorCalls: () => dg.requests.length }),
       vendorCalls: () => dg.requests.length,
       expire: (_p, txn) => dg.expireAadhaarOtp(txn),
+    },
+    bank: {
+      ifsc: dg.bankAccount.ifsc,
+      accountNumber: dg.bankAccount.accountNumber,
+      name: dg.bankAccount.name,
+    },
+    bankAccount: {
+      configuredMode: "pennyless",
+      modes: ["pennyless"],
+      unknownAccountNumber: dg.bankAccount.unknownAccountNumber,
+      // The platform's adapter makes no penny drop (R1-D-196).
+      refusing: () => ({ port: digio(), mode: "penny_drop", vendorCalls: dg.bankAccountChecks }),
+      vendorCalls: () => dg.bankAccountChecks(),
     },
   };
 });
@@ -418,5 +439,167 @@ describe("PR-UDF-041 Digio Aadhaar OTP e-KYC for a notified RE", () => {
         details: { aadhaar_last_digits: "xxxx-xxxx-1234", ekyc_xml: "PEt5Yz4=" },
       }),
     ).toMatchObject({ uidLast4: "1234", signatureValid: null });
+  });
+});
+
+describe("PR-UDF-043 Digio pennyless bank account checks, keyed retries and the funding statement", () => {
+  const acct = () => ({
+    ifsc: dg.bankAccount.ifsc,
+    accountNumber: dg.bankAccount.accountNumber,
+    name: "asha  rao",
+  });
+
+  it("sends a pennyless check only, with the account in the body; maps valid, closed and not found", async () => {
+    const p = digio();
+    const r = await p.bankAccountVerify(acct(), { tenantId: "tnt_other" });
+    const sent = dg.requests.at(-1)!;
+    expect(sent.path).toBe("/client/verify/bank_account");
+    expect(sent.json()).toEqual({
+      beneficiary_account_no: dg.bankAccount.accountNumber,
+      beneficiary_ifsc: dg.bankAccount.ifsc,
+      beneficiary_name: "asha  rao",
+      validation_mode: "PENNY_LESS",
+    });
+    expect(sent.path + sent.query.toString()).not.toContain(dg.bankAccount.accountNumber);
+    expect(r).toMatchObject({
+      adapter: "digio-kyc",
+      status: "valid",
+      mode: "pennyless",
+      nameAtBank: "ASHA RAO",
+      nameMatch: "match",
+    });
+    expect(
+      (
+        await p.bankAccountVerify({
+          ifsc: dg.bankAccount.ifsc,
+          accountNumber: dg.bankAccount.closedAccountNumber,
+          name: "Asha Kumari",
+        })
+      ).nameMatch,
+    ).toBe("partial");
+    expect(
+      (
+        await p.bankAccountVerify({
+          ifsc: dg.bankAccount.ifsc,
+          accountNumber: dg.bankAccount.closedAccountNumber,
+        })
+      ).status,
+    ).toBe("closed");
+    expect(
+      digioBankAccountBody({ ifsc: "SBIN0000691", accountNumber: "001" + "1".repeat(5) }),
+    ).not.toHaveProperty("beneficiary_name");
+  });
+
+  it("refuses a penny drop mode_unsupported before the flag, the store or any request", async () => {
+    enabled = false;
+    try {
+      const before = dg.requests.length;
+      const store = new MemoryBankAccountVerifyStore();
+      const p = digio({ bankAccountVerifies: store });
+      await expect(
+        p.bankAccountVerify({ ...acct(), mode: "penny_drop" }, { idempotencyKey: "bank-pd-1" }),
+      ).rejects.toMatchObject({ code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } });
+      // The key was not reserved: it is free for a pennyless check.
+      expect(
+        (
+          await store.reserve({
+            tenantId: "tnt_kyc",
+            adapter: "digio-kyc",
+            idempotencyKey: "bank-pd-1",
+            ...acct(),
+            mode: "pennyless",
+          })
+        ).kind,
+      ).toBe("new");
+      // A pennyless check with the adapter off is refused by the flag.
+      await expect(p.bankAccountVerify(acct())).rejects.toMatchObject({
+        meta: { reason: "adapter_disabled" },
+      });
+      expect(dg.requests.length).toBe(before);
+    } finally {
+      enabled = true;
+    }
+  });
+
+  it("a keyed retry on another instance with a shared store makes no request; a vendor failure is asked again", async () => {
+    const store = new MemoryBankAccountVerifyStore();
+    const first = await digio({ bankAccountVerifies: store }).bankAccountVerify(acct(), {
+      idempotencyKey: "bank-k-1",
+    });
+    const before = dg.requests.length;
+    expect(
+      await digio({ bankAccountVerifies: store }).bankAccountVerify(acct(), {
+        idempotencyKey: "bank-k-1",
+      }),
+    ).toEqual(first);
+    expect(dg.requests.length).toBe(before);
+    const q = digio({ bankAccountVerifies: store });
+    dg.failNext(1, 503);
+    await expect(q.bankAccountVerify(acct(), { idempotencyKey: "bank-k-2" })).rejects.toMatchObject(
+      { code: "IPB-PORT-002" },
+    );
+    const checks = dg.bankAccountChecks();
+    expect((await q.bankAccountVerify(acct(), { idempotencyKey: "bank-k-2" })).status).toBe(
+      "valid",
+    );
+    expect(dg.bankAccountChecks()).toBe(checks + 1);
+  });
+
+  it("a keyed penny drop left pending is never sent again; the binding is keyed by the idempotency key", async () => {
+    const store = new MemoryBankAccountVerifyStore();
+    const request = {
+      tenantId: "tnt_kyc",
+      adapter: "fake-penny",
+      idempotencyKey: "bank-pd-pending",
+      ...acct(),
+      mode: "penny_drop" as const,
+    };
+    expect((await store.reserve(request)).kind).toBe("new");
+    let sent = 0;
+    await expect(
+      keyedBankAccountVerify({
+        store,
+        request,
+        verify: async () => {
+          sent++;
+          throw new Error("never");
+        },
+      }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002", meta: { reason: "pending_unresolved" } });
+    expect(sent).toBe(0);
+    // The same account under another key binds differently: no unkeyed hash of the account.
+    const a = bankAccountRequestHash({ ...request, mode: "pennyless" });
+    const b = bankAccountRequestHash({ ...request, mode: "pennyless", idempotencyKey: "other" });
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+    expect(a).not.toBe(b);
+  });
+
+  it("maps the stub-shaped answers conservatively, and states its funding as unknown until verified", () => {
+    expect(mapDigioBankAccount({ id: "BAV0000000001", verified: true })).toEqual({
+      vendorRef: "BAV0000000001",
+      status: "valid",
+    });
+    expect(
+      mapDigioBankAccount({ id: "BAV0000000001", verified: false, account_status: "CLOSED" })
+        .status,
+    ).toBe("closed");
+    expect(
+      mapDigioBankAccount({ id: "BAV0000000001", verified: false, account_status: "NOT_FOUND" })
+        .status,
+    ).toBe("not_found");
+    expect(
+      mapDigioBankAccount({ id: "BAV0000000001", verified: false, account_status: "FROZEN" })
+        .status,
+    ).toBe("invalid");
+    expect(() => mapDigioBankAccount({ verified: true })).toThrow();
+    expect(() =>
+      mapDigioBankAccount({
+        id: "BAV0000000001",
+        verified: true,
+        beneficiary_name_with_bank: `ASHA ${dg.bankAccount.accountNumber}`,
+      }),
+    ).toThrow();
+    expect(KYC_ADAPTER_FUNDING["digio-kyc"]).toMatchObject({ pennyDrop: "unknown" });
+    expect(KYC_ADAPTER_FUNDING["digio-kyc"]!.source).toContain("[VERIFY]");
   });
 });

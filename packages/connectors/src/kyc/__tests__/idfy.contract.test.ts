@@ -3,7 +3,7 @@
 // `unproven` and off. Also the per-method router (PR-FBX-24: Digio first, IDfy second).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PortError } from "@infrabyx/contracts/errors";
-import type { KycFileRef, KycPort } from "@infrabyx/contracts/ports";
+import { KYC_ADAPTER_FUNDING, type KycFileRef, type KycPort } from "@infrabyx/contracts/ports";
 import { MemoryReplayStore, sha256Hex } from "@infrabyx/crypto";
 import {
   defineContractSuite,
@@ -20,6 +20,7 @@ import {
 import { DigioKyc } from "../digio.js";
 import {
   IdfyKyc,
+  mapIdfyBankAccount,
   mapIdfyAadhaarOtpRefusal,
   mapIdfyAadhaarOtpVerify,
   mapIdfyPan,
@@ -58,6 +59,19 @@ beforeAll(async () => {
       }),
       vendorCalls: () => idfy.requests.length,
       expire: (_p, txn) => idfy.expireAadhaarOtp(txn),
+    },
+    bank: {
+      ifsc: idfy.bankAccount.ifsc,
+      accountNumber: idfy.bankAccount.accountNumber,
+      name: idfy.bankAccount.name,
+    },
+    bankAccount: {
+      configuredMode: "pennyless",
+      modes: ["pennyless"],
+      unknownAccountNumber: idfy.bankAccount.unknownAccountNumber,
+      // The platform's adapter makes no penny drop (R1-D-196).
+      refusing: () => ({ port: make(), mode: "penny_drop", vendorCalls: idfy.bankAccountChecks }),
+      vendorCalls: () => idfy.bankAccountChecks(),
     },
   };
 });
@@ -303,5 +317,88 @@ describe("PR-UDF-041 IDfy Aadhaar OTP e-KYC for a notified RE", () => {
       strict.aadhaarOtpRequest!({ uid: idfy.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
     ).rejects.toMatchObject({ meta: { reason: "not_configured" } });
     expect(idfy.requests.length).toBe(before);
+  });
+});
+
+describe("PR-UDF-043 IDfy pennyless bank account checks and the router", () => {
+  const acct = () => ({
+    ifsc: idfy.bankAccount.ifsc,
+    accountNumber: idfy.bankAccount.accountNumber,
+    name: idfy.bankAccount.name,
+  });
+
+  it("sends IDfy's non-financial check only, with no personal data in the task ids", async () => {
+    const r = await make().bankAccountVerify(acct());
+    const sent = idfy.requests.at(-1)!;
+    expect(sent.path).toBe("/v3/tasks/sync/verify_with_source/validate_bank_account");
+    const body = sent.json<{ task_id: string; group_id: string; data: Record<string, string> }>();
+    expect(body.data).toEqual({
+      bank_account_no: idfy.bankAccount.accountNumber,
+      bank_ifsc_code: idfy.bankAccount.ifsc,
+      nf_verification: "true",
+    });
+    expect(body.task_id + body.group_id).not.toContain(idfy.bankAccount.accountNumber);
+    expect(r).toMatchObject({ adapter: "idfy-kyc", status: "valid", mode: "pennyless" });
+    expect(r.vendorRef).toMatch(/^REQ/);
+    expect(
+      (
+        await make().bankAccountVerify({
+          ifsc: idfy.bankAccount.ifsc,
+          accountNumber: idfy.bankAccount.closedAccountNumber,
+        })
+      ).status,
+    ).toBe("closed");
+    const before = idfy.requests.length;
+    await expect(make().bankAccountVerify({ ...acct(), mode: "penny_drop" })).rejects.toMatchObject(
+      { code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } },
+    );
+    expect(idfy.requests.length).toBe(before);
+  });
+
+  it("maps the stub-shaped results conservatively, and states its funding as unknown until verified", () => {
+    expect(mapIdfyBankAccount({ status: "id_found", account_exists: "YES" })).toEqual({
+      status: "valid",
+    });
+    expect(
+      mapIdfyBankAccount({ status: "id_found", account_exists: "YES", account_status: "Closed" })
+        .status,
+    ).toBe("closed");
+    expect(mapIdfyBankAccount({ status: "id_not_found" }).status).toBe("not_found");
+    expect(mapIdfyBankAccount({ status: "id_found", account_exists: "NO" }).status).toBe(
+      "not_found",
+    );
+    expect(mapIdfyBankAccount({ status: "source_down" }).status).toBe("invalid");
+    expect(() => mapIdfyBankAccount({})).toThrow();
+    expect(() =>
+      mapIdfyBankAccount({ status: "id_found", account_exists: "YES", name_at_bank: "A 1234567" }),
+    ).toThrow();
+    expect(KYC_ADAPTER_FUNDING["idfy-kyc"]).toMatchObject({ pennyDrop: "unknown" });
+    expect(KYC_ADAPTER_FUNDING["idfy-kyc"]!.source).toContain("[VERIFY]");
+  });
+
+  it("the router moves a penny drop past an adapter that cannot honour it; a keyed check never fails over on an unavailable adapter", async () => {
+    const fake = new FakeKyc();
+    const k = kycMethodRouter({
+      adapters: [make(), fake],
+      order: { bank_account: ["idfy-kyc", "fake-kyc"] },
+    });
+    const before = idfy.requests.length;
+    const pd = await k.bankAccountVerify({
+      ifsc: KYC_FAKE_FIXTURES.bank.ifsc,
+      accountNumber: KYC_FAKE_FIXTURES.bank.accountNumber,
+      mode: "penny_drop",
+    });
+    expect(pd).toMatchObject({ adapter: "fake-kyc", mode: "penny_drop" });
+    expect(idfy.requests.length).toBe(before);
+    expect((await k.bankAccountVerify(acct())).adapter).toBe("idfy-kyc");
+    // An unavailable adapter: an unkeyed pennyless check moves on, a keyed one does not.
+    idfy.failNext(1, 503);
+    expect((await k.bankAccountVerify(acct())).adapter).toBe("fake-kyc");
+    idfy.failNext(1, 503);
+    const calls = fake.bankAccountVendorCalls;
+    await expect(
+      k.bankAccountVerify(acct(), { idempotencyKey: "router-bank-1" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    expect(fake.bankAccountVendorCalls).toBe(calls);
   });
 });

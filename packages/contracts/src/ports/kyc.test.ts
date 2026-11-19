@@ -1,10 +1,19 @@
 // KYC port schemas for DigiLocker (PR-UDF-040, R1-D-193): the start request and its return address;
-// and for Aadhaar OTP e-KYC (PR-UDF-041, R1-D-194): the number check and the two requests.
+// for Aadhaar OTP e-KYC (PR-UDF-041, R1-D-194): the number check and the two requests; and for the
+// bank account check (PR-UDF-043, R1-D-196): the mode, the status set and the funding statement.
 import { describe, expect, it } from "vitest";
 import { payloadClass } from "./payload-class.js";
 import { verhoeffValid } from "../search-refusal.js";
+import { findAadhaarLike } from "../aadhaar.js";
+import { toProblem, PortError } from "../errors.js";
 import {
   AADHAAR_OTP_REFUSALS,
+  BANK_ACCOUNT_MODE_UNSUPPORTED,
+  BANK_ACCOUNT_MODES,
+  BANK_ACCOUNT_STATUSES,
+  BankAccountCheck,
+  KYC_ADAPTER_FUNDING,
+  kycAdapterFunding,
   AadhaarOtpRequest,
   AadhaarOtpVerify,
   KYC_METHODS,
@@ -157,5 +166,50 @@ describe("PR-UDF-041: Aadhaar OTP e-KYC schemas and the number check", () => {
     ]);
     for (const r of AADHAAR_OTP_REFUSALS) expect(r).toMatch(/^[a-z][a-z0-9_]{0,63}$/);
     expect(KYC_METHODS).toContain("aadhaar_otp");
+  });
+});
+
+describe("PR-UDF-043: the bank account check's mode, status set and funding statement", () => {
+  const check = { ifsc: "HDFC0000001", accountNumber: "000123456789" };
+
+  it("the mode is optional, one of two, and INTERNAL; the request stays REGULATED", () => {
+    expect([...BANK_ACCOUNT_MODES]).toEqual(["pennyless", "penny_drop"]);
+    expect(BankAccountCheck.parse(check)).toEqual(check);
+    for (const mode of BANK_ACCOUNT_MODES)
+      expect(BankAccountCheck.parse({ ...check, mode })).toEqual({ ...check, mode });
+    for (const mode of ["PENNYLESS", "penny-drop", "", "none", 1])
+      expect(BankAccountCheck.safeParse({ ...check, mode }).success).toBe(false);
+    expect(BankAccountCheck.safeParse({ ...check, amount: 1 }).success).toBe(false);
+    expect(payloadClass(BankAccountCheck).bodyHighest).toBe("REGULATED");
+    expect(payloadClass(BankAccountCheck)).toMatchObject({ complete: true, unannotated: [] });
+  });
+
+  it("the status set is unchanged and the refusal label is fixed and leaves as the problem's reason", () => {
+    expect([...BANK_ACCOUNT_STATUSES]).toEqual(["valid", "invalid", "closed", "not_found"]);
+    expect(BANK_ACCOUNT_MODE_UNSUPPORTED).toBe("mode_unsupported");
+    const p = toProblem(
+      new PortError("IPB-PORT-002", "KYC", { meta: { reason: BANK_ACCOUNT_MODE_UNSUPPORTED } }),
+    );
+    expect(p).toMatchObject({ code: "IPB-PORT-002", reason: "mode_unsupported" });
+  });
+
+  it("every adapter states who funds a penny drop, with its source; the real adapters are unknown until verified", () => {
+    for (const [adapter, f] of Object.entries(KYC_ADAPTER_FUNDING)) {
+      expect(["provider", "tenant", "unknown"]).toContain(f.pennyDrop);
+      expect(f.source.length).toBeGreaterThan(10);
+      if (adapter !== "fake-kyc") {
+        expect(f.pennyDrop).toBe("unknown");
+        expect(f.source).toContain("[VERIFY]");
+      }
+    }
+    expect(Object.keys(KYC_ADAPTER_FUNDING).sort()).toEqual(["digio-kyc", "fake-kyc", "idfy-kyc"]);
+    expect(kycAdapterFunding("digio-kyc")).toBe(KYC_ADAPTER_FUNDING["digio-kyc"]);
+    expect(kycAdapterFunding("someone-else").pennyDrop).toBe("unknown");
+  });
+
+  it("the fixtures' account number is not Aadhaar-like, so the no-Aadhaar sweep is meaningful", () => {
+    // Twelve digits, but a leading 0 is never an Aadhaar number (first digit 2 to 9).
+    expect(findAadhaarLike(check.accountNumber)).toEqual([]);
+    expect(findAadhaarLike(`acct ${check.accountNumber} ifsc ${check.ifsc}`)).toEqual([]);
   });
 });
