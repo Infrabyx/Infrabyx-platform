@@ -39,6 +39,8 @@ The images the contract legs share are pinned in `infra/docker/TEST_IMAGES.md`; 
 | Observability | `grafana/otel-lgtm:0.37.0@sha256:57b5ab1ca6619beb180174e2fccce04762470750669d043f544b4726d0582d07`           |
 | MinIO (build) | `golang:1.24.13-bookworm@sha256:1a6d4452c65dea36aac2e2d606b01b4a029ec90cc1ae53890540ce6173ea77ac`            |
 
+Three services run an OpenJDK JVM: Keycloak, Gotenberg (its pdftk) and OpenSearch. Each sets `-XX:-UseBASE64Intrinsics` (Keycloak in `JAVA_OPTS_APPEND`, Gotenberg in `JAVA_TOOL_OPTIONS`, OpenSearch in `OPENSEARCH_JAVA_OPTS`) against CVE-2026-114938, on every host whatever its CPU (owner answer #143, R1-D-192). Keep it if you change their environment; `infra/docker/jvm-mitigation.test.mjs` fails without it, and a new image must first be scanned for a JVM (`infra/docker/jvm-images.mjs`).
+
 MinIO publishes no pinnable image, so `minio/Dockerfile` builds its last community release from source at the pinned commit, as CI does (PL2-D-61, OWNER-QUESTIONS #4); never a third-party mirror.
 
 ## The reference app on the stack

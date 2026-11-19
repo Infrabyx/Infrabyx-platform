@@ -232,7 +232,8 @@ jobs:
               -t "infrabyx/${app//\//-}:ci-${GITHUB_SHA::12}" .
           done
           # Keycloak with the customer one-time-code extension (R1-D-19): scanned, not hardened
-          # by the app test (it runs as Keycloak's own user 1000).
+          # by the app test (it runs as Keycloak's own user 1000). Its build fails unless its JVM
+          # resolves -XX:-UseBASE64Intrinsics (R1-D-192).
           docker build -t "infrabyx/keycloak-customer:ci-${GITHUB_SHA::12}" infra/keycloak/customer-otp
           # The TallyPrime agent (PR-FBX-46, R1-D-178): the tenant runs it; it listens on no port.
           docker build -f infra/docker/tally-agent/Dockerfile -t "infrabyx/tally-agent:ci-${GITHUB_SHA::12}" .
@@ -251,10 +252,16 @@ jobs:
           cache: pnpm
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: hardening test (@IPB-01-AT-15)
+      # The JVM mitigation for CVE-2026-114938 (owner answer #143, OWNER-WAIVER-CRIT-01, R1-D-192)
+      # is read from the live JVMs here: the customer image built above and the third-party JVM
+      # images as Compose and the test harness start them. The waiver in trivyignore.yaml holds only
+      # while this step passes.
+      - name: hardening test (@IPB-01-AT-15) and the JVM mitigation
         run: |
           IPB_IMAGES="$(for app in ${APPS//\//-} ${NODE_APPS//\//-}; do printf 'infrabyx/%s:ci-%s ' "$app" "${GITHUB_SHA::12}"; done)" \
           IPB_AGENT_IMAGE="infrabyx/tally-agent:ci-${GITHUB_SHA::12}" \
+          IPB_KEYCLOAK_IMAGE="infrabyx/keycloak-customer:ci-${GITHUB_SHA::12}" \
+          IPB_JVM_IMAGES=1 \
             pnpm images:test
   compose:
     # The local stack (IPB-01-33, PL6 plan §4): `pnpm dev:up` starts the `core` profile, waits for
