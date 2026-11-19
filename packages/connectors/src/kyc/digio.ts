@@ -109,6 +109,7 @@ const UNSUPPORTED = [
   "faceMatch",
   "ovdOcr",
   "amlScreen",
+  "verifyWebhook",
   "handleWebhook",
 ] as const;
 
@@ -863,6 +864,10 @@ export class DigioKyc implements KycPort {
   }
   amlScreen(): Promise<never> {
     return this.unsupported("amlScreen");
+  }
+  /** No V-CIP webhook scheme of this vendor is known to the platform (PR-UDF-046) [VERIFY]. */
+  verifyWebhook(): Promise<never> {
+    return this.unsupported("verifyWebhook");
   }
   handleWebhook(): Promise<never> {
     return this.unsupported("handleWebhook");

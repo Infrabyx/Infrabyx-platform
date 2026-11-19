@@ -12,6 +12,8 @@
 // applied, and keyed liveness and face-match checks are kept in a `KycScoreCheckStore`
 // (`PgKycScoreCheckStore`, `connectors.kyc_score_check`; PR-UDF-044). An LSP's signed V-CIP
 // hand-off lands on `VcipConductor.launchVcip` (the RE side; Digio and IDfy refuse it; PR-UDF-045).
+// A provider's V-CIP webhook is verified without a vendor call by `standardWebhookKycVerifier`
+// (Standard Webhooks; Digio and IDfy refuse `verifyWebhook` until their schemes are known; PR-UDF-046).
 export * from "./aadhaar-otp.js";
 export * from "./bank-account.js";
 export * from "./digio.js";
@@ -20,3 +22,4 @@ export * from "./idfy.js";
 export * from "./routing.js";
 export * from "./score-checks.js";
 export * from "./vcip.js";
+export * from "./webhook.js";

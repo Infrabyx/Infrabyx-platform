@@ -9,6 +9,7 @@ import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed } from "./payload-class.js";
 import { findAadhaarLike, verhoeffValid } from "../aadhaar.js";
+import { PortError } from "../errors.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
 
@@ -368,6 +369,128 @@ export function vcipHandoffFailure(jwsFailure: string): VcipHandoffRefusal {
  */
 export function vcipLaunchUrlAllowed(url: string, hosts: readonly string[]): boolean {
   return digilockerReturnUrlAllowed(url, hosts) && findAadhaarLike(url).length === 0;
+}
+
+// ---- Webhook verification without a vendor call (PR-UDF-046; R1-D-199) -------------------------
+
+/** The largest V-CIP webhook body an adapter reads: 64 KiB. A larger one is refused unparsed. */
+export const KYC_WEBHOOK_MAX_BODY_BYTES = 64 * 1024;
+/** The window on a delivery's timestamp, either way: five minutes (IPB-10-21). */
+export const KYC_WEBHOOK_TOLERANCE_SECONDS = 300;
+
+/**
+ * The fixed `meta.reason` of a refused webhook (`IPB-API-018`, 401, definite), all decided before
+ * any vendor call: `body_too_large`, over `KYC_WEBHOOK_MAX_BODY_BYTES`, refused before it is read;
+ * `signature_invalid`, a header is missing or malformed or no signature verifies with the
+ * provider's secret; `timestamp_stale`, the delivery's timestamp is more than
+ * `KYC_WEBHOOK_TOLERANCE_SECONDS` from now either way; `event_replayed`, this delivery (its id and
+ * timestamp) was accepted before. A provider's retry of one event carries the same id with a new
+ * timestamp and signature, so it verifies again; the product's module inbox de-duplicates it by
+ * `eventId` (IPB-10-27).
+ */
+export const KYC_WEBHOOK_REFUSALS = [
+  "body_too_large",
+  "signature_invalid",
+  "timestamp_stale",
+  "event_replayed",
+] as const;
+export type KycWebhookRefusal = (typeof KYC_WEBHOOK_REFUSALS)[number];
+/** The fixed `meta.reason` (`IPB-PORT-001`, definite) of a verified event that names no session. */
+export const KYC_WEBHOOK_MALFORMED = "malformed_event";
+
+/** What a verified V-CIP webhook says, ids and a time only: enough to record and acknowledge it. */
+export interface KycWebhookReceipt {
+  /** The provider's delivery id (`webhook-id`), the same on every retry: the inbox key. */
+  eventId: string;
+  /** The session the event is about; read it back with `vcipStatus` (from the product's queue). */
+  vcipId: string;
+  /** When the adapter verified it, by the adapter's clock. */
+  receivedAt: string;
+}
+
+/** `IPB-API-018` with a `KYC_WEBHOOK_REFUSALS` label, definite; it never carries the body. */
+export function kycWebhookRefused(adapter: string, reason: KycWebhookRefusal): PortError {
+  return new PortError("IPB-API-018", "KYC", {
+    adapter,
+    detail: `webhook refused: ${reason}`,
+    meta: { reason, definite: true },
+  });
+}
+
+/** A delivery replay store: true the first time a key is claimed (`@infrabyx/crypto` `ReplayStore`). */
+export interface KycWebhookReplayStore {
+  claim(key: string, expiresAt: Date): Promise<boolean>;
+}
+
+/** What `verifyKycWebhookWith` needs: the delivery, the scheme's check and the replay store. */
+export interface KycWebhookCheck {
+  adapter: string;
+  rawBody: Uint8Array;
+  headers: Readonly<Record<string, string>>;
+  /**
+   * The provider's Standard Webhooks check over the raw body and these headers, e.g.
+   * `verifyStandardWebhook` of `@infrabyx/crypto` with the provider's secrets: null when valid.
+   */
+  verify(h: {
+    id: string;
+    timestamp: string;
+    signature: string;
+  }): "headers" | "timestamp" | "signature" | null;
+  /** Durable and shared by every instance in production (as the hand-offs' `jti` store). */
+  replay: KycWebhookReplayStore;
+  /** The provider's session id in a verified body (parsed JSON). */
+  vcipIdOf(body: unknown): unknown;
+  now: Date;
+  toleranceSeconds?: number;
+}
+
+const headerOf = (h: Readonly<Record<string, string>>, name: string): string | undefined => {
+  for (const [k, v] of Object.entries(h)) if (k.toLowerCase() === name) return v;
+  return undefined;
+};
+
+/**
+ * Verify a V-CIP webhook without a vendor call (PR-UDF-046), in this order: the body's size
+ * (before anything is parsed), the Standard Webhooks headers, the signature and timestamp (`verify`),
+ * the delivery's replay claim, and only then the body's session id. Every refusal before the body
+ * is parsed is `kycWebhookRefused`; a verified body naming no well-formed session is `IPB-PORT-001`
+ * `malformed_event`, definite. The answer is a `KycWebhookReceipt`.
+ */
+export async function verifyKycWebhookWith(o: KycWebhookCheck): Promise<KycWebhookReceipt> {
+  if (o.rawBody.byteLength > KYC_WEBHOOK_MAX_BODY_BYTES)
+    throw kycWebhookRefused(o.adapter, "body_too_large");
+  const id = headerOf(o.headers, "webhook-id");
+  const timestamp = headerOf(o.headers, "webhook-timestamp");
+  const signature = headerOf(o.headers, "webhook-signature");
+  if (id === undefined || timestamp === undefined || signature === undefined)
+    throw kycWebhookRefused(o.adapter, "signature_invalid");
+  const failed = o.verify({ id, timestamp, signature });
+  if (failed === "timestamp") throw kycWebhookRefused(o.adapter, "timestamp_stale");
+  if (failed !== null) throw kycWebhookRefused(o.adapter, "signature_invalid");
+  const tolerance = o.toleranceSeconds ?? KYC_WEBHOOK_TOLERANCE_SECONDS;
+  const until = new Date((Number(timestamp) + tolerance) * 1000 + 60_000);
+  if (!(await o.replay.claim(`kyc-webhook:${id}.${timestamp}`, until)))
+    throw kycWebhookRefused(o.adapter, "event_replayed");
+  const malformed = () =>
+    new PortError("IPB-PORT-001", "KYC", {
+      adapter: o.adapter,
+      detail: "a V-CIP event names its session",
+      meta: { reason: KYC_WEBHOOK_MALFORMED, definite: true },
+    });
+  let vcipId: unknown;
+  try {
+    vcipId = o.vcipIdOf(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(o.rawBody)));
+  } catch {
+    throw malformed();
+  }
+  if (
+    typeof vcipId !== "string" ||
+    !/^[A-Za-z0-9._:-]{3,200}$/.test(vcipId) ||
+    TWELVE_DIGIT_RUN.test(vcipId) ||
+    findAadhaarLike(vcipId).length > 0
+  )
+    throw malformed();
+  return { eventId: id, vcipId, receivedAt: o.now.toISOString() };
 }
 
 /**
@@ -919,7 +1042,27 @@ export interface KycPort extends Port {
   /** Delegates to the OCR port where the adapter has no OCR of its own (`emulated`). */
   ovdOcr(req: z.infer<typeof OvdOcr>, call?: PortCall): Promise<OvdOcrResult>;
   amlScreen(party: z.infer<typeof AmlParty>, call?: PortCall): Promise<AmlResult>;
-  /** Parses a V-CIP event, then reads the session back from the vendor; only that is trusted. */
+  /**
+   * Verify a V-CIP webhook without a vendor call (PR-UDF-046): the provider's signature scheme
+   * (Standard Webhooks, IPB-10-21) and its five-minute window, a delivery's replay, and a body of at
+   * most `KYC_WEBHOOK_MAX_BODY_BYTES`, then the session id; no read-back. Refusals are
+   * `IPB-API-018` with a `KYC_WEBHOOK_REFUSALS` label, definite, so the product answers 401; a
+   * verified event naming no session is `IPB-PORT-001` `malformed_event`. With the receipt the
+   * product records `eventId` in its module inbox, answers 2xx within 2 s and reads the session back
+   * with `vcipStatus` from its queue (IPB-10-27). Optional on the interface so an implementer outside
+   * the platform does not break in a minor; the fake provides it, and an adapter whose provider's
+   * scheme is not yet known refuses it `unsupported`.
+   */
+  verifyWebhook?(
+    rawBody: Uint8Array,
+    headers: Readonly<Record<string, string>>,
+    meta?: WebhookRequestMeta,
+  ): Promise<KycWebhookReceipt>;
+  /**
+   * Verify a V-CIP event, then read the session back from the vendor; only that is trusted. Where
+   * the adapter provides `verifyWebhook` (PR-UDF-046), this is `verifyWebhook` and then
+   * `vcipStatus` of its `vcipId`, so a forged event is refused before any vendor call.
+   */
   handleWebhook(
     rawBody: Uint8Array,
     headers: Readonly<Record<string, string>>,

@@ -2,10 +2,12 @@
 import { describe, expect, it } from "vitest";
 import { defineContractSuite } from "../contract.js";
 import {
+  FAKE_KYC_WEBHOOK,
   FakeKyc,
   KYC_FAKE_FIXTURES,
   fakeVcipHandoffContext,
   kycContractCases,
+  signFakeKycWebhook,
   signFakeVcipHandoff,
 } from "./kyc.js";
 import { FakeVideoMeet, videoMeetContractCases } from "./video-meet.js";
@@ -25,10 +27,8 @@ describe("the KYC fake's V-CIP and webhook", () => {
       documents: [],
     });
     kyc.completeVcip(v.vcipId, { state: "completed" });
-    const m = await kyc.handleWebhook(
-      new TextEncoder().encode(JSON.stringify({ vcipId: v.vcipId, state: "rejected" })),
-      {},
-    );
+    const event = new TextEncoder().encode(JSON.stringify({ vcipId: v.vcipId, state: "rejected" }));
+    const m = await kyc.handleWebhook(event, signFakeKycWebhook(event));
     expect(m).toMatchObject({
       state: "completed",
       officialRef: "usr_official",
@@ -36,9 +36,41 @@ describe("the KYC fake's V-CIP and webhook", () => {
     });
     expect(m.liveness?.passed && m.faceMatch?.passed).toBe(true);
     expect(m.artefacts.every((a) => /^[0-9a-f]{64}$/.test(a.file.sha256))).toBe(true);
-    await expect(kyc.handleWebhook(new TextEncoder().encode("{}"), {})).rejects.toMatchObject({
-      code: "IPB-PORT-001",
+    // PR-UDF-046: an unsigned event is refused before anything is read back; a signed one naming
+    // no session is malformed.
+    const empty = new TextEncoder().encode("{}");
+    const reads = kyc.vcipStatusVendorCalls;
+    await expect(kyc.handleWebhook(event, {})).rejects.toMatchObject({
+      code: "IPB-API-018",
+      meta: { reason: "signature_invalid" },
     });
+    await expect(kyc.handleWebhook(empty, signFakeKycWebhook(empty))).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "malformed_event" },
+    });
+    expect(kyc.vcipStatusVendorCalls).toBe(reads);
+  });
+
+  it("verifyWebhook (PR-UDF-046) takes either secret during a rotation, on the fake's clock", async () => {
+    let now = new Date("2026-11-19T06:00:00Z");
+    const next = `whsec_${Buffer.alloc(32, 9).toString("base64")}`;
+    const f = new FakeKyc({
+      now: () => now,
+      webhook: { secrets: [next, FAKE_KYC_WEBHOOK.secret] },
+    });
+    const body = new TextEncoder().encode(JSON.stringify({ vcipId: "vcip_rotation" }));
+    for (const secret of [next, FAKE_KYC_WEBHOOK.secret])
+      expect(await f.verifyWebhook(body, signFakeKycWebhook(body, { at: now, secret }))).toEqual({
+        eventId: expect.stringMatching(/^msg_fake_/),
+        vcipId: "vcip_rotation",
+        receivedAt: now.toISOString(),
+      });
+    const h = signFakeKycWebhook(body, { at: now });
+    now = new Date(now.getTime() + 301_000);
+    await expect(f.verifyWebhook(body, h)).rejects.toMatchObject({
+      meta: { reason: "timestamp_stale" },
+    });
+    expect(f.vcipStatusVendorCalls).toBe(0);
   });
 });
 
