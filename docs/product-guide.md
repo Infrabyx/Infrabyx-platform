@@ -1075,6 +1075,26 @@ From the next release (`contracts`, `fakes`, `testing` and `connectors` minors; 
 - **Consent reference:** `consentRef` is unchanged (the required `cpr_`); pass your own artefact as `consentArtefact: { kind, id }` as in §7cz (the same rules and refusals). Neither is sent to the AA.
 - **Testing:** `FakeAccountAggregator({ fiuId, approvalHost })` reports its own FIU (`fake-fiu` by default), so a request naming another is refused; `reportFiu(consentId, fiuId)` plays the AA reporting another FIU later. Your adapter's contract: `accountAggregatorContractCases(fixtures)`, with `fiuId` (and, for a stub, `reportFiu`) in the fixtures.
 
+## 7db. Snooze, ordering and the by-record list in the Work Inbox (PR-LDC-46; R1-D-206)
+
+From the next `workflow` minor (version in the STATUS release record; migration `workflow/0005_inbox_snooze.sql`, applied by `infrabyx-migrate`), the Work Inbox snoozes an item for one person, orders by due time or severity, and lists one module or record. Remove your own inbox overlay.
+
+- **Snooze:** `inbox.snooze(ctx, itemId, until)` hides the item from the caller only, until `until` (a `Date`, in the future, at most `INBOX_SNOOZE_MAX_DAYS` = 30 days ahead, and no later than the item's `dueAt`, else `RangeError`). Other holders of a role item still see it. The caller must see the item (`NotFoundError` otherwise, as `markRead`). An escalated item, an escalation and an item past its due time are refused `ConflictError`. Snoozing again replaces the time; `inbox.unsnooze(ctx, itemId)` clears it. Map `RangeError` to 400, `ConflictError` to 409, `NotFoundError` to 404.
+- **Reappearing:** nothing to schedule. Reads compare the time with the clock, so the item is back once its time passes, and once it is escalated or falls due even before that. `InboxItem.snoozedUntil` is the caller's active snooze (null when none).
+- **Reads:** `list(ctx, { productModule, recordRef, orderBy, snoozed })`: `orderBy` is `newest` (default, as before), `due` (soonest due first, none last, then severity) or `severity` (critical first, then due time); `snoozed` is `exclude` (default), `include` or `only` (a "Snoozed" tab). `badgeCount` leaves the caller's snoozed items out.
+- **Audit:** `inbox.item.snooze` and `inbox.item.unsnooze` ledger entries, in the same transaction.
+
+## 7dc. Layout and formula cells in `toXlsx` (PR-LDC-52; R1-D-207)
+
+From the next `export` minor (version in the STATUS release record; no migration, no setting), `toXlsx` lays a register out the way your own ExcelJS code did. Remove that code; nothing changes for a workbook that uses none of it (the bytes are the same).
+
+- **Freeze and filter:** `freezeColumns: n` keeps the first n columns in view beside the frozen header row; `autoFilter: true` adds filter buttons over the header and data rows.
+- **Grouping and fills:** `rowLayout[i] = { outlineLevel, fill }` for data row i (0 is the row under the header; levels 0 to 7), `outlineSummary: "above"` when the group's summary row is above it; `headerFill` and a column's `fill` take six hex digits (`"FFF2CC"`), and a row fill wins over a column fill. Dates keep their format when filled.
+- **Printing:** `page: { paper: "A4", orientation: "landscape", fitToWidth: true, repeatHeader: true, printArea: true }` (`printArea` may also be a range such as `"A1:F200"`).
+- **Conditional formats:** `conditionalFormats: [{ column: "due", when: { op: "lt", value: { today: 0 } }, style: { fill: "F8CBAD", bold: true }, wholeRow: true }]`. `column` is a key or header; comparisons take a value of the column's type (a number, a `yyyy-mm-dd` date or `{ today: n }`, text, a boolean); also `between`, `notBetween`, `containsText`, `blank`, `notBlank`. There is no free expression: if a rule you need is missing, raise a platform request.
+- **Formulas:** put `xlsxFormula("SUM(D2:D200)", { result: 1234 })` in a cell (no leading `=`). Never build the formula text from user input without quoting it yourself; external references, any `|` outside a string literal (DDE), and `WEBSERVICE`, `IMAGE`, `HYPERLINK`, `INFO`, `CELL` and the other `XLSX_BLOCKED_FUNCTIONS` are refused `formula_invalid`. Formula text is yours alone: user text goes in ordinary cells, where the writer's formula-injection protection stays on. A string such as `"=SUM(A1)"` from your data is still written as text with a leading apostrophe.
+- **Refusals:** `OfficeExportError` with `layout_invalid`, `conditional_format_invalid` or `formula_invalid` (and `cell_invalid` for a cached result of the wrong type).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
