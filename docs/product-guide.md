@@ -1066,6 +1066,15 @@ From the next release (`contracts`, `fakes`, `testing` and `connectors` minors; 
 - **Consent reference:** `consentRef` takes your own artefact `{ kind, id }` as in §7cz (the same rules and refusals), or a `cpr_` as before; neither is sent to the AA.
 - **Testing:** `FakeAccountAggregator({ fiuId, approvalHost })` reports its own FIU (`fake-fiu` by default), so a request naming another is refused; `reportFiu(consentId, fiuId)` plays the AA reporting another FIU later. Your adapter's contract: `accountAggregatorContractCases(fixtures)`, with `fiuId` (and, for a stub, `reportFiu`) in the fixtures.
 
+## 7db. Snooze, ordering and the by-record list in the Work Inbox (PR-LDC-46; R1-D-206)
+
+From the next `workflow` minor (version in the STATUS release record; migration `workflow/0005_inbox_snooze.sql`, applied by `infrabyx-migrate`), the Work Inbox snoozes an item for one person, orders by due time or severity, and lists one module or record. Remove your own inbox overlay.
+
+- **Snooze:** `inbox.snooze(ctx, itemId, until)` hides the item from the caller only, until `until` (a `Date`, in the future, at most `INBOX_SNOOZE_MAX_DAYS` = 30 days ahead, and no later than the item's `dueAt`, else `RangeError`). Other holders of a role item still see it. The caller must see the item (`NotFoundError` otherwise, as `markRead`). An escalated item, an escalation and an item past its due time are refused `ConflictError`. Snoozing again replaces the time; `inbox.unsnooze(ctx, itemId)` clears it. Map `RangeError` to 400, `ConflictError` to 409, `NotFoundError` to 404.
+- **Reappearing:** nothing to schedule. Reads compare the time with the clock, so the item is back once its time passes, and once it is escalated or falls due even before that. `InboxItem.snoozedUntil` is the caller's active snooze (null when none).
+- **Reads:** `list(ctx, { productModule, recordRef, orderBy, snoozed })`: `orderBy` is `newest` (default, as before), `due` (soonest due first, none last, then severity) or `severity` (critical first, then due time); `snoozed` is `exclude` (default), `include` or `only` (a "Snoozed" tab). `badgeCount` leaves the caller's snoozed items out.
+- **Audit:** `inbox.item.snooze` and `inbox.item.unsnooze` ledger entries, in the same transaction.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

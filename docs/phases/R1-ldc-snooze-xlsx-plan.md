@@ -38,6 +38,14 @@ LawDocsComply's own inbox overlay keeps a per-person snooze, a due/severity orde
 
 **Owner decisions needed** (#155, none blocking): the 30-day bound; refusing (rather than shortening) a snooze past the due time; an escalation not snoozable at all; the badge leaving snoozed items out; `RangeError`/`ConflictError` rather than new `IpbError` codes (as PR-UDF-047's cursor, #151).
 
+**As built (R1-D-206):**
+
+- As planned. The visibility rule is the existing `VISIBLE` clause, unchanged; `snooze` locks the item row (`for update`) while it checks it, so a concurrent escalation cannot slip between the check and the write.
+- The caller's active snooze is one SQL expression shared by `list` and `badgeCount`; it is null once the item is escalated or past due, so the read-time rule and `InboxItem.snoozedUntil` agree.
+- The time bound is checked before any database call (`assertSnoozeUntil`, exported); an unknown `orderBy` or `snoozed` value is a `RangeError` before the read.
+- `escalate` now names its help key through `INBOX_ESCALATED_HELP_KEY` (same value), which `snooze` uses to recognise an escalation.
+- `unsnooze` is ledgered with `cleared: false` when nothing was active, so every call leaves a record. `[ASSUMED – owner review]` #155.
+
 ## B. PR-LDC-52 — the `toXlsx` layout options (`export` minor)
 
 LawDocsComply lays out its registers with its own ExcelJS code on top of the platform's workbook. The request names: row outline levels, fills, frozen columns, AutoFilter, page set-up (A4 landscape, fit to width, repeated header, print area), conditional formats and formula cells. Triage (R1-D-123): on the dependency-free writer, formula cells only as an explicit typed `formula` cell from the product, never parsed from a string; the formula-injection neutralising of text cells stays.
