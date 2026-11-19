@@ -6,8 +6,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
+  contractConsentArtefact,
   creditBureauContractCases,
   CREDIT_BUREAU_FAKE_FIXTURES,
+  malformedConsentArtefacts,
   defineContractSuite,
   MemoryStorage,
   startCibilStub,
@@ -142,6 +144,51 @@ describe("R1-D-61 the CIBIL adapter", () => {
     const text = sent.body.toString("utf8");
     expect(text).not.toContain(r.subject.subjectRef);
     expect(text).not.toContain(r.consentRef);
+  });
+
+  it("takes a product's own consent artefact, keeps it in the pull record and never sends it (PR-UDF-049)", async () => {
+    const pulls = new Map<string, CibilPullRecord>();
+    const p = new CibilBureau({
+      storage,
+      pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
+      enabled: () => enabled,
+      memberId: () => stub.memberId,
+      apiKey: () => stub.apiKey,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+    const ref = contractConsentArtefact();
+    const before = stub.requests.length;
+    const asked = req(stub.subjects.known.pan, stub.subjects.known.name, { consentArtefact: ref });
+    const r = await p.pull(asked);
+    expect(r).toMatchObject({ consentRef: asked.consentRef, consentArtefact: ref });
+    expect(pulls.get(r.pullId)).toMatchObject({
+      consentRef: asked.consentRef,
+      consentArtefact: ref,
+    });
+    expect(await p.status(r.pullId)).toMatchObject({
+      consentRef: asked.consentRef,
+      consentArtefact: ref,
+    });
+    const sent = stub.requests.slice(before).map((x) => x.body.toString("utf8"));
+    for (const text of sent) {
+      expect(text).not.toContain(ref.id);
+      expect(text).not.toContain(ref.kind);
+      expect(text).not.toContain(asked.consentRef);
+    }
+    // A pull without an artefact, and a record written before PR-UDF-049, read back as before.
+    const plain = await p.pull(req(stub.subjects.known.pan, stub.subjects.known.name));
+    expect(pulls.get(plain.pullId)).not.toHaveProperty("consentArtefact");
+    expect(await p.status(plain.pullId)).not.toHaveProperty("consentArtefact");
+  });
+
+  it("refuses a malformed consent artefact before anything reaches CIBIL", async () => {
+    const before = stub.requests.length;
+    for (const consentArtefact of malformedConsentArtefacts())
+      await expect(
+        make().pull(req(stub.subjects.known.pan, stub.subjects.known.name, { consentArtefact })),
+      ).rejects.toThrow();
+    expect(stub.requests.length).toBe(before);
   });
 
   it("maps the report in integer paise and buckets days past due", () => {
