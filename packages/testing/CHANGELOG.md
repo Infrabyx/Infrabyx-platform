@@ -1,5 +1,23 @@
 # @infrabyx/testing
 
+## 1.22.0
+
+### Minor Changes
+
+- 4af2688: Owner answer #132 (4) and (5) (R1-D-187). A reveal names a purpose code (`RevealRequest.purposeCode`; `RevealRule.purposeCodes`, default `REVEAL_PURPOSE_CODES`; refused `purpose_code_invalid`), recorded as the business id `purpose:<code>`. Refused reveals are kept as security audit events in `audit.security_event` (migration `audit/0012`; `PgSecurityEvents`, `SecurityEventSink`), outside the business ledger, never with the value; the threshold-th refusal of one principal within the window raises `RevealRefusalsRepeated` (settings `rules.reveal.refusal_alert_threshold`, `rules.reveal.refusal_alert_window_minutes`). A `revealRule` now requires `securityEvents`, `refusalCounter` and `outbox`. `defineRulesRevealContract` sends a purpose code and checks its refusal.
+
+### Patch Changes
+
+- Updated dependencies [4af2688]
+- Updated dependencies [955cc67]
+  - @infrabyx/contracts@1.36.0
+  - @infrabyx/audit@1.11.0
+  - @infrabyx/config@1.19.0
+  - @infrabyx/crypto@1.6.2
+  - @infrabyx/fakes@1.0.2
+  - @infrabyx/seed@1.0.46
+  - @infrabyx/tenancy@1.20.7
+
 ## 1.21.0
 
 ### Minor Changes
