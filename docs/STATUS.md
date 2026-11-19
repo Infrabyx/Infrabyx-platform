@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-18
+Updated: 2026-11-19
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -14,16 +14,18 @@ Updated: 2026-11-18
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
-| Finding                          | Where                         | Expires    | Review                                    | Decision           |
-| -------------------------------- | ----------------------------- | ---------- | ----------------------------------------- | ------------------ |
-| CVE-2026-91403 (accepted risk)   | Keycloak base (OpenJDK)       | 2026-12-20 | every re-scan; 15 Dec                     | R1-D-109           |
-| CVE-2026-102554                  | Keycloak jars (Guava 33.6.0)  | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119373, CVE-2026-119586 | Keycloak base (`sqlite-libs`) | 2026-12-20 | 15 Dec                                    | R1-D-109           |
-| CVE-2026-119374, CVE-2026-119379 | Keycloak base (`sqlite-libs`) | 2026-12-10 | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
-| CVE-2026-109518                  | Debian 12 base (apt)          | 2026-12-05 | 1 Dec (decision reported to the owner)    | R1-D-99            |
-| CVE-2026-76844                   | Debian 12 base (zlib1g)       | 2026-12-05 | 1 Dec                                     | R1-D-106, R1-D-108 |
-| CVE-2026-85091                   | Debian 12 base (zlib1g)       | 2026-12-07 | 1 Dec                                     | R1-D-111           |
-| CVE-2025-6020                    | Debian 12 base (linux-pam)    | 2026-12-16 | 1 Dec                                     | R1-D-162           |
+| Finding                                                            | Where                                                                         | Expires                                                            | Review                                    | Decision           |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------- | ------------------ |
+| CVE-2026-114938 (**CRITICAL**, mitigated; OWNER-WAIVER-CRIT-01)    | Keycloak base (OpenJDK `java-21-openjdk-headless` 1:21.0.13.0.9-1.2.el9 only) | 2026-12-15, or the day a fixed Keycloak/Red Hat build is published | every session start; 12 Dec → OWNER INBOX | R1-D-192           |
+| CVE-2026-114939, CVE-2026-114940, CVE-2026-114941, CVE-2026-114942 | Keycloak base (the same OpenJDK build only)                                   | 2026-12-15, with OWNER-WAIVER-CRIT-01                              | every session start; 1 Dec                | R1-D-208           |
+| CVE-2026-91403 (accepted risk)                                     | Keycloak base (OpenJDK)                                                       | 2026-12-20                                                         | every re-scan; 15 Dec                     | R1-D-109           |
+| CVE-2026-102554                                                    | Keycloak jars (Guava 33.6.0)                                                  | 2026-12-20                                                         | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119373, CVE-2026-119586                                   | Keycloak base (`sqlite-libs`)                                                 | 2026-12-20                                                         | 15 Dec                                    | R1-D-109           |
+| CVE-2026-119374, CVE-2026-119379                                   | Keycloak base (`sqlite-libs`)                                                 | 2026-12-10                                                         | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
+| CVE-2026-109518                                                    | Debian 12 base (apt)                                                          | 2026-12-05                                                         | 1 Dec (decision reported to the owner)    | R1-D-99            |
+| CVE-2026-76844                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-05                                                         | 1 Dec                                     | R1-D-106, R1-D-108 |
+| CVE-2026-85091                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-07                                                         | 1 Dec                                     | R1-D-111           |
+| CVE-2025-6020                                                      | Debian 12 base (linux-pam)                                                    | 2026-12-16                                                         | 1 Dec                                     | R1-D-162           |
 
 ## Wave 13 gate (16 Nov, #252)
 
@@ -41,9 +43,24 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Pinned:** `26.8.2-0` by digest (past the 7-day rule at 16:05 UTC) in the customer-otp image, the Compose IdP and `TEST_IMAGES.keycloak` (`testing` patch). The extension compiles with `-Werror` against its jars; the Keycloak hermetic legs run at the gate.
 - **PR-FBX-45 / PR-LDC-44:** CVE-2026-119374 and CVE-2026-119379 are not cleared; waived to 10 Dec; the 1 Dec check asks the owner whether to align them with 20 Dec. The four others stay to 20 Dec; re-scan 15 Dec.
 
+## CRITICAL waiver OWNER-WAIVER-CRIT-01 (CVE-2026-114938, "Java4Shell"; owner answer #143, R1-D-192)
+
+- **Check at the start of every session** (owner's order, 19 Nov): is a fixed Keycloak image (or a Red Hat OpenJDK build in one) published? Look at the `keycloak/keycloak` tags and Red Hat's advisory; scan the candidate with Trivy for CVE-2026-114938. If one exists, move to it in its own PR (the 7-day rule, PL2-D-32, still applies to the pin; ask the owner if the waiver would expire first), remove the waiver entry, the `ipb-kc.sh` entrypoint stays until the owner says otherwise, and close the waiver here. Checks so far: **19 Nov 10:20 IST: none** (newest release 26.8.2-2 of 12 Nov; nightly only after it); **19 Nov 23:55 IST: none**: a new rebuild `26.8.2-3` (pushed 19 Nov 07:42 UTC, `sha256:7e66a96e…`, OpenJDK 21.0.13.1.2-1.2.el9) is still reported affected by Trivy 0.76.0 (database of 19 Nov 13:02 UTC), with CVE-2026-114939 to 114942 (HIGH, R1-D-208); eligible under PL2-D-32 only from 26 Nov, and no gain until Red Hat ships a fixed build.
+- **12 Dec:** if no fixed image exists, raise it in the OWNER INBOX (#263) with options, e.g. rebuilding the customer image on a patched OpenJDK (Temurin or Corretto).
+- **15 Dec 00:00 UTC:** the waiver expires (`expired_at: 2026-12-15`) and `containers` fails again.
+- **Valid only while** the mitigation holds: the customer image does not build without the flag, and the `containers` job reads it from the live JVMs (`infra/docker/jvm-mitigation.e2e.test.mjs`). No other CRITICAL is covered.
+
 ## Platform backlog (owner-approved, not scheduled)
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Twenty-fifth session (19 Nov, owner's chat) — in progress
+
+- **Lock:** taken at 10:05 IST (SESSION LOCK #262 was FREE). Owner answers of 19 Nov (OWNER-MANUAL-02) recorded: #140 to #143 and a #137 (2) follow-up (`docs/OWNER-QUESTIONS.md`). The twenty-fourth session's work is in #300 (draft; its STATUS carries the twenty-third and twenty-fourth handovers and release run 265's record).
+- **Order (owner, 19 Nov):** (1) the Java4Shell mitigation, the waiver and its release; (2) #300 after 23:45 IST (re-label `ci:run`, merge when green, release); (3) PR-UDF-040 to 047; (4) PR-UDF-048 to 050 (added to `docs/platform-requests.md` with #300's list); (5) PR-LDC-46 and PR-LDC-52. The 1 Dec waiver check stays as written below (first session on or after 28 Nov if earlier).
+- **First PR (R1-D-192):** CVE-2026-114938 mitigated in every JVM the platform ships, the waiver OWNER-WAIVER-CRIT-01 (section above), guide §7cp, threat model §3.135; `testing` minor, `connectors` patch.
+- **#137 (2) follow-up, blocked in the session:** the owner's `gh api "orgs/Infrabyx/packages?package_type=npm"` cannot run here (this session's GitHub access serves search only through `gh`; github.com's package pages return 403 through the session proxy). Owner task: run it once and paste the output into OWNER INBOX #263; the session records it in run 265's release record. Not taken from the release step summary, as the owner asked.
+- **Uidai.gov.in (PR-UDF-039):** to be read when the owner's network change is live; the Secure QR adapter work becomes its own plan item. Real adapters keep refusing a Secure QR; never accepted without signature verification against UIDAI's published key.
 
 ## Twenty-third session (18 Nov, owner's evening chat) — in progress
 

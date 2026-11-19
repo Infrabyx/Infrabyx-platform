@@ -930,6 +930,15 @@ The fakes you wire in a fixture environment (below staging) now come from `@infr
 
 Contract cases (`kycContractCases`, `defineContractSuite`, …), the NN suites, `startPostgres` and the vendor stubs stay in `@infrabyx/testing`.
 
+## 7cp. OpenJDK images and CVE-2026-114938 ("Java4Shell"; owner answer #143, R1-D-192)
+
+CVE-2026-114938 is memory corruption in HotSpot's Base64 intrinsic on x86-64 CPUs with AVX-512 VBMI, in unpatched OpenJDK 17.0.6 and later (21 and 25 included). Keycloak decodes Base64 from requests before authentication, and pre-authentication remote code execution on Keycloak has been demonstrated (Red Hat RHSB-2026-018; keycloak.org advisory of Nov 2026). No fixed Red Hat OpenJDK build was published on 19 Nov 2026. The mitigation is to turn the intrinsic off with `-XX:-UseBASE64Intrinsics` on **every** host, whatever its CPU: never decide by CPU type, because a node can be rescheduled onto another CPU.
+
+1. **Keycloak:** run the platform's customer image (`infra/keycloak/customer-otp`, rebuilt from this release). Its entrypoint appends the flag last on every start, refuses `_JAVA_OPTIONS`, `JDK_JAVA_OPTIONS` or `JAVA_TOOL_OPTIONS` values that name it, and its build fails without it. Keep the image's entrypoint. If you run the stock Keycloak image, or must replace the entrypoint, set `JAVA_OPTS_APPEND` so that it **ends** with `-XX:-UseBASE64Intrinsics` on every node: cluster members, failover nodes, rolling-update replacements, and the job or init container that runs `kc.sh build`.
+2. **Gotenberg** (its pdftk is a JVM): set `JAVA_TOOL_OPTIONS=-XX:-UseBASE64Intrinsics`. **OpenSearch**: append the flag to `OPENSEARCH_JAVA_OPTS` (it ignores `JAVA_TOOL_OPTIONS`). The platform's Compose file and test harness already do both, and LocalStack's in tests.
+3. **Check the running JVM**, not only the definition: `jcmd <pid> VM.flags -all | grep UseBASE64Intrinsics` must print `false {command line}` (Keycloak, OpenSearch) or `false {environment}` (`JAVA_TOOL_OPTIONS`). For Gotenberg, whose JVM lives for one request, see `infra/docker/jvm-mitigation.e2e.test.mjs`.
+4. **Check your own scans.** The platform's waiver (OWNER-WAIVER-CRIT-01 in `infra/docker/trivyignore.yaml`) covers only `java-21-openjdk-headless` 1:21.0.13.0.9-1.2.el9 in the pinned Keycloak 26.8.2-0 base, and only while the mitigation is proven. Copy it only if your image is that image with the same mitigation and its test; any other image with an OpenJDK runtime is your own decision. It ends when a fixed Keycloak image is published and pinned, 15 Dec 2026 at the latest; the platform then moves to that image in its own release, and you rebuild.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
