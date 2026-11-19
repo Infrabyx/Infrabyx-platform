@@ -21,6 +21,14 @@ blockExoticSubdeps: true
 # Security fixes for transitive pins (R1-D-60): express 5.2.1's body-parser 2.3.0 and
 # @nestjs/platform-express 11.2.7's exact multer 2.4.0 carry CVE-2026-111181 and CVE-2026-113872;
 # the fixed versions (22 Oct 2026) are past the 7-day age. Drop each once its parent carries it.
+# GHSA-3g3m-2fjr-6pw4 (glob, fixed in 14.0.2) and GHSA-g3hv-75wg-m249 (minimatch, fixed in
+# 11.0.1), Finbyx PR-FBX-50 (R1-D-216): unleash-client 6.12.2 still asks for make-fetch-happen 15
+# (cacache 20, glob 13); make-fetch-happen 16 is the same client on cacache 21 and glob 14.
+# testcontainers' archiver-utils asks for glob 10; eslint and typescript-estree for minimatch 10.
+# Drop each once its parent carries the fixed major.
 overrides:
   body-parser@2.3.0: 2.4.0
   multer@2.4.0: 2.5.0
+  unleash-client>make-fetch-happen: ^16.0.1
+  archiver-utils>glob: ^14.0.3
+  "minimatch@>=7.0.0 <11.0.1": ^11.0.8
