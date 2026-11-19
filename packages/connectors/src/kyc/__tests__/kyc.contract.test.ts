@@ -12,8 +12,15 @@ import {
   type DigioKycStub,
   type KycFixtures,
 } from "@infrabyx/testing";
-import { DigioKyc, mapDigioDigilockerStart } from "../digio.js";
+import {
+  DigioKyc,
+  digioAadhaarOtpRequestBody,
+  mapDigioAadhaarOtpRefusal,
+  mapDigioAadhaarOtpVerify,
+  mapDigioDigilockerStart,
+} from "../digio.js";
 import { MemoryDigilockerPullStore } from "../digilocker-pulls.js";
+import { holdsAadhaarNumber, MemoryAadhaarOtpVerifyStore } from "../aadhaar-otp.js";
 
 let dg: DigioKycStub;
 const storage = new MemoryStorage();
@@ -33,6 +40,12 @@ beforeAll(async () => {
       wrongShareCode: "0000",
     },
     digilockerConsent: () => dg.completedDigilocker(["PANCR", "ADHAR"]),
+    aadhaarOtp: {
+      ...dg.aadhaarOtp,
+      notNotified: () => ({ port: digio(), vendorCalls: () => dg.requests.length }),
+      vendorCalls: () => dg.requests.length,
+      expire: (_p, txn) => dg.expireAadhaarOtp(txn),
+    },
   };
 });
 afterAll(async () => {
@@ -61,7 +74,9 @@ describe("@IPB-01-15 KYC hermetic leg (Digio KYC stub)", () => {
   const cases = kycContractCases(
     new Proxy({} as KycFixtures, { get: (_t, k) => fixtures[k as keyof KycFixtures] }),
   );
-  defineContractSuite("KYC", () => digio(), cases, { leg: "hermetic" });
+  // Built for a notified entity, so the Aadhaar OTP cases run (PR-UDF-041); they build their own
+  // adapter without it.
+  defineContractSuite("KYC", () => digio({ notifiedEntity: true }), cases, { leg: "hermetic" });
 });
 
 describe("R1-D-24 Digio KYC behind its flag, by reference, without the Aadhaar number", () => {
@@ -254,5 +269,150 @@ describe("PR-UDF-040 Digio DigiLocker start, evidence and keyed pulls", () => {
         { idempotencyKey: "k-crash-2" },
       ),
     ).rejects.toMatchObject({ meta: { reason: "consent_used" } });
+  });
+});
+
+describe("PR-UDF-041 Digio Aadhaar OTP e-KYC for a notified RE", () => {
+  const consent = { version: "1.0", textHash: "cd".repeat(32), at: "2026-11-19T05:00:00Z" };
+
+  it("is off by default: not_configured before the flag, the parse or any request", async () => {
+    enabled = false;
+    try {
+      const before = dg.requests.length;
+      const p = digio();
+      await expect(
+        p.aadhaarOtpRequest({ uid: dg.aadhaarOtp.uid, uidKind: "AADHAAR", consent }),
+      ).rejects.toMatchObject({ meta: { reason: "not_configured", definite: true } });
+      await expect(
+        p.aadhaarOtpVerify({ txn: "AOT0000000001", otp: "123456" }),
+      ).rejects.toMatchObject({ meta: { reason: "not_configured" } });
+      // Notified but switched off: the flag still holds.
+      await expect(
+        digio({ notifiedEntity: true }).aadhaarOtpRequest({
+          uid: dg.aadhaarOtp.uid,
+          uidKind: "AADHAAR",
+          consent,
+        }),
+      ).rejects.toMatchObject({ meta: { reason: "adapter_disabled" } });
+      expect(dg.requests.length).toBe(before);
+    } finally {
+      enabled = true;
+    }
+  });
+
+  it("sends the number once, in the request body only, and stores the e-KYC under the tenant", async () => {
+    const p = digio({ notifiedEntity: true });
+    const s = await p.aadhaarOtpRequest(
+      { uid: dg.aadhaarOtp.uid, uidKind: "AADHAAR", consent },
+      { tenantId: "tnt_other" },
+    );
+    const sent = dg.requests.at(-1)!;
+    expect(sent.path).toBe("/client/kyc/v2/aadhaar_otp/request");
+    expect(sent.json()).toEqual({
+      id_type: "aadhaar",
+      id_number: dg.aadhaarOtp.uid,
+      consent: "Y",
+      consent_text_version: "1.0",
+      consent_text_hash: "cd".repeat(32),
+      consent_at: "2026-11-19T05:00:00Z",
+    });
+    expect(sent.path + sent.query.toString()).not.toContain(dg.aadhaarOtp.uid);
+    const r = await p.aadhaarOtpVerify(
+      { txn: s.txn, otp: dg.aadhaarOtp.otp },
+      { tenantId: "tnt_other" },
+    );
+    expect(dg.requests.at(-1)!.json()).toEqual({ id: s.txn, otp: dg.aadhaarOtp.otp });
+    expect(r).toMatchObject({
+      adapter: "digio-kyc",
+      signatureValid: true,
+      uidLast4: dg.aadhaarOtp.uid.slice(-4),
+    });
+    expect(r.ekyc.storageKey).toMatch(/^tenant\/tnt_other\/kyc\/.+\.xml$/);
+    const o = await storage.get(r.ekyc.storageKey);
+    expect(o.meta.bucketClass).toBe("REGULATED");
+    expect(sha256Hex(o.body)).toBe(r.ekyc.sha256);
+    expect(Buffer.from(o.body).toString("utf8")).toContain("<KycRes");
+    expect(digioAadhaarOtpRequestBody({ uid: "x", uidKind: "VID", consent }).id_type).toBe("vid");
+  });
+
+  it("refuses to store an e-KYC response that carries the full number, and keeps no copy", async () => {
+    const p = digio({ notifiedEntity: true });
+    const s = await p.aadhaarOtpRequest({ uid: dg.aadhaarOtp.uid, uidKind: "AADHAAR", consent });
+    dg.ekycWithNumberOnce(dg.aadhaarOtp.uid);
+    const keys = (await storage.list("tenant/")).keys.length;
+    const e = await p.aadhaarOtpVerify({ txn: s.txn, otp: dg.aadhaarOtp.otp }).then(
+      () => undefined,
+      (x: unknown) => x,
+    );
+    expect(e).toMatchObject({ code: "IPB-PORT-001", meta: { reason: "ekyc_holds_number" } });
+    expect(JSON.stringify(e)).not.toContain(dg.aadhaarOtp.uid);
+    expect((await storage.list("tenant/")).keys.length).toBe(keys);
+    expect(holdsAadhaarNumber(`uid="${dg.aadhaarOtp.uid}"`)).toBe(true);
+    expect(holdsAadhaarNumber(`uid="xxxxxxxx${dg.aadhaarOtp.uid.slice(-4)}"`)).toBe(false);
+    expect(holdsAadhaarNumber(`h=ab${dg.aadhaarOtp.uid}cd`)).toBe(false);
+    expect(holdsAadhaarNumber(` ${dg.aadhaarOtp.vid} `)).toBe(true);
+  });
+
+  it("a keyed retry on another instance with a shared store makes no vendor call", async () => {
+    const verifies = new MemoryAadhaarOtpVerifyStore();
+    const s = await digio({ notifiedEntity: true }).aadhaarOtpRequest({
+      uid: dg.aadhaarOtp.uid,
+      uidKind: "AADHAAR",
+      consent,
+    });
+    const first = await digio({
+      notifiedEntity: true,
+      aadhaarOtpVerifies: verifies,
+    }).aadhaarOtpVerify({ txn: s.txn, otp: dg.aadhaarOtp.otp }, { idempotencyKey: "otp-k-1" });
+    const before = dg.requests.length;
+    expect(
+      await digio({ notifiedEntity: true, aadhaarOtpVerifies: verifies }).aadhaarOtpVerify(
+        { txn: s.txn, otp: dg.aadhaarOtp.otp },
+        { idempotencyKey: "otp-k-1" },
+      ),
+    ).toEqual(first);
+    expect(dg.requests.length).toBe(before);
+    // A vendor failure leaves the key pending: the retry goes to the vendor again.
+    const t = await digio({ notifiedEntity: true }).aadhaarOtpRequest({
+      uid: dg.aadhaarOtp.uid,
+      uidKind: "AADHAAR",
+      consent,
+    });
+    const q = digio({ notifiedEntity: true, aadhaarOtpVerifies: verifies });
+    dg.failNext(1, 503);
+    await expect(
+      q.aadhaarOtpVerify({ txn: t.txn, otp: dg.aadhaarOtp.otp }, { idempotencyKey: "otp-k-2" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    expect(
+      (
+        await q.aadhaarOtpVerify(
+          { txn: t.txn, otp: dg.aadhaarOtp.otp },
+          { idempotencyKey: "otp-k-2" },
+        )
+      ).uidLast4,
+    ).toBe(dg.aadhaarOtp.uid.slice(-4));
+  });
+
+  it("maps the stub-shaped answers conservatively", () => {
+    expect(mapDigioAadhaarOtpRefusal(400, { code: "INVALID_AADHAAR" })).toBe("uid_invalid");
+    expect(mapDigioAadhaarOtpRefusal(400, { code: "MOBILE_NOT_LINKED" })).toBe("mobile_not_linked");
+    expect(mapDigioAadhaarOtpRefusal(400, { code: "INVALID_OTP" })).toBe("otp_invalid");
+    expect(mapDigioAadhaarOtpRefusal(400, { code: "OTP_EXPIRED" })).toBe("otp_expired");
+    expect(mapDigioAadhaarOtpRefusal(404, undefined)).toBe("otp_expired");
+    expect(mapDigioAadhaarOtpRefusal(400, { code: "SOMETHING" })).toBeUndefined();
+    expect(mapDigioAadhaarOtpRefusal(500, { code: "INVALID_OTP" })).toBeUndefined();
+    expect(() => mapDigioAadhaarOtpVerify({ id: "AOT0000000001", details: {} })).toThrow();
+    expect(() =>
+      mapDigioAadhaarOtpVerify({
+        id: "AOT0000000001",
+        details: { aadhaar_last_digits: dg.aadhaarOtp.uid, ekyc_xml: "PEt5Yz4=" },
+      }),
+    ).toThrow();
+    expect(
+      mapDigioAadhaarOtpVerify({
+        id: "AOT0000000001",
+        details: { aadhaar_last_digits: "xxxx-xxxx-1234", ekyc_xml: "PEt5Yz4=" },
+      }),
+    ).toMatchObject({ uidLast4: "1234", signatureValid: null });
   });
 });

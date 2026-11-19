@@ -20,6 +20,8 @@ export const KYC_METHOD_FNS = {
   bank_account: ["bankAccountVerify"],
   ovd_ocr: ["ovdOcr"],
   aml_screen: ["amlScreen"],
+  // The verify goes to the adapter that sent the OTP as long as the order is the same (PR-UDF-041).
+  aadhaar_otp: ["aadhaarOtpRequest", "aadhaarOtpVerify"],
 } as const satisfies Record<KycMethod, readonly (keyof KycPort)[]>;
 
 type Fn = (typeof KYC_METHOD_FNS)[KycMethod][number];
@@ -60,7 +62,8 @@ export function kycMethodRouter(o: KycMethodRouterOptions): KycPort {
       .filter(
         (a) =>
           a.descriptor.capabilities?.[fn] !== "unsupported" &&
-          // An optional method an adapter outside the platform does not have (startDigilocker).
+          // An optional method an adapter outside the platform does not have (startDigilocker,
+          // aadhaarOtpRequest, aadhaarOtpVerify).
           typeof a[fn] === "function",
       );
   };

@@ -1,6 +1,7 @@
 // Digio KYC stub (R1-plan M16), from the request and response shapes the adapter documents as
 // [VERIFY]. Proves adapter logic only; the sandbox leg proves the vendor once the owner's Digio
 // account exists. Test identities only: the masked number is the stub's own, never a real one.
+import { aadhaarOtpStub, type AadhaarOtpStubFixtures } from "./aadhaar-otp.js";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
 
 export interface DigioKycStub extends VendorStub {
@@ -18,6 +19,12 @@ export interface DigioKycStub extends VendorStub {
   digilockerTemplate: string;
   /** The customer completes a started request's DigiLocker step with these documents. */
   completeDigilocker(requestId: string, docTypes: string[]): void;
+  /** Aadhaar OTP e-KYC test numbers and codes (PR-UDF-041); synthetic, never real. */
+  aadhaarOtp: AadhaarOtpStubFixtures;
+  /** Expire an Aadhaar OTP transaction now. */
+  expireAadhaarOtp(txn: string): void;
+  /** The next e-KYC the stub answers carries this full number. */
+  ekycWithNumberOnce(n: string): void;
 }
 
 let seq = 0;
@@ -29,6 +36,7 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
   >();
   const template = "ipb-digilocker-stub";
   const media = new Map<string, Buffer>();
+  const otp = aadhaarOtpStub("AOT", () => ++seq);
   const ref: { s?: DigioKycStub } = {};
   const stub = await startStub((r) => {
     const s = ref.s!;
@@ -86,6 +94,32 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
         },
       };
     }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/aadhaar_otp/request") {
+      const b = r.json<{ id_type?: string; id_number?: string; consent?: string }>();
+      const out = otp.request(b.id_type ?? "", b.id_number ?? "", b.consent ?? "");
+      if (!out.ok) return { status: 400, body: { code: out.code } };
+      return { status: 200, body: { id: out.txn, otp_valid_till: out.validTill } };
+    }
+    if (r.method === "POST" && r.path === "/client/kyc/v2/aadhaar_otp/verify") {
+      const b = r.json<{ id?: string; otp?: string }>();
+      const out = otp.verify(b.id ?? "", b.otp ?? "");
+      if (!out.ok)
+        return out.code === "TRANSACTION_NOT_FOUND"
+          ? { status: 404, body: { code: "NOT_FOUND" } }
+          : { status: 400, body: { code: out.code } };
+      return {
+        status: 200,
+        body: {
+          id: b.id,
+          signature_valid: true,
+          model_version: "aadhaar-otp-stub-1",
+          details: {
+            aadhaar_last_digits: `xxxx-xxxx-${out.last4}`,
+            ekyc_xml: Buffer.from(out.ekycXml).toString("base64"),
+          },
+        },
+      };
+    }
     if (r.method === "POST" && r.path === "/client/kyc/v2/offline_aadhaar/verify") {
       const b = r.json<{ file_data?: string; share_code?: string }>();
       if (!b.file_data || Buffer.from(b.file_data, "base64").compare(s.offlineZip) !== 0)
@@ -135,6 +169,9 @@ export async function startDigioKycStub(): Promise<DigioKycStub> {
       if (!k) throw new Error(`no Digio KYC request ${requestId}`);
       requests.set(requestId, { status: "approved", files: filesOf(requestId, docTypes) });
     },
+    aadhaarOtp: otp.fixtures,
+    expireAadhaarOtp: otp.expire,
+    ekycWithNumberOnce: otp.embedNumberOnce,
   });
   return ref.s;
 }

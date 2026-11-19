@@ -14,14 +14,28 @@
 // - PAN: `verify_with_source/ind_pan`, data `{ id_number, full_name, dob }`, result
 //   `source_output.{ status: id_found|id_not_found, name_match_score, dob_match, aadhaar_seeding_status }`;
 // - face match: `compare/face`, data `{ document1, document2 }` (base64), result `{ match_score }`;
-// - liveness: `check_photo_liveness/face`, data `{ document1 }`, result `{ liveness_score }`.
+// - liveness: `check_photo_liveness/face`, data `{ document1 }`, result `{ liveness_score }`;
+// - Aadhaar OTP e-KYC (PR-UDF-041), as a KUA for a notified RE: `aadhaar_otp_request/ind_aadhaar`,
+//   data `{ id_number, id_type, consent, consent_text_version, consent_text_hash, consent_at }`,
+//   result `{ transaction_id, otp_valid_till }`; then `aadhaar_otp_verify/ind_aadhaar`, data
+//   `{ transaction_id, otp }`, result `{ ekyc_xml (base64), aadhaar_last_4, signature_status,
+//   model_version }`; refusals 422 with `error` (`INVALID_ID`, `MOBILE_NOT_LINKED`, `INVALID_OTP`,
+//   `OTP_EXPIRED`, `TRANSACTION_NOT_FOUND`). Off unless the adapter is built with `notifiedEntity`.
 // Images are read from STORAGE and checked against their SHA-256 before they leave; nothing the
-// vendor returns is stored. Results never carry an Aadhaar number.
+// vendor returns is stored, except UIDAI's signed e-KYC response (written to STORAGE unchanged,
+// unless it carries a number). Results never carry an Aadhaar number.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
+  AadhaarOtpRequest,
+  AadhaarOtpVerify,
+  aadhaarUidValid,
   FaceMatch,
   LivenessCheck,
   PanCheck,
+  storageKey,
+  type AadhaarOtpRefusal,
+  type AadhaarOtpResult,
+  type AadhaarOtpStart,
   type AdapterDescriptor,
   type KycFileRef,
   type KycPort,
@@ -35,11 +49,22 @@ import {
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import { createEgress } from "../core/http.js";
 import { vendorError } from "../messaging/common.js";
+import {
+  aadhaarOtpRefused,
+  assertNotifiedEntity,
+  holdsAadhaarNumber,
+  keyedAadhaarOtpVerify,
+  MemoryAadhaarOtpVerifyStore,
+  type AadhaarOtpVerifyStore,
+} from "./aadhaar-otp.js";
 
 const KYC = "KYC";
 const ADAPTER = "idfy-kyc";
 const HOST = "eve.idfy.com";
 const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
+/** A 12-digit or 16-digit run outside a SHA-256 (PR-UDF-041). */
+const UID_LIKE = /(?<![0-9])(?:[0-9]{12}|[0-9]{16})(?![0-9])/;
+const uidLike = (v: unknown) => UID_LIKE.test(JSON.stringify(v).replace(/[0-9a-f]{64}/g, ""));
 
 const UNSUPPORTED = [
   "verifyAadhaarOffline",
@@ -65,6 +90,16 @@ export interface IdfyKycOptions {
   /** Pass marks for the scores (the tenant's thresholds); 0.8 each by default. */
   faceMatchThreshold?: number;
   livenessThreshold?: number;
+  /**
+   * Aadhaar OTP e-KYC (PR-UDF-041): `true` only for a reporting entity notified under PML Act
+   * s.11A (KYC Directions 2025 para 23 proviso (i) [VERIFY]). Default false: every Aadhaar OTP call
+   * is refused `not_configured` before any vendor call.
+   */
+  notifiedEntity?: boolean;
+  /** Keyed Aadhaar OTP verifies: `PgAadhaarOtpVerifyStore` in production (default in memory). */
+  aadhaarOtpVerifies?: AadhaarOtpVerifyStore;
+  /** The tenant when the call names none (the tenancy context); the e-KYC is stored under it. */
+  currentTenant?: () => string | undefined;
   /** Tests only: the IDfy stub. */
   baseUrl?: string;
   allowLoopbackHttp?: boolean;
@@ -115,6 +150,44 @@ export function mapIdfyScore(
   };
 }
 
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: IDfy's refusal codes on the OTP tasks. */
+export function mapIdfyAadhaarOtpRefusal(json: unknown): AadhaarOtpRefusal | undefined {
+  const code = String((json as { error?: unknown } | undefined)?.error ?? "").toUpperCase();
+  if (/^INVALID_ID$|INVALID_AADHAAR|INVALID_VID/.test(code)) return "uid_invalid";
+  if (/MOBILE_NOT_LINKED/.test(code)) return "mobile_not_linked";
+  if (/OTP_EXPIRED|TRANSACTION_NOT_FOUND|TRANSACTION_EXPIRED|ALREADY_USED/.test(code))
+    return "otp_expired";
+  if (/INVALID_OTP/.test(code)) return "otp_invalid";
+  return undefined;
+}
+
+/** STUB-SHAPED, TO CONFIRM AGAINST THE SANDBOX: the verify task's result. */
+export function mapIdfyAadhaarOtpVerify(result: unknown): {
+  modelVersion: string;
+  ekyc: Buffer;
+  signatureValid: boolean | null;
+  uidLast4: string;
+} {
+  const r = result as Record<string, unknown> | undefined;
+  const last = typeof r?.aadhaar_last_4 === "string" ? r.aadhaar_last_4 : "";
+  const xml = typeof r?.ekyc_xml === "string" ? Buffer.from(r.ekyc_xml, "base64") : undefined;
+  if (!/^[0-9]{4}$/.test(last) || !xml?.length)
+    throw vendorError(
+      KYC,
+      ADAPTER,
+      502,
+      "Aadhaar OTP result without its e-KYC or last four digits",
+    );
+  const sig = r?.signature_status;
+  return {
+    modelVersion:
+      typeof r?.model_version === "string" ? r.model_version.slice(0, 100) : "ind_aadhaar-otp-v3",
+    ekyc: xml,
+    signatureValid: sig === "valid" ? true : sig === "invalid" ? false : null,
+    uidLast4: last,
+  };
+}
+
 type EvidenceKeys = { vendorRef: string; adapter: string; modelVersion: string; checkedAt: string };
 
 const refused = (detail: string, reason: string): PortError =>
@@ -135,10 +208,13 @@ export class IdfyKyc implements KycPort {
   private readonly egress;
   private readonly base: string;
   private readonly now: () => Date;
+  private readonly otpVerifies: AadhaarOtpVerifyStore;
 
   constructor(private readonly o: IdfyKycOptions) {
     this.base = (o.baseUrl ?? `https://${HOST}`).replace(/\/$/, "");
     this.now = o.now ?? (() => new Date());
+    this.otpVerifies =
+      o.aadhaarOtpVerifies ?? new MemoryAadhaarOtpVerifyStore({ now: () => this.now() });
     this.egress = createEgress({
       port: KYC,
       adapter: ADAPTER,
@@ -167,16 +243,30 @@ export class IdfyKyc implements KycPort {
     };
   }
 
-  /** One synchronous IDfy task; the task and group ids are ours and carry no personal data. */
+  /**
+   * One synchronous IDfy task; the task and group ids are ours and carry no personal data. `refusal`
+   * maps a 400 or 422 answer to the port's own refusal, where the method has fixed labels.
+   */
   private async task<R>(
     path: string,
     data: Record<string, string>,
+    refusal?: (json: unknown) => PortError | undefined,
   ): Promise<{ ref: string; result: R }> {
     const res = await this.egress(`${this.base}/v3/tasks/sync/${path}`, {
       method: "POST",
       headers: await this.headers(),
       body: JSON.stringify({ task_id: newId("kyt"), group_id: newId("kyg"), data }),
     });
+    if ((res.status === 422 || res.status === 400) && refusal) {
+      let json: unknown;
+      try {
+        json = res.json();
+      } catch {
+        json = undefined;
+      }
+      const e = refusal(json);
+      if (e) throw e;
+    }
     if (res.status === 422 || res.status === 400)
       throw refused("IDfy refused the request", "invalid_request");
     if (res.status !== 200) throw vendorError(KYC, ADAPTER, res.status, "IDfy task API");
@@ -247,6 +337,114 @@ export class IdfyKyc implements KycPort {
       score: min,
       passed: min >= (this.o.livenessThreshold ?? 0.8),
     };
+  }
+
+  private tenant(call?: PortCall): string {
+    const t = call?.tenantId ?? this.o.currentTenant?.();
+    if (!t) throw refused("a KYC call needs a tenant to store its files under", "no_tenant");
+    return t;
+  }
+
+  async aadhaarOtpRequest(
+    raw: Parameters<NonNullable<KycPort["aadhaarOtpRequest"]>>[0],
+    call?: PortCall,
+  ): Promise<AadhaarOtpStart> {
+    // Fail closed first: nothing is read, and nothing is sent, for an RE that is not notified.
+    assertNotifiedEntity(ADAPTER, this.o.notifiedEntity);
+    await this.guard();
+    const r = AadhaarOtpRequest.parse(raw);
+    if (!aadhaarUidValid(r.uid, r.uidKind))
+      throw aadhaarOtpRefused(ADAPTER, "uid_invalid", "not a well-formed Aadhaar number or VID");
+    this.tenant(call);
+    // The number goes in this one task and nowhere else; it is not kept.
+    const { ref, result } = await this.task<{ transaction_id?: unknown; otp_valid_till?: unknown }>(
+      "aadhaar_otp_request/ind_aadhaar",
+      {
+        id_number: r.uid,
+        id_type: r.uidKind === "VID" ? "vid" : "aadhaar",
+        consent: "Y",
+        consent_text_version: r.consent.version,
+        consent_text_hash: r.consent.textHash,
+        consent_at: r.consent.at,
+      },
+      (json) => {
+        const reason = mapIdfyAadhaarOtpRefusal(json);
+        return reason === "uid_invalid" || reason === "mobile_not_linked"
+          ? aadhaarOtpRefused(ADAPTER, reason, `IDfy refused the OTP request (${reason})`)
+          : undefined;
+      },
+    );
+    const txn = result.transaction_id;
+    const till =
+      typeof result.otp_valid_till === "string" ? Date.parse(result.otp_valid_till) : NaN;
+    if (
+      typeof txn !== "string" ||
+      !/^[A-Za-z0-9_-]{8,200}$/.test(txn) ||
+      !Number.isFinite(till) ||
+      till <= this.now().getTime()
+    )
+      throw vendorError(KYC, ADAPTER, 502, "Aadhaar OTP request without its transaction or expiry");
+    const out = {
+      ...this.evidence(ref, "ind_aadhaar-otp-v3"),
+      txn,
+      expiresAt: new Date(till).toISOString(),
+    };
+    if (uidLike(out))
+      throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+    return out;
+  }
+
+  async aadhaarOtpVerify(
+    raw: Parameters<NonNullable<KycPort["aadhaarOtpVerify"]>>[0],
+    call?: PortCall,
+  ): Promise<AadhaarOtpResult> {
+    assertNotifiedEntity(ADAPTER, this.o.notifiedEntity);
+    await this.guard();
+    const r = AadhaarOtpVerify.parse(raw);
+    const tenant = this.tenant(call);
+    return keyedAadhaarOtpVerify({
+      store: this.otpVerifies,
+      request:
+        call?.idempotencyKey === undefined
+          ? undefined
+          : { tenantId: tenant, adapter: ADAPTER, idempotencyKey: call.idempotencyKey, ...r },
+      verify: async () => {
+        const { ref, result } = await this.task(
+          "aadhaar_otp_verify/ind_aadhaar",
+          { transaction_id: r.txn, otp: r.otp },
+          (json) => {
+            const reason = mapIdfyAadhaarOtpRefusal(json);
+            return reason === "otp_invalid" || reason === "otp_expired"
+              ? aadhaarOtpRefused(ADAPTER, reason, `IDfy refused the OTP (${reason})`)
+              : undefined;
+          },
+        );
+        const v = mapIdfyAadhaarOtpVerify(result);
+        if (holdsAadhaarNumber(v.ekyc.toString("latin1")))
+          throw refused(
+            "the e-KYC response carries an Aadhaar number or VID; it is not stored outside the RE's vault",
+            "ekyc_holds_number",
+          );
+        // No storage key carries a 12- or 16-digit run: such a ULID is drawn again.
+        let key = storageKey(tenant, "kyc", newId("kyc").slice(4), "xml");
+        while (UID_LIKE.test(key)) key = storageKey(tenant, "kyc", newId("kyc").slice(4), "xml");
+        const sha256 = sha256Hex(v.ekyc);
+        await this.o.storage.put(key, v.ekyc, {
+          bucketClass: "REGULATED",
+          contentType: "application/xml",
+          sha256,
+        });
+        const out: AadhaarOtpResult = {
+          ...this.evidence(ref, v.modelVersion),
+          ekyc: { storageKey: key, sha256 },
+          signatureValid: v.signatureValid,
+          uidLast4: v.uidLast4,
+        };
+        if (uidLike(out))
+          throw vendorError(KYC, ADAPTER, 502, "the reply carried an Aadhaar-like number");
+        return out;
+      },
+    });
   }
 
   async health(): Promise<PortHealth> {

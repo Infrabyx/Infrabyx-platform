@@ -4,7 +4,7 @@ import { defineContractSuite } from "../contract.js";
 import { FakeKyc, KYC_FAKE_FIXTURES, kycContractCases } from "./kyc.js";
 import { FakeVideoMeet, videoMeetContractCases } from "./video-meet.js";
 
-const kyc = new FakeKyc();
+const kyc = new FakeKyc({ notifiedEntity: true });
 defineContractSuite("KYC", () => kyc, kycContractCases(KYC_FAKE_FIXTURES));
 defineContractSuite("VIDEO_MEET", () => new FakeVideoMeet(), videoMeetContractCases());
 

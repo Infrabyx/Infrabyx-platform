@@ -11,6 +11,8 @@
 import { expect } from "vitest";
 import {
   AadhaarOfflineCheck,
+  AadhaarOtpRequest,
+  AadhaarOtpVerify,
   AmlParty,
   BankAccountCheck,
   CkycDownload,
@@ -25,15 +27,37 @@ import {
   type KycPort,
 } from "@infrabyx/contracts/ports";
 import type { ContractCase } from "../contract.js";
-import { DIGILOCKER_CONTRACT_RETURN_URL, type KycFixtures } from "@infrabyx/fakes";
-export {
+import {
+  DIGILOCKER_CONTRACT_RETURN_URL,
+  type AadhaarOtpFixtures,
   type KycFixtures,
+} from "@infrabyx/fakes";
+export {
+  type AadhaarOtpFixtures,
+  type KycFixtures,
+  FAKE_AADHAAR_OTP,
+  syntheticUid,
   DIGILOCKER_CONTRACT_RETURN_URL,
   KYC_FAKE_FIXTURES,
   FakeKyc,
 } from "@infrabyx/fakes";
 const AADHAAR_LIKE = /(?<![0-9])[0-9]{12}(?![0-9])/;
+/** A 12-digit (Aadhaar) or 16-digit (VID) run (PR-UDF-041). */
+const UID_LIKE = /(?<![0-9])(?:[0-9]{12}|[0-9]{16})(?![0-9])/;
+const SHA256_HEX = /[0-9a-f]{64}/g;
 let dlKey = 0;
+let otpKey = 0;
+
+/** What an error shows anywhere: message, stack and every own field (code, detail, meta, cause). */
+const errorText = (e: unknown): string => {
+  const x = e as { message?: unknown; stack?: unknown; cause?: unknown };
+  return JSON.stringify({
+    message: x?.message,
+    stack: x?.stack,
+    cause: x?.cause === undefined ? undefined : String(x.cause),
+    ...(typeof e === "object" && e !== null ? e : { value: String(e) }),
+  });
+};
 
 /** The KYC contract: one list for the fake now and for every adapter later. */
 export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> {
@@ -53,6 +77,33 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
         reason: e.meta?.reason,
       }),
     );
+  // PR-UDF-041: Aadhaar OTP e-KYC.
+  const otpFx = (): AadhaarOtpFixtures => {
+    expect(fx.aadhaarOtp, "KycFixtures.aadhaarOtp for an adapter with Aadhaar OTP").toBeDefined();
+    return fx.aadhaarOtp!;
+  };
+  const otpReq = (p: KycPort) => {
+    expect(typeof p.aadhaarOtpRequest).toBe("function");
+    return (p.aadhaarOtpRequest as NonNullable<KycPort["aadhaarOtpRequest"]>).bind(p);
+  };
+  const otpVerify = (p: KycPort) => {
+    expect(typeof p.aadhaarOtpVerify).toBe("function");
+    return (p.aadhaarOtpVerify as NonNullable<KycPort["aadhaarOtpVerify"]>).bind(p);
+  };
+  const consent = () => ({
+    version: "contract-1.0",
+    textHash: "ab".repeat(32),
+    at: new Date().toISOString(),
+  });
+  const aadhaar = (uid: string) => ({ uid, uidKind: "AADHAAR" as const, consent: consent() });
+  const otpCallKey = () => `otp-contract-${Date.now().toString(36)}-${++otpKey}`;
+  const definite = (reason: string) => ({ code: "IPB-PORT-001", meta: { reason, definite: true } });
+  /** No 12- or 16-digit run (SHA-256 hex aside) and none of the numbers given, anywhere in `v`. */
+  const noUid = (v: unknown, numbers: readonly string[]) => {
+    const text = typeof v === "string" ? v : JSON.stringify(v);
+    expect(text.replace(SHA256_HEX, "")).not.toMatch(UID_LIKE);
+    for (const n of numbers) expect(text).not.toContain(n);
+  };
   // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
   const noRunInKeys = (docs: DigilockerDocument[]) => {
     for (const d of docs)
@@ -79,6 +130,8 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
           BankAccountCheck,
           OvdOcr,
           AmlParty,
+          AadhaarOtpRequest,
+          AadhaarOtpVerify,
         ])
           expect(payloadClass(s).bodyHighest).toBe("REGULATED");
         expect(p.descriptor.residency).toBe("IN");
@@ -257,6 +310,179 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
             ),
           ),
         ).toEqual({ code: "IPB-PORT-001", reason: "consent_used" });
+      },
+    },
+    {
+      name: "aadhaarOtpRequest and aadhaarOtpVerify (PR-UDF-041): an OTP for an Aadhaar number and a VID; the e-KYC by STORAGE reference, the signature result and the last four digits only",
+      method: "aadhaarOtpRequest",
+      invoke: (p) => otpReq(p)(aadhaar(otpFx().uid)),
+      async run(p) {
+        const o = otpFx();
+        const s = await otpReq(p)(aadhaar(o.uid));
+        expect(s.txn.length).toBeGreaterThanOrEqual(8);
+        expect(s.txn.length).toBeLessThanOrEqual(200);
+        expect(Date.parse(s.expiresAt)).toBeGreaterThan(Date.now());
+        expect(s.adapter).toBe(p.descriptor.adapter);
+        expect(s.vendorRef).not.toBe("");
+        const r = await otpVerify(p)({ txn: s.txn, otp: o.otp });
+        expect(r.adapter).toBe(p.descriptor.adapter);
+        expect(r.vendorRef).not.toBe("");
+        expect(r.modelVersion).not.toBe("");
+        expect(Number.isNaN(Date.parse(r.checkedAt))).toBe(false);
+        expect(r.ekyc.storageKey).not.toBe("");
+        expect(r.ekyc.sha256).toMatch(/^[0-9a-f]{64}$/);
+        expect(r.signatureValid === null || typeof r.signatureValid === "boolean").toBe(true);
+        expect(r.uidLast4).toBe(o.uid.slice(-4));
+        expect(Object.keys(r).sort()).toEqual([
+          "adapter",
+          "checkedAt",
+          "ekyc",
+          "modelVersion",
+          "signatureValid",
+          "uidLast4",
+          "vendorRef",
+        ]);
+        noUid([s, r], [o.uid]);
+        const v = await otpReq(p)({ uid: o.vid, uidKind: "VID", consent: consent() });
+        const rv = await otpVerify(p)({ txn: v.txn, otp: o.otp });
+        expect(rv.uidLast4).toMatch(/^[0-9]{4}$/);
+        noUid([v, rv], [o.vid, o.uid]);
+      },
+    },
+    {
+      name: "Aadhaar OTP (PR-UDF-041): uid_invalid before any vendor call, mobile_not_linked, otp_invalid and otp_expired, each definite",
+      method: "aadhaarOtpRequest",
+      invoke: (p) => otpReq(p)(aadhaar(otpFx().uid)),
+      async run(p) {
+        const o = otpFx();
+        const before = o.vendorCalls(p);
+        const bumped = `${o.uid.slice(0, -1)}${(Number(o.uid.at(-1)) + 1) % 10}`;
+        for (const bad of [
+          aadhaar(bumped),
+          aadhaar(`${o.uid.slice(0, 4)} ${o.uid.slice(4, 8)} ${o.uid.slice(8)}`),
+          aadhaar(`1${o.uid.slice(1)}`),
+          aadhaar(o.vid),
+          { uid: o.uid, uidKind: "VID" as const, consent: consent() },
+          aadhaar(""),
+        ]) {
+          const e = await otpReq(p)(bad).then(
+            () => undefined,
+            (x: unknown) => x,
+          );
+          expect(e).toMatchObject(definite("uid_invalid"));
+          noUid(errorText(e), [o.uid, o.vid, bumped]);
+        }
+        expect(o.vendorCalls(p)).toBe(before);
+        await expect(otpReq(p)(aadhaar(o.unlinkedUid))).rejects.toMatchObject(
+          definite("mobile_not_linked"),
+        );
+        const s = await otpReq(p)(aadhaar(o.uid));
+        await expect(otpVerify(p)({ txn: s.txn, otp: o.wrongOtp })).rejects.toMatchObject(
+          definite("otp_invalid"),
+        );
+        await otpVerify(p)({ txn: s.txn, otp: o.otp });
+        // A used transaction, or one the KUA does not know, is no longer live.
+        await expect(otpVerify(p)({ txn: s.txn, otp: o.otp })).rejects.toMatchObject(
+          definite("otp_expired"),
+        );
+        await expect(
+          otpVerify(p)({ txn: "aotp-contract-unknown", otp: o.otp }),
+        ).rejects.toMatchObject(definite("otp_expired"));
+        if (o.expire) {
+          const t = await otpReq(p)(aadhaar(o.uid));
+          await o.expire(p, t.txn);
+          await expect(otpVerify(p)({ txn: t.txn, otp: o.otp })).rejects.toMatchObject(
+            definite("otp_expired"),
+          );
+        }
+      },
+    },
+    {
+      name: "Aadhaar OTP (PR-UDF-041): an adapter not built for a notified entity refuses every call not_configured, before any vendor call",
+      method: "aadhaarOtpRequest",
+      invoke: (p) => otpReq(p)(aadhaar(otpFx().uid)),
+      async run() {
+        const o = otpFx();
+        const { port, vendorCalls } = o.notNotified();
+        const before = vendorCalls();
+        for (const req of [aadhaar(o.uid), aadhaar("not-a-number")])
+          await expect(otpReq(port)(req)).rejects.toMatchObject(definite("not_configured"));
+        await expect(
+          otpVerify(port)(
+            { txn: "aotp-contract-any", otp: o.otp },
+            { idempotencyKey: otpCallKey() },
+          ),
+        ).rejects.toMatchObject(definite("not_configured"));
+        expect(vendorCalls()).toBe(before);
+      },
+    },
+    {
+      name: "aadhaarOtpVerify (PR-UDF-041): a retry with the same key returns the first answer with no vendor call; the same key with another code or transaction is IPB-PORT-004",
+      method: "aadhaarOtpVerify",
+      invoke: (p) => otpVerify(p)({ txn: "aotp-contract-any", otp: otpFx().otp }),
+      async run(p) {
+        const o = otpFx();
+        const idempotencyKey = otpCallKey();
+        const s = await otpReq(p)(aadhaar(o.uid));
+        const first = await otpVerify(p)({ txn: s.txn, otp: o.otp }, { idempotencyKey });
+        const before = o.vendorCalls(p);
+        expect(await otpVerify(p)({ txn: s.txn, otp: o.otp }, { idempotencyKey })).toEqual(first);
+        expect(o.vendorCalls(p)).toBe(before);
+        const conflict = { code: "IPB-PORT-004", meta: { reason: "idempotency_conflict" } };
+        await expect(
+          otpVerify(p)({ txn: s.txn, otp: o.wrongOtp }, { idempotencyKey }),
+        ).rejects.toMatchObject(conflict);
+        const other = await otpReq(p)(aadhaar(o.uid));
+        await expect(
+          otpVerify(p)({ txn: other.txn, otp: o.otp }, { idempotencyKey }),
+        ).rejects.toMatchObject(conflict);
+        // Another key on the used transaction is refused, never served from the first key.
+        await expect(
+          otpVerify(p)({ txn: s.txn, otp: o.otp }, { idempotencyKey: otpCallKey() }),
+        ).rejects.toMatchObject(definite("otp_expired"));
+        // A refusal is the first answer too.
+        const k2 = otpCallKey();
+        for (let i = 0; i < 2; i++)
+          await expect(
+            otpVerify(p)({ txn: other.txn, otp: o.wrongOtp }, { idempotencyKey: k2 }),
+          ).rejects.toMatchObject(definite("otp_invalid"));
+        await expect(
+          otpVerify(p)({ txn: other.txn, otp: o.otp }, { idempotencyKey: k2 }),
+        ).rejects.toMatchObject(conflict);
+        expect(
+          (await otpVerify(p)({ txn: other.txn, otp: o.otp }, { idempotencyKey: otpCallKey() }))
+            .uidLast4,
+        ).toBe(o.uid.slice(-4));
+      },
+    },
+    {
+      name: "Aadhaar OTP (PR-UDF-041): no field of any answer, error or ledger entry carries a 12-digit or 16-digit run, or the number given",
+      method: "aadhaarOtpRequest",
+      invoke: (p) => otpReq(p)(aadhaar(otpFx().uid)),
+      async run(p) {
+        const o = otpFx();
+        const seen: unknown[] = [];
+        const take = async (x: Promise<unknown>) =>
+          x.then(
+            (v) => seen.push(v),
+            (e: unknown) => seen.push(errorText(e)),
+          );
+        const key = otpCallKey();
+        const s = (await otpReq(p)(aadhaar(o.uid))) as { txn: string };
+        seen.push(s);
+        await take(otpVerify(p)({ txn: s.txn, otp: o.wrongOtp }));
+        await take(otpVerify(p)({ txn: s.txn, otp: o.otp }, { idempotencyKey: key }));
+        await take(otpVerify(p)({ txn: s.txn, otp: o.otp }, { idempotencyKey: key }));
+        await take(otpVerify(p)({ txn: s.txn, otp: o.wrongOtp }, { idempotencyKey: key }));
+        await take(otpVerify(p)({ txn: s.txn, otp: o.otp }));
+        await take(otpReq(p)({ uid: o.vid, uidKind: "VID", consent: consent() }));
+        await take(otpReq(p)(aadhaar(o.unlinkedUid)));
+        await take(otpReq(p)(aadhaar(`${o.uid.slice(0, 6)}-${o.uid.slice(6)}`)));
+        await take(otpReq(p)({ uid: o.uid, uidKind: "VID", consent: consent() }));
+        await take(o.notNotified().port.aadhaarOtpRequest!(aadhaar(o.uid)));
+        expect(seen.length).toBe(11);
+        noUid(seen, [o.uid, o.vid, o.unlinkedUid]);
+        if (o.ledger) noUid(await o.ledger(), [o.uid, o.vid, o.unlinkedUid]);
       },
     },
     {
