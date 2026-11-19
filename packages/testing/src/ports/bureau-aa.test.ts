@@ -81,3 +81,45 @@ describe("the AA fake's expiry", () => {
     await expect(aa.revoke(c.consentId)).rejects.toMatchObject({ code: "IPB-PORT-001" });
   });
 });
+
+describe("the AA fake's FIU and approval link (PR-UDF-050)", () => {
+  const ask = (over: Record<string, unknown> = {}) => {
+    const now = Date.now();
+    return {
+      customerHandle: "asha.rao@fake-aa",
+      subjectRef: "cus:1",
+      consentRef: newId("cpr"),
+      purposeCode: "101" as const,
+      fiTypes: ["DEPOSIT" as const],
+      fetchType: "ONETIME" as const,
+      dataRange: {
+        from: new Date(now - 86_400_000).toISOString(),
+        to: new Date(now).toISOString(),
+      },
+      dataLife: { unit: "MONTH" as const, value: 1 },
+      consentStart: new Date(now).toISOString(),
+      consentExpiry: new Date(now + 3_600_000).toISOString(),
+      ...over,
+    };
+  };
+
+  it("keeps nothing when the request names another FIU, and reports its own otherwise", async () => {
+    const aa = new FakeAccountAggregator({ fiuId: "re-fiu-1" });
+    await expect(aa.requestConsent(ask({ fiuId: "re-fiu-2" }))).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "fiu_mismatch", definite: true },
+    });
+    expect(aa.consentsKept).toBe(0);
+    const c = await aa.requestConsent(ask({ fiuId: "re-fiu-1" }));
+    expect(c).toMatchObject({ fiuId: "re-fiu-1", state: "PENDING" });
+    expect(aa.consentsKept).toBe(1);
+  });
+
+  it("answers its link on its host while PENDING, with no digit in it", async () => {
+    const aa = new FakeAccountAggregator({ approvalHost: "aa.example.in" });
+    const c = await aa.requestConsent(ask());
+    expect(c.approvalUrl).toMatch(/^https:\/\/aa\.example\.in\/consents\/[a-p]{32}$/);
+    aa.approve(c.consentId);
+    expect(await aa.consentStatus(c.consentId)).not.toHaveProperty("approvalUrl");
+  });
+});

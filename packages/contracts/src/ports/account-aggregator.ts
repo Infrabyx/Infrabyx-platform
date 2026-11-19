@@ -3,11 +3,16 @@
 // adapter). Consent is asked through an Account Aggregator with the ReBIT consent template; financial information (FI)
 // is fetched only under an ACTIVE consent, within its FI types and data range, and lands in STORAGE
 // with its SHA-256 and the ReBIT schema version of the payload. A revoked, paused, rejected or
-// expired consent fetches nothing. Every request and result is REGULATED and stays `IN`. Vendor
+// expired consent fetches nothing. The consent names the FIU it is for, and a consent the AA records
+// for another FIU is refused (PR-UDF-050); while PENDING it carries the AA's page where the customer
+// approves it. Every request and result is REGULATED and stays `IN`. Vendor
 // adapters (an AA or a technology service provider) wait for the owner's sandbox documents and
 // accounts; the fake in @infrabyx/testing and the contract cases define the behaviour.
 import { z } from "zod";
+import { findAadhaarLike } from "../aadhaar.js";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
+import { ConsentArtefact } from "./consent-ref.js";
+import { digilockerReturnUrlAllowed } from "./kyc.js";
 import { classed } from "./payload-class.js";
 
 const regulated = <T extends z.ZodType>(s: T): T => classed(s, "REGULATED");
@@ -38,6 +43,54 @@ export const AA_CONSENT_STATES = [
 export type AaConsentState = (typeof AA_CONSENT_STATES)[number];
 
 const DATE_TIME = z.iso.datetime({ offset: true });
+
+/** An FIU's id as registered in the AA ecosystem (the RE's; e.g. a Sahamati registry id [VERIFY]). */
+export const AA_FIU_ID_REGEX = /^[A-Za-z0-9](?:[A-Za-z0-9._-]{1,98}[A-Za-z0-9])$/;
+
+/**
+ * The fixed `meta.reason` when the AA reports the consent for another FIU than the one asked for
+ * (PR-UDF-050; AA Directions paras 8(12), 17(4), 27 [VERIFY]): a definite refusal, `IPB-PORT-001`.
+ */
+export const AA_FIU_MISMATCH = "fiu_mismatch";
+
+/** The fixed `meta.reason` when the AA's approval link fails `aaApprovalUrlAllowed` (PR-UDF-050). */
+export const AA_APPROVAL_URL_REFUSED = "approval_url_not_allowed";
+
+/**
+ * True when a consent asked for FIU `asked` must be refused because the AA reports `reported`: a
+ * different id (exact comparison), or none. A request that names no FIU is compared with nothing.
+ */
+export function aaFiuMismatch(asked: string | undefined, reported: string | undefined): boolean {
+  return asked !== undefined && reported !== asked;
+}
+
+/**
+ * An RFC 9562 UUID standing alone: 8-4-4-4-12 hex digits in either case, any version or variant
+ * (the Nil and Max UUIDs included), and any hex digits in each group, so a last group of 12 decimal
+ * digits is still a UUID (owner answer #154). Not part of a longer run of letters, digits or hyphens.
+ */
+export const RFC9562_UUID =
+  /(?<![0-9A-Za-z-])[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}(?![0-9A-Za-z-])/g;
+
+/** True when `s` is exactly one RFC 9562 UUID (see `RFC9562_UUID`). */
+export function isRfc9562Uuid(s: string): boolean {
+  return /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/.test(s);
+}
+
+/**
+ * True when `url` may be an AA's customer approval page for an adapter built with `hosts`:
+ * `https:`, no user information, a host equal to one of `hosts` (exact names only), at most 2,048
+ * characters, and, once every RFC 9562 UUID in it is set aside (an AA's consent and link ids are
+ * UUIDs, whose last group may be all digits; owner answer #154), no 12-digit run and no
+ * Aadhaar-like number anywhere else.
+ */
+export function aaApprovalUrlAllowed(url: string, hosts: readonly string[]): boolean {
+  if (url.length > 2048) return false;
+  const masked = url.replace(RFC9562_UUID, "uuid");
+  // The host, scheme and user-information rules are DigiLocker's (`digilockerReturnUrlAllowed`),
+  // applied to the masked text so a UUID's digits are not read as a 12-digit run.
+  return digilockerReturnUrlAllowed(masked, hosts) && findAadhaarLike(masked).length === 0;
+}
 const DURATION = z
   .object({ unit: z.enum(["DAY", "MONTH", "YEAR", "INF"]), value: z.number().int().min(0) })
   .strict();
@@ -50,6 +103,17 @@ export const AaConsentRequest = z
     subjectRef: z.string().min(3).max(200),
     /** The product's consent receipt for asking (`cpr_…`). */
     consentRef: z.string().regex(/^cpr_[0-7][0-9A-HJKMNP-TV-Z]{25}$/),
+    /**
+     * The product's own consent artefact for asking (PR-UDF-050; its shape only is checked, see
+     * `consent-ref.ts`). Kept in place of `consentRef` when present. Never sent to the AA.
+     */
+    consentArtefact: ConsentArtefact.optional(),
+    /**
+     * The FIU (the RE) the consent is for (PR-UDF-050). When given, a consent the AA reports for
+     * another FIU, or for none, is refused `fiu_mismatch` before anything is stored or returned,
+     * and on every later read-back. Optional, so a request without it works as before.
+     */
+    fiuId: z.string().regex(AA_FIU_ID_REGEX).optional(),
     purposeCode: z.enum(AA_PURPOSE_CODES),
     fiTypes: z.array(z.enum(FI_TYPES)).min(1).max(FI_TYPES.length),
     fetchType: z.enum(AA_FETCH_TYPES),
@@ -105,6 +169,14 @@ export interface AaConsent extends AaEvidence {
   consentExpiry: string;
   /** FI types the customer revoked one by one, while the rest stays ACTIVE. */
   revokedFiTypes: FiType[];
+  /** The FIU the AA reports on the consent (PR-UDF-050); absent when the AA reports none. */
+  fiuId?: string;
+  /**
+   * The AA's page where the customer approves the consent, present only while PENDING
+   * (PR-UDF-050). Always passes `aaApprovalUrlAllowed` for the adapter's hosts. Show it to the
+   * customer only: never log it or put it in an event.
+   */
+  approvalUrl?: string;
 }
 
 export interface FiPayload {
@@ -132,7 +204,10 @@ export interface AaNotification {
 }
 
 export interface AccountAggregatorPort extends Port {
-  /** Refused without the product's consent receipt for asking. */
+  /**
+   * Refused without the product's consent for asking; refused `fiu_mismatch` when the request
+   * names a FIU and the AA reports another.
+   */
   requestConsent(req: AaConsentRequest, call?: PortCall): Promise<AaConsent>;
   consentStatus(consentId: string, call?: PortCall): Promise<AaConsent>;
   /** Revoke in full, or for the listed FI types only. */

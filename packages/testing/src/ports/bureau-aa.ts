@@ -3,13 +3,13 @@
 // until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
 // or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
 // flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
-// BUREAU and AA_FIU contract cases and in-memory fakes (IPB-01-15; Finbyx PR-FBX-28, R1-D-43).
-// The first vendor adapters, `cibil` and `setu-aa` (R1-D-61), run these cases against their stubs
-// until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
-// or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
-// flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
+// Both take the consent as a `cpr_` receipt or as a product's own artefact (`{ kind, id }`;
+// PR-UDF-049, PR-UDF-050), and the AA cases check the FIU and the approval link (PR-UDF-050).
 import { expect } from "vitest";
+import { findAadhaarLike, verhoeffValid } from "@infrabyx/contracts/aadhaar";
 import {
+  AA_FIU_ID_REGEX,
+  AA_FIU_MISMATCH,
   AaConsentRequest,
   AaFetchRequest,
   BureauPullRequest,
@@ -31,6 +31,48 @@ export {
 
 // Word-bounded, so a PAN-shaped run inside a random ULID (e.g. a consent id) never matches.
 const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
+
+let productRefs = 0;
+/** A product's own consent artefact (PR-UDF-049): the platform checks its shape only. */
+export const contractConsentArtefact = (): { kind: string; id: string } => ({
+  kind: "udf.purpose_consent",
+  id: `pcn-contract-${(++productRefs).toString(36)}`,
+});
+
+/** A 12-digit number that reads as an Aadhaar number, built at run time (never in the source). */
+function aadhaarLikeForTest(): string {
+  const head = "2" + "34567890".repeat(2).slice(0, 10);
+  for (let d = 0; d < 10; d++) if (verhoeffValid(head + d)) return head + d;
+  throw new Error("unreachable: one check digit always fits");
+}
+
+/** Consent artefacts every port refuses (PR-UDF-049): bad shape, reserved, or personal data. */
+export function malformedConsentArtefacts(): unknown[] {
+  const a = aadhaarLikeForTest();
+  return [
+    { kind: "udf.purpose_consent" },
+    { kind: "udf.purpose_consent", id: "pcn-1", extra: true },
+    { kind: "Udf.Consent", id: "pcn-1" },
+    { kind: "udf..consent", id: "pcn-1" },
+    { kind: "cpr", id: "pcn-1" },
+    { kind: "udf.purpose_consent", id: "x" },
+    { kind: "udf.purpose_consent", id: "asha@example.com" },
+    { kind: "udf.purpose_consent", id: "pcn 1" },
+    { kind: "udf.purpose_consent", id: "p".repeat(129) },
+    { kind: "udf.purpose_consent", id: "cpr_01JA0000000000000000000000" },
+    { kind: "udf.purpose_consent", id: `pcn-${a}` },
+    { kind: "udf.purpose_consent", id: `pcn-${a.slice(0, 4)}-${a.slice(4, 8)}-${a.slice(8)}` },
+    { kind: "udf.purpose_consent", id: "pcn-9876543210" },
+    { kind: "udf.purpose_consent", id: "pcn-ABCPE1234F" },
+    "pcn-1",
+  ];
+}
+
+/** Every answer and refusal holds no Aadhaar-like number (letters joined, as hashes and ids are). */
+function expectNoAadhaarLike(v: unknown): void {
+  const text = v instanceof Error ? `${v.message} ${JSON.stringify(v)}` : JSON.stringify(v);
+  expect(findAadhaarLike(text, { letters: "join" })).toEqual([]);
+}
 
 export function creditBureauContractCases(
   fx: CreditBureauFixtures,
@@ -61,6 +103,49 @@ export function creditBureauContractCases(
           p.pull({ ...req(fx.known.pan, fx.known.name), consentRef: "consent-1" }),
         ).rejects.toThrow();
         await expect(p.pull(req("abc", fx.known.name))).rejects.toThrow();
+      },
+    },
+    {
+      name: "a pull without an artefact answers as before; a product's own artefact is kept and echoed beside `consentRef` (PR-UDF-049)",
+      async run(p) {
+        const plain = req(fx.known.pan, fx.known.name);
+        const a = await p.pull(plain);
+        expect(a.consentRef).toBe(plain.consentRef);
+        expect("consentArtefact" in a).toBe(false);
+        const ref = contractConsentArtefact();
+        const withRef = { ...req(fx.known.pan, fx.known.name), consentArtefact: ref };
+        const b = await p.pull(withRef);
+        expect(b.consentRef).toBe(withRef.consentRef);
+        expect(b.consentArtefact).toEqual(ref);
+        const back = await p.status(b.pullId);
+        expect(back.consentRef).toBe(withRef.consentRef);
+        expect(back.consentArtefact).toEqual(ref);
+        expect("consentArtefact" in (await p.status(a.pullId))).toBe(false);
+        const none = await p.pull({ ...req(fx.noHit.pan, fx.noHit.name), consentArtefact: ref });
+        expect(none).toMatchObject({ state: "no_hit", consentArtefact: ref });
+        // `consentRef` stays required and a `cpr_` even when an artefact is given.
+        const { consentRef: _c, ...artefactOnly } = withRef;
+        await expect(p.pull(artefactOnly as never)).rejects.toThrow();
+        await expect(p.pull({ ...withRef, consentRef: ref as never })).rejects.toThrow();
+        for (const r of [a, b, back, none]) expectNoAadhaarLike(r);
+      },
+    },
+    {
+      name: "a malformed consent artefact is refused, with no personal data in it (PR-UDF-049)",
+      async run(p) {
+        for (const consentArtefact of malformedConsentArtefacts()) {
+          const err = await p
+            .pull({
+              ...req(fx.known.pan, fx.known.name),
+              consentArtefact: consentArtefact as never,
+            })
+            .then(
+              () => undefined,
+              (e: unknown) => e,
+            );
+          expect(err, JSON.stringify(consentArtefact)).toBeInstanceOf(Error);
+          expectNoAadhaarLike(err);
+        }
       },
     },
     {
@@ -124,6 +209,16 @@ export function creditBureauContractCases(
   ];
 }
 
+/** An approval link as every AA_FIU adapter must answer it while PENDING (PR-UDF-050). */
+function expectApprovalLink(url: string | undefined): void {
+  expect(url).toBeTypeOf("string");
+  const u = new URL(url!);
+  expect(u.protocol).toBe("https:");
+  expect(u.username + u.password).toBe("");
+  expect(url).not.toMatch(/(?<![0-9])[0-9]{12}(?![0-9])/);
+  expect(findAadhaarLike(url!)).toEqual([]);
+}
+
 export function accountAggregatorContractCases(
   fx: AccountAggregatorFixtures,
 ): Array<ContractCase<AccountAggregatorPort>> {
@@ -166,6 +261,106 @@ export function accountAggregatorContractCases(
         const c = await p.requestConsent(ask());
         expect(c.state).toBe("PENDING");
         expect((await p.consentStatus(c.consentId)).consentId).toBe(c.consentId);
+      },
+    },
+    {
+      name: "a consent asked without an artefact works as before; a product's own artefact is accepted; a malformed one is refused (PR-UDF-050)",
+      async run(p) {
+        const a = await p.requestConsent(ask());
+        expect(a.state).toBe("PENDING");
+        const b = await p.requestConsent(ask({ consentArtefact: contractConsentArtefact() }));
+        expect(b.state).toBe("PENDING");
+        expect((await p.consentStatus(b.consentId)).consentId).toBe(b.consentId);
+        // `consentRef` stays required and a `cpr_` even when an artefact is given.
+        const { consentRef: _c, ...artefactOnly } = ask({
+          consentArtefact: contractConsentArtefact(),
+        });
+        await expect(p.requestConsent(artefactOnly as never)).rejects.toThrow();
+        for (const consentArtefact of malformedConsentArtefacts()) {
+          const err = await p
+            .requestConsent(ask({ consentArtefact: consentArtefact as never }))
+            .then(
+              () => undefined,
+              (e: unknown) => e,
+            );
+          expect(err, JSON.stringify(consentArtefact)).toBeInstanceOf(Error);
+          expectNoAadhaarLike(err);
+        }
+        for (const c of [a, b]) expectNoAadhaarLike(c);
+      },
+    },
+    {
+      name: "the consent carries the FIU the AA reports; a request naming another FIU is refused with nothing returned (PR-UDF-050)",
+      async run(p) {
+        // Without `fiuId` a request works as before; the AA's FIU is reported when it gives one.
+        const plain = await p.requestConsent(ask());
+        if (plain.fiuId !== undefined) expect(plain.fiuId).toMatch(AA_FIU_ID_REGEX);
+        if (fx.fiuId === undefined) return;
+        expect(plain.fiuId).toBe(fx.fiuId);
+        const ours = await p.requestConsent(ask({ fiuId: fx.fiuId }));
+        expect(ours.fiuId).toBe(fx.fiuId);
+        expect((await p.consentStatus(ours.consentId)).fiuId).toBe(fx.fiuId);
+        const err = await p.requestConsent(ask({ fiuId: `${fx.fiuId}-other` })).then(
+          () => undefined,
+          (e: unknown) => e,
+        );
+        expect(err).toMatchObject({
+          code: "IPB-PORT-001",
+          meta: { reason: AA_FIU_MISMATCH, definite: true },
+        });
+        // Nothing of the refused consent comes back: no link, no consent.
+        const text = `${(err as Error).message} ${JSON.stringify(err)}`;
+        expect(text).not.toMatch(/https?:\/\//);
+        expect(text).not.toContain("approvalUrl");
+        expectNoAadhaarLike(err);
+        await expect(p.requestConsent(ask({ fiuId: "x" }))).rejects.toThrow();
+      },
+    },
+    {
+      name: "a consent the AA reports for another FIU later is refused on every read-back and fetches nothing (PR-UDF-050)",
+      async run(p) {
+        if (fx.fiuId === undefined || fx.reportFiu === undefined) return;
+        const c = await p.requestConsent(ask({ fiuId: fx.fiuId }));
+        await fx.approve(p, c.consentId);
+        await fx.reportFiu(p, c.consentId, `${fx.fiuId}-other`);
+        const refused = { code: "IPB-PORT-001", meta: { reason: AA_FIU_MISMATCH } };
+        await expect(p.consentStatus(c.consentId)).rejects.toMatchObject(refused);
+        await expect(
+          p.fetch({ consentId: c.consentId, range: range(c), dataPrefix: fx.dataPrefix }),
+        ).rejects.toMatchObject(refused);
+        await expect(p.revoke(c.consentId, ["TERM_DEPOSIT"])).rejects.toMatchObject(refused);
+        await expect(
+          p.handleWebhook(
+            new TextEncoder().encode(JSON.stringify({ kind: "consent", consentId: c.consentId })),
+            {},
+          ),
+        ).rejects.toMatchObject(refused);
+        // A consent asked without a FIU is compared with nothing, as before.
+        const plain = await p.requestConsent(ask());
+        await fx.reportFiu(p, plain.consentId, `${fx.fiuId}-other`);
+        expect((await p.consentStatus(plain.consentId)).fiuId).toBe(`${fx.fiuId}-other`);
+      },
+    },
+    {
+      name: "the approval link is on the consent only while PENDING: https, no user information, no 12-digit run (PR-UDF-050)",
+      async run(p) {
+        const c = await p.requestConsent(ask());
+        expect(c.state).toBe("PENDING");
+        expectApprovalLink(c.approvalUrl);
+        const again = await p.consentStatus(c.consentId);
+        expect(again.approvalUrl).toBe(c.approvalUrl);
+        await fx.approve(p, c.consentId);
+        const active = await p.consentStatus(c.consentId);
+        expect(active.state).toBe("ACTIVE");
+        expect("approvalUrl" in active).toBe(false);
+        const revoked = await p.revoke(c.consentId);
+        expect("approvalUrl" in revoked).toBe(false);
+        const d = await p.requestConsent(ask());
+        expectApprovalLink(d.approvalUrl);
+        const gone = await p.revoke(d.consentId);
+        expect(gone.state).toBe("REVOKED");
+        expect("approvalUrl" in gone).toBe(false);
+        for (const x of [c, again, active, revoked, d, gone]) expectNoAadhaarLike(x);
       },
     },
     {

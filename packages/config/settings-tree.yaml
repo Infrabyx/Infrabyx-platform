@@ -2132,6 +2132,37 @@ keys:
       source: "IPB-01 §01.4.4.3 AA_FIU; R1-D-61 (Setu FIU, off until the owner's Setu sandbox exists)",
     }
 
+  # ---------------------------------------------------------------- R1: STATEMENT_ANALYSIS (ADR-0012; PR-UDF-048, R1-D-202, #152)
+  - {
+      key: int.statement_analysis.platform.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the in-platform checksum-summary analyser (no vendor, no egress); a summary, not a credit analysis",
+      source: "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (reference adapter, off until the owner chooses an analyser, #152)",
+    }
+  - {
+      key: int.statement_analysis.http.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (vendor-neutral HTTP alternative, off and unproven until a vendor's sandbox exists, #152)",
+    }
+  - {
+      key: int.statement_analysis.http.host,
+      tier: PLATFORM,
+      type: string,
+      default: "",
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the analyser's exact host name, India-resident; empty refuses every call (adapter_unconfigured)",
+      source: "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (the HTTP alternative's only egress host)",
+    }
+
   # ---------------------------------------------------------------- R1: VIDEO_MEET (IPB-01 VIDEO_MEET; #88, C-26, R1-D-53)
   - {
       key: int.video_meet.livekit.enabled,

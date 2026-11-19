@@ -116,6 +116,8 @@ export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Obje
   PUSH: "INTERNAL",
   /** Image prompts are INTERNAL (marketing and CMS use, IPB-01 IMAGE_GEN). */
   IMAGE_GEN: "INTERNAL",
+  /** Bank statements and their analysis (PR-UDF-048, R1-D-202): REGULATED, kept in India. */
+  STATEMENT_ANALYSIS: "REGULATED",
 });
 
 /** Port default data class; CONFIDENTIAL for every port not listed (plan §3.1). */
