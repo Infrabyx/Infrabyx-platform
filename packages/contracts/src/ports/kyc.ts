@@ -47,13 +47,44 @@ export const PanCheck = z
   })
   .strict();
 
+/**
+ * The two offline forms a resident can share (PR-UDF-039; R1-D-190): the Offline e-KYC ZIP, opened
+ * with its four-digit share code, and the Secure QR (as printed on the Aadhaar letter or e-Aadhaar),
+ * which has no share code.
+ */
+export const AADHAAR_OFFLINE_KINDS = ["xml_zip", "secure_qr"] as const;
+export type AadhaarOfflineKind = (typeof AADHAAR_OFFLINE_KINDS)[number];
+
+/**
+ * Before any parse or vendor call the adapter reads `file` from its STORAGE and refuses a body whose
+ * SHA-256 is not `file.sha256` (`IPB-PORT-001`, `meta.reason: "hash_mismatch"`). An adapter that
+ * cannot verify a kind refuses it with `meta.reason: "unsupported"`.
+ */
 export const AadhaarOfflineCheck = z
   .object({
-    /** The Offline e-KYC XML (zip) or QR payload the customer shared, in STORAGE. */
+    /** Omitted: `xml_zip`, the only form before this field (PR-UDF-039). */
+    kind: z.enum(AADHAAR_OFFLINE_KINDS).optional(),
+    /** The Offline e-KYC ZIP, or the Secure QR's scanned payload, the customer shared, in STORAGE. */
     file: KycFileRef,
-    shareCode: regulated(z.string().regex(/^[0-9]{4}$/)),
+    /** Required for `xml_zip`; a Secure QR has none and is refused with one. */
+    shareCode: regulated(z.string().regex(/^[0-9]{4}$/)).optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((r, ctx) => {
+    const kind = r.kind ?? "xml_zip";
+    if (kind === "xml_zip" && r.shareCode === undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["shareCode"],
+        message: "the Offline e-KYC ZIP needs its share code",
+      });
+    if (kind === "secure_qr" && r.shareCode !== undefined)
+      ctx.addIssue({
+        code: "custom",
+        path: ["shareCode"],
+        message: "a Secure QR has no share code",
+      });
+  });
 
 export const DIGILOCKER_DOC_TYPES = ["ADHAR", "PANCR", "DRVLC", "VTRCD", "PSPRT"] as const;
 export const DigilockerPull = z
@@ -157,9 +188,11 @@ export interface PanResult extends KycEvidence {
 }
 
 export interface AadhaarOfflineResult extends KycEvidence {
+  /** The form verified (PR-UDF-039); the platform's adapters always set it. */
+  kind?: AadhaarOfflineKind;
   /** The UIDAI signature on the XML or QR verified. */
   signatureValid: boolean;
-  /** Last four digits only; the number is never returned. */
+  /** Last four digits only; no field of the result carries more of the number. */
   aadhaarLast4: string;
   name: string;
   dob?: string;

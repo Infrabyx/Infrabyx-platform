@@ -4,9 +4,8 @@ The single numbered list the owner answers in one go (PL2-D-41). Each entry is e
 
 ## Open
 
-| #   | Decision | Question                                                             |
-| --- | -------- | -------------------------------------------------------------------- |
-| —   | —        | None open (18 Nov 2026: #137 to #139 answered in the chat, R1-D-185) |
+| #   | Decision | Question |
+| --- | -------- | -------- |
 
 ## Answered
 
