@@ -939,6 +939,22 @@ CVE-2026-114938 is memory corruption in HotSpot's Base64 intrinsic on x86-64 CPU
 3. **Check the running JVM**, not only the definition: `jcmd <pid> VM.flags -all | grep UseBASE64Intrinsics` must print `false {command line}` (Keycloak, OpenSearch) or `false {environment}` (`JAVA_TOOL_OPTIONS`). For Gotenberg, whose JVM lives for one request, see `infra/docker/jvm-mitigation.e2e.test.mjs`.
 4. **Check your own scans.** The platform's waiver (OWNER-WAIVER-CRIT-01 in `infra/docker/trivyignore.yaml`) covers only `java-21-openjdk-headless` 1:21.0.13.0.9-1.2.el9 in the pinned Keycloak 26.8.2-0 base, and only while the mitigation is proven. Copy it only if your image is that image with the same mitigation and its test; any other image with an OpenJDK runtime is your own decision. It ends when a fixed Keycloak image is published and pinned, 15 Dec 2026 at the latest; the platform then moves to that image in its own release, and you rebuild.
 
+## 7dd. glob and minimatch on their fixed majors (PR-FBX-50; R1-D-216)
+
+The platform's own tree is clear of GHSA-3g3m-2fjr-6pw4 (glob) and GHSA-g3hv-75wg-m249 (minimatch) from the next release, through three `pnpm` overrides; the published `@infrabyx/*` packages keep their dependency ranges, so **your lockfile resolves the old majors until you add the same overrides** (overrides are not inherited from a dependency). In your `pnpm-workspace.yaml`:
+
+```yaml
+overrides:
+  unleash-client>make-fetch-happen: ^16.0.1
+  archiver-utils>glob: ^14.0.3
+  "minimatch@>=7.0.0 <11.0.1": ^11.0.8
+```
+
+- `make-fetch-happen` 16 is the same HTTP client on `cacache` 21, whose glob is 14; the FEATURE_FLAG `unleash` contract leg passes on it. `archiver-utils` (under `testcontainers`, tests only) calls glob's `sync`, which glob 14 still exports for CommonJS.
+- Run `pnpm install` and `pnpm audit`; both advisories should be gone. Finbyx can then drop its SEC-08 waiver.
+- Each override goes once its parent ships the fixed major (`unleash-client` on `make-fetch-happen` 16, `testcontainers` on `archiver` 8); the STATUS release record says when the platform drops them.
+- The same release moves `fast-uri` to 3.1.9 (four advisories, via `ajv`); a lockfile refresh (`pnpm update fast-uri`) does the same for you.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
