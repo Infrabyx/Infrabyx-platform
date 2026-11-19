@@ -15,7 +15,7 @@ import { join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { afterAll, describe, expect, it } from "vitest";
 import { parse } from "yaml";
-import { TEST_IMAGES, withJvmMitigation } from "../../packages/testing/src/containers.ts";
+import { TEST_IMAGES, withJvmMitigation } from "../../packages/testing/src/images.ts";
 import { JVM_IMAGES, JVM_MITIGATION } from "./jvm-images.mjs";
 
 const keycloakImage = process.env.IPB_KEYCLOAK_IMAGE ?? "";

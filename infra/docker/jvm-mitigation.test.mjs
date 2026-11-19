@@ -11,7 +11,7 @@ import {
   JVM_BASE64_INTRINSIC_OFF,
   TEST_IMAGES,
   TEST_IMAGE_JVM_OPTIONS_VAR,
-} from "../../packages/testing/src/containers.ts";
+} from "../../packages/testing/src/images.ts";
 import { JVM_IMAGES, JVM_MITIGATION, NO_JVM_IMAGES, repository } from "./jvm-images.mjs";
 
 const ROOT = join(import.meta.dirname, "..", "..");

@@ -7,7 +7,7 @@ import {
   TEST_IMAGES,
   TEST_IMAGE_JVM_OPTIONS_VAR,
   withJvmMitigation,
-} from "./containers.js";
+} from "./images.js";
 
 describe("withJvmMitigation (R1-D-192)", () => {
   it("is the flag the owner named", () => {
