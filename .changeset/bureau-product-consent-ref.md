@@ -1,8 +1,0 @@
----
-"@infrabyx/contracts": minor
-"@infrabyx/fakes": minor
-"@infrabyx/testing": minor
-"@infrabyx/connectors": minor
----
-
-A product's own consent artefact beside the bureau consent receipt (Udofin PR-UDF-049; R1-D-203, owner answer #153). `BureauPullRequest.consentRef` is unchanged (the required `cpr_<ULID>` string), so no caller or adapter outside the platform needs a change. New optional `BureauPullRequest.consentArtefact: { kind, id }`, the product's own purpose-consent artefact for the same pull, and `BureauReport.consentArtefact?`, echoed only when the request carried one (an answer to a pull without it is exactly as before). `contracts` adds `ports/consent-ref`: `ConsentReceiptRef` (the `cpr_` string), `ConsentArtefact` (strict `{ kind, id }`: `kind` one to four dot-separated `[a-z][a-z0-9_]*` segments, 3 to 64 characters, `cpr` and `cns` reserved; `id` 3 to 128 characters of `[A-Za-z0-9._-]`, not a platform `cpr_`/`cns_` id; neither may hold a standalone run of 10 or more digits, an Aadhaar-like number (`findAadhaarLike`) or a standalone PAN-shaped run; each refusal a fixed label from `CONSENT_ARTEFACT_REFUSALS`), `consentArtefactProblem`, `consentInForce` (the artefact as `<kind>:<id>` when present, else `consentRef`) and `consentEcho`. The platform checks an artefact's shape only; the product asserts the consent behind it. Neither is sent to the CIC. `fakes` (`FakeCreditBureau`) and `connectors` (`CibilBureau`, whose pull record keeps `consentArtefact?` beside `consentRef`) accept and echo both; `testing` adds contract cases for calls with and without an artefact and the refusals, `contractConsentArtefact` and `malformedConsentArtefacts`.
