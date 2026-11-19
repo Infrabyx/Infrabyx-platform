@@ -6,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
   accountAggregatorContractCases,
+  contractProductConsentRef,
   defineContractSuite,
   MemoryStorage,
   startSetuAaStub,
@@ -24,11 +25,11 @@ beforeAll(async () => {
 });
 afterAll(async () => stub?.close());
 
-const make = () => {
-  const consents = new Map<string, SetuConsentRecord>();
+const make = (consents = new Map<string, SetuConsentRecord>(), approvalHosts?: string[]) => {
   return new SetuAccountAggregator({
     storage,
     consents: { get: async (k) => consents.get(k), set: async (k, v) => void consents.set(k, v) },
+    ...(approvalHosts ? { approvalHosts } : {}),
     enabled: () => enabled,
     clientId: () => stub.clientId,
     clientSecret: () => stub.clientSecret,
@@ -67,6 +68,10 @@ describe("@IPB-01-15 AA_FIU hermetic leg (Setu stub)", () => {
     consentRef: () => newId("cpr"),
     dataPrefix: PREFIX,
     approve: async (_p, id) => stub.approve(id),
+    get fiuId() {
+      return stub.fiuId;
+    },
+    reportFiu: async (_p, id, fiu) => stub.reportFiu(id, fiu),
   };
   defineContractSuite("AA_FIU", make, accountAggregatorContractCases(fixtures), {
     leg: "hermetic",
@@ -94,7 +99,9 @@ describe("R1-D-61 the Setu AA adapter", () => {
     const p = make();
     const a = ask();
     const c = await p.requestConsent(a);
-    expect(await p.approvalUrl(c.consentId)).toContain(c.consentId);
+    // The deprecated adapter method answers the link the consent now carries (PR-UDF-050).
+    expect(c.approvalUrl).toContain(c.consentId);
+    expect(await p.approvalUrl(c.consentId)).toBe(c.approvalUrl);
     // The product's references stay home.
     const sent = stub.requests.findLast((x) => x.path === "/v2/consents")!.body.toString("utf8");
     expect(sent).not.toContain(a.subjectRef);
@@ -133,6 +140,77 @@ describe("R1-D-61 the Setu AA adapter", () => {
         {},
       ),
     ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unknown_consent" } });
+  });
+
+  it("refuses a consent for another FIU, or for none, and keeps nothing (PR-UDF-050)", async () => {
+    const consents = new Map<string, SetuConsentRecord>();
+    const p = make(consents);
+    const before = stub.requests.length;
+    await expect(p.requestConsent({ ...ask(), fiuId: "another-fiu" })).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "fiu_mismatch", definite: true },
+    });
+    expect(consents.size).toBe(0);
+    // The FIU is not sent: Setu records the FIU behind the product instance.
+    const created = stub.requests.slice(before).find((x) => x.path === "/v2/consents")!;
+    expect(created.body.toString("utf8")).not.toContain("another-fiu");
+    // A consent Setu reports with no FIU mismatches one asked for.
+    const ours = await p.requestConsent({ ...ask(), fiuId: stub.fiuId });
+    expect(ours.fiuId).toBe(stub.fiuId);
+    expect(consents.get(ours.consentId)?.fiuId).toBe(stub.fiuId);
+    stub.reportFiu(ours.consentId, undefined);
+    await expect(p.consentStatus(ours.consentId)).rejects.toMatchObject({
+      meta: { reason: "fiu_mismatch" },
+    });
+  });
+
+  it("refuses an approval link off its hosts or not https, keeps nothing and never echoes it (PR-UDF-050)", async () => {
+    for (const base of [
+      "https://elsewhere.example/consents/webview/",
+      "http://fiu-sandbox.setu.co/consents/webview/",
+      "https://user:pw@fiu-sandbox.setu.co/consents/webview/",
+    ]) {
+      const consents = new Map<string, SetuConsentRecord>();
+      stub.linkBase(base);
+      try {
+        const err = await make(consents)
+          .requestConsent(ask())
+          .then(
+            () => undefined,
+            (e: unknown) => e,
+          );
+        expect(err).toMatchObject({
+          code: "IPB-PORT-001",
+          meta: { reason: "approval_url_not_allowed", definite: true },
+        });
+        expect(`${(err as Error).message} ${JSON.stringify(err)}`).not.toContain("webview");
+        expect(consents.size).toBe(0);
+      } finally {
+        stub.linkBase(undefined);
+      }
+    }
+    // A host the product lists is accepted, exactly (no suffix match).
+    stub.linkBase("https://consent.example.in/webview/");
+    try {
+      const ok = await make(undefined, ["consent.example.in"]).requestConsent(ask());
+      expect(ok.approvalUrl?.startsWith("https://consent.example.in/webview/")).toBe(true);
+      await expect(make(undefined, ["example.in"]).requestConsent(ask())).rejects.toMatchObject({
+        meta: { reason: "approval_url_not_allowed" },
+      });
+    } finally {
+      stub.linkBase(undefined);
+    }
+  });
+
+  it("never sends a product's own consent artefact to Setu (PR-UDF-050)", async () => {
+    const ref = contractProductConsentRef();
+    const before = stub.requests.length;
+    const c = await make().requestConsent({ ...ask(), consentRef: ref });
+    expect(c.state).toBe("PENDING");
+    for (const x of stub.requests.slice(before)) {
+      expect(x.body.toString("utf8")).not.toContain(ref.id);
+      expect(x.body.toString("utf8")).not.toContain(ref.kind);
+    }
   });
 
   it("maps ReBIT account types and masks any full account number", () => {

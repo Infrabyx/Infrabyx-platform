@@ -9,8 +9,10 @@
 //   `fiu.setu.co` and `fiu-sandbox.setu.co`;
 // - consent: `POST /v2/consents` with the ReBIT template (`vua`, `purpose`, `fiTypes`,
 //   `fetchType`, `frequency`, `dataRange`, `dataLife`, `consentDateRange`, `consentMode`),
-//   answered `{ id, url, status }`; `GET /v2/consents/<id>` answers `{ id, status, detail }`;
-//   `POST /v2/consents/<id>/revoke`;
+//   answered `{ id, url, status }` (`url`: the page where the customer approves, on one of
+//   `approvalHosts`); `GET /v2/consents/<id>` answers `{ id, status, detail }`, where `detail.FIU.id`
+//   is the FIU Setu recorded (the ReBIT consent detail); `POST /v2/consents/<id>/revoke`;
+// - the FIU is not sent on the create: Setu records the FIU behind the product instance;
 // - data: `POST /v2/sessions` with `{ consentId, dataRange, format: "json" }`, answered `{ id }`;
 //   `GET /v2/sessions/<id>` answers `{ id, status, fips[{ fipID, accounts[{ maskedAccNumber,
 //   FIstatus, data: { account: { type, version, … } } }] }] }`;
@@ -20,11 +22,24 @@
 // confirm yet); revoking the last one, or all, revokes the consent at Setu. Every payload goes to
 // STORAGE as received with its SHA-256 and ReBIT schema version; the result carries only the masked
 // account. A notification is never trusted: the consent is read back from Setu.
+//
+// PR-UDF-050 (R1-D-204): a request naming a FIU is refused `fiu_mismatch` when Setu's read-back
+// reports another FIU or none, before the consent is kept or returned (it stays PENDING and
+// unapproved at Setu, and lapses), and every later read-back is checked against the FIU kept in the
+// record. The approval link is returned on the consent while PENDING, only if it passes
+// `aaApprovalUrlAllowed` for `approvalHosts`; otherwise the consent is refused
+// `approval_url_not_allowed`, again before anything is kept. The link is never logged or put in an
+// error. The product's consent reference (a `cpr_` or its own artefact) is never sent to Setu.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
+  AA_APPROVAL_URL_REFUSED,
+  AA_FIU_ID_REGEX,
+  AA_FIU_MISMATCH,
   AaConsentRequest,
   AaFetchRequest,
   FI_TYPES,
+  aaApprovalUrlAllowed,
+  aaFiuMismatch,
   type AaConsent,
   type AaConsentState,
   type AaFetchResult,
@@ -48,8 +63,10 @@ const API_VERSION = "2.0.0";
 
 /** What the adapter keeps per consent (the product's table). */
 export interface SetuConsentRecord {
-  /** Setu's page where the customer approves the consent (shown by the product). */
+  /** Setu's page where the customer approves the consent (checked by `aaApprovalUrlAllowed`). */
   approvalUrl?: string;
+  /** The FIU the request asked for (PR-UDF-050); every read-back is compared with it. */
+  fiuId?: string;
   /** FI types revoked one by one, which the adapter no longer fetches. */
   revokedFiTypes: FiType[];
 }
@@ -69,6 +86,11 @@ export interface SetuAccountAggregatorOptions {
   productInstanceId: () => Promise<string> | string;
   /** Setu's sandbox host instead of production (test environments only). */
   sandbox?: boolean;
+  /**
+   * The hosts Setu's approval links may be on (exact names; default Setu's two FIU hosts,
+   * [VERIFY] against the sandbox). A link elsewhere is refused `approval_url_not_allowed`.
+   */
+  approvalHosts?: readonly string[];
   /** Polls of a data session before `fetch` answers PENDING (default 10, 1 s apart). */
   pollAttempts?: number;
   pollDelayMs?: number;
@@ -112,11 +134,13 @@ export function mapSetuConsent(body: unknown): {
   dataRange: { from: string; to: string };
   consentExpiry: string;
   url?: string;
+  fiuId?: string;
 } {
   const b = body as Record<string, unknown> | undefined;
   const d = (b?.detail ?? {}) as Record<string, unknown>;
   const range = d.dataRange as { from?: unknown; to?: unknown } | undefined;
   const dates = d.consentDateRange as { endDate?: unknown } | undefined;
+  const fiu = (d.FIU as { id?: unknown } | undefined)?.id;
   const fiTypes = Array.isArray(d.fiTypes)
     ? (d.fiTypes as unknown[]).filter((f): f is FiType => FI_TYPES.includes(f as FiType))
     : [];
@@ -137,6 +161,8 @@ export function mapSetuConsent(body: unknown): {
     dataRange: { from: range.from, to: range.to },
     consentExpiry: dates.endDate,
     ...(typeof b.url === "string" ? { url: b.url } : {}),
+    // Only a well-formed id is a reported FIU; anything else reads as none (and so mismatches).
+    ...(typeof fiu === "string" && AA_FIU_ID_REGEX.test(fiu) ? { fiuId: fiu } : {}),
   };
 }
 
@@ -201,9 +227,11 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
   private readonly egress;
   private readonly base: string;
   private readonly now: () => Date;
+  private readonly approvalHosts: readonly string[];
 
   constructor(private readonly o: SetuAccountAggregatorOptions) {
     this.base = (o.baseUrl ?? `https://${o.sandbox ? HOSTS[1] : HOSTS[0]}`).replace(/\/$/, "");
+    this.approvalHosts = o.approvalHosts ?? HOSTS;
     this.now = o.now ?? (() => new Date());
     this.egress = createEgress({
       port: PORT,
@@ -246,9 +274,8 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
     return rec;
   }
 
-  /** Setu's consent with what is kept here (revoked FI types; an elapsed expiry is EXPIRED). */
-  private async read(consentId: string): Promise<AaConsent> {
-    const rec = await this.record(consentId);
+  /** Setu's consent read-back, before anything is known of it here. */
+  private async fetchConsent(consentId: string): Promise<ReturnType<typeof mapSetuConsent>> {
     const res = await this.egress(`${this.base}/v2/consents/${encodeURIComponent(consentId)}`, {
       headers: await this.headers(),
     });
@@ -256,19 +283,39 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
     if (res.status !== 200) throw vendorError(PORT, ADAPTER, res.status, "Setu consent read-back");
     const c = mapSetuConsent(res.json());
     if (c.id !== consentId) throw vendorError(PORT, ADAPTER, 502, "Setu answered another consent");
+    return c;
+  }
+
+  /**
+   * The port's consent from Setu's read-back and what is kept here: revoked FI types, an elapsed
+   * expiry as EXPIRED, the FIU checked against the one asked for, the link only while PENDING.
+   */
+  private toConsent(c: ReturnType<typeof mapSetuConsent>, rec: SetuConsentRecord): AaConsent {
+    if (aaFiuMismatch(rec.fiuId, c.fiuId))
+      throw refused("Setu reports the consent for another FIU", AA_FIU_MISMATCH);
     const lapsed =
       (c.state === "ACTIVE" || c.state === "PENDING" || c.state === "PAUSED") &&
       Date.parse(c.consentExpiry) <= this.now().getTime();
+    const state = lapsed ? "EXPIRED" : c.state;
     return {
       ...this.ev(c.id),
       consentId: c.id,
       consentHandle: c.id,
-      state: lapsed ? "EXPIRED" : c.state,
+      state,
       fiTypes: c.fiTypes,
       dataRange: c.dataRange,
       consentExpiry: c.consentExpiry,
       revokedFiTypes: rec.revokedFiTypes.filter((f) => c.fiTypes.includes(f)),
+      ...(c.fiuId !== undefined ? { fiuId: c.fiuId } : {}),
+      ...(state === "PENDING" && rec.approvalUrl !== undefined
+        ? { approvalUrl: rec.approvalUrl }
+        : {}),
     };
+  }
+
+  private async read(consentId: string): Promise<AaConsent> {
+    const rec = await this.record(consentId);
+    return this.toConsent(await this.fetchConsent(consentId), rec);
   }
 
   async requestConsent(
@@ -289,14 +336,24 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
     const a = res.json<{ id?: unknown; url?: unknown }>();
     if (typeof a.id !== "string" || a.id.length < 3 || a.id.length > 200)
       throw vendorError(PORT, ADAPTER, 502, "Setu answer without its consent id");
-    await this.o.consents.set(a.id, {
+    // Checked before the record is kept, so a refused consent leaves nothing here (it stays
+    // PENDING and unapproved at Setu, and lapses). The link never goes into an error.
+    const rec: SetuConsentRecord = {
       ...(typeof a.url === "string" ? { approvalUrl: a.url } : {}),
       revokedFiTypes: [],
-    });
-    return this.read(a.id);
+      ...(r.fiuId !== undefined ? { fiuId: r.fiuId } : {}),
+    };
+    const consent = this.toConsent(await this.fetchConsent(a.id), rec);
+    if (rec.approvalUrl !== undefined && !aaApprovalUrlAllowed(rec.approvalUrl, this.approvalHosts))
+      throw refused("Setu's approval link failed its check", AA_APPROVAL_URL_REFUSED);
+    await this.o.consents.set(a.id, rec);
+    return consent;
   }
 
-  /** Setu's page where the customer approves the consent (not on the port yet; R1-D-61). */
+  /**
+   * Setu's page where the customer approves the consent.
+   * @deprecated Read `approvalUrl` on the consent (PR-UDF-050), present while PENDING.
+   */
   async approvalUrl(consentId: string): Promise<string | undefined> {
     return (await this.record(consentId)).approvalUrl;
   }

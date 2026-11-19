@@ -5,8 +5,12 @@
 // flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
+  AA_APPROVAL_URL_REFUSED,
+  AA_FIU_MISMATCH,
   AaConsentRequest,
   AaFetchRequest,
+  aaApprovalUrlAllowed,
+  aaFiuMismatch,
   BureauPullRequest,
   consentRefEcho,
   consentRefText,
@@ -207,6 +211,16 @@ export interface AccountAggregatorFixtures {
   dataPrefix: string;
   /** Plays the customer approving a consent at the AA (a sandbox call, or the fake's hook). */
   approve: (p: AccountAggregatorPort, consentId: string) => Promise<void>;
+  /**
+   * The FIU the AA reports for this instance's consents (PR-UDF-050). Without it the FIU cases
+   * check only that a consent's `fiuId`, when present, is the one asked for.
+   */
+  fiuId?: string;
+  /**
+   * Plays the AA reporting the consent for another FIU on its next read-backs (a sandbox cannot,
+   * so only stubs and the fake give it; the read-back case is skipped without it).
+   */
+  reportFiu?: (p: AccountAggregatorPort, consentId: string, fiuId: string) => Promise<void>;
 }
 
 export const ACCOUNT_AGGREGATOR_FAKE_FIXTURES: AccountAggregatorFixtures = {
@@ -214,11 +228,31 @@ export const ACCOUNT_AGGREGATOR_FAKE_FIXTURES: AccountAggregatorFixtures = {
   consentRef: () => newId("cpr"),
   dataPrefix: "tenant/tnt_aa/los/",
   approve: async (p, id) => (p as FakeAccountAggregator).approve(id),
+  fiuId: "fake-fiu",
+  reportFiu: async (p, id, fiu) => (p as FakeAccountAggregator).reportFiu(id, fiu),
 };
 
 const FI_SCHEMA_VERSION = "1.1.3";
 
-/** In-memory FIU-side AA. `approve` plays the customer; consents expire on the injected clock. */
+/** A consent as the fake AA keeps it: the port's view plus what only the AA knows. */
+interface FakeConsent extends Omit<AaConsent, "fiuId" | "approvalUrl"> {
+  /** The FIU the request asked for (compared on every read-back), if it named one. */
+  askedFiu?: string;
+  /** The FIU the AA reports on the consent. */
+  reportedFiu: string;
+  /** The approval page while PENDING. */
+  link: string;
+}
+
+/** Letters only, so a link never carries a run of digits (hex digits 0–9 become g–p). */
+const letters = (hex: string): string => hex.replace(/[0-9]/g, (d) => "ghijklmnop"[Number(d)]!);
+
+/**
+ * In-memory FIU-side AA. `approve` plays the customer; consents expire on the injected clock. It
+ * reports its own FIU (`fiuId`, default `fake-fiu`) on every consent, as an AA reports the FIU
+ * behind the credentials, so a request naming another FIU is refused `fiu_mismatch` with nothing
+ * kept; `reportFiu` makes the AA report another FIU on later read-backs.
+ */
 export class FakeAccountAggregator implements AccountAggregatorPort {
   readonly descriptor: AdapterDescriptor = {
     port: "AA_FIU",
@@ -226,15 +260,24 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     residency: "IN",
     maxDataClass: "REGULATED",
   };
-  private readonly consents = new Map<string, AaConsent>();
+  private readonly consents = new Map<string, FakeConsent>();
   private readonly now: () => Date;
+  private readonly fiuId: string;
+  private readonly approvalHost: string;
   private n = 0;
-  constructor(o: { now?: () => Date } = {}) {
+  constructor(o: { now?: () => Date; fiuId?: string; approvalHost?: string } = {}) {
     this.now = o.now ?? (() => new Date());
+    this.fiuId = o.fiuId ?? "fake-fiu";
+    this.approvalHost = o.approvalHost ?? "approve.fake-aa.example";
   }
 
   async health(): Promise<PortHealth> {
     return { status: "up", latency_ms: 0, checked_at: this.now().toISOString() };
+  }
+
+  /** Test hook: how many consents the fake keeps (a refused request keeps none). */
+  get consentsKept(): number {
+    return this.consents.size;
   }
 
   private ev() {
@@ -246,9 +289,14 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     };
   }
 
-  private current(id: string): AaConsent {
+  private fiuRefused(): PortError {
+    return fail("AA_FIU", "fake-aa", AA_FIU_MISMATCH, "the AA reports the consent for another FIU");
+  }
+
+  private current(id: string): FakeConsent {
     const c = this.consents.get(id);
     if (!c) throw fail("AA_FIU", "fake-aa", "unknown_consent", "no such consent");
+    if (aaFiuMismatch(c.askedFiu, c.reportedFiu)) throw this.fiuRefused();
     if (
       (c.state === "ACTIVE" || c.state === "PENDING" || c.state === "PAUSED") &&
       Date.parse(c.consentExpiry) <= this.now().getTime()
@@ -258,10 +306,31 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     return c;
   }
 
+  /** The port's view: the reported FIU, and the approval page only while PENDING. */
+  private view(c: FakeConsent): AaConsent {
+    const { askedFiu: _a, reportedFiu, link, ...rest } = c;
+    return {
+      ...rest,
+      revokedFiTypes: [...c.revokedFiTypes],
+      fiuId: reportedFiu,
+      ...(c.state === "PENDING" ? { approvalUrl: link } : {}),
+    };
+  }
+
   async requestConsent(raw: Parameters<AccountAggregatorPort["requestConsent"]>[0]) {
     const r = AaConsentRequest.parse(raw);
-    const consentId = `aac_${sha256Hex(`${r.consentRef}:${++this.n}`).slice(0, 24)}`;
-    const c: AaConsent = {
+    // The AA records the consent for the FIU behind the credentials; checked before anything is kept.
+    if (aaFiuMismatch(r.fiuId, this.fiuId)) throw this.fiuRefused();
+    const consentId = `aac_${sha256Hex(`${consentRefText(r.consentRef)}:${++this.n}`).slice(0, 24)}`;
+    const link = `https://${this.approvalHost}/consents/${letters(sha256Hex(`link:${consentId}`).slice(0, 32))}`;
+    if (!aaApprovalUrlAllowed(link, [this.approvalHost]))
+      throw fail(
+        "AA_FIU",
+        "fake-aa",
+        AA_APPROVAL_URL_REFUSED,
+        "the approval link failed its check",
+      );
+    const c: FakeConsent = {
       ...this.ev(),
       consentId,
       consentHandle: `handle-${consentId}`,
@@ -270,9 +339,12 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
       dataRange: { from: r.dataRange.from, to: r.dataRange.to },
       consentExpiry: r.consentExpiry,
       revokedFiTypes: [],
+      ...(r.fiuId !== undefined ? { askedFiu: r.fiuId } : {}),
+      reportedFiu: this.fiuId,
+      link,
     };
     this.consents.set(consentId, c);
-    return { ...c };
+    return this.view(c);
   }
 
   /** Test hook: the customer approves at the AA. */
@@ -282,8 +354,15 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     c.state = "ACTIVE";
   }
 
+  /** Test hook: the AA reports the consent for `fiuId` from now on. */
+  reportFiu(consentId: string, fiuId: string): void {
+    const c = this.consents.get(consentId);
+    if (!c) throw new Error(`no consent ${consentId}`);
+    c.reportedFiu = fiuId;
+  }
+
   async consentStatus(consentId: string): Promise<AaConsent> {
-    return { ...this.current(consentId), ...this.ev() };
+    return { ...this.view(this.current(consentId)), ...this.ev() };
   }
 
   async revoke(consentId: string, fiTypes?: readonly FiType[]): Promise<AaConsent> {
@@ -295,7 +374,7 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
       c.revokedFiTypes = [...new Set([...c.revokedFiTypes, ...fiTypes])];
       if (c.fiTypes.every((f) => c.revokedFiTypes.includes(f))) c.state = "REVOKED";
     }
-    return { ...c, ...this.ev() };
+    return { ...this.view(c), ...this.ev() };
   }
 
   async fetch(raw: Parameters<AccountAggregatorPort["fetch"]>[0]): Promise<AaFetchResult> {

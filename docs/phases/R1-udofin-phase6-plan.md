@@ -92,6 +92,8 @@ Under the RBI's Account Aggregator Directions, a consent artefact names the FIU 
 
 **Owner decisions needed** (#154, not blocking): no comparison when the request names no FIU; refusing a consent that reports no FIU when one was asked; refusing (rather than dropping) a link that fails the check; not revoking a refused consent at the AA; Setu's approval hosts and field names `[VERIFY]`; the paragraph numbers `[VERIFY]`.
 
+**As built (R1-D-204):** as planned, with these choices made at build time: `aaApprovalUrlAllowed` is `digilockerReturnUrlAllowed` plus `findAadhaarLike` and a 2,048-character bound; the FIU is checked before the link, both before Setu's record is kept; a reported FIU outside `AA_FIU_ID_REGEX` reads as none; the fake keeps the asked FIU and the reported one apart (`reportFiu`), and its link is letters only so it never carries a digit run; `AccountAggregatorFixtures.fiuId` and `reportFiu` are optional, and the cases that need them return early without them, so an adapter's existing fixtures still compile; the Setu stub's `linkBase` hook drives the link refusals. A Setu UUID whose last group is all digits would make a link with a 12-digit run, refused (about 1 in 300 consents) until the sandbox shows the real link. `[ASSUMED – owner review]` #154.
+
 ## Exit checklist (per PR)
 
 `pnpm check:full --pr-body <file>` including the Docker contract suites; the whole unit suite of each changed package; a Changeset per changed package; threat model rows for new data flows; the product guide section for adoption; DECISIONS row; STATUS.

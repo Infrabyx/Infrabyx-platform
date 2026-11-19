@@ -1,7 +1,9 @@
 // Setu FIU stub (OWNER-QUESTIONS #97, R1-D-61), from the request and response shapes the `setu-aa`
 // adapter documents as stub-shaped [VERIFY]: `x-client-id`, `x-client-secret` and
 // `x-product-instance-id` headers; `/v2/consents` (create, read, revoke) and `/v2/sessions`
-// (create, read with each FIP's accounts and their ReBIT data). Proves adapter logic only; the
+// (create, read with each FIP's accounts and their ReBIT data); the consent read-back reports the
+// FIU in `detail.FIU.id` and the create answers the approval link in `url` (PR-UDF-050). Proves
+// adapter logic only; the
 // sandbox leg proves the vendor once the owner's Setu sandbox exists. Test data only.
 import { randomBytes, toHex } from "@infrabyx/crypto";
 import { stubCredential, startStub, type VendorStub } from "./http.js";
@@ -16,6 +18,12 @@ export interface SetuAaStub extends VendorStub {
   approve(consentId: string): void;
   /** Test hook: the next data sessions answer PENDING this many times before completing. */
   pendingReads(n: number): void;
+  /** The FIU the stub's AA records on every consent (the one behind the credentials). */
+  fiuId: string;
+  /** Test hook: the AA reports the consent for `fiuId` (or for none) from now on. */
+  reportFiu(consentId: string, fiuId: string | undefined): void;
+  /** Test hook: the base of the approval links of the next consents (undefined: the default). */
+  linkBase(base: string | undefined): void;
 }
 
 interface Consent {
@@ -24,13 +32,23 @@ interface Consent {
   fiTypes: string[];
   dataRange: { from: string; to: string };
   consentDateRange: { startDate: string; endDate: string };
+  fiu: string | undefined;
+  url: string;
 }
 
-/** A random UUID-shaped id, as Setu's ids are. */
+/**
+ * A random UUID-shaped id, as Setu's ids are. Never one whose last group is all digits: a link
+ * holding it would be a 12-digit run, which the adapter refuses (and so would a test, by chance).
+ */
 const randomUUID = (): string => {
-  const h = toHex(randomBytes(16));
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  for (;;) {
+    const h = toHex(randomBytes(16));
+    if (/^[0-9]{12}$/.test(h.slice(20))) continue;
+    return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  }
 };
+
+const DEFAULT_LINK_BASE = "https://fiu-sandbox.setu.co/consents/webview/";
 
 const REBIT_TYPE: Record<string, string> = {
   DEPOSIT: "deposit",
@@ -47,14 +65,17 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
   const consents = new Map<string, Consent>();
   const sessions = new Map<string, { consentId: string; reads: number }>();
   let pending = 0;
+  let base = DEFAULT_LINK_BASE;
+  const fiuId = "setu-stub-fiu";
   const consentBody = (c: Consent) => ({
     id: c.id,
     status: c.status,
-    url: `https://fiu-sandbox.setu.co/consents/webview/${c.id}`,
+    url: c.url,
     detail: {
       fiTypes: c.fiTypes,
       dataRange: c.dataRange,
       consentDateRange: c.consentDateRange,
+      ...(c.fiu !== undefined ? { FIU: { id: c.fiu } } : {}),
     },
   });
   const stub = await startStub((r) => {
@@ -82,15 +103,18 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
         !b.purpose?.code
       )
         return { status: 400, body: { errorCode: "BadRequest" } };
+      const id = randomUUID();
       const c: Consent = {
-        id: randomUUID(),
+        id,
         status: "PENDING",
         fiTypes: b.fiTypes,
         dataRange: b.dataRange,
         consentDateRange: b.consentDateRange,
+        fiu: fiuId,
+        url: `${base}${id}`,
       };
       consents.set(c.id, c);
-      return { status: 201, body: { id: c.id, url: consentBody(c).url, status: c.status } };
+      return { status: 201, body: { id: c.id, url: c.url, status: c.status } };
     }
     const cm = /^\/v2\/consents\/([^/]+)(\/revoke)?$/.exec(r.path);
     if (cm) {
@@ -161,6 +185,15 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
     },
     pendingReads(n: number) {
       pending = n;
+    },
+    fiuId,
+    reportFiu(consentId: string, fiu: string | undefined) {
+      const c = consents.get(consentId);
+      if (!c) throw new Error(`no consent ${consentId}`);
+      c.fiu = fiu;
+    },
+    linkBase(next: string | undefined) {
+      base = next ?? DEFAULT_LINK_BASE;
     },
   });
   return ref.s;
