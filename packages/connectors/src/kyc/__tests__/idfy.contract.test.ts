@@ -3,7 +3,12 @@
 // `unproven` and off. Also the per-method router (PR-FBX-24: Digio first, IDfy second).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PortError } from "@infrabyx/contracts/errors";
-import { KYC_ADAPTER_FUNDING, type KycFileRef, type KycPort } from "@infrabyx/contracts/ports";
+import {
+  KYC_ADAPTER_FUNDING,
+  KYC_ADAPTER_RETENTION,
+  type KycFileRef,
+  type KycPort,
+} from "@infrabyx/contracts/ports";
 import { MemoryReplayStore, sha256Hex } from "@infrabyx/crypto";
 import {
   defineContractSuite,
@@ -19,6 +24,7 @@ import {
 } from "@infrabyx/testing";
 import { DigioKyc } from "../digio.js";
 import {
+  IDFY_SCORE_SCALE,
   IdfyKyc,
   mapIdfyBankAccount,
   mapIdfyAadhaarOtpRefusal,
@@ -27,6 +33,7 @@ import {
   mapIdfyScore,
 } from "../idfy.js";
 import { kycMethodRouter } from "../routing.js";
+import { MemoryKycScoreCheckStore } from "../score-checks.js";
 
 let idfy: IdfyKycStub;
 let dg: DigioKycStub;
@@ -72,6 +79,15 @@ beforeAll(async () => {
       // The platform's adapter makes no penny drop (R1-D-196).
       refusing: () => ({ port: make(), mode: "penny_drop", vendorCalls: idfy.bankAccountChecks }),
       vendorCalls: () => idfy.bankAccountChecks(),
+    },
+    scores: {
+      configuredMode: "passive",
+      modes: ["passive"],
+      // IDfy's photo liveness is passive (R1-D-197).
+      refusing: () => ({ port: make(), mode: "active_gesture", vendorCalls: idfy.livenessChecks }),
+      livenessVendorCalls: () => idfy.livenessChecks(),
+      faceMatchVendorCalls: () => idfy.faceMatches(),
+      offScaleNext: () => idfy.scoreOnce(87),
     },
   };
 });
@@ -153,7 +169,7 @@ describe("R1-D-45 IDfy KYC behind its flag, by reference", () => {
     });
     expect(mapIdfyPan({ source_output: { status: "something_else" } }).status).toBe("invalid");
     expect(() => mapIdfyPan({})).toThrow();
-    expect(mapIdfyScore({ match_score: 87 }, "match_score").score).toBeCloseTo(0.87);
+    expect(mapIdfyScore({ match_score: 87 }, "match_score", 100).score).toBeCloseTo(0.87);
     expect(() => mapIdfyScore({}, "liveness_score")).toThrow();
   });
 });
@@ -400,5 +416,152 @@ describe("PR-UDF-043 IDfy pennyless bank account checks and the router", () => {
       k.bankAccountVerify(acct(), { idempotencyKey: "router-bank-1" }),
     ).rejects.toMatchObject({ code: "IPB-PORT-002" });
     expect(fake.bankAccountVendorCalls).toBe(calls);
+  });
+});
+
+describe("PR-UDF-044 IDfy liveness by mode, applied thresholds, keyed retries and the score scale", () => {
+  it("refuses an active mode mode_unsupported before the flag, the store or any request; reports passive and the thresholds", async () => {
+    enabled = false;
+    try {
+      const before = idfy.requests.length;
+      const scoreChecks = new MemoryKycScoreCheckStore();
+      for (const mode of ["active_gesture", "active_voice"] as const)
+        await expect(
+          make({ scoreChecks }).livenessCheck(
+            { frames: fixtures.frames, mode },
+            { idempotencyKey: "live-active-1" },
+          ),
+        ).rejects.toMatchObject({ code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } });
+      expect(
+        (
+          await scoreChecks.reserve({
+            tenantId: "tnt_kyc",
+            adapter: "idfy-kyc",
+            method: "liveness",
+            idempotencyKey: "live-active-1",
+            files: fixtures.frames,
+            mode: "passive",
+          })
+        ).kind,
+      ).toBe("new");
+      await expect(make().livenessCheck({ frames: fixtures.frames })).rejects.toMatchObject({
+        meta: { reason: "adapter_disabled" },
+      });
+      expect(idfy.requests.length).toBe(before);
+    } finally {
+      enabled = true;
+    }
+    const p = make({ livenessThreshold: 0.95, faceMatchThreshold: 0.5 });
+    const l = await p.livenessCheck({ frames: fixtures.frames });
+    expect(l).toMatchObject({ mode: "passive", threshold: 0.95, score: 0.91, passed: false });
+    const f = await p.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.other });
+    expect(f).toMatchObject({ threshold: 0.5, score: 0.18, passed: false });
+    expect(f).not.toHaveProperty("mode");
+    expect(
+      (await make().faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).threshold,
+    ).toBe(0.8);
+    for (const t of [-0.1, 1.5, NaN, 80])
+      expect(() => make({ livenessThreshold: t })).toThrow(RangeError);
+  });
+
+  it("a keyed retry on another instance with a shared store sends nothing; a vendor failure is asked again", async () => {
+    const scoreChecks = new MemoryKycScoreCheckStore();
+    const first = await make({ scoreChecks }).livenessCheck(
+      { frames: fixtures.frames },
+      { idempotencyKey: "live-k-1" },
+    );
+    const before = idfy.requests.length;
+    expect(
+      await make({ scoreChecks }).livenessCheck(
+        { frames: fixtures.frames, mode: "passive" },
+        { idempotencyKey: "live-k-1" },
+      ),
+    ).toEqual(first);
+    expect(idfy.requests.length).toBe(before);
+    const q = make({ scoreChecks });
+    idfy.failNext(1, 503);
+    await expect(
+      q.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same }, { idempotencyKey: "face-k-2" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    const n = idfy.faceMatches();
+    expect(
+      (
+        await q.faceMatch(
+          { a: fixtures.faces.a, b: fixtures.faces.same },
+          { idempotencyKey: "face-k-2" },
+        )
+      ).passed,
+    ).toBe(true);
+    expect(idfy.faceMatches()).toBe(n + 1);
+  });
+
+  it("reads scores on the scale given and refuses one off it, never clamped; states its retention as unknown", async () => {
+    expect(IDFY_SCORE_SCALE).toBe(1);
+    expect(mapIdfyScore({ liveness_score: 0.91 }, "liveness_score").score).toBe(0.91);
+    expect(mapIdfyScore({ liveness_score: 1 }, "liveness_score").score).toBe(1);
+    expect(mapIdfyScore({ liveness_score: 0 }, "liveness_score").score).toBe(0);
+    const thrown = (f: () => unknown): unknown => {
+      try {
+        f();
+      } catch (e) {
+        return e;
+      }
+      return undefined;
+    };
+    for (const raw of [87, 1.01, -0.2, "0.9", true, Number.MAX_VALUE])
+      expect(thrown(() => mapIdfyScore({ liveness_score: raw }, "liveness_score"))).toMatchObject({
+        code: "IPB-PORT-003",
+        meta: { reason: "score_out_of_range" },
+      });
+    expect(thrown(() => mapIdfyScore({ match_score: 100.5 }, "match_score", 100))).toMatchObject({
+      code: "IPB-PORT-003",
+    });
+    expect(thrown(() => mapIdfyScore({}, "match_score"))).toMatchObject({ code: "IPB-PORT-002" });
+    // A 0-to-100 sandbox: the option reads it, and a 0-to-1 answer then reads as low, never high.
+    const hundred = make({ scoreScale: 100 });
+    idfy.scoreOnce(94);
+    expect(
+      (await hundred.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).score,
+    ).toBeCloseTo(0.94);
+    idfy.scoreOnce(101);
+    await expect(
+      hundred.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003", meta: { reason: "score_out_of_range" } });
+    expect(KYC_ADAPTER_RETENTION["idfy-kyc"]).toMatchObject({ template: "unknown" });
+    expect(KYC_ADAPTER_RETENTION["idfy-kyc"]!.source).toContain("[VERIFY]");
+  });
+
+  it("the router moves an active liveness check past IDfy to an adapter that honours it; a keyed check never fails over on an unavailable adapter", async () => {
+    const fake = new FakeKyc();
+    const k = kycMethodRouter({
+      adapters: [make(), fake],
+      order: { liveness: ["idfy-kyc", "fake-kyc"], face_match: ["idfy-kyc", "fake-kyc"] },
+    });
+    const before = idfy.requests.length;
+    const active = await k.livenessCheck({
+      frames: KYC_FAKE_FIXTURES.frames,
+      mode: "active_voice",
+    });
+    expect(active).toMatchObject({ adapter: "fake-kyc", mode: "active_voice" });
+    expect(idfy.requests.length).toBe(before);
+    expect((await k.livenessCheck({ frames: fixtures.frames })).adapter).toBe("idfy-kyc");
+    // Unavailable: an unkeyed check moves on, a keyed one stays with its adapter.
+    idfy.failNext(1, 503);
+    expect((await k.faceMatch({ a: fixtures.faces.a, b: fixtures.faces.same })).adapter).toBe(
+      "fake-kyc",
+    );
+    const calls = [fake.livenessVendorCalls, fake.faceMatchVendorCalls];
+    for (const keyed of [
+      () => k.livenessCheck({ frames: fixtures.frames }, { idempotencyKey: "router-live-1" }),
+      () =>
+        k.faceMatch(
+          { a: fixtures.faces.a, b: fixtures.faces.same },
+          { idempotencyKey: "router-face-1" },
+        ),
+    ]) {
+      idfy.failNext(1, 503);
+      await expect(keyed()).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    }
+    expect([fake.livenessVendorCalls, fake.faceMatchVendorCalls]).toEqual(calls);
   });
 });

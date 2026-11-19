@@ -175,7 +175,7 @@ describe("connectors.kyc_bank_account_verify (PR-UDF-043, threat model §3.139)"
     const all = JSON.stringify(rows);
     for (const v of ["bank-key-1", "bank-key-2", ACCOUNT, "SBIN0000691", "Asha Rao", "ASHA RAO"])
       expect(all).not.toContain(v);
-    expect(findAadhaarLike(all)).toEqual([]);
+    expect(findAadhaarLike(all, { letters: "join" })).toEqual([]);
   });
 
   it("another tenant neither reads the record nor collides with its key", async () => {
@@ -267,7 +267,7 @@ describe("connectors.kyc_bank_account_verify (PR-UDF-043, threat model §3.139)"
       dg.bankAccount.ifsc,
     ])
       expect(rows).not.toContain(v);
-    expect(findAadhaarLike(rows)).toEqual([]);
+    expect(findAadhaarLike(rows, { letters: "join" })).toEqual([]);
     expect((await ledger("tnt_b")).length).toBeGreaterThan(2);
   });
 });

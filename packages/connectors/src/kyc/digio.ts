@@ -25,7 +25,9 @@
 // This adapter provides DigiLocker, Aadhaar offline, Aadhaar OTP (off unless `notifiedEntity`) and
 // pennyless bank account checks (a penny drop is refused `mode_unsupported`: it would move money,
 // which the platform does not do; R1-D-196). Every other method is `unsupported`,
-// so routing (`int.kyc.<method>.provider`) chooses another adapter for it. V-CIP waits for the
+// so routing (`int.kyc.<method>.provider`) chooses another adapter for it; liveness and face
+// match among them, with no liveness mode or threshold here (PR-UDF-044; whether Digio keeps a face
+// template is `unknown` [VERIFY] in `KYC_ADAPTER_RETENTION`). V-CIP waits for the
 // owner (OWNER-QUESTIONS #90): Digio's video KYC records on Digio's side, while the port runs
 // the call in a VIDEO_MEET room with no provider copy. Results never carry an Aadhaar number:
 // only its last four digits, and any twelve-digit run in vendor text is refused.

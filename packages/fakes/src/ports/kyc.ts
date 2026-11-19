@@ -19,6 +19,10 @@ import {
   DIGILOCKER_RETURN_URL_REFUSED,
   DigilockerPull,
   FaceMatch,
+  KYC_MODE_UNSUPPORTED,
+  KYC_SCORE_OUT_OF_RANGE,
+  kycScoreValid,
+  LIVENESS_MODES,
   LivenessCheck,
   OvdOcr,
   PanCheck,
@@ -33,6 +37,7 @@ import {
   type DigilockerDocument,
   type KycFileRef,
   type KycPort,
+  type LivenessMode,
   type NameMatch,
   type PortCall,
   type PortHealth,
@@ -70,6 +75,31 @@ export interface KycFixtures {
    * break in a minor; the cases need it wherever the adapter provides `bankAccountVerify`.
    */
   bankAccount?: BankAccountFixtures;
+  /**
+   * Liveness and face match by mode, threshold and key (PR-UDF-044): what the adapter honours and
+   * the hooks the contract cases use. Optional in the type so a caller outside the platform does not
+   * break in a minor; the cases need it wherever the adapter provides `livenessCheck`.
+   */
+  scores?: ScoreFixtures;
+}
+
+/** The liveness and face-match part of `KycFixtures` (PR-UDF-044). Test files only. */
+export interface ScoreFixtures {
+  /** The liveness mode the adapter uses when a check names none. */
+  configuredMode: LivenessMode;
+  /** Every liveness mode the adapter honours (the configured one among them). */
+  modes: readonly LivenessMode[];
+  /** An adapter that cannot honour `mode`, and the liveness checks it sent its vendor. */
+  refusing: () => { port: KycPort; mode: LivenessMode; vendorCalls: () => number };
+  /** The liveness requests `port` sent its vendor so far. */
+  livenessVendorCalls: (port: KycPort) => number;
+  /** The face-match requests `port` sent its vendor so far. */
+  faceMatchVendorCalls: (port: KycPort) => number;
+  /**
+   * Make the vendor's next score fall off its scale (a stub or fake hook), so the case can show it
+   * is refused `IPB-PORT-003` rather than clamped; omitted, that check is skipped.
+   */
+  offScaleNext?: (port: KycPort) => void | Promise<void>;
 }
 
 /** The bank account part of `KycFixtures` (PR-UDF-043). Test accounts only. */
@@ -165,6 +195,17 @@ export const KYC_FAKE_FIXTURES: KycFixtures = {
     },
     vendorCalls: (p) => (p as FakeKyc).bankAccountVendorCalls,
   },
+  scores: {
+    configuredMode: "passive",
+    modes: LIVENESS_MODES,
+    refusing: () => {
+      const f = new FakeKyc({ livenessModes: ["passive"] });
+      return { port: f, mode: "active_voice", vendorCalls: () => f.livenessVendorCalls };
+    },
+    livenessVendorCalls: (p) => (p as FakeKyc).livenessVendorCalls,
+    faceMatchVendorCalls: (p) => (p as FakeKyc).faceMatchVendorCalls,
+    offScaleNext: (p) => (p as FakeKyc).offScaleNext(),
+  },
 };
 
 const norm = (s: string) =>
@@ -198,6 +239,14 @@ const nameMatch = (a: string, b: string): NameMatch =>
  * uses `bankAccountMode` (default `pennyless`) when a check names none; a mode it does not honour is
  * refused `mode_unsupported` before its count of vendor calls moves. A check is idempotent on the
  * call's key. Nothing is ever credited: the fake's penny drop is a simulation.
+ *
+ * Liveness and face match (PR-UDF-044): the fake honours every liveness mode unless built with
+ * `livenessModes`, uses `livenessMode` (default `passive`) when a check names none, and applies
+ * `livenessThreshold` and `faceMatchThreshold` (0.8 each by default), reporting each; a mode it does
+ * not honour is refused `mode_unsupported` before its count of vendor calls moves. Each method is
+ * idempotent on the call's key, a key scoped to its method. `offScaleNext` makes the next score
+ * fall off the 0-to-1 scale, which the fake refuses `IPB-PORT-003` as the adapters do. The fake
+ * keeps no image, template or embedding (`KYC_ADAPTER_RETENTION`: none).
  */
 export class FakeKyc implements KycPort {
   readonly descriptor: AdapterDescriptor = {
@@ -226,6 +275,15 @@ export class FakeKyc implements KycPort {
   private readonly bankModes: readonly BankAccountMode[];
   private readonly bankMode: BankAccountMode;
   private readonly bankVerifies = new Map<string, { request: string; result: BankAccountResult }>();
+  /** Liveness and face-match checks that passed the fake's own checks (PR-UDF-044). */
+  livenessVendorCalls = 0;
+  faceMatchVendorCalls = 0;
+  private readonly livenessModes: readonly LivenessMode[];
+  private readonly livenessMode: LivenessMode;
+  private readonly livenessThreshold: number;
+  private readonly faceMatchThreshold: number;
+  private readonly scoreChecks = new Map<string, { request: string; result: ScoreResult }>();
+  private offScale = false;
   private n = 0;
   constructor(
     o: {
@@ -239,8 +297,23 @@ export class FakeKyc implements KycPort {
       bankAccountModes?: readonly BankAccountMode[];
       /** The mode a check without one uses (default `pennyless`); must be honoured. */
       bankAccountMode?: BankAccountMode;
+      /** The liveness modes the fake honours (default all three; PR-UDF-044). */
+      livenessModes?: readonly LivenessMode[];
+      /** The mode a liveness check without one uses (default `passive`); must be honoured. */
+      livenessMode?: LivenessMode;
+      /** Pass marks, 0 to 1 (default 0.8 each). */
+      livenessThreshold?: number;
+      faceMatchThreshold?: number;
     } = {},
   ) {
+    this.livenessModes = o.livenessModes ?? LIVENESS_MODES;
+    this.livenessMode = o.livenessMode ?? "passive";
+    if (!this.livenessModes.includes(this.livenessMode))
+      throw new RangeError("the configured liveness mode is not one the fake honours");
+    this.livenessThreshold = o.livenessThreshold ?? 0.8;
+    this.faceMatchThreshold = o.faceMatchThreshold ?? 0.8;
+    for (const t of [this.livenessThreshold, this.faceMatchThreshold])
+      if (!kycScoreValid(t)) throw new RangeError("a threshold is a number from 0 to 1");
     this.bankModes = o.bankAccountModes ?? BANK_ACCOUNT_MODES;
     this.bankMode = o.bankAccountMode ?? "pennyless";
     if (!this.bankModes.includes(this.bankMode))
@@ -533,24 +606,89 @@ export class FakeKyc implements KycPort {
     return { ...v, artefacts: [...v.artefacts] };
   }
 
-  private scored(score: number): ScoreResult {
-    return { ...this.ev(), score, passed: score >= 0.8 };
+  /** Test helper: the next score the fake's "vendor" gives is off its 0-to-1 scale. */
+  offScaleNext(): void {
+    this.offScale = true;
   }
 
-  async livenessCheck(raw: Parameters<KycPort["livenessCheck"]>[0]) {
+  /**
+   * One scored check: the key's first answer, or a "vendor" score refused when off its scale and
+   * kept once answered. A key is scoped to its method (PR-UDF-044).
+   */
+  private keyedScore(
+    method: "liveness" | "face_match",
+    request: unknown,
+    call: PortCall | undefined,
+    vendor: () => number,
+    o: { threshold: number; mode?: LivenessMode },
+  ): ScoreResult {
+    const key = call?.idempotencyKey;
+    const req = sha256Hex(JSON.stringify([method, key, request]));
+    const k = `${method}|${key}`;
+    const prior = key === undefined ? undefined : this.scoreChecks.get(k);
+    if (prior) {
+      if (prior.request !== req)
+        throw new PortError("IPB-PORT-004", "KYC", {
+          adapter: "fake-kyc",
+          detail: `idempotency key reused with another ${method.replace("_", " ")} check`,
+          meta: { reason: "idempotency_conflict" },
+        });
+      return structuredClone(prior.result);
+    }
+    if (method === "liveness") this.livenessVendorCalls++;
+    else this.faceMatchVendorCalls++;
+    const raw = this.offScale ? 1.5 : vendor();
+    this.offScale = false;
+    if (!kycScoreValid(raw))
+      throw new PortError("IPB-PORT-003", "KYC", {
+        adapter: "fake-kyc",
+        detail: "the score is not a number from 0 to 1",
+        meta: { reason: KYC_SCORE_OUT_OF_RANGE },
+      });
+    const result: ScoreResult = {
+      ...this.ev(),
+      score: raw,
+      passed: raw >= o.threshold,
+      threshold: o.threshold,
+      ...(o.mode ? { mode: o.mode } : {}),
+    };
+    if (key !== undefined)
+      this.scoreChecks.set(k, { request: req, result: structuredClone(result) });
+    return result;
+  }
+
+  async livenessCheck(raw: Parameters<KycPort["livenessCheck"]>[0], call?: PortCall) {
     const r = LivenessCheck.parse(raw);
-    return this.scored(
-      r.frames.length >= 3 ? 0.9 + this.score(...r.frames.map((f) => f.sha256)) / 10 : 0.4,
+    const mode = r.mode ?? this.livenessMode;
+    if (!this.livenessModes.includes(mode))
+      throw new PortError("IPB-PORT-002", "KYC", {
+        adapter: "fake-kyc",
+        detail: `the fake does not check liveness by ${mode}`,
+        meta: { reason: KYC_MODE_UNSUPPORTED, definite: true },
+      });
+    return this.keyedScore(
+      "liveness",
+      [r.frames, mode],
+      call,
+      () => (r.frames.length >= 3 ? 0.9 + this.score(...r.frames.map((f) => f.sha256)) / 10 : 0.4),
+      { threshold: this.livenessThreshold, mode },
     );
   }
 
-  async faceMatch(raw: Parameters<KycPort["faceMatch"]>[0]) {
+  async faceMatch(raw: Parameters<KycPort["faceMatch"]>[0], call?: PortCall) {
     const r = FaceMatch.parse(raw);
     const same = [r.a.sha256, r.b.sha256].every(
       (h) => h === this.fx.faces.a.sha256 || h === this.fx.faces.same.sha256,
     );
-    return this.scored(
-      same ? 0.9 + this.score(r.a.sha256, r.b.sha256) / 10 : this.score(r.a.sha256, r.b.sha256) / 2,
+    return this.keyedScore(
+      "face_match",
+      [r.a, r.b],
+      call,
+      () =>
+        same
+          ? 0.9 + this.score(r.a.sha256, r.b.sha256) / 10
+          : this.score(r.a.sha256, r.b.sha256) / 2,
+      { threshold: this.faceMatchThreshold },
     );
   }
 

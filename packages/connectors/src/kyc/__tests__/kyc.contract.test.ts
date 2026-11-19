@@ -12,7 +12,11 @@ import {
   type DigioKycStub,
   type KycFixtures,
 } from "@infrabyx/testing";
-import { KYC_ADAPTER_FUNDING } from "@infrabyx/contracts/ports";
+import {
+  KYC_ADAPTER_FUNDING,
+  KYC_ADAPTER_RETENTION,
+  type KycPort,
+} from "@infrabyx/contracts/ports";
 import {
   DigioKyc,
   digioAadhaarOtpRequestBody,
@@ -601,5 +605,25 @@ describe("PR-UDF-043 Digio pennyless bank account checks, keyed retries and the 
     ).toThrow();
     expect(KYC_ADAPTER_FUNDING["digio-kyc"]).toMatchObject({ pennyDrop: "unknown" });
     expect(KYC_ADAPTER_FUNDING["digio-kyc"]!.source).toContain("[VERIFY]");
+  });
+});
+
+describe("PR-UDF-044 Digio has no liveness or face-match path", () => {
+  it("refuses both unsupported with no request, takes no mode or threshold, and states its retention as unknown", async () => {
+    const p: KycPort = digio();
+    const before = dg.requests.length;
+    expect(p.descriptor.capabilities).toMatchObject({
+      livenessCheck: "unsupported",
+      faceMatch: "unsupported",
+    });
+    await expect(
+      p.livenessCheck({ frames: KYC_FAKE_FIXTURES.frames, mode: "active_gesture" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+    await expect(
+      p.faceMatch({ a: KYC_FAKE_FIXTURES.faces.a, b: KYC_FAKE_FIXTURES.faces.same }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+    expect(dg.requests.length).toBe(before);
+    expect(KYC_ADAPTER_RETENTION["digio-kyc"]).toMatchObject({ template: "unknown" });
+    expect(KYC_ADAPTER_RETENTION["digio-kyc"]!.source).toContain("[VERIFY]");
   });
 });

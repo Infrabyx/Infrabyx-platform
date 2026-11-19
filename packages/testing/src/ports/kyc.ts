@@ -23,10 +23,14 @@ import {
   OvdOcr,
   PanCheck,
   BANK_ACCOUNT_STATUSES,
+  kycScoreValid,
   payloadClass,
   type BankAccountMode,
   type DigilockerDocument,
+  type KycFileRef,
   type KycPort,
+  type LivenessMode,
+  type ScoreResult,
 } from "@infrabyx/contracts/ports";
 import { findAadhaarLike } from "@infrabyx/contracts/aadhaar";
 import type { ContractCase } from "../contract.js";
@@ -35,11 +39,13 @@ import {
   type AadhaarOtpFixtures,
   type BankAccountFixtures,
   type KycFixtures,
+  type ScoreFixtures,
 } from "@infrabyx/fakes";
 export {
   type AadhaarOtpFixtures,
   type BankAccountFixtures,
   type KycFixtures,
+  type ScoreFixtures,
   FAKE_AADHAAR_OTP,
   syntheticUid,
   DIGILOCKER_CONTRACT_RETURN_URL,
@@ -53,6 +59,7 @@ const SHA256_HEX = /[0-9a-f]{64}/g;
 let dlKey = 0;
 let otpKey = 0;
 let bankKey = 0;
+let scoreKey = 0;
 
 /** What an error shows anywhere: message, stack and every own field (code, detail, meta, cause). */
 const errorText = (e: unknown): string => {
@@ -127,6 +134,26 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
   });
   const modeUnsupported = { code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } };
   const idemConflict = { code: "IPB-PORT-004", meta: { reason: "idempotency_conflict" } };
+  // PR-UDF-044: liveness and face match by mode, threshold and key.
+  const scoreFx = (): ScoreFixtures => {
+    expect(fx.scores, "KycFixtures.scores for an adapter with liveness").toBeDefined();
+    return fx.scores!;
+  };
+  const scoreCallKey = () => `score-contract-${Date.now().toString(36)}-${++scoreKey}`;
+  const frames = (mode?: LivenessMode, files: readonly KycFileRef[] = fx.frames) => ({
+    frames: [...files],
+    ...(mode ? { mode } : {}),
+  });
+  /** A score from 0 to 1, the threshold applied from 0 to 1, and the pass that follows from both. */
+  const scoredWell = (r: ScoreResult, p: KycPort) => {
+    expect(kycScoreValid(r.score), `score ${r.score} is a finite number from 0 to 1`).toBe(true);
+    expect(kycScoreValid(r.threshold), `threshold ${r.threshold} is from 0 to 1`).toBe(true);
+    expect(r.passed).toBe(r.score >= r.threshold!);
+    expect(r.adapter).toBe(p.descriptor.adapter);
+    expect(r.vendorRef).not.toBe("");
+    expect(r.modelVersion).not.toBe("");
+  };
+  const offScale = { code: "IPB-PORT-003", meta: { reason: "score_out_of_range" } };
   // PR-UDF-040: the strings the contract promises carry no 12-digit run (a SHA-256 may).
   const noRunInKeys = (docs: DigilockerDocument[]) => {
     for (const d of docs)
@@ -547,6 +574,190 @@ export function kycContractCases(fx: KycFixtures): Array<ContractCase<KycPort>> 
         expect(l.modelVersion).not.toBe("");
         expect((await p.faceMatch({ a: fx.faces.a, b: fx.faces.same })).passed).toBe(true);
         expect((await p.faceMatch({ a: fx.faces.a, b: fx.faces.other })).passed).toBe(false);
+      },
+    },
+    {
+      name: "livenessCheck (PR-UDF-044): the mode asked is the mode used; omitted, the configured mode is reported; the threshold applied is reported and the score is from 0 to 1",
+      method: "livenessCheck",
+      invoke: (p) => p.livenessCheck(frames()),
+      async run(p) {
+        const s = scoreFx();
+        expect(s.modes).toContain(s.configuredMode);
+        for (const mode of s.modes) {
+          const r = await p.livenessCheck(frames(mode));
+          expect(r.mode).toBe(mode);
+          scoredWell(r, p);
+          expect(r.passed).toBe(true);
+        }
+        const plain = await p.livenessCheck(frames());
+        expect(plain.mode).toBe(s.configuredMode);
+        scoredWell(plain, p);
+        // A weak check is scored, not refused, and fails against the threshold applied.
+        const weak = await p.livenessCheck(frames(undefined, [fx.faces.other]));
+        scoredWell(weak, p);
+        expect(weak.passed).toBe(false);
+        await expect(
+          p.livenessCheck({ ...frames(), mode: "blink" as LivenessMode }),
+        ).rejects.toThrow();
+      },
+    },
+    {
+      name: "faceMatch (PR-UDF-044): the threshold applied is reported, the score is from 0 to 1, and no liveness mode is set",
+      method: "faceMatch",
+      invoke: (p) => p.faceMatch({ a: fx.faces.a, b: fx.faces.same }),
+      async run(p) {
+        const same = await p.faceMatch({ a: fx.faces.a, b: fx.faces.same });
+        scoredWell(same, p);
+        expect(same.passed).toBe(true);
+        const other = await p.faceMatch({ a: fx.faces.a, b: fx.faces.other });
+        scoredWell(other, p);
+        expect(other.passed).toBe(false);
+        for (const r of [same, other]) expect(r.mode).toBeUndefined();
+      },
+    },
+    {
+      name: "livenessCheck (PR-UDF-044): a mode the adapter cannot honour is refused mode_unsupported before any vendor call, keyed or not",
+      method: "livenessCheck",
+      invoke: (p) => p.livenessCheck(frames()),
+      async run() {
+        const { port, mode, vendorCalls } = scoreFx().refusing();
+        const before = vendorCalls();
+        const modeUnsupported = { code: "IPB-PORT-002", meta: { reason: "mode_unsupported" } };
+        await expect(port.livenessCheck(frames(mode))).rejects.toMatchObject(modeUnsupported);
+        const idempotencyKey = scoreCallKey();
+        await expect(port.livenessCheck(frames(mode), { idempotencyKey })).rejects.toMatchObject(
+          modeUnsupported,
+        );
+        expect(vendorCalls()).toBe(before);
+        // Refused, not used up: the key still serves a mode the adapter honours.
+        const ok = await port.livenessCheck(frames(), { idempotencyKey });
+        expect(ok.mode).not.toBe(mode);
+        expect(vendorCalls()).toBeGreaterThan(before);
+      },
+    },
+    {
+      name: "livenessCheck (PR-UDF-044): a retry with the same key returns the first answer with no second vendor call; the same key with other frames or another mode is IPB-PORT-004",
+      method: "livenessCheck",
+      invoke: (p) => p.livenessCheck(frames()),
+      async run(p) {
+        const s = scoreFx();
+        const idempotencyKey = scoreCallKey();
+        const before = s.livenessVendorCalls(p);
+        const first = await p.livenessCheck(frames(), { idempotencyKey });
+        const after = s.livenessVendorCalls(p);
+        expect(after).toBeGreaterThan(before);
+        expect(await p.livenessCheck(frames(), { idempotencyKey })).toEqual(first);
+        // An omitted mode is the configured one: the same request.
+        expect(await p.livenessCheck(frames(s.configuredMode), { idempotencyKey })).toEqual(first);
+        expect(s.livenessVendorCalls(p)).toBe(after);
+        for (const other of [
+          frames(undefined, fx.frames.slice(1)),
+          frames(undefined, [...fx.frames, fx.faces.a]),
+          ...s.modes.filter((m) => m !== s.configuredMode).map((m) => frames(m)),
+        ])
+          await expect(p.livenessCheck(other, { idempotencyKey })).rejects.toMatchObject(
+            idemConflict,
+          );
+        expect(s.livenessVendorCalls(p)).toBe(after);
+        // A key is scoped to its method: the same key on faceMatch is another check.
+        const fBefore = s.faceMatchVendorCalls(p);
+        const face = await p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey });
+        expect(face.mode).toBeUndefined();
+        expect(s.faceMatchVendorCalls(p)).toBeGreaterThan(fBefore);
+        // Another key is a new check.
+        await p.livenessCheck(frames(), { idempotencyKey: scoreCallKey() });
+        expect(s.livenessVendorCalls(p)).toBeGreaterThan(after);
+      },
+    },
+    {
+      name: "faceMatch (PR-UDF-044): a retry with the same key returns the first answer with no second vendor call; the same key with other images is IPB-PORT-004",
+      method: "faceMatch",
+      invoke: (p) => p.faceMatch({ a: fx.faces.a, b: fx.faces.same }),
+      async run(p) {
+        const s = scoreFx();
+        const idempotencyKey = scoreCallKey();
+        const before = s.faceMatchVendorCalls(p);
+        const first = await p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey });
+        const after = s.faceMatchVendorCalls(p);
+        expect(after).toBeGreaterThan(before);
+        expect(await p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey })).toEqual(
+          first,
+        );
+        expect(s.faceMatchVendorCalls(p)).toBe(after);
+        for (const other of [
+          { a: fx.faces.a, b: fx.faces.other },
+          { a: fx.faces.same, b: fx.faces.a },
+          { a: fx.faces.a, b: { ...fx.faces.same, sha256: "0".repeat(64) } },
+        ])
+          await expect(p.faceMatch(other, { idempotencyKey })).rejects.toMatchObject(idemConflict);
+        expect(s.faceMatchVendorCalls(p)).toBe(after);
+        // A failed match is the key's first answer too.
+        const k2 = scoreCallKey();
+        const miss = await p.faceMatch(
+          { a: fx.faces.a, b: fx.faces.other },
+          { idempotencyKey: k2 },
+        );
+        expect(miss.passed).toBe(false);
+        const calls = s.faceMatchVendorCalls(p);
+        expect(
+          await p.faceMatch({ a: fx.faces.a, b: fx.faces.other }, { idempotencyKey: k2 }),
+        ).toEqual(miss);
+        expect(s.faceMatchVendorCalls(p)).toBe(calls);
+      },
+    },
+    {
+      name: "livenessCheck and faceMatch (PR-UDF-044): a vendor score off its scale is refused IPB-PORT-003 score_out_of_range, never clamped, and a keyed retry asks again",
+      method: "livenessCheck",
+      invoke: (p) => p.livenessCheck(frames()),
+      async run(p) {
+        const s = scoreFx();
+        if (!s.offScaleNext) return;
+        await s.offScaleNext(p);
+        await expect(p.livenessCheck(frames())).rejects.toMatchObject(offScale);
+        const idempotencyKey = scoreCallKey();
+        await s.offScaleNext(p);
+        await expect(
+          p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey }),
+        ).rejects.toMatchObject(offScale);
+        // Nothing was kept for the key: its retry is a new vendor call with a score on the scale.
+        const calls = s.faceMatchVendorCalls(p);
+        const r = await p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey });
+        scoredWell(r, p);
+        expect(s.faceMatchVendorCalls(p)).toBeGreaterThan(calls);
+      },
+    },
+    {
+      name: "livenessCheck and faceMatch (PR-UDF-044): no field of any answer or error carries an Aadhaar-like number or a 12-digit run",
+      method: "livenessCheck",
+      invoke: (p) => p.livenessCheck(frames()),
+      async run(p) {
+        const s = scoreFx();
+        const seen: unknown[] = [];
+        const take = async (x: Promise<unknown>) =>
+          x.then(
+            (v) => seen.push(v),
+            (e: unknown) => seen.push(errorText(e)),
+          );
+        const k = scoreCallKey();
+        for (const mode of [undefined, ...s.modes]) await take(p.livenessCheck(frames(mode)));
+        await take(p.livenessCheck(frames(), { idempotencyKey: k }));
+        await take(p.livenessCheck(frames(), { idempotencyKey: k }));
+        await take(p.livenessCheck(frames(undefined, fx.frames.slice(1)), { idempotencyKey: k }));
+        await take(p.faceMatch({ a: fx.faces.a, b: fx.faces.same }, { idempotencyKey: k }));
+        await take(p.faceMatch({ a: fx.faces.a, b: fx.faces.other }, { idempotencyKey: k }));
+        await take(p.faceMatch({ a: fx.faces.a, b: fx.faces.other }));
+        const r = s.refusing();
+        await take(r.port.livenessCheck(frames(r.mode)));
+        if (s.offScaleNext) {
+          await s.offScaleNext(p);
+          await take(p.livenessCheck(frames()));
+        }
+        expect(seen.length).toBe(s.modes.length + 8 + (s.offScaleNext ? 1 : 0));
+        for (const v of seen) {
+          const text = typeof v === "string" ? v : JSON.stringify(v);
+          expect(findAadhaarLike(text)).toEqual([]);
+          if (typeof v !== "string") noAadhaar(v);
+        }
       },
     },
     {

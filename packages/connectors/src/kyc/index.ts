@@ -8,11 +8,14 @@
 // are kept in an `AadhaarOtpVerifyStore` (`PgAadhaarOtpVerifyStore`, `connectors.kyc_aadhaar_otp_verify`;
 // PR-UDF-041). Bank account checks are pennyless only, by mode, and keyed checks are kept in a
 // `BankAccountVerifyStore` (`PgBankAccountVerifyStore`, `connectors.kyc_bank_account_verify`;
-// PR-UDF-043).
+// PR-UDF-043). Liveness checks are by mode (IDfy: passive), every score carries the threshold
+// applied, and keyed liveness and face-match checks are kept in a `KycScoreCheckStore`
+// (`PgKycScoreCheckStore`, `connectors.kyc_score_check`; PR-UDF-044).
 export * from "./aadhaar-otp.js";
 export * from "./bank-account.js";
 export * from "./digio.js";
 export * from "./digilocker-pulls.js";
 export * from "./idfy.js";
 export * from "./routing.js";
+export * from "./score-checks.js";
 export * from "./vcip.js";
