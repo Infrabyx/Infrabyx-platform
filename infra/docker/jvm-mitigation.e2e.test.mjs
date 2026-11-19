@@ -80,7 +80,8 @@ describe.skipIf(!keycloakImage)(
       expect(docker("run", "--rm", keycloakImage, "--ipb-verify-jvm")).toBe(
         "ipb-kc.sh: UseBASE64Intrinsics=false {command line}",
       );
-    });
+      // A JVM start in a fresh container: well over vitest's 5 s default on a hosted runner.
+    }, 120_000);
 
     it("runs Keycloak's JVM with the intrinsic off from the command line", async () => {
       const id = start([keycloakImage, "start-dev"]);
@@ -114,6 +115,7 @@ describe.skipIf(!keycloakImage)(
         expect(r.status).toBe(64);
         expect(r.stderr).toContain(`refusing to start: ${variable} names UseBASE64Intrinsics`);
       },
+      120_000,
     );
   },
 );
