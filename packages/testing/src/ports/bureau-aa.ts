@@ -3,12 +3,10 @@
 // until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
 // or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
 // flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
-// BUREAU and AA_FIU contract cases and in-memory fakes (IPB-01-15; Finbyx PR-FBX-28, R1-D-43).
-// The first vendor adapters, `cibil` and `setu-aa` (R1-D-61), run these cases against their stubs
-// until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
-// or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
-// flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
+// Both take the consent as a `cpr_` receipt or as a product's own artefact (`{ kind, id }`;
+// PR-UDF-049, PR-UDF-050), and the AA cases check the FIU and the approval link (PR-UDF-050).
 import { expect } from "vitest";
+import { findAadhaarLike, verhoeffValid } from "@infrabyx/contracts/aadhaar";
 import {
   AaConsentRequest,
   AaFetchRequest,
@@ -31,6 +29,48 @@ export {
 
 // Word-bounded, so a PAN-shaped run inside a random ULID (e.g. a consent id) never matches.
 const PAN_LIKE = /\b[A-Z]{5}[0-9]{4}[A-Z]\b/;
+
+let productRefs = 0;
+/** A product's own consent artefact (PR-UDF-049): the platform checks its shape only. */
+export const contractProductConsentRef = (): { kind: string; id: string } => ({
+  kind: "udf.purpose_consent",
+  id: `pcn-contract-${(++productRefs).toString(36)}`,
+});
+
+/** A 12-digit number that reads as an Aadhaar number, built at run time (never in the source). */
+function aadhaarLikeForTest(): string {
+  const head = "2" + "34567890".repeat(2).slice(0, 10);
+  for (let d = 0; d < 10; d++) if (verhoeffValid(head + d)) return head + d;
+  throw new Error("unreachable: one check digit always fits");
+}
+
+/** Product references every port refuses (PR-UDF-049): bad shape, reserved, or personal data. */
+export function malformedProductConsentRefs(): unknown[] {
+  const a = aadhaarLikeForTest();
+  return [
+    { kind: "udf.purpose_consent" },
+    { kind: "udf.purpose_consent", id: "pcn-1", extra: true },
+    { kind: "Udf.Consent", id: "pcn-1" },
+    { kind: "udf..consent", id: "pcn-1" },
+    { kind: "cpr", id: "pcn-1" },
+    { kind: "udf.purpose_consent", id: "x" },
+    { kind: "udf.purpose_consent", id: "asha@example.com" },
+    { kind: "udf.purpose_consent", id: "pcn 1" },
+    { kind: "udf.purpose_consent", id: "p".repeat(129) },
+    { kind: "udf.purpose_consent", id: "cpr_01JA0000000000000000000000" },
+    { kind: "udf.purpose_consent", id: `pcn-${a}` },
+    { kind: "udf.purpose_consent", id: `pcn-${a.slice(0, 4)}-${a.slice(4, 8)}-${a.slice(8)}` },
+    { kind: "udf.purpose_consent", id: "pcn-9876543210" },
+    { kind: "udf.purpose_consent", id: "pcn-ABCPE1234F" },
+    "pcn-1",
+  ];
+}
+
+/** Every answer and refusal holds no Aadhaar-like number (letters joined, as hashes and ids are). */
+function expectNoAadhaarLike(v: unknown): void {
+  const text = v instanceof Error ? `${v.message} ${JSON.stringify(v)}` : JSON.stringify(v);
+  expect(findAadhaarLike(text, { letters: "join" })).toEqual([]);
+}
 
 export function creditBureauContractCases(
   fx: CreditBureauFixtures,
@@ -61,6 +101,40 @@ export function creditBureauContractCases(
           p.pull({ ...req(fx.known.pan, fx.known.name), consentRef: "consent-1" }),
         ).rejects.toThrow();
         await expect(p.pull(req("abc", fx.known.name))).rejects.toThrow();
+      },
+    },
+    {
+      name: "a `cpr_` consent answers as before; a product's own artefact is accepted and echoed (PR-UDF-049)",
+      async run(p) {
+        const plain = req(fx.known.pan, fx.known.name);
+        const a = await p.pull(plain);
+        expect(a.consentRef).toBe(plain.consentRef);
+        expect("productConsentRef" in a).toBe(false);
+        const ref = contractProductConsentRef();
+        const b = await p.pull({ ...req(fx.known.pan, fx.known.name), consentRef: ref });
+        expect(b.consentRef).toBe(`${ref.kind}:${ref.id}`);
+        expect(b.productConsentRef).toEqual(ref);
+        const back = await p.status(b.pullId);
+        expect(back.consentRef).toBe(b.consentRef);
+        expect(back.productConsentRef).toEqual(ref);
+        const none = await p.pull({ ...req(fx.noHit.pan, fx.noHit.name), consentRef: ref });
+        expect(none).toMatchObject({ state: "no_hit", productConsentRef: ref });
+        for (const r of [a, b, back, none]) expectNoAadhaarLike(r);
+      },
+    },
+    {
+      name: "a malformed product consent reference is refused, with no personal data in it (PR-UDF-049)",
+      async run(p) {
+        for (const consentRef of malformedProductConsentRefs()) {
+          const err = await p
+            .pull({ ...req(fx.known.pan, fx.known.name), consentRef: consentRef as never })
+            .then(
+              () => undefined,
+              (e: unknown) => e,
+            );
+          expect(err, JSON.stringify(consentRef)).toBeInstanceOf(Error);
+          expectNoAadhaarLike(err);
+        }
       },
     },
     {

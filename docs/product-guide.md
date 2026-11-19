@@ -1048,6 +1048,15 @@ From the next release (`contracts`, `config`, `fakes`, `testing` and `connectors
 - **Webhooks:** the real adapters refuse `handleWebhook` `unsupported`; poll `status` for a pending analysis. The fake's notifications are signed (`signFakeStatementAnalysisNotification`) and only the state read back is trusted, which is what a real adapter will do once its vendor's scheme is approved.
 - **Wiring:** `@infrabyx/connectors/statement-analysis`; give the adapters `PgStatementAnalysisStore` (run `infrabyx-migrate` for `connectors/0014`, `connectors.statement_analysis`) and route the port as `IN`, REGULATED. Your adapter's contract: `statementAnalysisContractCases(fixtures)` from `@infrabyx/testing`.
 
+## 7cz. A product's own consent artefact as the bureau consent reference (PR-UDF-049; R1-D-203)
+
+From the next release (`contracts`, `fakes`, `testing` and `connectors` minors; versions in the STATUS release record), a bureau pull can name your own purpose-consent artefact instead of a platform `cpr_`, so you no longer mint a second id beside it.
+
+- **Call:** `port.pull({ …, consentRef: { kind: "udf.purpose_consent", id: "<your artefact id>" } })`. A `cpr_…` string still works exactly as before. `kind` is a label of one to four dot-separated lower-case segments (3 to 64 characters; `cpr` and `cns` are reserved); `id` is 3 to 128 characters of letters, digits, `.`, `_` and `-`. Use your ledger's own opaque id (a prefixed ULID is ideal), never a mobile, account, Aadhaar, VID or PAN number: a standalone run of 10 or more digits, an Aadhaar-like number or a PAN-shaped run is refused before anything leaves (`PRODUCT_CONSENT_REF_REFUSALS` lists the labels; `productConsentRefProblem(kind, id)` tells you which).
+- **What the platform checks:** the reference's shape only. It cannot see your ledger, so passing the artefact is your assertion that it is granted, for this purpose and RE, unexpired and not withdrawn: check that first, as you check a `cpr_` with `PurposeConsents` today.
+- **Answer:** `BureauReport.consentRef` is the text form (`consentRefText`: a `cpr_` unchanged, your artefact as `<kind>:<id>`) and `productConsentRef` is your `{ kind, id }` when you used it. Record it with the pull in your own ledger entry. CIBIL's pull record keeps the text form; `parseConsentRefText` reads it back.
+- **Implementers:** an adapter outside the platform that read `req.consentRef` as a string uses `consentRefText(req.consentRef)` and `consentRefEcho` for the answer; run `creditBureauContractCases` again (it now covers both forms and the refusals; `contractProductConsentRef` and `malformedProductConsentRefs` are exported for your own tests).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

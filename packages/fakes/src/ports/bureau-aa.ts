@@ -8,6 +8,8 @@ import {
   AaConsentRequest,
   AaFetchRequest,
   BureauPullRequest,
+  consentRefEcho,
+  consentRefText,
   type AaConsent,
   type AaFetchResult,
   type AaNotification,
@@ -122,13 +124,14 @@ export class FakeCreditBureau implements CreditBureauPort {
   async pull(raw: Parameters<CreditBureauPort["pull"]>[0]): Promise<BureauReport> {
     const r = BureauPullRequest.parse(raw);
     const pan = r.subject.pan ?? "";
-    const pullId = `pul_${sha256Hex(`${r.consentRef}:${++this.n}`).slice(0, 24)}`;
+    const pullId = `pul_${sha256Hex(`${consentRefText(r.consentRef)}:${++this.n}`).slice(0, 24)}`;
+    // The consent's shape was checked by the schema; it is echoed, never looked up (PR-UDF-049).
     const base = {
       ...this.ev(),
       bureau: r.bureau,
       enquiry: r.enquiry,
       pullId,
-      consentRef: r.consentRef,
+      ...consentRefEcho(r.consentRef),
     };
     if (pan !== this.fx.known.pan && !this.pending.has(pan)) {
       const out: BureauReport = { ...base, state: "no_hit" };

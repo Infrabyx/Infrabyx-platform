@@ -1,0 +1,8 @@
+---
+"@infrabyx/contracts": minor
+"@infrabyx/fakes": minor
+"@infrabyx/testing": minor
+"@infrabyx/connectors": minor
+---
+
+A product's own consent artefact as the bureau consent reference (Udofin PR-UDF-049; R1-D-203). `contracts` adds `ports/consent-ref`: `ConsentReceiptRef` (the `cpr_<ULID>` string, unchanged), `ProductConsentRef` (strict `{ kind, id }`: `kind` one to four dot-separated `[a-z][a-z0-9_]*` segments, 3 to 64 characters, `cpr` and `cns` reserved; `id` 3 to 128 characters of `[A-Za-z0-9._-]`, not a platform `cpr_`/`cns_` id; neither may hold a standalone run of 10 or more digits, an Aadhaar-like number (`findAadhaarLike`) or a standalone PAN-shaped run; each refusal a fixed label from `PRODUCT_CONSENT_REF_REFUSALS`), `PortConsentRef` (either), `consentRefText` (`cpr_…` unchanged, else `<kind>:<id>`), `parseConsentRefText`, `consentRefEcho`, `isProductConsentRef` and `productConsentRefProblem`. `BureauPullRequest.consentRef` takes a `PortConsentRef`; `BureauReport.consentRef` stays a string (the text form, so a `cpr_` answer is exactly as before) and `BureauReport.productConsentRef?` is added when the product form was used. The platform checks a product artefact's shape only; the product asserts the consent behind it, and the reference is echoed so the product's ledger records it. Neither form is sent to the CIC. `fakes` (`FakeCreditBureau`) and `connectors` (`CibilBureau`, whose pull record keeps the text form) echo both forms; `testing` adds contract cases for both forms and the refusals, `contractProductConsentRef` and `malformedProductConsentRefs`. Calls with a `cpr_` string are unchanged; an implementer outside the platform that reads `req.consentRef` as a string uses `consentRefText`.

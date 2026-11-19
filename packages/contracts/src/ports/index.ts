@@ -27,6 +27,7 @@ export * from "./dispatch.js";
 export * from "./court-data.js";
 export * from "./odr.js";
 export * from "./video-meet.js";
+export * from "./consent-ref.js";
 export * from "./credit-bureau.js";
 export * from "./account-aggregator.js";
 export * from "./statement-analysis.js";

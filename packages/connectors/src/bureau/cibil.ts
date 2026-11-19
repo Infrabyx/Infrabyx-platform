@@ -25,6 +25,8 @@ import { PortError } from "@infrabyx/contracts/errors";
 import {
   BureauPullRequest,
   DPD_BUCKETS,
+  consentRefEcho,
+  parseConsentRefText,
   type AdapterDescriptor,
   type BureauReport,
   type BureauSummary,
@@ -49,6 +51,7 @@ const PAN_LIKE = /[A-Z]{5}[0-9]{4}[A-Z]/;
 export interface CibilPullRecord {
   requestId: string;
   reportPrefix: string;
+  /** The request's consent as text (`consentRefText`): a `cpr_`, or a product's `<kind>:<id>`. */
   consentRef: string;
   enquiry: EnquiryType;
 }
@@ -211,6 +214,12 @@ export function cibilEventPullId(body: unknown): string | undefined {
   return typeof id === "string" && /^bpl_[0-9A-HJKMNP-TV-Z]{26}$/.test(id) ? id : undefined;
 }
 
+/** The record's consent text echoed as the request named it (PR-UDF-049); never sent to CIBIL. */
+const consentEcho = (text: string) => {
+  const ref = parseConsentRefText(text);
+  return ref === undefined ? { consentRef: text } : consentRefEcho(ref);
+};
+
 const refused = (detail: string, reason: string): PortError =>
   new PortError("IPB-PORT-001", PORT, {
     adapter: ADAPTER,
@@ -273,7 +282,7 @@ export class CibilBureau implements CreditBureauPort {
       bureau: "cibil" as const,
       enquiry: rec.enquiry,
       pullId,
-      consentRef: rec.consentRef,
+      ...consentEcho(rec.consentRef),
     };
     if (a.status === "PENDING") return { ...base, state: "pending" };
     if (a.status === "NO_HIT") return { ...base, state: "no_hit" };
@@ -332,7 +341,7 @@ export class CibilBureau implements CreditBureauPort {
     const rec: CibilPullRecord = {
       requestId: a.requestId,
       reportPrefix: r.reportPrefix,
-      consentRef: r.consentRef,
+      consentRef: consentRefEcho(r.consentRef).consentRef,
       enquiry: r.enquiry,
     };
     await this.o.pulls.set(pullId, rec);
