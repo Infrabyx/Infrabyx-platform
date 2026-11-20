@@ -29,6 +29,7 @@ import {
   type PortHealth,
   type VerifiedClaims,
   type VerifiedCustomerClaims,
+  type VerifiedCustomerEmail,
 } from "@infrabyx/contracts";
 import {
   newId,
@@ -367,6 +368,21 @@ export interface CustomerAuthStore {
    * `identity.customer.login.retire`). Optional for stores written before 1.x of this method.
    */
   recordAccountEvent?(tenantId: string, userId: string, action: string): Promise<void>;
+  /**
+   * Record the account's verified email address (PR-UDF-055; R1-D-224), replacing an earlier
+   * one, ledgered as `identity.customer.email.verify` without the address. Optional for stores
+   * written before 1.x of this method; without it the capture is `unsupported`.
+   */
+  saveVerifiedEmail?(
+    tenantId: string,
+    userId: string,
+    email: string,
+    verifiedAt: number,
+  ): Promise<void>;
+  verifiedEmail?(
+    tenantId: string,
+    userId: string,
+  ): Promise<{ email: string; verifiedAt: number } | undefined>;
 }
 
 const accountHash = (userId: string) => sha256Hex(`customer:${userId}`);
@@ -398,9 +414,19 @@ export class MemoryCustomerAuthStore implements CustomerAuthStore {
   private readonly devices = new Map<string, DeviceRecord>();
   /** Account events recorded (PR-UDF-034), for tests. */
   readonly events: Array<{ tenantId: string; userId: string; action: string }> = [];
+  private readonly emails = new Map<string, { email: string; verifiedAt: number }>();
 
   async recordAccountEvent(tenantId: string, userId: string, action: string): Promise<void> {
     this.events.push({ tenantId, userId, action });
+  }
+
+  async saveVerifiedEmail(tenantId: string, userId: string, email: string, verifiedAt: number) {
+    this.emails.set(`${tenantId}|${userId}`, { email, verifiedAt });
+    this.events.push({ tenantId, userId, action: "identity.customer.email.verify" });
+  }
+  async verifiedEmail(tenantId: string, userId: string) {
+    const e = this.emails.get(`${tenantId}|${userId}`);
+    return e ? { ...e } : undefined;
   }
 
   private guard(tenantId: string, userId: string, now: number): GuardState {
@@ -923,6 +949,51 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
       if (k.startsWith(`${tenantId}|${userId}|`)) this.cache.delete(k);
   }
 
+  /** PR-UDF-055: one row per account (`connectors/0015`); the ledger entry has no address. */
+  async saveVerifiedEmail(
+    tenantId: string,
+    userId: string,
+    email: string,
+    verifiedAt: number,
+  ): Promise<void> {
+    await this.mutate(tenantId, "identity.customer.email.verify", async (tx) => {
+      const prior = await tx.query<{ verified_at: Date }>(
+        `select verified_at from connectors.customer_verified_email
+          where tenant_id = $1 and user_id = $2 for update`,
+        [tenantId, userId],
+      );
+      await tx.query(
+        `insert into connectors.customer_verified_email (tenant_id, user_id, email, verified_at)
+         values ($1, $2, $3, $4)
+         on conflict (tenant_id, user_id)
+         do update set email = excluded.email, verified_at = excluded.verified_at, updated_at = now()`,
+        [tenantId, userId, email, iso(verifiedAt)],
+      );
+      await this.o.audit.record(tx as never, {
+        action: "identity.customer.email.verify",
+        resourceType: "identity.customer_account",
+        resourceId: accountHash(userId),
+        ...(prior.rows[0] ? { before: { verified_at: iso(ms(prior.rows[0].verified_at)) } } : {}),
+        after: { verified_at: iso(verifiedAt), replaced: prior.rows.length > 0 },
+      });
+    });
+  }
+
+  async verifiedEmail(
+    tenantId: string,
+    userId: string,
+  ): Promise<{ email: string; verifiedAt: number } | undefined> {
+    const r = await this.o.kernel.read(this.o.context(tenantId), (tx) =>
+      (tx as unknown as Q).query<{ email: string; verified_at: Date }>(
+        `select email, verified_at from connectors.customer_verified_email
+          where tenant_id = $1 and user_id = $2`,
+        [tenantId, userId],
+      ),
+    );
+    const row = r.rows[0];
+    return row ? { email: row.email, verifiedAt: ms(row.verified_at)! } : undefined;
+  }
+
   async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
     try {
       return await this.mutate(tenantId, "identity.customer.purge", async (tx) => {
@@ -1092,15 +1163,34 @@ export interface CustomerIdentityBaseOptions {
   revocations: RevocationStore;
   /** Roles a new customer account receives: product roles only (e.g. `UDF_BORROWER`). */
   customerRoles?: readonly string[];
+  /**
+   * The verified-email capture (PR-UDF-055; R1-D-224): the value of
+   * `int.identity.customer.email_capture.enabled` (default off; `readCustomerEmailCapture`).
+   */
+  emailCapture?: boolean;
   now?: () => number;
+}
+
+/** The setting that turns the verified-email capture on (PR-UDF-055; R1-D-224). */
+export const CUSTOMER_EMAIL_CAPTURE_SETTING = "int.identity.customer.email_capture.enabled";
+
+/** Read the capture setting through a settings getter; anything but `true` is off. */
+export async function readCustomerEmailCapture(
+  get: (key: string) => Promise<unknown>,
+): Promise<boolean> {
+  return (await get(CUSTOMER_EMAIL_CAPTURE_SETTING)) === true;
 }
 
 const DPOP_SCHEME = /^DPoP\s+([A-Za-z0-9._~+/-]+=*)$/i;
 /** `idpRef.purpose` of a login-change challenge (PR-UDF-034); sign-in challenges have none. */
 const LOGIN_CHANGE = "login_change";
+/** `idpRef.purpose` of an email-verification challenge (PR-UDF-055). */
+const EMAIL_VERIFY = "email_verify";
 const sixDigits = () => String(randomInt(1_000_000)).padStart(6, "0");
 const codeHash = (salt: string, code: string) => sha256Hex(`ipb-login-change:${salt}:${code}`);
 const loginHash = (tenantId: string, login: string) => sha256Hex(`ipb-login:${tenantId}:${login}`);
+const emailCodeHash = (salt: string, code: string) => sha256Hex(`ipb-email-verify:${salt}:${code}`);
+const emailHash = (tenantId: string, email: string) => sha256Hex(`ipb-email:${tenantId}:${email}`);
 /** Digests of salted codes are compared, never the codes, so a plain comparison leaks nothing useful. */
 const sameHash = (a: string | undefined, b: string): boolean => a !== undefined && a === b;
 const loginChangeUnsupported = (adapter: string): PortError =>
@@ -1288,7 +1378,8 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
       !pending ||
       pending.consumedAt !== undefined ||
       pending.expiresAt <= this.now ||
-      pending.idpRef.purpose === LOGIN_CHANGE
+      // A login-change or email-verification code is never a sign-in code.
+      pending.idpRef.purpose !== undefined
     )
       throw customerRefused(
         "challenge",
@@ -1546,6 +1637,142 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
       req.userId,
       "identity.customer.login.retire",
     );
+  }
+
+  /** The store's email methods; `capture` also needs the setting on (reading does not). */
+  private emailCapture(
+    capture = true,
+  ): Required<Pick<CustomerAuthStore, "saveVerifiedEmail" | "verifiedEmail">> {
+    const st = this.base.store;
+    if (!st.saveVerifiedEmail || !st.verifiedEmail)
+      throw new PortError("IPB-PORT-001", "IDENTITY", {
+        adapter: this.descriptor.adapter,
+        detail: "the customer store cannot record a verified email",
+        meta: { reason: "unsupported" },
+      });
+    if (capture && this.base.emailCapture !== true)
+      throw new PortError("IPB-PORT-001", "IDENTITY", {
+        adapter: this.descriptor.adapter,
+        detail: `the verified-email capture is off (${CUSTOMER_EMAIL_CAPTURE_SETTING})`,
+        meta: { reason: "disabled" },
+      });
+    return {
+      saveVerifiedEmail: st.saveVerifiedEmail.bind(st),
+      verifiedEmail: st.verifiedEmail.bind(st),
+    };
+  }
+
+  private email(raw: string): string {
+    try {
+      return customerLogin("email", raw);
+    } catch {
+      throw customerRefused("email", "an email address is needed");
+    }
+  }
+
+  /**
+   * Start proving an email address for a signed-in customer (Udofin PR-UDF-055; R1-D-224). The
+   * platform makes a six-digit code (CSPRNG) and keeps only its salted SHA-256 and a hash of the
+   * address on the challenge, bound to the device key; the code goes to the address through the
+   * `CustomerOtpSender` (NOTIFY) and is never stored or logged. Guarded like a sign-in code.
+   */
+  async startEmailVerification(req: {
+    tenantId: string;
+    userId: string;
+    email: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge> {
+    this.emailCapture();
+    const email = this.email(req.email);
+    const jkt = await this.signInProof(req.dpopProof);
+    // Only a signed-in device of this account may start it (its key is an active device's).
+    if (!(await this.base.store.activeDevice(req.tenantId, req.userId, jkt)))
+      throw customerRefused("device", "the proof is not by a signed-in device of this account");
+    const { resendAfter } = await this.base.store.reserveSend(
+      req.tenantId,
+      req.userId,
+      this.s,
+      this.now,
+    );
+    const salt = toBase64Url(randomBytes(16));
+    const code = sixDigits();
+    const id = toBase64Url(randomBytes(16));
+    const expiresAt = this.now + this.s.codeTtlSeconds * 1000;
+    await this.base.store.saveChallenge({
+      id,
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: "email",
+      jkt,
+      idpRef: {
+        purpose: EMAIL_VERIFY,
+        salt,
+        code: emailCodeHash(salt, code),
+        email: emailHash(req.tenantId, email),
+      },
+      attempts: 0,
+      expiresAt,
+    });
+    await this.base.sender.send({
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: "email",
+      to: email,
+      code,
+      expiresAt: new Date(expiresAt),
+      ...(req.locale ? { locale: req.locale } : {}),
+      idempotencyKey: `otp:${id}:email`,
+    });
+    return {
+      challengeId: id,
+      expiresAt: new Date(expiresAt).toISOString(),
+      resendAfter: new Date(resendAfter).toISOString(),
+    };
+  }
+
+  /**
+   * Finish it with the code from the device key that started it: the try counts against the
+   * code's tries and the account's back-off and lockout; on success the address is recorded on
+   * the account with the time, replacing an earlier one (ledgered without the address).
+   */
+  async confirmEmailVerification(req: {
+    tenantId: string;
+    userId: string;
+    challengeId: string;
+    email: string;
+    code: string;
+    dpopProof: string;
+  }): Promise<VerifiedCustomerEmail> {
+    const store = this.emailCapture();
+    const email = this.email(req.email);
+    const pending = await this.base.store.getChallenge(req.tenantId, req.challengeId);
+    if (
+      !pending ||
+      pending.idpRef.purpose !== EMAIL_VERIFY ||
+      pending.userId !== req.userId ||
+      pending.consumedAt !== undefined ||
+      pending.expiresAt <= this.now
+    )
+      throw customerRefused("challenge", "the code has expired or was used; ask for a new one");
+    await this.signInProof(req.dpopProof, pending.jkt);
+    const c = await this.base.store.attempt(req.tenantId, req.challengeId, this.s, this.now);
+    const ref = c.idpRef;
+    const ok =
+      /^[0-9]{6}$/.test(req.code) &&
+      sameHash(ref.code, emailCodeHash(ref.salt ?? "", req.code)) &&
+      sameHash(ref.email, emailHash(req.tenantId, email));
+    await this.base.store.settle(req.tenantId, c.id, ok, this.s, this.now);
+    if (!ok) throw customerRefused("code", "the code is wrong");
+    const verifiedAt = this.now;
+    await store.saveVerifiedEmail(req.tenantId, req.userId, email, verifiedAt);
+    return { email, verifiedAt: new Date(verifiedAt).toISOString() };
+  }
+
+  /** The account's verified email address and when it was verified, or null. */
+  async verifiedEmail(tenantId: string, userId: string): Promise<VerifiedCustomerEmail | null> {
+    const e = await this.emailCapture(false).verifiedEmail(tenantId, userId);
+    return e ? { email: e.email, verifiedAt: new Date(e.verifiedAt).toISOString() } : null;
   }
 
   private loginPair(req: { channel: CustomerOtpChannel; currentLogin: string; newLogin: string }): {

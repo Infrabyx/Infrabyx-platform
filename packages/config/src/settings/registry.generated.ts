@@ -1110,6 +1110,20 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "DPoP proof iat accepted ahead of the clock"
   },
   {
+    "key": "int.identity.customer.email_capture.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "PR-UDF-055, R1-D-224; IPB-02 §02.4.6.2 auth.otp",
+    "note": "a signed-in customer may prove an email address with a one-time code; the address is recorded on the account (codes, tries and lockout as the sign-in codes')"
+  },
+  {
     "key": "int.authz.pdp_url",
     "tier": "PLATFORM",
     "type": "string",
@@ -2583,6 +2597,34 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "mc": false,
     "source": "PR-LDC-50, R1-D-177",
     "note": "days a reply address accepts replies (at most 50 replies each)"
+  },
+  {
+    "key": "ntf.email.attachments.enabled",
+    "tier": "TENANT",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "ORG_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "PR-UDF-055, R1-D-224; threat model §3.153",
+    "note": "urgent email notifications may carry stored documents as attachments, sent byte-identical (SHA-256 checked at send) with a receipt"
+  },
+  {
+    "key": "ntf.email.attachments.confidential",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SECURITY_OFFICER"
+    ],
+    "mc": "R4",
+    "source": "PR-UDF-055, R1-D-224; owner question #161",
+    "note": "CONFIDENTIAL objects may be attached, and then only to an IN EMAIL adapter that carries CONFIDENTIAL (none today; IPB-01 EMAIL sends them as a secure link)"
   },
   {
     "key": "cst.branding.{token}",
@@ -7012,6 +7054,7 @@ export type SettingValueMap = {
   "int.identity.customer.retention.device_unused_days": number;
   "int.identity.customer.dpop.max_age_seconds": number;
   "int.identity.customer.dpop.max_skew_seconds": number;
+  "int.identity.customer.email_capture.enabled": boolean;
   "int.authz.pdp_url": string | null;
   "int.authz.bundle_version": string | null;
   "int.authz.decision_cache_seconds": number;
@@ -7107,6 +7150,8 @@ export type SettingValueMap = {
   "ntf.reply.enabled": boolean;
   "ntf.reply.domain": string;
   "ntf.reply.token_days": number;
+  "ntf.email.attachments.enabled": boolean;
+  "ntf.email.attachments.confidential": boolean;
   "cst.terminology.map": JsonValue;
   "cst.nav.hidden": JsonValue;
   "cst.nav.order": JsonValue;

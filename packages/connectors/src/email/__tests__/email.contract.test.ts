@@ -5,7 +5,7 @@
 // drop`) skip themselves until their accounts exist (IPB-DEV-04).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { EmailEvent, EmailMessage, EmailPort } from "@infrabyx/contracts/ports";
-import { generateWebhookSecret, ulid } from "@infrabyx/crypto";
+import { generateWebhookSecret, sha256Hex, ulid } from "@infrabyx/crypto";
 import {
   MemoryStorage,
   createSnsSigner,
@@ -72,7 +72,14 @@ const brevoAdapter = (o: { from?: string } = {}) =>
 
 /** Per-adapter view of what the vendor received, and how to build its webhooks. */
 interface Harness {
-  sent(): Array<{ to: string[]; template: string; tags: string[]; attachments: number }>;
+  sent(): Array<{
+    to: string[];
+    template: string;
+    tags: string[];
+    attachments: number;
+    /** SHA-256 of each attachment's bytes as the vendor decoded them (PR-UDF-055). */
+    hashes: string[];
+  }>;
   bounce(
     address: string,
     messageId: string,
@@ -93,6 +100,7 @@ const sesHarness: Harness = {
       template: m.template ?? "",
       tags: Object.entries(m.tags).map(([k, v]) => `${k}=${v}`),
       attachments: m.attachments.length,
+      hashes: m.attachments.map((a) => a.sha256),
     })),
   bounce: (address, messageId) => ({
     body: enc(
@@ -150,6 +158,7 @@ const brevoHarness: Harness = {
       template: m.templateId === 11 ? "otp" : String(m.templateId),
       tags: m.tags,
       attachments: m.attachments.length,
+      hashes: m.attachments.map((a) => a.sha256),
     })),
   bounce: (a, id) => brevoEvent("hard_bounce", a, id),
   complaint: (a, id) => brevoEvent("spam", a, id),
@@ -251,6 +260,45 @@ const cases = (h: () => Harness): Array<ContractCase<EmailPort>> => [
       });
       await expect(p.send(message({ attachments: [conf] }))).rejects.toMatchObject({
         code: "IPB-PORT-003",
+      });
+      expect(h().sent()).toHaveLength(n);
+    },
+  },
+  {
+    name: "PR-UDF-055 files given as bytes reach the vendor byte-identical; a changed byte or the limits refuse before any request",
+    async run(p) {
+      expect(p.descriptor.capabilities?.attachments).toBe("native");
+      // A stored PDF: what the vendor decodes must hash to the stored object's SHA-256.
+      const key = `tenant/tnt_mail/notify/${ulid()}.pdf`;
+      const bytes = new Uint8Array(4096);
+      bytes.set(new TextEncoder().encode("%PDF-1.7\n"));
+      for (let i = 9; i < bytes.length; i++) bytes[i] = (i * 31) % 256;
+      await storage.put(key, bytes, { bucketClass: "GENERAL", contentType: "application/pdf" });
+      const stored = await storage.get(key);
+      const file = {
+        filename: "Sanction letter.pdf",
+        contentType: "application/pdf" as const,
+        sha256: stored.meta.sha256!,
+        body: stored.body,
+      };
+      await p.send(message({ files: [file], attachments: [key] }));
+      expect(h().sent().at(-1)!.hashes).toEqual([sha256Hex(bytes), sha256Hex(bytes)]);
+      expect(sha256Hex(bytes)).toBe(stored.meta.sha256);
+      const n = h().sent().length;
+      const changed = new Uint8Array(bytes);
+      changed[100] = changed[100]! ^ 1;
+      await expect(p.send(message({ files: [{ ...file, body: changed }] }))).rejects.toMatchObject({
+        code: "IPB-PORT-003",
+        meta: { reason: "sha256" },
+      });
+      await expect(
+        p.send(message({ files: [file], attachments: Array.from({ length: 10 }, () => key) })),
+      ).rejects.toMatchObject({ code: "IPB-PORT-003", meta: { reason: "count" } });
+      const big = new Uint8Array(6 * 1024 * 1024);
+      const bigFile = { ...file, sha256: sha256Hex(big), body: big };
+      await expect(p.send(message({ files: [bigFile, bigFile] }))).rejects.toMatchObject({
+        code: "IPB-PORT-003",
+        meta: { reason: "size" },
       });
       expect(h().sent()).toHaveLength(n);
     },

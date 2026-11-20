@@ -164,7 +164,60 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
       { relname: "customer_device", relforcerowsecurity: true },
       { relname: "customer_otp_challenge", relforcerowsecurity: true },
       { relname: "customer_otp_guard", relforcerowsecurity: true },
+      { relname: "customer_verified_email", relforcerowsecurity: true },
     ]);
+  });
+});
+
+describe("the verified email of a customer account (connectors/0015; PR-UDF-055, R1-D-224)", () => {
+  it("records, replaces and reads the address under RLS, ledgered without it; no delete grant", async () => {
+    const st = store();
+    const t0 = Date.parse("2026-11-20T06:00:00Z");
+    expect(await st.verifiedEmail("tnt_a", "kc-mail-1")).toBeUndefined();
+    await st.saveVerifiedEmail("tnt_a", "kc-mail-1", "asha.rao@mail.example", t0);
+    expect(await st.verifiedEmail("tnt_a", "kc-mail-1")).toEqual({
+      email: "asha.rao@mail.example",
+      verifiedAt: t0,
+    });
+    await st.saveVerifiedEmail("tnt_a", "kc-mail-1", "asha@new.example", t0 + 1000);
+    expect(await st.verifiedEmail("tnt_a", "kc-mail-1")).toEqual({
+      email: "asha@new.example",
+      verifiedAt: t0 + 1000,
+    });
+    // Another tenant sees nothing, even for the same account id.
+    expect(await st.verifiedEmail("tnt_b", "kc-mail-1")).toBeUndefined();
+    const rows = (
+      await db.admin.query(
+        "select * from audit.ledger where action = 'identity.customer.email.verify' and resource_id = $1",
+        [sha256Hex("customer:kc-mail-1")],
+      )
+    ).rows;
+    expect(rows).toHaveLength(2);
+    expect(JSON.stringify(rows)).not.toContain("example");
+    const grants = await db.admin.query<{ p: string }>(
+      `select grantee || ':' || privilege_type as p from information_schema.role_table_grants
+        where table_schema = 'connectors' and table_name = 'customer_verified_email'
+          and grantee in ('app_rw', 'app_ro') order by 1`,
+    );
+    expect(grants.rows.map((r) => r.p)).toEqual([
+      "app_ro:SELECT",
+      "app_rw:INSERT",
+      "app_rw:SELECT",
+      "app_rw:UPDATE",
+    ]);
+    const classes = await db.admin.query<{ column_name: string; c: string }>(
+      `select a.attname as column_name, col_description(a.attrelid, a.attnum) as c
+         from pg_attribute a where a.attrelid = 'connectors.customer_verified_email'::regclass
+          and a.attnum > 0 and not a.attisdropped order by a.attnum`,
+    );
+    expect(Object.fromEntries(classes.rows.map((r) => [r.column_name, r.c]))).toMatchObject({
+      user_id: "dataclass:CONFIDENTIAL",
+      email: "dataclass:CONFIDENTIAL",
+    });
+    // A malformed or upper-case address cannot be stored.
+    await expect(
+      st.saveVerifiedEmail("tnt_a", "kc-mail-2", "Not-Lower@Example.test", t0),
+    ).rejects.toThrow();
   });
 });
 

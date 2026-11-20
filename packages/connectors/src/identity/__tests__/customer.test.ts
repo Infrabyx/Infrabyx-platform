@@ -16,9 +16,12 @@ import {
   afterFailure,
   afterSuccess,
   CUSTOMER_IDENTITY_DEFAULTS,
+  CUSTOMER_EMAIL_CAPTURE_SETTING,
   CUSTOMER_IDENTITY_SETTINGS,
   CustomerIdentityBase,
   customerIdentitySettings,
+  readCustomerEmailCapture,
+  type CustomerAuthStore,
   freshGuard,
   guardEnded,
   MemoryCustomerAuthStore,
@@ -553,5 +556,227 @@ describe("PR-UDF-034 changing and retiring a customer login on a fake IdP", () =
     expect(store.events.at(-1)?.action).toBe("identity.customer.login.retire");
     const dev = testDevice();
     expect(await sub(await signIn(from, dev), dev)).toBe(`u-tnt_a-${from}-2`);
+  });
+});
+
+describe("PR-UDF-055 the verified email of a customer on a fake IdP (@IPB-02-01, auth.otp)", () => {
+  const now = { t: Date.now() };
+  const make = (emailCapture: boolean | undefined, store = new MemoryCustomerAuthStore()) => {
+    const mail = capturingSender();
+    const p = new FakeCustomerIdp({
+      store,
+      replay: new MemoryReplayStore(),
+      revocations: new MemoryRevocationStore(),
+      sender: mail.sender,
+      ...(emailCapture === undefined ? {} : { emailCapture }),
+      now: () => now.t,
+    });
+    return { p, mail, store };
+  };
+  const d = testDevice();
+  const pf = (p: FakeCustomerIdp, dev = d) =>
+    dev.proof(p.signInProofTarget.htm, p.signInProofTarget.htu, {
+      iat: Math.floor(now.t / 1000),
+    });
+  const userId = "u-tnt_a-+919800000201";
+  const start = (p: FakeCustomerIdp, email: string, dev = d) =>
+    p.startEmailVerification({ tenantId: "tnt_a", userId, email, dpopProof: pf(p, dev) });
+  /** Sign the account in on device `d` (only a signed-in device may start the capture). */
+  const signIn = async (p: FakeCustomerIdp, mail: ReturnType<typeof capturingSender>) => {
+    const login = "+919800000201";
+    const ch = await p.startChallenge({
+      tenantId: "tnt_a",
+      channel: "sms",
+      login,
+      dpopProof: pf(p),
+    });
+    await p.verifyChallenge({
+      tenantId: "tnt_a",
+      challengeId: ch.challengeId,
+      code: mail.inbox.get(login)!,
+      dpopProof: pf(p),
+    });
+    now.t += 31_000; // past the resend interval of the sign-in code
+  };
+  const signedIn = async (store?: MemoryCustomerAuthStore) => {
+    const m = make(true, store);
+    await signIn(m.p, m.mail);
+    return m;
+  };
+
+  it("is off by default, and the setting is registered off", async () => {
+    const { p, mail } = make(undefined);
+    await expect(start(p, "a@b.example")).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "disabled" },
+    });
+    expect(mail.sent).toHaveLength(0);
+    expect(await readCustomerEmailCapture(async () => undefined)).toBe(false);
+    expect(await readCustomerEmailCapture(async () => true)).toBe(true);
+    const { SETTING_DEFS } = await import("@infrabyx/config/settings");
+    expect(
+      (SETTING_DEFS as ReadonlyArray<{ key: string; default: unknown }>).find(
+        (x) => x.key === CUSTOMER_EMAIL_CAPTURE_SETTING,
+      ),
+    ).toMatchObject({ default: false });
+  });
+
+  it("sends a code to the address and records it with verified_at; the challenge keeps neither", async () => {
+    const { p, mail, store } = await signedIn();
+    now.t += 60_000;
+    // A key that is no signed-in device of this account cannot start it; nothing is sent.
+    const sends = mail.sent.length;
+    await expect(start(p, "asha.rao@mail.example", testDevice())).rejects.toMatchObject({
+      code: "IPB-IDN-001",
+      meta: { reason: "device" },
+    });
+    expect(mail.sent).toHaveLength(sends);
+    const ch = await start(p, "  Asha.Rao@Mail.Example ");
+    const code = mail.inbox.get("asha.rao@mail.example")!;
+    expect(code).toMatch(/^[0-9]{6}$/);
+    expect(mail.sent.at(-1)).toEqual({
+      channel: "email",
+      idempotencyKey: `otp:${ch.challengeId}:email`,
+    });
+    const saved = JSON.stringify(await store.getChallenge("tnt_a", ch.challengeId));
+    expect(saved).not.toContain(code);
+    expect(saved).not.toContain("asha.rao");
+    expect(JSON.stringify(ch)).not.toContain(code);
+    // A sign-in refuses the challenge: it is not a sign-in code.
+    await expect(
+      p.verifyChallenge({ tenantId: "tnt_a", challengeId: ch.challengeId, code, dpopProof: pf(p) }),
+    ).rejects.toMatchObject({ meta: { reason: "challenge" } });
+    const confirm = (o: { code?: string; email?: string; userId?: string }, dev = d) =>
+      p.confirmEmailVerification({
+        tenantId: "tnt_a",
+        userId: o.userId ?? userId,
+        challengeId: ch.challengeId,
+        email: o.email ?? "asha.rao@mail.example",
+        code: o.code ?? code,
+        dpopProof: pf(p, dev),
+      });
+    // Another device key, another account, another address or a wrong code are refused.
+    await expect(confirm({}, testDevice())).rejects.toMatchObject({ code: "IPB-IDN-001" });
+    await expect(confirm({ userId: "u-other" })).rejects.toMatchObject({
+      meta: { reason: "challenge" },
+    });
+    await expect(confirm({ email: "other@mail.example" })).rejects.toMatchObject({
+      meta: { reason: "code" },
+    });
+    await expect(confirm({ code: code === "000000" ? "000001" : "000000" })).rejects.toMatchObject({
+      meta: { reason: "code" },
+    });
+    expect(await p.verifiedEmail("tnt_a", userId)).toBeNull();
+    const v = await confirm({});
+    expect(v).toEqual({
+      email: "asha.rao@mail.example",
+      verifiedAt: new Date(now.t).toISOString(),
+    });
+    expect(await p.verifiedEmail("tnt_a", userId)).toEqual(v);
+    expect(store.events.at(-1)).toEqual({
+      tenantId: "tnt_a",
+      userId,
+      action: "identity.customer.email.verify",
+    });
+    // Used once; another tenant has nothing.
+    await expect(confirm({})).rejects.toMatchObject({ meta: { reason: "challenge" } });
+    expect(await p.verifiedEmail("tnt_b", userId)).toBeNull();
+  });
+
+  it("five tries per code, and the resend interval, as for a sign-in code (auth.otp settings)", async () => {
+    const { p, mail } = await signedIn();
+    now.t += 3_600_000;
+    const ch = await start(p, "b@mail.example");
+    const code = mail.inbox.get("b@mail.example")!;
+    const wrong = code === "000000" ? "000001" : "000000";
+    const confirm = (c: string) =>
+      p.confirmEmailVerification({
+        tenantId: "tnt_a",
+        userId,
+        challengeId: ch.challengeId,
+        email: "b@mail.example",
+        code: c,
+        dpopProof: pf(p),
+      });
+    for (let i = 0; i < 5; i++)
+      await expect(confirm(wrong)).rejects.toMatchObject({ meta: { reason: "code" } });
+    // Out of tries: the code is dead, even the right one.
+    await expect(confirm(code)).rejects.toMatchObject({ meta: { reason: "challenge" } });
+    expect(await p.verifiedEmail("tnt_a", userId)).toBeNull();
+    // A second code inside the resend interval is refused before anything is sent (the guard is
+    // the account's, shared with sign-in codes).
+    const sends = mail.sent.length;
+    await expect(start(p, "b@mail.example")).rejects.toMatchObject({
+      code: "IPB-SEC-019",
+      meta: { reason: "resend_interval" },
+    });
+    expect(mail.sent.length).toBe(sends);
+  });
+
+  it("ten wrong codes lock the account for the lockout, then a new code works", async () => {
+    const { p, mail } = await signedIn();
+    now.t += 3_600_000;
+    // Wrong codes until the tenth failure, waiting out each back-off and asking for a new code
+    // when one is dead (expired or out of tries).
+    let ch = await start(p, "c@mail.example");
+    let failures = 0;
+    while (failures < 10) {
+      const code = mail.inbox.get("c@mail.example")!;
+      const e = (await p
+        .confirmEmailVerification({
+          tenantId: "tnt_a",
+          userId,
+          challengeId: ch.challengeId,
+          email: "c@mail.example",
+          code: code === "000000" ? "000001" : "000000",
+          dpopProof: pf(p),
+        })
+        .then(
+          () => ({}),
+          (x: unknown) => x,
+        )) as { meta?: { reason?: string; retryAfterSeconds?: number } };
+      const reason = e.meta?.reason;
+      if (reason === "code") failures++;
+      else if (reason === "backoff") now.t += (e.meta!.retryAfterSeconds ?? 0) * 1000;
+      else if (reason === "challenge") {
+        now.t += 31_000;
+        ch = await start(p, "c@mail.example");
+      } else throw new Error(`unexpected ${JSON.stringify(e)}`);
+    }
+    await expect(start(p, "c@mail.example")).rejects.toMatchObject({
+      code: "IPB-SEC-019",
+      meta: { reason: "locked" },
+    });
+    now.t += 900_000;
+    const fresh = await start(p, "c@mail.example");
+    await expect(
+      p.confirmEmailVerification({
+        tenantId: "tnt_a",
+        userId,
+        challengeId: fresh.challengeId,
+        email: "c@mail.example",
+        code: mail.inbox.get("c@mail.example")!,
+        dpopProof: pf(p),
+      }),
+    ).resolves.toMatchObject({ email: "c@mail.example" });
+  });
+
+  it("refuses a malformed address before sending; a store without the methods is unsupported", async () => {
+    const { p, mail } = await signedIn();
+    await expect(start(p, "not-an-address")).rejects.toMatchObject({
+      meta: { reason: "email" },
+    });
+    // Only the sign-in code went out.
+    expect(mail.sent.map((m) => m.channel)).toEqual(["sms"]);
+    // A store written before the email methods existed.
+    const old: CustomerAuthStore = new Proxy(new MemoryCustomerAuthStore(), {
+      get: (t, k) =>
+        k === "saveVerifiedEmail" || k === "verifiedEmail" ? undefined : Reflect.get(t, k),
+    });
+    const { p: q } = make(true, old as MemoryCustomerAuthStore);
+    await expect(q.verifiedEmail("tnt_a", userId)).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "unsupported" },
+    });
   });
 });

@@ -300,6 +300,38 @@ export interface CustomerIdentityPort extends Port {
     channel: CustomerOtpChannel;
     login: string;
   }): Promise<void>;
+  /**
+   * Start proving an email address for a signed-in customer (Udofin PR-UDF-055; R1-D-224): a
+   * one-time code goes to `email` through NOTIFY, guarded like a sign-in code; the proof is by the
+   * customer's device key. Optional: an adapter or a store without it refuses with IPB-PORT-001
+   * `unsupported`; off until `int.identity.customer.email_capture.enabled` (IPB-PORT-001
+   * `disabled`).
+   */
+  startEmailVerification?(req: {
+    tenantId: string;
+    userId: string;
+    email: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge>;
+  /** Finish it with the code, from the same device key; the address is recorded on the account. */
+  confirmEmailVerification?(req: {
+    tenantId: string;
+    userId: string;
+    challengeId: string;
+    email: string;
+    code: string;
+    dpopProof: string;
+  }): Promise<VerifiedCustomerEmail>;
+  /** The account's verified email address and when it was verified, or null. */
+  verifiedEmail?(tenantId: string, userId: string): Promise<VerifiedCustomerEmail | null>;
+}
+
+/** An email address a customer proved with a one-time code (PR-UDF-055; R1-D-224). */
+export interface VerifiedCustomerEmail {
+  /** Lower case. */
+  email: string;
+  verifiedAt: string;
 }
 
 // ---- identity-provider brokers (LawDocsComply PR-LDC-09, R1-D-78) ------------------------------

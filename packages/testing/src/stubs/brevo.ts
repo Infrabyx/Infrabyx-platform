@@ -1,6 +1,7 @@
 // Brevo transactional API v3 stub (PL2 plan §7), from Brevo's API definition (official Node SDK,
 // generated from it). Field names not yet proven against the live API are [VERIFY] until the
 // sandbox leg (`X-Sib-Sandbox: drop`) runs.
+import { sha256Hex } from "@infrabyx/crypto";
 import { startStub, stubCredential, type StubReply, type VendorStub } from "./http.js";
 
 export interface BrevoStubMessage {
@@ -15,7 +16,8 @@ export interface BrevoStubMessage {
   params: Record<string, unknown>;
   tags: string[];
   headers: Record<string, string>;
-  attachments: Array<{ name: string; bytes: number }>;
+  /** `sha256` is over the decoded bytes received, to prove they are the stored ones (PR-UDF-055). */
+  attachments: Array<{ name: string; bytes: number; sha256: string }>;
   dropped: boolean;
   /** The `replyTo` address sent, if any (PR-LDC-50). */
   replyTo?: string;
@@ -85,6 +87,7 @@ export async function startBrevoStub(apiKey = stubCredential()): Promise<BrevoSt
         attachments: (b.attachment ?? []).map((a) => ({
           name: a.name ?? "",
           bytes: Buffer.from(a.content ?? "", "base64").byteLength,
+          sha256: sha256Hex(new Uint8Array(Buffer.from(a.content ?? "", "base64"))),
         })),
         dropped: b.headers?.["X-Sib-Sandbox"] === "drop",
       });
