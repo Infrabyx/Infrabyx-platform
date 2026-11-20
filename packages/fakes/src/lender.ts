@@ -4,7 +4,17 @@
 // message it takes or gives is checked against `@infrabyx/contracts/events` (`ORIGINATION_EVENTS`);
 // every regulated one carries a detached JWS made with its own ES256 key, which `keys` holds, so a
 // test verifies with `verifyRegulatedMessage` exactly as against the real lender. Test only.
+// PR-UDF-053 (R1-D-219): after a sanction it shares the KFS, the sanction letter, the loan agreement
+// and the execution-pack manifest by reference (`DocumentShared`, each with a document JWS), serves
+// `GET /v1/documents/{id}` with a 15-minute URL, and takes the LSP's signed `ESignCompleted` and
+// `EStampCompleted`, verified against `lspKeys`.
 import {
+  DOCUMENT_EVENTS,
+  DOCUMENTS_SCHEMA_VERSION,
+  DOCUMENT_URL_MAX_TTL_SECONDS,
+  DocumentRetrieval,
+  EXECUTION_PACK_MANIFEST_TYPE,
+  ExecutionPackManifest,
   ELIGIBILITY_CHECK_BUDGET_MS,
   ELIGIBILITY_LENDER_UNAVAILABLE,
   EcosystemEnvelope,
@@ -16,12 +26,15 @@ import {
   type OriginationEventName,
 } from "@infrabyx/contracts/events";
 import {
+  MemoryReplayStore,
   RegulatedKeyRing,
   canonicalize,
   localRegulatedSigner,
   randomBytes,
   sha256Hex,
+  signDocumentJws,
   signRegulatedMessage,
+  verifyRegulatedMessage,
 } from "@infrabyx/crypto";
 
 const hex = (b: Uint8Array): string =>
@@ -43,6 +56,11 @@ export interface LenderMessage {
   event: EcosystemEnvelope;
   /** The detached compact JWS (`X-Infrabyx-JWS`), present on regulated messages only. */
   jws?: string;
+}
+
+/** One document the lender shared (`DocumentShared`, §6.13). Its bytes come through `getDocument`. */
+export interface DocumentMessage {
+  event: EcosystemEnvelope;
 }
 
 export interface FakeLenderScript {
@@ -69,6 +87,11 @@ export interface FakeLenderOptions {
   kfsValidityMs?: number;
   /** Cooling-off after disbursal in ms (default three days). */
   coolingOffMs?: number;
+  /**
+   * The LSP's public keys, to verify its regulated messages (`ESignCompleted`, `EStampCompleted`).
+   * Without them every such message is refused `signature-invalid`, as the real lender would.
+   */
+  lspKeys?: RegulatedKeyRing;
 }
 
 /** A refusal with a fixed reason label, as the real lender answers it. */
@@ -89,6 +112,15 @@ interface Application {
   amountPaise: number;
   tenorMonths: number;
   aprBp: number;
+  pack?: ExecutionPackManifest;
+}
+
+interface StoredDocument {
+  documentId: string;
+  version: number;
+  sha256: string;
+  jws: string;
+  bytes: Uint8Array;
 }
 
 export class FakeLender {
@@ -100,6 +132,11 @@ export class FakeLender {
   private readonly applications = new Map<string, Application>();
   private readonly byKfs = new Map<string, Application>();
   private readonly byLoan = new Map<string, Application>();
+  private readonly shared: DocumentMessage[] = [];
+  private readonly docs = new Map<string, StoredDocument>();
+  private readonly urls = new Map<string, { documentId: string; expires: number }>();
+  private readonly evidence = new Set<string>();
+  private readonly lspReplay = new MemoryReplayStore();
   private next: FakeLenderScript = {};
   private seq = 0;
   private n = 0;
@@ -119,6 +156,82 @@ export class FakeLender {
   /** Every message the lender has sent, oldest first (test hook). */
   outbox(): readonly LenderMessage[] {
     return this.sent;
+  }
+
+  /** Every `DocumentShared` the lender has sent, oldest first (test hook; not in `outbox`). */
+  sharedDocuments(): readonly DocumentMessage[] {
+    return this.shared;
+  }
+
+  /** The execution-pack manifest of a sanctioned application (PR-UDF-053; proposal PR-047). */
+  executionPack(applicationId: string): ExecutionPackManifest {
+    const app = [...this.applications.values()].find((a) => a.applicationId === applicationId);
+    if (!app?.pack) throw new LenderRefusal("pack_unknown");
+    return app.pack;
+  }
+
+  /**
+   * `GET /v1/documents/{id}` (§6.13): the document's hash and JWS and an `https` URL valid
+   * 15 minutes, hosted in India. Fetch the bytes with `fetchDocument(url)`.
+   */
+  async getDocument(documentId: string): Promise<DocumentRetrieval> {
+    const d = this.docs.get(documentId);
+    if (!d) throw new LenderRefusal("document_unknown");
+    const issued = this.now();
+    const expires = issued.getTime() + DOCUMENT_URL_MAX_TTL_SECONDS * 1000;
+    const token = hex(randomBytes(16));
+    this.urls.set(token, { documentId, expires });
+    return DocumentRetrieval.parse({
+      document_id: d.documentId,
+      version: d.version,
+      sha256: d.sha256,
+      jws: d.jws,
+      url: `https://documents.fake-lender.in/v1/blobs/${token}`,
+      issued_at: issued.toISOString(),
+      url_expires_at: new Date(expires).toISOString(),
+      data_residency: "IN",
+    });
+  }
+
+  /** The bytes behind a retrieval URL; refused `url_expired` after 15 minutes, `url_invalid` if unknown. */
+  async fetchDocument(url: string): Promise<Uint8Array> {
+    const m = /^https:\/\/documents\.fake-lender\.in\/v1\/blobs\/([0-9a-f]{32})$/.exec(url);
+    const u = m ? this.urls.get(m[1]!) : undefined;
+    if (!u) throw new LenderRefusal("url_invalid");
+    if (this.now().getTime() > u.expires) throw new LenderRefusal("url_expired");
+    return new Uint8Array(this.docs.get(u.documentId)!.bytes);
+  }
+
+  /** Takes the LSP's signed `ESignCompleted` (§6.2) for a document the lender shared. */
+  async eSignCompleted(event: unknown, jws?: string): Promise<void> {
+    await this.takeEvidence("ESignCompleted", event, jws);
+  }
+
+  /** Takes the LSP's signed `EStampCompleted` (§6.2) for a document the lender shared. */
+  async eStampCompleted(event: unknown, jws?: string): Promise<void> {
+    await this.takeEvidence("EStampCompleted", event, jws);
+  }
+
+  private async takeEvidence(
+    name: "ESignCompleted" | "EStampCompleted",
+    raw: unknown,
+    jws: string | undefined,
+  ): Promise<void> {
+    const e = this.take(name, raw);
+    if (!jws || !this.o.lspKeys) throw new LenderRefusal("signature-invalid");
+    const v = await verifyRegulatedMessage(e as unknown as Record<string, unknown>, jws, {
+      keys: this.o.lspKeys,
+      replay: this.lspReplay,
+      now: this.now(),
+    });
+    if (!v.ok) throw new LenderRefusal("signature-invalid");
+    if (!this.docs.has(String(e.data.document_id))) throw new LenderRefusal("document_unknown");
+    this.evidence.add(`${name}:${originationIdempotencyKey(name, e.data)}`);
+  }
+
+  /** True once the lender has taken this evidence (test hook). */
+  hasEvidence(name: "ESignCompleted" | "EStampCompleted", data: Record<string, unknown>): boolean {
+    return this.evidence.has(`${name}:${originationIdempotencyKey(name, data)}`);
   }
 
   private id(prefix: string): string {
@@ -237,6 +350,7 @@ export class FakeLender {
         terms: { amount_paise: app.amountPaise, tenor_months: app.tenorMonths, apr_bp: app.aprBp },
         document_sha256: sha256Hex(`sanction:${app.applicationId}`),
       });
+      await this.shareExecutionDocuments(app, kfsId);
     }
     return { applicationId: app.applicationId };
   }
@@ -287,6 +401,106 @@ export class FakeLender {
       throw new LenderRefusal("cooling_off_ended");
   }
 
+  /** Shares the KFS, the sanction letter, the loan agreement and the execution-pack manifest. */
+  private async shareExecutionDocuments(app: Application, kfsId: string): Promise<void> {
+    const enc = (t: string) => new TextEncoder().encode(t);
+    const kfs = await this.share(app, "KFS", enc(`kfs:${kfsId}`), "application/pdf");
+    await this.share(
+      app,
+      "SANCTION_LETTER",
+      enc(`sanction:${app.applicationId}`),
+      "application/pdf",
+    );
+    const agreement = await this.share(
+      app,
+      "LOAN_AGREEMENT",
+      enc(`agreement:${app.applicationId}`),
+      "application/pdf",
+    );
+    const pack = ExecutionPackManifest.parse({
+      pack_id: this.id("pack"),
+      version: 1,
+      application_id: app.applicationId,
+      kfs_id: kfsId,
+      documents: [
+        {
+          document_id: agreement.documentId,
+          version: 1,
+          kind: "LOAN_AGREEMENT",
+          sha256: agreement.sha256,
+          execution_mode: "ESIGN_AADHAAR",
+          stamp_required: true,
+          signers: ["BORROWER", "LENDER"],
+        },
+        {
+          document_id: kfs.documentId,
+          version: 1,
+          kind: "KFS",
+          sha256: kfs.sha256,
+          execution_mode: "NONE",
+          stamp_required: false,
+          signers: [],
+        },
+      ],
+      stamp: {
+        state: "IN-MH",
+        article: "5(h)",
+        duty_paise: 50_000,
+        mode: "E_STAMP",
+        payer: "BORROWER",
+      },
+      summary_box: { document_id: agreement.documentId, page: 2 },
+      covenant_declaration: { document_id: agreement.documentId, sha256: agreement.sha256 },
+      countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
+    });
+    app.pack = pack;
+    await this.share(
+      app,
+      EXECUTION_PACK_MANIFEST_TYPE,
+      enc(canonicalize(pack)),
+      "application/json",
+    );
+  }
+
+  private async share(
+    app: Application,
+    type: string,
+    bytes: Uint8Array,
+    mediaType: string,
+  ): Promise<StoredDocument> {
+    const documentId = this.id("doc");
+    const sha256 = sha256Hex(bytes);
+    const jws = await signDocumentJws({
+      descriptor: { document_id: documentId, version: 1, sha256 },
+      kid: this.signer.kid,
+      sign: this.signer.sign,
+    });
+    const d: StoredDocument = { documentId, version: 1, sha256, jws, bytes };
+    this.docs.set(documentId, d);
+    const spec = DOCUMENT_EVENTS.DocumentShared;
+    const data = spec.schema.parse({
+      document_id: documentId,
+      version: 1,
+      type,
+      sha256,
+      jws,
+      retention_class: "LOAN_RECORD",
+      legal_hold: false,
+      media_type: mediaType,
+      size_bytes: bytes.byteLength,
+      application_id: app.applicationId,
+    });
+    this.shared.push({
+      event: this.envelope(
+        spec.type,
+        `document_id=${documentId}|version=1`,
+        DOCUMENTS_SCHEMA_VERSION,
+        data,
+      ),
+    });
+    return d;
+  }
+
   /** Validates an incoming message: its envelope, its type and its data. */
   private take(name: OriginationEventName, raw: unknown): EcosystemEnvelope {
     const spec = ORIGINATION_EVENTS[name];
@@ -313,26 +527,12 @@ export class FakeLender {
     const spec = ORIGINATION_EVENTS[name];
     spec.schema.parse(data);
     const now = this.now();
-    const tenant = this.o.tenantId ?? "tnt_fake_re";
-    const event = EcosystemEnvelope.parse({
-      specversion: "1.0",
-      id: uuidv7(now.getTime()),
-      source: `urn:infrabyx:finbyx:${tenant}`,
-      type: spec.type,
-      subject: originationIdempotencyKey(name, data),
-      time: now.toISOString(),
-      datacontenttype: "application/json",
-      dataschema: `https://registry.infrabyx.example/schemas/${spec.type}/${ORIGINATION_SCHEMA_VERSION}.json`,
-      tenantid: tenant,
-      reid: this.o.reId ?? "re_fake",
-      productfamily: "lending",
-      legalbasis: "CONTRACT_PERFORMANCE_RE",
-      dataclass: "FINANCIAL",
-      schemaver: ORIGINATION_SCHEMA_VERSION,
-      seq: ++this.seq,
-      environment: "test",
+    const event = this.envelope(
+      spec.type,
+      originationIdempotencyKey(name, data),
+      ORIGINATION_SCHEMA_VERSION,
       data,
-    });
+    );
     const msg: LenderMessage = { name, event };
     if (spec.regulated)
       msg.jws = await signRegulatedMessage({
@@ -342,5 +542,34 @@ export class FakeLender {
         now,
       });
     this.sent.push(msg);
+  }
+
+  private envelope(
+    type: string,
+    subject: string,
+    schemaver: string,
+    data: Record<string, unknown>,
+  ): EcosystemEnvelope {
+    const now = this.now();
+    const tenant = this.o.tenantId ?? "tnt_fake_re";
+    return EcosystemEnvelope.parse({
+      specversion: "1.0",
+      id: uuidv7(now.getTime()),
+      source: `urn:infrabyx:finbyx:${tenant}`,
+      type,
+      subject,
+      time: now.toISOString(),
+      datacontenttype: "application/json",
+      dataschema: `https://registry.infrabyx.example/schemas/${type}/${schemaver}.json`,
+      tenantid: tenant,
+      reid: this.o.reId ?? "re_fake",
+      productfamily: "lending",
+      legalbasis: "CONTRACT_PERFORMANCE_RE",
+      dataclass: "FINANCIAL",
+      schemaver,
+      seq: ++this.seq,
+      environment: "test",
+      data,
+    });
   }
 }

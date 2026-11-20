@@ -31,9 +31,16 @@ describe("origination schemas (PR-UDF-051)", () => {
     expect(ORIGINATION_EVENTS.KFSIssued.type).toBe("in.infrabyx.origination.KFSIssued.v1");
   });
 
-  it("lists the four regulated messages, as the Specification's regulated list has them", () => {
+  it("lists the six regulated messages, as the Specification's regulated list has them", () => {
     expect([...ORIGINATION_REGULATED].sort()).toEqual(
-      ["DecisionMade", "KFSIssued", "LoanDisbursed", "SanctionLetterIssued"].sort(),
+      [
+        "DecisionMade",
+        "EStampCompleted",
+        "ESignCompleted",
+        "KFSIssued",
+        "LoanDisbursed",
+        "SanctionLetterIssued",
+      ].sort(),
     );
     for (const n of ORIGINATION_REGULATED)
       expect((REGULATED_MESSAGE_EVENTS as readonly string[]).includes(n)).toBe(true);
