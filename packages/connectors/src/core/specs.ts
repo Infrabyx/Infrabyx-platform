@@ -57,7 +57,14 @@ export const PORT_METHODS: Readonly<Record<string, Readonly<Record<string, Metho
   },
   IDENTITY: { getUser: read, verifyToken: read },
   AUTHZ: { check: read, checkBatch: read, planResources: read, explain: read },
-  STORAGE: { get: read, list: read, presign: read, assertImmutable: read },
+  STORAGE: {
+    get: read,
+    list: read,
+    presign: read,
+    assertImmutable: read,
+    // PR-UDF-068: a read, but about the primary's write keys, so a DR answer would mislead.
+    keyRefStatus: { kind: "read", noFailover: true },
+  },
   QUEUE: {
     enqueue: {
       kind: "write",

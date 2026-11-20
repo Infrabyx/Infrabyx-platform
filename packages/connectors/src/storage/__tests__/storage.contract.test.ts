@@ -3,7 +3,7 @@
 // cases on separate bucket sets (@IPB-01-AT-10 parity, S3-API level). moto does not enforce
 // presigned-URL expiry, method or content type, so those cases check what the adapter signs;
 // enforcement is proven by the MinIO-server and AWS sandbox legs (OWNER-QUESTIONS #4, D-01).
-import { CreateKeyCommand, KMSClient } from "@aws-sdk/client-kms";
+import { CreateKeyCommand, DisableKeyCommand, KMSClient } from "@aws-sdk/client-kms";
 import {
   CreateBucketCommand,
   PutBucketEncryptionCommand,
@@ -33,8 +33,8 @@ let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
 const compartmentKeys: string[] = [];
-// PR-UDF-058: lenders' keys, the named keys of the built-in contract case's tenant; the third is
-// configured with S3 Bucket Keys off (R1-D-229).
+// PR-UDF-058: lenders' keys, the named keys of the built-in contract cases' tenant; the third is
+// configured with S3 Bucket Keys off (R1-D-229); the fourth is disabled (PR-UDF-068, R1-D-239).
 const lenderKeys: string[] = [];
 // Every bucket name carries this run's suffix, so a run never meets a bucket an earlier or a
 // concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
@@ -81,11 +81,13 @@ beforeAll(async () => {
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage ${d}` }))).KeyMetadata!
         .KeyId!,
     );
-  for (const d of ["a", "b", "c"])
+  for (const d of ["a", "b", "c", "off"])
     lenderKeys.push(
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage lender ${d}` })))
         .KeyMetadata!.KeyId!,
     );
+  // PR-UDF-068: the fourth lender's key is disabled, so keyRefStatus with describeKey refuses it.
+  await kms.send(new DisableKeyCommand({ KeyId: lenderKeys[3]! }));
 });
 /** The named keys of tenant `tenantId` in REGULATED, as a product's vault would configure them. */
 const lenderNamedKeys =
@@ -95,6 +97,7 @@ const lenderNamedKeys =
           "lender:contract": lenderKeys[0]!,
           "lender:contract-b": lenderKeys[1]!,
           "lender:contract-nobk": { keyId: lenderKeys[2]!, bucketKey: false },
+          "lender:contract-off": lenderKeys[3]!,
         }
       : undefined;
 afterAll(async () => moto?.stop());
