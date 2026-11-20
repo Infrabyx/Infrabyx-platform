@@ -86,15 +86,23 @@ describe("FakeLender: PR-UDF-061 items 14, 15 and 17 (R1-D-236)", () => {
         .outbox()
         .filter((m) => m.event.subject === id)
         .map((m) => [m.name, m.event.seq]);
+    // One application, one ordered stream (§3.2): status, decision, KFS, sanction letter, pack.
     expect(forApp(a.applicationId)).toEqual([
       ["ApplicationStatusChanged", 1],
       ["DecisionMade", 2],
       ["ApplicationStatusChanged", 3],
-      ["ApplicationStatusChanged", 4],
+      ["KFSIssued", 4],
+      ["SanctionLetterIssued", 5],
+      ["ApplicationStatusChanged", 6],
+      ["ExecutionPackIssued", 7],
     ]);
-    expect(forApp(b.applicationId).map(([, s]) => s)).toEqual([1, 2, 3, 4]);
-    for (const m of l.outbox().filter((x) => x.name !== "ApplicationStatusChanged"))
-      if (m.name !== "DecisionMade") expect(m.event.seq, m.name).toBe(1);
+    expect(forApp(b.applicationId).map(([, s]) => s)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(l.outbox().every((m) => m.event.subject === m.event.data.application_id)).toBe(true);
+    // A loan is its own aggregate once it exists.
+    const { loanId } = await l.disburse(a.applicationId);
+    const disbursed = l.outbox().find((m) => m.name === "LoanDisbursed")!;
+    expect([disbursed.event.subject, disbursed.event.seq]).toEqual([loanId, 1]);
+    expect(forApp(a.applicationId).at(-1)).toEqual(["ApplicationStatusChanged", 8]);
     for (const d of l.sharedDocuments()) {
       expect(d.event.subject).toBe(d.event.data.document_id);
       expect(d.event.seq).toBe(1);

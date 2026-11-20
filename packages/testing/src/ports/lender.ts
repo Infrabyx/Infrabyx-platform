@@ -215,11 +215,13 @@ const sanctioned = async (l: LenderUnderTest, ref: string) => {
   return { applicationId, docs: l.sharedDocuments?.().slice(before) ?? [] };
 };
 
-const accepted = (kfs: LenderMessage) =>
+/** The borrower's acceptance; with `lspRef` it is on the LSP's application aggregate (§3.2). */
+const accepted = (kfs: LenderMessage, lspRef?: string) =>
   lspEvent("BorrowerAccepted", {
     kfs_id: kfs.event.data.kfs_id,
     accepted_at: new Date().toISOString(),
     explanation_acknowledged: true,
+    ...(lspRef ? { lsp_application_ref: lspRef } : {}),
   });
 
 /**
@@ -1023,18 +1025,24 @@ export function lenderContractCases(
       },
     },
     {
-      name: "every envelope's subject is its aggregate id and seq counts per subject from 1, with two applications interleaved",
+      name: "every envelope's subject is its aggregate and seq counts per subject from 1: one application's lifecycle is one stream, with two applications interleaved",
       async run(l) {
         const before = l.sharedDocuments?.().length ?? 0;
         const out = l.outbox().length;
-        const a = await l.submitApplication(application("lspapp_contract_seq_a"));
+        const subA = application("lspapp_contract_seq_a");
+        const a = await l.submitApplication(subA);
         const b = await l.submitApplication(application("lspapp_contract_seq_b"));
         const kfsOf = (id: string) =>
           byName(l.outbox().slice(out), "KFSIssued").find(
             (m) => m.event.data.application_id === id,
           )!;
-        await l.accept(accepted(kfsOf(b.applicationId)));
-        await l.accept(accepted(kfsOf(a.applicationId)));
+        await l.accept(accepted(kfsOf(b.applicationId), "lspapp_contract_seq_b"));
+        const accA = accepted(kfsOf(a.applicationId), "lspapp_contract_seq_a");
+        await l.accept(accA);
+        // The LSP's submission and acceptance are on its own application aggregate, in order.
+        expect(subA.subject).toBe("lspapp_contract_seq_a");
+        expect(accA.subject).toBe(subA.subject);
+        expect(accA.seq).toBeGreaterThan(subA.seq);
         await l.disburse(b.applicationId);
         await l.disburse(a.applicationId);
         const sent = l.outbox().slice(out);
@@ -1049,11 +1057,29 @@ export function lenderContractCases(
           bySubject.set(e.subject, [...(bySubject.get(e.subject) ?? []), e.seq]);
         for (const [subject, seqs] of bySubject)
           expect(seqs, subject).toEqual(seqs.map((_, i) => i + 1));
-        // Each application is its own subject, counted from 1 although their events interleave.
+        // Each application is one subject counted 1..n across its decision, KFS, sanction letter
+        // and pack, although the two applications' events interleave; the loan is its own subject.
         for (const id of [a.applicationId, b.applicationId]) {
-          const seqs = bySubject.get(id) ?? [];
-          expect(seqs.length, id).toBeGreaterThan(1);
-          expect(seqs[0]).toBe(1);
+          const stream = sent.filter((m) => m.event.subject === id);
+          expect(
+            stream.map((m) => m.event.seq),
+            id,
+          ).toEqual(stream.map((_, i) => i + 1));
+          const names: string[] = stream.map((m) => m.name);
+          const order = ["DecisionMade", "KFSIssued", "SanctionLetterIssued"].map((x) =>
+            names.indexOf(x),
+          );
+          expect(order.every((i) => i >= 0)).toBe(true);
+          expect([...order].sort((x, y) => x - y)).toEqual(order);
+          const pack = names.indexOf("ExecutionPackIssued");
+          if (pack >= 0) expect(pack).toBeGreaterThan(order[2]!);
+          const disbursed = sent.find(
+            (m) => m.name === "LoanDisbursed" && m.event.data.application_id === id,
+          );
+          if (disbursed) {
+            expect(disbursed.event.subject).toBe(disbursed.event.data.loan_id);
+            expect(disbursed.event.seq).toBe(1);
+          }
         }
       },
     },
