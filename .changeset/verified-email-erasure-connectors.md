@@ -1,5 +1,0 @@
----
-"@infrabyx/connectors": minor
----
-
-The verified email is deleted at account closure or on the borrower's erasure request (owner answer #161 (3); R1-D-235). Migration `0016_customer_verified_email_delete` (expand-only): DELETE on `connectors.customer_verified_email` for `app_rw` only, and a trigger that lets a row go only inside the kernel action `identity.customer.verified_email.delete`. New optional `CustomerAuthStore.deleteVerifiedEmail` (`PgCustomerAuthStore` and `MemoryCustomerAuthStore`; ledgered with the reason, never the address; a repeat is a ledgered no-op), `VerifiedEmailDeletionReason`, `VERIFIED_EMAIL_DELETE_ACTION`, `VERIFIED_EMAIL_ERASURE_REF`. `retireLogin` deletes the row (reason `account_closed`) before the IdP frees the login; `eraseVerifiedEmail` deletes it on erasure (reason `erasure_request`, with the request reference). A store that can save an address but not delete it makes both refuse with IPB-PORT-001 `unsupported`. Apply `connectors/0016` before upgrading.
