@@ -16,8 +16,14 @@
 // PR-UDF-061 (owner, 20 Nov 2026 14:30; R1-D-232): Udofin's `udf_ext` v1 list as optional fields
 // on these events, two-character product codes, and one new event, `CoolingOffExitAnswered` (the
 // lender's answer to an exit request), proposed for the Specification in PR-047's draft.
+//
+// PR-UDF-061 items (12) to (17) (owner, 20 Nov 2026 18:50 IST; R1-D-236): PR-047 is approved, so
+// `CoolingOffExitAnswered` is signed and the new `ExecutionPackIssued` (`ExecutionPackIssuedData` in
+// `documents.ts`) joins the registry, signed; the KFS and the sanction letter name their file's
+// version (`document_version`, beside `document_ref`); and every event names the data field that is
+// its envelope `subject` (§3.2: the aggregate id; `seq` counts per subject).
 import { z } from "zod";
-import { indianState } from "./documents.js";
+import { ExecutionPackIssuedData, indianState } from "./documents.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
@@ -406,6 +412,11 @@ export const KfsIssuedData = z
       .optional(),
     /** The KFS document, by reference (`document_id` of its `DocumentShared`). */
     document_ref: documentRef.optional(),
+    /**
+     * R1-D-236 (PR-UDF-061 item 16): the `version` of that `DocumentShared`, so `document_ref` and
+     * `document_version` name the exact file whose hash is `document_sha256`.
+     */
+    document_version: version.optional(),
     tenor_days: tenorDays.optional(),
     /** The cash flows: the net disbursed amount and the instalments, in order. */
     cash_flows: z
@@ -493,6 +504,8 @@ export const SanctionLetterIssuedData = z
     document_sha256: sha256,
     /** R1-D-232 (item 10): the sanction letter, by reference (`document_id` of its `DocumentShared`). */
     document_ref: documentRef.optional(),
+    /** R1-D-236 (item 16): the `version` of that `DocumentShared` (the file `document_sha256` hashes). */
+    document_version: version.optional(),
   })
   .loose();
 
@@ -598,8 +611,8 @@ const LINK_IN_TEXT =
   /\b[a-z][a-z0-9+.-]*:\/\/|\bupi:|www\.|\b[a-z0-9-]+\.(?:in|com|net|org|co|io|app|link|ly)\//i;
 
 /**
- * `CoolingOffExitAnswered` (FX → UD; R1-D-232, PR-UDF-061 item 6; proposed for the Specification
- * in PR-047's draft): the lender's answer to `CoolingOffExitRequested`, with the amount to repay
+ * `CoolingOffExitAnswered` (FX → UD, signed; R1-D-232, PR-UDF-061 item 6; PR-047 §5, approved by
+ * the owner on 20 Nov 2026, so a regulated message from this minor, R1-D-236): the lender's answer to `CoolingOffExitRequested`, with the amount to repay
  * (principal and proportionate APR, CF para 11), how to pay it in the lender's words, the lender's
  * exit reference and the time. The instruction is plain text with no link; a product shows it as the
  * lender's words and never routes the payment through an account of its own (CF para 10).
@@ -644,6 +657,12 @@ export interface OriginationEventSpec {
   regulated: boolean;
   /** Producer → consumer (§6.2, §6.3). */
   direction: "LSP_TO_LENDER" | "LENDER_TO_LSP";
+  /**
+   * The data field whose value is the envelope's `subject` (§3.2: "aggregate id; ordering and
+   * partition key"; `seq` is "per-subject"): the entity the event is about (R1-D-236). Optional in
+   * this interface so a spec built before it stays valid; every entry of `ORIGINATION_EVENTS` has it.
+   */
+  subject?: string;
 }
 
 const spec = (
@@ -652,12 +671,14 @@ const spec = (
   schema: z.ZodType,
   idempotency: readonly string[],
   direction: OriginationEventSpec["direction"],
-): OriginationEventSpec => ({
+  subject: string = idempotency[0]!,
+): OriginationEventSpec & { subject: string } => ({
   type: `in.infrabyx.${domain}.${name}.v1`,
   schema,
   idempotency,
   regulated: (REGULATED_MESSAGE_EVENTS as readonly string[]).includes(name),
   direction,
+  subject,
 });
 
 /** Every event of the loan journey this file defines, by its Specification name. */
@@ -682,6 +703,8 @@ export const ORIGINATION_EVENTS = Object.freeze({
     AdditionalInfoRequestedData,
     ["request_id"],
     "LENDER_TO_LSP",
+    // The RE's query belongs to the application, beside its status changes.
+    "application_id",
   ),
   DecisionMade: spec(
     "origination",
@@ -702,6 +725,13 @@ export const ORIGINATION_EVENTS = Object.freeze({
     "SanctionLetterIssued",
     SanctionLetterIssuedData,
     ["sanction_id", "version"],
+    "LENDER_TO_LSP",
+  ),
+  ExecutionPackIssued: spec(
+    "origination",
+    "ExecutionPackIssued",
+    ExecutionPackIssuedData,
+    ["pack_id", "version"],
     "LENDER_TO_LSP",
   ),
   BorrowerAccepted: spec(
@@ -751,13 +781,29 @@ export type OriginationEventName = keyof typeof ORIGINATION_EVENTS;
 
 /**
  * The regulated messages among them (§3.6): `DecisionMade`, `KFSIssued`, `SanctionLetterIssued`,
- * `ESignCompleted`, `EStampCompleted` and `LoanDisbursed`.
+ * `ESignCompleted`, `EStampCompleted` and `LoanDisbursed`, and from v1.6 (PR-047, R1-D-236)
+ * `ExecutionPackIssued` and `CoolingOffExitAnswered`.
  */
 export const ORIGINATION_REGULATED: readonly OriginationEventName[] = Object.freeze(
   (Object.keys(ORIGINATION_EVENTS) as OriginationEventName[]).filter(
     (n) => ORIGINATION_EVENTS[n].regulated,
   ),
 );
+
+/**
+ * The envelope `subject` of one event's data (§3.2: the aggregate id; R1-D-236, PR-UDF-061 item 15):
+ * the value of its spec's `subject` field, such as the application id of `DecisionMade`, the KFS
+ * id of `KFSIssued` or the loan id of `LoanDisbursed`. A producer counts `seq` per subject from 1.
+ */
+export function originationSubject(
+  name: OriginationEventName,
+  data: Record<string, unknown>,
+): string {
+  const v = data[ORIGINATION_EVENTS[name].subject];
+  if (typeof v !== "string" || v.length === 0)
+    throw new Error(`${name} has no ${ORIGINATION_EVENTS[name].subject} for its subject`);
+  return v;
+}
 
 /** The idempotency key of one event's data, as `field=value` pairs joined by `|`. */
 export function originationIdempotencyKey(
