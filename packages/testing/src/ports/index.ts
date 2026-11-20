@@ -18,6 +18,7 @@ export * from "./statement-analysis.js";
 export * from "./aa-statement-analysis.js";
 export * from "./grc.js";
 export * from "./documents-money.js";
+export * from "./estamp-record.js";
 export * from "./captcha.js";
 export * from "./device-attestation.js";
 export * from "./mandate-approvals.js";

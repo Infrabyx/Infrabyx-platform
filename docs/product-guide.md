@@ -1388,6 +1388,27 @@ From the next release (`contracts` and `connectors` minors; migration `connector
 - **Refusals:** `IPB-IDN-001` with `meta.reason` `device` (the proof is not by that signed-in device, or it was signed out), `login`, `challenge` (expired, used, another account's or another device's), `code` (wrong), `dpop_*`; `IPB-SEC-019` (the account's sign-in code limits, shared with sign-in: the resend interval, 10 codes per 10 minutes, 5 tries per code, back-off and lockout).
 - **Scope:** a step-up holds for that device session only (other devices, and a new sign-in, start from their own sign-in) and for every sensitive action whose max age it meets. The codes are never sign-in codes. No IdP, Keycloak extension or realm change is needed.
 
+## 7dy. Recording paid stamps, and the NSDL eSign shell (PR-UDF-054; R1-D-245)
+
+From the next `contracts`, `config`, `fakes`, `testing` and `connectors` minors (no migration, no environment variable). Four new adapters, **all off by default and `unproven`**; nothing changes for a product that does not switch them on. None buys stamp duty, stamp paper or an e-stamp, and none adds cryptography.
+
+| Adapter        | Port and setting                          | What it does                                                                                                                       |
+| -------------- | ----------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `shcil-estamp` | ESTAMP, `int.estamp.shcil.enabled`        | Records an e-stamp you bought through your own SHCIL channel and checks it with SHCIL (number, State and issue date only are sent) |
+| `digio-estamp` | ESTAMP, `int.estamp.digio.enabled`        | Records an e-stamp Digio already issued to you, by Digio's id; never orders or affixes one                                         |
+| `manual-paper` | ESTAMP, `int.estamp.manual_paper.enabled` | Records physical stamp paper or franking you hold; calls nothing outside                                                           |
+| `nsdl-esign`   | ESIGN, `int.esign.nsdl.enabled`           | Keeps Aadhaar eSign envelopes locally; cannot sign yet (the request signature needs the owner's approval, #177)                    |
+
+**Recording a stamp** (`recordCertificate(record, idempotencyKey)`, optional on ESTAMP): `channel` (`E_STAMP`, `FRANKING`, `PHYSICAL_PAPER`), `state` (`MH`), `instrument` (the Stamp Act article), `certificateNumber`, `dutyMinor`, `statedDutyMinor?`, `issuedAt`, `purchaser`, `stampedDocument` (STORAGE key and SHA-256), and for paper and franking `vendorLicence` and `certificateDocumentId` (the scan); `vendorCertificateId` for Digio; `recordedBy` (a user or a service). Then `stampEvidenceOf(certificate)` gives the execution pack's `stamp_evidence` (§7dp).
+
+**What to know:**
+
+- `purchase` on these adapters is refused with `purchase_not_permitted`; buy through your own channel, then record.
+- A certificate number is recorded once per State and channel; a second instrument with the same stamp is refused (`certificate_reused`). Give your stamp table a unique index on State, channel and number, implement `StampRecordStore`, and write the record inside your `kernel.mutate`, so the ledger entry is in the same transaction.
+- Refusals: `deficient_stamping` (duty below the stated duty), `hash_mismatch` (the stored document changed), `certificate_mismatch`, `certificate_not_found`, `certificate_not_usable` (cancelled), `channel_unsupported`, an agent recorder (`IPB-SEC-004`).
+- Vendor shapes are to be confirmed against each sandbox: keep the adapters off until the owner's accounts exist. Whether a manually keyed stamp needs a checker before it enters a pack is the owner's question #177.
+- **Udofin:** keep Leegality or Digio for eSign until #177 decides NSDL's request signing.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
