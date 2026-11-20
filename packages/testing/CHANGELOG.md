@@ -1,5 +1,29 @@
 # @infrabyx/testing
 
+## 1.26.0
+
+### Minor Changes
+
+- 053e16a: Borrower email with byte-identical attachments and a delivery receipt, and the verified email (Udofin PR-UDF-055; R1-D-224). `contracts`: `NotificationRequest.attachments` (`NotificationAttachment`: STORAGE key, SHA-256, file name, PDF, PNG or JPEG; at most 10), `DeliveryRecord.vendorRef` and `DeliveryRecord.attachments` (the receipt), `EmailMessage.files` (`EmailAttachment`: verified bytes, sent unchanged, only to an adapter with `attachments: "native"`), `EMAIL_ATTACHMENT_LIMITS`, `EMAIL_ATTACHMENT_MEDIA_TYPES`, `emailAttachmentTypeOf`, `attachmentExtensionFits`; optional `CustomerIdentityPort.startEmailVerification`, `confirmEmailVerification` and `verifiedEmail` (`VerifiedCustomerEmail`). `config`: the settings `ntf.email.attachments.enabled` (tenant), `ntf.email.attachments.confidential` and `int.identity.customer.email_capture.enabled` (platform), all off. `notify`: attachments read from STORAGE at send and checked (class, type, SHA-256, 10 MiB) before the adapter; the receipt in `deliveryStatus`; migration `0008_email_attachments` (two nullable columns; expand-only). `connectors`: `ses` and `brevo` take `files` and check each SHA-256 again; the verified-email capture in the customer IDENTITY adapters (`emailCapture` option, `readCustomerEmailCapture`, `CustomerAuthStore.saveVerifiedEmail` and `verifiedEmail`, optional); migration `0015_customer_verified_email` (expand-only). `testing`: the SES and Brevo stubs record each attachment's SHA-256. Everything is off by default; nothing existing changes. Apply `notify/0008` and `connectors/0015` before turning either feature on.
+- ce8ca22: Owner answers of 20 Nov 10:50 (R1-D-229), all optional and additive. `contracts/events`: `KfsIssuedData.loan_amount_paise` (the KFS "Loan amount", integer paise, distinct from the net disbursed amount; PR-UDF-051); `ExecutionPackManifest.disbursement_clause { document_id, page_or_clause_ref, amount_stated_paise }`, whose document must be in the pack (PR-UDF-053); `SecurityIncidentNotifiedData.cert_in_category` (`CERT_IN_INCIDENT_CATEGORIES`, CERT-In Directions Annexure I) and `cert_in_report_by` (at most `detected_at` + 6 h), with `certInReportBy(noticedAt)` and `CERT_IN_REPORT_WINDOW_MS`, carried by `securityIncidentClockCopy` (PR-FBX-51, #159 (a)). `connectors`: a `tenantNamedKmsKeyIds` value may be `{ keyId, bucketKey?: boolean }` (`NamedKmsKey`); `bucketKey: false` writes and presigned uploads under that reference with S3 Bucket Keys off (a KMS request per object operation); the string form is unchanged, Bucket Keys on (PR-UDF-058, #165 (3)). `fakes`: `FakeLender` sends the KFS loan amount and the manifest's disbursement clause. `testing`: two lender contract cases for them; the GRC incident case sends the CERT-In fields.
+- b135555: No-cache presigned downloads (Udofin PR-UDF-060; R1-D-230). `connectors`: a presigned `get` of a `REGULATED` or `CONFIDENTIAL` object (compartments included), on `s3` and `minio`, signs the response overrides `response-cache-control=no-store, private` and `response-expires=Thu, 01 Jan 1970 00:00:00 GMT`, so the store answers with `Cache-Control: no-store, private` and a past `Expires` and devices and webviews keep no copy; the overrides follow the bucket the URL reads from and cannot be dropped by a caller. Other classes and upload URLs are unchanged. S3 has no `Pragma` override: `Cache-Control: no-store` supersedes it for HTTP/1.1 clients. `contracts`: `NO_CACHE_PRESIGN_CLASSES`, `PRESIGN_NO_CACHE` and `presignNoCache`. `fakes`: `MemoryStorage` adds the same parameters to its download URLs. `testing`: a STORAGE contract case checks the URL and, on HTTP stores, the headers returned. No setting, no migration.
+- 1ffb012: Owner's addendum of 20 Nov 13:10 (R1-D-231), all optional and additive. `contracts/events`: the shared offer schema is exported as `OriginationOffer` and takes `monthly_instalment { amount_paise, frequency }` (`INSTALMENT_FREQUENCIES`), `penal_charges` (`PenalCharge`, at most 20: a basis code, exactly one of `rate_bp` or `amount_paise`, a description; `PENAL_CHARGE_BASES`, [VERIFY] against RBI's Penal Charges directions) and `kfs_link { document_id, version? }` (a document reference, never a URL) (PR-UDF-051); each `ExecutionPackManifest.documents[]` item takes `stamp_evidence` (`StampEvidence`: `STAMP_EVIDENCE_MODES` `ESTAMP`, `PAPER`, `FRANKING`, State, certificate number, duty in paise, stamped document SHA-256, optional vendor reference; `STAMP_EVIDENCE_MODE_OF` maps the pack-level `STAMP_MODES`) and `not_stampable` with `not_stampable_reason`, refused with stamp evidence or `stamp_required: true` (PR-UDF-053). `fakes`: `FakeLender`'s offers carry an EMI and a penal charge, its sanctioned offer a KFS link, its loan agreement stamp evidence and its KFS `not_stampable`. `testing`: two lender contract cases for them.
+
+### Patch Changes
+
+- Updated dependencies [053e16a]
+- Updated dependencies [ce8ca22]
+- Updated dependencies [b135555]
+- Updated dependencies [48810fd]
+- Updated dependencies [1ffb012]
+  - @infrabyx/contracts@1.40.0
+  - @infrabyx/config@1.22.0
+  - @infrabyx/fakes@1.4.0
+  - @infrabyx/audit@1.11.4
+  - @infrabyx/crypto@1.9.1
+  - @infrabyx/seed@1.0.50
+  - @infrabyx/tenancy@1.21.3
+
 ## 1.25.0
 
 ### Minor Changes

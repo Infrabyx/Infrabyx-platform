@@ -1,5 +1,24 @@
 # @infrabyx/notify
 
+## 1.6.0
+
+### Minor Changes
+
+- 053e16a: Borrower email with byte-identical attachments and a delivery receipt, and the verified email (Udofin PR-UDF-055; R1-D-224). `contracts`: `NotificationRequest.attachments` (`NotificationAttachment`: STORAGE key, SHA-256, file name, PDF, PNG or JPEG; at most 10), `DeliveryRecord.vendorRef` and `DeliveryRecord.attachments` (the receipt), `EmailMessage.files` (`EmailAttachment`: verified bytes, sent unchanged, only to an adapter with `attachments: "native"`), `EMAIL_ATTACHMENT_LIMITS`, `EMAIL_ATTACHMENT_MEDIA_TYPES`, `emailAttachmentTypeOf`, `attachmentExtensionFits`; optional `CustomerIdentityPort.startEmailVerification`, `confirmEmailVerification` and `verifiedEmail` (`VerifiedCustomerEmail`). `config`: the settings `ntf.email.attachments.enabled` (tenant), `ntf.email.attachments.confidential` and `int.identity.customer.email_capture.enabled` (platform), all off. `notify`: attachments read from STORAGE at send and checked (class, type, SHA-256, 10 MiB) before the adapter; the receipt in `deliveryStatus`; migration `0008_email_attachments` (two nullable columns; expand-only). `connectors`: `ses` and `brevo` take `files` and check each SHA-256 again; the verified-email capture in the customer IDENTITY adapters (`emailCapture` option, `readCustomerEmailCapture`, `CustomerAuthStore.saveVerifiedEmail` and `verifiedEmail`, optional); migration `0015_customer_verified_email` (expand-only). `testing`: the SES and Brevo stubs record each attachment's SHA-256. Everything is off by default; nothing existing changes. Apply `notify/0008` and `connectors/0015` before turning either feature on.
+- 48810fd: Staff and RE-administrator notifications by role (Udofin PR-UDF-052; R1-D-222). `contracts`: a staff class (`NotificationClass.audience: "staff"`, `subject_variables`; in-app and email only, declared variables, never marketing; `STAFF_CHANNELS`), `StaffRole`, `StaffNotificationRequest`, `StaffSendResult`, `DeliveryReceipt`, the optional `NotifyPort.notifyStaff` and `deliveryReceipt`, and the error `IPB-NTF-007`. `notify`: `notifyStaff` and `enqueueStaff` find the active holders of the roles (or of an `FN:` function) in the context's tenant at send time and send a staff class whose variables carry no personal data and whose subject carries only references; nobody holding the roles is a recorded `no_recipients` outcome; `deliveryReceipt` gives each recipient's delivery states; `lintEmailTemplate` takes `subjectVariables` (`lintOptionsFor`), and `lintStaffTitles` checks staff titles at start. `send` and `enqueue` refuse a staff class; nothing existing changes otherwise. No migration, no setting.
+
+### Patch Changes
+
+- Updated dependencies [053e16a]
+- Updated dependencies [ce8ca22]
+- Updated dependencies [b135555]
+- Updated dependencies [48810fd]
+- Updated dependencies [1ffb012]
+  - @infrabyx/contracts@1.40.0
+  - @infrabyx/config@1.22.0
+  - @infrabyx/crypto@1.9.1
+  - @infrabyx/tenancy@1.21.3
+
 ## 1.5.3
 
 ### Patch Changes
