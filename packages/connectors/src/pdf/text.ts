@@ -5,6 +5,9 @@
 //   * AV first: the request carries the AV port's result, and nothing is read unless it is `CLEAN`
 //     for the file's SHA-256 (`assertScannedClean`); the bytes read from STORAGE must hash to it too,
 //     so a file swapped after its scan is refused (`IPB-SEC-015`).
+//   * A STORAGE read refused because the object's named tenant key is disabled or no longer granted
+//     is `IPB-KMS-001` (reason `storage_key_unavailable`, PR-UDF-067); any other read failure is
+//     `IPB-PORT-002` (reason `unavailable`).
 //   * Isolated: the parse (`parse.ts`) runs in a `worker_thread` with V8 heap and stack limits, an
 //     empty environment and no inherited flags, and is terminated at its deadline, so a hostile file
 //     can neither hang nor exhaust the calling process. A worker that runs out of memory or time is
@@ -85,7 +88,13 @@ export class PdfTextExtractor implements PdfPort {
     let body: Uint8Array;
     try {
       body = (await this.o.storage.get(req.file.storageKey)).body;
-    } catch {
+    } catch (e) {
+      if (storageKeyUnavailable(e))
+        throw new PortError("IPB-KMS-001", PORT, {
+          adapter: ADAPTER,
+          detail: "the file's storage key is disabled or no longer granted",
+          meta: { reason: "storage_key_unavailable" },
+        });
       throw new PortError("IPB-PORT-002", PORT, {
         adapter: ADAPTER,
         detail: "the file could not be read from storage",
@@ -188,6 +197,17 @@ export class PdfTextExtractor implements PdfPort {
   async pageCount(): Promise<number> {
     throw unsupported("pageCount");
   }
+}
+
+/**
+ * PR-UDF-067: a STORAGE read refused because the object's named tenant key is disabled or no
+ * longer granted (IPB-KMS-001 `storage_key_unavailable`, PR-UDF-058) is not a storage outage. It is
+ * passed on as that code and fixed label only: not the key reference, the vendor's error name or
+ * its cause.
+ */
+function storageKeyUnavailable(e: unknown): boolean {
+  const err = e as { code?: unknown; meta?: { reason?: unknown } } | null | undefined;
+  return err?.code === "IPB-KMS-001" && err.meta?.reason === "storage_key_unavailable";
 }
 
 function refusal(
