@@ -15,11 +15,16 @@ import { Redis } from "ioredis";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import type { AuditSink, KernelContext, MutationKernel } from "@infrabyx/contracts/kernel";
 import {
+  CUSTOMER_ACR_VALUES,
+  CustomerAcr,
   customerLogin,
+  CustomerStepUpPolicy,
+  type CustomerStepUpPolicyInput,
   isPlatformRole,
   isTenantRole,
   type AdapterDescriptor,
   type CustomerChallenge,
+  type CustomerStepUp,
   type CustomerDevice,
   type CustomerIdentityPort,
   type CustomerOtpChannel,
@@ -182,6 +187,70 @@ const limited = (reason: string, retryAfterMs: number): IpbError =>
     meta: { reason, retryAfterSeconds: Math.max(1, Math.ceil(retryAfterMs / 1000)) },
   });
 
+// ---- the step-up check (pure; PR-UDF-056, R1-D-244) ---------------------------------------------
+
+/** An `auth_time` up to this far ahead of the clock is skew (age 0); further ahead fails closed. */
+export const CUSTOMER_AUTH_TIME_SKEW_SECONDS = 30;
+
+/**
+ * Whether a customer session meets a sensitive action's policy: its `acr` at least the policy's
+ * and its `auth_time` at most `maxAgeSeconds` old at `now` (epoch ms). Otherwise `IPB-SEC-001` in
+ * the step-up form (`meta.step_up`, `customer`, `required_acr`, `max_age`) and nothing else: not
+ * the session's level, its age or which test failed. `customerStepUpChallenge` turns it into the
+ * RFC 9470 401. A malformed policy is a TypeError (a programming error, never a refusal).
+ */
+export function assertCustomerStepUp(
+  claims: Pick<VerifiedCustomerClaims, "acr" | "auth_time">,
+  policy: CustomerStepUpPolicyInput,
+  now: number = Date.now(),
+): void {
+  const p = CustomerStepUpPolicy.safeParse(policy);
+  if (!p.success) throw new TypeError("assertCustomerStepUp: the policy is not a step-up policy");
+  const { acr, maxAgeSeconds } = p.data;
+  const rank = (a: unknown) => CUSTOMER_ACR_VALUES.indexOf(a as CustomerAcr);
+  const t = claims.auth_time;
+  const age = typeof t === "number" && Number.isFinite(t) ? Math.floor(now / 1000) - t : NaN;
+  if (
+    rank(claims.acr) >= 0 &&
+    rank(claims.acr) >= rank(acr) &&
+    age >= -CUSTOMER_AUTH_TIME_SKEW_SECONDS &&
+    age <= maxAgeSeconds
+  )
+    return;
+  throw new IpbError("IPB-SEC-001", {
+    detail: "a fresh sign-in code is needed for this action",
+    meta: { step_up: true, customer: true, required_acr: acr, max_age: maxAgeSeconds },
+  });
+}
+
+/**
+ * The RFC 9470 answer for a refusal from `assertCustomerStepUp`: status 401 and
+ * `WWW-Authenticate: DPoP error="insufficient_user_authentication", …, acr_values="otp",
+ * max_age=300, algs="ES256"` (the DPoP scheme of RFC 9449 §7.1, as the session's tokens are
+ * DPoP-bound). Returns null for any other error, which keeps its own status.
+ */
+export function customerStepUpChallenge(e: unknown): {
+  status: 401;
+  headers: { "www-authenticate": string };
+  requiredAcr: CustomerAcr;
+  maxAge: number;
+} | null {
+  if (!(e instanceof IpbError) || e.code !== "IPB-SEC-001") return null;
+  const m = e.meta;
+  if (m?.step_up !== true || m.customer !== true) return null;
+  const acr = CustomerAcr.safeParse(m.required_acr);
+  const age = CustomerStepUpPolicy.shape.maxAgeSeconds.safeParse(m.max_age);
+  if (typeof m.max_age !== "number" || !acr.success || !age.success) return null;
+  return {
+    status: 401,
+    requiredAcr: acr.data,
+    maxAge: age.data,
+    headers: {
+      "www-authenticate": `DPoP error="insufficient_user_authentication", error_description="A fresh sign-in code is required", acr_values="${acr.data}", max_age=${age.data}, algs="ES256"`,
+    },
+  };
+}
+
 // ---- the guard (pure) ---------------------------------------------------------------------------
 
 export interface GuardState {
@@ -283,6 +352,9 @@ export interface DeviceRecord {
   lastUsedAt: number;
   revokedAt?: number;
   revokedReason?: DeviceRevocationReason;
+  /** The device session's last step-up (PR-UDF-056; R1-D-244): when, and at which level. */
+  stepUpAt?: number;
+  stepUpAcr?: CustomerAcr;
 }
 
 export type DeviceRevocationReason = "sign_out" | "revoked" | "key_mismatch" | "security";
@@ -351,7 +423,16 @@ export interface CustomerAuthStore {
     to: string,
     now: number,
   ): Promise<boolean>;
-  activeDevice(tenantId: string, userId: string, jkt: string): Promise<DeviceRecord | undefined>;
+  /**
+   * The active device of the user with this key. A store may cache the answer for at most 15 s;
+   * `fresh` reads past any cache (a step-up check, PR-UDF-056).
+   */
+  activeDevice(
+    tenantId: string,
+    userId: string,
+    jkt: string,
+    o?: { fresh?: boolean },
+  ): Promise<DeviceRecord | undefined>;
   listDevices(tenantId: string, userId: string): Promise<DeviceRecord[]>;
   revokeDevice(
     tenantId: string,
@@ -397,7 +478,17 @@ export interface CustomerAuthStore {
     reason: VerifiedEmailDeletionReason,
     requestRef?: string,
   ): Promise<boolean>;
+  /**
+   * Record a step-up on an active (unrevoked) device (PR-UDF-056; R1-D-244), ledgered as
+   * `identity.customer.device.step_up` in the same transaction; the time never moves back. False
+   * when the device is revoked or gone. Optional for stores written before 1.x of this method;
+   * without it the step-up is `unsupported`.
+   */
+  recordStepUp?(tenantId: string, deviceId: string, acr: CustomerAcr, at: number): Promise<boolean>;
 }
+
+/** The kernel action and ledger entry of a recorded step-up (`connectors/0017`). */
+export const CUSTOMER_STEP_UP_ACTION = "identity.customer.device.step_up";
 
 /** Why a verified email is deleted (R1-D-235): the account was closed, or the borrower asked. */
 export type VerifiedEmailDeletionReason = "account_closed" | "erasure_request";
@@ -453,6 +544,16 @@ export class MemoryCustomerAuthStore implements CustomerAuthStore {
     const found = this.emails.delete(`${tenantId}|${userId}`);
     this.events.push({ tenantId, userId, action: VERIFIED_EMAIL_DELETE_ACTION });
     return found;
+  }
+
+  async recordStepUp(tenantId: string, deviceId: string, acr: CustomerAcr, at: number) {
+    const d = this.devices.get(deviceId);
+    const ok = d !== undefined && d.tenantId === tenantId && d.revokedAt === undefined;
+    // The time never moves back (a late write of an older step-up changes nothing).
+    if (ok && (d.stepUpAt === undefined || at >= d.stepUpAt))
+      this.devices.set(deviceId, { ...d, stepUpAt: at, stepUpAcr: acr });
+    this.events.push({ tenantId, userId: d?.userId ?? "", action: CUSTOMER_STEP_UP_ACTION });
+    return ok;
   }
 
   private guard(tenantId: string, userId: string, now: number): GuardState {
@@ -613,6 +714,9 @@ interface DeviceRow {
   last_used_at: Date;
   revoked_at: Date | null;
   revoked_reason: DeviceRevocationReason | null;
+  /** `connectors/0017`; absent before that migration. */
+  step_up_at?: Date | null;
+  step_up_acr?: CustomerAcr | null;
 }
 
 const ms = (d: Date | null | undefined) => (d ? new Date(d).getTime() : undefined);
@@ -651,6 +755,9 @@ const toDevice = (r: DeviceRow): DeviceRecord => ({
   lastUsedAt: ms(r.last_used_at)!,
   ...(r.revoked_at ? { revokedAt: ms(r.revoked_at)! } : {}),
   ...(r.revoked_reason ? { revokedReason: r.revoked_reason } : {}),
+  ...(r.step_up_at && r.step_up_acr
+    ? { stepUpAt: ms(r.step_up_at)!, stepUpAcr: r.step_up_acr }
+    : {}),
 });
 
 type Q = { query<T = unknown>(sql: string, params?: unknown[]): Promise<{ rows: T[] }> };
@@ -889,10 +996,10 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
     });
   }
 
-  async activeDevice(tenantId: string, userId: string, jkt: string) {
+  async activeDevice(tenantId: string, userId: string, jkt: string, o: { fresh?: boolean } = {}) {
     const k = `${tenantId}|${userId}|${jkt}`;
     const c = this.cache.get(k);
-    if (c && this.now() - c.at < (this.o.deviceCacheMs ?? 15_000)) return { ...c.d };
+    if (!o.fresh && c && this.now() - c.at < (this.o.deviceCacheMs ?? 15_000)) return { ...c.d };
     const r = await this.o.kernel.read(this.o.context(tenantId), (tx) =>
       (tx as unknown as Q).query<DeviceRow>(
         `select * from connectors.customer_device
@@ -1050,6 +1157,39 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
       });
       return gone !== undefined;
     });
+  }
+
+  /**
+   * PR-UDF-056 (`connectors/0017`): the step-up on an unrevoked device, ledgered in the same
+   * transaction (the device id, the level, the time; no login, no code). The time never moves
+   * back. Ledgered even when the device is revoked or gone (`found: false`).
+   */
+  async recordStepUp(
+    tenantId: string,
+    deviceId: string,
+    acr: CustomerAcr,
+    at: number,
+  ): Promise<boolean> {
+    const d = await this.mutate(tenantId, CUSTOMER_STEP_UP_ACTION, async (tx) => {
+      const r = await tx.query<{ user_id: string; jkt: string; step_up_at: Date }>(
+        `update connectors.customer_device
+            set step_up_acr = case when step_up_at is null or step_up_at <= $2 then $3 else step_up_acr end,
+                step_up_at = greatest(coalesce(step_up_at, $2), $2)
+          where id = $1 and revoked_at is null
+          returning user_id, jkt, step_up_at`,
+        [deviceId, iso(at), acr],
+      );
+      const row = r.rows[0];
+      await this.o.audit.record(tx as never, {
+        action: CUSTOMER_STEP_UP_ACTION,
+        resourceType: "identity.customer_device",
+        resourceId: deviceId,
+        after: { acr, step_up_at: iso(at), found: row !== undefined },
+      });
+      return row;
+    });
+    if (d) this.cache.delete(`${tenantId}|${d.user_id}|${d.jkt}`);
+    return d !== undefined;
   }
 
   async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
@@ -1244,6 +1384,9 @@ const DPOP_SCHEME = /^DPoP\s+([A-Za-z0-9._~+/-]+=*)$/i;
 const LOGIN_CHANGE = "login_change";
 /** `idpRef.purpose` of an email-verification challenge (PR-UDF-055). */
 const EMAIL_VERIFY = "email_verify";
+/** `idpRef.purpose` of a step-up challenge (PR-UDF-056); `idpRef.device` names its device. */
+const STEP_UP = "step_up";
+const stepUpCodeHash = (salt: string, code: string) => sha256Hex(`ipb-step-up:${salt}:${code}`);
 const sixDigits = () => String(randomInt(1_000_000)).padStart(6, "0");
 const codeHash = (salt: string, code: string) => sha256Hex(`ipb-login-change:${salt}:${code}`);
 const loginHash = (tenantId: string, login: string) => sha256Hex(`ipb-login:${tenantId}:${login}`);
@@ -1506,6 +1649,7 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
     dpopProof: string;
     method: string;
     url: string;
+    fresh?: boolean;
   }): Promise<VerifiedCustomerClaims> {
     const m = DPOP_SCHEME.exec(req.authorization ?? "");
     if (!m) throw customerRefused("scheme", "a customer request carries Authorization: DPoP");
@@ -1520,9 +1664,26 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
       accessToken: token,
       ...(bound ? { jkt: bound } : {}),
     });
-    const device = await this.base.store.activeDevice(claims.tid, claims.sub, jkt);
+    const device = await this.base.store.activeDevice(
+      claims.tid,
+      claims.sub,
+      jkt,
+      req.fresh === true ? { fresh: true } : undefined,
+    );
     if (!device) throw customerRefused("device", "the device is signed out");
-    return { ...claims, jkt, deviceId: device.id };
+    return { ...claims, ...this.assurance(device), jkt, deviceId: device.id };
+  }
+
+  /**
+   * The session's assurance (PR-UDF-056; R1-D-244): the device's sign-in code (when the device
+   * was created) or its last step-up, whichever is later. Both are one-time codes (`otp`) today.
+   */
+  private assurance(d: DeviceRecord): { acr: CustomerAcr; auth_time: number } {
+    const stepped = d.stepUpAt !== undefined && d.stepUpAt >= d.createdAt;
+    return {
+      acr: stepped ? (d.stepUpAcr ?? "otp") : "otp",
+      auth_time: Math.floor((stepped ? d.stepUpAt! : d.createdAt) / 1000),
+    };
   }
 
   async listDevices(tenantId: string, userId: string): Promise<CustomerDevice[]> {
@@ -1877,6 +2038,143 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
   async verifiedEmail(tenantId: string, userId: string): Promise<VerifiedCustomerEmail | null> {
     const e = await this.emailCapture(false).verifiedEmail(tenantId, userId);
     return e ? { email: e.email, verifiedAt: new Date(e.verifiedAt).toISOString() } : null;
+  }
+
+  /** The store's step-up record, or `unsupported` for a store written before it. */
+  private stepUpStore(): NonNullable<CustomerAuthStore["recordStepUp"]> {
+    const st = this.base.store;
+    if (!st.recordStepUp)
+      throw new PortError("IPB-PORT-001", "IDENTITY", {
+        adapter: this.descriptor.adapter,
+        detail: "the customer store cannot record a step-up",
+        meta: { reason: "unsupported" },
+      });
+    return st.recordStepUp.bind(st);
+  }
+
+  /** The active device `deviceId` of the account whose key is `jkt`, read past any cache. */
+  private async stepUpDevice(
+    tenantId: string,
+    userId: string,
+    deviceId: string,
+    jkt: string,
+  ): Promise<DeviceRecord> {
+    const d = await this.base.store.activeDevice(tenantId, userId, jkt, { fresh: true });
+    if (!d || d.id !== deviceId)
+      throw customerRefused("device", "the proof is not by this signed-in device of the account");
+    return d;
+  }
+
+  /**
+   * Start a step-up on one signed-in device session (Udofin PR-UDF-056; R1-D-244). The proof must
+   * be by the key of the active device `deviceId` of the account, and `login` the account's own,
+   * so the code goes to the registered login only. The platform makes a six-digit code (CSPRNG)
+   * and keeps only its salted SHA-256 and the device's id on the challenge, bound to the key; the
+   * code goes out through the `CustomerOtpSender` (NOTIFY) and is never stored or logged. Guarded
+   * like a sign-in code (the account's send limit, window and resend interval).
+   */
+  async startStepUp(req: {
+    tenantId: string;
+    userId: string;
+    deviceId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge> {
+    this.stepUpStore();
+    let login: string;
+    try {
+      login = customerLogin(req.channel, req.login);
+    } catch {
+      throw customerRefused(
+        "login",
+        req.channel === "email" ? "an email address is needed" : "an E.164 mobile number is needed",
+      );
+    }
+    const jkt = await this.signInProof(req.dpopProof);
+    await this.stepUpDevice(req.tenantId, req.userId, req.deviceId, jkt);
+    if ((await this.idpFindUser(req.tenantId, req.channel, login)) !== req.userId)
+      throw customerRefused("login", "the login is not this account's");
+    const { resendAfter } = await this.base.store.reserveSend(
+      req.tenantId,
+      req.userId,
+      this.s,
+      this.now,
+    );
+    const salt = toBase64Url(randomBytes(16));
+    const code = sixDigits();
+    const id = toBase64Url(randomBytes(16));
+    const expiresAt = this.now + this.s.codeTtlSeconds * 1000;
+    await this.base.store.saveChallenge({
+      id,
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: req.channel,
+      jkt,
+      idpRef: {
+        purpose: STEP_UP,
+        salt,
+        code: stepUpCodeHash(salt, code),
+        device: req.deviceId,
+      },
+      attempts: 0,
+      expiresAt,
+    });
+    await this.base.sender.send({
+      tenantId: req.tenantId,
+      userId: req.userId,
+      channel: req.channel,
+      to: login,
+      code,
+      expiresAt: new Date(expiresAt),
+      ...(req.locale ? { locale: req.locale } : {}),
+      idempotencyKey: `otp:${id}:step_up`,
+    });
+    return {
+      challengeId: id,
+      expiresAt: new Date(expiresAt).toISOString(),
+      resendAfter: new Date(resendAfter).toISOString(),
+    };
+  }
+
+  /**
+   * Finish a step-up with the code, from the key and for the device that started it: the try
+   * counts against the code's tries and the account's back-off and lockout; on success the device
+   * session's `acr` and `auth_time` become the step-up's (ledgered by the store).
+   */
+  async confirmStepUp(req: {
+    tenantId: string;
+    userId: string;
+    deviceId: string;
+    challengeId: string;
+    code: string;
+    dpopProof: string;
+  }): Promise<CustomerStepUp> {
+    const record = this.stepUpStore();
+    const pending = await this.base.store.getChallenge(req.tenantId, req.challengeId);
+    if (
+      !pending ||
+      pending.idpRef.purpose !== STEP_UP ||
+      pending.userId !== req.userId ||
+      pending.idpRef.device !== req.deviceId ||
+      pending.consumedAt !== undefined ||
+      pending.expiresAt <= this.now
+    )
+      throw customerRefused("challenge", "the code has expired or was used; ask for a new one");
+    const jkt = await this.signInProof(req.dpopProof, pending.jkt);
+    // A device signed out since the code was sent cannot use it (and no try is counted).
+    await this.stepUpDevice(req.tenantId, req.userId, req.deviceId, jkt);
+    const c = await this.base.store.attempt(req.tenantId, req.challengeId, this.s, this.now);
+    const ref = c.idpRef;
+    const ok =
+      /^[0-9]{6}$/.test(req.code) && sameHash(ref.code, stepUpCodeHash(ref.salt ?? "", req.code));
+    await this.base.store.settle(req.tenantId, c.id, ok, this.s, this.now);
+    if (!ok) throw customerRefused("code", "the code is wrong");
+    const at = this.now;
+    if (!(await record(req.tenantId, req.deviceId, "otp", at)))
+      throw customerRefused("device", "the device was signed out");
+    return { deviceId: req.deviceId, acr: "otp", authTime: new Date(at).toISOString() };
   }
 
   private loginPair(req: { channel: CustomerOtpChannel; currentLogin: string; newLogin: string }): {
