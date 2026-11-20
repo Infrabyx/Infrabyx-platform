@@ -25,6 +25,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "audit ledger chain (C-01)",
       "digests",
       "migration checksums",
+      "partner mTLS client-certificate thumbprint x5t#S256 (RFC 8705 §3.1) and fingerprint (PR-UDF-064, R1-D-238)",
       "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs (C-28, R1-D-246); verify only",
     ],
   },
@@ -101,6 +102,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "on-premises agent request proofs: the C-22 profile with typ ipb-agent-request+jws, bound to tenant, agent, seq, method, path and body digest; agent-held P-256 keys (TallyPrime agent, R1-D-178)",
       "document transfer integrity (Ecosystem §3.6): the C-22 profile with typ ipb-document+jws over the JCS descriptor { document_id, version, sha256 } (PR-UDF-053, R1-D-219)",
       "document transfer integrity, descriptor v2: the same C-22 profile with typ ipb-document-v2+jws over the JCS descriptor { application_id?, document_id, media_type, sha256, size_bytes, type, version } (PR-UDF-061, R1-D-236)",
+      "partner mTLS pinned-CA check: X.509 issuer signatures on P-256 only, verify only; any other issuer algorithm refused (PR-UDF-064, R1-D-238; owner question #170)",
     ],
   },
   {

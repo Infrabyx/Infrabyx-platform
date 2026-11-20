@@ -5,6 +5,8 @@
 // flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
 // Both take the consent as a `cpr_` receipt or as a product's own artefact (`{ kind, id }`;
 // PR-UDF-049, PR-UDF-050), and the AA cases check the FIU and the approval link (PR-UDF-050).
+// Each fetched FI payload names an IPB-01-27 key; with `storageOf` the case reads it back from
+// STORAGE: REGULATED, and bytes matching its SHA-256 (PR-UDF-065).
 import { expect } from "vitest";
 import { findAadhaarLike, verhoeffValid } from "@infrabyx/contracts/aadhaar";
 import {
@@ -13,11 +15,13 @@ import {
   AaConsentRequest,
   AaFetchRequest,
   BureauPullRequest,
+  isValidStorageKey,
   payloadClass,
   type AaConsent,
   type AccountAggregatorPort,
   type CreditBureauPort,
 } from "@infrabyx/contracts/ports";
+import { sha256Hex } from "@infrabyx/crypto";
 import type { ContractCase } from "../contract.js";
 import { type CreditBureauFixtures, type AccountAggregatorFixtures } from "@infrabyx/fakes";
 export {
@@ -27,6 +31,7 @@ export {
   type AccountAggregatorFixtures,
   ACCOUNT_AGGREGATOR_FAKE_FIXTURES,
   FakeAccountAggregator,
+  fakeFiPayload,
 } from "@infrabyx/fakes";
 
 // Word-bounded, so a PAN-shaped run inside a random ULID (e.g. a consent id) never matches.
@@ -377,7 +382,17 @@ export function accountAggregatorContractCases(
           expect(x.schemaVersion).toMatch(/^\d+\.\d+(\.\d+)?$/);
           expect(x.sha256).toMatch(/^[0-9a-f]{64}$/);
           expect(x.storageKey.startsWith(fx.dataPrefix)).toBe(true);
+          expect(isValidStorageKey(x.storageKey), x.storageKey).toBe(true);
           expect(x.maskedAccount).not.toMatch(/^[0-9]{9,}$/);
+        }
+        expect(new Set(r.payloads.map((x) => x.storageKey)).size).toBe(r.payloads.length);
+        if (fx.storageOf) {
+          const storage = fx.storageOf(p);
+          for (const x of r.payloads) {
+            const obj = await storage.get(x.storageKey);
+            expect(obj.meta.bucketClass).toBe("REGULATED");
+            expect(sha256Hex(obj.body)).toBe(x.sha256);
+          }
         }
         await expect(
           fetch({

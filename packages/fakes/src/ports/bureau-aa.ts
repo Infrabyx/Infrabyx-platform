@@ -2,7 +2,10 @@
 // The first vendor adapters, `cibil` and `setu-aa` (R1-D-61), run these cases against their stubs
 // until the owner's sandboxes exist; then each runs `creditBureauContractCases(itsSandboxFixtures)`
 // or `accountAggregatorContractCases(…)`. The fakes let products build their loan-origination
-// flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result.
+// flows now: deterministic fixtures, files as STORAGE references, no raw PAN in any result. The
+// fake AA writes each FI payload's bytes to STORAGE as the `setu-aa` adapter does (Udofin
+// PR-UDF-065, R1-D-243): REGULATED class, an IPB-01-27 key under the fetch's `dataPrefix`, and the
+// SHA-256 of exactly the stored bytes, so a STATEMENT_ANALYSIS adapter can read them by reference.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   AA_APPROVAL_URL_REFUSED,
@@ -21,11 +24,15 @@ import {
   type AdapterDescriptor,
   type BureauReport,
   type CreditBureauPort,
+  type FiPayload,
   type FiType,
   type PortHealth,
+  type StoragePort,
   type Tradeline,
+  isValidStorageKey,
 } from "@infrabyx/contracts/ports";
-import { newId, sha256Hex } from "@infrabyx/crypto";
+import { newId, sha256Hex, ulid } from "@infrabyx/crypto";
+import { MemoryStorage } from "../core.js";
 
 // ------------------------------------------------------------------------------- credit bureau
 
@@ -217,6 +224,12 @@ export interface AccountAggregatorFixtures {
    */
   fiuId?: string;
   /**
+   * The STORAGE adapter `p` writes its FI payloads to (PR-UDF-065). With it, the fetch case reads
+   * each payload back: REGULATED, an IPB-01-27 key under `dataPrefix`, bytes matching its SHA-256.
+   * Without it, the case checks the references only, as before.
+   */
+  storageOf?: (p: AccountAggregatorPort) => StoragePort;
+  /**
    * Plays the AA reporting the consent for another FIU on its next read-backs (a sandbox cannot,
    * so only stubs and the fake give it; the read-back case is skipped without it).
    */
@@ -230,9 +243,63 @@ export const ACCOUNT_AGGREGATOR_FAKE_FIXTURES: AccountAggregatorFixtures = {
   approve: async (p, id) => (p as FakeAccountAggregator).approve(id),
   fiuId: "fake-fiu",
   reportFiu: async (p, id, fiu) => (p as FakeAccountAggregator).reportFiu(id, fiu),
+  storageOf: (p) => (p as FakeAccountAggregator).storage,
 };
 
 const FI_SCHEMA_VERSION = "1.1.3";
+
+/** The ReBIT `account.type` of each FI type, as the Setu stub writes it. */
+const REBIT_TYPE: Record<FiType, string> = {
+  DEPOSIT: "deposit",
+  TERM_DEPOSIT: "term-deposit",
+  RECURRING_DEPOSIT: "recurring_deposit",
+  GST_GSTR1_3B: "gstr1_3b",
+  MUTUAL_FUNDS: "mutualfunds",
+  EQUITIES: "equities",
+  INSURANCE_POLICIES: "insurance_policies",
+};
+
+/**
+ * The bytes the fake AA stores for one FI payload: a synthetic ReBIT-shaped JSON object (the
+ * `account` the AA decrypts, as `setu-aa` stores it), deterministic by its inputs. Test data only:
+ * a masked account, round figures, and no identity number or 12-digit run.
+ */
+export function fakeFiPayload(p: {
+  fiType: FiType;
+  maskedAccount: string;
+  sessionId: string;
+  range: { from: string; to: string };
+  schemaVersion?: string;
+}): Uint8Array {
+  const day = (iso: string) => iso.slice(0, 10);
+  return new TextEncoder().encode(
+    JSON.stringify({
+      account: {
+        type: REBIT_TYPE[p.fiType],
+        version: p.schemaVersion ?? FI_SCHEMA_VERSION,
+        maskedAccNumber: p.maskedAccount,
+        linkedAccRef: `fake-link-${p.sessionId}-${p.fiType.toLowerCase()}`,
+        summary: { currentBalance: "25000.00", currency: "INR" },
+        transactions: {
+          startDate: day(p.range.from),
+          endDate: day(p.range.to),
+          transaction: [
+            {
+              txnId: `fake-txn-${p.sessionId}-1`,
+              type: "CREDIT",
+              mode: "UPI",
+              amount: "1500.00",
+              currentBalance: "25000.00",
+              valueDate: day(p.range.to),
+              narration: "SYNTHETIC CREDIT",
+            },
+          ],
+        },
+      },
+      synthetic: true,
+    }),
+  );
+}
 
 /** A consent as the fake AA keeps it: the port's view plus what only the AA knows. */
 interface FakeConsent extends Omit<AaConsent, "fiuId" | "approvalUrl"> {
@@ -251,7 +318,11 @@ const letters = (hex: string): string => hex.replace(/[0-9]/g, (d) => "ghijklmno
  * In-memory FIU-side AA. `approve` plays the customer; consents expire on the injected clock. It
  * reports its own FIU (`fiuId`, default `fake-fiu`) on every consent, as an AA reports the FIU
  * behind the credentials, so a request naming another FIU is refused `fiu_mismatch` with nothing
- * kept; `reportFiu` makes the AA report another FIU on later read-backs.
+ * kept; `reportFiu` makes the AA report another FIU on later read-backs. A fetch writes each FI
+ * payload (`fakeFiPayload`) to `storage` (PR-UDF-065): the REGULATED class, the key
+ * `<dataPrefix><ULID>.json` (IPB-01-27), and the SHA-256 of the stored bytes in the result. Without
+ * a `storage` the fake keeps its own `MemoryStorage`, so `new FakeAccountAggregator()` works as
+ * before; pass the STORAGE a STATEMENT_ANALYSIS adapter reads to join the two.
  */
 export class FakeAccountAggregator implements AccountAggregatorPort {
   readonly descriptor: AdapterDescriptor = {
@@ -264,11 +335,16 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
   private readonly now: () => Date;
   private readonly fiuId: string;
   private readonly approvalHost: string;
+  /** Where each fetch writes its FI payloads (PR-UDF-065); its own `MemoryStorage` by default. */
+  readonly storage: StoragePort;
   private n = 0;
-  constructor(o: { now?: () => Date; fiuId?: string; approvalHost?: string } = {}) {
+  constructor(
+    o: { now?: () => Date; fiuId?: string; approvalHost?: string; storage?: StoragePort } = {},
+  ) {
     this.now = o.now ?? (() => new Date());
     this.fiuId = o.fiuId ?? "fake-fiu";
     this.approvalHost = o.approvalHost ?? "approve.fake-aa.example";
+    this.storage = o.storage ?? new MemoryStorage(() => this.now());
   }
 
   async health(): Promise<PortHealth> {
@@ -393,18 +469,34 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
     if (asked.some((f) => !allowed.includes(f)))
       throw fail("AA_FIU", "fake-aa", "fi_type", "an FI type outside the consent");
     const sessionId = `aas_${++this.n}`;
+    const payloads: FiPayload[] = [];
+    for (const [i, fiType] of asked.entries()) {
+      const maskedAccount = `XXXXXX${String(1000 + i)}`;
+      const body = fakeFiPayload({ fiType, maskedAccount, sessionId, range: r.range });
+      const sha256 = sha256Hex(body);
+      // `dataPrefix` is `tenant/<tenant>/<module>/` (the schema), so the key is IPB-01-27's.
+      const storageKey = `${r.dataPrefix}${ulid()}.json`;
+      if (!isValidStorageKey(storageKey))
+        throw fail("AA_FIU", "fake-aa", "storage_key", "not an IPB-01-27 storage key");
+      await this.storage.put(storageKey, body, {
+        bucketClass: "REGULATED",
+        contentType: "application/json",
+        sha256,
+      });
+      payloads.push({
+        fiType,
+        maskedAccount,
+        storageKey,
+        sha256,
+        schemaVersion: FI_SCHEMA_VERSION,
+      });
+    }
     return {
       ...this.ev(),
       sessionId,
       consentId: c.consentId,
       state: "COMPLETED",
-      payloads: asked.map((fiType, i) => ({
-        fiType,
-        maskedAccount: `XXXXXX${String(1000 + i)}`,
-        storageKey: `${r.dataPrefix}${sessionId}-${fiType.toLowerCase()}.json`,
-        sha256: sha256Hex(`${sessionId}:${fiType}`),
-        schemaVersion: FI_SCHEMA_VERSION,
-      })),
+      payloads,
     };
   }
 

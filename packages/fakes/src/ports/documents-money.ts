@@ -18,6 +18,7 @@ import {
   PayoutSpec,
   RenderRequest,
   assertMoneyCall,
+  assertStampRecord,
   type AccountValidationResult,
   type AdapterDescriptor,
   type DdeRecord,
@@ -86,10 +87,18 @@ export class FakeEstamp implements EstampPort {
     adapter: "fake-estamp",
     residency: "IN",
     maxDataClass: "REGULATED",
-    capabilities: { ddeRegister: "native", ddeStatus: "native", ddeDownloadExecuted: "native" },
+    capabilities: {
+      ddeRegister: "native",
+      ddeStatus: "native",
+      ddeDownloadExecuted: "native",
+      recordCertificate: "native",
+    },
   };
   health = up;
   private readonly certs = new Map<string, EstampCertificate>();
+  private readonly recordReplays = new Replays<EstampCertificate>();
+  /** Recorded certificate numbers, by State, channel and number (a stamp is used once). */
+  private readonly recorded = new Map<string, string>();
   private readonly attached = new Map<string, string>();
   private readonly dde = new Map<string, DdeRecord & { prefix: string; doc: string }>();
   private readonly replays = new Replays<EstampCertificate>();
@@ -138,6 +147,51 @@ export class FakeEstamp implements EstampPort {
         adapter: "fake-estamp",
         issuedAt: this.now().toISOString(),
       };
+      this.certs.set(id, c);
+      return c;
+    });
+  }
+
+  /**
+   * Records a stamp bought outside the platform (R1-D-245): the shared check first, once per key, a
+   * certificate number once per State and channel. The fake reads no STORAGE and asks no issuer.
+   */
+  async recordCertificate(req: unknown, idempotencyKey: string): Promise<EstampCertificate> {
+    const r = assertStampRecord("ESTAMP", req, idempotencyKey, "fake-estamp");
+    const slot = `${r.state}|${r.channel}|${r.certificateNumber}`;
+    return this.recordReplays.run("ESTAMP", idempotencyKey, r, () => {
+      if (this.recorded.has(slot))
+        throw new PortError("IPB-PORT-004", "ESTAMP", {
+          adapter: "fake-estamp",
+          detail: "this certificate is already recorded (a stamp is used for one instrument)",
+          meta: { reason: "certificate_reused" },
+        });
+      const id = `est_${++this.n}`;
+      const c: EstampCertificate = {
+        certificateId: id,
+        certificateNumber: r.certificateNumber,
+        state: "issued",
+        stateCode: r.state,
+        instrument: r.instrument,
+        dutyMinor: r.dutyMinor,
+        purchaserRef: r.purchaser.partyRef,
+        file: null,
+        vendorRef: `fake-${id}`,
+        adapter: "fake-estamp",
+        issuedAt: new Date(r.issuedAt).toISOString(),
+        channel: r.channel,
+        ...(r.statedDutyMinor !== undefined ? { statedDutyMinor: r.statedDutyMinor } : {}),
+        stampedDocumentSha256: r.stampedDocument.sha256,
+        ...(r.certificateDocumentId !== undefined
+          ? { certificateDocumentId: r.certificateDocumentId }
+          : {}),
+        ...(r.vendorLicence !== undefined ? { vendorLicence: r.vendorLicence } : {}),
+        ...(r.vendorCertificateId !== undefined
+          ? { vendorCertificateId: r.vendorCertificateId }
+          : {}),
+        verification: "MANUAL_RECORD",
+      };
+      this.recorded.set(slot, id);
       this.certs.set(id, c);
       return c;
     });

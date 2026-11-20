@@ -209,3 +209,28 @@ export {
 } from "./pades.js";
 export { CCA_INDIA_ROOTS, CCA_INDIA_INTERMEDIATES } from "./cca-india-trust.js";
 export { REVOCATION_LIMITS } from "./pades-revocation.js";
+export {
+  readClientCertificate,
+  PinnedCaSet,
+  CLIENT_CERT_REFUSALS,
+  CLIENT_CERT_MAX_HEADER_BYTES,
+  CLIENT_CERT_MAX_INTERMEDIATES,
+  CLIENT_CERT_ISSUER_SIGNATURE_OID,
+  type ClientCertificate,
+  type ClientCertificateSource,
+  type ClientCertRefusal,
+  type ClientCertResult,
+  type EdgeHeaderFormat,
+  type ReadClientCertificateOptions,
+} from "./client-cert.js";
+export {
+  StandardWebhookReceiver,
+  STANDARD_WEBHOOK_REFUSALS,
+  STANDARD_WEBHOOK_MAX_BODY_BYTES,
+  STANDARD_WEBHOOK_BODY_LIMIT_BYTES,
+  type StandardWebhookReceiverOptions,
+  type StandardWebhookDelivery,
+  type StandardWebhookRefusal,
+  type StandardWebhookResult,
+  type WebhookHeaderBag,
+} from "./webhook-receiver.js";

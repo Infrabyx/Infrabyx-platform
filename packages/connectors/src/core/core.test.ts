@@ -445,6 +445,48 @@ describe("@IPB-01-18 router: failover (chaos)", () => {
     await expect(st.put("k", new Uint8Array(), {})).rejects.toMatchObject({ code: "IPB-STOR-002" });
     expect(replica.calls).toEqual(["get"]);
   });
+
+  it("keyRefStatus is a read that never fails over: the DR store's keys are not the write's (PR-UDF-068)", async () => {
+    const primary = new Fake({
+      port: "STORAGE",
+      adapter: "s3",
+      residency: "IN",
+      maxDataClass: "SECRET",
+    });
+    const replica = new Fake({
+      port: "STORAGE",
+      adapter: "minio",
+      residency: "IN",
+      maxDataClass: "SECRET",
+    });
+    primary.failNext = 5;
+    const { router } = await build(
+      {
+        version: 1,
+        ports: {
+          STORAGE: {
+            primary: { adapter: "s3", residency: "IN", max_data_class: "SECRET" },
+            secondary: {
+              adapter: "minio",
+              residency: "IN",
+              max_data_class: "SECRET",
+              mode: "read_only_failover",
+            },
+          },
+        },
+      },
+      { s3: primary, minio: replica },
+    );
+    const st = router.port<Port & { keyRefStatus(...a: unknown[]): Promise<{ by: string }> }>(
+      "STORAGE",
+    );
+    for (let i = 0; i < 5; i++)
+      await expect(st.keyRefStatus("tnt_a", "lender:a")).rejects.toBeDefined();
+    await expect(st.keyRefStatus("tnt_a", "lender:a")).rejects.toMatchObject({
+      code: "IPB-PORT-002",
+    });
+    expect(replica.calls).toEqual([]);
+  });
 });
 
 describe("idempotency: pending first, vendor lookup, no blind money retries (plan §3.5, P-05, P-07)", () => {

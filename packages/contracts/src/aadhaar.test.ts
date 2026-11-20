@@ -4,11 +4,17 @@
 import { describe, expect, it } from "vitest";
 import * as index from "./index.js";
 import {
+  AADHAAR_FIELD_NAMES,
   AADHAAR_LIKE_KINDS,
+  AADHAAR_LOOK_ALIKES,
   findAadhaarLike,
+  findAadhaarNamedFields,
+  holdsAadhaarFieldValue,
   holdsAadhaarLike,
+  isAadhaarFieldName,
   verhoeffValid,
   type AadhaarLikeFind,
+  type AadhaarLookAlike,
 } from "./aadhaar.js";
 import { verhoeffValid as fromSearchRefusal } from "./search-refusal.js";
 
@@ -158,5 +164,125 @@ describe("PR-UDF-042 findAadhaarLike: the shared no-Aadhaar rule", () => {
     expect(finds.length).toBeGreaterThanOrEqual(600);
     // No string anywhere in the result carries five digits in a row.
     expect(JSON.stringify(finds.map((f) => f.masked))).not.toMatch(/\d{5}/);
+  });
+});
+
+describe("PR-UDF-063 findAadhaarLike: look-alikes stay finds unless the product allows them", () => {
+  // Twelve Verhoeff digits starting 91: an Indian E.164 number when written `+91` and ten digits.
+  const PHONE = withCheck("91987654321");
+
+  it("by default (strict) a +91 phone number and a decimal are finds", () => {
+    expect(AADHAAR_LOOK_ALIKES).toEqual(["e164_in", "decimal"]);
+    expect(one(`call +${PHONE}`).kind).toBe("AADHAAR");
+    expect(one(`0.${UID}`).kind).toBe("AADHAAR");
+    expect(one(`${UID}.50`).kind).toBe("AADHAAR");
+    expect(one(`${VID}.5`).kind).toBe("VID");
+    expect(one(`+${PHONE}`, { allow: [] }).kind).toBe("AADHAAR");
+  });
+
+  it("e164_in lets through +91 and ten digits, and nothing else", () => {
+    const allow = ["e164_in"] as const;
+    expect(findAadhaarLike(`call +${PHONE} now`, { allow })).toEqual([]);
+    expect(findAadhaarLike(`tel:+${PHONE}`, { allow })).toEqual([]);
+    expect(findAadhaarLike(`+${PHONE}`, { allow, letters: "join" })).toEqual([]);
+    // Without the +, or a number not starting 91, or grouped, or glued to a token: still a find.
+    expect(one(`call ${PHONE}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`+${UID}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`+${grouped(PHONE, " ")}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`5+${PHONE}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`a+${PHONE}`, { allow }).kind).toBe("AADHAAR");
+    // e164_in does not let a decimal through.
+    expect(one(`0.${UID}`, { allow }).kind).toBe("AADHAAR");
+  });
+
+  it("decimal lets through digits joined to a . with a digit beyond it, and nothing else", () => {
+    const allow = ["decimal"] as const;
+    for (const t of [`0.${UID}`, `${UID}.5`, `x=${UID}.00;`, `${VID}.25`, `7.${VID}`])
+      expect(findAadhaarLike(t, { allow })).toEqual([]);
+    // A full stop ending a sentence, a dot with no digit beyond it, a grouped form: still finds.
+    expect(one(`uid ${UID}.`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`uid ${UID}. Next`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`.${UID}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`a.${UID}`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`${grouped(UID, " ")}.5`, { allow }).kind).toBe("AADHAAR");
+    expect(one(`+${PHONE}`, { allow }).kind).toBe("AADHAAR");
+    // Both at once.
+    expect(
+      findAadhaarLike(`+${PHONE} 0.${UID} and ${UID}`, { allow: ["e164_in", "decimal"] }),
+    ).toHaveLength(1);
+    expect(holdsAadhaarLike(`+${PHONE}`, { allow: ["e164_in"] })).toBe(false);
+  });
+
+  it("an unknown look-alike name throws (fail closed)", () => {
+    const bad = ["e164"] as unknown as readonly AadhaarLookAlike[];
+    expect(() => findAadhaarLike(UID, { allow: bad })).toThrow(TypeError);
+  });
+});
+
+describe("PR-UDF-063 fields named like an Aadhaar carrier", () => {
+  it("isAadhaarFieldName: the listed names, any case and separators, and nothing else", () => {
+    for (const n of [
+      "aadhaar",
+      "aadhaar_number",
+      "AADHAAR_NUMBER",
+      "aadhaarNumber",
+      "AadhaarNo",
+      "aadhaar-no",
+      "aadhar_number",
+      "aadhaar_vid",
+      "aadhaarVirtualId",
+      "aadhaar_token",
+      "aadhaar_card_number",
+      "uid",
+      "UID",
+      "uid_token",
+      "uidToken",
+      "uid_number",
+    ])
+      expect(isAadhaarFieldName(n), n).toBe(true);
+    for (const n of [
+      "aadhaar_last_digits",
+      "aadhaarLast4",
+      "uid_kind",
+      "uidKind",
+      "user_uid",
+      "uuid",
+      "guid",
+      "fiu_id",
+      "vid",
+      "aadhaar_otp",
+      "aadhaar_seeded",
+    ])
+      expect(isAadhaarFieldName(n), n).toBe(false);
+    expect(AADHAAR_FIELD_NAMES).toContain("uid_token");
+    expect(AADHAAR_FIELD_NAMES).toContain("aadhaar_number");
+    expect(index.isAadhaarFieldName).toBe(isAadhaarFieldName);
+  });
+
+  it("holdsAadhaarFieldValue: strings, numbers and non-empty containers hold a value", () => {
+    for (const v of ["x", " 1 ", 0, 12, ["", "a"], { a: 1 }, [[0]]])
+      expect(holdsAadhaarFieldValue(v), JSON.stringify(v)).toBe(true);
+    for (const v of [null, undefined, "", "  ", true, false, [], {}, [null, ""], [""], { a: null }])
+      expect(holdsAadhaarFieldValue(v), JSON.stringify(v)).toBe(false);
+  });
+
+  it("findAadhaarNamedFields: every named field holding a value, by path, never the value", () => {
+    const doc = {
+      id: "x",
+      uid: "not-a-number",
+      kyc: [{ aadhaarNumber: broken(UID) }, { aadhaar_number: "" }, { uid_kind: "AADHAAR" }],
+      nested: { uidToken: { a: 1 }, aadhaar: null, flag: { uid: true } },
+      aadhaar_last_digits: "1234",
+    };
+    const f = findAadhaarNamedFields(doc);
+    expect(f).toEqual([
+      { path: ["uid"] },
+      { path: ["kyc", 0, "aadhaarNumber"] },
+      { path: ["nested", "uidToken"] },
+    ]);
+    expect(JSON.stringify(f)).not.toContain(UID.slice(0, 8));
+    expect(findAadhaarNamedFields([{ uid: 1 }])).toEqual([{ path: [0, "uid"] }]);
+    expect(findAadhaarNamedFields("uid")).toEqual([]);
+    expect(findAadhaarNamedFields(null)).toEqual([]);
   });
 });

@@ -3,7 +3,7 @@
 // cases on separate bucket sets (@IPB-01-AT-10 parity, S3-API level). moto does not enforce
 // presigned-URL expiry, method or content type, so those cases check what the adapter signs;
 // enforcement is proven by the MinIO-server and AWS sandbox legs (OWNER-QUESTIONS #4, D-01).
-import { CreateKeyCommand, KMSClient } from "@aws-sdk/client-kms";
+import { CreateKeyCommand, DisableKeyCommand, KMSClient } from "@aws-sdk/client-kms";
 import {
   CreateBucketCommand,
   PutBucketEncryptionCommand,
@@ -14,7 +14,7 @@ import {
   HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { BucketClass, StoragePort } from "@infrabyx/contracts/ports";
+import { promotedObjectMeta, type BucketClass, type StoragePort } from "@infrabyx/contracts/ports";
 import { ulid } from "@infrabyx/crypto";
 import {
   MemoryStorage,
@@ -27,14 +27,15 @@ import { MinioStorage, S3Storage } from "../s3.js";
 
 const REGION = "ap-south-1";
 const CREDS = { accessKeyId: "test", secretAccessKey: "test" };
-// CONFIDENTIAL: the no-cache download case (PR-UDF-060) reads from it.
-const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL"];
+// CONFIDENTIAL: the no-cache download case (PR-UDF-060) reads from it; QUARANTINE: the named-key
+// upload and promotion case (PR-UDF-066).
+const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "QUARANTINE"];
 let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
 const compartmentKeys: string[] = [];
-// PR-UDF-058: lenders' keys, the named keys of the built-in contract case's tenant; the third is
-// configured with S3 Bucket Keys off (R1-D-229).
+// PR-UDF-058: lenders' keys, the named keys of the built-in contract cases' tenant; the third is
+// configured with S3 Bucket Keys off (R1-D-229); the fourth is disabled (PR-UDF-068, R1-D-239).
 const lenderKeys: string[] = [];
 // Every bucket name carries this run's suffix, so a run never meets a bucket an earlier or a
 // concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
@@ -81,20 +82,25 @@ beforeAll(async () => {
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage ${d}` }))).KeyMetadata!
         .KeyId!,
     );
-  for (const d of ["a", "b", "c"])
+  for (const d of ["a", "b", "c", "off"])
     lenderKeys.push(
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage lender ${d}` })))
         .KeyMetadata!.KeyId!,
     );
+  // PR-UDF-068: the fourth lender's key is disabled, so keyRefStatus with describeKey refuses it.
+  await kms.send(new DisableKeyCommand({ KeyId: lenderKeys[3]! }));
 });
-/** The named keys of tenant `tenantId` in REGULATED, as a product's vault would configure them. */
+/** The named keys of tenant `tenantId` in REGULATED and (PR-UDF-066) QUARANTINE, as a vault would. */
 const lenderNamedKeys =
   (tenantId: string) => (t: string, w: { bucketClass: BucketClass; compartment?: string }) =>
-    t === tenantId && w.bucketClass === "REGULATED" && !w.compartment
+    t === tenantId &&
+    (w.bucketClass === "REGULATED" || w.bucketClass === "QUARANTINE") &&
+    !w.compartment
       ? {
           "lender:contract": lenderKeys[0]!,
           "lender:contract-b": lenderKeys[1]!,
           "lender:contract-nobk": { keyId: lenderKeys[2]!, bucketKey: false },
+          "lender:contract-off": lenderKeys[3]!,
         }
       : undefined;
 afterAll(async () => moto?.stop());
@@ -403,6 +409,60 @@ describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
     expect((await head(nobk)).BucketKeyEnabled).toBe(false);
     expect((await head(a)).BucketKeyEnabled).toBe(true);
     expect(dec((await p.get(nobk)).body)).toBe("no bucket key");
+  });
+
+  it("PR-UDF-066: a lender's upload is under its key in QUARANTINE and stays under it when promoted", async () => {
+    const p = new S3Storage({
+      region: REGION,
+      buckets: buckets("s3"),
+      kmsKeyIds: Object.fromEntries(CLASSES.map((c) => [c, kmsKey])),
+      tenantNamedKmsKeyIds: lenderNamedKeys("tnt_vault"),
+      tenantKeyRefPrefixes: (t) =>
+        t === "tnt_vault" ? { "tenant/tnt_vault/lender_b/": "lender:contract-b" } : undefined,
+      endpoint,
+      credentials: CREDS,
+      forcePathStyle: true,
+    });
+    const s3 = raw();
+    const head = (cls: BucketClass, k: string) =>
+      s3.send(new HeadObjectCommand({ Bucket: buckets("s3")[cls], Key: k }));
+    // Named on the upload: the quarantined bytes are under the lender's key, not the class key.
+    const up = key("tnt_vault");
+    await p.put(up, enc("upload a"), {
+      bucketClass: "QUARANTINE",
+      contentType: "application/pdf",
+      keyRef: "lender:contract",
+    });
+    expect((await head("QUARANTINE", up)).SSEKMSKeyId).toContain(lenderKeys[0]);
+    const q = await p.get(up);
+    const clean = key("tnt_vault");
+    await p.put(clean, q.body, promotedObjectMeta(q.meta, { bucketClass: "REGULATED" }));
+    expect((await head("REGULATED", clean)).SSEKMSKeyId).toContain(lenderKeys[0]);
+    expect((await p.get(clean)).meta.keyRef).toBe("lender:contract");
+    // From the prefix map: both writes name nothing and both take the lender's reference.
+    const upB = `tenant/tnt_vault/lender_b/${ulid()}.pdf`;
+    const cleanB = `tenant/tnt_vault/lender_b/${ulid()}.pdf`;
+    await p.put(upB, enc("upload b"), { bucketClass: "QUARANTINE" });
+    expect((await head("QUARANTINE", upB)).SSEKMSKeyId).toContain(lenderKeys[1]);
+    await p.put(cleanB, (await p.get(upB)).body, { bucketClass: "REGULATED" });
+    expect((await head("REGULATED", cleanB)).SSEKMSKeyId).toContain(lenderKeys[1]);
+    // Promoting into a class where the reference has no key is refused, never the class key.
+    const nowhere = key("tnt_vault");
+    await expect(
+      p.put(nowhere, q.body, promotedObjectMeta(q.meta, { bucketClass: "CONFIDENTIAL" })),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "key_ref_unknown" } });
+    await expect(head("CONFIDENTIAL", nowhere)).rejects.toBeDefined();
+    // A presigned upload into QUARANTINE signs the lender's key header.
+    const url = new URL(
+      await p.presign(key("tnt_vault"), "put", 60, {
+        bucketClass: "QUARANTINE",
+        contentType: "application/pdf",
+        keyRef: "lender:contract",
+      }),
+    );
+    expect(url.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toContain(
+      "x-amz-server-side-encryption-aws-kms-key-id",
+    );
   });
 
   it("refuses regions outside India and buckets without a KMS key (C-17)", () => {

@@ -2,15 +2,21 @@
 // (10 codes per 10 minutes, back-off after 5 wrong codes, a 15-minute lockout after 10), settings
 // bounds, the challenge and device rules, and the Redis replay store's contract.
 import { describe, expect, it } from "vitest";
-import type {
-  AdapterDescriptor,
-  DpopTarget,
-  PortHealth,
-  VerifiedClaims,
+import { IpbError } from "@infrabyx/contracts/errors";
+import {
+  CUSTOMER_STEP_UP_DEFAULT,
+  customerStepUpPolicies,
+  type AdapterDescriptor,
+  type DpopTarget,
+  type PortHealth,
+  type VerifiedClaims,
 } from "@infrabyx/contracts";
 import { MemoryReplayStore } from "@infrabyx/crypto";
-import { MemoryRevocationStore, type TokenVerifier } from "../common.js";
+import { MemoryRevocationStore, stepUpChallenge, type TokenVerifier } from "../common.js";
 import {
+  assertCustomerStepUp,
+  CUSTOMER_STEP_UP_ACTION,
+  customerStepUpChallenge,
   admitAttempt,
   admitSend,
   afterFailure,
@@ -129,7 +135,10 @@ class FakeCustomerIdp extends CustomerIdentityBase {
   private n = 0;
   protected readonly verifier = {
     verifyWithRaw: async (jwt: string) => {
-      const raw = JSON.parse(jwt) as Record<string, unknown>;
+      const raw = JSON.parse(Buffer.from(jwt, "base64url").toString("utf8")) as Record<
+        string,
+        unknown
+      >;
       return { claims: raw as unknown as VerifiedClaims, raw };
     },
   } as unknown as TokenVerifier;
@@ -172,14 +181,10 @@ class FakeCustomerIdp extends CustomerIdentityBase {
   private tokens(userId: string, tid: string): IdpTokens {
     const now = Math.floor(Date.now() / 1000);
     return {
-      accessToken: JSON.stringify({
-        sub: userId,
-        tid,
-        typ: "user",
-        roles: [],
-        exp: now + 300,
-        iat: now,
-      }),
+      // A fake token in the token68 alphabet, so a request can carry it (`Authorization: DPoP`).
+      accessToken: Buffer.from(
+        JSON.stringify({ sub: userId, tid, typ: "user", roles: [], exp: now + 300, iat: now }),
+      ).toString("base64url"),
       refreshToken: `rt-${++this.n}`,
       expiresIn: 300,
       session: `sess-${this.n}`,
@@ -865,5 +870,346 @@ describe("PR-UDF-055 the verified email of a customer on a fake IdP (@IPB-02-01,
       "identity.customer.verified_email.delete",
       "identity.customer.login.retire",
     ]);
+  });
+});
+
+describe("PR-UDF-056 the customer step-up on a fake IdP (@IPB-02-01, auth.otp; R1-D-244)", () => {
+  const API = "https://api.example.test/v1/documents/doc_1/original";
+  const login = "+919800000001";
+  const userId = `u-tnt_a-${login}`;
+  type Dev = ReturnType<typeof testDevice>;
+  const make = (store: CustomerAuthStore = new MemoryCustomerAuthStore()) => {
+    const now = { t: Date.parse("2026-11-20T09:00:00Z") };
+    const mail = capturingSender();
+    const p = new FakeCustomerIdp({
+      store,
+      replay: new MemoryReplayStore(),
+      revocations: new MemoryRevocationStore(),
+      sender: mail.sender,
+      now: () => now.t,
+    });
+    const iat = () => Math.floor(now.t / 1000);
+    const pf = (dev: Dev) =>
+      dev.proof(p.signInProofTarget.htm, p.signInProofTarget.htu, { iat: iat() });
+    const signIn = async (dev = testDevice()) => {
+      const ch = await p.startChallenge({
+        tenantId: "tnt_a",
+        channel: "sms",
+        login,
+        dpopProof: pf(dev),
+      });
+      const session = await p.verifyChallenge({
+        tenantId: "tnt_a",
+        challengeId: ch.challengeId,
+        code: mail.inbox.get(login)!,
+        dpopProof: pf(dev),
+      });
+      return { dev, session, at: now.t };
+    };
+    const call = (dev: Dev, token: string, fresh?: boolean) =>
+      p.verifyRequest({
+        authorization: `DPoP ${token}`,
+        dpopProof: dev.proof("GET", API, { accessToken: token, iat: iat() }),
+        method: "GET",
+        url: API,
+        ...(fresh === undefined ? {} : { fresh }),
+      });
+    const start = (dev: Dev, deviceId: string, o: { login?: string } = {}) =>
+      p.startStepUp({
+        tenantId: "tnt_a",
+        userId,
+        deviceId,
+        channel: "sms",
+        login: o.login ?? login,
+        dpopProof: pf(dev),
+      });
+    const confirm = (dev: Dev, deviceId: string, challengeId: string, code: string) =>
+      p.confirmStepUp({
+        tenantId: "tnt_a",
+        userId,
+        deviceId,
+        challengeId,
+        code,
+        dpopProof: pf(dev),
+      });
+    return { now, mail, p, store, pf, signIn, call, start, confirm };
+  };
+  const wrongFor = (code: string) => (code === "000000" ? "000001" : "000000");
+  const refusal = (fn: () => unknown): IpbError | null => {
+    try {
+      fn();
+    } catch (e) {
+      return e as IpbError;
+    }
+    return null;
+  };
+
+  it("the session's acr and auth_time are its sign-in's; a refresh does not move them; a policy finds it stale later", async () => {
+    const m = make();
+    const a = await m.signIn();
+    const c0 = await m.call(a.dev, a.session.accessToken);
+    expect(c0).toMatchObject({ acr: "otp", auth_time: Math.floor(a.at / 1000) });
+    expect(() => assertCustomerStepUp(c0, CUSTOMER_STEP_UP_DEFAULT, m.now.t)).not.toThrow();
+    // A refresh is not an authentication.
+    m.now.t += 120_000;
+    const r = await m.p.refreshSession({
+      tenantId: "tnt_a",
+      refreshToken: a.session.refreshToken,
+      dpopProof: m.pf(a.dev),
+    });
+    expect((await m.call(a.dev, r.accessToken)).auth_time).toBe(c0.auth_time);
+    // 301 s after the sign-in the default policy asks for a step-up, in the RFC 9470 form.
+    const e = refusal(() => assertCustomerStepUp(c0, CUSTOMER_STEP_UP_DEFAULT, a.at + 301_000));
+    expect(e).toBeInstanceOf(IpbError);
+    expect(e?.code).toBe("IPB-SEC-001");
+    // Nothing else: not the session's level, its age, or which test failed.
+    expect(e?.meta).toEqual({ step_up: true, customer: true, required_acr: "otp", max_age: 300 });
+    expect(e?.detail).toBe("a fresh sign-in code is needed for this action");
+    expect(customerStepUpChallenge(e)).toEqual({
+      status: 401,
+      requiredAcr: "otp",
+      maxAge: 300,
+      headers: {
+        "www-authenticate":
+          'DPoP error="insufficient_user_authentication", error_description="A fresh sign-in code is required", acr_values="otp", max_age=300, algs="ES256"',
+      },
+    });
+    // The staff answer never renders a customer refusal (it would be the Bearer scheme).
+    expect(stepUpChallenge(e)).toBeNull();
+    expect(customerStepUpChallenge(new IpbError("IPB-SEC-001", {}))).toBeNull();
+    expect(
+      customerStepUpChallenge(
+        new IpbError("IPB-SEC-001", {
+          meta: { step_up: true, customer: true, required_acr: 'otp" x', max_age: 300 },
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      customerStepUpChallenge(
+        new IpbError("IPB-SEC-001", {
+          meta: { step_up: true, customer: true, required_acr: "otp" },
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("fails closed on a missing or unknown level, a missing or future auth_time, and a bad policy", () => {
+    const t = Date.parse("2026-11-20T09:00:00Z");
+    const s0 = Math.floor(t / 1000);
+    const ok = (c: { acr?: string; auth_time?: number }, now = t) =>
+      refusal(() => assertCustomerStepUp(c, { maxAgeSeconds: 60 }, now)) === null;
+    expect(ok({ acr: "otp", auth_time: s0 })).toBe(true);
+    expect(ok({ acr: "otp", auth_time: s0 - 60 })).toBe(true);
+    expect(ok({ acr: "otp", auth_time: s0 - 61 })).toBe(false);
+    expect(ok({ acr: "otp", auth_time: s0 + 30 })).toBe(true);
+    expect(ok({ acr: "otp", auth_time: s0 + 31 })).toBe(false);
+    expect(ok({ acr: "otp" })).toBe(false);
+    expect(ok({ auth_time: s0 })).toBe(false);
+    expect(ok({ acr: "1", auth_time: s0 })).toBe(false);
+    expect(ok({ acr: "otp", auth_time: Number.NaN })).toBe(false);
+    expect(() =>
+      assertCustomerStepUp({ acr: "otp", auth_time: s0 }, { maxAgeSeconds: 10 }, t),
+    ).toThrow(TypeError);
+    const policies = customerStepUpPolicies({ "document.original.download": {} });
+    expect(
+      refusal(() =>
+        assertCustomerStepUp(
+          { acr: "otp", auth_time: s0 },
+          policies["document.original.download"],
+          t + 301_000,
+        ),
+      )?.meta,
+    ).toMatchObject({ max_age: 300 });
+  });
+
+  it("a fresh code on the same device steps the session up; the age is the step-up's, not the sign-in's", async () => {
+    const m = make();
+    const a = await m.signIn();
+    const dev = a.session.device.id;
+    const c0 = await m.call(a.dev, a.session.accessToken);
+    m.now.t += 400_000;
+    const stepAt = m.now.t;
+    const ch = await m.start(a.dev, dev);
+    const code = m.mail.inbox.get(login)!;
+    expect(code).toMatch(/^[0-9]{6}$/);
+    expect(m.mail.sent.at(-1)).toEqual({
+      channel: "sms",
+      idempotencyKey: `otp:${ch.challengeId}:step_up`,
+    });
+    // The challenge keeps neither the code nor the login; the answer has no code.
+    const saved = JSON.stringify(await m.store.getChallenge("tnt_a", ch.challengeId));
+    expect(saved).not.toContain(code);
+    // (The fake IdP's user ids embed the login; the challenge itself keeps no login.)
+    expect(saved.replaceAll(userId, "")).not.toContain(login);
+    expect(JSON.stringify(ch)).not.toContain(code);
+    // A wrong code is refused and changes nothing.
+    await expect(m.confirm(a.dev, dev, ch.challengeId, wrongFor(code))).rejects.toMatchObject({
+      code: "IPB-IDN-001",
+      meta: { reason: "code" },
+    });
+    expect((await m.call(a.dev, a.session.accessToken, true)).auth_time).toBe(c0.auth_time);
+    const done = await m.confirm(a.dev, dev, ch.challengeId, code);
+    expect(done).toEqual({ deviceId: dev, acr: "otp", authTime: new Date(stepAt).toISOString() });
+    const c1 = await m.call(a.dev, a.session.accessToken, true);
+    expect(c1).toMatchObject({ acr: "otp", auth_time: Math.floor(stepAt / 1000) });
+    // The same instant: stale by the sign-in, fresh by the step-up.
+    const at = stepAt + 200_000;
+    expect(refusal(() => assertCustomerStepUp(c0, CUSTOMER_STEP_UP_DEFAULT, at))?.code).toBe(
+      "IPB-SEC-001",
+    );
+    expect(refusal(() => assertCustomerStepUp(c1, CUSTOMER_STEP_UP_DEFAULT, at))).toBeNull();
+    expect(
+      refusal(() => assertCustomerStepUp(c1, CUSTOMER_STEP_UP_DEFAULT, stepAt + 301_000))?.code,
+    ).toBe("IPB-SEC-001");
+    expect((m.store as MemoryCustomerAuthStore).events.at(-1)).toEqual({
+      tenantId: "tnt_a",
+      userId,
+      action: CUSTOMER_STEP_UP_ACTION,
+    });
+    // Used once, and never a sign-in code.
+    await expect(m.confirm(a.dev, dev, ch.challengeId, code)).rejects.toMatchObject({
+      meta: { reason: "challenge" },
+    });
+    await expect(
+      m.p.verifyChallenge({
+        tenantId: "tnt_a",
+        challengeId: ch.challengeId,
+        code,
+        dpopProof: m.pf(a.dev),
+      }),
+    ).rejects.toMatchObject({ meta: { reason: "challenge" } });
+  });
+
+  it("is refused across devices and across sessions of one key, and for a login that is not the account's", async () => {
+    const m = make();
+    const a = await m.signIn();
+    m.now.t += 31_000;
+    const b = await m.signIn();
+    m.now.t += 31_000;
+    const sends = m.mail.sent.length;
+    // Another device's key, or a key that is no signed-in device, cannot start it for device a.
+    for (const dev of [b.dev, testDevice()])
+      await expect(m.start(dev, a.session.device.id)).rejects.toMatchObject({
+        code: "IPB-IDN-001",
+        meta: { reason: "device" },
+      });
+    await expect(
+      m.start(a.dev, a.session.device.id, { login: "+919800000999" }),
+    ).rejects.toMatchObject({ meta: { reason: "login" } });
+    expect(m.mail.sent).toHaveLength(sends);
+    const ch = await m.start(a.dev, a.session.device.id);
+    const code = m.mail.inbox.get(login)!;
+    // For another device, or by another device's key, the code is refused.
+    await expect(m.confirm(b.dev, b.session.device.id, ch.challengeId, code)).rejects.toMatchObject(
+      { meta: { reason: "challenge" } },
+    );
+    await expect(m.confirm(b.dev, a.session.device.id, ch.challengeId, code)).rejects.toMatchObject(
+      { meta: { reason: "dpop_jkt" } },
+    );
+    await m.confirm(a.dev, a.session.device.id, ch.challengeId, code);
+    // Device b keeps its own sign-in time.
+    expect((await m.call(b.dev, b.session.accessToken, true)).auth_time).toBe(
+      Math.floor(b.at / 1000),
+    );
+    expect((await m.call(a.dev, a.session.accessToken, true)).auth_time).toBe(
+      Math.floor(m.now.t / 1000),
+    );
+
+    // A step-up started on a session that is then signed out does not carry to the next session
+    // of the same key (a new device id), and the old session cannot finish it.
+    m.now.t += 31_000;
+    const ch2 = await m.start(a.dev, a.session.device.id);
+    const code2 = m.mail.inbox.get(login)!;
+    await m.p.revokeDevice("tnt_a", userId, a.session.device.id);
+    m.now.t += 31_000;
+    const a2 = await m.signIn(a.dev);
+    expect(a2.session.device.id).not.toBe(a.session.device.id);
+    await expect(
+      m.confirm(a.dev, a2.session.device.id, ch2.challengeId, code2),
+    ).rejects.toMatchObject({ meta: { reason: "challenge" } });
+    await expect(
+      m.confirm(a.dev, a.session.device.id, ch2.challengeId, code2),
+    ).rejects.toMatchObject({ meta: { reason: "device" } });
+    expect((await m.call(a.dev, a2.session.accessToken, true)).auth_time).toBe(
+      Math.floor(a2.at / 1000),
+    );
+  });
+
+  it("is guarded like a sign-in code: the resend interval, five tries per code, the account's back-off", async () => {
+    const m = make();
+    const a = await m.signIn();
+    const dev = a.session.device.id;
+    // Inside the sign-in code's resend interval: refused before anything is sent.
+    const sends = m.mail.sent.length;
+    await expect(m.start(a.dev, dev)).rejects.toMatchObject({
+      code: "IPB-SEC-019",
+      meta: { reason: "resend_interval" },
+    });
+    expect(m.mail.sent).toHaveLength(sends);
+    m.now.t += 31_000;
+    const ch = await m.start(a.dev, dev);
+    const code = m.mail.inbox.get(login)!;
+    for (let i = 0; i < 5; i++)
+      await expect(m.confirm(a.dev, dev, ch.challengeId, wrongFor(code))).rejects.toMatchObject({
+        meta: { reason: "code" },
+      });
+    // Out of tries: dead, even with the right code; the account is backing off.
+    await expect(m.confirm(a.dev, dev, ch.challengeId, code)).rejects.toMatchObject({
+      meta: { reason: "challenge" },
+    });
+    // The failures are the account's: a sixth wrong code starts a 60 s back-off for every code.
+    m.now.t += 31_000;
+    const next = await m.start(a.dev, dev);
+    const fresh = m.mail.inbox.get(login)!;
+    await expect(m.confirm(a.dev, dev, next.challengeId, wrongFor(fresh))).rejects.toMatchObject({
+      meta: { reason: "code" },
+    });
+    await expect(m.confirm(a.dev, dev, next.challengeId, fresh)).rejects.toMatchObject({
+      code: "IPB-SEC-019",
+      meta: { reason: "backoff" },
+    });
+    m.now.t += 61_000;
+    await expect(m.confirm(a.dev, dev, next.challengeId, fresh)).resolves.toMatchObject({
+      acr: "otp",
+    });
+  });
+
+  it("a store without recordStepUp refuses before anything is sent; the memory store never moves the time back", async () => {
+    const old: CustomerAuthStore = new Proxy(new MemoryCustomerAuthStore(), {
+      get: (t, k) => (k === "recordStepUp" ? undefined : Reflect.get(t, k)),
+    });
+    const m = make(old);
+    const a = await m.signIn();
+    m.now.t += 31_000;
+    const sends = m.mail.sent.length;
+    await expect(m.start(a.dev, a.session.device.id)).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "unsupported" },
+    });
+    expect(m.mail.sent).toHaveLength(sends);
+    // Claims still carry the sign-in's assurance.
+    expect((await m.call(a.dev, a.session.accessToken)).acr).toBe("otp");
+
+    const st = new MemoryCustomerAuthStore();
+    const T = Date.parse("2026-11-20T09:00:00Z");
+    await st.createDevice({
+      id: "dev_1",
+      tenantId: "tnt_a",
+      userId,
+      jkt: "a".repeat(43),
+      idpSession: "s",
+      refreshHash: "1".repeat(64),
+      createdAt: T,
+      lastUsedAt: T,
+    });
+    expect(await st.recordStepUp("tnt_a", "dev_1", "otp", T + 2000)).toBe(true);
+    expect(await st.recordStepUp("tnt_a", "dev_1", "otp", T + 1000)).toBe(true);
+    expect((await st.listDevices("tnt_a", userId))[0]).toMatchObject({
+      stepUpAt: T + 2000,
+      stepUpAcr: "otp",
+    });
+    expect(await st.recordStepUp("tnt_b", "dev_1", "otp", T + 3000)).toBe(false);
+    await st.revokeDevice("tnt_a", "dev_1", "sign_out", T + 4000);
+    expect(await st.recordStepUp("tnt_a", "dev_1", "otp", T + 5000)).toBe(false);
   });
 });
