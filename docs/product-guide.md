@@ -1162,6 +1162,30 @@ From the next release (`contracts`, `config`, `connectors`, `fakes` and `testing
 - **Testing:** `new FakeGrc()` (`@infrabyx/fakes`) holds what you send (`records`, `accepted`) and serves seeded obligations (`seedObligations`); `grcContractCases()`, `grcSamples` and `grcObligations()` from `@infrabyx/testing` check any GRC client you write.
 - **Finbyx:** replace the product-local shim with the port; keep the evidence in your own STORAGE and send only its reference and hash.
 
+## 7dh. Staff and RE-administrator notifications (PR-UDF-052; R1-D-222)
+
+From the next release (`contracts` and `notify` minors; no migration, no setting), NOTIFY reaches staff by role in a tenant: "the RE's admins", a named function such as the compliance officer, or your operations team.
+
+- **Declare a staff class** in your notify catalogue: `audience: staff`, channels `inapp` and `email` only, `variables` (required) and `subject_variables` (the only variables the subject and titles may carry; default none). A staff class is never marketing. Make it `mandatory` only for operational messages people must not switch off (IPB-07-25: they can still be routed with `ntf.org.routing`); otherwise each person's `ntf.user.channels` applies. Digest-first, quiet hours, `kill.msg.*` and suppression apply as for any class.
+- **Send by role:** `notify.notifyStaff(ctx, { class, roles: ["ORG_ADMIN"], vars, deepLink, idempotencyKey, exclude? })`, or `enqueueStaff(tx, …)` inside your own transaction (sent by `dispatchDue`). NOTIFY finds the active people (never agents or service accounts) who hold a role in the context's tenant at send time, plus the current holders of a function for `FN:<CODE>`; `exclude` drops the person who acted. Roles may be `ORG_*`, `OPS_*`, your product roles or `FN:<CODE>`; `PLT_*`, `SVC_*` and `AGT_*` are refused. One call never reaches another tenant.
+- **No personal data:** variables are references and codes. NOTIFY refuses (`IPB-NTF-007`, 422, with `meta.reason`) an undeclared variable, any value with an e-mail address, a phone number, a PAN, an Aadhaar number or VID, and a subject variable that is not a reference or code (no spaces, no run of 10 or more digits). Your in-app titles for a staff class may use only `subject_variables` (checked when `NotifyService` starts), and so may a tenant's own email subject (checked when the template is saved and at every delivery). Keep your vendor email template's subject to the same variables; put everything else behind the deep link.
+- **Nobody holds the role:** the result is `outcome: "no_recipients"` with no delivery; it is recorded and ledgered, and the same key replays it. To fall back (for example to your operations team), send again with a new key.
+- **Receipt:** `notify.deliveryReceipt(ctx, notificationId)` gives each recipient's deliveries (state, attempt, adapter, error code, time) and `reached` (any `sent` or `delivered`); vendor reports update the states as before. `send` and `enqueue` refuse a staff class.
+- **Addresses:** your `ContactResolver` resolves `usr_…` references to the person's work e-mail at delivery, as for approval reminders; nothing is stored.
+- **Your operations team:** give them `OPS_*` roles in your operator tenant and call `notifyStaff` in that tenant's context, carrying only references to the RE's record (owner question #160).
+
+```ts
+const r = await notify.notifyStaff(ctx, {
+  class: "udf.re_admin.lender_action_needed",
+  roles: ["ORG_ADMIN"],
+  vars: { application: app.id, count: 3 },
+  deepLink: `/applications/${app.id}`,
+  idempotencyKey: `udf.re_admin.lender_action_needed:${app.id}`,
+  exclude: [{ ref: ctx.principal.id }],
+});
+if (r.outcome === "no_recipients") await escalateToOperations(app.id);
+```
+
 ## 7di. Borrower email with attachments and the verified email (PR-UDF-055; R1-D-224)
 
 From the next release (`contracts`, `config`, `connectors`, `notify` and `testing` minors; migrations `notify/0008` and `connectors/0015`, both expand-only), a borrower email can carry stored documents byte-identical, with a receipt, and a signed-in borrower can prove an email address. Both are **off** until you turn them on.

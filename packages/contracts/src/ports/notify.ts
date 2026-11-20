@@ -4,6 +4,7 @@
 // IPB-04/05 uses, because IPB-01 gives none (assumption A-06).
 import { z } from "zod";
 import type { KernelContext } from "../kernel.js";
+import { AGENT_ROLE_REGEX, RoleSchema, SERVICE_ROLE_REGEX, isPlatformRole } from "../roles.js";
 import type { Port, PortCall } from "./common.js";
 import {
   EMAIL_ATTACHMENT_MEDIA_TYPES,
@@ -45,6 +46,13 @@ export const MARKETING_PURPOSE_CHANNEL: Readonly<Record<string, NotifyChannel>> 
 });
 
 const ClassId = z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/);
+const VarName = z.string().regex(/^[a-z][a-zA-Z0-9_]*$/);
+
+/**
+ * The channels a staff class may use (Udofin PR-UDF-052; R1-D-222): staff are reached in the
+ * product and by email, never by SMS, WhatsApp or push.
+ */
+export const STAFF_CHANNELS = ["inapp", "email"] as const satisfies readonly NotifyChannel[];
 
 /** One class in a notification catalogue file (`notify/catalogue/*.yaml`). */
 export const NotificationClass = z
@@ -68,10 +76,17 @@ export const NotificationClass = z
      * The variables a tenant's own email template may use (LawDocsComply PR-LDC-27; R1-D-90).
      * Omitted: the SMS and WhatsApp templates' `vars`; a class with neither offers none.
      */
-    variables: z
-      .array(z.string().regex(/^[a-z][a-zA-Z0-9_]*$/))
-      .max(50)
-      .optional(),
+    variables: z.array(VarName).max(50).optional(),
+    /**
+     * `staff`: the class goes only to staff by role through `notifyStaff` (PR-UDF-052; R1-D-222),
+     * by in-app and email, with declared `variables`. Omitted: any recipient through `send`.
+     */
+    audience: z.literal("staff").optional(),
+    /**
+     * A staff class's variables its subject and titles may carry (a subset of `variables`, default
+     * none); their values must be references or codes, never personal data (R1-D-222).
+     */
+    subject_variables: z.array(VarName).max(10).optional(),
     templates: z
       .object({
         email: z
@@ -140,6 +155,39 @@ export const NotificationClass = z
           path: ["default_channels"],
           message: `${ch} is also in never_channels`,
         });
+    if (c.audience === "staff") {
+      if (c.category === "marketing")
+        ctx.addIssue({
+          code: "custom",
+          path: ["audience"],
+          message: "a staff class is never a marketing class",
+        });
+      for (const ch of c.default_channels)
+        if (!(STAFF_CHANNELS as readonly string[]).includes(ch))
+          ctx.addIssue({
+            code: "custom",
+            path: ["default_channels"],
+            message: `a staff class uses only ${STAFF_CHANNELS.join(" and ")}, not ${ch}`,
+          });
+      if (!c.variables)
+        ctx.addIssue({
+          code: "custom",
+          path: ["variables"],
+          message: "a staff class declares its variables",
+        });
+      for (const v of c.subject_variables ?? [])
+        if (!c.variables?.includes(v))
+          ctx.addIssue({
+            code: "custom",
+            path: ["subject_variables"],
+            message: `subject variable ${v} is not in variables`,
+          });
+    } else if (c.subject_variables)
+      ctx.addIssue({
+        code: "custom",
+        path: ["subject_variables"],
+        message: "subject_variables belongs to a staff class (audience: staff)",
+      });
   });
 export type NotificationClass = z.infer<typeof NotificationClass>;
 
@@ -210,6 +258,44 @@ export const NotificationRequest = z
   .strict();
 export type NotificationRequest = z.infer<typeof NotificationRequest>;
 
+/**
+ * A role a staff notification targets (PR-UDF-052; R1-D-222): a tenant role (`ORG_*`), a
+ * group-operations role (`OPS_*`), a product role or a tenant function (`FN:<CODE>`). Platform,
+ * service and agent roles are refused: platform staff are not tenant members, and services and
+ * agents are never notified.
+ */
+export const StaffRole = z
+  .string()
+  .max(64)
+  .refine((r) => RoleSchema.safeParse(r).success, { message: "unknown role format" })
+  .refine(
+    (r) =>
+      !isPlatformRole(r) &&
+      !r.startsWith("PLT_") &&
+      !SERVICE_ROLE_REGEX.test(r) &&
+      !AGENT_ROLE_REGEX.test(r),
+    { message: "platform, service and agent roles are never notified as staff" },
+  );
+
+/**
+ * Notify everyone holding one of `roles` in the context's tenant (PR-UDF-052; R1-D-222). The
+ * holders are found by NOTIFY at send time; the tenant is the verified context's only.
+ */
+export const StaffNotificationRequest = z
+  .object({
+    class: ClassId,
+    roles: z.array(StaffRole).min(1).max(10),
+    /** INTERNAL references and codes only; checked for personal data (R1-D-222). */
+    vars: z.record(VarName, z.union([z.string().max(500), z.number(), z.boolean()])),
+    deepLink: z.string().regex(/^\/[A-Za-z0-9/_:.?=&%-]*$/),
+    locale: z.string().optional(),
+    idempotencyKey: z.string().min(8).max(200),
+    /** Principals never notified by this call (for example the person who acted). */
+    exclude: z.array(Recipient).max(50).optional(),
+  })
+  .strict();
+export type StaffNotificationRequest = z.infer<typeof StaffNotificationRequest>;
+
 export const DELIVERY_STATES = [
   "queued",
   "sent",
@@ -236,6 +322,14 @@ export interface SendResult {
   }[];
 }
 
+/** What `notifyStaff` did (R1-D-222). */
+export interface StaffSendResult extends SendResult {
+  /** `no_recipients`: nobody in the tenant holds the roles; recorded and ledgered, nothing sent. */
+  outcome: "targeted" | "no_recipients";
+  /** The principals the roles resolved to at send time, in order. */
+  recipients: string[];
+}
+
 export interface DeliveryRecord {
   deliveryId: string;
   recipient: string;
@@ -252,6 +346,19 @@ export interface DeliveryRecord {
    * each attached file as handed to the adapter, in order.
    */
   attachments?: Array<{ sha256: string; bytes: number }>;
+}
+
+/** A notification's delivery receipt, per recipient (PR-UDF-052; R1-D-222). */
+export interface DeliveryReceipt {
+  notificationId: string;
+  classId: string;
+  outcome: "targeted" | "no_recipients";
+  recipients: Array<{
+    recipient: string;
+    /** Whether any of the recipient's deliveries was `sent` or `delivered`. */
+    reached: boolean;
+    deliveries: DeliveryRecord[];
+  }>;
 }
 
 /** Per-class channel choices of one user (`ntf.user.channels`). */
@@ -308,6 +415,10 @@ export interface NotifyPort extends Port {
   unsubscribe(token: string): Promise<void>;
   verifySenderDomain(brand: string, domain: string): Promise<DomainCheck>;
   deliveryStatus(ctx: KernelContext, notificationId: string): Promise<DeliveryRecord[]>;
+  /** Staff by role in the context's tenant (PR-UDF-052; R1-D-222); optional for other adapters. */
+  notifyStaff?(ctx: KernelContext, n: StaffNotificationRequest): Promise<StaffSendResult>;
+  /** Per-recipient delivery receipt (R1-D-222); null for an unknown notification. */
+  deliveryReceipt?(ctx: KernelContext, notificationId: string): Promise<DeliveryReceipt | null>;
 }
 
 // ------------------------------------------------------------------ inbound replies (PR-LDC-50)
