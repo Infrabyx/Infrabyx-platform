@@ -61,6 +61,11 @@ export interface TestDatabase {
   admin: pg.Client;
   kernel: PgKernel;
   audit: PgAuditSink;
+  /**
+   * Run `beforeDrop`, end the clients, drop the database and stop the container. Idempotent
+   * (PR-UDF-063): a second call, later or concurrent, returns the first call's promise (it settles
+   * the same way, the hook's error included) and runs nothing again.
+   */
   end(): Promise<void>;
 }
 
@@ -124,32 +129,40 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
     if (!(ending && e.code === "57P01")) throw e;
   });
   tolerateShutdown(admin);
+  // `end()` runs once (PR-UDF-063): a second call, later or while the first runs, gets the first
+  // call's promise, so the hook runs once and the database is dropped once.
+  let ended: Promise<void> | undefined;
   return {
     url,
     pool,
     admin,
     kernel: new PgKernel({ pool }),
     audit: new PgAuditSink(),
-    async end() {
-      let hook: { error: unknown } | undefined;
-      if (o.beforeDrop)
-        try {
-          await o.beforeDrop(admin);
-        } catch (error) {
-          hook = { error };
-        }
-      ending = true;
-      try {
-        await pool.end();
-        await admin.end();
-        const r = new pg.Client({ connectionString: server.url });
-        await r.connect();
-        await r.query(`drop database if exists ${name} with (force)`);
-        await r.end();
-      } finally {
-        await server.stop?.();
-      }
-      if (hook) throw hook.error;
+    end() {
+      ended ??= endOnce();
+      return ended;
     },
   };
+
+  async function endOnce(): Promise<void> {
+    let hook: { error: unknown } | undefined;
+    if (o.beforeDrop)
+      try {
+        await o.beforeDrop(admin);
+      } catch (error) {
+        hook = { error };
+      }
+    ending = true;
+    try {
+      await pool.end();
+      await admin.end();
+      const r = new pg.Client({ connectionString: server.url });
+      await r.connect();
+      await r.query(`drop database if exists ${name} with (force)`);
+      await r.end();
+    } finally {
+      await server.stop?.();
+    }
+    if (hook) throw hook.error;
+  }
 }
