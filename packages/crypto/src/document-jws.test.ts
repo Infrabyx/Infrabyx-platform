@@ -2,10 +2,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DOCUMENT_JWS_TYP,
+  DOCUMENT_JWS_V2_TYP,
   RegulatedKeyRing,
   fromBase64Url,
   localRegulatedSigner,
   signDocumentJws,
+  signDocumentJwsV2,
   verifyDocumentJws,
 } from "./index.js";
 
@@ -47,6 +49,77 @@ describe("document JWS (Ecosystem §3.6, C-22 profile)", () => {
     expect(verifyDocumentJws(`${h}.e30.${sig}`, d, keys)).toEqual({
       ok: false,
       reason: "malformed",
+    });
+  });
+
+  describe("descriptor v2 (PR-UDF-061 item 13; R1-D-236)", () => {
+    const d2 = {
+      ...d,
+      type: "KFS",
+      media_type: "application/pdf",
+      size_bytes: 2048,
+      application_id: "app_0001",
+    };
+
+    it("signs the type, media type, size and application under its own typ, and verifies", async () => {
+      const jws = await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign });
+      const header = JSON.parse(new TextDecoder().decode(fromBase64Url(jws.split(".")[0]!)));
+      expect(header).toEqual({ alg: "ES256", kid: "lender-doc-1", typ: DOCUMENT_JWS_V2_TYP });
+      expect(verifyDocumentJws(jws, d2, keys)).toEqual({ ok: true, kid: "lender-doc-1" });
+      expect(verifyDocumentJws(jws, d2, keys, new Date(), { requireV2: true }).ok).toBe(true);
+      // A whole DocumentShared payload, with fields the descriptor does not sign, verifies too.
+      expect(verifyDocumentJws(jws, { ...d2, legal_hold: false } as typeof d2, keys).ok).toBe(true);
+    });
+
+    it("fails when any bound field differs, is added or is dropped", async () => {
+      const jws = await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign });
+      for (const other of [
+        { ...d2, type: "SANCTION_LETTER" },
+        { ...d2, media_type: "application/json" },
+        { ...d2, size_bytes: 2049 },
+        { ...d2, application_id: "app_0002" },
+        { ...d2, application_id: undefined },
+        { ...d2, sha256: "b".repeat(64) },
+      ])
+        expect(verifyDocumentJws(jws, other, keys)).toEqual({
+          ok: false,
+          reason: "signature_invalid",
+        });
+      const without = { ...d2 } as Partial<typeof d2>;
+      delete without.application_id;
+      const jwsNoApp = await signDocumentJwsV2({
+        descriptor: without as typeof d2,
+        kid: s.kid,
+        sign: s.sign,
+      });
+      expect(verifyDocumentJws(jwsNoApp, without as typeof d2, keys).ok).toBe(true);
+      expect(verifyDocumentJws(jwsNoApp, d2, keys).ok).toBe(false);
+    });
+
+    it("is malformed against a descriptor without the v2 fields, and v1 is refused under requireV2", async () => {
+      const jws = await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign });
+      expect(verifyDocumentJws(jws, d, keys)).toEqual({ ok: false, reason: "malformed" });
+      const v1 = await signDocumentJws({ descriptor: d, kid: s.kid, sign: s.sign });
+      // A v1 JWS still verifies against a v2-shaped descriptor (old producers), unless required.
+      expect(verifyDocumentJws(v1, d2, keys).ok).toBe(true);
+      expect(verifyDocumentJws(v1, d2, keys, new Date(), { requireV2: true })).toEqual({
+        ok: false,
+        reason: "wrong_typ",
+      });
+    });
+
+    it("refuses to sign bad v2 fields", async () => {
+      for (const bad of [
+        { type: "kfs" },
+        { media_type: "PDF" },
+        { size_bytes: -1 },
+        { size_bytes: 1.5 },
+        { application_id: "x" },
+      ])
+        await expect(
+          signDocumentJwsV2({ descriptor: { ...d2, ...bad }, kid: s.kid, sign: s.sign }),
+          JSON.stringify(bad),
+        ).rejects.toThrow();
     });
   });
 
