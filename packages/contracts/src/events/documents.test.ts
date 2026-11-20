@@ -11,6 +11,9 @@ import {
   ExecutionPackManifest,
   ORIGINATION_EVENTS,
   ECOSYSTEM_TYPE_REGEX,
+  STAMP_EVIDENCE_MODES,
+  STAMP_EVIDENCE_MODE_OF,
+  StampEvidence,
 } from "./index.js";
 
 const h = (c: string) => c.repeat(64);
@@ -235,5 +238,109 @@ describe("the execution-pack manifest (PR-UDF-053, proposal PR-047)", () => {
           disbursement_clause: { ...clause, ...bad },
         }).success,
       ).toBe(false);
+  });
+
+  const evidence = {
+    mode: "ESTAMP",
+    state: "IN-MH",
+    certificate_number: "IN-MH12345678901234X",
+    duty_paise: 50_000,
+    stamped_document_sha256: h("d"),
+    vendor_ref: "stv_shcil_1",
+  };
+  const withItems = (
+    agreement: Record<string, unknown>,
+    kfs: Record<string, unknown> = {},
+  ): Record<string, unknown> => ({
+    ...manifest,
+    documents: [
+      { ...manifest.documents[0], ...agreement },
+      { ...manifest.documents[1], ...kfs },
+    ],
+  });
+
+  it("R1-D-231: takes optional stamp evidence on one item and not_stampable with a reason on another", () => {
+    const m = ExecutionPackManifest.parse(
+      withItems(
+        { stamp_evidence: evidence },
+        { not_stampable: true, not_stampable_reason: "A disclosure, not an instrument" },
+      ),
+    );
+    expect(m.documents[0]!.stamp_evidence).toEqual(evidence);
+    expect(m.documents[1]!.not_stampable).toBe(true);
+    const { vendor_ref: _v, ...noVendor } = evidence;
+    for (const mode of STAMP_EVIDENCE_MODES)
+      expect(
+        ExecutionPackManifest.safeParse(
+          withItems({ stamp_evidence: { ...noVendor, mode, duty_paise: 0 } }),
+        ).success,
+      ).toBe(true);
+    expect(ExecutionPackManifest.safeParse(withItems({}, { not_stampable: false })).success).toBe(
+      true,
+    );
+    // The pack-level stamp mode keeps its names; the map gives the evidence mode for each.
+    expect(STAMP_EVIDENCE_MODE_OF).toEqual({
+      E_STAMP: "ESTAMP",
+      PHYSICAL_PAPER: "PAPER",
+      FRANKING: "FRANKING",
+    });
+    expect(StampEvidence.parse(evidence).mode).toBe(STAMP_EVIDENCE_MODE_OF.E_STAMP);
+  });
+
+  it("R1-D-231: refuses bad stamp evidence fields", () => {
+    for (const bad of [
+      { mode: "E_STAMP" },
+      { mode: "SELF" },
+      { state: "MH" },
+      { certificate_number: "AB" },
+      { certificate_number: "IN MH 1" },
+      { certificate_number: "x".repeat(65) },
+      { duty_paise: -1 },
+      { duty_paise: 10.5 },
+      { stamped_document_sha256: "D".repeat(64) },
+      { stamped_document_sha256: "d".repeat(63) },
+      { vendor_ref: "x" },
+    ])
+      expect(
+        ExecutionPackManifest.safeParse(withItems({ stamp_evidence: { ...evidence, ...bad } }))
+          .success,
+        JSON.stringify(bad),
+      ).toBe(false);
+  });
+
+  it("R1-D-231: refuses not_stampable with stamp evidence, with stamp_required, or without a reason", () => {
+    const reason = "Not chargeable";
+    const both = ExecutionPackManifest.safeParse(
+      withItems(
+        {},
+        { stamp_evidence: evidence, not_stampable: true, not_stampable_reason: reason },
+      ),
+    );
+    expect(both.success).toBe(false);
+    expect(both.error?.issues.map((i) => i.path)).toContainEqual([
+      "documents",
+      1,
+      "stamp_evidence",
+    ]);
+    const required = ExecutionPackManifest.safeParse(
+      withItems({ not_stampable: true, not_stampable_reason: reason }),
+    );
+    expect(required.success).toBe(false);
+    expect(required.error?.issues.map((i) => i.path)).toContainEqual([
+      "documents",
+      0,
+      "not_stampable",
+    ]);
+    for (const kfs of [
+      { not_stampable: true },
+      { not_stampable: true, not_stampable_reason: "" },
+      { not_stampable: true, not_stampable_reason: "x".repeat(201) },
+      { not_stampable_reason: reason },
+      { not_stampable: false, not_stampable_reason: reason },
+      { not_stampable: "yes", not_stampable_reason: reason },
+    ])
+      expect(ExecutionPackManifest.safeParse(withItems({}, kfs)).success, JSON.stringify(kfs)).toBe(
+        false,
+      );
   });
 });

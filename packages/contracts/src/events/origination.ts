@@ -33,9 +33,82 @@ const bp = z.number().int().min(0).max(100_000);
 const tenor = z.number().int().min(1).max(600);
 const version = z.number().int().min(1);
 
-const Offer = z
-  .object({ offer_id: ref, amount_paise: paise, tenor_months: tenor, apr_bp: bp })
+// ---- The offer (§6.2; R1-D-231 optional fields) --------------------------------------------------
+
+/** How often `monthly_instalment` falls due (R1-D-231; the owner's list). */
+export const INSTALMENT_FREQUENCIES = [
+  "MONTHLY",
+  "QUARTERLY",
+  "HALF_YEARLY",
+  "YEARLY",
+  "BULLET",
+  "OTHER",
+] as const;
+
+/**
+ * The penal-charge bases the platform names (R1-D-231). `basis` is an open code, so a lender can
+ * send another while this list is checked: [VERIFY] against the text of RBI's Penal Charges in
+ * Loan Accounts directions.
+ */
+export const PENAL_CHARGE_BASES = [
+  "PER_INSTANCE",
+  "PER_MONTH_ON_OVERDUE",
+  "FLAT",
+  "OTHER",
+] as const;
+
+/** URI schemes a document reference must not start with: a KFS link is a reference, never a URL. */
+const URL_SHAPED = /^(?:https?|ftps?|file|data|blob|javascript|mailto|s3|gs|storage|wss?):|^www\./i;
+
+/** A document reference (the §6.13 `document_id` rule) that is not URL-shaped. */
+const documentRef = ref.refine((v) => !URL_SHAPED.test(v), "a document reference, never a URL");
+
+/**
+ * A penal charge (RBI's Penal Charges in Loan Accounts directions): a charge, not penal interest,
+ * and never capitalised. Exactly one of `rate_bp` (integer basis points) or `amount_paise`.
+ * `basis` is a code such as `PER_INSTANCE`, `PER_MONTH_ON_OVERDUE`, `FLAT` or `OTHER`
+ * (`PENAL_CHARGE_BASES`; [VERIFY] the list against the circular's text).
+ */
+export const PenalCharge = z
+  .object({
+    basis: code,
+    rate_bp: bp.optional(),
+    amount_paise: paise.optional(),
+    description: z.string().min(1).max(200),
+  })
+  .loose()
+  .refine(
+    (c) => (c.rate_bp === undefined) !== (c.amount_paise === undefined),
+    "exactly one of rate_bp or amount_paise",
+  );
+export type PenalCharge = z.infer<typeof PenalCharge>;
+
+/**
+ * One offer, shared by `EligibilityCheckAnswer.offers` and `DecisionMade.offers`. Optional
+ * (owner, 20 Nov 2026 13:10; R1-D-231; PR-UDF-051), each in snake case for the owner's camel-case
+ * names: `monthly_instalment` (`monthlyInstalment`: the instalment in integer paise and how often it
+ * falls due), `penal_charges` (`penalCharges`: at most 20) and `kfs_link` (`kfsLink`: the KFS by
+ * document reference, `document_id` and optional `version`; never a URL, and no other field).
+ */
+export const OriginationOffer = z
+  .object({
+    offer_id: ref,
+    amount_paise: paise,
+    tenor_months: tenor,
+    apr_bp: bp,
+    monthly_instalment: z
+      .object({ amount_paise: paise, frequency: z.enum(INSTALMENT_FREQUENCIES) })
+      .loose()
+      .optional(),
+    penal_charges: z.array(PenalCharge).max(20).optional(),
+    kfs_link: z
+      .object({ document_id: documentRef, version: version.optional() })
+      .strict()
+      .optional(),
+  })
   .loose();
+export type OriginationOffer = z.infer<typeof OriginationOffer>;
+const Offer = OriginationOffer;
 
 // ---- EligibilityCheck (synchronous) ------------------------------------------------------------
 

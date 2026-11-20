@@ -2,7 +2,8 @@
 // talks to must keep, run here against `FakeLender` and, when Finbyx publishes a sandbox, against
 // an adapter over it. Ecosystem Specification §6.2, §6.3 and §3.6. PR-UDF-053 (R1-D-219) added the
 // §6.13 documents, the execution-pack manifest and the LSP's signed eSign and eStamp evidence;
-// R1-D-229 the optional KFS loan amount and the manifest's disbursement clause.
+// R1-D-229 the optional KFS loan amount and the manifest's disbursement clause; R1-D-231 the
+// offer's instalment, penal charges and KFS link and the manifest items' stamp evidence.
 import { expect } from "vitest";
 import { findAadhaarLike } from "@infrabyx/contracts";
 import {
@@ -12,7 +13,9 @@ import {
   EXECUTION_PACK_MANIFEST_TYPE,
   ExecutionPackManifest,
   ELIGIBILITY_LENDER_UNAVAILABLE,
+  INSTALMENT_FREQUENCIES,
   KfsIssuedData,
+  OriginationOffer,
   EcosystemEnvelope,
   ORIGINATION_EVENTS,
   ORIGINATION_REGULATED,
@@ -495,6 +498,72 @@ export function lenderContractCases(
         const disbursed = byName(l.outbox(), "LoanDisbursed").at(-1)!;
         // What a product checks before it books the loan: the stated amount and the amount paid out.
         expect(clause.amount_stated_paise).toBe(disbursed.event.data.amount_paise);
+      },
+    },
+    {
+      name: "an offer's instalment, penal charges and KFS link, when given, are valid, and the KFS link names a document the lender shared",
+      async run(l) {
+        const answer = await l.eligibilityCheck(eligibility(), {
+          idempotencyKey: "idem-elig-offer-terms",
+        });
+        const before = l.outbox().length;
+        const { docs } = await sanctioned(l, "lspapp_contract_offer_terms");
+        const decision = byName(l.outbox().slice(before), "DecisionMade")[0]!;
+        const offers = [
+          ...("offers" in answer ? answer.offers : []),
+          ...(decision.event.data.offers as unknown[]),
+        ].map((x) => OriginationOffer.parse(x));
+        const sharedIds = new Set(docs.map((d) => String(d.event.data.document_id)));
+        for (const offer of offers) {
+          if (offer.monthly_instalment) {
+            expect(Number.isSafeInteger(offer.monthly_instalment.amount_paise)).toBe(true);
+            expect(offer.monthly_instalment.amount_paise).toBeGreaterThan(0);
+            expect(INSTALMENT_FREQUENCIES).toContain(offer.monthly_instalment.frequency);
+          }
+          for (const c of offer.penal_charges ?? []) {
+            // A penal charge is a rate or an amount, never both (RBI Penal Charges directions).
+            expect((c.rate_bp === undefined) !== (c.amount_paise === undefined)).toBe(true);
+            expect(c.description.length).toBeGreaterThan(0);
+          }
+          if (offer.kfs_link && l.sharedDocuments) {
+            const kfsDoc = l
+              .sharedDocuments()
+              .find((d) => d.event.data.document_id === offer.kfs_link!.document_id);
+            expect(kfsDoc, "kfs_link names a shared document").toBeDefined();
+            expect(kfsDoc!.event.data.type).toBe("KFS");
+            if (offer.kfs_link.version !== undefined)
+              expect(kfsDoc!.event.data.version).toBe(offer.kfs_link.version);
+          }
+        }
+        // A sanctioned offer's KFS link, when given, is to this application's KFS.
+        for (const x of decision.event.data.offers as Array<{ kfs_link?: { document_id: string } }>)
+          if (x.kfs_link && l.sharedDocuments) expect(sharedIds).toContain(x.kfs_link.document_id);
+      },
+    },
+    {
+      name: "a manifest item's stamp evidence matches the stamped document and the pack's stamp, and a not-stampable item is not stamp-required",
+      async run(l) {
+        if (!l.executionPack) return;
+        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_stamp_evidence");
+        const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
+        const shared = new Map(
+          docs.map((d) => [String(d.event.data.document_id), String(d.event.data.sha256)]),
+        );
+        for (const d of pack.documents) {
+          if (d.stamp_evidence) {
+            expect(d.not_stampable).not.toBe(true);
+            expect(d.stamp_evidence.stamped_document_sha256).toBe(d.sha256);
+            if (shared.size > 0)
+              expect(d.stamp_evidence.stamped_document_sha256).toBe(shared.get(d.document_id));
+            expect(pack.stamp, "stamp evidence needs the pack's stamp").toBeDefined();
+            expect(d.stamp_evidence.state).toBe(pack.stamp!.state);
+            expect(d.stamp_evidence.duty_paise).toBe(pack.stamp!.duty_paise);
+          }
+          if (d.not_stampable === true) {
+            expect(d.stamp_required).toBe(false);
+            expect(d.not_stampable_reason?.length ?? 0).toBeGreaterThan(0);
+          }
+        }
       },
     },
     {
