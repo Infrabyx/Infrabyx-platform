@@ -27,8 +27,9 @@
 // cooling-off period is answered once with `CoolingOffExitAnswered`: principal plus the APR for the
 // days held, a payment instruction in words and the lender's exit reference.
 // R1-D-236 (PR-UDF-061 items 12 to 17; PR-047 approved): every envelope's `subject` is the
-// aggregate id its spec names (`originationSubject`; a document's id for `DocumentShared`) and its
-// `seq` counts per subject from 1; the documents are small real synthetic PDFs (`pdfFixture`) whose
+// aggregate id its spec names (`originationSubject`: the application for its origination events,
+// so one application is one ordered stream, the loan for servicing; a document's id for
+// `DocumentShared`) and its `seq` counts per subject from 1; the documents are small real synthetic PDFs (`pdfFixture`) whose
 // SHA-256 is over those bytes, the KFS's and the sanction letter's named by `document_ref` and
 // `document_version`; each is shared with a v2 document JWS (type, media type, size and
 // application bound) and its language, and `GET /v1/documents/{id}` answers those fields too. The
