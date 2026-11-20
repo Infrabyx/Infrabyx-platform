@@ -10,14 +10,20 @@ import type {
   ObjectMeta,
   ObjectRetention,
   PortHealth,
+  PresignOptions,
   ProvisionUserSpec,
   SecretMeta,
   SecretValue,
   SecretsPort,
+  StorageKeyRefRefusal,
   StoragePort,
   StoredObject,
 } from "@infrabyx/contracts/ports";
-import { compartmentAllowed, isValidStorageKey } from "@infrabyx/contracts/ports";
+import {
+  compartmentAllowed,
+  isValidStorageKey,
+  resolveStorageKeyRef,
+} from "@infrabyx/contracts/ports";
 import { LocalKms, sha256Hex } from "@infrabyx/crypto";
 
 const up = (): PortHealth => ({
@@ -88,6 +94,20 @@ interface Obj {
   deleted?: boolean;
 }
 
+/** PR-UDF-058: the named tenant keys the in-memory store knows (it holds no key material). */
+export interface MemoryStorageKeyRefs {
+  /** The references a tenant may name; none by default, so every reference is unknown. */
+  keyRefs?: (tenantId: string) => readonly string[] | undefined;
+  /** `{ [prefix]: keyRef }` for a tenant, as `S3StorageOptions.tenantKeyRefPrefixes`. */
+  keyRefPrefixes?: (tenantId: string) => Readonly<Record<string, string>> | undefined;
+}
+
+const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
+  "key_ref_unknown",
+  "key_ref_prefix_invalid",
+  "key_ref_shared",
+]);
+
 export class MemoryStorage implements StoragePort {
   readonly descriptor = {
     port: "STORAGE",
@@ -96,12 +116,38 @@ export class MemoryStorage implements StoragePort {
     maxDataClass: "REGULATED",
   } as const;
   readonly objects = new Map<string, Obj>();
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly now: () => Date = () => new Date(),
+    private readonly named: MemoryStorageKeyRefs = {},
+  ) {}
   async health(): Promise<PortHealth> {
     return up();
   }
   private check(key: string): void {
     if (!isValidStorageKey(key)) throw new Error(`invalid storage key ${key}`);
+  }
+  private refuseKeyRef(reason: StorageKeyRefRefusal, detail: string): never {
+    throw new IpbError(KEY_REF_CONFIG.has(reason) ? "IPB-PORT-001" : "IPB-PORT-003", {
+      detail,
+      meta: { reason },
+    });
+  }
+  /** PR-UDF-058: the write's named key reference, refused as the `s3` adapter refuses it. */
+  private keyRefOf(
+    key: string,
+    where: { bucketClass: ObjectMeta["bucketClass"]; keyRef?: string | undefined },
+  ): string | undefined {
+    const tenant = /^tenant\/([^/]+)\//.exec(key)?.[1] ?? "";
+    const r = resolveStorageKeyRef(key, where, this.named.keyRefPrefixes?.(tenant));
+    if (r.refusal) this.refuseKeyRef(r.refusal, `named key refused (${r.refusal})`);
+    if (r.keyRef !== undefined && !(this.named.keyRefs?.(tenant) ?? []).includes(r.keyRef))
+      this.refuseKeyRef("key_ref_unknown", `no named key ${r.keyRef}`);
+    return r.keyRef;
+  }
+  /** The stored meta: the resolved reference, never one only a tag claims. */
+  private stored(body: Uint8Array, meta: ObjectMeta, keyRef: string | undefined): ObjectMeta {
+    const { keyRef: _named, ...rest } = meta;
+    return { ...rest, ...(keyRef ? { keyRef } : {}), sha256: sha256Hex(body) };
   }
   /** PR-LDC-60: a compartment only in its classes, and an object never changes location. */
   private checkLocation(key: string, meta: ObjectMeta): void {
@@ -119,13 +165,21 @@ export class MemoryStorage implements StoragePort {
         detail: "the object exists in another bucket class or compartment",
       });
   }
+  /** PR-UDF-058: an overwrite keeps the object's reference (or its absence). */
+  private checkKeyRef(key: string, keyRef: string | undefined): void {
+    const cur = this.objects.get(key);
+    if (cur && !cur.deleted && cur.meta.keyRef !== keyRef)
+      this.refuseKeyRef("key_ref_changed", "the object exists under another key reference");
+  }
   async put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void> {
     this.check(key);
     const cur = this.objects.get(key);
     if (cur?.retainUntil && cur.retainUntil > this.now())
       throw new IpbError("IPB-STOR-003", { detail: "object is under retention" });
     this.checkLocation(key, meta);
-    this.objects.set(key, { body, meta: { ...meta, sha256: sha256Hex(body) } });
+    const keyRef = this.keyRefOf(key, meta);
+    this.checkKeyRef(key, keyRef);
+    this.objects.set(key, { body, meta: this.stored(body, meta, keyRef) });
   }
   async putWithRetention(
     key: string,
@@ -137,7 +191,8 @@ export class MemoryStorage implements StoragePort {
     if (this.objects.has(key))
       throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
     this.checkLocation(key, meta);
-    this.objects.set(key, { body, meta: { ...meta, sha256: sha256Hex(body) }, retainUntil });
+    const keyRef = this.keyRefOf(key, meta);
+    this.objects.set(key, { body, meta: this.stored(body, meta, keyRef), retainUntil });
   }
   async get(key: string): Promise<StoredObject> {
     const o = this.objects.get(key);
@@ -150,11 +205,23 @@ export class MemoryStorage implements StoragePort {
     };
   }
   /** Presigned URLs live at most 5 minutes (IPB-02-15). */
-  async presign(key: string, op: "get" | "put", ttlSeconds: number): Promise<string> {
+  async presign(
+    key: string,
+    op: "get" | "put",
+    ttlSeconds: number,
+    opts: PresignOptions = {},
+  ): Promise<string> {
     this.check(key);
     if (!(ttlSeconds > 0 && ttlSeconds <= 300))
       throw new RangeError("presigned URL TTL must be 1–300 s (IPB-02-15)");
-    return `memory://${key}?op=${op}&exp=${Math.floor(this.now().getTime() / 1000) + ttlSeconds}`;
+    // PR-UDF-058: an upload URL under a named key names its reference, refused as `put` would.
+    let keyRef: string | undefined;
+    if (op === "put" && opts.bucketClass) {
+      keyRef = this.keyRefOf(key, { bucketClass: opts.bucketClass, keyRef: opts.keyRef });
+      this.checkKeyRef(key, keyRef);
+    }
+    const exp = Math.floor(this.now().getTime() / 1000) + ttlSeconds;
+    return `memory://${key}?op=${op}&exp=${exp}${keyRef ? `&key_ref=${encodeURIComponent(keyRef)}` : ""}`;
   }
   async delete(key: string): Promise<void> {
     const o = this.objects.get(key);

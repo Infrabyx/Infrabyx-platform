@@ -9,7 +9,10 @@
 // sends reads to the DR replica (`read_only_failover`). Keys outside the caller's tenant are
 // refused (IPB-PORT-003). Compartments (PR-LDC-60, R1-D-158): an object in a compartment of a
 // class lives in that compartment's own bucket under its own key; a shared or missing bucket or
-// key is refused at start or at write, never replaced by the class's.
+// key is refused at start or at write, never replaced by the class's. Named tenant keys (PR-UDF-058,
+// R1-D-227): a write may name one of its tenant's keys by reference (`keyRef`, or a prefix map); the
+// adapter resolves it, keeps it separate from every other key, records the reference on the object
+// and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`).
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -30,9 +33,12 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import {
   BUCKET_CLASSES,
+  COMPARTMENT_CLASSES,
   STORAGE_COMPARTMENTS,
+  STORAGE_KEY_REF_META,
   compartmentAllowed,
   isValidStorageKey,
+  resolveStorageKeyRef,
   type AdapterDescriptor,
   type BucketClass,
   type CompartmentClass,
@@ -42,6 +48,7 @@ import {
   type PresignOptions,
   type StoragePort,
   type StorageCompartment,
+  type StorageKeyRefRefusal,
   type StoredObject,
 } from "@infrabyx/contracts/ports";
 import { sha256Hex, toBase64Url } from "@infrabyx/crypto";
@@ -81,6 +88,23 @@ export interface S3StorageOptions {
     tenantId: string,
     where?: { bucketClass: BucketClass; compartment?: StorageCompartment },
   ) => string | undefined;
+  /**
+   * PR-UDF-058 (R1-D-227): the tenant's named keys for a location, as `{ [keyRef]: keyId }` (for
+   * example one per lender). A write naming a reference with no key here is refused; a named key
+   * must differ from every class and compartment key, from the tenant's other references' keys,
+   * and in a compartment from the same reference's keys elsewhere. Refused for a tenant with its own
+   * CMK (C-17: its objects stay under that key).
+   */
+  tenantNamedKmsKeyIds?: (
+    tenantId: string,
+    where: { bucketClass: BucketClass; compartment?: StorageCompartment },
+  ) => Readonly<Record<string, string>> | undefined;
+  /**
+   * PR-UDF-058: `{ [prefix]: keyRef }` for a tenant (each prefix under `tenant/<tenantId>/`); a
+   * write that names no reference takes the longest matching prefix's, and one that names another
+   * is refused.
+   */
+  tenantKeyRefPrefixes?: (tenantId: string) => Readonly<Record<string, string>> | undefined;
   /** Tenant of the current call (tenancy context); keys of other tenants are refused. */
   currentTenant?: () => string | undefined;
   /** `int.storage.presign_ttl_seconds` (≤ 300). */
@@ -96,6 +120,21 @@ type S3Error = Error & { name: string; $metadata?: { httpStatusCode?: number } }
 const statusOf = (e: unknown) => (e as S3Error).$metadata?.httpStatusCode;
 const isNotFound = (e: unknown) =>
   ["NoSuchKey", "NotFound", "NoSuchVersion"].includes((e as S3Error).name) || statusOf(e) === 404;
+const tenantOf = (key: string) => /^tenant\/([^/]+)\//.exec(key)?.[1];
+/** IPB-PORT-001 (configuration) or IPB-PORT-003 (the call) for each named-key refusal. */
+const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
+  "key_ref_unknown",
+  "key_ref_prefix_invalid",
+  "key_ref_shared",
+]);
+/** S3's names for KMS errors that say the key itself is unusable (not a transient failure). */
+const KMS_KEY_STATE: ReadonlySet<string> = new Set([
+  "KMS.DisabledException",
+  "KMS.KMSInvalidStateException",
+  "KMS.NotFoundException",
+  "KMS.AccessDeniedException",
+  "KMS.InvalidGrantTokenException",
+]);
 
 /** Where an object lives: a bucket class, and optionally a compartment of it (PR-LDC-60). */
 interface Slot {
@@ -138,6 +177,8 @@ export class S3Storage implements StoragePort {
       adapter,
       residency: "IN",
       maxDataClass: "SECRET",
+      // PR-UDF-058: MinIO encrypts with the bucket's SSE-S3 key; no per-object KMS key.
+      ...(adapter === "minio" ? { capabilities: { "put.keyRef": "unsupported" as const } } : {}),
     };
     const cfg: S3ClientConfig = {
       region: o.region,
@@ -159,6 +200,59 @@ export class S3Storage implements StoragePort {
 
   private refuseConfig(adapter: string, detail: string): never {
     throw new PortError("IPB-PORT-001", "STORAGE", { adapter, detail });
+  }
+
+  private refuseKeyRef(reason: StorageKeyRefRefusal, detail: string): never {
+    throw new PortError(KEY_REF_CONFIG.has(reason) ? "IPB-PORT-001" : "IPB-PORT-003", "STORAGE", {
+      adapter: this.adapter,
+      detail,
+      meta: { reason },
+    });
+  }
+
+  /**
+   * PR-UDF-058: the named key reference of a write (named, or from the tenant's prefix map), or
+   * undefined. `minio` refuses one as `unsupported`.
+   */
+  private keyRefOf(
+    key: string,
+    where: { bucketClass: BucketClass; keyRef?: string | undefined },
+  ): string | undefined {
+    const tenant = tenantOf(key);
+    const prefixes = tenant ? this.o.tenantKeyRefPrefixes?.(tenant) : undefined;
+    const r = resolveStorageKeyRef(key, where, prefixes);
+    if (r.refusal) this.refuseKeyRef(r.refusal, `named key refused (${r.refusal})`);
+    if (r.keyRef !== undefined && this.adapter === "minio")
+      throw new PortError("IPB-PORT-001", "STORAGE", {
+        adapter: this.adapter,
+        detail: "minio encrypts with the bucket's key; a named key per object is not supported",
+        meta: { reason: "unsupported" },
+      });
+    return r.keyRef;
+  }
+
+  /** PR-UDF-058: an overwrite keeps the object's named key reference (or its absence). */
+  private refuseKeyRefChange(head: HeadObjectCommandOutput, keyRef: string | undefined): void {
+    if ((head.Metadata?.[STORAGE_KEY_REF_META] || undefined) !== keyRef)
+      this.refuseKeyRef("key_ref_changed", "the object exists under another key reference");
+  }
+
+  /**
+   * PR-UDF-058: on an object under a named key (often the lender's own), a disabled, deleted or
+   * revoked key surfaces as IPB-KMS-001 with a fixed reason, never as a generic failure: a KMS
+   * key-state error, or `AccessDenied` (a read's HEAD succeeded, so the decrypt was refused).
+   * Transient KMS errors stay IPB-PORT-002, and objects under platform keys keep their failures
+   * (and the router's read failover) as before.
+   */
+  private keyUnavailable(e: unknown, keyRef: string | undefined): void {
+    const name = (e as S3Error | undefined)?.name ?? "";
+    if (keyRef && (KMS_KEY_STATE.has(name) || name === "AccessDenied"))
+      throw new PortError("IPB-KMS-001", "STORAGE", {
+        adapter: this.adapter,
+        detail: "the object's named key is disabled, deleted or no longer granted",
+        meta: { reason: "storage_key_unavailable", keyRef, name },
+        cause: e,
+      });
   }
 
   /**
@@ -291,8 +385,8 @@ export class S3Storage implements StoragePort {
       throw new IpbError("IPB-STOR-003", { detail: `object is under retention; ${what} refused` });
   }
 
-  private sse(slot: Slot, key: string) {
-    const kms = this.keyFor(slot, key);
+  private sse(slot: Slot, key: string, keyRef?: string) {
+    const kms = keyRef ? this.namedKeyFor(slot, key, keyRef) : this.keyFor(slot, key);
     return kms
       ? { ServerSideEncryption: "aws:kms" as const, SSEKMSKeyId: kms, BucketKeyEnabled: true }
       : {};
@@ -340,8 +434,58 @@ export class S3Storage implements StoragePort {
     return own;
   }
 
-  private metadata(body: Uint8Array, meta: ObjectMeta): Record<string, string> {
-    return { sha256: meta.sha256 ?? sha256Hex(body), ...(meta.tags ?? {}) };
+  /**
+   * PR-UDF-058: the tenant's named key for `keyRef` at this location. Fail closed: a tenant with its
+   * own CMK, an unknown reference, or a key shared with a platform key, another reference or (in a
+   * compartment) another location is refused, never replaced by the class key.
+   */
+  private namedKeyFor(slot: Slot, key: string, keyRef: string): string {
+    const tenant = tenantOf(key)!;
+    const where = (s: Slot) => ({
+      bucketClass: s.cls,
+      ...(s.compartment ? { compartment: s.compartment } : {}),
+    });
+    if (BUCKET_CLASSES.some((cls) => this.o.tenantKmsKeyId?.(tenant, { bucketClass: cls })))
+      this.refuseKeyRef(
+        "key_ref_tenant_cmk",
+        "the tenant has its own CMK, which C-17 keeps on all its objects",
+      );
+    const id = this.o.tenantNamedKmsKeyIds?.(tenant, where(slot))?.[keyRef];
+    if (!id) this.refuseKeyRef("key_ref_unknown", `no named key ${keyRef} for ${slotName(slot)}`);
+    const platform = new Set([
+      ...Object.values(this.o.kmsKeyIds ?? {}),
+      ...STORAGE_COMPARTMENTS.flatMap((c) => Object.values(this.o.compartmentKmsKeyIds?.[c] ?? {})),
+    ]);
+    if (platform.has(id)) this.refuseKeyRef("key_ref_shared", `${keyRef} uses a platform key`);
+    const locations: Slot[] = [
+      ...BUCKET_CLASSES.map((cls) => ({ cls })),
+      ...STORAGE_COMPARTMENTS.flatMap((compartment) =>
+        COMPARTMENT_CLASSES.map((cls) => ({ cls, compartment })),
+      ),
+    ];
+    for (const s of locations)
+      for (const [ref, other] of Object.entries(
+        this.o.tenantNamedKmsKeyIds?.(tenant, where(s)) ?? {},
+      ))
+        if (
+          other === id &&
+          (ref !== keyRef || (!sameSlot(s, slot) && (s.compartment || slot.compartment)))
+        )
+          this.refuseKeyRef(
+            "key_ref_shared",
+            `the key of ${keyRef} in ${slotName(slot)} is also ${ref} in ${slotName(s)}`,
+          );
+    return id;
+  }
+
+  private metadata(body: Uint8Array, meta: ObjectMeta, keyRef?: string): Record<string, string> {
+    // The reference is the adapter's to record: a caller's tag of that name is dropped.
+    const { [STORAGE_KEY_REF_META]: _spoof, ...tags } = meta.tags ?? {};
+    return {
+      sha256: meta.sha256 ?? sha256Hex(body),
+      ...tags,
+      ...(keyRef ? { [STORAGE_KEY_REF_META]: keyRef } : {}),
+    };
   }
 
   // ---- port --------------------------------------------------------------------------------------
@@ -349,6 +493,7 @@ export class S3Storage implements StoragePort {
   async put(key: string, body: Uint8Array, meta: ObjectMeta): Promise<void> {
     this.checkKey(key);
     const slot = slotOf(meta);
+    const keyRef = this.keyRefOf(key, meta);
     // Where the object already lives is checked first, so a move out of a compartment (or into
     // one) is always refused as a move, whether or not the target location is configured.
     const found = await this.locate(key, "write");
@@ -359,9 +504,10 @@ export class S3Storage implements StoragePort {
           adapter: this.adapter,
           detail: "the object exists in another bucket class or compartment",
         });
+      this.refuseKeyRefChange(found.head, keyRef);
     }
     const Bucket = this.bucket(slot);
-    const sse = this.sse(slot, key);
+    const sse = this.sse(slot, key, keyRef);
     try {
       await this.client.send(
         new PutObjectCommand({
@@ -369,13 +515,14 @@ export class S3Storage implements StoragePort {
           Key: key,
           Body: body,
           ...(meta.contentType ? { ContentType: meta.contentType } : {}),
-          Metadata: this.metadata(body, meta),
+          Metadata: this.metadata(body, meta, keyRef),
           ChecksumAlgorithm: "SHA256",
           ...sse,
         }),
       );
       this.located.set(key, slot);
     } catch (e) {
+      this.keyUnavailable(e, keyRef);
       this.unavailable("write", e);
     }
   }
@@ -389,8 +536,9 @@ export class S3Storage implements StoragePort {
     this.checkKey(key);
     if (!(retainUntil > this.now())) throw new RangeError("retainUntil must be in the future");
     const slot = slotOf(meta);
+    const keyRef = this.keyRefOf(key, meta);
     const Bucket = this.bucket(slot);
-    const sse = this.sse(slot, key);
+    const sse = this.sse(slot, key, keyRef);
     if (await this.locate(key, "write"))
       throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
     try {
@@ -401,7 +549,7 @@ export class S3Storage implements StoragePort {
           Body: body,
           IfNoneMatch: "*",
           ...(meta.contentType ? { ContentType: meta.contentType } : {}),
-          Metadata: this.metadata(body, meta),
+          Metadata: this.metadata(body, meta, keyRef),
           ChecksumAlgorithm: "SHA256",
           ObjectLockMode: "COMPLIANCE",
           ObjectLockRetainUntilDate: retainUntil,
@@ -412,6 +560,7 @@ export class S3Storage implements StoragePort {
     } catch (e) {
       if (statusOf(e) === 412)
         throw new IpbError("IPB-STOR-003", { detail: "write-once object exists" });
+      this.keyUnavailable(e, keyRef);
       this.unavailable("write", e);
     }
   }
@@ -425,7 +574,7 @@ export class S3Storage implements StoragePort {
         new GetObjectCommand({ Bucket: this.bucket(found!.cls), Key: key }),
       );
       const body = new Uint8Array(await r.Body!.transformToByteArray());
-      const { sha256, ...tags } = r.Metadata ?? {};
+      const { sha256, [STORAGE_KEY_REF_META]: keyRef, ...tags } = r.Metadata ?? {};
       if (sha256 && sha256 !== sha256Hex(body))
         throw new PortError("IPB-PORT-002", "STORAGE", {
           adapter: this.adapter,
@@ -438,6 +587,7 @@ export class S3Storage implements StoragePort {
         meta: {
           bucketClass: found!.cls.cls,
           ...(found!.cls.compartment ? { compartment: found!.cls.compartment } : {}),
+          ...(keyRef ? { keyRef } : {}),
           ...(r.ContentType ? { contentType: r.ContentType } : {}),
           sha256: sha256Hex(body),
           ...(Object.keys(tags).length ? { tags } : {}),
@@ -446,6 +596,7 @@ export class S3Storage implements StoragePort {
       };
     } catch (e) {
       if (isNotFound(e)) this.notFound(key);
+      this.keyUnavailable(e, found!.head.Metadata?.[STORAGE_KEY_REF_META]);
       this.unavailable("read", e);
     }
   }
@@ -467,6 +618,7 @@ export class S3Storage implements StoragePort {
         bucketClass: opts.bucketClass,
         ...(opts.compartment ? { compartment: opts.compartment } : {}),
       });
+      const keyRef = this.keyRefOf(key, { bucketClass: opts.bucketClass, keyRef: opts.keyRef });
       const found = await this.locate(key);
       if (found) {
         this.refuseRetained(found.head, "upload");
@@ -475,15 +627,18 @@ export class S3Storage implements StoragePort {
             adapter: this.adapter,
             detail: "the object exists in another bucket class or compartment",
           });
+        this.refuseKeyRefChange(found.head, keyRef);
       }
       const Bucket = this.bucket(slot);
-      const sse = this.sse(slot, key);
+      const sse = this.sse(slot, key, keyRef);
       return getSignedUrl(
         this.client,
         new PutObjectCommand({
           Bucket,
           Key: key,
           ContentType: opts.contentType,
+          // PR-UDF-058: the reference is signed into the URL, so the upload records it.
+          ...(keyRef ? { Metadata: { [STORAGE_KEY_REF_META]: keyRef } } : {}),
           ...sse,
         }),
         { expiresIn: ttlSeconds, signableHeaders: new Set(["content-type"]) },

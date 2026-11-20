@@ -32,6 +32,8 @@ let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
 const compartmentKeys: string[] = [];
+// PR-UDF-058: two lenders' keys, the named keys of the built-in contract case's tenant.
+const lenderKeys: string[] = [];
 // Every bucket name carries this run's suffix, so a run never meets a bucket an earlier or a
 // concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
 // `pnpm check:full --logs DIR` run again). Their objects cannot be removed afterwards: the AUDIT
@@ -77,7 +79,18 @@ beforeAll(async () => {
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage ${d}` }))).KeyMetadata!
         .KeyId!,
     );
+  for (const d of ["a", "b"])
+    lenderKeys.push(
+      (await kms.send(new CreateKeyCommand({ Description: `ipb storage lender ${d}` })))
+        .KeyMetadata!.KeyId!,
+    );
 });
+/** The named keys of tenant `tenantId` in REGULATED, as a product's vault would configure them. */
+const lenderNamedKeys =
+  (tenantId: string) => (t: string, w: { bucketClass: BucketClass; compartment?: string }) =>
+    t === tenantId && w.bucketClass === "REGULATED" && !w.compartment
+      ? { "lender:contract": lenderKeys[0]!, "lender:contract-b": lenderKeys[1]! }
+      : undefined;
 afterAll(async () => moto?.stop());
 
 const s3Adapter = () =>
@@ -85,6 +98,7 @@ const s3Adapter = () =>
     region: REGION,
     buckets: buckets("s3"),
     kmsKeyIds: Object.fromEntries(CLASSES.map((c) => [c, kmsKey])),
+    tenantNamedKmsKeyIds: lenderNamedKeys("tnt_contract"),
     endpoint,
     credentials: CREDS,
     forcePathStyle: true,
@@ -312,6 +326,67 @@ describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
       code: "IPB-PORT-003",
     });
     expect((await p.health()).status).toBe("up");
+  });
+
+  it("PR-UDF-058: each lender's files are under that lender's key; uploads sign it; reads are unchanged", async () => {
+    const p = new S3Storage({
+      region: REGION,
+      buckets: buckets("s3"),
+      kmsKeyIds: Object.fromEntries(CLASSES.map((c) => [c, kmsKey])),
+      tenantNamedKmsKeyIds: lenderNamedKeys("tnt_vault"),
+      tenantKeyRefPrefixes: (t) =>
+        t === "tnt_vault" ? { "tenant/tnt_vault/lender_b/": "lender:contract-b" } : undefined,
+      endpoint,
+      credentials: CREDS,
+      forcePathStyle: true,
+    });
+    const a = key("tnt_vault");
+    const b = `tenant/tnt_vault/lender_b/${ulid()}.pdf`;
+    const plain = key("tnt_vault");
+    await p.put(a, enc("lender a"), { bucketClass: "REGULATED", keyRef: "lender:contract" });
+    await p.putWithRetention(b, enc("lender b"), later(), { bucketClass: "REGULATED" });
+    await p.put(plain, enc("ours"), { bucketClass: "REGULATED" });
+    const s3 = raw();
+    const head = (k: string) =>
+      s3.send(new HeadObjectCommand({ Bucket: buckets("s3").REGULATED, Key: k }));
+    expect((await head(a)).SSEKMSKeyId).toContain(lenderKeys[0]);
+    expect((await head(a)).Metadata?.["ipb-key-ref"]).toBe("lender:contract");
+    expect((await head(b)).SSEKMSKeyId).toContain(lenderKeys[1]);
+    expect((await head(plain)).SSEKMSKeyId).toContain(kmsKey);
+    expect((await p.get(a)).meta.keyRef).toBe("lender:contract");
+    expect((await p.get(b)).meta.keyRef).toBe("lender:contract-b");
+    await p.assertImmutable(b);
+    // A presigned upload signs the lender's key header: sent with it, the object is under that key.
+    const k = key("tnt_vault");
+    const put = new URL(
+      await p.presign(k, "put", 60, {
+        bucketClass: "REGULATED",
+        contentType: "application/pdf",
+        keyRef: "lender:contract",
+      }),
+    );
+    expect(put.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toEqual(
+      expect.arrayContaining(["content-type", "x-amz-server-side-encryption-aws-kms-key-id"]),
+    );
+    const up = await fetch(put, {
+      method: "PUT",
+      body: "uploaded",
+      headers: {
+        "content-type": "application/pdf",
+        "x-amz-server-side-encryption": "aws:kms",
+        "x-amz-server-side-encryption-aws-kms-key-id": lenderKeys[0]!,
+        "x-amz-server-side-encryption-bucket-key-enabled": "true",
+      },
+    });
+    expect(up.status).toBe(200);
+    expect((await head(k)).SSEKMSKeyId).toContain(lenderKeys[0]);
+    expect((await p.get(k)).meta.keyRef).toBe("lender:contract");
+    // A presigned get needs nothing new: S3 decrypts with the object's own key.
+    const get = await p.presign(k, "get", 60);
+    expect(await (await fetch(get)).text()).toBe("uploaded");
+    await expect(
+      p.put(a, enc("x"), { bucketClass: "REGULATED", keyRef: "lender:contract-b" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003", meta: { reason: "key_ref_changed" } });
   });
 
   it("refuses regions outside India and buckets without a KMS key (C-17)", () => {
