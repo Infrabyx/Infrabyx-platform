@@ -202,4 +202,38 @@ describe("the execution-pack manifest (PR-UDF-053, proposal PR-047)", () => {
     const cs = { ...manifest, countersignature: { required: true } };
     expect(ExecutionPackManifest.safeParse(cs).success).toBe(false);
   });
+
+  it("R1-D-229: takes an optional disbursement clause in a pack document, refusing one outside it or with bad fields", () => {
+    const clause = {
+      document_id: "doc_agr_0001",
+      page_or_clause_ref: "cl.4.2",
+      amount_stated_paise: 5_000_000,
+    };
+    const m = ExecutionPackManifest.parse({ ...manifest, disbursement_clause: clause });
+    expect(m.disbursement_clause).toEqual(clause);
+    expect(
+      ExecutionPackManifest.safeParse({
+        ...manifest,
+        disbursement_clause: { ...clause, page_or_clause_ref: "p.3", amount_stated_paise: 0 },
+      }).success,
+    ).toBe(true);
+    const off = ExecutionPackManifest.safeParse({
+      ...manifest,
+      disbursement_clause: { ...clause, document_id: "doc_other" },
+    });
+    expect(off.success).toBe(false);
+    expect(off.error?.issues[0]?.path).toEqual(["disbursement_clause", "document_id"]);
+    for (const bad of [
+      { page_or_clause_ref: "" },
+      { page_or_clause_ref: "x".repeat(65) },
+      { amount_stated_paise: 100.5 },
+      { amount_stated_paise: -1 },
+    ])
+      expect(
+        ExecutionPackManifest.safeParse({
+          ...manifest,
+          disbursement_clause: { ...clause, ...bad },
+        }).success,
+      ).toBe(false);
+  });
 });

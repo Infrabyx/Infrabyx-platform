@@ -1,7 +1,8 @@
 // The origination contract cases (Udofin PR-UDF-051; R1-D-217): what any lender endpoint an LSP
 // talks to must keep, run here against `FakeLender` and, when Finbyx publishes a sandbox, against
 // an adapter over it. Ecosystem Specification §6.2, §6.3 and §3.6. PR-UDF-053 (R1-D-219) added the
-// §6.13 documents, the execution-pack manifest and the LSP's signed eSign and eStamp evidence.
+// §6.13 documents, the execution-pack manifest and the LSP's signed eSign and eStamp evidence;
+// R1-D-229 the optional KFS loan amount and the manifest's disbursement clause.
 import { expect } from "vitest";
 import { findAadhaarLike } from "@infrabyx/contracts";
 import {
@@ -11,6 +12,7 @@ import {
   EXECUTION_PACK_MANIFEST_TYPE,
   ExecutionPackManifest,
   ELIGIBILITY_LENDER_UNAVAILABLE,
+  KfsIssuedData,
   EcosystemEnvelope,
   ORIGINATION_EVENTS,
   ORIGINATION_REGULATED,
@@ -451,6 +453,48 @@ export function lenderContractCases(
         const r = await l.getDocument(String(m.event.data.document_id));
         const bytes = new TextDecoder().decode(await l.fetchDocument(r.url));
         expect(bytes).toBe(canonicalize(pack));
+      },
+    },
+    {
+      name: "a KFS loan amount, when given, is integer paise and equals the sanctioned amount",
+      async run(l) {
+        const { applicationId } = await l.submitApplication(application("lspapp_contract_kfs_amt"));
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        expect(kfs.event.data.application_id).toBe(applicationId);
+        const amount = kfs.event.data.loan_amount_paise;
+        if (amount === undefined) return;
+        const data = KfsIssuedData.parse(kfs.event.data);
+        expect(Number.isSafeInteger(data.loan_amount_paise)).toBe(true);
+        expect(data.loan_amount_paise).toBeGreaterThan(0);
+        const sanction = byName(l.outbox(), "SanctionLetterIssued").at(-1)!;
+        expect(sanction.event.data.application_id).toBe(applicationId);
+        expect(amount).toBe((sanction.event.data.terms as { amount_paise: number }).amount_paise);
+      },
+    },
+    {
+      name: "a manifest's disbursement clause names a pack document, and a product can compare its amount with LoanDisbursed",
+      async run(l) {
+        if (!l.executionPack) return;
+        const { applicationId } = await l.submitApplication(
+          application("lspapp_contract_disb_clause"),
+        );
+        const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
+        const clause = pack.disbursement_clause;
+        if (!clause) return;
+        expect(pack.documents.map((d) => d.document_id)).toContain(clause.document_id);
+        expect(clause.page_or_clause_ref.length).toBeGreaterThan(0);
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        await l.accept(
+          lspEvent("BorrowerAccepted", {
+            kfs_id: kfs.event.data.kfs_id,
+            accepted_at: new Date().toISOString(),
+            explanation_acknowledged: true,
+          }),
+        );
+        await l.disburse(applicationId);
+        const disbursed = byName(l.outbox(), "LoanDisbursed").at(-1)!;
+        // What a product checks before it books the loan: the stated amount and the amount paid out.
+        expect(clause.amount_stated_paise).toBe(disbursed.event.data.amount_paise);
       },
     },
     {

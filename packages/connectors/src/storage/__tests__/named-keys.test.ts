@@ -10,6 +10,7 @@ interface Put {
   Bucket: string;
   Key: string;
   SSEKMSKeyId?: string;
+  BucketKeyEnabled?: boolean;
   Metadata?: Record<string, string>;
 }
 
@@ -262,6 +263,62 @@ describe("PR-UDF-058: STORAGE writes under a named tenant key", () => {
     );
     expect(url.searchParams.get("x-amz-meta-ipb-key-ref")).toBe("lender:a");
     expect(url.toString()).not.toContain("k-lender-a");
+  });
+
+  it("R1-D-229: a named key may turn S3 Bucket Keys off for its objects; on stays the default", async () => {
+    const keys = {
+      "lender:a": "k-lender-a",
+      "lender:b": { keyId: "k-lender-b", bucketKey: false },
+      "lender:c": { keyId: "k-lender-c" },
+      "lender:d": { keyId: "k-lender-d", bucketKey: true },
+    };
+    const { p, puts } = adapter({
+      tenantNamedKmsKeyIds: (t, w) => (t === "tnt_a" && !w.compartment ? keys : undefined),
+    });
+    for (const ref of Object.keys(keys))
+      await p.put(key(), enc(ref), { bucketClass: "REGULATED", keyRef: ref });
+    await p.put(key(), enc("plain"), { bucketClass: "REGULATED" });
+    expect(puts.map((x) => [x.SSEKMSKeyId, x.BucketKeyEnabled])).toEqual([
+      ["k-lender-a", true],
+      ["k-lender-b", false],
+      ["k-lender-c", true],
+      ["k-lender-d", true],
+      ["k-reg", true],
+    ]);
+    // An upload URL signs the switch: off for lender:b, on (as before) for lender:a.
+    const presigned = async (keyRef: string) =>
+      new URL(
+        await adapter({
+          endpoint: "http://127.0.0.1:9",
+          forcePathStyle: true,
+          tenantNamedKmsKeyIds: (t, w) => (t === "tnt_a" && !w.compartment ? keys : undefined),
+        }).p.presign(key(), "put", 60, {
+          bucketClass: "REGULATED",
+          contentType: "application/pdf",
+          keyRef,
+        }),
+      );
+    const off = await presigned("lender:b");
+    const on = await presigned("lender:a");
+    const BK = "x-amz-server-side-encryption-bucket-key-enabled";
+    expect(off.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toContain(BK);
+    expect(on.searchParams.get("X-Amz-SignedHeaders")?.split(";")).toContain(BK);
+    expect(off.searchParams.get(BK)).toBeNull();
+    expect(off.toString()).not.toContain("k-lender-b");
+    // The object form is subject to the same separation: its key id shared with another is refused.
+    await expect(
+      adapter({
+        tenantNamedKmsKeyIds: (_t, w) =>
+          w.compartment
+            ? undefined
+            : { "lender:a": "k-x", "lender:b": { keyId: "k-x", bucketKey: false } },
+      }).p.put(key(), enc("x"), { bucketClass: "REGULATED", keyRef: "lender:a" }),
+    ).rejects.toMatchObject(refused("IPB-PORT-001", "key_ref_shared"));
+    await expect(
+      adapter({
+        tenantNamedKmsKeyIds: () => ({ "lender:a": { keyId: "", bucketKey: false } }),
+      }).p.put(key(), enc("x"), { bucketClass: "REGULATED", keyRef: "lender:a" }),
+    ).rejects.toMatchObject(refused("IPB-PORT-001", "key_ref_unknown"));
   });
 
   it("minio refuses a named key as unsupported and says so in its descriptor", async () => {

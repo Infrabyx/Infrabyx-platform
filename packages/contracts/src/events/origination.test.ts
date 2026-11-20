@@ -165,4 +165,22 @@ describe("origination schemas (PR-UDF-051)", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("R1-D-229: takes an optional KFS loan amount in integer paise and refuses a fractional or negative one", () => {
+    const kfs = {
+      kfs_id: "kfs_1",
+      version: 1,
+      application_id: "app_1",
+      proposal_no: "PRP-1",
+      validity_expiry: T,
+      apr_bp: 1800,
+      document_sha256: H,
+    };
+    expect(KfsIssuedData.safeParse(kfs).success).toBe(true);
+    expect(KfsIssuedData.parse({ ...kfs, loan_amount_paise: 5_000_000 }).loan_amount_paise).toBe(
+      5_000_000,
+    );
+    for (const bad of [5_000_000.5, -100, 0, "5000000"])
+      expect(KfsIssuedData.safeParse({ ...kfs, loan_amount_paise: bad }).success).toBe(false);
+  });
 });

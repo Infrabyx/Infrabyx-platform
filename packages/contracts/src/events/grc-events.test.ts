@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { findAadhaarLike, verhoeffValid } from "../aadhaar.js";
 import { ECOSYSTEM_TYPE_REGEX } from "./envelope.js";
 import {
+  CERT_IN_INCIDENT_CATEGORIES,
   ComplianceIssueRaisedData,
   ControlTestResultPublishedData,
   GRC_EVENTS,
@@ -12,6 +13,7 @@ import {
   RETURN_PERIOD,
   ReturnStatusUpdatedData,
   SecurityIncidentNotifiedData,
+  certInReportBy,
   grcIdempotencyKey,
   grcPersonalDataProblems,
   securityIncidentClockCopy,
@@ -160,5 +162,41 @@ describe("§6.15 GRC events (PR-FBX-51)", () => {
     const copy = securityIncidentClockCopy({ ...inc, analyst_note: "see ticket" } as never);
     expect(copy).toEqual(inc);
     expect("analyst_note" in copy).toBe(false);
+  });
+
+  it("R1-D-229: takes the optional CERT-In category and report-by time, at most 6 h after detection", () => {
+    expect(certInReportBy(T)).toBe("2026-11-20T10:30:00.000Z");
+    expect(certInReportBy(new Date("2026-11-20T00:00:00Z"))).toBe("2026-11-20T06:00:00.000Z");
+    expect(() => certInReportBy("not a time")).toThrow(RangeError);
+    expect(CERT_IN_INCIDENT_CATEGORIES).toContain("OTHER");
+    expect(new Set(CERT_IN_INCIDENT_CATEGORIES).size).toBe(CERT_IN_INCIDENT_CATEGORIES.length);
+    const cert = {
+      ...inc,
+      cert_in_category: "UNAUTHORISED_ACCESS",
+      cert_in_report_by: certInReportBy(inc.detected_at),
+    };
+    expect(SecurityIncidentNotifiedData.safeParse(cert).success).toBe(true);
+    expect(
+      SecurityIncidentNotifiedData.safeParse({
+        ...cert,
+        cert_in_report_by: "2026-11-20T13:00:00+05:30",
+      }).success,
+    ).toBe(true);
+    const late = SecurityIncidentNotifiedData.safeParse({
+      ...cert,
+      cert_in_report_by: "2026-11-20T16:00:01+05:30",
+    });
+    expect(late.success).toBe(false);
+    expect(late.error?.issues[0]?.path).toEqual(["cert_in_report_by"]);
+    for (const bad of [
+      { cert_in_category: "MALWARE" },
+      { cert_in_category: "data_breach" },
+      { cert_in_report_by: "2026-11-20 12:00" },
+    ])
+      expect(SecurityIncidentNotifiedData.safeParse({ ...cert, ...bad }).success).toBe(false);
+    // Either field alone is fine; the clock copy keeps both.
+    const { cert_in_report_by: _r, ...categoryOnly } = cert;
+    expect(SecurityIncidentNotifiedData.safeParse(categoryOnly).success).toBe(true);
+    expect(securityIncidentClockCopy(cert as never)).toEqual(cert);
   });
 });

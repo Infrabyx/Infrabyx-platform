@@ -163,6 +163,14 @@ export const KfsIssuedData = z
     validity_expiry: at,
     apr_bp: bp,
     document_sha256: sha256,
+    /**
+     * Optional (owner, 20 Nov 2026; R1-D-229; PR-UDF-051 follow-up): the KFS "Loan amount" of the
+     * RBI KFS format (Annex A, Part 1), in integer paise. It is the amount of the loan, not the net
+     * disbursed amount (which is less any fees deducted upfront; `LoanDisbursed.amount_paise`). The
+     * owner named it `loanAmount`; the Ecosystem payloads here are snake case (§3.2), so it travels
+     * as `loan_amount_paise`.
+     */
+    loan_amount_paise: paise.optional(),
   })
   .loose();
 

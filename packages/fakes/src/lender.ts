@@ -7,7 +7,8 @@
 // PR-UDF-053 (R1-D-219): after a sanction it shares the KFS, the sanction letter, the loan agreement
 // and the execution-pack manifest by reference (`DocumentShared`, each with a document JWS), serves
 // `GET /v1/documents/{id}` with a 15-minute URL, and takes the LSP's signed `ESignCompleted` and
-// `EStampCompleted`, verified against `lspKeys`.
+// `EStampCompleted`, verified against `lspKeys`. R1-D-229: its KFS carries `loan_amount_paise` and
+// its manifest a `disbursement_clause` in the loan agreement, both the application's amount.
 import {
   DOCUMENT_EVENTS,
   DOCUMENTS_SCHEMA_VERSION,
@@ -342,6 +343,8 @@ export class FakeLender {
         validity_expiry: validityExpiry.toISOString(),
         apr_bp: app.aprBp,
         document_sha256: sha256Hex(`kfs:${kfsId}`),
+        // R1-D-229: the KFS "Loan amount" (Annex A Part 1); the fake deducts nothing upfront.
+        loan_amount_paise: app.amountPaise,
       });
       await this.emit("SanctionLetterIssued", {
         sanction_id: this.id("snc"),
@@ -452,6 +455,12 @@ export class FakeLender {
       summary_box: { document_id: agreement.documentId, page: 2 },
       covenant_declaration: { document_id: agreement.documentId, sha256: agreement.sha256 },
       countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
+      // R1-D-229: the loan agreement's clause stating the amount to be disbursed.
+      disbursement_clause: {
+        document_id: agreement.documentId,
+        page_or_clause_ref: "cl.4.2",
+        amount_stated_paise: app.amountPaise,
+      },
     });
     app.pack = pack;
     await this.share(
