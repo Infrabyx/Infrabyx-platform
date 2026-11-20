@@ -1298,6 +1298,15 @@ From the next `tenancy` minor (no migration, no setting, no type change), three 
 - If a joined call's settings cannot be put back (a broken connection), the whole handler fails and rolls back, even if you caught the error.
 - **Udofin:** work you kept outside `kernel.ambient` for these three cases can move inside it.
 
+## 7du. Text from a PDF under a revoked lender key (PR-UDF-067; R1-D-241)
+
+From the next release (`connectors` minor, `contracts` patch; no setting, no migration), `PdfTextExtractor.extractText` (adapter `pdf-text`) no longer reports a file whose named lender key is disabled, deleted or no longer granted (§7dl) as a storage outage.
+
+- **Was:** `IPB-PORT-002` (`reason: "unavailable"`) for any STORAGE read failure.
+- **Now:** `IPB-KMS-001` (503) with `reason: "storage_key_unavailable"` when the read was refused for that key, and nothing else about the key (no key reference, key id or vendor error). Tell the user the lender's key is unavailable and do not retry blindly, as for a direct `storage.get` (§7dl).
+- **Unchanged:** any other read failure is still `IPB-PORT-002` `unavailable` (retry as before); a corrupt, unreadable or encrypted PDF is still `IPB-SEC-010`; the size, time and memory limits `IPB-SEC-013`; an unscanned or swapped file `IPB-SEC-015`.
+- **Adopt:** if you mapped `IPB-PORT-002` from `extractText` to a retry, add a case for `IPB-KMS-001` with `reason: "storage_key_unavailable"`. The AV scan of such a file still answers `ERROR` with `reason: "unavailable"` (R1-D-241 (4)).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
