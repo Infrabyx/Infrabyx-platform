@@ -552,7 +552,10 @@ export class NotifyService implements NotifyPort {
           notificationId: prior.rows[0].id,
           deliveries,
           outcome: deliveries.length ? "targeted" : "no_recipients",
-          recipients: [...new Set(deliveries.map((d) => d.recipient))],
+          // Sorted by user id, as the first call's `staffHolders` answer is: delivery ids are ULIDs
+          // whose random part is not monotonic within a millisecond, so `order by created_at, id`
+          // is not insertion order (R1-D-234).
+          recipients: byRecipient([...new Set(deliveries.map((d) => d.recipient))]),
         },
         due: new Set(),
         replay: true,
@@ -614,7 +617,7 @@ export class NotifyService implements NotifyPort {
     });
     return {
       ...written,
-      result: { ...written.result, outcome: "targeted", recipients: holders },
+      result: { ...written.result, outcome: "targeted", recipients: byRecipient(holders) },
     };
   }
 
@@ -2217,11 +2220,14 @@ export class NotifyService implements NotifyPort {
         notificationId: n.id,
         classId: n.class_id,
         outcome: ds.length ? "targeted" : "no_recipients",
-        recipients: [...by].map(([recipient, deliveries]) => ({
-          recipient,
-          reached: deliveries.some((d) => d.state === "sent" || d.state === "delivered"),
-          deliveries,
-        })),
+        // One entry per recipient, sorted by recipient (R1-D-234; see `recordStaff`).
+        recipients: [...by]
+          .sort(([a], [b]) => cmp(a, b))
+          .map(([recipient, deliveries]) => ({
+            recipient,
+            reached: deliveries.some((d) => d.state === "sent" || d.state === "delivered"),
+            deliveries,
+          })),
       };
     });
   }
@@ -2441,4 +2447,14 @@ export function positional(
  */
 export function emailTags(classId: string): Record<string, string> {
   return { notify_class: classId.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, 256) };
+}
+
+/** Code-point order, independent of the database collation and of id generation order. */
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/** Recipient refs in a stable order (R1-D-234). */
+function byRecipient(refs: readonly string[]): string[] {
+  return [...refs].sort(cmp);
 }

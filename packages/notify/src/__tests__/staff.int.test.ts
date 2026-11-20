@@ -4,7 +4,7 @@
 // by `FN:`; `no_recipients` recorded, ledgered and replayed; idempotency; the per-recipient
 // receipt; preferences for optional and mandatory staff classes (IPB-07-25); staff classes only
 // through the staff door; personal data refused before anything is recorded.
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { EmailMessage, EmailPort } from "@infrabyx/contracts/ports";
 import { PgSettingsStore, SettingsService } from "@infrabyx/config/settings";
@@ -308,6 +308,26 @@ describe("outcomes, idempotency and the receipt (PR-UDF-052)", () => {
     expect(
       await count("select 1 from notify.notification where idempotency_key = 'staff-alert-0008'"),
     ).toBe(1);
+  });
+  it("answers recipients in id order on a replay and in the receipt, whatever the id order (R1-D-234)", async () => {
+    // Delivery ids are ULIDs whose random part is not monotonic within a millisecond, so rows
+    // written in one millisecond come back from `order by created_at, id` in random order. With
+    // the clock frozen every delivery shares one millisecond: before the fix, eight replays all
+    // in order happened with probability 1/256 (the CI-only failure on #326).
+    vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-20T13:00:00.000Z") });
+    try {
+      for (let i = 0; i < 8; i++) {
+        const key = `staff-alert-order-${i}`;
+        const first = await svc.notifyStaff(caller("tnt_a"), alert(key));
+        expect(first.recipients).toEqual([A1, A2]);
+        const again = await svc.notifyStaff(caller("tnt_a"), alert(key));
+        expect(again.recipients).toEqual([A1, A2]);
+        const rc = await svc.deliveryReceipt(caller("tnt_a"), first.notificationId);
+        expect(rc?.recipients.map((x) => x.recipient)).toEqual([A1, A2]);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
   });
   it("gives each recipient's deliveries and whether they were reached", async () => {
     const r = await svc.notifyStaff(caller("tnt_a"), alert("staff-alert-0009"));
