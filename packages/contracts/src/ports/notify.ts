@@ -326,7 +326,10 @@ export interface SendResult {
 export interface StaffSendResult extends SendResult {
   /** `no_recipients`: nobody in the tenant holds the roles; recorded and ledgered, nothing sent. */
   outcome: "targeted" | "no_recipients";
-  /** The principals the roles resolved to at send time, in order. */
+  /**
+   * The principals the roles resolved to at send time, sorted by principal id (code-point order);
+   * a replay of the same idempotency key answers the same list in the same order (R1-D-234).
+   */
   recipients: string[];
 }
 
@@ -353,6 +356,7 @@ export interface DeliveryReceipt {
   notificationId: string;
   classId: string;
   outcome: "targeted" | "no_recipients";
+  /** One entry per recipient, sorted by recipient (code-point order; R1-D-234). */
   recipients: Array<{
     recipient: string;
     /** Whether any of the recipient's deliveries was `sent` or `delivered`. */
