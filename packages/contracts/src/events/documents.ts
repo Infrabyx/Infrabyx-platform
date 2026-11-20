@@ -145,6 +145,22 @@ export const ExecutionPackManifest = z
         (c) => !c.required || (c.by !== undefined && c.order !== undefined),
         "a required countersignature names `by` and `order`",
       ),
+    /**
+     * Optional (owner, 20 Nov 2026; R1-D-229; PR-UDF-053 follow-up): where a pack document states
+     * the amount to be disbursed, so a product can compare it with `LoanDisbursed.amount_paise`.
+     * `document_id` names a document in the pack; `page_or_clause_ref` is a short locator such as
+     * `p.3` or `cl.4.2`; `amount_stated_paise` is integer paise. The owner named it
+     * `disbursementClause { documentId, pageOrClauseRef, amountStated }`; the Ecosystem payloads
+     * here are snake case (§3.2).
+     */
+    disbursement_clause: z
+      .object({
+        document_id: ref,
+        page_or_clause_ref: z.string().min(1).max(64),
+        amount_stated_paise: z.number().int().min(0).max(1e14),
+      })
+      .loose()
+      .optional(),
   })
   .loose()
   .superRefine((m, ctx) => {
@@ -167,6 +183,12 @@ export const ExecutionPackManifest = z
       ctx.addIssue({
         code: "custom",
         message: "covenant_declaration names a document outside the pack",
+      });
+    if (m.disbursement_clause && !ids.has(m.disbursement_clause.document_id))
+      ctx.addIssue({
+        code: "custom",
+        path: ["disbursement_clause", "document_id"],
+        message: "disbursement_clause names a document outside the pack",
       });
   });
 export type ExecutionPackManifest = z.infer<typeof ExecutionPackManifest>;

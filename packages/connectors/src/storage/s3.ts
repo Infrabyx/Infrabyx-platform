@@ -58,6 +58,26 @@ import { createEgress } from "../core/http.js";
 export const MAX_PRESIGN_TTL_SECONDS = 300;
 const S3_REGIONS = ["ap-south-1", "ap-south-2"] as const;
 
+/**
+ * A named tenant key (PR-UDF-058; R1-D-229): a KMS key id, with S3 Bucket Keys on, or
+ * `{ keyId, bucketKey }`, where `bucketKey: false` turns them off for that key's objects.
+ */
+export type NamedKmsKey = string | { readonly keyId: string; readonly bucketKey?: boolean };
+
+/** A named key in its one form, or undefined when there is none. */
+const namedKmsKey = (
+  k: NamedKmsKey | undefined,
+): { keyId: string; bucketKey: boolean } | undefined =>
+  k === undefined
+    ? undefined
+    : typeof k === "string"
+      ? k
+        ? { keyId: k, bucketKey: true }
+        : undefined
+      : k.keyId
+        ? { keyId: k.keyId, bucketKey: k.bucketKey !== false }
+        : undefined;
+
 export interface S3StorageOptions {
   /** Bucket per class (`int.storage.bucket.<class>`); classes without a bucket are refused. */
   buckets: Partial<Record<BucketClass, string>>;
@@ -94,11 +114,17 @@ export interface S3StorageOptions {
    * must differ from every class and compartment key, from the tenant's other references' keys,
    * and in a compartment from the same reference's keys elsewhere. Refused for a tenant with its own
    * CMK (C-17: its objects stay under that key).
+   *
+   * A value is a key id (S3 Bucket Keys on, the default) or `{ keyId, bucketKey }` (R1-D-229,
+   * #165 (3)): `bucketKey: false` writes that reference's objects with
+   * `x-amz-server-side-encryption-bucket-key-enabled: false`, so a revocation of the lender's key
+   * takes effect at once and CloudTrail logs a KMS call per object, at one KMS request per object
+   * operation (a recurring cost, decided per lender with its key policy).
    */
   tenantNamedKmsKeyIds?: (
     tenantId: string,
     where: { bucketClass: BucketClass; compartment?: StorageCompartment },
-  ) => Readonly<Record<string, string>> | undefined;
+  ) => Readonly<Record<string, NamedKmsKey>> | undefined;
   /**
    * PR-UDF-058: `{ [prefix]: keyRef }` for a tenant (each prefix under `tenant/<tenantId>/`); a
    * write that names no reference takes the longest matching prefix's, and one that names another
@@ -386,9 +412,15 @@ export class S3Storage implements StoragePort {
   }
 
   private sse(slot: Slot, key: string, keyRef?: string) {
-    const kms = keyRef ? this.namedKeyFor(slot, key, keyRef) : this.keyFor(slot, key);
+    const named = keyRef ? this.namedKeyFor(slot, key, keyRef) : undefined;
+    const kms = named ? named.keyId : this.keyFor(slot, key);
     return kms
-      ? { ServerSideEncryption: "aws:kms" as const, SSEKMSKeyId: kms, BucketKeyEnabled: true }
+      ? {
+          ServerSideEncryption: "aws:kms" as const,
+          SSEKMSKeyId: kms,
+          // R1-D-229: S3 Bucket Keys stay on unless a named key turns them off.
+          BucketKeyEnabled: named?.bucketKey ?? true,
+        }
       : {};
   }
 
@@ -439,7 +471,11 @@ export class S3Storage implements StoragePort {
    * own CMK, an unknown reference, or a key shared with a platform key, another reference or (in a
    * compartment) another location is refused, never replaced by the class key.
    */
-  private namedKeyFor(slot: Slot, key: string, keyRef: string): string {
+  private namedKeyFor(
+    slot: Slot,
+    key: string,
+    keyRef: string,
+  ): { keyId: string; bucketKey: boolean } {
     const tenant = tenantOf(key)!;
     const where = (s: Slot) => ({
       bucketClass: s.cls,
@@ -450,8 +486,10 @@ export class S3Storage implements StoragePort {
         "key_ref_tenant_cmk",
         "the tenant has its own CMK, which C-17 keeps on all its objects",
       );
-    const id = this.o.tenantNamedKmsKeyIds?.(tenant, where(slot))?.[keyRef];
-    if (!id) this.refuseKeyRef("key_ref_unknown", `no named key ${keyRef} for ${slotName(slot)}`);
+    const named = namedKmsKey(this.o.tenantNamedKmsKeyIds?.(tenant, where(slot))?.[keyRef]);
+    if (!named)
+      this.refuseKeyRef("key_ref_unknown", `no named key ${keyRef} for ${slotName(slot)}`);
+    const id = named.keyId;
     const platform = new Set([
       ...Object.values(this.o.kmsKeyIds ?? {}),
       ...STORAGE_COMPARTMENTS.flatMap((c) => Object.values(this.o.compartmentKmsKeyIds?.[c] ?? {})),
@@ -468,14 +506,14 @@ export class S3Storage implements StoragePort {
         this.o.tenantNamedKmsKeyIds?.(tenant, where(s)) ?? {},
       ))
         if (
-          other === id &&
+          namedKmsKey(other)?.keyId === id &&
           (ref !== keyRef || (!sameSlot(s, slot) && (s.compartment || slot.compartment)))
         )
           this.refuseKeyRef(
             "key_ref_shared",
             `the key of ${keyRef} in ${slotName(slot)} is also ${ref} in ${slotName(s)}`,
           );
-    return id;
+    return named;
   }
 
   private metadata(body: Uint8Array, meta: ObjectMeta, keyRef?: string): Record<string, string> {

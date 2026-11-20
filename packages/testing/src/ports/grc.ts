@@ -10,6 +10,7 @@ import { expect } from "vitest";
 import { findAadhaarLike, verhoeffValid } from "@infrabyx/contracts/aadhaar";
 import {
   GRC_EVENTS,
+  certInReportBy,
   grcIdempotencyKey,
   type ComplianceIssueRaisedData,
   type ControlTestResultPublishedData,
@@ -274,6 +275,9 @@ export function grcContractCases<P extends GrcPort>(fx: GrcFixtures<P>): Array<C
           update_seq: 4,
           status: "RESOLVED",
           notified_re_at: "2026-11-20T11:00:00+05:30",
+          // R1-D-229: the optional CERT-In fields travel with an update.
+          cert_in_category: "UNAUTHORISED_ACCESS",
+          cert_in_report_by: certInReportBy(first.detected_at),
         });
         wellFormed(p, fourth, "notifyIncident");
         expect(fx.accepted(p)).toBe(before + 1);
