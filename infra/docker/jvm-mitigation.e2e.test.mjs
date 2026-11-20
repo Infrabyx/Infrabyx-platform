@@ -7,7 +7,7 @@
 //                       that names the flag stops the node before it starts.
 //   IPB_JVM_IMAGES=1    the third-party JVM images, started as infra/compose/docker-compose.yml and
 //                       the test harness define them: stock Keycloak and OpenSearch (`jcmd`), the
-//                       pdftk JVM that Gotenberg starts for a merge, and LocalStack's JVM.
+//                       pdftk JVM that Gotenberg starts for a merge, LocalStack's JVM and veraPDF's.
 // The waiver in trivyignore.yaml is valid only while this file passes (the same required job).
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -223,6 +223,28 @@ describe.skipIf(!thirdParty)(
       );
       expect(flag(r.stdout)).toBe("false {environment}");
     }, 600_000);
+
+    // veraPDF's launcher puts JAVA_OPTS on the java command line; the JVM prints its final flags.
+    it("veraPDF's JVM (TEST_IMAGES.verapdf)", () => {
+      const env = withJvmMitigation("verapdf");
+      expect(Object.keys(env)).toEqual([JVM_IMAGES["verapdf/cli"].variable]);
+      const r = spawnSync(
+        "docker",
+        [
+          "run",
+          "--rm",
+          "--network",
+          "none",
+          "-e",
+          `JAVA_OPTS=${env.JAVA_OPTS} -XX:+PrintFlagsFinal`,
+          TEST_IMAGES.verapdf.image,
+          "--version",
+        ],
+        { encoding: "utf8" },
+      );
+      expect(r.stdout).toContain("veraPDF 1.30.3");
+      expect(flag(r.stdout)).toBe("false {command line}");
+    }, 300_000);
   },
 );
 

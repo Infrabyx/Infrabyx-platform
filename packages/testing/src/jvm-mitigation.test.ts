@@ -14,11 +14,12 @@ describe("withJvmMitigation (R1-D-192)", () => {
     expect(JVM_BASE64_INTRINSIC_OFF).toBe("-XX:-UseBASE64Intrinsics");
   });
 
-  it("covers exactly the test images that carry a JVM (scan of 19 Nov 2026)", () => {
+  it("covers exactly the test images that carry a JVM (scan of 19 Nov 2026; veraPDF 20 Nov)", () => {
     expect(Object.keys(TEST_IMAGE_JVM_OPTIONS_VAR).sort()).toEqual([
       "gotenberg",
       "keycloak",
       "localstack",
+      "verapdf",
     ]);
     for (const name of Object.keys(TEST_IMAGE_JVM_OPTIONS_VAR))
       expect(TEST_IMAGES).toHaveProperty(name);
@@ -30,6 +31,7 @@ describe("withJvmMitigation (R1-D-192)", () => {
       A: "1",
       JAVA_TOOL_OPTIONS: "-XX:-UseBASE64Intrinsics",
     });
+    expect(withJvmMitigation("verapdf")).toEqual({ JAVA_OPTS: "-XX:-UseBASE64Intrinsics" });
   });
 
   it("appends the flag after the caller's own options, so a re-enabling flag loses", () => {

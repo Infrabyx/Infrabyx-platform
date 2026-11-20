@@ -117,6 +117,12 @@ export const TEST_IMAGES = {
     version: "8.2.0",
     role: "Unleash OSS (FEATURE_FLAG)",
   },
+  verapdf: {
+    image:
+      "verapdf/cli:v1.30.3@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb",
+    version: "1.30.3",
+    role: "veraPDF CLI: PDF/A-2b and PDF/UA-1 validation of toPdf output (PR-FBX-52)",
+  },
 } as const satisfies Record<string, TestImage>;
 export type TestImageName = keyof typeof TEST_IMAGES;
 
@@ -130,8 +136,9 @@ export const JVM_BASE64_INTRINSIC_OFF = "-XX:-UseBASE64Intrinsics";
 /**
  * The variable each JVM-carrying test image reads the option from: Keycloak's kc.sh appends
  * `JAVA_OPTS_APPEND` last; Gotenberg (pdftk) and LocalStack start their JVMs as child processes,
- * which inherit `JAVA_TOOL_OPTIONS` (the JVM reads it itself, also when embedded). The other test
- * images carry no JVM (scan of 19 Nov 2026, R1-D-192). infra/compose/docker-compose.yml sets the
+ * which inherit `JAVA_TOOL_OPTIONS` (the JVM reads it itself, also when embedded); veraPDF's
+ * launcher puts `JAVA_OPTS` on its `java` command line, with nothing after it that names the flag
+ * (added 20 Nov 2026, R1-D-248). The other test images carry no JVM (scan of 19 Nov 2026, R1-D-192). infra/compose/docker-compose.yml sets the
  * same values; infra/docker/jvm-mitigation.test.mjs keeps the two in step, and the `containers`
  * job reads the flag from the live JVMs.
  */
@@ -139,6 +146,7 @@ export const TEST_IMAGE_JVM_OPTIONS_VAR: Readonly<Partial<Record<TestImageName, 
   keycloak: "JAVA_OPTS_APPEND",
   gotenberg: "JAVA_TOOL_OPTIONS",
   localstack: "JAVA_TOOL_OPTIONS",
+  verapdf: "JAVA_OPTS",
 };
 
 /**

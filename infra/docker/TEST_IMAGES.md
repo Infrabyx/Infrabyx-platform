@@ -22,8 +22,11 @@ Container images used by the hermetic contract legs. The source of truth is `TES
 | `gotenberg`  | `gotenberg/gotenberg:8.39.0@sha256:13672f317b443c793e972b1bd2155ec62a3e7b6891b411e8196442cc053ee5f5`           | 8.39.0 (pushed 27 Oct 2026, pinned 5 Nov 2026)               | Gotenberg (Chromium and LibreOffice, fonts-noto-core) for DOCGEN renderHtml (#120) |
 | `clamav`     | `clamav/clamav:1.5.4@sha256:45fe5149fbee5a46509c9848ef20d0c354b7b2323c9369f285939a37cf33422a`                  | 1.5.4 (pushed 9 Nov 2026; usable from 16 Nov under PL2-D-32) | ClamAV clamd with its signature databases, TCP 3310 (AV; PR-LDC-41)                |
 | `unleash`    | `unleashorg/unleash-server@sha256:5020013b7a9a93c8ed3686d36b5025399714020b3fb5ef41afd84ba37a88c050`            | 8.2.0                                                        | Unleash OSS (FEATURE_FLAG)                                                         |
+| `verapdf`    | `verapdf/cli:v1.30.3@sha256:d74b7026c18a0f171e73c153b617fe6520e1511feb24ca98a348b2bb897669fb`                  | 1.30.3 (pushed 27 Oct 2026, pinned 20 Nov 2026)              | veraPDF CLI: PDF/A-2b and PDF/UA-1 validation of `toPdf` output (PR-FBX-52)        |
 
 Zitadel (GHCR) runs in CI only.
+
+veraPDF (`verapdf/cli`, the veraPDF Consortium's own image; GPL-3.0 or MPL-2.0) is a validator run by the `@infrabyx/export` integration suite only, with no network and the PDFs mounted read-only; nothing from it is shipped. It carries a JVM (Temurin 11), so the harness sets the CVE-2026-114938 flag on `JAVA_OPTS` (R1-D-192, R1-D-248). 1.30.4 (pushed 18 Nov 2026) is usable from 25 Nov under PL2-D-32.
 
 ## Built from source
 
