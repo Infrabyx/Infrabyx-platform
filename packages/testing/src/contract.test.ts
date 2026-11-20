@@ -5,12 +5,17 @@ import { FakeConsentLedger } from "./web.js";
 
 defineContractSuite("SECRETS", () => new MemorySecrets());
 defineContractSuite("KMS", () => fakeKms());
-// PR-UDF-058: the two named keys the built-in case names, for its tenant only.
+// PR-UDF-058: the named keys the built-in cases name, for their tenant only; PR-UDF-068: the key
+// of `lender:contract-off` is disabled.
 defineContractSuite(
   "STORAGE",
   () =>
     new MemoryStorage(undefined, {
-      keyRefs: (t) => (t === "tnt_contract" ? ["lender:contract", "lender:contract-b"] : undefined),
+      keyRefs: (t) =>
+        t === "tnt_contract"
+          ? ["lender:contract", "lender:contract-b", "lender:contract-off"]
+          : undefined,
+      keyStates: (_t, ref) => (ref === "lender:contract-off" ? "Disabled" : undefined),
     }),
 );
 defineContractSuite("FEATURE_FLAG", () => new MemoryFlagProvider());

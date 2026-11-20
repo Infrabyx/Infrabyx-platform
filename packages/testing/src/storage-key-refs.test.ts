@@ -41,4 +41,34 @@ describe("MemoryStorage named keys (PR-UDF-058)", () => {
       }),
     ).toContain("key_ref=lender%3Aa");
   });
+
+  it("keyRefStatus (PR-UDF-068): the write's labels, the configured key state, and no write", async () => {
+    const s = new MemoryStorage(undefined, {
+      keyRefs: (t) => (t === "tnt_a" ? ["lender:a", "lender:b"] : undefined),
+      keyRefPrefixes: (t) => (t === "tnt_c" ? { "tenant/tnt_x/vault/": "lender:a" } : undefined),
+      keyStates: (_t, ref) => (ref === "lender:b" ? "PendingDeletion" : undefined),
+    });
+    const reg = { bucketClass: "REGULATED" } as const;
+    expect(await s.keyRefStatus("tnt_a", "lender:a", reg)).toEqual({ status: "resolves" });
+    expect(await s.keyRefStatus("tnt_a", "lender:a", { ...reg, describeKey: true })).toEqual({
+      status: "resolves",
+      keyState: "Enabled",
+    });
+    expect(await s.keyRefStatus("tnt_a", "lender:b", { ...reg, describeKey: true })).toEqual({
+      status: "refused",
+      reason: "storage_key_unavailable",
+      keyState: "PendingDeletion",
+    });
+    expect(await s.keyRefStatus("tnt_c", "lender:a", reg)).toEqual({
+      status: "refused",
+      reason: "key_ref_prefix_invalid",
+    });
+    await expect(
+      s.keyRefStatus("tnt_a", "lender:a", {
+        bucketClass: "GENERAL",
+        compartment: "SEALED",
+      }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+    expect(s.objects.size).toBe(0);
+  });
 });

@@ -60,25 +60,26 @@ describe("no work on a connection after its transaction ends (R1-D-92)", () => {
         },
         { action: "x.y.slow" },
       );
-    const quick = () =>
+    // Refused at once (an empty reason), before it joins anything. Concurrent joined calls queue
+    // since PR-UDF-062, so the refusal is what makes the Promise.all reject while the first runs.
+    const refused = () =>
       kernel.mutate(
         A,
         async (tx) => {
           await audit.record(tx, { action: "x.y.quick", resourceType: "x", resourceId: "q" });
           return 2;
         },
-        { action: "x.y.quick" },
+        { action: "x.y.quick", reason: "" },
       );
     let leaked: Promise<unknown> | undefined;
     const ambient = kernel.ambient(A, async (tx) => {
       await audit.record(tx, { action: "api.x", resourceType: "x", resourceId: "x" });
       leaked = slow();
       leaked.catch(() => undefined);
-      // The second sibling is refused at once, so a Promise.all rejects while the first still runs.
       setTimeout(release, 150);
-      await Promise.all([leaked, quick()]);
+      await Promise.all([leaked, refused()]);
     });
-    await expect(ambient).rejects.toThrow(/one at a time/);
+    await expect(ambient).rejects.toThrow(/reason has 1 to 500/);
     // Tenant B's transaction takes the only connection and holds it while the sibling could run.
     await kernel.mutate(
       B,

@@ -1,0 +1,5 @@
+---
+"@infrabyx/fakes": minor
+---
+
+`FakeAccountAggregator` writes each FI payload to STORAGE on `fetch` (Udofin PR-UDF-065; R1-D-243), as the `setu-aa` adapter does: the bytes of a synthetic ReBIT-shaped JSON payload (new export `fakeFiPayload`) in the `REGULATED` class, under an IPB-01-27 key `<dataPrefix><ULID>.json`, and the result's `sha256` is the lower-case hex SHA-256 of exactly the stored bytes, so a STATEMENT_ANALYSIS adapter can analyse the payloads by reference. New constructor option `storage` (a `StoragePort`) and property `storage`; without it the fake keeps its own `MemoryStorage`, so `new FakeAccountAggregator()` works as before. Changed: a payload's `storageKey` was `<dataPrefix><sessionId>-<fiType>.json`, which was not an IPB-01-27 key and named nothing in STORAGE, and its `sha256` hashed no stored bytes; a test that matched the old key shape or the old digest must read the payload from `storage` instead. `AccountAggregatorFixtures` gains optional `storageOf`, set in `ACCOUNT_AGGREGATOR_FAKE_FIXTURES`.

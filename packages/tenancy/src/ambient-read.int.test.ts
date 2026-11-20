@@ -127,13 +127,10 @@ describe("reads joined to an ambient mutation (PR-UDF-037)", () => {
   });
 
   it("runs one at a time with joined calls; a read nested in a joined mutation joins", async () => {
-    await expect(
-      ambient(async () => {
-        const r = await Promise.allSettled([readItems(user()), readItems(user())]);
-        const refused = r.find((x) => x.status === "rejected");
-        if (refused) throw refused.reason;
-      }),
-    ).rejects.toThrow(/one at a time/);
+    // Concurrent joined reads queue (PR-UDF-062; R1-D-237): both run, one after the other.
+    const both = await ambient(() => Promise.all([readItems(user()), readItems(user())]));
+    expect(both[0]).toEqual(both[1]);
+    expect(both[0]).toContain("one");
     const nested = await ambient(() =>
       kernel.mutate(
         user(),

@@ -97,11 +97,28 @@ export const MAX_UNITS_PER_TX = 100_000;
  */
 const ENDED = "the transaction has ended: no statement may run on its connection";
 
+/**
+ * When a call in an ambient mutation may use the connection (PR-UDF-062; R1-D-237): undefined when
+ * it may now, else a promise to wait on before asking again. It throws when the call may never run
+ * (the call it was made from has ended, or a joined call's settings could not be restored).
+ *
+ * Callers wait with `for (let w = turn(); w; w = turn()) await w;` and then send their statement
+ * in the same tick: the last check and the statement must not be split by an `await`, or another
+ * call could take the connection in between.
+ */
+type Turn = () => Promise<void> | undefined;
+
 class PgTx implements Tx {
   private _audited = false;
   private units = 0;
   private depth = 0;
   private ended = false;
+  /**
+   * Kernel only: set on an ambient mutation's transaction (PR-UDF-062; R1-D-237), so a statement
+   * or unit runs only when its call is the innermost one open on the connection. Undefined on
+   * every other transaction, whose statements run as before.
+   */
+  turn?: Turn;
   constructor(
     private readonly client: pg.PoolClient,
     readonly ctx: KernelContext,
@@ -118,7 +135,17 @@ class PgTx implements Tx {
     if (this.ended) throw new KernelGuardError(ENDED);
   }
 
-  async unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+  unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
+    return this.unitIn(fn, this.turn);
+  }
+
+  /**
+   * Kernel only: a unit whose savepoint is opened and closed only when `turn` lets it (PR-UDF-062;
+   * R1-D-237), so it never closes over another call's savepoint. `unit` passes the transaction's
+   * own turn (none outside an ambient mutation); a joined mutation passes its own call's.
+   */
+  async unitIn<T>(fn: (tx: Tx) => Promise<T>, turn?: Turn): Promise<UnitOutcome<T>> {
+    if (turn) for (let w = turn(); w; w = turn()) await w;
     this.assertOpen();
     if (this.readOnly) throw new KernelGuardError("units are for mutations");
     if (++this.units > MAX_UNITS_PER_TX)
@@ -129,9 +156,11 @@ class PgTx implements Tx {
     await this.client.query(`savepoint ${name}`);
     try {
       const value = await fn(this);
+      if (turn) for (let w = turn(); w; w = turn()) await w;
       await this.client.query(`release savepoint ${name}`);
       return { ok: true, value };
     } catch (error) {
+      if (turn) for (let w = turn(); w; w = turn()) await w;
       // A failed rollback (a broken connection) fails the whole transaction.
       await this.client.query(`rollback to savepoint ${name}`);
       await this.client.query(`release savepoint ${name}`);
@@ -146,6 +175,9 @@ class PgTx implements Tx {
     text: string,
     params?: readonly unknown[],
   ): Promise<QueryResult<R>> {
+    // In an ambient mutation a statement waits until its call is the innermost one open, so it
+    // never runs under another call's savepoint or settings (PR-UDF-062; R1-D-237).
+    for (let w = this.turn?.(); w; w = this.turn?.()) await w;
     this.assertOpen();
     assertAllowedStatement(text);
     this.guard?.(text);
@@ -168,13 +200,16 @@ class PgTx implements Tx {
    * Kernel only: a read joined to an ambient mutation (PR-UDF-037; R1-D-188). `fn` runs in a
    * savepoint as `role`, read-only, with the read's own `app.*` settings; the savepoint is always
    * rolled back, which undoes the role, the read-only flag and the settings (each set with SET
-   * LOCAL inside it), so the ambient transaction carries on as it was.
+   * LOCAL inside it), so the ambient transaction carries on as it was. The savepoint is opened and
+   * rolled back only when `turn` lets it (PR-UDF-062; R1-D-237).
    */
   async readUnit<T>(
     role: string,
     ctx: KernelContext,
     fn: () => Promise<T>,
+    turn?: Turn,
   ): Promise<UnitOutcome<T>> {
+    if (turn) for (let w = turn(); w; w = turn()) await w;
     this.assertOpen();
     if (this.readOnly) throw new KernelGuardError("units are for mutations");
     if (++this.units > MAX_UNITS_PER_TX)
@@ -191,6 +226,7 @@ class PgTx implements Tx {
     } catch (error) {
       return { ok: false, error };
     } finally {
+      if (turn) for (let w = turn(); w; w = turn()) await w;
       // A failed rollback (a broken connection) fails the whole transaction.
       await this.client.query(`rollback to savepoint ${name}`);
       await this.client.query(`release savepoint ${name}`);
@@ -271,12 +307,28 @@ class JoinedTx implements Tx {
   }
 }
 
+/** An open call on an ambient mutation's connection, with the settings it runs under. */
+interface OpenCall {
+  token: symbol;
+  ctx: KernelContext;
+  opts: MutateOptions;
+  /** Set once the call's callback has settled: nothing new may start from it or run as it. */
+  closing?: boolean;
+}
+
 interface AmbientScope {
   tx: PgTx;
   ctx: KernelContext;
   opts: MutateOptions;
-  /** Tokens of the open joined calls, innermost last; the first is the ambient call's own. */
-  stack: symbol[];
+  /**
+   * The open calls, innermost last; the first is the ambient call's own. Only the innermost uses
+   * the connection; a call made from it runs at once, and any other waits its turn (PR-UDF-062).
+   */
+  stack: OpenCall[];
+  /** Resolved and replaced each time a call closes: the waiting calls then ask again, in order. */
+  wake: { promise: Promise<void>; resolve: () => void };
+  /** Set when a joined call's settings could not be restored: nothing more runs (PR-UDF-062). */
+  broken?: { error: unknown };
   /** Joined calls not yet settled; the ambient mutation waits for them before it ends (R1-D-92). */
   inflight: Set<Promise<unknown>>;
   /** Set when the ambient mutation ends: a joined call that starts later is refused. */
@@ -285,14 +337,47 @@ interface AmbientScope {
   joinReads: boolean;
 }
 
+const BROKEN =
+  "a joined call's settings could not be restored: nothing more runs in this ambient mutation";
+
+function wakeSignal(): AmbientScope["wake"] {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => (resolve = r));
+  return { promise, resolve };
+}
+
+/** Wakes every waiting call; each asks again in the order it started waiting. */
+function wakeAll(scope: AmbientScope): void {
+  const { resolve } = scope.wake;
+  scope.wake = wakeSignal();
+  resolve();
+}
+
+/**
+ * The turn of the code of call `token` on `scope`'s connection (PR-UDF-062; R1-D-237): now when it
+ * is the innermost open call, else once the calls above it close. Code of a call that has ended or
+ * whose callback has settled never runs (a call made from it, or a statement it left behind),
+ * except the kernel's own closing of that call (`own`).
+ */
+function turnOf(scope: AmbientScope, token: symbol, own = false): Promise<void> | undefined {
+  if (scope.broken) throw new KernelGuardError(BROKEN);
+  const i = scope.stack.findIndex((c) => c.token === token);
+  if (i < 0 || (!own && scope.stack[i]!.closing))
+    throw new KernelGuardError("the call this one was made from has ended: it cannot run");
+  return i === scope.stack.length - 1 ? undefined : scope.wake.promise;
+}
+
 /** Options of `PgKernel.ambient`: the mutation's own, and whether reads join it. */
 export interface AmbientOptions extends MutateOptions {
   /**
    * When true, a `read` made within the callback joins the ambient transaction (PR-UDF-037;
    * R1-D-188): it sees the transaction's uncommitted writes, runs read-only as the read role, and
-   * runs one at a time with the joined mutations. A `snapshot` read, a read for another tenant,
-   * principal, scope or grant, and a support, external or platform service read keep their own
-   * transaction. Default false: every read keeps its own transaction, as before 1.21.
+   * runs one at a time with the joined mutations (queued, PR-UDF-062). A read by another principal
+   * of the same tenant joins with its own `app.*` settings (PR-UDF-062; R1-D-237). A `snapshot`
+   * read, a read for another tenant, scope or grant, a read by another principal when either
+   * carries a break-glass grant or support access, and a support, external or platform service
+   * read keep their own transaction. Default false: every read keeps its own transaction, as
+   * before 1.21.
    */
   joinReads?: boolean;
 }
@@ -432,7 +517,13 @@ export class PgKernel implements MutationKernel {
     if (opts.reason !== undefined && (opts.reason.length < 1 || opts.reason.length > 500))
       throw new RangeError("a mutation's reason has 1 to 500 characters");
     const frame = this.ambientFrame.getStore();
-    if (frame) return this.joined(frame, () => this.joinedCall(frame, ctx, role, fn, opts));
+    if (frame) {
+      // Another tenant's call is never joined: it runs in its own transaction, as if no ambient
+      // mutation were open, so neither tenant sees the other's uncommitted rows (PR-UDF-062).
+      if (ctx.tenantId !== frame.scope.ctx.tenantId)
+        return this.ambientFrame.exit(() => this.mutate(ctx, fn, opts));
+      return this.joined(frame, () => this.joinedCall(frame, ctx, role, fn, opts));
+    }
     return this.run(
       ctx,
       role,
@@ -456,11 +547,16 @@ export class PgKernel implements MutationKernel {
    * Finbyx PR-FBX-21 (1); R1-D-48): a service that opens its own mutation then runs in the caller's
    * transaction, so `idempotent(tx, …)` can wrap a handler whose services each call `mutate`. Each
    * joined call runs in a kernel unit (a savepoint) with its own `app.*` settings and its own ledger
-   * check: when it throws, only its writes roll back and the error reaches its caller; the ambient
-   * settings are restored after it. A joined call must be the ambient one's tenant, principal,
-   * scope and break-glass grant, runs as the app role, and joined calls run one at a time. Reads
-   * join only with `opts.joinReads` (PR-UDF-037; R1-D-188); otherwise `read` keeps its own
-   * read-only transaction.
+   * check: when it throws, only its writes roll back and the error reaches its caller; the settings
+   * of the call it was made from are restored after it, on every path. A joined call must be the
+   * ambient one's tenant and scope and run as the app role; a call by another principal of the same
+   * tenant joins with its own `app.*` settings and ledger entries, unless it or the ambient call
+   * carries a break-glass grant or support access (refused), and the same principal keeps its own
+   * grant (PR-UDF-062; R1-D-237). Another tenant's call never joins: it runs in its own
+   * transaction. Joined calls run one at a time: a call made while another runs waits its turn in
+   * order (FIFO), and a call made from inside a running joined call runs at once. Reads join only
+   * with `opts.joinReads` (PR-UDF-037; R1-D-188); otherwise `read` keeps its own read-only
+   * transaction.
    */
   async ambient<T>(
     ctx: KernelContext,
@@ -477,14 +573,22 @@ export class PgKernel implements MutationKernel {
       ctx,
       async (tx) => {
         const token = Symbol("ambient");
+        const pgTx = tx as PgTx;
         const scope: AmbientScope = {
-          tx: tx as PgTx,
+          tx: pgTx,
           ctx,
           opts,
-          stack: [token],
+          stack: [{ token, ctx, opts }],
+          wake: wakeSignal(),
           inflight: new Set(),
           ended: false,
           joinReads: opts.joinReads === true,
+        };
+        // A statement on this transaction runs in its caller's turn: the call whose code made it,
+        // or the ambient call's own when made outside every call (PR-UDF-062; R1-D-237).
+        pgTx.turn = () => {
+          const f = this.ambientFrame.getStore();
+          return turnOf(scope, f?.scope === scope ? f.token : token);
         };
         let value: T | undefined;
         let failure: { error: unknown } | undefined;
@@ -501,6 +605,9 @@ export class PgKernel implements MutationKernel {
         while (scope.inflight.size) await Promise.allSettled([...scope.inflight]);
         scope.ended = true;
         if (failure) throw failure.error;
+        // A joined call whose settings could not be restored fails the transaction, even when its
+        // caller caught the error (PR-UDF-062).
+        if (scope.broken) throw new KernelGuardError(BROKEN);
         if (running.length)
           throw new KernelGuardError(
             "a mutation joined to the ambient one was still running when it ended",
@@ -532,59 +639,91 @@ export class PgKernel implements MutationKernel {
     opts: MutateOptions,
   ): Promise<T> {
     const { scope } = frame;
-    if (scope.stack.at(-1) !== frame.token)
-      throw new KernelGuardError("mutations joined to an ambient one run one at a time");
-    const a = scope.ctx;
-    if (
-      ctx.tenantId !== a.tenantId ||
-      ctx.principal.id !== a.principal.id ||
-      (ctx.scope ?? "tenant") !== (a.scope ?? "tenant") ||
-      (ctx.breakGlassGrantId ?? "") !== (a.breakGlassGrantId ?? "") ||
-      role !== this.role
-    )
+    if (!this.mayJoin(scope, ctx) || role !== this.role)
       throw new KernelGuardError(
-        "a joined mutation must have the ambient mutation's tenant, principal, scope and grant",
+        "a joined mutation must have the ambient mutation's tenant and scope and run as the app role; the same principal keeps its break-glass grant, and another principal joins only when neither carries a break-glass grant or support access",
       );
+    // Its turn (PR-UDF-062): at once when made from the innermost open call (a nested call), else
+    // after the calls queued before it. The last check and the push are in one tick.
+    for (let w = turnOf(scope, frame.token); w; w = turnOf(scope, frame.token)) await w;
+    const parent = scope.stack.at(-1) as OpenCall;
     const token = Symbol("joined");
-    scope.stack.push(token);
+    const call: OpenCall = { token, ctx, opts };
+    scope.stack.push(call);
+    const own = () => turnOf(scope, token, true);
     let out: UnitOutcome<T>;
     let child: JoinedTx | undefined;
     try {
-      out = await scope.tx.unit(async () => {
+      out = await scope.tx.unitIn(async () => {
         await scope.tx.applyContext(ctx, opts);
         // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
         child = new JoinedTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
         const c = child;
-        const r = await this.ambientFrame.run({ scope, token }, () => fn(c));
+        let r: T;
+        try {
+          r = await this.ambientFrame.run({ scope, token }, () => fn(c));
+        } finally {
+          call.closing = true;
+        }
         if (!c.audited)
           throw new IpbError("IPB-MOD-003", {
             detail: `mutation${opts.action ? ` ${opts.action}` : ""} wrote no audit ledger entry`,
           });
         return r;
-      });
+      }, own);
     } finally {
+      call.closing = true;
       child?.end();
-      // Pop only this call's own token, wherever it is (a refused sibling never pushed one).
-      const i = scope.stack.lastIndexOf(token);
-      if (i >= 0) scope.stack.splice(i, 1);
+      try {
+        // A released savepoint keeps the joined call's settings (and a failed unit may not have
+        // undone them): put back those of the call it was made from, on every path, before any
+        // other call may use the connection (PR-UDF-062; R1-D-237). If that fails, nothing more
+        // runs in this ambient mutation and it fails.
+        if (!scope.broken) {
+          for (let w = own(); w; w = own()) await w;
+          await scope.tx.applyContext(parent.ctx, parent.opts);
+        }
+      } catch (error) {
+        scope.broken ??= { error };
+      } finally {
+        const i = scope.stack.indexOf(call);
+        if (i >= 0) scope.stack.splice(i, 1);
+        wakeAll(scope);
+      }
     }
-    // A released savepoint keeps the joined call's settings; put the ambient ones back.
-    await scope.tx.applyContext(a, scope.opts);
+    if (scope.broken) throw new KernelGuardError(BROKEN);
     if (!out.ok) throw out.error;
     return out.value;
   }
 
-  /** Whether a read made inside `scope` joins it (PR-UDF-037; R1-D-188). */
+  /**
+   * Whether a call for `ctx` may run on `scope`'s connection: the ambient call's tenant and scope,
+   * and either the same principal with the same break-glass grant (R1-D-48), or another principal
+   * when neither it nor the ambient call carries a break-glass grant or support access and it is
+   * not an external principal or a service reader, whose own transactions run gates a joined call
+   * would skip (PR-UDF-062; R1-D-237).
+   */
+  private mayJoin(scope: AmbientScope, ctx: KernelContext): boolean {
+    const a = scope.ctx;
+    if (ctx.tenantId !== a.tenantId || (ctx.scope ?? "tenant") !== (a.scope ?? "tenant"))
+      return false;
+    if (ctx.principal.id === a.principal.id)
+      return (ctx.breakGlassGrantId ?? "") === (a.breakGlassGrantId ?? "");
+    return (
+      !ctx.breakGlassGrantId &&
+      !a.breakGlassGrantId &&
+      !isSupportContext(ctx) &&
+      !isSupportContext(a) &&
+      !isExternal(ctx) &&
+      !serviceReaderRole(ctx)
+    );
+  }
+
+  /** Whether a read made inside `scope` joins it (PR-UDF-037, R1-D-188; PR-UDF-062, R1-D-237). */
   private joinsRead(scope: AmbientScope, ctx: KernelContext, opts: ReadOptions): boolean {
     if (!scope.joinReads || opts.snapshot) return false;
     if (isSupportContext(ctx) || isExternal(ctx) || serviceReaderRole(ctx)) return false;
-    const a = scope.ctx;
-    return (
-      ctx.tenantId === a.tenantId &&
-      ctx.principal.id === a.principal.id &&
-      (ctx.scope ?? "tenant") === (a.scope ?? "tenant") &&
-      (ctx.breakGlassGrantId ?? "") === (a.breakGlassGrantId ?? "")
-    );
+    return this.mayJoin(scope, ctx);
   }
 
   private async joinedRead<T>(
@@ -593,23 +732,41 @@ export class PgKernel implements MutationKernel {
     fn: (tx: Tx) => Promise<T>,
   ): Promise<T> {
     const { scope } = frame;
-    if (scope.stack.at(-1) !== frame.token)
-      throw new KernelGuardError("calls joined to an ambient mutation run one at a time");
+    // Its turn, as a joined mutation's (PR-UDF-062).
+    for (let w = turnOf(scope, frame.token); w; w = turnOf(scope, frame.token)) await w;
     const token = Symbol("joined-read");
-    scope.stack.push(token);
+    const call: OpenCall = { token, ctx, opts: {} };
+    scope.stack.push(call);
     let child: JoinedReadTx | undefined;
     let out: UnitOutcome<T>;
     try {
-      out = await scope.tx.readUnit(this.readRole, ctx, async () => {
-        // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
-        child = new JoinedReadTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
-        const c = child;
-        return this.ambientFrame.run({ scope, token }, () => fn(c));
-      });
+      out = await scope.tx.readUnit(
+        this.readRole,
+        ctx,
+        async () => {
+          // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
+          child = new JoinedReadTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
+          const c = child;
+          try {
+            return await this.ambientFrame.run({ scope, token }, () => fn(c));
+          } finally {
+            call.closing = true;
+          }
+        },
+        () => turnOf(scope, token, true),
+      );
+    } catch (error) {
+      // The savepoint's rollback, which undoes the read's role, read-only flag and settings,
+      // failed: nothing more runs in this ambient mutation (PR-UDF-062). A kernel guard refused
+      // the read before its savepoint opened and changed nothing.
+      if (!(error instanceof KernelGuardError)) scope.broken ??= { error };
+      throw error;
     } finally {
+      call.closing = true;
       child?.end();
-      const i = scope.stack.lastIndexOf(token);
+      const i = scope.stack.indexOf(call);
       if (i >= 0) scope.stack.splice(i, 1);
+      wakeAll(scope);
     }
     if (!out.ok) throw out.error;
     return out.value;
@@ -623,8 +780,14 @@ export class PgKernel implements MutationKernel {
     assertValidContext(ctx);
     assertExternalGated(ctx, fn);
     const frame = this.ambientFrame.getStore();
-    if (frame && this.joinsRead(frame.scope, ctx, opts))
-      return this.joined(frame, () => this.joinedRead(frame, ctx, fn));
+    if (frame) {
+      if (this.joinsRead(frame.scope, ctx, opts))
+        return this.joined(frame, () => this.joinedRead(frame, ctx, fn));
+      // Another tenant's read runs as if no ambient mutation were open (PR-UDF-062), so a call
+      // made inside it does not join this tenant's transaction either.
+      if (ctx.tenantId !== frame.scope.ctx.tenantId)
+        return this.ambientFrame.exit(() => this.read(ctx, fn, opts));
+    }
     // A support principal reads only through SupportReads, which ledgers every read (R1-D-76).
     const gate = isSupportContext(ctx) ? supportGateOf(fn) : undefined;
     if (isSupportContext(ctx) && gate !== "read" && gate !== "manage")
