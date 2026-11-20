@@ -1235,10 +1235,37 @@ From the next release (`contracts`, `fakes` and `testing` minors; no setting, no
 **What to do with them:**
 
 - Show the lender's words (`status_text`, `reason_texts`, `penal_charges_text`, `exit_terms`, `payment_instruction`) as text, never as markup, and say they are the lender's.
-- `CoolingOffExitAnswered` is not signed until the Specification lists it (owner question #166). Take it only from the lender's authenticated channel, show the amount and instruction to the borrower, and never collect the money into an account of your own (CF para 10). The instruction never carries a link.
+- `CoolingOffExitAnswered` is not signed until the Specification lists it (owner question #166; signed from the next minor, §7dp). Take it only from the lender's authenticated channel, show the amount and instruction to the borrower, and never collect the money into an account of your own (CF para 10). The instruction never carries a link.
 - `kfs_url` is a link for the borrower's browser. Do not fetch it from your servers; fetch the KFS bytes through `GET /v1/documents/{id}` with `kfs_link` or `document_ref`, and check them against `document_sha256`.
 - Send `economic_profile` and the household figures only under the purpose consent that `consent_purposes` names; `device_ref` is your own reference, never an IMEI, advertising id or other device identifier.
 - Send `kfs_version` and `kfs_sha256` on acceptance: the lender refuses an acceptance of a KFS other than the one it issued (`kfs_mismatch`).
+
+## 7dp. The signed execution pack, the v2 document JWS and per-subject envelopes (PR-UDF-061 items 12 to 17; R1-D-236)
+
+From the next release (`contracts`, `crypto`, `fakes` and `testing` minors; no setting, no migration, no environment variable). The owner approved PR-047 (Ecosystem Spec v1.6 proposal) on 20 Nov 2026: products adopt the Specification text when the owner's process publishes it in `docs/ecosystem`, and the signed behaviour below applies from this minor.
+
+**Install:** bump `@infrabyx/contracts`, `@infrabyx/crypto`, `@infrabyx/fakes` and `@infrabyx/testing` to the release's minors together (the mock lender and the contract cases expect the new contracts).
+
+**What changes for a consumer (Udofin):**
+
+- **Two more regulated messages.** `ExecutionPackIssued` and `CoolingOffExitAnswered` are in `REGULATED_MESSAGE_EVENTS`, so `isRegulatedMessage` is true for them: verify `X-Infrabyx-JWS` with `verifyRegulatedMessage` before your `2xx`, store it beside the event, and refuse an unsigned one with `signature-invalid`. `payment_instruction` still carries no link; show it as the lender's words and never collect the money yourself (CF para 10).
+- **Take the pack from `ExecutionPackIssued`** (`in.infrabyx.origination.ExecutionPackIssued.v1`, key `(pack_id, version)`; parse with `ExecutionPackIssuedData`). Execute only the latest version, within the KFS validity, and check `kfs_version` and `kfs_sha256` against the KFS your borrower accepted. The interim `EXECUTION_PACK_MANIFEST` document and `ExecutionPackManifest` stay for now, unchanged; move off them, they go in a major.
+
+| Your PR-UDF-061 item (12)                                          | Field of `ExecutionPackIssuedData`                                                                                                   |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| The accepted KFS's version and `kfs_sha256`                        | `kfs_version`, `kfs_sha256` (a `KFS` document in the pack has that hash)                                                             |
+| `items[].instrument_code`, `enclosure_code`                        | `documents[].instrument_code` (required when executed; never eSign or DSC for `IT_ACT_FIRST_SCHEDULE_INSTRUMENTS`), `enclosure_code` |
+| `covenant { business_purpose, declared }`, conditional declaration | `covenant` (strict); `covenant_declaration` present exactly when `declared`, which a business purpose requires                       |
+| `enclosure_list { code, clause_ref }`                              | `enclosure_list` (each code furnished by exactly one document's `enclosure_code`)                                                    |
+| Per-document `stamp_evidence { channel, certificate_no, … }`       | `documents[].stamp_evidence` (`PackStampEvidence`; `channel` in `STAMP_MODES`; duty paid at least `stated_duty_paise`)               |
+| `not_stampable { document_id, reason }`                            | `not_stampable[]` at pack level                                                                                                      |
+| Signers as an enum                                                 | `documents[].signers` in `PACK_SIGNER_ROLES`, each once                                                                              |
+
+- **Documents.** `DocumentShared` may carry `language`; `application_id` is on every document of a loan application. Lenders now sign a **v2 document JWS** that also binds `type`, `media_type`, `size_bytes` and `application_id`: keep calling `verifyDocumentJws(jws, data, keys)` with the `DocumentShared` data or the `GET /v1/documents/{id}` answer as they are (both carry the fields), check the downloaded bytes' length against `size_bytes` as well as their hash, and pass `{ requireV2: true }` once your lender signs v2. A producer signs with `signDocumentJwsV2`.
+- **`KFSIssued` and `SanctionLetterIssued`** name their file by `document_ref` and `document_version`: fetch that document and check it against `document_sha256`.
+- **Envelopes (§3.2).** The `subject` is the aggregate id (`originationSubject(name, data)`; `ORIGINATION_EVENTS[name].subject` names the field; a document's id for `DocumentShared`) and `seq` counts per subject from 1. Order, park gaps and replay per `(source, subject)`, never across a producer. Your own outbox does the same for `ApplicationSubmitted` (`lsp_application_ref`), `BorrowerAccepted` (`kfs_id`), `ESignCompleted` and `EStampCompleted` (`document_id`) and `CoolingOffExitRequested` (`loan_id`); `lspEvent` in `@infrabyx/testing` already does.
+
+**Tests against `FakeLender` that change:** its envelopes' `subject` and `seq` (above); its documents are small real PDFs, so a hash is over PDF bytes, not a string; the KFS and the sanction letter are shared after the sanction, while the agreement, terms and conditions, product summary, privacy policy, e-stamp certificate, `ExecutionPackIssued` and the interim manifest follow `BorrowerAccepted` (`executionPack()` is refused `pack_unknown` before it); `CoolingOffExitAnswered` carries a JWS. A request purpose starting `BUSINESS` gets the covenant declared.
 
 ## 8. Adopting 1.0.0
 
