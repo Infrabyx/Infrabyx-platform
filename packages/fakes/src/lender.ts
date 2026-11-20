@@ -9,6 +9,12 @@
 // `GET /v1/documents/{id}` with a 15-minute URL, and takes the LSP's signed `ESignCompleted` and
 // `EStampCompleted`, verified against `lspKeys`. R1-D-229: its KFS carries `loan_amount_paise` and
 // its manifest a `disbursement_clause` in the loan agreement, both the application's amount.
+// R1-D-231: every offer carries a `monthly_instalment` (the EMI of amount, tenor and APR) and one
+// `penal_charges` entry; a sanctioned `DecisionMade` offer carries `kfs_link`, the id of the KFS
+// document the lender shares right after the decision (it fixes the id first). An eligibility offer
+// has no `kfs_link`: no KFS exists before an application. In the manifest the loan agreement carries
+// `stamp_evidence` (ESTAMP, the pack's stamp State and duty, the agreement's SHA-256) and the KFS
+// `not_stampable: true` with a reason.
 import {
   DOCUMENT_EVENTS,
   DOCUMENTS_SCHEMA_VERSION,
@@ -23,6 +29,7 @@ import {
   EligibilityCheckRequest,
   ORIGINATION_EVENTS,
   ORIGINATION_SCHEMA_VERSION,
+  STAMP_EVIDENCE_MODE_OF,
   originationIdempotencyKey,
   type OriginationEventName,
 } from "@infrabyx/contracts/events";
@@ -37,6 +44,34 @@ import {
   signRegulatedMessage,
   verifyRegulatedMessage,
 } from "@infrabyx/crypto";
+
+/**
+ * The equated monthly instalment of `amountPaise` over `tenorMonths` at `aprBp` (R1-D-231), in
+ * integer paise: `P·r·(1+r)^n / ((1+r)^n − 1)` with `r` the monthly rate, rounded; `P / n` at 0 %.
+ * A plausible figure for tests, not a lender's schedule (the APR is used as the interest rate).
+ */
+function fakeEmiPaise(amountPaise: number, tenorMonths: number, aprBp: number): number {
+  const r = aprBp / 10_000 / 12;
+  if (r === 0) return Math.max(1, Math.round(amountPaise / tenorMonths));
+  const f = (1 + r) ** tenorMonths;
+  return Math.max(1, Math.round((amountPaise * r * f) / (f - 1)));
+}
+
+/** The fake's offer fields of R1-D-231, without `kfs_link`. */
+const offerTerms = (amountPaise: number, tenorMonths: number, aprBp: number) => ({
+  monthly_instalment: {
+    amount_paise: fakeEmiPaise(amountPaise, tenorMonths, aprBp),
+    frequency: "MONTHLY",
+  },
+  penal_charges: [
+    {
+      basis: "PER_MONTH_ON_OVERDUE",
+      rate_bp: 200,
+      description:
+        "2% a month on the overdue instalment; a penal charge, not penal interest, never capitalised",
+    },
+  ],
+});
 
 const hex = (b: Uint8Array): string =>
   Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -271,6 +306,7 @@ export class FakeLender {
                 amount_paise: req.amount_paise,
                 tenor_months: req.tenor_months,
                 apr_bp: 1800,
+                ...offerTerms(req.amount_paise, req.tenor_months, 1800),
               },
             ]
           : [],
@@ -309,6 +345,9 @@ export class FakeLender {
       await this.move(app, "UNDER_REVIEW");
     }
     const decision = this.next.decision ?? "SANCTIONED";
+    // R1-D-231: the KFS and its document id are fixed before the decision, so the offer can link it.
+    const kfsId = decision === "SANCTIONED" ? this.id("kfs") : "";
+    const kfsDocumentId = decision === "SANCTIONED" ? this.id("doc") : "";
     await this.emit("DecisionMade", {
       application_id: app.applicationId,
       decision_version: 1,
@@ -323,13 +362,14 @@ export class FakeLender {
                 amount_paise: app.amountPaise,
                 tenor_months: app.tenorMonths,
                 apr_bp: app.aprBp,
+                ...offerTerms(app.amountPaise, app.tenorMonths, app.aprBp),
+                kfs_link: { document_id: kfsDocumentId, version: 1 },
               },
             ]
           : [],
     });
     await this.move(app, decision);
     if (decision === "SANCTIONED") {
-      const kfsId = this.id("kfs");
       const validityExpiry = new Date(
         this.now().getTime() + (this.o.kfsValidityMs ?? 3 * 86_400_000),
       );
@@ -353,7 +393,7 @@ export class FakeLender {
         terms: { amount_paise: app.amountPaise, tenor_months: app.tenorMonths, apr_bp: app.aprBp },
         document_sha256: sha256Hex(`sanction:${app.applicationId}`),
       });
-      await this.shareExecutionDocuments(app, kfsId);
+      await this.shareExecutionDocuments(app, kfsId, kfsDocumentId);
     }
     return { applicationId: app.applicationId };
   }
@@ -405,9 +445,13 @@ export class FakeLender {
   }
 
   /** Shares the KFS, the sanction letter, the loan agreement and the execution-pack manifest. */
-  private async shareExecutionDocuments(app: Application, kfsId: string): Promise<void> {
+  private async shareExecutionDocuments(
+    app: Application,
+    kfsId: string,
+    kfsDocumentId: string,
+  ): Promise<void> {
     const enc = (t: string) => new TextEncoder().encode(t);
-    const kfs = await this.share(app, "KFS", enc(`kfs:${kfsId}`), "application/pdf");
+    const kfs = await this.share(app, "KFS", enc(`kfs:${kfsId}`), "application/pdf", kfsDocumentId);
     await this.share(
       app,
       "SANCTION_LETTER",
@@ -420,6 +464,13 @@ export class FakeLender {
       enc(`agreement:${app.applicationId}`),
       "application/pdf",
     );
+    const stamp = {
+      state: "IN-MH",
+      article: "5(h)",
+      duty_paise: 50_000,
+      mode: "E_STAMP",
+      payer: "BORROWER",
+    } as const;
     const pack = ExecutionPackManifest.parse({
       pack_id: this.id("pack"),
       version: 1,
@@ -434,6 +485,15 @@ export class FakeLender {
           execution_mode: "ESIGN_AADHAAR",
           stamp_required: true,
           signers: ["BORROWER", "LENDER"],
+          // R1-D-231: the e-stamp of the agreement, in the pack's stamp State and duty.
+          stamp_evidence: {
+            mode: STAMP_EVIDENCE_MODE_OF[stamp.mode],
+            state: stamp.state,
+            certificate_number: `${stamp.state}-FAKE-${agreement.documentId.slice(-12).toUpperCase()}`,
+            duty_paise: stamp.duty_paise,
+            stamped_document_sha256: agreement.sha256,
+            vendor_ref: "stv_fake_vendor",
+          },
         },
         {
           document_id: kfs.documentId,
@@ -443,15 +503,11 @@ export class FakeLender {
           execution_mode: "NONE",
           stamp_required: false,
           signers: [],
+          not_stampable: true,
+          not_stampable_reason: "A disclosure statement, not an instrument chargeable with duty",
         },
       ],
-      stamp: {
-        state: "IN-MH",
-        article: "5(h)",
-        duty_paise: 50_000,
-        mode: "E_STAMP",
-        payer: "BORROWER",
-      },
+      stamp,
       summary_box: { document_id: agreement.documentId, page: 2 },
       covenant_declaration: { document_id: agreement.documentId, sha256: agreement.sha256 },
       countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
@@ -476,8 +532,8 @@ export class FakeLender {
     type: string,
     bytes: Uint8Array,
     mediaType: string,
+    documentId = this.id("doc"),
   ): Promise<StoredDocument> {
-    const documentId = this.id("doc");
     const sha256 = sha256Hex(bytes);
     const jws = await signDocumentJws({
       descriptor: { document_id: documentId, version: 1, sha256 },
