@@ -13,7 +13,7 @@ import {
   type SecretsPort,
   type StoragePort,
 } from "@infrabyx/contracts/ports";
-import { CAPABILITY_LEVELS, PORT_CATALOGUE } from "@infrabyx/contracts/ports";
+import { CAPABILITY_LEVELS, PORT_CATALOGUE, promotedObjectMeta } from "@infrabyx/contracts/ports";
 import { residencyAllows } from "@infrabyx/contracts/data-class";
 
 export interface ContractCase<P> {
@@ -228,6 +228,57 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
         });
         // Read-only: nothing was written under the tenant.
         expect((await p.list("tenant/tnt_other/")).keys).toEqual([]);
+      },
+    },
+    {
+      // PR-UDF-066 (R1-D-240). A leg configures `lender:contract` for `tnt_contract` in `QUARANTINE`
+      // as well as `REGULATED`, and has a `QUARANTINE` and an `AUDIT` bucket.
+      name: "a named key in QUARANTINE: the upload is under it, and a promotion keeps it or is refused, never the class key (PR-UDF-066)",
+      method: "put.keyRef",
+      invoke: (p: StoragePort) =>
+        p.put(`tenant/tnt_contract/inbox/${ULID.slice(0, 24)}Q0.pdf`, new Uint8Array([1]), {
+          bucketClass: "QUARANTINE",
+          keyRef: "lender:contract",
+        }),
+      async run(p: StoragePort) {
+        const enc = (s: string) => new TextEncoder().encode(s);
+        const k = (n: string) => `tenant/tnt_contract/inbox/${ULID.slice(0, 24)}Q${n}.pdf`;
+        const refused = (code: string, reason: string) => ({ code, meta: { reason } });
+        await p.put(k("1"), enc("lender upload"), {
+          bucketClass: "QUARANTINE",
+          contentType: "application/pdf",
+          keyRef: "lender:contract",
+          tags: { kind: "kyc" },
+        });
+        const q = await p.get(k("1"));
+        expect(q.meta).toMatchObject({ bucketClass: "QUARANTINE", keyRef: "lender:contract" });
+        if (p.keyRefStatus)
+          expect(
+            await p.keyRefStatus("tnt_contract", "lender:contract", { bucketClass: "QUARANTINE" }),
+          ).toEqual({ status: "resolves" });
+        // The scan is clean: the product copies the bytes to the clean class with the same reference.
+        await p.put(k("2"), q.body, promotedObjectMeta(q.meta, { bucketClass: "REGULATED" }));
+        const clean = await p.get(k("2"));
+        expect(new TextDecoder().decode(clean.body)).toBe("lender upload");
+        expect(clean.meta).toMatchObject({
+          bucketClass: "REGULATED",
+          keyRef: "lender:contract",
+          contentType: "application/pdf",
+          tags: { kind: "kyc" },
+        });
+        // A promotion into a class without named keys is refused, not written under its key.
+        await expect(
+          p.put(k("3"), q.body, promotedObjectMeta(q.meta, { bucketClass: "GENERAL" })),
+        ).rejects.toMatchObject(refused("IPB-PORT-003", "key_ref_class"));
+        await expect(p.get(k("3"))).rejects.toMatchObject({ code: "IPB-STOR-001" });
+        // AUDIT stays on platform keys.
+        await expect(
+          p.put(k("4"), enc("x"), { bucketClass: "AUDIT", keyRef: "lender:contract" }),
+        ).rejects.toMatchObject(refused("IPB-PORT-003", "key_ref_class"));
+        // An overwrite of the quarantined object keeps its reference.
+        await expect(p.put(k("1"), enc("x"), { bucketClass: "QUARANTINE" })).rejects.toMatchObject(
+          refused("IPB-PORT-003", "key_ref_changed"),
+        );
       },
     },
     {

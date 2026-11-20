@@ -12,7 +12,10 @@
 // key is refused at start or at write, never replaced by the class's. Named tenant keys (PR-UDF-058,
 // R1-D-227): a write may name one of its tenant's keys by reference (`keyRef`, or a prefix map); the
 // adapter resolves it, keeps it separate from every other key, records the reference on the object
-// and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`).
+// and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`). The
+// classes are `NAMED_KEY_CLASSES`, QUARANTINE included (PR-UDF-066, R1-D-240): the AV adapter's
+// workload then needs `kms:Decrypt` on each such key, and a promotion (`promotedObjectMeta`) keeps
+// the reference, so the clean copy is under its key or refused, never under the class key.
 // No-cache downloads (PR-UDF-060, R1-D-230): a presigned GET from a REGULATED or CONFIDENTIAL
 // bucket signs `response-cache-control=no-store, private` and a past `response-expires`.
 // Key reference status (PR-UDF-068, R1-D-239): `keyRefStatus` answers whether a write naming a
