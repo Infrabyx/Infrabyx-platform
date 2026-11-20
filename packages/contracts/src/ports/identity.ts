@@ -293,7 +293,10 @@ export interface CustomerIdentityPort extends Port {
     newCode: string;
     dpopProof: string;
   }): Promise<void>;
-  /** Free a login for a new account: devices forgotten, the account disabled, its id kept. */
+  /**
+   * Free a login for a new account (the account closed): devices forgotten, the verified email
+   * deleted (ledgered, reason `account_closed`; R1-D-235), the account disabled, its id kept.
+   */
   retireLogin?(req: {
     tenantId: string;
     userId: string;
@@ -325,6 +328,18 @@ export interface CustomerIdentityPort extends Port {
   }): Promise<VerifiedCustomerEmail>;
   /** The account's verified email address and when it was verified, or null. */
   verifiedEmail?(tenantId: string, userId: string): Promise<VerifiedCustomerEmail | null>;
+  /**
+   * Delete the account's verified email on the borrower's erasure request (owner answer #161 (3);
+   * R1-D-235): one ledgered transaction, reason `erasure_request` with `requestRef` (1 to 128 of
+   * `[A-Za-z0-9_.:-]`), never the address; whether or not the capture is on. Idempotent: `erased`
+   * is false when there was nothing to delete. Optional: an adapter or a store without it refuses
+   * with IPB-PORT-001 `unsupported`.
+   */
+  eraseVerifiedEmail?(req: {
+    tenantId: string;
+    userId: string;
+    requestRef: string;
+  }): Promise<{ erased: boolean }>;
 }
 
 /** An email address a customer proved with a one-time code (PR-UDF-055; R1-D-224). */

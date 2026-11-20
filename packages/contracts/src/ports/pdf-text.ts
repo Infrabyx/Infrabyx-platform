@@ -8,6 +8,9 @@
 // Refusals use the upload codes: `IPB-SEC-011` (the scan found malware), `IPB-SEC-015` (not scanned
 // `CLEAN`, or the bytes are not the ones scanned), `IPB-SEC-013` (a size, count, depth, ratio, time
 // or memory limit; `meta.reason` says which), `IPB-SEC-010` (not a readable PDF, or encrypted).
+// A STORAGE read refused because the file's named tenant key is disabled or no longer granted is
+// `IPB-KMS-001` with `meta.reason` `storage_key_unavailable` and nothing else (PR-UDF-067); any
+// other read failure is `IPB-PORT-002` (`unavailable`).
 import { z } from "zod";
 import { DocFileRef } from "./doc-file.js";
 import { ScanProof } from "./file-scan.js";

@@ -51,10 +51,16 @@ const KEY_ID_SHAPED =
 /** Whether `ref` is a well-formed key reference (and not a key id in disguise). */
 export const isValidStorageKeyRef = (ref: string): boolean =>
   STORAGE_KEY_REF_PATTERN.test(ref) && !KEY_ID_SHAPED.test(ref);
-/** The bucket classes a named key may be used in. */
+/**
+ * The bucket classes a named key may be used in. `QUARANTINE` (Udofin PR-UDF-066, R1-D-240), so a
+ * lender's upload is under the lender's key from its first byte: the AV engine's workload, which
+ * reads the object through STORAGE to scan it, then needs `kms:Decrypt` on each such key. `AUDIT`
+ * (anchors the platform must always read), `PUBLIC_ASSETS` and `GENERAL` stay on platform keys.
+ */
 export const NAMED_KEY_CLASSES = [
   "CONFIDENTIAL",
   "REGULATED",
+  "QUARANTINE",
 ] as const satisfies readonly BucketClass[];
 /** Object metadata name that records the reference (S3 `x-amz-meta-ipb-key-ref`). */
 export const STORAGE_KEY_REF_META = "ipb-key-ref";
@@ -111,6 +117,46 @@ export function resolveStorageKeyRef(
 }
 
 /**
+ * Key states `keyRefStatus` may report (Udofin PR-UDF-068, R1-D-239): AWS KMS `KeyState` values.
+ * Only `Enabled` resolves; any other state answers `storage_key_unavailable`. A state the store
+ * reports that is not listed here reads as `Unavailable`.
+ */
+export const STORAGE_KEY_STATES = [
+  "Enabled",
+  "Disabled",
+  "PendingDeletion",
+  "PendingImport",
+  "PendingReplicaDeletion",
+  "Unavailable",
+  "Updating",
+  "Creating",
+] as const;
+export type StorageKeyState = (typeof STORAGE_KEY_STATES)[number];
+/** The label of a key that exists in configuration but cannot be used now (IPB-KMS-001). */
+export const STORAGE_KEY_UNAVAILABLE = "storage_key_unavailable" as const;
+/** Why `keyRefStatus` answers `refused`: a write's refusal label, or the key's state. */
+export type StorageKeyRefStatusReason = StorageKeyRefRefusal | typeof STORAGE_KEY_UNAVAILABLE;
+
+/** Where `keyRefStatus` checks a reference, and whether it asks the key store for the key's state. */
+export interface StorageKeyRefStatusOptions {
+  bucketClass: BucketClass;
+  compartment?: StorageCompartment;
+  /**
+   * Also read the key's state (a read-only KMS `DescribeKey` on `s3`): a key that is not `Enabled`
+   * then answers `storage_key_unavailable`. Off by default (configuration only, no KMS call).
+   */
+  describeKey?: boolean;
+}
+
+/**
+ * The answer of `keyRefStatus` (PR-UDF-068): fixed labels only, never a key id or ARN. `keyState`
+ * is present only when `describeKey` was asked and the store could report it.
+ */
+export type StorageKeyRefStatus =
+  | { status: "resolves"; keyState?: "Enabled" }
+  | { status: "refused"; reason: StorageKeyRefStatusReason; keyState?: StorageKeyState };
+
+/**
  * No-cache presigned downloads (Udofin PR-UDF-060, R1-D-230). A presigned GET of an object in one
  * of these classes (its compartments included) signs S3's response overrides
  * `response-cache-control` and `response-expires`, so the response tells browsers, iOS and
@@ -136,12 +182,35 @@ export interface ObjectMeta {
   /** PR-LDC-60: a separately keyed compartment of `bucketClass` (`CONFIDENTIAL` or `REGULATED`). */
   compartment?: StorageCompartment;
   /**
-   * PR-UDF-058: the tenant's named key the object is encrypted under (`CONFIDENTIAL` or
-   * `REGULATED`); a reference, never a key id. `get` returns it; an overwrite must keep it.
+   * PR-UDF-058: the tenant's named key the object is encrypted under (a `NAMED_KEY_CLASSES` class:
+   * `CONFIDENTIAL`, `REGULATED` or, PR-UDF-066, `QUARANTINE`); a reference, never a key id. `get`
+   * returns it; an overwrite must keep it.
    */
   keyRef?: string;
   sha256?: string;
   tags?: Record<string, string>;
+}
+
+/**
+ * PR-UDF-066 (R1-D-240): the meta of the clean copy of a scanned object (`from` is the `meta` that
+ * `get` returned for the `QUARANTINE` object), for the product's promotion `put` into `to`. The
+ * named key reference is carried over, so the copy is encrypted under that reference's key at the
+ * clean location, or the write is refused (`key_ref_unknown` where the reference has no key there,
+ * `key_ref_class` outside `NAMED_KEY_CLASSES`); it never falls back to the clean class's key. The
+ * content type, the SHA-256 and the tags are kept; the compartment is `to`'s.
+ */
+export function promotedObjectMeta(
+  from: ObjectMeta,
+  to: { bucketClass: BucketClass; compartment?: StorageCompartment },
+): ObjectMeta {
+  return {
+    bucketClass: to.bucketClass,
+    ...(to.compartment ? { compartment: to.compartment } : {}),
+    ...(from.contentType ? { contentType: from.contentType } : {}),
+    ...(from.keyRef ? { keyRef: from.keyRef } : {}),
+    ...(from.sha256 ? { sha256: from.sha256 } : {}),
+    ...(from.tags ? { tags: { ...from.tags } } : {}),
+  };
 }
 
 export interface StoredObject {
@@ -211,12 +280,51 @@ export interface StoragePort extends Port {
   extendRetention?(key: string, retainUntil: Date): Promise<ObjectRetention>;
   /** The object's retention, or `{ mode: null, retainUntil: null }` when it has none. */
   retentionOf?(key: string): Promise<ObjectRetention>;
+  /**
+   * Whether a write in `tenantId` naming `keyRef` at this location would resolve (Udofin
+   * PR-UDF-068, R1-D-239). Read-only: no object is written, nothing is ledgered. Applies the
+   * write's rules (`resolveStorageKeyRef`'s format, class and prefix-map checks, then the adapter's
+   * own: unknown reference, shared key, tenant CMK) and answers `refused` with that write's label;
+   * with `describeKey`, a key that is not `Enabled` answers `storage_key_unavailable`. Object-level
+   * refusals (`key_ref_changed`, `key_ref_prefix_conflict`) need an object and are not checked. A
+   * tenant other than the caller's, a malformed tenant id or a compartment outside its classes is
+   * refused (`IPB-PORT-003`) as a write would be; an adapter without per-object keys declares it
+   * `unsupported`. Optional on the interface; every platform adapter provides it.
+   */
+  keyRefStatus?(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusOptions,
+  ): Promise<StorageKeyRefStatus>;
   replicateTo(target: StoragePort, prefix: string): Promise<{ copied: number; verified: number }>;
 }
 
+/** The tenant segment of a storage key (`tenant/<tenant_id>/…`). */
+const TENANT_SEGMENT = "[a-z]{2,6}_[A-Za-z0-9]+";
 const KEY_REGEX = new RegExp(
-  `^tenant/[a-z]{2,6}_[A-Za-z0-9]+/[a-z][a-z0-9_]*/${ULID_PATTERN}(\\.[a-z0-9]+)?$`,
+  `^tenant/${TENANT_SEGMENT}/[a-z][a-z0-9_]*/${ULID_PATTERN}(\\.[a-z0-9]+)?$`,
 );
+const TENANT_REGEX = new RegExp(`^${TENANT_SEGMENT}$`);
+
+/** Whether `tenantId` can head a storage key (IPB-01-27), as `keyRefStatus` requires. */
+export const isValidStorageTenantId = (tenantId: string): boolean => TENANT_REGEX.test(tenantId);
+
+/**
+ * PR-UDF-068: the configuration-free part of `keyRefStatus`, shared by every adapter. `null` for a
+ * tenant id that cannot head a key (the adapter refuses the call, IPB-PORT-003); otherwise the
+ * label a write in that tenant naming `keyRef` would be refused with, or `{}`. The prefix map is
+ * checked as a write checks it (a prefix outside the tenant refuses every named-key write).
+ */
+export function storageKeyRefStatusRefusal(
+  tenantId: string,
+  keyRef: string,
+  bucketClass: BucketClass,
+  prefixes?: Readonly<Record<string, string>>,
+): { refusal?: StorageKeyRefRefusal } | null {
+  if (!isValidStorageTenantId(tenantId)) return null;
+  const r = resolveStorageKeyRef(`tenant/${tenantId}/`, { bucketClass, keyRef }, prefixes);
+  return r.refusal ? { refusal: r.refusal } : {};
+}
 
 /** IPB-01-27 key format check (provider never encoded in the key). */
 export const isValidStorageKey = (key: string): boolean => KEY_REGEX.test(key);

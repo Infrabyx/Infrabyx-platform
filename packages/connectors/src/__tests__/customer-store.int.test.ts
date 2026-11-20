@@ -1,15 +1,27 @@
 // PgCustomerAuthStore on PostgreSQL 18 with every platform migration applied (R1-D-19): the guard,
 // challenges and devices are tenant-scoped under forced RLS, every mutation has a ledger entry,
 // the guard schedule holds across store instances (replicas), a refresh hash rotates once, and a
-// revoked device is refused by another replica within one cache refresh.
+// revoked device is refused by another replica within one cache refresh. The verified email
+// (connectors/0015) is deleted only at account closure or on erasure (connectors/0016; R1-D-235).
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { newId, randomBytes, sha256Hex, toBase64Url } from "@infrabyx/crypto";
-import { startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
+import type { AdapterDescriptor, DpopTarget, PortHealth } from "@infrabyx/contracts";
 import {
+  canonicalDigest,
+  MemoryReplayStore,
+  newId,
+  randomBytes,
+  sha256Hex,
+  toBase64Url,
+} from "@infrabyx/crypto";
+import { startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
+import { MemoryRevocationStore, type TokenVerifier } from "../identity/common.js";
+import {
+  CustomerIdentityBase,
   customerIdentitySettings,
   PgCustomerAuthStore,
   type ChallengeRecord,
 } from "../identity/customer.js";
+import { capturingSender } from "../identity/__tests__/dpop-device.js";
 
 let db: TestDatabase;
 beforeAll(async () => {
@@ -145,6 +157,7 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
       "app_rw:customer_device",
       "app_rw:customer_otp_challenge",
       "app_rw:customer_otp_guard",
+      "app_rw:customer_verified_email",
     ]);
     const floors = await db.admin.query<{ tablename: string; permissive: string; cmd: string }>(
       `select tablename, permissive, cmd from pg_policies
@@ -170,7 +183,7 @@ describe("PgCustomerAuthStore (connectors/0004)", () => {
 });
 
 describe("the verified email of a customer account (connectors/0015; PR-UDF-055, R1-D-224)", () => {
-  it("records, replaces and reads the address under RLS, ledgered without it; no delete grant", async () => {
+  it("records, replaces and reads the address under RLS, ledgered without it; delete only from 0016", async () => {
     const st = store();
     const t0 = Date.parse("2026-11-20T06:00:00Z");
     expect(await st.verifiedEmail("tnt_a", "kc-mail-1")).toBeUndefined();
@@ -201,6 +214,7 @@ describe("the verified email of a customer account (connectors/0015; PR-UDF-055,
     );
     expect(grants.rows.map((r) => r.p)).toEqual([
       "app_ro:SELECT",
+      "app_rw:DELETE",
       "app_rw:INSERT",
       "app_rw:SELECT",
       "app_rw:UPDATE",
@@ -218,6 +232,256 @@ describe("the verified email of a customer account (connectors/0015; PR-UDF-055,
     await expect(
       st.saveVerifiedEmail("tnt_a", "kc-mail-2", "Not-Lower@Example.test", t0),
     ).rejects.toThrow();
+  });
+});
+
+/** Only what retireLogin needs of an IdP: the login's owner, and retiring it. */
+class StoreOnlyIdp extends CustomerIdentityBase {
+  readonly descriptor: AdapterDescriptor = {
+    port: "IDENTITY",
+    adapter: "store-only",
+    residency: "IN",
+    maxDataClass: "CONFIDENTIAL",
+  };
+  readonly signInProofTarget: DpopTarget = { htm: "POST", htu: "https://id.example.test/token" };
+  protected readonly nativeBinding = false;
+  protected readonly verifier = {} as TokenVerifier;
+  readonly owners = new Map<string, string>();
+  readonly retired: string[] = [];
+  async health(): Promise<PortHealth> {
+    return { status: "up", latency_ms: 0, checked_at: new Date().toISOString() };
+  }
+  protected async resolveUser(): Promise<string> {
+    throw new Error("not used");
+  }
+  protected async idpSend(): Promise<{ ref: Record<string, string>; code: string }> {
+    throw new Error("not used");
+  }
+  protected async idpVerify(): Promise<null> {
+    return null;
+  }
+  protected async idpRefresh(): Promise<null> {
+    return null;
+  }
+  protected async idpEndSession(): Promise<void> {}
+  protected override async idpFindUser(tenantId: string, _c: string, login: string) {
+    return this.owners.get(`${tenantId}|${login}`);
+  }
+  protected override async idpRetireLogin(a: { tenantId: string; login: string }) {
+    this.owners.delete(`${a.tenantId}|${a.login}`);
+    this.retired.push(a.login);
+  }
+}
+
+describe("deleting the verified email (connectors/0016; owner answer #161 (3), R1-D-233, R1-D-235)", () => {
+  const t0 = Date.parse("2026-11-20T13:00:00Z");
+  const idp = () =>
+    new StoreOnlyIdp({
+      store: store(),
+      sender: capturingSender().sender,
+      replay: new MemoryReplayStore(),
+      revocations: new MemoryRevocationStore(),
+      emailCapture: true,
+    });
+  /** The ledger keeps digests of `before` and `after` (audit/0001), so the entries are compared by them. */
+  const ledger = async (action: string, userId: string) =>
+    (
+      await db.admin.query<{
+        tenant_id: string;
+        resource_type: string;
+        before_digest: string | null;
+        after_digest: string | null;
+      }>(
+        `select tenant_id, resource_type, before_digest, after_digest from audit.ledger
+          where action = $1 and resource_id = $2 order by occurred_at, seq`,
+        [action, sha256Hex(`customer:${userId}`)],
+      )
+    ).rows;
+  const deletions = (userId: string) => ledger("identity.customer.verified_email.delete", userId);
+  const at = (t: number) => new Date(t).toISOString();
+  const row = async (tenantId: string, userId: string) =>
+    (
+      await db.admin.query(
+        "select 1 from connectors.customer_verified_email where tenant_id = $1 and user_id = $2",
+        [tenantId, userId],
+      )
+    ).rows.length;
+
+  it("retireLogin deletes the account's row and its devices, ledgered as account_closed without the address", async () => {
+    const st = store();
+    const p = idp();
+    const userId = "kc-close-1";
+    await st.saveVerifiedEmail("tnt_a", userId, "close.one@mail.example", t0);
+    await st.saveVerifiedEmail("tnt_b", userId, "close.other@mail.example", t0);
+    await st.createDevice({
+      id: newId("dev"),
+      tenantId: "tnt_a",
+      userId,
+      jkt: JKT,
+      idpSession: "sess-close-1",
+      refreshHash: sha256Hex("close-1"),
+      createdAt: t0,
+      lastUsedAt: t0,
+    });
+    p.owners.set("tnt_a|+919800000301", userId);
+    await p.retireLogin({ tenantId: "tnt_a", userId, channel: "sms", login: "+919800000301" });
+    expect(p.retired).toEqual(["+919800000301"]);
+    expect(await row("tnt_a", userId)).toBe(0);
+    expect(await p.verifiedEmail("tnt_a", userId)).toBeNull();
+    expect(await st.listDevices("tnt_a", userId)).toEqual([]);
+    // Another tenant's row of the same account id is untouched (RLS).
+    expect(await row("tnt_b", userId)).toBe(1);
+    // One entry, in the account's tenant, by the account's hash; neither side names the address.
+    expect(await deletions(userId)).toEqual([
+      {
+        tenant_id: "tnt_a",
+        resource_type: "identity.customer_account",
+        before_digest: canonicalDigest({ verified_at: at(t0) }),
+        after_digest: canonicalDigest({ reason: "account_closed", found: true }),
+      },
+    ]);
+    const raw = await db.admin.query("select * from audit.ledger where resource_id = $1", [
+      sha256Hex(`customer:${userId}`),
+    ]);
+    expect(JSON.stringify(raw.rows)).not.toContain("example");
+    // The account's retirement is on the record too.
+    expect(await ledger("identity.customer.login.retire", userId)).toHaveLength(1);
+  });
+
+  it("erasure deletes the row, ledgered as erasure_request with the reference; a second erasure deletes nothing; a new proof works", async () => {
+    const st = store();
+    const p = idp();
+    const userId = "kc-erase-1";
+    await st.saveVerifiedEmail("tnt_a", userId, "erase.one@mail.example", t0);
+    await st.saveVerifiedEmail("tnt_b", userId, "erase.other@mail.example", t0);
+    expect(
+      await p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "dsr:2026-11-20:1" }),
+    ).toEqual({ erased: true });
+    expect(await row("tnt_a", userId)).toBe(0);
+    expect(await row("tnt_b", userId)).toBe(1);
+    // Idempotent: nothing to delete, no failure, a found:false entry for the request.
+    expect(
+      await p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "dsr:2026-11-20:1" }),
+    ).toEqual({ erased: false });
+    const ref = "dsr:2026-11-20:1";
+    expect(await deletions(userId)).toEqual([
+      {
+        tenant_id: "tnt_a",
+        resource_type: "identity.customer_account",
+        before_digest: canonicalDigest({ verified_at: at(t0) }),
+        after_digest: canonicalDigest({ reason: "erasure_request", found: true, request_ref: ref }),
+      },
+      {
+        tenant_id: "tnt_a",
+        resource_type: "identity.customer_account",
+        before_digest: null,
+        after_digest: canonicalDigest({
+          reason: "erasure_request",
+          found: false,
+          request_ref: ref,
+        }),
+      },
+    ]);
+    // A replacement proof after the deletion is recorded as before (a fresh row, not a replace).
+    await st.saveVerifiedEmail("tnt_a", userId, "erase.new@mail.example", t0 + 1000);
+    expect(await st.verifiedEmail("tnt_a", userId)).toEqual({
+      email: "erase.new@mail.example",
+      verifiedAt: t0 + 1000,
+    });
+    const verify = (await ledger("identity.customer.email.verify", userId)).filter(
+      (r) => r.tenant_id === "tnt_a",
+    );
+    expect(verify.map((r) => r.after_digest)).toEqual([
+      canonicalDigest({ verified_at: at(t0), replaced: false }),
+      canonicalDigest({ verified_at: at(t0 + 1000), replaced: false }),
+    ]);
+    const raw = await db.admin.query("select * from audit.ledger where resource_id = $1", [
+      sha256Hex(`customer:${userId}`),
+    ]);
+    expect(JSON.stringify(raw.rows)).not.toContain("example");
+  });
+
+  it("only the deletion's kernel action deletes; app_rw gains delete on this table only", async () => {
+    const st = store();
+    await st.saveVerifiedEmail("tnt_a", "kc-guard-del", "guard@mail.example", t0);
+    // Any other kernel action is refused by 0016's trigger, whatever it says it is doing.
+    await expect(
+      db.kernel.mutate(
+        withTenant("tnt_a"),
+        (tx) =>
+          tx.query("delete from connectors.customer_verified_email where user_id = 'kc-guard-del'"),
+        { action: "identity.customer.purge" },
+      ),
+    ).rejects.toThrow(/deleted only at account closure or on erasure/);
+    expect(await row("tnt_a", "kc-guard-del")).toBe(1);
+    // Under the deletion's action, another tenant's row is out of reach (forced RLS).
+    const other = await db.kernel.mutate(
+      withTenant("tnt_b"),
+      async (tx) => {
+        const r = await tx.query(
+          "delete from connectors.customer_verified_email where user_id = 'kc-guard-del'",
+        );
+        await db.audit.record(tx as never, {
+          action: "identity.customer.verified_email.delete",
+          resourceType: "identity.customer_account",
+          resourceId: sha256Hex("customer:kc-guard-del"),
+          after: { reason: "erasure_request", found: false },
+        });
+        return r.rowCount;
+      },
+      { action: "identity.customer.verified_email.delete" },
+    );
+    expect(other).toBe(0);
+    expect(await row("tnt_a", "kc-guard-del")).toBe(1);
+    // A connectors table without a delete grant still refuses app_rw (the grant is scoped).
+    await expect(
+      db.kernel.mutate(
+        withTenant("tnt_a"),
+        (tx) => tx.query("delete from connectors.web_snapshot"),
+        { action: "identity.customer.verified_email.delete" },
+      ),
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      db.kernel.mutate(
+        withTenant("tnt_a"),
+        (tx) => tx.query("delete from connectors.tally_journal"),
+        { action: "identity.customer.verified_email.delete" },
+      ),
+    ).rejects.toThrow(/permission denied/);
+    // The whole set of connectors tables app_rw may delete from: 0016 adds one, nothing else.
+    const del = await db.admin.query<{ t: string }>(
+      `select table_name as t from information_schema.role_table_grants
+        where table_schema = 'connectors' and grantee = 'app_rw' and privilege_type = 'DELETE'
+        order by 1`,
+    );
+    expect(del.rows.map((r) => r.t)).toEqual([
+      "customer_device",
+      "customer_otp_challenge",
+      "customer_otp_guard",
+      "customer_verified_email",
+      "idempotency_record",
+      "kyc_aadhaar_otp_verify",
+      "kyc_bank_account_verify",
+      "kyc_digilocker_pull",
+      "kyc_score_check",
+      "session_revocation",
+      "statement_analysis",
+    ]);
+    // No other role but the table's owner may delete from it (app_ro, app_external, svc_* cannot).
+    const others = await db.admin.query(
+      `select grantee from information_schema.role_table_grants
+        where table_schema = 'connectors' and table_name = 'customer_verified_email'
+          and privilege_type = 'DELETE' and grantee <> 'app_rw'
+          and grantee <> (select pg_get_userbyid(relowner) from pg_class
+                           where oid = 'connectors.customer_verified_email'::regclass)`,
+    );
+    expect(others.rows).toEqual([]);
+    // RLS stays enabled and forced.
+    const rls = await db.admin.query(
+      `select relrowsecurity, relforcerowsecurity from pg_class
+        where oid = 'connectors.customer_verified_email'::regclass`,
+    );
+    expect(rls.rows[0]).toEqual({ relrowsecurity: true, relforcerowsecurity: true });
   });
 });
 

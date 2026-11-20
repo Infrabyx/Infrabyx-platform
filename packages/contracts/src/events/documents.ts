@@ -7,6 +7,15 @@
 // 15 minutes. The execution-pack manifest is not named by the Specification: until the owner adopts
 // a carrier (platform request PR-047 proposes `ExecutionPackIssued`), it is shared as a document of
 // type `EXECUTION_PACK_MANIFEST` whose bytes are the JCS form of the manifest.
+//
+// PR-UDF-061 items (12) and (13) (R1-D-236): the owner approved PR-047 on 20 Nov 2026, so the pack
+// now travels as the signed §6.2 event `ExecutionPackIssued` (`ExecutionPackIssuedData` below, with
+// the accepted KFS, instrument and enclosure codes, the WD covenant, the RBC enclosure list, the
+// per-document stamp evidence, the not-stampable list and the signer roles as an enum);
+// `ExecutionPackManifest` stays, unchanged, as the interim carrier. `DocumentShared` takes an
+// optional `language`, and the document JWS may sign a v2 descriptor that also binds the type,
+// media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto), whose fields
+// `DocumentRetrieval` now carries too.
 import { z } from "zod";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
@@ -25,6 +34,13 @@ const code = z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/);
 const sha256 = z.string().regex(/^[0-9a-f]{64}$/);
 const at = z.iso.datetime({ offset: true });
 const version = z.number().int().min(1);
+/** A document's language, BCP 47 as the KFS's (`en`, `hi`, `mr-IN`). */
+const language = z.string().regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/);
+const mediaType = z
+  .string()
+  .regex(/^[a-z]+\/[a-z0-9.+-]+$/)
+  .max(127);
+const sizeBytes = z.number().int().min(0).max(5e9);
 /** A compact detached JWS: `<header>..<signature>` (RFC 7515 Appendix F), at most 1,024 octets. */
 const detachedJws = z
   .string()
@@ -40,17 +56,27 @@ export const DocumentSharedData = z
     /** The document type, by code (`KFS`, `SANCTION_LETTER`, `LOAN_AGREEMENT`, …). */
     type: code,
     sha256,
-    /** The producer's detached document JWS over `{ document_id, version, sha256 }`. */
+    /**
+     * The producer's detached document JWS. v1 (`ipb-document+jws`, R1-D-228) signs
+     * `{ document_id, version, sha256 }`; v2 (`ipb-document-v2+jws`, R1-D-236) also binds `type`,
+     * `media_type`, `size_bytes` and, when present, `application_id`, so a consumer that verifies
+     * it against this event knows none of them was changed on the way. `verifyDocumentJws` takes
+     * both; a v2 JWS needs `media_type` and `size_bytes` here.
+     */
     jws: detachedJws,
     retention_class: code,
     legal_hold: z.boolean(),
-    media_type: z
-      .string()
-      .regex(/^[a-z]+\/[a-z0-9.+-]+$/)
-      .max(127)
-      .optional(),
-    size_bytes: z.number().int().min(0).max(5e9).optional(),
+    media_type: mediaType.optional(),
+    size_bytes: sizeBytes.optional(),
+    /**
+     * The lender's application the document belongs to. Present on every document of a loan
+     * application (the KFS, the sanction letter, the execution pack and its documents): a consumer
+     * files a document by it. It may be omitted only for a document not tied to one application,
+     * such as a producer's general policy or a tenant-wide notice (R1-D-236, PR-UDF-061 item 13).
+     */
     application_id: ref.optional(),
+    /** Optional (R1-D-236): the document's language, BCP 47 (`en`, `hi`, `mr-IN`). */
+    language: language.optional(),
   })
   .loose();
 export type DocumentSharedData = z.infer<typeof DocumentSharedData>;
@@ -62,6 +88,8 @@ export const DOCUMENT_EVENTS = Object.freeze({
     schema: DocumentSharedData,
     idempotency: ["document_id", "version"] as readonly string[],
     regulated: false,
+    /** The data field that is the envelope's `subject` (§3.2: the aggregate id; R1-D-236). */
+    subject: "document_id",
   },
 });
 
@@ -79,6 +107,16 @@ export const DocumentRetrieval = z
     url_expires_at: at,
     /** Where the bytes are hosted (§6.13 "India-hosted"). */
     data_residency: z.literal("IN"),
+    /**
+     * Optional (R1-D-236, PR-UDF-061 item 13): the document's media type, size, type and
+     * application, as its `DocumentShared` gives them. A v2 document JWS signs them, so the
+     * answer verifies on its own (`verifyDocumentJws(r.jws, r, keys)`) and the consumer checks the
+     * downloaded bytes' length against `size_bytes` as well as their hash against `sha256`.
+     */
+    media_type: mediaType.optional(),
+    size_bytes: sizeBytes.optional(),
+    type: code.optional(),
+    application_id: ref.optional(),
   })
   .loose()
   .refine((r) => {
@@ -120,6 +158,12 @@ export const StampEvidence = z
   .loose();
 export type StampEvidence = z.infer<typeof StampEvidence>;
 
+/**
+ * The interim execution-pack manifest (PR-UDF-053), shared as a `DocumentShared` of type
+ * `EXECUTION_PACK_MANIFEST`. Deprecated in favour of the signed `ExecutionPackIssued` event
+ * (`ExecutionPackIssuedData`; PR-047 approved 20 Nov 2026, R1-D-236), which carries the full
+ * PR-UDF-061 shape; kept unchanged so existing consumers still parse it, and removed only in a major.
+ */
 export const ExecutionPackManifest = z
   .object({
     pack_id: ref,
@@ -252,3 +296,277 @@ export const ExecutionPackManifest = z
       });
   });
 export type ExecutionPackManifest = z.infer<typeof ExecutionPackManifest>;
+
+// ---- §6.2 ExecutionPackIssued (PR-047 approved 20 Nov 2026; PR-UDF-061 item 12; R1-D-236) -------
+
+/** Who signs a pack document, by role (PR-UDF-061 item 12: an enum, not an open code). */
+export const PACK_SIGNER_ROLES = ["BORROWER", "CO_APPLICANT", "GUARANTOR", "LENDER"] as const;
+
+/** The electronic execution modes: an eSign (Aadhaar OTP or biometric) or a DSC. */
+export const ELECTRONIC_EXECUTION_MODES = ["ESIGN_AADHAAR", "ESIGN_DSC"] as const;
+
+/**
+ * Instrument codes for the documents of the Information Technology Act, 2000, First Schedule, to
+ * which the Act does not apply (section 1(4)), so they cannot be executed by eSign or DSC: a
+ * negotiable instrument other than a cheque (a promissory note, a demand promissory note, a bill of
+ * exchange), a power of attorney, a trust, a will, and a contract for the sale or conveyance of
+ * immovable property. A pack document with one of these as its `instrument_code` is executed
+ * `WET_INK` (or `NONE`), never electronically. [VERIFY] the list against the Schedule as amended;
+ * `instrument_code` stays an open code, so adding one later is not a breaking change.
+ */
+export const IT_ACT_FIRST_SCHEDULE_INSTRUMENTS = [
+  "NEGOTIABLE_INSTRUMENT",
+  "PROMISSORY_NOTE",
+  "DEMAND_PROMISSORY_NOTE",
+  "BILL_OF_EXCHANGE",
+  "POWER_OF_ATTORNEY",
+  "TRUST",
+  "WILL",
+  "IMMOVABLE_PROPERTY_SALE",
+] as const;
+
+/**
+ * The documents the RE forwards to the borrower on execution of the loan contract (Digital Lending
+ * Directions, CF para 9(3)): the loan agreement, the KFS, the sanction letter, the terms and
+ * conditions, the product summary and the privacy policy, by `kind`. A pack under the Directions
+ * lists each; the schema does not require it (other loan kinds), the lender contract case does.
+ */
+export const CF_PARA_9_3_DOCUMENT_KINDS = [
+  "LOAN_AGREEMENT",
+  "KFS",
+  "SANCTION_LETTER",
+  "TERMS_AND_CONDITIONS",
+  "PRODUCT_SUMMARY",
+  "PRIVACY_POLICY",
+] as const;
+
+const duty = z.number().int().min(0).max(1e12);
+
+/**
+ * The stamp evidence of one pack document (PR-UDF-061 item 12): the channel (`STAMP_MODES`, the
+ * names of the pack's `stamp.mode` and of `EStampCompleted.stamp_mode`), the certificate number,
+ * the State whose stamp law applies, the duty paid in integer paise and, optionally, the duty the
+ * instrument states it needs (`stated_duty_paise`; the duty paid is never less: deficient stamping
+ * is refused), the SHA-256 of the stamped document, when the certificate was issued, the stamp
+ * vendor's certificate id and the certificate itself as a shared document
+ * (`certificate_document_id`, never the stamped document).
+ */
+export const PackStampEvidence = z
+  .object({
+    channel: z.enum(STAMP_MODES),
+    certificate_no: z.string().regex(/^[A-Za-z0-9/_.-]{3,64}$/),
+    state: indianState,
+    duty_paise: duty,
+    stated_duty_paise: duty.optional(),
+    stamped_document_sha256: sha256,
+    issued_at: at,
+    vendor_certificate_id: z
+      .string()
+      .regex(/^[A-Za-z0-9/_.:-]{3,128}$/)
+      .optional(),
+    certificate_document_id: ref.optional(),
+  })
+  .loose()
+  .refine(
+    (e) => e.stated_duty_paise === undefined || e.duty_paise >= e.stated_duty_paise,
+    "the duty paid is at least the duty stated (no deficient stamping)",
+  );
+export type PackStampEvidence = z.infer<typeof PackStampEvidence>;
+
+/** One document of an issued pack. */
+export const PackDocument = z
+  .object({
+    document_id: ref,
+    version,
+    /** `LOAN_AGREEMENT`, `KFS`, `SANCTION_LETTER`, `TERMS_AND_CONDITIONS`, `DPN`, `GUARANTEE`, … */
+    kind: code,
+    sha256,
+    execution_mode: z.enum(EXECUTION_MODES),
+    stamp_required: z.boolean(),
+    /** Who signs, by role, each role at most once. */
+    signers: z.array(z.enum(PACK_SIGNER_ROLES)).max(PACK_SIGNER_ROLES.length),
+    /**
+     * What instrument the document is (`LOAN_AGREEMENT`, `DEMAND_PROMISSORY_NOTE`, `GUARANTEE`,
+     * …); required when it is executed, so the IT Act First Schedule guard applies.
+     */
+    instrument_code: code.optional(),
+    /** The `enclosure_list` code this document furnishes (RBC para 14). */
+    enclosure_code: code.optional(),
+    stamp_evidence: PackStampEvidence.optional(),
+  })
+  .loose();
+export type PackDocument = z.infer<typeof PackDocument>;
+
+/**
+ * `ExecutionPackIssued` (FX → UD, signed; Ecosystem Spec v1.6 as PR-047 drafted it, approved by the
+ * owner on 20 Nov 2026): how an accepted loan is to be executed. Keyed `(pack_id, version)`; a new
+ * version supersedes the earlier one, and the LSP executes only the latest, within the KFS
+ * validity. Beside PR-047's fields it carries PR-UDF-061 item 12:
+ *
+ * - `kfs_version` and `kfs_sha256`: the KFS the borrower accepted; a `KFS` document in the pack has
+ *   that hash.
+ * - `documents[].instrument_code` and `enclosure_code`; an executed document names its instrument,
+ *   and an IT Act First Schedule instrument is never executed electronically.
+ * - `covenant { business_purpose, declared }`: the wilful-defaulter covenant (RBI Treatment of
+ *   Wilful Defaulters and Large Defaulters Directions, para 7(4) [VERIFY]), which the lender writes
+ *   into a loan for a business purpose: the borrower will not induct a wilful defaulter or a large
+ *   defaulter into its management. A business-purpose loan must have it declared, and
+ *   `covenant_declaration` (the pack document carrying it, with its hash) is present exactly when
+ *   `declared` is true: required for a business-purpose loan, absent when nothing is declared.
+ * - `enclosure_list [{ code, clause_ref }]`: every enclosure the agreement quotes (RBI Responsible
+ *   Business Conduct Directions, para 14: the borrower gets a copy of the agreement and of each
+ *   enclosure it quotes), each furnished by exactly one pack document with that `enclosure_code`.
+ * - `documents[].stamp_evidence` (`PackStampEvidence`), only on a stamp-required document, and in
+ *   the pack `stamp`'s State when the pack names one.
+ * - `not_stampable [{ document_id, reason }]`: pack documents that need no stamp, with the reason;
+ *   never stamp-required and never with stamp evidence.
+ * - `documents[].signers` as the `PACK_SIGNER_ROLES` enum, each role once.
+ */
+export const ExecutionPackIssuedData = z
+  .object({
+    pack_id: ref,
+    version,
+    application_id: ref,
+    kfs_id: ref,
+    /** The version and SHA-256 of the KFS the borrower accepted (`BorrowerAccepted`). */
+    kfs_version: version,
+    kfs_sha256: sha256,
+    sanction_id: ref.optional(),
+    documents: z.array(PackDocument).min(1).max(50),
+    stamp: z
+      .object({
+        state: indianState,
+        article: z.string().min(1).max(64),
+        duty_paise: duty,
+        mode: z.enum(STAMP_MODES),
+        payer: z.enum(["BORROWER", "LENDER"]),
+      })
+      .loose()
+      .optional(),
+    /** The page of the loan agreement that carries the KFS summary box. */
+    summary_box: z.object({ document_id: ref, page: z.number().int().min(1).max(2000) }).loose(),
+    covenant: z.object({ business_purpose: z.boolean(), declared: z.boolean() }).strict(),
+    /** The document carrying the covenant declaration; present exactly when `covenant.declared`. */
+    covenant_declaration: z.object({ document_id: ref, sha256 }).loose().optional(),
+    enclosure_list: z
+      .array(z.object({ code, clause_ref: z.string().min(1).max(64) }).loose())
+      .max(50),
+    not_stampable: z
+      .array(z.object({ document_id: ref, reason: z.string().min(1).max(200) }).loose())
+      .max(50)
+      .optional(),
+    countersignature: z
+      .object({
+        required: z.boolean(),
+        by: z.enum(["LENDER"]).optional(),
+        order: z.enum(["AFTER_BORROWER", "BEFORE_BORROWER"]).optional(),
+        within_days: z.number().int().min(1).max(90).optional(),
+      })
+      .loose(),
+    disbursement_clause: z
+      .object({
+        document_id: ref,
+        page_or_clause_ref: z.string().min(1).max(64),
+        amount_stated_paise: z.number().int().min(0).max(1e14),
+      })
+      .loose()
+      .optional(),
+  })
+  .loose()
+  .superRefine((p, ctx) => {
+    const issue = (path: Array<string | number>, message: string) =>
+      ctx.addIssue({ code: "custom", path, message });
+    const byId = new Map<string, PackDocument>();
+    const electronic: readonly string[] = ELECTRONIC_EXECUTION_MODES;
+    const firstSchedule: readonly string[] = IT_ACT_FIRST_SCHEDULE_INSTRUMENTS;
+    for (const [i, d] of p.documents.entries()) {
+      const at = (field: string) => ["documents", i, field];
+      if (byId.has(d.document_id)) issue(["documents", i], `duplicate document ${d.document_id}`);
+      byId.set(d.document_id, d);
+      if (d.stamp_required && (!p.stamp || d.execution_mode === "NONE"))
+        issue(
+          at("stamp_required"),
+          `${d.document_id} needs stamping: the pack names a stamp and an execution mode`,
+        );
+      if (new Set(d.signers).size !== d.signers.length)
+        issue(at("signers"), `${d.document_id} names a signer role twice`);
+      if (d.execution_mode !== "NONE") {
+        if (d.signers.length === 0)
+          issue(at("signers"), `${d.document_id} is executed but has no signer`);
+        if (d.instrument_code === undefined)
+          issue(at("instrument_code"), `${d.document_id} is executed but names no instrument`);
+      }
+      if (
+        d.instrument_code !== undefined &&
+        firstSchedule.includes(d.instrument_code) &&
+        electronic.includes(d.execution_mode)
+      )
+        issue(
+          at("execution_mode"),
+          `${d.document_id} is an IT Act First Schedule instrument: never executed electronically`,
+        );
+      if (d.stamp_evidence) {
+        if (!d.stamp_required)
+          issue(at("stamp_evidence"), `${d.document_id} carries stamp evidence but needs no stamp`);
+        if (p.stamp && d.stamp_evidence.state !== p.stamp.state)
+          issue(at("stamp_evidence"), `${d.document_id} is stamped in another State than the pack`);
+        if (d.stamp_evidence.certificate_document_id === d.document_id)
+          issue(at("stamp_evidence"), `${d.document_id} names itself as its stamp certificate`);
+      }
+      if (d.kind === "KFS" && d.sha256 !== p.kfs_sha256)
+        issue(at("sha256"), `${d.document_id} is not the KFS the borrower accepted`);
+    }
+    if (!byId.has(p.summary_box.document_id))
+      issue(["summary_box", "document_id"], "summary_box names a document outside the pack");
+    // The wilful-defaulter covenant: declared for a business purpose, carried exactly when declared.
+    if (p.covenant.business_purpose && !p.covenant.declared)
+      issue(["covenant", "declared"], "a business-purpose loan declares the covenant");
+    if (p.covenant.declared !== (p.covenant_declaration !== undefined))
+      issue(
+        ["covenant_declaration"],
+        p.covenant.declared
+          ? "a declared covenant names its covenant_declaration"
+          : "a covenant_declaration without a declared covenant",
+      );
+    if (p.covenant_declaration && !byId.has(p.covenant_declaration.document_id))
+      issue(
+        ["covenant_declaration", "document_id"],
+        "covenant_declaration names a document outside the pack",
+      );
+    // RBC para 14: each quoted enclosure is furnished by exactly one pack document.
+    const codes = new Set<string>();
+    for (const [i, e] of p.enclosure_list.entries()) {
+      if (codes.has(e.code)) issue(["enclosure_list", i, "code"], `duplicate enclosure ${e.code}`);
+      codes.add(e.code);
+      const n = p.documents.filter((d) => d.enclosure_code === e.code).length;
+      if (n !== 1)
+        issue(
+          ["enclosure_list", i, "code"],
+          `enclosure ${e.code} is furnished by ${n} pack documents, not exactly one`,
+        );
+    }
+    for (const [i, d] of p.documents.entries())
+      if (d.enclosure_code !== undefined && !codes.has(d.enclosure_code))
+        issue(
+          ["documents", i, "enclosure_code"],
+          `${d.document_id} furnishes an enclosure the list does not quote`,
+        );
+    const listed = new Set<string>();
+    for (const [i, n] of (p.not_stampable ?? []).entries()) {
+      const path = ["not_stampable", i, "document_id"];
+      if (listed.has(n.document_id)) issue(path, `${n.document_id} is listed twice`);
+      listed.add(n.document_id);
+      const d = byId.get(n.document_id);
+      if (!d) issue(path, `${n.document_id} is not in the pack`);
+      else if (d.stamp_required || d.stamp_evidence)
+        issue(path, `${n.document_id} is not stampable but is stamp-required or stamped`);
+    }
+    if (p.countersignature.required && (!p.countersignature.by || !p.countersignature.order))
+      issue(["countersignature"], "a required countersignature names `by` and `order`");
+    if (p.disbursement_clause && !byId.has(p.disbursement_clause.document_id))
+      issue(
+        ["disbursement_clause", "document_id"],
+        "disbursement_clause names a document outside the pack",
+      );
+  });
+export type ExecutionPackIssuedData = z.infer<typeof ExecutionPackIssuedData>;
