@@ -5,6 +5,12 @@
 import { z } from "zod";
 import type { KernelContext } from "../kernel.js";
 import type { Port, PortCall } from "./common.js";
+import {
+  EMAIL_ATTACHMENT_MEDIA_TYPES,
+  EmailAttachmentFilename,
+  attachmentExtensionFits,
+} from "./email.js";
+import { isValidStorageKey } from "./storage.js";
 
 export const NOTIFY_CHANNELS = ["inapp", "email", "sms", "whatsapp", "push"] as const;
 export type NotifyChannel = (typeof NOTIFY_CHANNELS)[number];
@@ -157,6 +163,28 @@ export const ReplyThreadRef = z
 export const Recipient = z.object({ ref: z.string().min(3).max(120) }).strict();
 export type Recipient = z.infer<typeof Recipient>;
 
+/**
+ * A document to attach to the email deliveries of a notification (Udofin PR-UDF-055; R1-D-224):
+ * a STORAGE key in the caller's tenant, the SHA-256 of its bytes, the name and type the borrower
+ * sees. NOTIFY reads the bytes at send, checks them against `sha256` and the declared type, and
+ * hands them unchanged to the EMAIL adapter. INTERNAL and PUBLIC objects only, unless the
+ * platform's `ntf.email.attachments.confidential` allows CONFIDENTIAL ones to an `IN` adapter
+ * that carries that class (none today; owner question #161).
+ */
+export const NotificationAttachment = z
+  .object({
+    storageKey: z.string().refine(isValidStorageKey, "an IPB-01-27 storage key"),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    filename: EmailAttachmentFilename,
+    mediaType: z.enum(EMAIL_ATTACHMENT_MEDIA_TYPES),
+  })
+  .strict()
+  .refine((a) => attachmentExtensionFits(a.filename, a.mediaType), {
+    path: ["filename"],
+    message: "the extension does not fit the media type",
+  });
+export type NotificationAttachment = z.infer<typeof NotificationAttachment>;
+
 export const NotificationRequest = z
   .object({
     class: ClassId,
@@ -172,6 +200,12 @@ export const NotificationRequest = z
      * and `ntf.reply.domain` is set; never set on a digest.
      */
     reply: z.object({ threadRef: ReplyThreadRef }).strict().optional(),
+    /**
+     * Documents attached to the email deliveries only (PR-UDF-055; R1-D-224): an urgent class
+     * with an email template, the tenant's `ntf.email.attachments.enabled` on. Other channels
+     * carry the deep link as before.
+     */
+    attachments: z.array(NotificationAttachment).min(1).max(10).optional(),
   })
   .strict();
 export type NotificationRequest = z.infer<typeof NotificationRequest>;
@@ -211,6 +245,13 @@ export interface DeliveryRecord {
   adapter?: string;
   lastErrorCode?: string;
   updatedAt: string;
+  /** The vendor's message id once the adapter accepted the message (PR-UDF-055). */
+  vendorRef?: string;
+  /**
+   * The receipt of an email sent with attachments (PR-UDF-055; R1-D-224): the SHA-256 and size of
+   * each attached file as handed to the adapter, in order.
+   */
+  attachments?: Array<{ sha256: string; bytes: number }>;
 }
 
 /** Per-class channel choices of one user (`ntf.user.channels`). */

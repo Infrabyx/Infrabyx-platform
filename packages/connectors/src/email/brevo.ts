@@ -137,6 +137,8 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
         suppress: "emulated",
         sendRaw: "unsupported",
         content: "native",
+        // Files given as bytes go base64-encoded, the same bytes (PR-UDF-055; R1-D-224).
+        attachments: "native",
       },
     };
     const base = new URL(o.baseUrl ?? BASE);
@@ -209,7 +211,7 @@ export class BrevoEmail implements EmailPort, IdempotencyLookup {
         detail: `the sending domain of brand ${m.brand} is not authenticated (DKIM) on brevo`,
         meta: { reason: "dkim_not_provisioned", definite: true },
       });
-    const files = await loadAttachments(this.descriptor, m.attachments, this.o.storage);
+    const files = await loadAttachments(this.descriptor, m.attachments, this.o.storage, m.files);
     const headers: Record<string, string> = {};
     if (call?.idempotencyKey) headers.idempotencyKey = brevoIdempotencyKey(call.idempotencyKey);
     if (this.o.sandbox) headers["X-Sib-Sandbox"] = "drop";

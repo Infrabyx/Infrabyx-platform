@@ -25,6 +25,68 @@ export const EmailContent = z
   .strict();
 export type EmailContent = z.infer<typeof EmailContent>;
 
+/**
+ * Attachments a caller may send as bytes (Udofin PR-UDF-055; R1-D-224): at most 10 files and
+ * 10 MiB together (with any `attachments` keys; PL2-D-64), of these media types only.
+ */
+export const EMAIL_ATTACHMENT_LIMITS = { maxFiles: 10, maxBytes: 10 * 1024 * 1024 } as const;
+export const EMAIL_ATTACHMENT_MEDIA_TYPES = ["application/pdf", "image/png", "image/jpeg"] as const;
+export type EmailAttachmentMediaType = (typeof EMAIL_ATTACHMENT_MEDIA_TYPES)[number];
+/** Extensions a filename of each media type may end with (lower case). */
+export const EMAIL_ATTACHMENT_EXTENSIONS: Readonly<
+  Record<EmailAttachmentMediaType, readonly string[]>
+> = Object.freeze({
+  "application/pdf": ["pdf"],
+  "image/png": ["png"],
+  "image/jpeg": ["jpg", "jpeg"],
+});
+
+/** A plain file name with an extension: no path, no control characters, at most 100 characters. */
+export const EmailAttachmentFilename = z
+  .string()
+  .min(3)
+  .max(100)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9 ._()-]*\.[A-Za-z0-9]{1,8}$/);
+
+/** Whether `filename`'s extension fits `mediaType`. */
+export function attachmentExtensionFits(filename: string, mediaType: string): boolean {
+  const ext = filename.slice(filename.lastIndexOf(".") + 1).toLowerCase();
+  const allowed = (EMAIL_ATTACHMENT_EXTENSIONS as Record<string, readonly string[] | undefined>)[
+    mediaType
+  ];
+  return allowed !== undefined && allowed.includes(ext);
+}
+
+/**
+ * The media type the bytes are, by their magic number (PDF `%PDF-`, the PNG signature, the JPEG
+ * start of image), or `undefined` for anything else. A declared type is taken only when the
+ * bytes agree (IPB-02-44).
+ */
+export function emailAttachmentTypeOf(body: Uint8Array): EmailAttachmentMediaType | undefined {
+  const starts = (sig: readonly number[]) =>
+    body.byteLength >= sig.length && sig.every((b, i) => body[i] === b);
+  if (starts([0x25, 0x50, 0x44, 0x46, 0x2d])) return "application/pdf";
+  if (starts([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "image/png";
+  if (starts([0xff, 0xd8, 0xff])) return "image/jpeg";
+  return undefined;
+}
+
+/**
+ * One attachment as bytes (PR-UDF-055; R1-D-224): the caller read them from STORAGE and checked
+ * them against `sha256`; the adapter checks the digest again and sends the bytes as given, never
+ * decoded, re-encoded or re-rendered. Only for an adapter with the capability
+ * `attachments: "native"`.
+ */
+export const EmailAttachment = z
+  .object({
+    filename: EmailAttachmentFilename,
+    contentType: z.enum(EMAIL_ATTACHMENT_MEDIA_TYPES),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    body: z.custom<Uint8Array>((v) => v instanceof Uint8Array, "bytes (a Uint8Array)"),
+  })
+  .strict();
+export type EmailAttachment = z.infer<typeof EmailAttachment>;
+
 export const EmailMessage = z.object({
   to: z.array(recipient(z.email())).min(1).max(50),
   cc: z.array(recipient(z.email())).max(50).optional(),
@@ -33,6 +95,11 @@ export const EmailMessage = z.object({
   vars: internal(z.record(z.string(), z.union([z.string(), z.number(), z.boolean()]))),
   /** STORAGE keys of INTERNAL attachments; CONFIDENTIAL documents go as secure links instead. */
   attachments: internal(z.array(z.string()).max(10)).optional(),
+  /**
+   * Attachments as verified bytes (PR-UDF-055; R1-D-224), counted with `attachments` against
+   * `EMAIL_ATTACHMENT_LIMITS`. Handed only to an adapter that declares `attachments: "native"`.
+   */
+  files: internal(z.array(EmailAttachment).max(10)).optional(),
   tags: internal(z.record(z.string(), z.string())).optional(),
   brand: internal(z.string()),
   /** Rendered content sent instead of the vendor template (PR-LDC-27). */

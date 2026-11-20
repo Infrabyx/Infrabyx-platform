@@ -2,6 +2,7 @@
 // identities but not templated sends, suppression or the account call ([VERIFY] outcome,
 // PL2-D-64), so this stub serves the SES v2 REST-JSON routes the `ses` adapter uses, from the
 // SES v2 API reference. moto still checks raw send and identity parsing.
+import { sha256Hex } from "@infrabyx/crypto";
 import { startStub, type StubReply, type VendorStub } from "./http.js";
 
 export interface SesStubMessage {
@@ -17,7 +18,8 @@ export interface SesStubMessage {
   tags: Record<string, string>;
   /** `ReplyToAddresses` as sent (PR-LDC-50). */
   replyTo?: string[];
-  attachments: Array<{ fileName: string; contentType?: string; bytes: number }>;
+  /** `sha256` is over the decoded bytes received, to prove they are the stored ones (PR-UDF-055). */
+  attachments: Array<{ fileName: string; contentType?: string; bytes: number; sha256: string }>;
   suppressed: boolean;
 }
 
@@ -106,6 +108,7 @@ export async function startSesStub(): Promise<SesStub> {
           fileName: a.FileName,
           ...(a.ContentType ? { contentType: a.ContentType } : {}),
           bytes: Buffer.from(a.RawContent, "base64").byteLength,
+          sha256: sha256Hex(new Uint8Array(Buffer.from(a.RawContent, "base64"))),
         })),
         // SES drops sends to suppressed addresses without an error (account-level list).
         suppressed: to.some((a) => suppressed.has(a.toLowerCase())),

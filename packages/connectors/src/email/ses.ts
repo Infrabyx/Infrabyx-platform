@@ -101,7 +101,13 @@ export class SesEmail implements EmailPort {
     residency: "IN",
     maxDataClass: "INTERNAL",
     // `content`: rendered subject and parts sent as SES simple content (PR-LDC-27; R1-D-90).
-    capabilities: { getStatus: "unsupported", content: "native", inbound: "native" },
+    // `attachments`: files given as bytes go as `RawContent`, unchanged (PR-UDF-055; R1-D-224).
+    capabilities: {
+      getStatus: "unsupported",
+      content: "native",
+      inbound: "native",
+      attachments: "native",
+    },
   };
   private readonly client: SESv2Client;
   private readonly certs = new Map<string, Promise<string>>();
@@ -189,7 +195,7 @@ export class SesEmail implements EmailPort {
     assertBodyClass(this.descriptor, call);
     const m = EmailMessage.parse(message);
     const b = this.brand(m.brand);
-    const files = await loadAttachments(this.descriptor, m.attachments, this.o.storage);
+    const files = await loadAttachments(this.descriptor, m.attachments, this.o.storage, m.files);
     const attachments = files.length
       ? {
           Attachments: files.map((f) => ({
