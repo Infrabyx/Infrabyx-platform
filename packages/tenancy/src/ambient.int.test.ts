@@ -1,7 +1,8 @@
 // Ambient mutations (Udofin PR-UDF-033, Finbyx PR-FBX-21; R1-D-48): a service's own `mutate`
 // joins the handler's transaction, so `idempotent()` covers it; a joined call's failure rolls back
-// only its writes; its settings are its own and the ambient ones come back; another principal,
-// tenant or a concurrent sibling is refused. Idempotency keys belong to their first principal and
+// only its writes; its settings are its own and the ambient ones come back; another scope or grant
+// is refused (another principal, another tenant and concurrent siblings:
+// ambient-principal.int.test.ts, PR-UDF-062). Idempotency keys belong to their first principal and
 // the hash covers the route's parameters.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AuditEntryInput, AuditSink, KernelContext, Tx } from "@infrabyx/contracts/kernel";
@@ -114,7 +115,7 @@ describe("ambient mutations (PR-UDF-033 (1), PR-FBX-21 (1))", () => {
     expect(await notes()).not.toContain("four");
   });
 
-  it("refuses another principal or tenant, concurrent siblings and a nested ambient", async () => {
+  it("refuses another scope, a principal's other grant and a nested ambient", async () => {
     const run = (fn: () => Promise<unknown>) =>
       kernel.ambient(user(), async (tx) => {
         try {
@@ -123,19 +124,24 @@ describe("ambient mutations (PR-UDF-033 (1), PR-FBX-21 (1))", () => {
           await audit.record(tx, { action: "api.x", resourceType: "x", resourceId: "x" });
         }
       });
-    await expect(run(() => addNote(user("usr_b"), "five"))).rejects.toThrow(/ambient mutation's/);
-    await expect(run(() => addNote(user("usr_a", "tnt_b"), "five"))).rejects.toThrow(
-      /ambient mutation's/,
-    );
-    // Both siblings are awaited, so the one that runs ends before the ambient transaction does
-    // (a sibling still running on a released connection would reach the next transaction).
+    // Another principal of the tenant, another tenant and concurrent siblings are no longer
+    // refused (PR-UDF-062; ambient-principal.int.test.ts): the refusals that remain.
     await expect(
-      run(async () => {
-        const r = await Promise.allSettled([addNote(user(), "six"), addNote(user(), "seven")]);
-        const refused = r.find((x) => x.status === "rejected");
-        if (refused) throw refused.reason;
-      }),
-    ).rejects.toThrow(/one at a time/);
+      run(() => addNote({ ...user(), breakGlassGrantId: "bg_other" }, "five")),
+    ).rejects.toThrow(/ambient mutation's/);
+    await expect(
+      run(() =>
+        addNote(
+          {
+            tenantId: "tnt_a",
+            scope: "platform",
+            principal: { id: "usr_a", type: "user", roles: ["PLT_SUPER_ADMIN"] },
+          },
+          "five",
+        ),
+      ),
+    ).rejects.toThrow(/ambient mutation's/);
+    expect(await notes()).not.toContain("five");
     await expect(run(() => kernel.ambient(user(), async () => 1))).rejects.toThrow(/already open/);
     // A joined call still needs its own ledger entry.
     await expect(

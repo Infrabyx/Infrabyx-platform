@@ -14,6 +14,11 @@ import {
   STAMP_EVIDENCE_MODES,
   STAMP_EVIDENCE_MODE_OF,
   StampEvidence,
+  CF_PARA_9_3_DOCUMENT_KINDS,
+  ExecutionPackIssuedData,
+  IT_ACT_FIRST_SCHEDULE_INSTRUMENTS,
+  PACK_SIGNER_ROLES,
+  PackStampEvidence,
 } from "./index.js";
 
 const h = (c: string) => c.repeat(64);
@@ -340,6 +345,254 @@ describe("the execution-pack manifest (PR-UDF-053, proposal PR-047)", () => {
       { not_stampable: "yes", not_stampable_reason: reason },
     ])
       expect(ExecutionPackManifest.safeParse(withItems({}, kfs)).success, JSON.stringify(kfs)).toBe(
+        false,
+      );
+  });
+});
+
+// ---- PR-UDF-061 items 12 and 13 (owner, 20 Nov 2026 18:50; R1-D-236) ---------------------------
+
+const kfsHash = h("a");
+const doc = (id: string, kind: string, over: Record<string, unknown> = {}) => ({
+  document_id: id,
+  version: 1,
+  kind,
+  sha256: kind === "KFS" ? kfsHash : h("e"),
+  execution_mode: "NONE",
+  stamp_required: false,
+  signers: [] as string[],
+  ...over,
+});
+const stampEvidence = {
+  channel: "E_STAMP",
+  certificate_no: "IN-MH12345678901234X",
+  state: "IN-MH",
+  duty_paise: 50_000,
+  stated_duty_paise: 50_000,
+  stamped_document_sha256: h("d"),
+  issued_at: "2026-11-20T09:00:00+05:30",
+  vendor_certificate_id: "SHCIL/2026/0001",
+  certificate_document_id: "doc_cert_0001",
+};
+const issued = {
+  pack_id: "pack_0001",
+  version: 1,
+  application_id: "app_0001",
+  kfs_id: "kfs_0001",
+  kfs_version: 1,
+  kfs_sha256: kfsHash,
+  sanction_id: "snc_0001",
+  documents: [
+    doc("doc_agr_0001", "LOAN_AGREEMENT", {
+      sha256: h("d"),
+      execution_mode: "ESIGN_AADHAAR",
+      stamp_required: true,
+      signers: ["BORROWER", "LENDER"],
+      instrument_code: "LOAN_AGREEMENT",
+      stamp_evidence: stampEvidence,
+    }),
+    doc("doc_kfs_0001", "KFS", { enclosure_code: "ANNEX_A" }),
+    doc("doc_snc_0001", "SANCTION_LETTER", { enclosure_code: "ANNEX_B" }),
+    doc("doc_tnc_0001", "TERMS_AND_CONDITIONS", { enclosure_code: "ANNEX_C" }),
+    doc("doc_sum_0001", "PRODUCT_SUMMARY"),
+    doc("doc_prv_0001", "PRIVACY_POLICY"),
+  ],
+  stamp: {
+    state: "IN-MH",
+    article: "5(h)",
+    duty_paise: 50_000,
+    mode: "E_STAMP",
+    payer: "BORROWER",
+  },
+  summary_box: { document_id: "doc_agr_0001", page: 2 },
+  covenant: { business_purpose: false, declared: false },
+  enclosure_list: [
+    { code: "ANNEX_A", clause_ref: "cl.1.2" },
+    { code: "ANNEX_B", clause_ref: "cl.1.3" },
+    { code: "ANNEX_C", clause_ref: "cl.1.4" },
+  ],
+  not_stampable: [
+    { document_id: "doc_kfs_0001", reason: "A disclosure statement, not an instrument" },
+    { document_id: "doc_prv_0001", reason: "A policy notice, not an instrument" },
+  ],
+  countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
+  disbursement_clause: {
+    document_id: "doc_agr_0001",
+    page_or_clause_ref: "cl.4.2",
+    amount_stated_paise: 5_000_000,
+  },
+};
+const withDoc = (i: number, over: Record<string, unknown>) => ({
+  ...issued,
+  documents: issued.documents.map((d, j) => (j === i ? { ...d, ...over } : d)),
+});
+const ok = (v: unknown) => ExecutionPackIssuedData.safeParse(v).success;
+const decl = { document_id: "doc_agr_0001", sha256: h("d") };
+
+describe("ExecutionPackIssued (PR-047 approved; PR-UDF-061 item 12)", () => {
+  it("is registered signed and takes the full pack: accepted KFS, CF para 9(3) set, enclosures, stamp evidence, not-stampable list", () => {
+    expect(ORIGINATION_EVENTS.ExecutionPackIssued.regulated).toBe(true);
+    const r = ExecutionPackIssuedData.safeParse(issued);
+    expect(r.success, JSON.stringify(r.error?.issues)).toBe(true);
+    expect(issued.documents.map((d) => d.kind)).toEqual([...CF_PARA_9_3_DOCUMENT_KINDS]);
+    expect(PACK_SIGNER_ROLES).toEqual(["BORROWER", "CO_APPLICANT", "GUARANTOR", "LENDER"]);
+  });
+
+  it("needs the accepted KFS's version and hash, and a KFS document with that hash", () => {
+    for (const k of ["kfs_version", "kfs_sha256", "covenant", "enclosure_list"] as const) {
+      const v: Record<string, unknown> = { ...issued };
+      delete v[k];
+      expect(ok(v), k).toBe(false);
+    }
+    expect(ok({ ...issued, kfs_sha256: h("9") })).toBe(false);
+    expect(ok({ ...issued, kfs_version: 0 })).toBe(false);
+  });
+
+  it("takes signers only as the role enum, each once, and refuses an executed document without signers", () => {
+    expect(ok(withDoc(0, { signers: ["BORROWER", "WITNESS"] }))).toBe(false);
+    expect(ok(withDoc(0, { signers: ["BORROWER", "BORROWER"] }))).toBe(false);
+    expect(ok(withDoc(0, { signers: [] }))).toBe(false);
+    expect(ok(withDoc(0, { signers: [...PACK_SIGNER_ROLES] }))).toBe(true);
+  });
+
+  it("guards the IT Act First Schedule: such an instrument is never executed by eSign or DSC", () => {
+    const dpn = (mode: string) => ({
+      ...issued,
+      documents: [
+        ...issued.documents,
+        doc("doc_dpn_0001", "DPN", {
+          execution_mode: mode,
+          signers: ["BORROWER"],
+          instrument_code: "DEMAND_PROMISSORY_NOTE",
+        }),
+      ],
+    });
+    expect(ok(dpn("WET_INK"))).toBe(true);
+    expect(ok(dpn("ESIGN_AADHAAR"))).toBe(false);
+    expect(ok(dpn("ESIGN_DSC"))).toBe(false);
+    for (const c of IT_ACT_FIRST_SCHEDULE_INSTRUMENTS)
+      expect(ok(withDoc(0, { instrument_code: c })), c).toBe(false);
+    // An executed document names its instrument.
+    expect(ok(withDoc(0, { instrument_code: undefined }))).toBe(false);
+  });
+
+  it("makes the covenant declaration conditional: required for a business purpose, present exactly when declared", () => {
+    const cov = (business_purpose: boolean, declared: boolean) => ({ business_purpose, declared });
+    expect(ok({ ...issued, covenant: cov(true, true), covenant_declaration: decl })).toBe(true);
+    expect(ok({ ...issued, covenant: cov(true, true) })).toBe(false);
+    expect(ok({ ...issued, covenant: cov(true, false) })).toBe(false);
+    expect(ok({ ...issued, covenant_declaration: decl })).toBe(false);
+    expect(ok({ ...issued, covenant: cov(false, true), covenant_declaration: decl })).toBe(true);
+    expect(
+      ok({
+        ...issued,
+        covenant: cov(true, true),
+        covenant_declaration: { ...decl, document_id: "doc_elsewhere" },
+      }),
+    ).toBe(false);
+    expect(ok({ ...issued, covenant: { ...cov(false, false), extra: 1 } })).toBe(false);
+  });
+
+  it("furnishes each quoted enclosure by exactly one pack document (RBC para 14)", () => {
+    const extra = { code: "ANNEX_D", clause_ref: "cl.9" };
+    expect(ok({ ...issued, enclosure_list: [...issued.enclosure_list, extra] })).toBe(false);
+    expect(ok({ ...issued, enclosure_list: issued.enclosure_list.slice(1) })).toBe(false);
+    expect(ok(withDoc(4, { enclosure_code: "ANNEX_A" }))).toBe(false);
+    expect(
+      ok({ ...issued, enclosure_list: [...issued.enclosure_list, issued.enclosure_list[0]!] }),
+    ).toBe(false);
+    expect(
+      ok({
+        ...issued,
+        enclosure_list: [{ ...issued.enclosure_list[0]!, clause_ref: "" }],
+      }),
+    ).toBe(false);
+  });
+
+  it("takes the stamp evidence's full shape and refuses deficient, misplaced or self-referring evidence", () => {
+    expect(PackStampEvidence.safeParse(stampEvidence).success).toBe(true);
+    for (const bad of [
+      { channel: "ESTAMP" },
+      { certificate_no: "x" },
+      { state: "MH" },
+      { duty_paise: 1.5 },
+      { stated_duty_paise: 60_000 },
+      { stamped_document_sha256: "D".repeat(64) },
+      { issued_at: "yesterday" },
+    ])
+      expect(
+        PackStampEvidence.safeParse({ ...stampEvidence, ...bad }).success,
+        JSON.stringify(bad),
+      ).toBe(false);
+    expect(PackStampEvidence.safeParse({ ...stampEvidence, duty_paise: 60_000 }).success).toBe(
+      true,
+    );
+    const ev = (over: Record<string, unknown>) =>
+      withDoc(0, { stamp_evidence: { ...stampEvidence, ...over } });
+    expect(ok(ev({ state: "IN-DL" }))).toBe(false);
+    expect(ok(ev({ certificate_document_id: "doc_agr_0001" }))).toBe(false);
+    expect(ok(withDoc(4, { stamp_evidence: stampEvidence }))).toBe(false);
+    expect(ok(withDoc(0, { stamp_required: false }))).toBe(false);
+  });
+
+  it("lists not-stampable documents only inside the pack, once, and never stamp-required or stamped", () => {
+    const ns = (list: unknown[]) => ok({ ...issued, not_stampable: list });
+    expect(ns([])).toBe(true);
+    expect(ns([{ document_id: "doc_elsewhere", reason: "x" }])).toBe(false);
+    expect(ns([{ document_id: "doc_agr_0001", reason: "x" }])).toBe(false);
+    expect(ns([{ document_id: "doc_kfs_0001", reason: "" }])).toBe(false);
+    expect(
+      ns([
+        { document_id: "doc_kfs_0001", reason: "x" },
+        { document_id: "doc_kfs_0001", reason: "y" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("keeps the manifest's rules: unique documents, summary box and clause in the pack, a stamp for stamp-required, a closed countersignature", () => {
+    expect(ok({ ...issued, documents: [...issued.documents, issued.documents[1]!] })).toBe(false);
+    expect(ok({ ...issued, summary_box: { document_id: "doc_elsewhere", page: 2 } })).toBe(false);
+    expect(
+      ok({
+        ...issued,
+        disbursement_clause: { ...issued.disbursement_clause, document_id: "doc_x01" },
+      }),
+    ).toBe(false);
+    const v: Record<string, unknown> = { ...issued };
+    delete v.stamp;
+    expect(ok(v)).toBe(false);
+    expect(ok({ ...issued, countersignature: { required: true } })).toBe(false);
+  });
+});
+
+describe("DocumentShared and the retrieval answer (PR-UDF-061 item 13)", () => {
+  it("takes an optional BCP 47 language and refuses another shape", () => {
+    expect(DocumentSharedData.safeParse({ ...shared, language: "hi" }).success).toBe(true);
+    expect(DocumentSharedData.safeParse({ ...shared, language: "mr-IN" }).success).toBe(true);
+    for (const l of ["Hindi", "EN", "en_IN", ""])
+      expect(DocumentSharedData.safeParse({ ...shared, language: l }).success, l).toBe(false);
+  });
+
+  it("names document_id as the subject of DocumentShared", () => {
+    expect(DOCUMENT_EVENTS.DocumentShared.subject).toBe("document_id");
+  });
+
+  it("takes the retrieval answer's optional media type, size, type and application, refusing bad values", () => {
+    const full = {
+      ...retrieval,
+      media_type: "application/pdf",
+      size_bytes: 1024,
+      type: "KFS",
+      application_id: "app_0001",
+    };
+    expect(DocumentRetrieval.safeParse(full).success).toBe(true);
+    for (const bad of [
+      { media_type: "PDF" },
+      { size_bytes: -1 },
+      { type: "kfs" },
+      { application_id: "x" },
+    ])
+      expect(DocumentRetrieval.safeParse({ ...full, ...bad }).success, JSON.stringify(bad)).toBe(
         false,
       );
   });

@@ -48,3 +48,23 @@ The platform ships `ExecutionPackManifest` in `@infrabyx/contracts/events` and t
 - `LoanDisbursed`: the lender's application id and the time of disbursal.
 
 **Interim (until approved):** the platform ships `CoolingOffExitAnswered` unsigned in `@infrabyx/contracts/events`, and the mock lender emits it. Once v1.6 lists it, signing it is a minor: the event joins `REGULATED_MESSAGE_EVENTS` and a consumer verifies its JWS like the other regulated messages.
+
+## 6. Addendum, 20 Nov 2026, for Udofin PR-UDF-061 items (12) to (17) (R1-D-236): a proposal for the owner
+
+The owner approved §1 to §5 as drafted on 20 Nov 2026 (18:50 IST). Building PR-UDF-061's items (12) to (17) on top of that approval changes some of the approved text. **These changes are proposals, not yet approved**; the platform ships them additively from the next contracts minor (owner question #168) and the owner decides whether the Specification takes them.
+
+**6.1 §1 (`ExecutionPackIssued`), proposed changes to the approved row:**
+
+- Trigger: "The borrower accepts the KFS within its validity" (was "The lender fixes how a sanctioned loan is to be executed"): the pack lists the CF para 9(3) documents, which go to the borrower on execution, so it follows `BorrowerAccepted`.
+- Key payload fields, added: kfs_version and kfs_sha256 (the accepted KFS); per document an instrument code (an IT Act First Schedule instrument is never executed by eSign or DSC) and an enclosure code; signers by role as an enum (`BORROWER`, `CO_APPLICANT`, `GUARANTOR`, `LENDER`); per document stamp evidence (channel, certificate no, State, duty and stated duty in paise, stamped document hash, issued at, vendor certificate id, certificate document id); not-stampable documents (document_id, reason); an enclosure list (code, clause ref; RBC para 14); a covenant (business purpose, declared; WD para 7(4)).
+- Key payload fields, changed: the covenant declaration (document_id, sha256) becomes **conditional**: present exactly when the covenant is declared, and required for a business-purpose loan (was always present).
+
+**6.2 §3 (what the document JWS signs), proposed addition after the approved text:**
+
+"A producer may sign a **v2 descriptor** instead: the same profile and key, `typ` `ipb-document-v2+jws`, over the JCS form of `{ "application_id" (when the document belongs to an application), "document_id", "media_type", "sha256", "size_bytes", "type", "version" }`. A consumer verifies a v1 or v2 JWS by its `typ`, checks the downloaded bytes' length against `size_bytes` as well as their hash against `sha256`, and may refuse v1 once its producer signs v2."
+
+**6.3 §6.13, proposed additions:** `DocumentShared` key payload fields add language (BCP 47), media type, size and application_id, with "application_id is present on every document of a loan application"; the `GET /v1/documents/{id}` answer adds media type, size, type and application_id, "signed with the descriptor (v2)".
+
+**6.4 §3.2 (`subject` and `seq`), proposed clarification:** "For the Part 6.2 and 6.3 events the subject is the aggregate: `application_id` for the origination events that carry it (`ApplicationStatusChanged`, `AdditionalInfoRequested`, `DecisionMade`, `KFSIssued`, `SanctionLetterIssued`, `ExecutionPackIssued`, and `ESignCompleted` and `EStampCompleted` when they carry it, else their `document_id`), so one application's lifecycle is one ordered stream; the LSP's `lsp_application_ref` for what the LSP sends before it holds the lender's id (`ApplicationSubmitted`, and `BorrowerAccepted`, else its `kfs_id`); `loan_id` once the loan exists (`LoanDisbursed`, the cooling-off events and Part 6.3); `document_id` for `DocumentShared` (6.13). `seq` counts per subject from 1."
+
+**6.5 §6.2, additive optional fields (as §5):** `KFSIssued` and `SanctionLetterIssued` add the document's version beside its reference.
