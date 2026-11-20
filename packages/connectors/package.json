@@ -110,6 +110,10 @@
       "types": "./dist/statement-analysis/index.d.ts",
       "default": "./dist/statement-analysis/index.js"
     },
+    "./grc": {
+      "types": "./dist/grc/index.d.ts",
+      "default": "./dist/grc/index.js"
+    },
     "./estamp": {
       "types": "./dist/estamp/index.d.ts",
       "default": "./dist/estamp/index.js"

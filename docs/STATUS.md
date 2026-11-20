@@ -1,12 +1,12 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-19
+Updated: 2026-11-20
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                               |
 | Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Packages              | Published to GitHub Packages (release run 279, `af8126f`, 20 Nov 2026; before it run 265): **1.37.0** contracts; **1.21.0** tenancy; **1.22.0** connectors; **1.23.0** testing; **1.20.0** config; **1.11.1** audit; **1.8.0** export; **1.5.0** workflow; **1.6.1** rules; **1.5.1** notify; **1.3.8** ui; **1.2.8** brand; **1.7.0** crypto; **1.3.15** consent; **1.1.45** cms; **1.2.0** ai; **1.1.16** a11y; **1.0.47** feedback, seed, trust, vidhi; **1.1.0** fakes; **1.0.1** hlp |
+| Packages              | Published to GitHub Packages (release run 282, `ff362d8`, 20 Nov 2026; before it run 279): **1.38.0** contracts; **1.21.1** tenancy; **1.22.1** connectors; **1.24.0** testing; **1.20.1** config; **1.11.2** audit; **1.8.1** export; **1.5.1** workflow; **1.6.2** rules; **1.5.2** notify; **1.3.9** ui; **1.2.9** brand; **1.8.0** crypto; **1.3.16** consent; **1.1.46** cms; **1.2.1** ai; **1.1.17** a11y; **1.0.48** feedback, seed, trust, vidhi; **1.2.0** fakes; **1.0.1** hlp |
 | Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                         |
 | Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                             |
 
@@ -666,6 +666,31 @@ HANDOVER READY
 HANDOVER READY
 
 ## Releases after 1.0.0
+
+### The origination contract, the mock lender and the glob fix (2026-11-20, PRs #314, #315, version PR #316, release run 282)
+
+PR-FBX-50 merged as `43c9910` (#314) and PR-UDF-051 as `3c4b588` (#315) in the twenty-sixth session, each after a green full local check and a green `ci:run`. Version PR #316 merged as `ff362d8` after its one `ci:run`, all 43 checks green, under OWNER-QUESTIONS #81(a) (minors and patches only). Release run 282 (44660164101): attempt 1 was cancelled at 02:22:44 UTC before publishing anything, by a late nightly `port-contract` run in the same concurrency group (R1-D-223, fixed in #319); attempt 2 (02:39 to 02:56 UTC, 20 Nov 08:09 to 08:26 IST) ran the full port-contract matrix, signed the BOM keyless, ran the consumer smoke, published 22 packages with their tags, attested each tarball and compared the registry checksums in the same job (136045583446), and finished green. Minors: `@infrabyx/contracts` 1.38.0, `@infrabyx/crypto` 1.8.0, `@infrabyx/fakes` 1.2.0, `@infrabyx/testing` 1.24.0; patches: a11y 1.1.17, ai 1.2.1, audit 1.11.2, brand 1.2.9, cms 1.1.46, config 1.20.1, connectors 1.22.1, consent 1.3.16, export 1.8.1, feedback, seed, trust and vidhi 1.0.48, notify 1.5.2, rules 1.6.2, tenancy 1.21.1, ui 1.3.9, workflow 1.5.1; `hlp` unchanged (1.0.1). No migration, no setting. All packages stay private (R1-D-214).
+
+**Release notes for products (owner, 20 Nov):**
+
+- **New events and calls (`@infrabyx/contracts/events`, guide §7de):** the loan journey of Ecosystem Specification §6.2 and §6.3 at v1: `EligibilityCheckRequest` and `EligibilityCheckAnswer` for the synchronous `POST /v1/eligibility-checks` (an `Idempotency-Key`, a 3 s budget, `lender_unavailable` past it; owner answer #157: a synchronous call, no event pair), and the data schemas of `ApplicationSubmitted`, `ApplicationStatusChanged`, `AdditionalInfoRequested`, `DecisionMade`, `KFSIssued`, `SanctionLetterIssued`, `BorrowerAccepted`, `CoolingOffExitRequested` and `LoanDisbursed`, listed in `ORIGINATION_EVENTS` with their idempotency fields. `DecisionMade`, `KFSIssued`, `SanctionLetterIssued` and `LoanDisbursed` are regulated: verify each detached JWS (`X-Infrabyx-JWS`) with `verifyRegulatedMessage` against the lender's key ring before acting, and store it with the event.
+- **The mock lender (`@infrabyx/fakes` `FakeLender`, `@infrabyx/testing`):** answers the eligibility call, takes `ApplicationSubmitted`, `BorrowerAccepted` and `CoolingOffExitRequested`, disburses, and signs its regulated events (`fake.keys` verifies them); `script()` steers the next decision, information request, latency or outcome; `outbox()` lists what it sent. Build your own messages with `lspEvent(name, data)` and run `lenderContractCases()` against any lender client you write. `localRegulatedSigner` (`@infrabyx/crypto`) is for tests and fakes only. Udofin can replace its local copies in `u21_connector/port.ts`.
+- **Add the three pnpm overrides (guide §7dd; PR-FBX-50):** the platform's own tree is clear of GHSA-3g3m-2fjr-6pw4 (glob) and GHSA-g3hv-75wg-m249 (minimatch), but overrides are not inherited from a dependency, so your lockfile keeps the old majors until you add, in your `pnpm-workspace.yaml`:
+
+  ```yaml
+  overrides:
+    unleash-client>make-fetch-happen: ^16.0.1
+    archiver-utils>glob: ^14.0.3
+    "minimatch@>=7.0.0 <11.0.1": ^11.0.8
+  ```
+
+  then run `pnpm install` and `pnpm audit` (both advisories gone; Finbyx can drop its SEC-08 waiver). `pnpm update fast-uri` takes `fast-uri` 3.1.9 as the platform did.
+
+- **R1-D-208 waiver statement (accepted by the owner on 20 Nov 2026; copy it word for word into your own image-scan waiver record):**
+
+  > CVE-2026-114939, CVE-2026-114940, CVE-2026-114941 and CVE-2026-114942 (HIGH; OpenJDK advisory of 17 November 2026) are present in the Red Hat OpenJDK package `java-21-openjdk-headless` 1:21.0.13.0.9-1.2.el9 in the Keycloak 26.8.2-0 base image pinned by the Infrabyx platform, and no fixed build is published. They are waived for that package build only (matched by package URL), until 15 December 2026 or the day a fixed Keycloak or Red Hat OpenJDK build is published, whichever is earlier, together with OWNER-WAIVER-CRIT-01 (CVE-2026-114938). Exposure: CVE-2026-114939 (JGSS) affects sandboxed untrusted code and Kerberos, which no realm uses; CVE-2026-114940 (JSSE client) is reachable only on Keycloak's outbound TLS calls to configured identity brokers and the notification service; CVE-2026-114941 (compiler) and CVE-2026-114942 (vector masks) are high in complexity, mostly affect availability, and Keycloak does not load `jdk.incubator.vector`. The waiver is reviewed on 1 December 2026 and at every platform session start, and the image moves to the first fixed build at least 7 days old (PL2-D-32). Platform decisions R1-D-208 and R1-D-218; threat model §3.135.
+
+- **Adopt by bumping all `@infrabyx/*` pins together** to the versions above; no migration to run.
 
 ### One release for the Udofin Phase 5 and 6 stack, Java4Shell and PR-LDC-46/52 (2026-11-20, PRs #300 to #312, version PR #313, release run 279)
 

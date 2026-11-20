@@ -210,6 +210,16 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Report formats differ between analysers (the in-platform report is a checksum summary, not a credit analysis): a product re-runs an analysis at the target rather than converting reports; pending analyses finish at the source",
   },
   {
+    port: "GRC",
+    primary: "generic-grc",
+    exitTarget: "fake-grc",
+    dataMove:
+      "Configuration swap to another GRC system speaking the Ecosystem Spec 9.2 contract (int.grc.generic.host); the platform keeps nothing, and the evidence stays in the product's STORAGE. The outgoing system exports obligations, controls, open issues and the evidence index with hash-chain heads, and the incoming one imports them before the effective date (Ecosystem Spec 9.1)",
+    volumeClass: "S",
+    lockIn:
+      "Records and their idempotency keys live at the GRC system that took them: producers dual-publish for one compliance period (Ecosystem Spec 9.1), and an incident's update order restarts at the target from its last update",
+  },
+  {
     port: "ESTAMP",
     primary: "nesl-dde",
     exitTarget: "fake-estamp",

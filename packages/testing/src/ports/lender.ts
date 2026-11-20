@@ -1,9 +1,15 @@
 // The origination contract cases (Udofin PR-UDF-051; R1-D-217): what any lender endpoint an LSP
 // talks to must keep, run here against `FakeLender` and, when Finbyx publishes a sandbox, against
-// an adapter over it. Ecosystem Specification §6.2, §6.3 and §3.6.
+// an adapter over it. Ecosystem Specification §6.2, §6.3 and §3.6. PR-UDF-053 (R1-D-219) added the
+// §6.13 documents, the execution-pack manifest and the LSP's signed eSign and eStamp evidence.
 import { expect } from "vitest";
 import { findAadhaarLike } from "@infrabyx/contracts";
 import {
+  DOCUMENT_EVENTS,
+  DOCUMENT_URL_MAX_TTL_SECONDS,
+  DocumentRetrieval,
+  EXECUTION_PACK_MANIFEST_TYPE,
+  ExecutionPackManifest,
   ELIGIBILITY_LENDER_UNAVAILABLE,
   EcosystemEnvelope,
   ORIGINATION_EVENTS,
@@ -14,7 +20,10 @@ import {
 } from "@infrabyx/contracts/events";
 import {
   MemoryReplayStore,
+  canonicalize,
   sha256Hex,
+  signRegulatedMessage,
+  verifyDocumentJws,
   verifyRegulatedMessage,
   localRegulatedSigner,
   RegulatedKeyRing,
@@ -23,6 +32,7 @@ import type { FakeLender, FakeLenderScript, LenderMessage } from "@infrabyx/fake
 export {
   FakeLender,
   LenderRefusal,
+  type DocumentMessage,
   type FakeLenderOptions,
   type FakeLenderScript,
   type LenderMessage,
@@ -39,7 +49,41 @@ export type LenderUnderTest = Pick<
   | "coolingOffExit"
   | "outbox"
   | "keys"
-> & { script?(s: FakeLenderScript): void };
+> & { script?(s: FakeLenderScript): void } & Partial<
+    Pick<
+      FakeLender,
+      | "sharedDocuments"
+      | "getDocument"
+      | "fetchDocument"
+      | "executionPack"
+      | "eSignCompleted"
+      | "eStampCompleted"
+    >
+  >;
+
+/** The LSP's side of the regulated messages: a local ES256 key, its ring, and a signer for events. */
+export interface LspSigner {
+  kid: string;
+  /** Give this to the lender (`new FakeLender({ lspKeys })`). */
+  keys: RegulatedKeyRing;
+  /** The detached JWS (`X-Infrabyx-JWS`) of one event, fresh `iat` and `jti` each call. */
+  sign(event: EcosystemEnvelope): Promise<string>;
+}
+
+/** A local LSP signer for tests (`localRegulatedSigner`; never in production configuration). */
+export function lspSigner(kid = "fake-lsp-1"): LspSigner {
+  const s = localRegulatedSigner(kid);
+  return {
+    kid,
+    keys: new RegulatedKeyRing([{ kid, key: s.publicKey }]),
+    sign: (event) =>
+      signRegulatedMessage({
+        event: event as unknown as Record<string, unknown>,
+        kid,
+        sign: s.sign,
+      }),
+  };
+}
 
 let n = 0;
 const uuidv7 = (): string => {
@@ -105,7 +149,39 @@ function expectNoAadhaarLike(v: unknown): void {
   expect(findAadhaarLike(JSON.stringify(v), { letters: "join" })).toEqual([]);
 }
 
-export function lenderContractCases(): Array<ContractCase<LenderUnderTest>> {
+const sanctioned = async (l: LenderUnderTest, ref: string) => {
+  const before = l.sharedDocuments?.().length ?? 0;
+  const { applicationId } = await l.submitApplication(application(ref));
+  return { applicationId, docs: l.sharedDocuments?.().slice(before) ?? [] };
+};
+
+const esignData = (documentId: string, txn: string) => {
+  const now = Date.now();
+  return {
+    document_id: documentId,
+    esp_txn_id: txn,
+    esp: "NSDL",
+    signer_ref: "cus_contract_1",
+    signing_method: "AADHAAR_OTP",
+    signed_at: new Date(now).toISOString(),
+    signed_sha256: "c".repeat(64),
+    certificate: {
+      serial_no: "0A1B2C3D",
+      issuer: "CN=Test eSign CA",
+      not_before: new Date(now - 60_000).toISOString(),
+      not_after: new Date(now + 1_800_000).toISOString(),
+      sha256: "d".repeat(64),
+    },
+  };
+};
+
+/**
+ * The cases. Pass the LSP signer whose `keys` the lender holds to run the signed-evidence case;
+ * without it only the refusals of unsigned or wrongly signed evidence run.
+ */
+export function lenderContractCases(
+  o: { lsp?: LspSigner } = {},
+): Array<ContractCase<LenderUnderTest>> {
   return [
     {
       name: "EligibilityCheck answers within the budget, is idempotent, and refuses a changed body under the same key",
@@ -312,6 +388,112 @@ export function lenderContractCases(): Array<ContractCase<LenderUnderTest>> {
         await expect(
           l.submitApplication({ ...bad, data: { ...bad.data, applicants: [] } }),
         ).rejects.toThrow();
+      },
+    },
+    {
+      name: "after a sanction the lender shares its documents by reference, each with a document JWS that verifies",
+      async run(l) {
+        if (!l.sharedDocuments) return;
+        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc1");
+        const types = docs.map((d) => d.event.data.type);
+        for (const t of ["KFS", "SANCTION_LETTER", "LOAN_AGREEMENT", EXECUTION_PACK_MANIFEST_TYPE])
+          expect(types).toContain(t);
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        for (const d of docs) {
+          const spec = DOCUMENT_EVENTS.DocumentShared;
+          expect(EcosystemEnvelope.safeParse(d.event).success).toBe(true);
+          expect(d.event.type).toBe(spec.type);
+          const data = spec.schema.parse(d.event.data);
+          expect(data.application_id).toBe(applicationId);
+          expect(d.event.subject).toBe(`document_id=${data.document_id}|version=${data.version}`);
+          expect(verifyDocumentJws(data.jws, data, l.keys).ok, String(data.type)).toBe(true);
+          expect(verifyDocumentJws(data.jws, { ...data, sha256: "f".repeat(64) }, l.keys).ok).toBe(
+            false,
+          );
+          expectNoAadhaarLike(d);
+        }
+        const kfsDoc = docs.find((d) => d.event.data.type === "KFS")!;
+        expect(kfsDoc.event.data.sha256).toBe(kfs.event.data.document_sha256);
+      },
+    },
+    {
+      name: "GET /v1/documents/{id} answers an India-hosted https URL valid at most 15 minutes whose bytes match the hash",
+      async run(l) {
+        if (!l.sharedDocuments || !l.getDocument || !l.fetchDocument) return;
+        const { docs } = await sanctioned(l, "lspapp_contract_doc2");
+        for (const d of docs) {
+          const id = String(d.event.data.document_id);
+          const r = DocumentRetrieval.parse(await l.getDocument(id));
+          expect(r).toMatchObject({ document_id: id, sha256: d.event.data.sha256 });
+          expect(r.url.startsWith("https://")).toBe(true);
+          expect(Date.parse(r.url_expires_at) - Date.parse(r.issued_at)).toBeLessThanOrEqual(
+            DOCUMENT_URL_MAX_TTL_SECONDS * 1000,
+          );
+          expect(verifyDocumentJws(r.jws, r, l.keys).ok).toBe(true);
+          expect(sha256Hex(await l.fetchDocument(r.url))).toBe(r.sha256);
+        }
+        await expect(l.getDocument("doc_not_shared")).rejects.toThrow();
+        await expect(
+          l.fetchDocument("https://documents.fake-lender.in/v1/blobs/" + "0".repeat(32)),
+        ).rejects.toThrow();
+      },
+    },
+    {
+      name: "the execution-pack manifest is valid, names the shared documents, and is itself shared as a document",
+      async run(l) {
+        if (!l.sharedDocuments || !l.executionPack || !l.getDocument || !l.fetchDocument) return;
+        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc3");
+        const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
+        expect(pack.application_id).toBe(applicationId);
+        const shared = new Map(docs.map((d) => [d.event.data.document_id, d.event.data.sha256]));
+        for (const d of pack.documents) expect(shared.get(d.document_id)).toBe(d.sha256);
+        const m = docs.find((d) => d.event.data.type === EXECUTION_PACK_MANIFEST_TYPE)!;
+        const r = await l.getDocument(String(m.event.data.document_id));
+        const bytes = new TextDecoder().decode(await l.fetchDocument(r.url));
+        expect(bytes).toBe(canonicalize(pack));
+      },
+    },
+    {
+      name: "ESignCompleted and EStampCompleted are refused unsigned or wrongly signed, and taken when the LSP signed them",
+      async run(l) {
+        if (!l.sharedDocuments || !l.eSignCompleted || !l.eStampCompleted) return;
+        const { docs } = await sanctioned(l, "lspapp_contract_doc4");
+        const agreement = String(
+          docs.find((d) => d.event.data.type === "LOAN_AGREEMENT")!.event.data.document_id,
+        );
+        const esign = lspEvent("ESignCompleted", esignData(agreement, "ESP-TXN-CONTRACT-1"));
+        await expect(l.eSignCompleted(esign)).rejects.toMatchObject({
+          reason: "signature-invalid",
+        });
+        const stranger = lspSigner("fake-lsp-1");
+        await expect(l.eSignCompleted(esign, await stranger.sign(esign))).rejects.toMatchObject({
+          reason: "signature-invalid",
+        });
+        const estamp = lspEvent("EStampCompleted", {
+          document_id: agreement,
+          certificate_no: "IN-MH-CONTRACT-0001",
+          state: "IN-MH",
+          duty_paise: 50_000,
+          issued_at: new Date().toISOString(),
+          stamp_mode: "E_STAMP",
+        });
+        await expect(l.eStampCompleted(estamp)).rejects.toMatchObject({
+          reason: "signature-invalid",
+        });
+        if (!o.lsp) return;
+        await l.eSignCompleted(esign, await o.lsp.sign(esign));
+        // A retry carries a fresh JWS and is taken again without effect.
+        await l.eSignCompleted(esign, await o.lsp.sign(esign));
+        await l.eStampCompleted(estamp, await o.lsp.sign(estamp));
+        const unknown = lspEvent("ESignCompleted", esignData("doc_not_shared", "ESP-TXN-2"));
+        await expect(l.eSignCompleted(unknown, await o.lsp.sign(unknown))).rejects.toMatchObject({
+          reason: "document_unknown",
+        });
+        // Changing the event after signing breaks the signature.
+        const changed = { ...esign, data: { ...esign.data, signed_sha256: "e".repeat(64) } };
+        await expect(l.eSignCompleted(changed, await o.lsp.sign(esign))).rejects.toMatchObject({
+          reason: "signature-invalid",
+        });
       },
     },
   ];

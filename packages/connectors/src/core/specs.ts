@@ -141,6 +141,18 @@ export const PORT_METHODS: Readonly<Record<string, Readonly<Record<string, Metho
     status: { kind: "read", callArg: 1, noFailover: true },
     handleWebhook: { kind: "write", noFailover: true },
   },
+  // At most CONFIDENTIAL and kept in India (PR-FBX-51, R1-D-220): a keyed POST belongs to the GRC
+  // system that took it (its Idempotency-Key and an incident's update order live there), so nothing
+  // moves to a secondary; the obligations read may.
+  GRC: {
+    listObligations: { kind: "read", callArg: 1 },
+    publishControlTestResult: { kind: "write", callArg: 1, noFailover: true },
+    submitEvidence: { kind: "write", callArg: 1, noFailover: true },
+    raiseIssue: { kind: "write", callArg: 1, noFailover: true },
+    notifyIncident: { kind: "write", callArg: 1, noFailover: true },
+    updateReturnStatus: { kind: "write", callArg: 1, noFailover: true },
+    recordPolicyAttestation: { kind: "write", callArg: 1, noFailover: true },
+  },
   // Provisional until PL4 (`ai`) defines the LLM interface; lets @IPB-01-AT-06 run at the router.
   LLM: {
     complete: { kind: "write", callArg: 1 },
