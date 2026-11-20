@@ -6,14 +6,20 @@
 // offer's instalment, penal charges and KFS link and the manifest items' stamp evidence; R1-D-232
 // (PR-UDF-061) Udofin's udf_ext v1 list: two-character product codes, the application's chosen
 // offer and profile, the acceptance's KFS version and hash, the lender's words, the KFS detail,
-// the document references and the new `CoolingOffExitAnswered`.
+// the document references and the new `CoolingOffExitAnswered`. R1-D-236 (PR-UDF-061 items 12 to
+// 17; PR-047 approved): the envelope `subject` is the aggregate id and `seq` counts per subject;
+// `ExecutionPackIssued` and `CoolingOffExitAnswered` are signed; the pack follows the acceptance and
+// lists the CF para 9(3) set; documents are real PDFs with a v2 document JWS; the KFS and the
+// sanction letter name their file's version.
 import { expect } from "vitest";
 import { findAadhaarLike } from "@infrabyx/contracts";
 import {
+  CF_PARA_9_3_DOCUMENT_KINDS,
   DOCUMENT_EVENTS,
   DOCUMENT_URL_MAX_TTL_SECONDS,
   DocumentRetrieval,
   EXECUTION_PACK_MANIFEST_TYPE,
+  ExecutionPackIssuedData,
   ExecutionPackManifest,
   ELIGIBILITY_LENDER_UNAVAILABLE,
   INSTALMENT_FREQUENCIES,
@@ -28,7 +34,7 @@ import {
   ORIGINATION_EVENTS,
   ORIGINATION_REGULATED,
   ORIGINATION_SCHEMA_VERSION,
-  originationIdempotencyKey,
+  originationSubject,
   type OriginationEventName,
 } from "@infrabyx/contracts/events";
 import {
@@ -99,13 +105,19 @@ export function lspSigner(kid = "fake-lsp-1"): LspSigner {
 }
 
 let n = 0;
+/** The LSP side's last `seq` per subject (§3.2 "per-subject sequence"; R1-D-236). */
+const lspSeqs = new Map<string, number>();
 const uuidv7 = (): string => {
   const h = sha256Hex(`lsp:${++n}:${Date.now()}`);
   const t = Date.now().toString(16).padStart(12, "0");
   return `${t.slice(0, 8)}-${t.slice(8, 12)}-7${h.slice(0, 3)}-8${h.slice(3, 6)}-${h.slice(6, 18)}`;
 };
 
-/** An LSP-side Ecosystem envelope for one of the journey's events (Udofin's tests can use it too). */
+/**
+ * An LSP-side Ecosystem envelope for one of the journey's events (Udofin's tests can use it too).
+ * Its `subject` is the event's aggregate id (`originationSubject`, R1-D-236) and its `seq` counts per
+ * subject from 1 unless `o.seq` is given.
+ */
 export function lspEvent(
   name: OriginationEventName,
   data: Record<string, unknown>,
@@ -113,12 +125,15 @@ export function lspEvent(
 ): EcosystemEnvelope {
   const spec = ORIGINATION_EVENTS[name];
   const tenant = o.tenantId ?? "tnt_udofin_test";
+  const subject = originationSubject(name, data);
+  const seq = o.seq ?? (lspSeqs.get(subject) ?? 0) + 1;
+  if (o.seq === undefined) lspSeqs.set(subject, seq);
   return EcosystemEnvelope.parse({
     specversion: "1.0",
     id: uuidv7(),
     source: `urn:infrabyx:udofin:${tenant}`,
     type: spec.type,
-    subject: originationIdempotencyKey(name, data),
+    subject,
     time: (o.at ?? new Date()).toISOString(),
     datacontenttype: "application/json",
     dataschema: `https://registry.infrabyx.example/schemas/${spec.type}/${ORIGINATION_SCHEMA_VERSION}.json`,
@@ -128,7 +143,7 @@ export function lspEvent(
     consentref: "cpr_contract",
     dataclass: "FINANCIAL",
     schemaver: ORIGINATION_SCHEMA_VERSION,
-    seq: o.seq ?? n,
+    seq,
     environment: "test",
     data,
   });
@@ -198,6 +213,33 @@ const sanctioned = async (l: LenderUnderTest, ref: string) => {
   const before = l.sharedDocuments?.().length ?? 0;
   const { applicationId } = await l.submitApplication(application(ref));
   return { applicationId, docs: l.sharedDocuments?.().slice(before) ?? [] };
+};
+
+const accepted = (kfs: LenderMessage) =>
+  lspEvent("BorrowerAccepted", {
+    kfs_id: kfs.event.data.kfs_id,
+    accepted_at: new Date().toISOString(),
+    explanation_acknowledged: true,
+  });
+
+/**
+ * Submits and accepts an application (R1-D-236: the execution pack follows the acceptance, CF
+ * para 9(3)); answers the documents shared and the messages sent from the submission on.
+ */
+const executed = async (l: LenderUnderTest, ref: string, app = application(ref)) => {
+  const before = l.sharedDocuments?.().length ?? 0;
+  const out = l.outbox().length;
+  const { applicationId } = await l.submitApplication(app);
+  const atSanction = l.sharedDocuments?.().length ?? 0;
+  const kfs = byName(l.outbox().slice(out), "KFSIssued").at(-1)!;
+  await l.accept(accepted(kfs));
+  return {
+    applicationId,
+    kfs,
+    docs: l.sharedDocuments?.().slice(before) ?? [],
+    docsAtSanction: l.sharedDocuments?.().slice(before, atSanction) ?? [],
+    sent: l.outbox().slice(out),
+  };
 };
 
 const esignData = (documentId: string, txn: string) => {
@@ -286,10 +328,17 @@ export function lenderContractCases(
           expect(EcosystemEnvelope.safeParse(m.event).success).toBe(true);
           expect(m.event.type).toBe(spec.type);
           expect(spec.schema.safeParse(m.event.data).success).toBe(true);
-          expect(m.event.subject).toBe(originationIdempotencyKey(m.name, m.event.data));
+          // §3.2: the subject is the aggregate id (R1-D-236, PR-UDF-061 item 15).
+          expect(m.event.subject).toBe(originationSubject(m.name, m.event.data));
           expect(Boolean(m.jws)).toBe(spec.regulated);
           expectNoAadhaarLike(m);
         }
+        // `seq` counts per subject from 1: a new application's subjects each run 1..n.
+        const bySubject = new Map<string, number[]>();
+        for (const m of sent)
+          bySubject.set(m.event.subject, [...(bySubject.get(m.event.subject) ?? []), m.event.seq]);
+        for (const [subject, seqs] of bySubject)
+          expect(seqs, subject).toEqual(seqs.map((_, i) => i + 1));
         const replay = new MemoryReplayStore();
         for (const m of sent.filter((x) => ORIGINATION_REGULATED.includes(x.name))) {
           const ok = await verifyRegulatedMessage(
@@ -436,25 +485,47 @@ export function lenderContractCases(
       },
     },
     {
-      name: "after a sanction the lender shares its documents by reference, each with a document JWS that verifies",
+      name: "the lender shares its documents by reference, the KFS and sanction letter before the acceptance, each with a document JWS that verifies",
       async run(l) {
         if (!l.sharedDocuments) return;
-        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc1");
+        const { applicationId, docs, docsAtSanction, kfs } = await executed(
+          l,
+          "lspapp_contract_doc1",
+        );
         const types = docs.map((d) => d.event.data.type);
         for (const t of ["KFS", "SANCTION_LETTER", "LOAN_AGREEMENT", EXECUTION_PACK_MANIFEST_TYPE])
           expect(types).toContain(t);
-        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        // The borrower sees the KFS and the sanction letter before accepting (§6.2).
+        const early = docsAtSanction.map((d) => d.event.data.type);
+        expect(early).toContain("KFS");
+        expect(early).toContain("SANCTION_LETTER");
         for (const d of docs) {
           const spec = DOCUMENT_EVENTS.DocumentShared;
           expect(EcosystemEnvelope.safeParse(d.event).success).toBe(true);
           expect(d.event.type).toBe(spec.type);
           const data = spec.schema.parse(d.event.data);
           expect(data.application_id).toBe(applicationId);
-          expect(d.event.subject).toBe(`document_id=${data.document_id}|version=${data.version}`);
+          // §3.2: the subject is the document's id (R1-D-236).
+          expect(d.event.subject).toBe(data.document_id);
           expect(verifyDocumentJws(data.jws, data, l.keys).ok, String(data.type)).toBe(true);
           expect(verifyDocumentJws(data.jws, { ...data, sha256: "f".repeat(64) }, l.keys).ok).toBe(
             false,
           );
+          // A v2 JWS (R1-D-236) also binds the type, media type, size and application.
+          if (data.media_type !== undefined && data.size_bytes !== undefined) {
+            for (const other of [
+              { type: "OTHER_TYPE" },
+              { media_type: "text/plain" },
+              { size_bytes: data.size_bytes + 1 },
+              { application_id: "app_someone_else" },
+            ])
+              expect(
+                verifyDocumentJws(data.jws, { ...data, ...other }, l.keys, new Date(), {
+                  requireV2: true,
+                }).ok,
+                JSON.stringify(other),
+              ).toBe(false);
+          }
           expectNoAadhaarLike(d);
         }
         const kfsDoc = docs.find((d) => d.event.data.type === "KFS")!;
@@ -465,7 +536,7 @@ export function lenderContractCases(
       name: "GET /v1/documents/{id} answers an India-hosted https URL valid at most 15 minutes whose bytes match the hash",
       async run(l) {
         if (!l.sharedDocuments || !l.getDocument || !l.fetchDocument) return;
-        const { docs } = await sanctioned(l, "lspapp_contract_doc2");
+        const { docs } = await executed(l, "lspapp_contract_doc2");
         for (const d of docs) {
           const id = String(d.event.data.document_id);
           const r = DocumentRetrieval.parse(await l.getDocument(id));
@@ -475,7 +546,13 @@ export function lenderContractCases(
             DOCUMENT_URL_MAX_TTL_SECONDS * 1000,
           );
           expect(verifyDocumentJws(r.jws, r, l.keys).ok).toBe(true);
-          expect(sha256Hex(await l.fetchDocument(r.url))).toBe(r.sha256);
+          const bytes = await l.fetchDocument(r.url);
+          expect(sha256Hex(bytes)).toBe(r.sha256);
+          // R1-D-236 (items 13, 14): the answer's size and media type, when given, are the bytes'.
+          if (r.size_bytes !== undefined) expect(bytes.byteLength).toBe(r.size_bytes);
+          if (r.media_type !== undefined) expect(r.media_type).toBe(d.event.data.media_type);
+          if (r.media_type === "application/pdf")
+            expect(new TextDecoder("latin1").decode(bytes.slice(0, 5))).toBe("%PDF-");
         }
         await expect(l.getDocument("doc_not_shared")).rejects.toThrow();
         await expect(
@@ -487,7 +564,7 @@ export function lenderContractCases(
       name: "the execution-pack manifest is valid, names the shared documents, and is itself shared as a document",
       async run(l) {
         if (!l.sharedDocuments || !l.executionPack || !l.getDocument || !l.fetchDocument) return;
-        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc3");
+        const { applicationId, docs } = await executed(l, "lspapp_contract_doc3");
         const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
         expect(pack.application_id).toBe(applicationId);
         const shared = new Map(docs.map((d) => [d.event.data.document_id, d.event.data.sha256]));
@@ -518,22 +595,12 @@ export function lenderContractCases(
       name: "a manifest's disbursement clause names a pack document, and a product can compare its amount with LoanDisbursed",
       async run(l) {
         if (!l.executionPack) return;
-        const { applicationId } = await l.submitApplication(
-          application("lspapp_contract_disb_clause"),
-        );
+        const { applicationId } = await executed(l, "lspapp_contract_disb_clause");
         const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
         const clause = pack.disbursement_clause;
         if (!clause) return;
         expect(pack.documents.map((d) => d.document_id)).toContain(clause.document_id);
         expect(clause.page_or_clause_ref.length).toBeGreaterThan(0);
-        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
-        await l.accept(
-          lspEvent("BorrowerAccepted", {
-            kfs_id: kfs.event.data.kfs_id,
-            accepted_at: new Date().toISOString(),
-            explanation_acknowledged: true,
-          }),
-        );
         await l.disburse(applicationId);
         const disbursed = byName(l.outbox(), "LoanDisbursed").at(-1)!;
         // What a product checks before it books the loan: the stated amount and the amount paid out.
@@ -587,7 +654,7 @@ export function lenderContractCases(
       name: "a manifest item's stamp evidence matches the stamped document and the pack's stamp, and a not-stampable item is not stamp-required",
       async run(l) {
         if (!l.executionPack) return;
-        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_stamp_evidence");
+        const { applicationId, docs } = await executed(l, "lspapp_contract_stamp_evidence");
         const pack = ExecutionPackManifest.parse(l.executionPack(applicationId));
         const shared = new Map(
           docs.map((d) => [String(d.event.data.document_id), String(d.event.data.sha256)]),
@@ -703,9 +770,17 @@ export function lenderContractCases(
         const m = answers[0]!;
         const spec = ORIGINATION_EVENTS.CoolingOffExitAnswered;
         expect(m.event.type).toBe(spec.type);
-        expect(m.event.subject).toBe(
-          originationIdempotencyKey("CoolingOffExitAnswered", m.event.data),
-        );
+        expect(m.event.subject).toBe(originationSubject("CoolingOffExitAnswered", m.event.data));
+        // Signed from Spec v1.6 (PR-047; R1-D-236): it states an amount owed and how to pay it.
+        expect(spec.regulated).toBe(true);
+        expect(
+          (
+            await verifyRegulatedMessage(m.event as unknown as Record<string, unknown>, m.jws!, {
+              keys: l.keys,
+              replay: new MemoryReplayStore(),
+            })
+          ).ok,
+        ).toBe(true);
         const a = CoolingOffExitAnsweredData.parse(m.event.data);
         expect(a.loan_id).toBe(loanId);
         expect(LINKISH.test(a.payment_instruction)).toBe(false);
@@ -793,7 +868,7 @@ export function lenderContractCases(
       name: "ESignCompleted and EStampCompleted are refused unsigned or wrongly signed, and taken when the LSP signed them",
       async run(l) {
         if (!l.sharedDocuments || !l.eSignCompleted || !l.eStampCompleted) return;
-        const { docs } = await sanctioned(l, "lspapp_contract_doc4");
+        const { docs } = await executed(l, "lspapp_contract_doc4");
         const agreement = String(
           docs.find((d) => d.event.data.type === "LOAN_AGREEMENT")!.event.data.document_id,
         );
@@ -830,6 +905,156 @@ export function lenderContractCases(
         await expect(l.eSignCompleted(changed, await o.lsp.sign(esign))).rejects.toMatchObject({
           reason: "signature-invalid",
         });
+      },
+    },
+    {
+      name: "the signed ExecutionPackIssued follows the borrower's acceptance, names the accepted KFS and lists the CF para 9(3) set of shared documents",
+      async run(l) {
+        const before = l.sharedDocuments?.().length ?? 0;
+        const out = l.outbox().length;
+        const { applicationId } = await l.submitApplication(application("lspapp_contract_pack_1"));
+        expect(
+          byName(l.outbox().slice(out), "ExecutionPackIssued"),
+          "no pack before the acceptance",
+        ).toEqual([]);
+        if (l.executionPack) expect(() => l.executionPack!(applicationId)).toThrow();
+        const kfs = byName(l.outbox().slice(out), "KFSIssued").at(-1)!;
+        await l.accept(accepted(kfs));
+        const packs = byName(l.outbox().slice(out), "ExecutionPackIssued");
+        if (packs.length === 0) return; // a lender that issues the pack later, out of band
+        const m = packs.at(-1)!;
+        const spec = ORIGINATION_EVENTS.ExecutionPackIssued;
+        expect(m.event.type).toBe(spec.type);
+        expect(m.event.subject).toBe(originationSubject("ExecutionPackIssued", m.event.data));
+        expect(spec.regulated).toBe(true);
+        expect(
+          (
+            await verifyRegulatedMessage(m.event as unknown as Record<string, unknown>, m.jws!, {
+              keys: l.keys,
+              replay: new MemoryReplayStore(),
+            })
+          ).ok,
+          "ExecutionPackIssued is signed",
+        ).toBe(true);
+        const p = ExecutionPackIssuedData.parse(m.event.data);
+        expect(p.application_id).toBe(applicationId);
+        expect(p.kfs_id).toBe(kfs.event.data.kfs_id);
+        expect(p.kfs_version).toBe(kfs.event.data.version);
+        expect(p.kfs_sha256).toBe(kfs.event.data.document_sha256);
+        const kinds = p.documents.map((d) => d.kind);
+        for (const k of CF_PARA_9_3_DOCUMENT_KINDS) expect(kinds, k).toContain(k);
+        for (const d of p.documents)
+          if (d.stamp_evidence) {
+            expect(d.stamp_evidence.stamped_document_sha256).toBe(d.sha256);
+            if (p.stamp) expect(d.stamp_evidence.duty_paise).toBe(p.stamp.duty_paise);
+          }
+        if (l.sharedDocuments) {
+          const shared = new Map(
+            l
+              .sharedDocuments()
+              .slice(before)
+              .map((d) => [String(d.event.data.document_id), d.event.data]),
+          );
+          for (const d of p.documents) {
+            const s = shared.get(d.document_id);
+            expect(s, `${d.kind} ${d.document_id} is shared`).toBeDefined();
+            expect(s!.sha256).toBe(d.sha256);
+            expect(s!.version).toBe(d.version);
+            expect(s!.application_id).toBe(applicationId);
+          }
+          for (const d of p.documents) {
+            const cert = d.stamp_evidence?.certificate_document_id;
+            if (cert) expect(shared.has(cert), "the stamp certificate is shared").toBe(true);
+          }
+        }
+        expectNoAadhaarLike(m);
+        // A retried acceptance issues no second pack.
+        await l.accept(accepted(kfs));
+        expect(byName(l.outbox().slice(out), "ExecutionPackIssued")).toHaveLength(packs.length);
+      },
+    },
+    {
+      name: "a business-purpose loan's pack declares the wilful-defaulter covenant and names the declaration in the pack",
+      async run(l) {
+        const ref = "lspapp_contract_pack_business";
+        const app = lspEvent("ApplicationSubmitted", {
+          ...application(ref).data,
+          request: { amount_paise: 4_000_000, tenor_days: 360, purpose: "BUSINESS" },
+        });
+        const { sent } = await executed(l, ref, app);
+        const m = byName(sent, "ExecutionPackIssued").at(-1);
+        if (!m) return;
+        const p = ExecutionPackIssuedData.parse(m.event.data);
+        expect(p.covenant).toEqual({ business_purpose: true, declared: true });
+        expect(p.documents.map((d) => d.document_id)).toContain(
+          p.covenant_declaration!.document_id,
+        );
+        const personal = await executed(l, "lspapp_contract_pack_personal");
+        const q = byName(personal.sent, "ExecutionPackIssued").at(-1);
+        if (q) {
+          const pq = ExecutionPackIssuedData.parse(q.event.data);
+          expect(pq.covenant_declaration !== undefined).toBe(pq.covenant.declared);
+        }
+      },
+    },
+    {
+      name: "the KFS and the sanction letter name the shared file by id and version, whose hash they carry",
+      async run(l) {
+        const { docs, sent } = await executed(l, "lspapp_contract_doc_versions");
+        const k = KfsIssuedData.parse(byName(sent, "KFSIssued").at(-1)!.event.data);
+        const s = SanctionLetterIssuedData.parse(
+          byName(sent, "SanctionLetterIssued").at(-1)!.event.data,
+        );
+        for (const [x, type] of [
+          [k, "KFS"],
+          [s, "SANCTION_LETTER"],
+        ] as const) {
+          if (x.document_version === undefined) continue;
+          expect(x.document_ref, `${type} names its document`).toBeDefined();
+          if (docs.length === 0) continue;
+          const d = docs.find((y) => y.event.data.document_id === x.document_ref);
+          expect(d, `${type} document_ref names a shared document`).toBeDefined();
+          expect(d!.event.data).toMatchObject({
+            type,
+            version: x.document_version,
+            sha256: x.document_sha256,
+          });
+        }
+      },
+    },
+    {
+      name: "every envelope's subject is its aggregate id and seq counts per subject from 1, with two applications interleaved",
+      async run(l) {
+        const before = l.sharedDocuments?.().length ?? 0;
+        const out = l.outbox().length;
+        const a = await l.submitApplication(application("lspapp_contract_seq_a"));
+        const b = await l.submitApplication(application("lspapp_contract_seq_b"));
+        const kfsOf = (id: string) =>
+          byName(l.outbox().slice(out), "KFSIssued").find(
+            (m) => m.event.data.application_id === id,
+          )!;
+        await l.accept(accepted(kfsOf(b.applicationId)));
+        await l.accept(accepted(kfsOf(a.applicationId)));
+        await l.disburse(b.applicationId);
+        await l.disburse(a.applicationId);
+        const sent = l.outbox().slice(out);
+        for (const m of sent)
+          expect(m.event.subject, m.name).toBe(originationSubject(m.name, m.event.data));
+        const events = [
+          ...sent.map((m) => m.event),
+          ...(l.sharedDocuments?.().slice(before) ?? []).map((d) => d.event),
+        ];
+        const bySubject = new Map<string, number[]>();
+        for (const e of events)
+          bySubject.set(e.subject, [...(bySubject.get(e.subject) ?? []), e.seq]);
+        for (const [subject, seqs] of bySubject)
+          expect(seqs, subject).toEqual(seqs.map((_, i) => i + 1));
+        // Each application is its own subject, counted from 1 although their events interleave.
+        for (const id of [a.applicationId, b.applicationId]) {
+          const seqs = bySubject.get(id) ?? [];
+          expect(seqs.length, id).toBeGreaterThan(1);
+          expect(seqs[0]).toBe(1);
+        }
       },
     },
   ];
