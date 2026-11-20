@@ -1,5 +1,26 @@
 # @infrabyx/testing
 
+## 1.25.0
+
+### Minor Changes
+
+- 5fd012a: Documents by reference, the eSign and eStamp evidence and the lender execution-pack manifest (Udofin PR-UDF-053; R1-D-219). `contracts/events`: `DocumentSharedData` and `DOCUMENT_EVENTS` (Ecosystem Specification §6.13), `DocumentRetrieval` for `GET /v1/documents/{id}` (an India-hosted `https` URL valid at most 15 minutes, `DOCUMENT_URL_MAX_TTL_SECONDS`), `ESignCompletedData` and `EStampCompletedData` (§6.2, signed; added to `ORIGINATION_EVENTS`, so `ORIGINATION_REGULATED` now lists six), and `ExecutionPackManifest` (documents and kinds, execution mode, stamp details, summary-box page, covenant declaration, countersignature rule), shared as a document of type `EXECUTION_PACK_MANIFEST` until the Specification names a carrier (platform request PR-047). `crypto`: `signDocumentJws` and `verifyDocumentJws`, the C-22 detached JWS (`typ: ipb-document+jws`) over `{ document_id, version, sha256 }`. `fakes`: `FakeLender` shares the KFS, sanction letter, loan agreement and manifest after a sanction (`sharedDocuments()`, `getDocument`, `fetchDocument`, `executionPack`) and takes the LSP's signed `ESignCompleted` and `EStampCompleted` (`eSignCompleted`, `eStampCompleted`), verified against the new `lspKeys` option; `outbox()` is unchanged. `testing`: `lspSigner()` and four more `lenderContractCases({ lsp })`. Nothing existing changes meaning.
+- 3b57c29: The GRC port and the §6.15 GRC events (Finbyx PR-FBX-51; R1-D-220; ADR-0013). `contracts/events` adds the v1 data schemas `ControlTestResultPublishedData`, `ComplianceIssueRaisedData`, `ReturnStatusUpdatedData`, `PolicyAttestedData` and `SecurityIncidentNotifiedData` with their type constants (`in.infrabyx.grc.<Event>.v1`) and enums, `GRC_EVENTS` (type, schema, idempotency fields, direction, regulated; with `EvidenceSubmitted` and `ObligationPublished`), `grcIdempotencyKey`, `grcPersonalDataProblems` (every schema refuses an Aadhaar-like number or a PAN anywhere in the data), `GRC_MASKED_ID`, `RETURN_PERIOD` and `securityIncidentClockCopy` (the OH13 copy). `contracts/ports` adds `GrcPort` on the Ecosystem Spec §9.2 generic connector contract: `listObligations({ updatedSince?, cursor?, limit? }, call?)` → `{ items: GrcObligation[], nextCursor? }` and `publishControlTestResult`, `submitEvidence`, `raiseIssue`, `notifyIncident`, `updateReturnStatus`, `recordPolicyAttestation` (the event data, `call?`) → `GrcReceipt`, with `GRC_POST_METHODS`, `GRC_REFUSALS`, `grcRefusal`, `assertGrcClass`, `prepareGrcPost`, `prepareGrcObligationQuery` and the catalogue entry (tier 2, `int.grc.`, in `R1_PORTS`). Every POST is keyed (the caller's key, else the event's own); the same key and body answer the same receipt, another body is `IPB-PORT-004`; incident updates are taken in `update_seq` order (`out_of_order`); a call above CONFIDENTIAL and any personal data are `IPB-PORT-003`. `config` registers `int.grc.generic.enabled` (false) and `int.grc.generic.host` (empty). `connectors` adds `@infrabyx/connectors/grc`: `GenericGrc` (`generic-grc`), the §9.2 REST contract to one configured host with a bearer token from SECRETS, stub-shaped where §9.2 is silent, off and unproven; its router method table and exit entry. `fakes` adds `FakeGrc`, `GrcFixtures` and `grcFakeFixtures`; `testing` adds `grcContractCases`, `grcSamples`, `grcObligations` and `startGrcStub`. No migration; nothing existing changes.
+- 4d509e6: STORAGE puts under a named tenant key (Udofin PR-UDF-058; R1-D-227), so a vault keeps each lender's files under that lender's own KMS key. `contracts/ports`: optional `ObjectMeta.keyRef` and `PresignOptions.keyRef` (a reference such as `lender:<id>`, never a key id), `isValidStorageKeyRef`, `NAMED_KEY_CLASSES` (`CONFIDENTIAL`, `REGULATED`), `STORAGE_KEY_REF_META`, `STORAGE_KEY_REF_REFUSALS` and `resolveStorageKeyRef`. `connectors`: `S3StorageOptions.tenantNamedKmsKeyIds` and `tenantKeyRefPrefixes`; a named write is encrypted under the resolved key, records the reference (`get` returns `meta.keyRef`), and is refused (never sent under the class key) for an unknown, malformed, misplaced, shared or changed reference or for a tenant with its own CMK; a disabled or revoked named key reads as `IPB-KMS-001` `storage_key_unavailable` (failures of objects under platform keys are unchanged); `minio` refuses a reference as `unsupported`. `fakes`: `MemoryStorage(now, { keyRefs, keyRefPrefixes })` records the reference (none known by default). `testing`: a built-in STORAGE contract case for named keys; a STORAGE adapter outside the platform either configures `lender:contract` and `lender:contract-b` for tenant `tnt_contract` in `REGULATED` in its contract leg or declares `put.keyRef` unsupported. Writes without a reference are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [5fd012a]
+- Updated dependencies [3b57c29]
+- Updated dependencies [4d509e6]
+  - @infrabyx/contracts@1.39.0
+  - @infrabyx/crypto@1.9.0
+  - @infrabyx/fakes@1.3.0
+  - @infrabyx/config@1.21.0
+  - @infrabyx/audit@1.11.3
+  - @infrabyx/seed@1.0.49
+  - @infrabyx/tenancy@1.21.2
+
 ## 1.24.0
 
 ### Minor Changes

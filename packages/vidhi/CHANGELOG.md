@@ -1,5 +1,18 @@
 # @infrabyx/vidhi
 
+## 1.0.49
+
+### Patch Changes
+
+- Updated dependencies [5fd012a]
+- Updated dependencies [3b57c29]
+- Updated dependencies [4d509e6]
+  - @infrabyx/contracts@1.39.0
+  - @infrabyx/crypto@1.9.0
+  - @infrabyx/config@1.21.0
+  - @infrabyx/ai@1.2.2
+  - @infrabyx/tenancy@1.21.2
+
 ## 1.0.48
 
 ### Patch Changes
