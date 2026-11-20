@@ -1,5 +1,18 @@
 # @infrabyx/crypto
 
+## 1.11.0
+
+### Minor Changes
+
+- 648c511: Partner mTLS client certificates and a generic Standard Webhooks receiver (Udofin PR-UDF-064; R1-D-238). Verification only, no new primitive. `readClientCertificate({ socket } | { header, format })` reads exactly one leaf from the platform's TLS socket (`tlsAuthorized` reported; a peer the TLS layer did not authorise is refused unless `tlsAuthorization: "reported"`) or from the edge header of `docs/platform/mtls-edge-header.md` (`pem-url`, the percent-encoded PEM; or Envoy `xfcc`), and returns `x5tS256` (RFC 8705 §3.1), `fingerprintSha256`, `notBefore`, `notAfter`, `subject`, `issuer` and `serialNumber`, or a fixed `CLIENT_CERT_REFUSALS` label (answer `IPB-API-009`, 401): a forwarded chain is refused `multiple_certificates`, and a CA or server-only certificate `not_client_certificate`. `PinnedCaSet.fromPem(cas, { intermediates })` adds an optional pinned-CA check through at most two configured intermediates, ECDSA P-256 / SHA-256 issuer signatures only (others `issuer_algorithm`, owner question #170); no CRL or OCSP. `StandardWebhookReceiver` wraps `verifyStandardWebhook` with a body limit, one or two secrets, a window of at most 300 s and a replay claim made after verification (`replayKey` `delivery`, the default, or `event`), with fixed `STANDARD_WEBHOOK_REFUSALS` labels. `@infrabyx/crypto/mtls-test` makes throwaway test CAs and client certificates. No setting, no migration; nothing existing changes.
+
+### Patch Changes
+
+- Updated dependencies [9be2fc7]
+- Updated dependencies [f0edee3]
+- Updated dependencies [2d2729b]
+  - @infrabyx/contracts@1.43.0
+
 ## 1.10.0
 
 ### Minor Changes

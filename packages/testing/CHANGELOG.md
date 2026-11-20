@@ -1,5 +1,27 @@
 # @infrabyx/testing
 
+## 1.29.0
+
+### Minor Changes
+
+- f0edee3: Named tenant key status (Udofin PR-UDF-068; R1-D-239). `contracts`: optional `StoragePort.keyRefStatus(tenantId, keyRef, { bucketClass, compartment?, describeKey? })` answering `{ status: "resolves", keyState? }` or `{ status: "refused", reason, keyState? }` with a write's refusal label or `storage_key_unavailable`, never a key id; `STORAGE_KEY_STATES`, `STORAGE_KEY_UNAVAILABLE`, `isValidStorageTenantId` and `storageKeyRefStatusRefusal`. `connectors`: `S3Storage.keyRefStatus` runs the write's own checks and, with `describeKey`, one read-only KMS `DescribeKey` (a key that is not `Enabled`, or that the role may not describe, answers `storage_key_unavailable`); `MinioStorage` declares it `unsupported`. `fakes`: `MemoryStorage.keyRefStatus` and a `keyStates` option. `testing`: a STORAGE built-in contract case. Read-only, not ledgered; no setting, no migration.
+- 2d2729b: Named tenant keys in QUARANTINE (Udofin PR-UDF-066; R1-D-240). `contracts`: `NAMED_KEY_CLASSES` now includes `QUARANTINE`, so a lender's upload can be written under the lender's key (by `keyRef` or a prefix map) before its scan; `AUDIT`, `GENERAL` and `PUBLIC_ASSETS` still refuse a reference. New `promotedObjectMeta(from, to)` carries the reference into the clean write after the scan, so the copy is under that reference's key at the clean location or refused, never under the clean class's key. `connectors`: the `s3` adapter applies the same separation rules in `QUARANTINE`; the AV adapter's workload needs `kms:Decrypt` on each such key, and a read it may not decrypt keeps the file quarantined (`ERROR`). `testing`: a STORAGE built-in contract case for the upload and its promotion. No setting, no migration, no IAM change.
+
+### Patch Changes
+
+- 79839c1: `lenderContractCases` reads each message for Aadhaar-like numbers the way the repository sweep does (`scanTextForAadhaar`): UUIDs, such as the envelope `id`, are blanked first (R1-D-247). Before, a random UUID whose middle groups were all digits could read as a grouped twelve-digit number with a valid check digit, so the case failed at random, about once in a few runs of the full journey. Nothing else in the cases changes.
+- Updated dependencies [648c511]
+- Updated dependencies [9be2fc7]
+- Updated dependencies [f0edee3]
+- Updated dependencies [2d2729b]
+  - @infrabyx/crypto@1.11.0
+  - @infrabyx/contracts@1.43.0
+  - @infrabyx/fakes@1.7.0
+  - @infrabyx/audit@1.11.7
+  - @infrabyx/config@1.22.3
+  - @infrabyx/seed@1.0.53
+  - @infrabyx/tenancy@1.22.1
+
 ## 1.28.0
 
 ### Minor Changes

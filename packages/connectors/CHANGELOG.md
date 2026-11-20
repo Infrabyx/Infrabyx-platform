@@ -1,5 +1,24 @@
 # @infrabyx/connectors
 
+## 1.26.0
+
+### Minor Changes
+
+- 5c6298c: `PdfTextExtractor.extractText` passes a disabled or revoked named tenant key through as its own refusal (Udofin PR-UDF-067; R1-D-241). When the STORAGE read fails with `IPB-KMS-001` `storage_key_unavailable` (PR-UDF-058: the object's named key is disabled, deleted or no longer granted), the extractor now throws `IPB-KMS-001` (port `PDF`, adapter `pdf-text`) with `meta: { reason: "storage_key_unavailable" }` and nothing else (no key reference, vendor error name or cause), instead of `IPB-PORT-002` `unavailable`. Every other read failure, including an `IPB-KMS-001` with another reason, stays `IPB-PORT-002` `unavailable`; the parse refusals (`IPB-SEC-010`, `-013`, `-015`, `-011`) are unchanged. Minor, not patch: callers see a new code for this case, so one that treated every `IPB-PORT-002` as a retryable outage should handle `IPB-KMS-001` as "the key owner must restore the grant" instead.
+- f0edee3: Named tenant key status (Udofin PR-UDF-068; R1-D-239). `contracts`: optional `StoragePort.keyRefStatus(tenantId, keyRef, { bucketClass, compartment?, describeKey? })` answering `{ status: "resolves", keyState? }` or `{ status: "refused", reason, keyState? }` with a write's refusal label or `storage_key_unavailable`, never a key id; `STORAGE_KEY_STATES`, `STORAGE_KEY_UNAVAILABLE`, `isValidStorageTenantId` and `storageKeyRefStatusRefusal`. `connectors`: `S3Storage.keyRefStatus` runs the write's own checks and, with `describeKey`, one read-only KMS `DescribeKey` (a key that is not `Enabled`, or that the role may not describe, answers `storage_key_unavailable`); `MinioStorage` declares it `unsupported`. `fakes`: `MemoryStorage.keyRefStatus` and a `keyStates` option. `testing`: a STORAGE built-in contract case. Read-only, not ledgered; no setting, no migration.
+- 2d2729b: Named tenant keys in QUARANTINE (Udofin PR-UDF-066; R1-D-240). `contracts`: `NAMED_KEY_CLASSES` now includes `QUARANTINE`, so a lender's upload can be written under the lender's key (by `keyRef` or a prefix map) before its scan; `AUDIT`, `GENERAL` and `PUBLIC_ASSETS` still refuse a reference. New `promotedObjectMeta(from, to)` carries the reference into the clean write after the scan, so the copy is under that reference's key at the clean location or refused, never under the clean class's key. `connectors`: the `s3` adapter applies the same separation rules in `QUARANTINE`; the AV adapter's workload needs `kms:Decrypt` on each such key, and a read it may not decrypt keeps the file quarantined (`ERROR`). `testing`: a STORAGE built-in contract case for the upload and its promotion. No setting, no migration, no IAM change.
+
+### Patch Changes
+
+- Updated dependencies [648c511]
+- Updated dependencies [9be2fc7]
+- Updated dependencies [f0edee3]
+- Updated dependencies [2d2729b]
+  - @infrabyx/crypto@1.11.0
+  - @infrabyx/contracts@1.43.0
+  - @infrabyx/config@1.22.3
+  - @infrabyx/tenancy@1.22.1
+
 ## 1.25.0
 
 ### Minor Changes
