@@ -114,6 +114,65 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
         });
       },
     },
+    {
+      // PR-UDF-058 (R1-D-227). A leg configures, for tenant `tnt_contract` only, two named keys
+      // `lender:contract` and `lender:contract-b` in `REGULATED`; an adapter without per-object
+      // keys declares `put.keyRef` unsupported.
+      name: "a put under a named tenant key records the reference and reads back; a bad, unknown, misplaced or changed reference is refused (PR-UDF-058)",
+      method: "put.keyRef",
+      invoke: (p: StoragePort) =>
+        p.put(`tenant/tnt_contract/vault/${ULID.slice(0, 24)}K0.pdf`, new Uint8Array([1]), {
+          bucketClass: "REGULATED",
+          keyRef: "lender:contract",
+        }),
+      async run(p: StoragePort) {
+        const enc = (s: string) => new TextEncoder().encode(s);
+        const k = (n: number) => `tenant/tnt_contract/vault/${ULID.slice(0, 24)}K${n}.pdf`;
+        const meta = {
+          bucketClass: "REGULATED",
+          contentType: "application/pdf",
+          keyRef: "lender:contract",
+        } as const;
+        const refused = (code: string, reason: string) => ({ code, meta: { reason } });
+        await p.put(k(1), enc("lender file"), meta);
+        const o = await p.get(k(1));
+        expect(new TextDecoder().decode(o.body)).toBe("lender file");
+        expect(o.meta).toMatchObject({ bucketClass: "REGULATED", keyRef: "lender:contract" });
+        await p.put(k(1), enc("second version"), meta);
+        for (const other of [
+          { ...meta, keyRef: "lender:contract-b" },
+          { bucketClass: "REGULATED" },
+        ])
+          await expect(p.put(k(1), enc("x"), other as typeof meta)).rejects.toMatchObject(
+            refused("IPB-PORT-003", "key_ref_changed"),
+          );
+        await p.put(k(2), enc("other lender"), { ...meta, keyRef: "lender:contract-b" });
+        expect((await p.get(k(2))).meta.keyRef).toBe("lender:contract-b");
+        for (const bad of [
+          "arn:aws:kms:ap-south-1:111122223333:key",
+          "1234abcd-12ab-34cd-56ef-1234567890ab",
+          "Lender",
+        ])
+          await expect(p.put(k(3), enc("x"), { ...meta, keyRef: bad })).rejects.toMatchObject(
+            refused("IPB-PORT-003", "key_ref_invalid"),
+          );
+        await expect(
+          p.put(k(3), enc("x"), { ...meta, keyRef: "lender:unknown" }),
+        ).rejects.toMatchObject(refused("IPB-PORT-001", "key_ref_unknown"));
+        await expect(
+          p.put(k(3), enc("x"), { bucketClass: "GENERAL", keyRef: "lender:contract" }),
+        ).rejects.toMatchObject(refused("IPB-PORT-003", "key_ref_class"));
+        await expect(p.get(k(3))).rejects.toMatchObject({ code: "IPB-STOR-001" });
+        const upload = { bucketClass: "REGULATED", contentType: "application/pdf" } as const;
+        expect(
+          typeof (await p.presign(k(4), "put", 60, { ...upload, keyRef: "lender:contract" })),
+        ).toBe("string");
+        await expect(
+          p.presign(k(1), "put", 60, { ...upload, keyRef: "lender:contract-b" }),
+        ).rejects.toMatchObject(refused("IPB-PORT-003", "key_ref_changed"));
+        expect(typeof (await p.presign(k(1), "get", 60))).toBe("string");
+      },
+    },
   ] as Array<ContractCase<never>>,
   CONSENT: [
     {

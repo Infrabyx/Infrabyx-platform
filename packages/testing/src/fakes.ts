@@ -6,6 +6,7 @@ export {
   MemoryIdentity,
   MemoryPushTokenStore,
   MemoryEsignEnvelopeStore,
+  type MemoryStorageKeyRefs,
 } from "@infrabyx/fakes";
 
 export { MemoryFlagProvider, MemorySnapshotStore } from "@infrabyx/config/flags";

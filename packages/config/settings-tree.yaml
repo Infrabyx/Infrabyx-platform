@@ -2193,6 +2193,28 @@ keys:
       source: "ADR-0012 STATEMENT_ANALYSIS; PR-UDF-048, R1-D-202 (the HTTP alternative's only egress host)",
     }
 
+  # ---------------------------------------------------------------- R1: GRC (ADR-0013; PR-FBX-51, R1-D-220; Ecosystem Spec 9.2)
+  - {
+      key: int.grc.generic.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the Ecosystem Spec 9.2 generic GRC connector (references and hashes only, never personal data); off and unproven until a counterparty sandbox exists",
+      source: "ADR-0013 GRC; PR-FBX-51, R1-D-220 (reference adapter generic-grc; no vendor chosen)",
+    }
+  - {
+      key: int.grc.generic.host,
+      tier: PLATFORM,
+      type: string,
+      default: "",
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the GRC system's exact host name, India-resident; empty refuses every call (adapter_unconfigured); its token is in SECRETS",
+      source: "ADR-0013 GRC; PR-FBX-51, R1-D-220 (the generic adapter's only egress host)",
+    }
+
   # ---------------------------------------------------------------- R1: VIDEO_MEET (IPB-01 VIDEO_MEET; #88, C-26, R1-D-53)
   - {
       key: int.video_meet.livekit.enabled,

@@ -17,6 +17,14 @@ describe("port-contract matrix path filters (PL2-D-13)", () => {
       "packages/connectors/src/statement-analysis/http.ts",
     ])
       expect(selectPorts([f])).toEqual(["STATEMENT_ANALYSIS"]);
+    // PR-FBX-51: the GRC port, its events, its fake and its adapter select its leg alone.
+    for (const f of [
+      "packages/contracts/src/ports/grc.ts",
+      "packages/contracts/src/events/grc-events.ts",
+      "packages/fakes/src/ports/grc.ts",
+      "packages/connectors/src/grc/generic.ts",
+    ])
+      expect(selectPorts([f])).toEqual(["GRC"]);
   });
   it("runs every port for a shared change, nightly and before a release", () => {
     expect(selectPorts(["packages/connectors/src/core/router.ts"])).toEqual(PORTS);
