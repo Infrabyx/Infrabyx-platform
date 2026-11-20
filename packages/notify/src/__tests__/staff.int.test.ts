@@ -389,9 +389,12 @@ describe("preferences on staff classes (IPB-07-25)", () => {
       deepLink: "/settings/keys",
       idempotencyKey: "staff-key-0001",
     });
-    expect(k.deliveries.filter((d) => d.recipient === A1).map((d) => d.channel)).toEqual([
-      "inapp",
-      "email",
-    ]);
+    // Both channels, in any order: deliveries carry no channel order.
+    expect(
+      k.deliveries
+        .filter((d) => d.recipient === A1)
+        .map((d) => d.channel)
+        .sort(),
+    ).toEqual(["email", "inapp"]);
   });
 });

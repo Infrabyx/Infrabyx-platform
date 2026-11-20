@@ -12,5 +12,6 @@
   "0011_kyc_aadhaar_otp_verify.sql": "f028fc13fcc782452a13e47ae7c334e90586581e18182389bf8ddf7bba8489c5",
   "0012_kyc_bank_account_verify.sql": "66dc658f1dc67524a302fb0b48f9a4d75ccdf97b0cd1c420818b34b91030ab4a",
   "0013_kyc_score_check.sql": "3bf84abcd341512fd7cc1601ae3a312288814cce135a4b2bedd10d93288821ab",
-  "0014_statement_analysis.sql": "a45a609accf22bb2f0c3868c72fde46f5e30a8d8c2eb80152fe1d6ac04692338"
+  "0014_statement_analysis.sql": "a45a609accf22bb2f0c3868c72fde46f5e30a8d8c2eb80152fe1d6ac04692338",
+  "0015_customer_verified_email.sql": "6f5bb38cee82e8b5ad2175c3d9cbb6c1c329093418da81c84816578fbf66d009"
 }

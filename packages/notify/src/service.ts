@@ -40,10 +40,13 @@ import {
   type OutboxWriter,
   type Tx,
 } from "@infrabyx/contracts/kernel";
+import { atLeast } from "@infrabyx/contracts/data-class";
 import {
+  EMAIL_ATTACHMENT_LIMITS,
   INBOUND_MAIL_LIMITS,
   NotificationRequest,
   StaffNotificationRequest,
+  emailAttachmentTypeOf,
   isValidStorageKey,
   scanDecision,
   type AdapterDescriptor,
@@ -53,6 +56,7 @@ import {
   type DeliveryRecord,
   type DeliveryState,
   type DomainCheck,
+  type EmailAttachment,
   type EmailEvent,
   type EmailMessage,
   type EmailPort,
@@ -60,6 +64,7 @@ import {
   type InboundDropReason,
   type InboundEmail,
   type InboundReply,
+  type NotificationAttachment,
   type NotificationClass,
   type NotifyChannel,
   type NotifyPort,
@@ -212,6 +217,11 @@ export interface NotifyServiceOptions {
     av: FileScanPort;
     onDrop?: (reason: InboundDropReason) => void;
   };
+  /**
+   * Email attachments (Udofin PR-UDF-055; R1-D-224): the tenant's STORAGE, from which each
+   * attachment's bytes are read at send and checked against the request's SHA-256.
+   */
+  attachments?: { storage: StoragePort };
   now?: () => Date;
 }
 
@@ -248,6 +258,8 @@ interface DeliveryRow {
   vendor_ref: string | null;
   last_error_code: string | null;
   updated_at: Date;
+  /** The receipt of an email sent with attachments (PR-UDF-055). */
+  attachments?: AttachmentReceipt[] | null;
 }
 interface NotificationRow {
   id: string;
@@ -256,6 +268,12 @@ interface NotificationRow {
   vars: Record<string, string | number | boolean>;
   locale: string | null;
   reply_thread_ref?: string | null;
+  attachments?: NotificationAttachment[] | null;
+}
+/** One attached file as handed to the EMAIL adapter (PR-UDF-055). */
+interface AttachmentReceipt {
+  sha256: string;
+  bytes: number;
 }
 
 const toRecord = (d: DeliveryRow): DeliveryRecord => ({
@@ -267,6 +285,8 @@ const toRecord = (d: DeliveryRow): DeliveryRecord => ({
   ...(d.adapter ? { adapter: d.adapter } : {}),
   ...(d.last_error_code ? { lastErrorCode: d.last_error_code } : {}),
   updatedAt: d.updated_at.toISOString(),
+  ...(d.vendor_ref ? { vendorRef: d.vendor_ref } : {}),
+  ...(d.attachments?.length ? { attachments: d.attachments } : {}),
 });
 
 /** A vendor outcome we cannot know: a timeout or the vendor down mid-call (IPB-PORT-002). */
@@ -359,6 +379,7 @@ export class NotifyService implements NotifyPort {
         detail: `${cls.id} is a staff class: send it by role with notifyStaff`,
         meta: { reason: "staff_class", class: cls.id },
       });
+    if (req.attachments) await this.admitAttachments(ctx, cls, req.attachments);
     const at = this.now();
     const org = await this.setting(ctx, "ntf.org.routing");
     const bypass = await this.setting(ctx, "ntf.org.allow_quiet_hours_bypass");
@@ -423,8 +444,8 @@ export class NotifyService implements NotifyPort {
     }
     const id = newId("ntf");
     await tx.query(
-      `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by, reply_thread_ref)
-       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9)`,
+      `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by, reply_thread_ref, attachments)
+       values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10::jsonb)`,
       [
         id,
         tx.ctx.tenantId,
@@ -435,6 +456,7 @@ export class NotifyService implements NotifyPort {
         req.locale ?? null,
         tx.ctx.principal.id,
         req.reply?.threadRef ?? null,
+        req.attachments ? JSON.stringify(req.attachments) : null,
       ],
     );
     const deliveries: SendResult["deliveries"] = [];
@@ -457,6 +479,8 @@ export class NotifyService implements NotifyPort {
       after: {
         class: p.cls.id,
         recipients: req.to.length,
+        // Hashes only: a file name may name a person (PR-UDF-055).
+        ...(req.attachments ? { attachments: req.attachments.map((a) => a.sha256) } : {}),
         deliveries: Object.fromEntries(
           [...new Set(deliveries.map((d) => d.state))].map((s) => [
             s,
@@ -759,7 +783,12 @@ export class NotifyService implements NotifyPort {
     cls: NotificationClass,
     address: string | null,
     attempt: number,
-  ): Promise<{ adapter?: string; vendorRef?: string; delivered?: boolean }> {
+  ): Promise<{
+    adapter?: string;
+    vendorRef?: string;
+    delivered?: boolean;
+    attachments?: AttachmentReceipt[];
+  }> {
     const call: PortCall = { idempotencyKey: `${d.id}:${attempt}` };
     switch (d.channel) {
       case "inapp": {
@@ -818,12 +847,25 @@ export class NotifyService implements NotifyPort {
       }
       case "email": {
         const { port, message } = await this.emailMessage(ctx, cls, n);
+        // Attachments are read and checked before the reply token or any vendor call (PR-UDF-055).
+        const att = n.attachments?.length
+          ? await this.attachmentFiles(ctx, port, n.attachments)
+          : undefined;
         const replyTo = await this.replyTo(ctx, d, n, address as string);
         const r = await port.send(
-          { to: [address as string], ...message, ...(replyTo ? { replyTo } : {}) },
-          call,
+          {
+            to: [address as string],
+            ...message,
+            ...(att ? { files: att.files } : {}),
+            ...(replyTo ? { replyTo } : {}),
+          },
+          att?.confidential ? { ...call, dataClass: "CONFIDENTIAL" } : call,
         );
-        return { adapter: port.descriptor.adapter, vendorRef: r.messageId };
+        return {
+          adapter: port.descriptor.adapter,
+          vendorRef: r.messageId,
+          ...(att ? { attachments: att.receipt } : {}),
+        };
       }
       case "sms": {
         const { port, message } = await this.smsMessage(ctx, cls, n);
@@ -840,6 +882,106 @@ export class NotifyService implements NotifyPort {
 
   // The message each channel's port is handed, without the address: built once for delivery and
   // for `previewTemplate`, so a preview is exactly what delivery sends (PR-LDC-27; R1-D-90).
+
+  /**
+   * Admit a request's attachments before anything is written (PR-UDF-055; R1-D-224): the tenant's
+   * `ntf.email.attachments.enabled`, a STORAGE port, an urgent class that may email (attachments
+   * go with the immediate email, never a digest or marketing), and keys in the caller's tenant.
+   */
+  private async admitAttachments(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    list: readonly NotificationAttachment[],
+  ): Promise<void> {
+    const off = (reason: string, detail: string) =>
+      new PortError("IPB-PORT-001", "NOTIFY", {
+        adapter: "notify",
+        detail,
+        meta: { reason, definite: true },
+      });
+    if ((await this.setting(ctx, "ntf.email.attachments.enabled")) !== true)
+      throw off("attachments_off", "attachments are off (ntf.email.attachments.enabled)");
+    if (!this.o.attachments) throw off("unsupported", "NOTIFY has no STORAGE for attachments");
+    if (!cls.urgent || cls.category === "marketing" || cls.never_channels.includes("email"))
+      throw off(
+        "attachments_class",
+        "attachments go only with the immediate email of an urgent, non-marketing class",
+      );
+    for (const a of list)
+      if (a.storageKey.split("/")[1] !== ctx.tenantId)
+        throw new PortError("IPB-PORT-003", "NOTIFY", {
+          adapter: "notify",
+          detail: "an attachment must be stored in the caller's tenant",
+          meta: { reason: "tenant", definite: true },
+        });
+  }
+
+  /**
+   * Read each attachment from STORAGE and check it before the adapter is called (PR-UDF-055;
+   * R1-D-224): the adapter must declare `attachments: "native"`; the object must be GENERAL or
+   * PUBLIC_ASSETS (CONFIDENTIAL only with the platform's `ntf.email.attachments.confidential`
+   * and an `IN` adapter that carries CONFIDENTIAL), outside any compartment, of the declared type
+   * by its stored type and its magic number, with exactly the request's SHA-256, and 10 MiB
+   * together at most. The bytes go to the adapter as read, never re-encoded.
+   */
+  private async attachmentFiles(
+    ctx: KernelContext,
+    port: EmailPort,
+    refs: readonly NotificationAttachment[],
+  ): Promise<{ files: EmailAttachment[]; receipt: AttachmentReceipt[]; confidential: boolean }> {
+    const d = port.descriptor;
+    if (d.capabilities?.attachments !== "native")
+      throw new PortError("IPB-PORT-001", "EMAIL", {
+        adapter: d.adapter,
+        detail: "the EMAIL adapter cannot send attachments",
+        meta: { reason: "unsupported", definite: true },
+      });
+    const storage = this.o.attachments?.storage;
+    if (!storage) throw notConfigured("STORAGE");
+    const refuse = (reason: string, detail: string) =>
+      new PortError("IPB-PORT-003", "EMAIL", {
+        adapter: d.adapter,
+        detail,
+        meta: { reason, definite: true },
+      });
+    const confidentialAllowed =
+      (await this.setting(ctx, "ntf.email.attachments.confidential")) === true;
+    const files: EmailAttachment[] = [];
+    const receipt: AttachmentReceipt[] = [];
+    let total = 0;
+    let confidential = false;
+    for (const a of refs) {
+      if (a.storageKey.split("/")[1] !== ctx.tenantId)
+        throw refuse("tenant", "an attachment must be stored in the caller's tenant");
+      const o = await storage.get(a.storageKey);
+      const bucket = o.meta.bucketClass;
+      if (o.meta.compartment) throw refuse("class", "a compartment's document is never attached");
+      if (bucket === "CONFIDENTIAL") {
+        if (!confidentialAllowed)
+          throw refuse("class", "a CONFIDENTIAL document goes by its deep link, not attached");
+        if (d.residency !== "IN" || !atLeast(d.maxDataClass, "CONFIDENTIAL"))
+          throw refuse("class", "the EMAIL adapter does not carry CONFIDENTIAL content in India");
+        confidential = true;
+      } else if (bucket !== "GENERAL" && bucket !== "PUBLIC_ASSETS")
+        throw refuse("class", `a ${bucket} object is never attached`);
+      const stored = o.meta.contentType?.split(";")[0]?.trim().toLowerCase();
+      if (stored !== a.mediaType || emailAttachmentTypeOf(o.body) !== a.mediaType)
+        throw refuse("type", "the attachment is not of its declared type");
+      if (sha256Hex(o.body) !== a.sha256)
+        throw refuse("sha256", "the stored bytes do not match the attachment's SHA-256");
+      total += o.body.byteLength;
+      if (total > EMAIL_ATTACHMENT_LIMITS.maxBytes)
+        throw refuse("size", "attachments exceed 10 MiB together");
+      files.push({
+        filename: a.filename,
+        contentType: a.mediaType,
+        sha256: a.sha256,
+        body: o.body,
+      });
+      receipt.push({ sha256: a.sha256, bytes: o.body.byteLength });
+    }
+    return { files, receipt, confidential };
+  }
 
   private async emailMessage(
     ctx: KernelContext,
@@ -1019,6 +1161,7 @@ export class NotifyService implements NotifyPort {
       vendorRef?: string;
       error?: string;
       inboxItemId?: string;
+      attachments?: AttachmentReceipt[];
     },
   ): Promise<DeliveryState> {
     await this.o.kernel.mutate(
@@ -1027,7 +1170,8 @@ export class NotifyService implements NotifyPort {
         await tx.query(
           `update notify.delivery set state = $2, attempt = $3, adapter = coalesce($4, adapter),
                   vendor_ref = coalesce($5, vendor_ref), last_error_code = $6,
-                  inbox_item_id = coalesce($7, inbox_item_id), updated_at = now()
+                  inbox_item_id = coalesce($7, inbox_item_id),
+                  attachments = coalesce($8::jsonb, attachments), updated_at = now()
             where id = $1`,
           [
             d.id,
@@ -1037,6 +1181,7 @@ export class NotifyService implements NotifyPort {
             o.vendorRef ?? null,
             o.error ?? null,
             o.inboxItemId ?? null,
+            o.attachments ? JSON.stringify(o.attachments) : null,
           ],
         );
         await this.o.audit.record(tx, {
@@ -1049,6 +1194,8 @@ export class NotifyService implements NotifyPort {
             channel: d.channel,
             attempt: o.attempt ?? d.attempt,
             ...(o.error ? { error: o.error } : {}),
+            // The receipt: the SHA-256 of each file the adapter accepted (PR-UDF-055).
+            ...(o.attachments ? { attachments: o.attachments.map((a) => a.sha256) } : {}),
           },
         });
       },

@@ -7,8 +7,13 @@
 // - Recipients never appear in errors or logs; the router hashes them for telemetry (C-21).
 import { atLeast, type DataClass } from "@infrabyx/contracts/data-class";
 import { PortError } from "@infrabyx/contracts/errors";
-import type { AdapterDescriptor, PortCall, StoragePort } from "@infrabyx/contracts/ports";
-import { verifyWebhookSecret } from "@infrabyx/crypto";
+import type {
+  AdapterDescriptor,
+  EmailAttachment,
+  PortCall,
+  StoragePort,
+} from "@infrabyx/contracts/ports";
+import { sha256Hex, verifyWebhookSecret } from "@infrabyx/crypto";
 
 /** Refuse a call whose stated class is above what the adapter takes for bodies. */
 export function assertBodyClass(d: AdapterDescriptor, call?: PortCall): void {
@@ -30,18 +35,38 @@ export interface LoadedAttachment {
   body: Uint8Array;
 }
 
+/**
+ * The attachments of one message: STORAGE keys read here (INTERNAL classes only), then files the
+ * caller passed as bytes (PR-UDF-055; R1-D-224). Each file's SHA-256 is checked once more over
+ * the exact bytes that go to the vendor, which are never decoded or re-encoded here. Together at
+ * most 10 files and 10 MiB; any refusal is `IPB-PORT-003` before a vendor request.
+ */
 export async function loadAttachments(
   d: AdapterDescriptor,
   keys: readonly string[] | undefined,
   storage: StoragePort | undefined,
+  files?: readonly EmailAttachment[],
 ): Promise<LoadedAttachment[]> {
-  if (!keys?.length) return [];
-  const refuse = (detail: string) =>
-    new PortError("IPB-PORT-003", d.port, { adapter: d.adapter, detail });
-  if (!storage) throw refuse("attachments need a STORAGE port");
-  if (keys.length > EMAIL_ATTACHMENTS_MAX) throw refuse("more than 10 attachments");
+  if (!keys?.length && !files?.length) return [];
+  const refuse = (detail: string, reason?: string) =>
+    new PortError("IPB-PORT-003", d.port, {
+      adapter: d.adapter,
+      detail,
+      ...(reason ? { meta: { reason } } : {}),
+    });
+  if ((keys?.length ?? 0) + (files?.length ?? 0) > EMAIL_ATTACHMENTS_MAX)
+    throw refuse("more than 10 attachments", "count");
   const out: LoadedAttachment[] = [];
   let total = 0;
+  for (const f of files ?? []) {
+    if (sha256Hex(f.body) !== f.sha256)
+      throw refuse("an attachment's bytes do not match its SHA-256", "sha256");
+    total += f.body.byteLength;
+    if (total > EMAIL_ATTACHMENTS_MAX_BYTES) throw refuse("attachments exceed 10 MiB", "size");
+    out.push({ filename: f.filename, contentType: f.contentType, body: f.body });
+  }
+  if (!keys?.length) return out;
+  if (!storage) throw refuse("attachments need a STORAGE port");
   for (const key of keys) {
     const o = await storage.get(key);
     if (o.meta.bucketClass !== "GENERAL" && o.meta.bucketClass !== "PUBLIC_ASSETS")

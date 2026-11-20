@@ -746,6 +746,16 @@ keys:
       source: "IPB-02-03; R1-D-18",
     }
   - {
+      key: int.identity.customer.email_capture.enabled,
+      tier: "PLATFORM",
+      type: "bool",
+      default: false,
+      change: ["PLT_SECURITY_OFFICER"],
+      mc: "R4",
+      note: "a signed-in customer may prove an email address with a one-time code; the address is recorded on the account (codes, tries and lockout as the sign-in codes')",
+      source: "PR-UDF-055, R1-D-224; IPB-02 §02.4.6.2 auth.otp",
+    }
+  - {
       key: int.authz.pdp_url,
       tier: "PLATFORM",
       type: "string",
@@ -1766,6 +1776,26 @@ keys:
       mc: false,
       note: "days a reply address accepts replies (at most 50 replies each)",
       source: "PR-LDC-50, R1-D-177",
+    }
+  - {
+      key: ntf.email.attachments.enabled,
+      tier: TENANT,
+      type: bool,
+      default: false,
+      change: [ORG_ADMIN],
+      mc: R4,
+      note: "urgent email notifications may carry stored documents as attachments, sent byte-identical (SHA-256 checked at send) with a receipt",
+      source: "PR-UDF-055, R1-D-224; threat model §3.153",
+    }
+  - {
+      key: ntf.email.attachments.confidential,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SECURITY_OFFICER],
+      mc: R4,
+      note: "CONFIDENTIAL objects may be attached, and then only to an IN EMAIL adapter that carries CONFIDENTIAL (none today; IPB-01 EMAIL sends them as a secure link)",
+      source: "PR-UDF-055, R1-D-224; owner question #161",
     }
   - {
       key: "cst.branding.{token}",
