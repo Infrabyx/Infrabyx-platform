@@ -11,6 +11,7 @@
 // PR-UDF-054, R1-D-245): nothing is bought, so it is not a money call; the adapter checks it with
 // the issuer where it can and keeps it once per State, channel and number.
 import { z } from "zod";
+import { PortError } from "../errors.js";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { DocFileRef, OutputPrefix } from "./doc-file.js";
 import type { SignatureRecord, SigningMethod } from "./esign.js";
@@ -144,6 +145,44 @@ export type StampCertificateRecord = z.infer<typeof StampCertificateRecord>;
 
 /** Idempotency keys of `recordCertificate`: as for money calls (8 to 128 of A-Z a-z 0-9 _ . : -). */
 export const StampRecordKey = MoneyIdempotencyKey;
+
+/**
+ * The check every `recordCertificate` (adapter and fake) runs first, so all refuse alike: an agent
+ * recorder `IPB-SEC-004`; a duty below the stated duty `IPB-PORT-001` `deficient_stamping`; any
+ * other malformed record, or a missing or malformed key, `IPB-PORT-001` `invalid_request`.
+ */
+export function assertStampRecord(
+  port: string,
+  raw: unknown,
+  idempotencyKey: unknown,
+  adapter?: string,
+): StampCertificateRecord {
+  const type = (raw as { recordedBy?: { principalType?: unknown } } | undefined)?.recordedBy
+    ?.principalType;
+  if (type === "agent")
+    throw new PortError("IPB-SEC-004", port, {
+      ...(adapter ? { adapter } : {}),
+      detail: "an agent never records stamp evidence; a user or a service does (R1-D-245)",
+    });
+  const refuse = (reason: string, detail: string) =>
+    new PortError("IPB-PORT-001", port, {
+      ...(adapter ? { adapter } : {}),
+      detail,
+      meta: { reason, definite: true },
+    });
+  if (!StampRecordKey.safeParse(idempotencyKey).success)
+    throw refuse("invalid_request", "a stamp record needs an idempotency key");
+  const r = StampCertificateRecord.safeParse(raw);
+  if (!r.success) {
+    if (r.error.issues.some((i) => i.path[0] === "statedDutyMinor" && i.code === "custom"))
+      throw refuse("deficient_stamping", "the duty paid is below the duty the instrument states");
+    throw refuse(
+      "invalid_request",
+      `invalid stamp record: ${r.error.issues.map((i) => i.path.join(".") || i.message).join(", ")}`,
+    );
+  }
+  return r.data;
+}
 
 export interface DutyQuote {
   dutyMinor: number;

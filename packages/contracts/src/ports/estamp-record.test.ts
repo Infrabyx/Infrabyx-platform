@@ -7,6 +7,7 @@ import {
   STAMP_RECORD_CHANNELS,
   STAMP_VERIFICATIONS,
   StampCertificateRecord,
+  assertStampRecord,
   type EstampCertificate,
 } from "./estamp.js";
 import { payloadClass } from "./payload-class.js";
@@ -60,6 +61,32 @@ describe("@IPB-01-15 ESTAMP stamp records (R1-D-245)", () => {
     expect(ok({ ...eStamp, issuedAt: "2026-11-20" })).toBe(false);
     expect(ok({ ...eStamp, state: "IN-MH" })).toBe(false);
     expect(ok({ ...eStamp, authorisation: {} })).toBe(false);
+  });
+
+  it("refuses alike in every adapter: an agent, deficient stamping, a bad record or key", () => {
+    expect(assertStampRecord("ESTAMP", eStamp, "record-key-0001").certificateNumber).toBe(
+      eStamp.certificateNumber,
+    );
+    const agent = { ...eStamp, recordedBy: { principalId: "agt_vidhi", principalType: "agent" } };
+    expect(() => assertStampRecord("ESTAMP", agent, "record-key-0001")).toThrow(
+      expect.objectContaining({ code: "IPB-SEC-004" }),
+    );
+    expect(() =>
+      assertStampRecord("ESTAMP", { ...eStamp, statedDutyMinor: 60_000 }, "record-key-0001"),
+    ).toThrow(
+      expect.objectContaining({ meta: expect.objectContaining({ reason: "deficient_stamping" }) }),
+    );
+    for (const [r, k] of [
+      [{ ...eStamp, state: "Maharashtra" }, "record-key-0001"],
+      [eStamp, "short"],
+      [eStamp, undefined],
+    ] as const)
+      expect(() => assertStampRecord("ESTAMP", r, k)).toThrow(
+        expect.objectContaining({
+          code: "IPB-PORT-001",
+          meta: expect.objectContaining({ reason: "invalid_request" }),
+        }),
+      );
   });
 
   it("classes the record REGULATED (duty and parties)", () => {
