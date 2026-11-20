@@ -93,6 +93,32 @@ export const EXECUTION_MODES = ["ESIGN_AADHAAR", "ESIGN_DSC", "WET_INK", "NONE"]
 export const STAMP_MODES = ["E_STAMP", "FRANKING", "PHYSICAL_PAPER"] as const;
 /** An Indian State or Union Territory, ISO 3166-2:IN (`IN-MH`, `IN-DL`, …). */
 export const indianState = z.string().regex(/^IN-[A-Z]{2}$/);
+/**
+ * The modes of a document's `stamp_evidence` (owner, 20 Nov 2026 13:10; R1-D-231; the owner's
+ * names). The pack-level `stamp.mode` keeps `STAMP_MODES`; `STAMP_EVIDENCE_MODE_OF` maps one to the
+ * other (`E_STAMP` ↔ `ESTAMP`, `PHYSICAL_PAPER` ↔ `PAPER`, `FRANKING` ↔ `FRANKING`).
+ */
+export const STAMP_EVIDENCE_MODES = ["ESTAMP", "PAPER", "FRANKING"] as const;
+export const STAMP_EVIDENCE_MODE_OF: Readonly<
+  Record<(typeof STAMP_MODES)[number], (typeof STAMP_EVIDENCE_MODES)[number]>
+> = Object.freeze({ E_STAMP: "ESTAMP", PHYSICAL_PAPER: "PAPER", FRANKING: "FRANKING" });
+
+/**
+ * Evidence that one pack document was stamped (R1-D-231; PR-UDF-053; the owner's `stampEvidence`):
+ * the mode, the State whose stamp law applies, the certificate number, the duty in integer paise,
+ * the SHA-256 of the stamped document and, optionally, the stamp vendor's reference.
+ */
+export const StampEvidence = z
+  .object({
+    mode: z.enum(STAMP_EVIDENCE_MODES),
+    state: indianState,
+    certificate_number: z.string().regex(/^[A-Za-z0-9/_.-]{3,64}$/),
+    duty_paise: z.number().int().min(0).max(1e12),
+    stamped_document_sha256: sha256,
+    vendor_ref: ref.optional(),
+  })
+  .loose();
+export type StampEvidence = z.infer<typeof StampEvidence>;
 
 export const ExecutionPackManifest = z
   .object({
@@ -114,6 +140,14 @@ export const ExecutionPackManifest = z
             stamp_required: z.boolean(),
             /** Who signs, by role (`BORROWER`, `CO_APPLICANT`, `GUARANTOR`, `LENDER`). */
             signers: z.array(code).max(10),
+            /** Optional (R1-D-231): the stamp evidence of this document; never with `not_stampable`. */
+            stamp_evidence: StampEvidence.optional(),
+            /**
+             * Optional (R1-D-231; the owner's `notStampable`): the document needs no stamp. When
+             * true, `not_stampable_reason` (1–200 characters) says why, and `stamp_required` is false.
+             */
+            not_stampable: z.boolean().optional(),
+            not_stampable_reason: z.string().min(1).max(200).optional(),
           })
           .loose(),
       )
@@ -165,7 +199,7 @@ export const ExecutionPackManifest = z
   .loose()
   .superRefine((m, ctx) => {
     const ids = new Set<string>();
-    for (const d of m.documents) {
+    for (const [i, d] of m.documents.entries()) {
       if (ids.has(d.document_id))
         ctx.addIssue({ code: "custom", message: `duplicate document ${d.document_id}` });
       ids.add(d.document_id);
@@ -176,6 +210,32 @@ export const ExecutionPackManifest = z
         });
       if (d.execution_mode !== "NONE" && d.signers.length === 0)
         ctx.addIssue({ code: "custom", message: `${d.document_id} is executed but has no signer` });
+      const at = (field: string) => ["documents", i, field];
+      if (d.not_stampable === true) {
+        if (d.not_stampable_reason === undefined)
+          ctx.addIssue({
+            code: "custom",
+            path: at("not_stampable_reason"),
+            message: `${d.document_id} is not stampable but gives no reason`,
+          });
+        if (d.stamp_evidence)
+          ctx.addIssue({
+            code: "custom",
+            path: at("stamp_evidence"),
+            message: `${d.document_id} is not stampable but carries stamp evidence`,
+          });
+        if (d.stamp_required)
+          ctx.addIssue({
+            code: "custom",
+            path: at("not_stampable"),
+            message: `${d.document_id} is not stampable but is stamp-required`,
+          });
+      } else if (d.not_stampable_reason !== undefined)
+        ctx.addIssue({
+          code: "custom",
+          path: at("not_stampable_reason"),
+          message: `${d.document_id} gives a not-stampable reason without not_stampable: true`,
+        });
     }
     if (!ids.has(m.summary_box.document_id))
       ctx.addIssue({ code: "custom", message: "summary_box names a document outside the pack" });

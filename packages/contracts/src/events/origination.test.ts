@@ -7,10 +7,13 @@ import {
   DecisionMadeData,
   EligibilityCheckAnswer,
   EligibilityCheckRequest,
+  INSTALMENT_FREQUENCIES,
   KfsIssuedData,
   LoanDisbursedData,
   ORIGINATION_EVENTS,
   ORIGINATION_REGULATED,
+  OriginationOffer,
+  PENAL_CHARGE_BASES,
   originationIdempotencyKey,
 } from "./origination.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
@@ -182,5 +185,96 @@ describe("origination schemas (PR-UDF-051)", () => {
     );
     for (const bad of [5_000_000.5, -100, 0, "5000000"])
       expect(KfsIssuedData.safeParse({ ...kfs, loan_amount_paise: bad }).success).toBe(false);
+  });
+
+  it("R1-D-231: takes an offer's optional instalment, penal charges and KFS link, in both offer lists", () => {
+    const base = { offer_id: "ofr_1", amount_paise: 5_000_000, tenor_months: 12, apr_bp: 1800 };
+    const full = {
+      ...base,
+      monthly_instalment: { amount_paise: 458_400, frequency: "MONTHLY" },
+      penal_charges: [
+        { basis: "PER_MONTH_ON_OVERDUE", rate_bp: 200, description: "2% a month on the overdue" },
+        { basis: "PER_INSTANCE", amount_paise: 50_000, description: "Per bounced instalment" },
+      ],
+      kfs_link: { document_id: "doc_kfs_0001", version: 1 },
+    };
+    expect(OriginationOffer.safeParse(base).success).toBe(true);
+    expect(OriginationOffer.parse(full)).toEqual(full);
+    expect(
+      OriginationOffer.safeParse({ ...base, kfs_link: { document_id: "doc_k1" } }).success,
+    ).toBe(true);
+    for (const f of INSTALMENT_FREQUENCIES)
+      expect(
+        OriginationOffer.safeParse({
+          ...base,
+          monthly_instalment: { amount_paise: 1, frequency: f },
+        }).success,
+      ).toBe(true);
+    expect(PENAL_CHARGE_BASES).toContain("PER_MONTH_ON_OVERDUE");
+    const answer = {
+      check_id: "elc_1",
+      outcome: "ELIGIBLE",
+      offers: [full],
+      reason_codes: [],
+      rule_version: "bre-7",
+      valid_until: T,
+    };
+    expect(EligibilityCheckAnswer.safeParse(answer).success).toBe(true);
+    const decision = {
+      application_id: "app_1",
+      decision_version: 1,
+      decision: "SANCTIONED",
+      reason_codes: [],
+      rule_version: "bre-7",
+      offers: [full],
+    };
+    expect(DecisionMadeData.safeParse(decision).success).toBe(true);
+    expect(
+      DecisionMadeData.safeParse({
+        ...decision,
+        offers: [{ ...full, monthly_instalment: { amount_paise: 1.5, frequency: "MONTHLY" } }],
+      }).success,
+    ).toBe(false);
+    expect(
+      EligibilityCheckAnswer.safeParse({
+        ...answer,
+        offers: [{ ...full, kfs_link: { document_id: "https://x.example.in/k" } }],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("R1-D-231: refuses a bad instalment, a penal charge without exactly one of rate or amount, and a URL as a KFS link", () => {
+    const base = { offer_id: "ofr_1", amount_paise: 5_000_000, tenor_months: 12, apr_bp: 1800 };
+    const charge = { basis: "FLAT", amount_paise: 50_000, description: "Flat charge" };
+    const bad: Array<Record<string, unknown>> = [
+      { monthly_instalment: { amount_paise: 0, frequency: "MONTHLY" } },
+      { monthly_instalment: { amount_paise: 100.5, frequency: "MONTHLY" } },
+      { monthly_instalment: { amount_paise: 100, frequency: "WEEKLY" } },
+      { monthly_instalment: { amount_paise: 100 } },
+      { penal_charges: [{ ...charge, rate_bp: 200 }] },
+      { penal_charges: [{ basis: "FLAT", description: "Neither" }] },
+      { penal_charges: [{ basis: "FLAT", rate_bp: 2.5, description: "Fractional rate" }] },
+      { penal_charges: [{ ...charge, basis: "per_instance" }] },
+      { penal_charges: [{ ...charge, description: "" }] },
+      { penal_charges: [{ ...charge, description: "x".repeat(201) }] },
+      { penal_charges: [{ ...charge, amount_paise: -1 }] },
+      { penal_charges: Array.from({ length: 21 }, () => charge) },
+      { kfs_link: { document_id: "https://lender.example.in/kfs.pdf" } },
+      { kfs_link: { document_id: "https:lender.example.in" } },
+      { kfs_link: { document_id: "storage:tenant.x" } },
+      { kfs_link: { document_id: "www.lender.example.in" } },
+      { kfs_link: { document_id: "doc_kfs_0001", url: "https://lender.example.in/kfs.pdf" } },
+      { kfs_link: { document_id: "doc_kfs_0001", version: 0 } },
+      { kfs_link: { version: 1 } },
+      { kfs_link: "doc_kfs_0001" },
+    ];
+    for (const b of bad)
+      expect(OriginationOffer.safeParse({ ...base, ...b }).success, JSON.stringify(b)).toBe(false);
+    expect(
+      OriginationOffer.safeParse({
+        ...base,
+        penal_charges: Array.from({ length: 20 }, () => charge),
+      }).success,
+    ).toBe(true);
   });
 });
