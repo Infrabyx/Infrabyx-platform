@@ -3,6 +3,7 @@
 // signatures, timeout, engine error, a public address). The contract leg runs the real clamd.
 import { createServer, type Server, type Socket } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PortError } from "@infrabyx/contracts/errors";
 import { PortHealth, scanDecision, type DocFileRef } from "@infrabyx/contracts/ports";
 import { sha256Hex, ulid } from "@infrabyx/crypto";
 import { EICAR, MemoryStorage } from "@infrabyx/testing";
@@ -111,6 +112,23 @@ describe("ClamAV AV adapter (clamd protocol)", () => {
     });
     expect(gone.verdict).toBe("ERROR");
     expect(gone.reason).toBe("unavailable");
+  });
+
+  it("PR-UDF-066: a quarantined upload whose named key the scanner may not use stays quarantined", async () => {
+    behaviour = "normal";
+    const f = await put(new TextEncoder().encode("lender upload"));
+    const sent = received.length;
+    const denied = Object.create(storage) as typeof storage;
+    denied.get = async () => {
+      throw new PortError("IPB-KMS-001", "STORAGE", {
+        adapter: "s3",
+        meta: { reason: "storage_key_unavailable", keyRef: "lender:a" },
+      });
+    };
+    const r = await make({ storage: denied }).scan(f);
+    expect(r).toMatchObject({ verdict: "ERROR", reason: "unavailable" });
+    expect(scanDecision(r).action).toBe("quarantine");
+    expect(received.length).toBe(sent);
   });
 
   it("refuses stale signatures, and maps clamd's size limit, errors and silence", async () => {
