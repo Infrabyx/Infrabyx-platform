@@ -179,3 +179,10 @@ export {
   type AppAttestFailure,
   type AppAttestKey,
 } from "./app-attest.js";
+export {
+  DOCUMENT_JWS_TYP,
+  signDocumentJws,
+  verifyDocumentJws,
+  type DocumentDescriptor,
+  type DocumentJwsResult,
+} from "./document-jws.js";
