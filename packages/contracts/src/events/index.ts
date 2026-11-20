@@ -9,3 +9,4 @@ export * from "./module-events.js";
 export * from "./spec-events.js";
 export * from "./origination.js";
 export * from "./documents.js";
+export * from "./grc-events.js";

@@ -37,6 +37,7 @@ export const PORTS = [
   "AV",
   "PDF",
   "STATEMENT_ANALYSIS",
+  "GRC",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -81,6 +82,8 @@ const EXTRA_PATHS = {
     "packages/fakes/src/ports/statement-analysis.ts",
     "packages/connectors/migrations/0014_statement_analysis.sql",
   ],
+  // PR-FBX-51: the fake lives in @infrabyx/fakes; the bodies are the §6.15 event schemas.
+  GRC: ["packages/fakes/src/ports/grc.ts", "packages/contracts/src/events/grc-events.ts"],
 };
 
 export const portPaths = (port) => [

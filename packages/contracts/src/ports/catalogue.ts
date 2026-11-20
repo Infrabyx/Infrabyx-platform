@@ -265,6 +265,12 @@ export const PORT_CATALOGUE = {
     ownerFile: "ADR-0012 (Udofin PR-UDF-048)",
     interfaceDefined: true,
   },
+  GRC: {
+    tier: 2,
+    configPrefix: "int.grc.",
+    ownerFile: "ADR-0013 (Finbyx PR-FBX-51; Ecosystem Spec 9.2)",
+    interfaceDefined: true,
+  },
 } as const satisfies Record<string, PortInfo>;
 
 export type PortName = keyof typeof PORT_CATALOGUE;
@@ -284,7 +290,9 @@ export const PORT_NAMES = Object.keys(PORT_CATALOGUE) as [PortName, ...PortName[
  * sink, fake and contract cases, the TallyPrime adapter in wave 15; R1-D-126: LawDocsComply
  * PR-LDC-53's CALENDAR, fake and contract cases, the Microsoft 365 and Google adapters off until the
  * owner registers their OAuth applications; R1-D-202: Udofin PR-UDF-048's STATEMENT_ANALYSIS, ADR-0012,
- * a fake, contract cases, an in-platform reference and a vendor-neutral HTTP alternative, both off).
+ * a fake, contract cases, an in-platform reference and a vendor-neutral HTTP alternative, both off;
+ * R1-D-220: Finbyx PR-FBX-51's GRC, ADR-0013, the Ecosystem Spec 9.2 generic connector contract, a fake,
+ * contract cases and the `generic-grc` reference adapter, off and unproven).
  */
 export const R1_PORTS = [
   "KYC",
@@ -307,4 +315,5 @@ export const R1_PORTS = [
   "ACCOUNTING",
   "CALENDAR",
   "STATEMENT_ANALYSIS",
+  "GRC",
 ] as const satisfies readonly PortName[];
