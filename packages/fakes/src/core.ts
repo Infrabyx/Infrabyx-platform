@@ -20,8 +20,10 @@ import type {
   StoredObject,
 } from "@infrabyx/contracts/ports";
 import {
+  PRESIGN_NO_CACHE,
   compartmentAllowed,
   isValidStorageKey,
+  presignNoCache,
   resolveStorageKeyRef,
 } from "@infrabyx/contracts/ports";
 import { LocalKms, sha256Hex } from "@infrabyx/crypto";
@@ -221,7 +223,15 @@ export class MemoryStorage implements StoragePort {
       this.checkKeyRef(key, keyRef);
     }
     const exp = Math.floor(this.now().getTime() / 1000) + ttlSeconds;
-    return `memory://${key}?op=${op}&exp=${exp}${keyRef ? `&key_ref=${encodeURIComponent(keyRef)}` : ""}`;
+    // PR-UDF-060: a download of a REGULATED or CONFIDENTIAL object names the no-cache overrides,
+    // as `s3` signs them; the class is the stored object's, else the one the caller names.
+    const cls = this.objects.get(key)?.meta.bucketClass ?? opts.bucketClass;
+    const noCache =
+      op === "get" && cls && presignNoCache(cls)
+        ? `&response-cache-control=${encodeURIComponent(PRESIGN_NO_CACHE.cacheControl)}` +
+          `&response-expires=${encodeURIComponent(PRESIGN_NO_CACHE.expires)}`
+        : "";
+    return `memory://${key}?op=${op}&exp=${exp}${keyRef ? `&key_ref=${encodeURIComponent(keyRef)}` : ""}${noCache}`;
   }
   async delete(key: string): Promise<void> {
     const o = this.objects.get(key);

@@ -173,6 +173,39 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
         expect(typeof (await p.presign(k(1), "get", 60))).toBe("string");
       },
     },
+    {
+      // PR-UDF-060 (R1-D-230). A leg has REGULATED, CONFIDENTIAL and GENERAL buckets. Where the URL
+      // is HTTP (moto, MinIO, a sandbox), the store itself must answer with the signed headers.
+      name: "a presigned download of a REGULATED or CONFIDENTIAL object signs no-cache response headers; a GENERAL one does not (PR-UDF-060)",
+      async run(p: StoragePort) {
+        const k = (c: string) => `tenant/tnt_contract/docs/${ULID.slice(0, 24)}N${c}.pdf`;
+        const body = new TextEncoder().encode("statement");
+        const cases = [
+          ["REGULATED", "R", true],
+          ["CONFIDENTIAL", "C", true],
+          ["GENERAL", "G", false],
+        ] as const;
+        for (const [bucketClass, suffix, noCache] of cases) {
+          await p.put(k(suffix), body, { bucketClass, contentType: "application/pdf" });
+          const url = await p.presign(k(suffix), "get", 60);
+          const q = new URL(url).searchParams;
+          if (!noCache) {
+            expect(q.get("response-cache-control")).toBeNull();
+            expect(q.get("response-expires")).toBeNull();
+          } else {
+            expect(q.get("response-cache-control")).toBe("no-store, private");
+            expect(Date.parse(q.get("response-expires") ?? "")).toBeLessThan(Date.now());
+          }
+          if (!/^https?:/.test(url)) continue;
+          const r = await fetch(url);
+          expect(r.status).toBe(200);
+          expect(new TextDecoder().decode(await r.arrayBuffer())).toBe("statement");
+          if (!noCache) continue;
+          expect(r.headers.get("cache-control")).toBe("no-store, private");
+          expect(Date.parse(r.headers.get("expires") ?? "")).toBeLessThan(Date.now());
+        }
+      },
+    },
   ] as Array<ContractCase<never>>,
   CONSENT: [
     {
