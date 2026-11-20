@@ -16,15 +16,20 @@ import type {
   SecretValue,
   SecretsPort,
   StorageKeyRefRefusal,
+  StorageKeyRefStatus,
+  StorageKeyRefStatusOptions,
+  StorageKeyState,
   StoragePort,
   StoredObject,
 } from "@infrabyx/contracts/ports";
 import {
   PRESIGN_NO_CACHE,
+  STORAGE_KEY_UNAVAILABLE,
   compartmentAllowed,
   isValidStorageKey,
   presignNoCache,
   resolveStorageKeyRef,
+  storageKeyRefStatusRefusal,
 } from "@infrabyx/contracts/ports";
 import { LocalKms, sha256Hex } from "@infrabyx/crypto";
 
@@ -102,6 +107,12 @@ export interface MemoryStorageKeyRefs {
   keyRefs?: (tenantId: string) => readonly string[] | undefined;
   /** `{ [prefix]: keyRef }` for a tenant, as `S3StorageOptions.tenantKeyRefPrefixes`. */
   keyRefPrefixes?: (tenantId: string) => Readonly<Record<string, string>> | undefined;
+  /**
+   * PR-UDF-068: the state `keyRefStatus(…, { describeKey: true })` reports for a known reference,
+   * as KMS would (`Enabled` when absent). Only the status reads it: writes and reads of the fake
+   * never fail on a key's state.
+   */
+  keyStates?: (tenantId: string, keyRef: string) => StorageKeyState | undefined;
 }
 
 const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
@@ -272,6 +283,36 @@ export class MemoryStorage implements StoragePort {
     return o.retainUntil
       ? { mode: "COMPLIANCE", retainUntil: o.retainUntil.toISOString() }
       : { mode: null, retainUntil: null };
+  }
+  /**
+   * PR-UDF-068: whether a write naming `keyRef` in `tenantId` would resolve, refused with the
+   * write's label (`s3` adds the shared-key and tenant-CMK rules, which the fake does not model).
+   * With `describeKey`, the configured `keyStates` (default `Enabled`): any other state answers
+   * `storage_key_unavailable` with that state.
+   */
+  async keyRefStatus(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusOptions,
+  ): Promise<StorageKeyRefStatus> {
+    const r = storageKeyRefStatusRefusal(
+      tenantId,
+      keyRef,
+      opts.bucketClass,
+      this.named.keyRefPrefixes?.(tenantId),
+    );
+    if (!r || !compartmentAllowed(opts.bucketClass, opts.compartment))
+      throw new IpbError("IPB-PORT-003", {
+        detail: "the tenant id, bucket class or compartment is malformed",
+      });
+    if (r.refusal) return { status: "refused", reason: r.refusal };
+    if (!(this.named.keyRefs?.(tenantId) ?? []).includes(keyRef))
+      return { status: "refused", reason: "key_ref_unknown" };
+    if (!opts.describeKey) return { status: "resolves" };
+    const keyState = this.named.keyStates?.(tenantId, keyRef) ?? "Enabled";
+    return keyState === "Enabled"
+      ? { status: "resolves", keyState }
+      : { status: "refused", reason: STORAGE_KEY_UNAVAILABLE, keyState };
   }
   async replicateTo(
     target: StoragePort,

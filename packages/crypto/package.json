@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/crypto",
-  "version": "1.9.2",
+  "version": "1.10.0",
   "description": "The only cryptography call-site; crypto-agility layer",
   "license": "UNLICENSED",
   "private": false,
@@ -19,6 +19,10 @@
     "./app-attest-test": {
       "types": "./dist/app-attest-test.d.ts",
       "default": "./dist/app-attest-test.js"
+    },
+    "./mtls-test": {
+      "types": "./dist/mtls-test.d.ts",
+      "default": "./dist/mtls-test.js"
     }
   },
   "files": [

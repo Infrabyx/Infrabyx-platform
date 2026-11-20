@@ -140,6 +140,8 @@ export function stepUpChallenge(
   e: unknown,
 ): { status: 401; headers: { "www-authenticate": string }; requiredAcr: string } | null {
   if (!(e instanceof IpbError) || e.code !== "IPB-SEC-001" || e.meta?.step_up !== true) return null;
+  // A customer step-up (PR-UDF-056) answers with the DPoP scheme: `customerStepUpChallenge`.
+  if (e.meta.customer === true) return null;
   const acr = e.meta.required_acr;
   if (typeof acr !== "string" || !ACR_VALUES.test(acr)) return null;
   const description =

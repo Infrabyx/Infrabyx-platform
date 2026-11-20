@@ -5,6 +5,7 @@ import { expect } from "vitest";
 import type { CustomerIdentityPort } from "@infrabyx/contracts/ports";
 import { jwkThumbprint, randomInt } from "@infrabyx/crypto";
 import type { ContractCase } from "@infrabyx/testing";
+import { assertCustomerStepUp, customerStepUpChallenge } from "../customer.js";
 import { testDevice, type TestDevice } from "./dpop-device.js";
 
 export interface CustomerCaseContext {
@@ -424,6 +425,99 @@ export function customerCases(ctx: CustomerCaseContext): Array<ContractCase<Cust
           }),
         ).rejects.toMatchObject({ code: "IPB-IDN-001", meta: { reason: "dpop_htu" } });
         expect(ctx.inbox.size).toBe(before);
+      },
+    },
+    {
+      name: "PR-UDF-056 @IPB-02-01 a stale session must step up with a fresh code on the same device; the age is the step-up's",
+      async run(p) {
+        if (!p.startStepUp || !p.confirmStepUp) return;
+        const t = p.signInProofTarget;
+        const policy = { acr: "otp" as const, maxAgeSeconds: 60 };
+        const a = await signIn(p, ctx);
+        const c0 = await call(p, a.device, a.session.accessToken);
+        const userId = c0.sub;
+        expect(c0.acr).toBe("otp");
+        expect(c0.auth_time).toBeGreaterThanOrEqual(Math.floor(Date.now() / 1000) - 60);
+        // 61 s after the sign-in the session is stale for this policy: the RFC 9470 answer.
+        const later = (c0.auth_time! + 61) * 1000;
+        const stale = (() => {
+          try {
+            assertCustomerStepUp(c0, policy, later);
+          } catch (e) {
+            return e;
+          }
+          return null;
+        })();
+        expect(stale).toMatchObject({
+          code: "IPB-SEC-001",
+          meta: { step_up: true, customer: true, required_acr: "otp", max_age: 60 },
+        });
+        expect(customerStepUpChallenge(stale)?.headers["www-authenticate"]).toMatch(
+          /^DPoP error="insufficient_user_authentication".*acr_values="otp", max_age=60/,
+        );
+        const req = {
+          tenantId: a.tenantId,
+          userId,
+          deviceId: a.session.device.id,
+          channel: "sms" as const,
+          login: a.login,
+        };
+        // Another key cannot start it for this device; nothing is sent.
+        const before = ctx.inbox.get(a.login);
+        await expect(
+          p.startStepUp({ ...req, dpopProof: testDevice().proof(t.htm, t.htu) }),
+        ).rejects.toMatchObject({ code: "IPB-IDN-001", meta: { reason: "device" } });
+        expect(ctx.inbox.get(a.login)).toBe(before);
+        const ch = await afterResendInterval(() =>
+          p.startStepUp!({ ...req, dpopProof: a.device.proof(t.htm, t.htu) }),
+        );
+        const code = ctx.inbox.get(a.login)!;
+        expect(code).toMatch(/^[0-9]{6}$/);
+        const confirm = (o: { code?: string; deviceId?: string }, device = a.device) =>
+          p.confirmStepUp!({
+            tenantId: a.tenantId,
+            userId,
+            deviceId: o.deviceId ?? a.session.device.id,
+            challengeId: ch.challengeId,
+            code: o.code ?? code,
+            dpopProof: device.proof(t.htm, t.htu),
+          });
+        // Another key, another device session, or a wrong code is refused.
+        await expect(confirm({}, testDevice())).rejects.toMatchObject({
+          code: "IPB-IDN-001",
+          meta: { reason: "dpop_jkt" },
+        });
+        await expect(confirm({ deviceId: "dev_00000000000000000000000000" })).rejects.toMatchObject(
+          { meta: { reason: "challenge" } },
+        );
+        await expect(
+          confirm({ code: code === "000000" ? "000001" : "000000" }),
+        ).rejects.toMatchObject({ code: "IPB-IDN-001", meta: { reason: "code" } });
+        const done = await confirm({});
+        expect(done).toMatchObject({ deviceId: a.session.device.id, acr: "otp" });
+        const c1 = await p.verifyRequest({
+          authorization: `DPoP ${a.session.accessToken}`,
+          dpopProof: a.device.proof("GET", API, { accessToken: a.session.accessToken }),
+          method: "GET",
+          url: API,
+          fresh: true,
+        });
+        expect(c1.acr).toBe("otp");
+        expect(c1.auth_time).toBe(Math.floor(Date.parse(done.authTime) / 1000));
+        // The step-up came at least one resend interval after the sign-in, so at the instant the
+        // sign-in is stale the step-up is not: the age is the step-up's.
+        expect(c1.auth_time!).toBeGreaterThan(c0.auth_time!);
+        expect(() => assertCustomerStepUp(c1, policy, later)).not.toThrow();
+        // Used once, and never a sign-in code.
+        await expect(confirm({})).rejects.toMatchObject({ meta: { reason: "challenge" } });
+        await expect(
+          p.verifyChallenge({
+            tenantId: a.tenantId,
+            challengeId: ch.challengeId,
+            code,
+            dpopProof: a.device.proof(t.htm, t.htu),
+          }),
+        ).rejects.toMatchObject({ meta: { reason: "challenge" } });
       },
     },
   ];
