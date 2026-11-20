@@ -3,7 +3,10 @@
 // an adapter over it. Ecosystem Specification §6.2, §6.3 and §3.6. PR-UDF-053 (R1-D-219) added the
 // §6.13 documents, the execution-pack manifest and the LSP's signed eSign and eStamp evidence;
 // R1-D-229 the optional KFS loan amount and the manifest's disbursement clause; R1-D-231 the
-// offer's instalment, penal charges and KFS link and the manifest items' stamp evidence.
+// offer's instalment, penal charges and KFS link and the manifest items' stamp evidence; R1-D-232
+// (PR-UDF-061) Udofin's udf_ext v1 list: two-character product codes, the application's chosen
+// offer and profile, the acceptance's KFS version and hash, the lender's words, the KFS detail,
+// the document references and the new `CoolingOffExitAnswered`.
 import { expect } from "vitest";
 import { findAadhaarLike } from "@infrabyx/contracts";
 import {
@@ -14,7 +17,12 @@ import {
   ExecutionPackManifest,
   ELIGIBILITY_LENDER_UNAVAILABLE,
   INSTALMENT_FREQUENCIES,
+  ApplicationStatusChangedData,
+  CoolingOffExitAnsweredData,
+  DecisionMadeData,
   KfsIssuedData,
+  LoanDisbursedData,
+  SanctionLetterIssuedData,
   OriginationOffer,
   EcosystemEnvelope,
   ORIGINATION_EVENTS,
@@ -146,6 +154,38 @@ const eligibility = (over: Record<string, unknown> = {}) => ({
   fields: { monthly_income_band: "B3", employment: "SALARIED" },
   ...over,
 });
+
+/** An application carrying Udofin's udf_ext v1 fields (R1-D-232), choosing `offerRef` if given. */
+const udfExtApplication = (ref: string, offerRef?: string) => {
+  const base = application(ref);
+  return lspEvent("ApplicationSubmitted", {
+    ...base.data,
+    consents: ["cpr_contract", "cpr_contract_aa"],
+    ...(offerRef ? { offer_ref: offerRef } : {}),
+    product_code: "PL",
+    request: { amount_paise: 4_000_000, tenor_days: 180, purpose: "PERSONAL" },
+    economic_profile: {
+      age_years: 34,
+      occupation: "SALARIED",
+      monthly_income_paise: 6_000_000,
+      income_source: "SALARY",
+    },
+    household: {
+      household_ref: "hh_contract_1",
+      monthly_household_income_paise: 9_000_000,
+      is_microfinance: false,
+    },
+    kyc: { level: "FULL_KYC", state: "VERIFIED" },
+    credit_data_modes: { bureau: true, aa: true },
+    consent_purposes: [
+      { purpose: "BUREAU_PULL", consent_ref: "cpr_contract" },
+      { purpose: "AA_FETCH", consent_ref: "cpr_contract_aa" },
+    ],
+  });
+};
+
+/** A URL or web address inside text (R1-D-232: a payment instruction carries none). */
+const LINKISH = /:\/\/|www\.|\bupi:/i;
 
 const byName = (m: readonly LenderMessage[], name: OriginationEventName) =>
   m.filter((x) => x.name === name);
@@ -520,6 +560,9 @@ export function lenderContractCases(
             expect(offer.monthly_instalment.amount_paise).toBeGreaterThan(0);
             expect(INSTALMENT_FREQUENCIES).toContain(offer.monthly_instalment.frequency);
           }
+          if (offer.monthly_instalment_paise !== undefined && offer.monthly_instalment)
+            expect(offer.monthly_instalment.amount_paise).toBe(offer.monthly_instalment_paise);
+          if (offer.kfs_url !== undefined) expect(new URL(offer.kfs_url).protocol).toBe("https:");
           for (const c of offer.penal_charges ?? []) {
             // A penal charge is a rate or an amount, never both (RBI Penal Charges directions).
             expect((c.rate_bp === undefined) !== (c.amount_paise === undefined)).toBe(true);
@@ -564,6 +607,186 @@ export function lenderContractCases(
             expect(d.not_stampable_reason?.length ?? 0).toBeGreaterThan(0);
           }
         }
+      },
+    },
+    {
+      name: "a two-character product code is taken by the eligibility call",
+      async run(l) {
+        const a = await l.eligibilityCheck(eligibility({ product_code: "PL" }), {
+          idempotencyKey: "idem-elig-product-2ch",
+        });
+        expect(["ELIGIBLE", "NOT_ELIGIBLE", "REFER"]).toContain((a as { outcome: string }).outcome);
+      },
+    },
+    {
+      name: "an application naming an offer the lender made is decided on that offer; one naming an unknown offer is refused",
+      async run(l) {
+        const answer = await l.eligibilityCheck(eligibility({ product_code: "PL" }), {
+          idempotencyKey: "idem-elig-udf-ext-1",
+        });
+        if (!("offers" in answer) || answer.offers.length === 0) return;
+        const chosen = answer.offers[0]!;
+        const before = l.outbox().length;
+        await l.submitApplication(udfExtApplication("lspapp_contract_udf_ext_1", chosen.offer_id));
+        const decision = byName(l.outbox().slice(before), "DecisionMade")[0]!;
+        const d = DecisionMadeData.parse(decision.event.data);
+        if (d.decision === "SANCTIONED")
+          expect(d.offers[0]).toMatchObject({
+            amount_paise: chosen.amount_paise,
+            tenor_months: chosen.tenor_months,
+          });
+        await expect(
+          l.submitApplication(udfExtApplication("lspapp_contract_udf_ext_2", "ofr_never_made")),
+        ).rejects.toMatchObject({ reason: "offer_unknown" });
+        // Every udf_ext field together is a valid ApplicationSubmitted.
+        await l.submitApplication(udfExtApplication("lspapp_contract_udf_ext_3"));
+      },
+    },
+    {
+      name: "an acceptance naming the KFS version and hash is taken when they match and refused when they do not",
+      async run(l) {
+        await l.submitApplication(application("lspapp_contract_kfs_match"));
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        const accepted = (over: Record<string, unknown>) =>
+          lspEvent("BorrowerAccepted", {
+            kfs_id: kfs.event.data.kfs_id,
+            accepted_at: new Date().toISOString(),
+            acknowledged_at: new Date(Date.now() - 60_000).toISOString(),
+            explanation_acknowledged: true,
+            lsp_application_ref: "lspapp_contract_kfs_match",
+            kfs_version: kfs.event.data.version,
+            kfs_sha256: kfs.event.data.document_sha256,
+            device_ref: "dev_contract_1",
+            ...over,
+          });
+        await expect(l.accept(accepted({ kfs_version: 2 }))).rejects.toMatchObject({
+          reason: "kfs_mismatch",
+        });
+        await expect(l.accept(accepted({ kfs_sha256: "e".repeat(64) }))).rejects.toMatchObject({
+          reason: "kfs_mismatch",
+        });
+        await expect(
+          l.accept(accepted({ lsp_application_ref: "lspapp_someone_else" })),
+        ).rejects.toMatchObject({ reason: "application_mismatch" });
+        await l.accept(accepted({}));
+      },
+    },
+    {
+      name: "an exit request inside the cooling-off period is answered once with the amount, a reference and a payment instruction in words without a link",
+      async run(l) {
+        const { applicationId } = await l.submitApplication(application("lspapp_contract_exit"));
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        await l.accept(
+          lspEvent("BorrowerAccepted", {
+            kfs_id: kfs.event.data.kfs_id,
+            accepted_at: new Date().toISOString(),
+            explanation_acknowledged: true,
+          }),
+        );
+        const { loanId } = await l.disburse(applicationId);
+        const exit = (n: number) =>
+          lspEvent("CoolingOffExitRequested", {
+            loan_id: loanId,
+            requested_at: new Date().toISOString(),
+            evidence: {
+              sha256: "b".repeat(64),
+              uri: `storage:tenant/tnt_udofin_test/exit/${n}.pdf`,
+            },
+            lsp_application_ref: "lspapp_contract_exit",
+          });
+        const before = l.outbox().length;
+        await l.coolingOffExit(exit(1));
+        await l.coolingOffExit(exit(2));
+        const answers = byName(l.outbox().slice(before), "CoolingOffExitAnswered");
+        if (answers.length === 0) return; // a lender that answers later, out of band
+        expect(answers).toHaveLength(1);
+        const m = answers[0]!;
+        const spec = ORIGINATION_EVENTS.CoolingOffExitAnswered;
+        expect(m.event.type).toBe(spec.type);
+        expect(m.event.subject).toBe(
+          originationIdempotencyKey("CoolingOffExitAnswered", m.event.data),
+        );
+        const a = CoolingOffExitAnsweredData.parse(m.event.data);
+        expect(a.loan_id).toBe(loanId);
+        expect(LINKISH.test(a.payment_instruction)).toBe(false);
+        // The exit amount is at least the principal disbursed (CF para 11).
+        const disbursed = byName(l.outbox(), "LoanDisbursed").at(-1)!;
+        expect(a.exit_amount_paise).toBeGreaterThanOrEqual(
+          disbursed.event.data.amount_paise as number,
+        );
+        expectNoAadhaarLike(m);
+        await expect(
+          l.coolingOffExit(
+            lspEvent("CoolingOffExitRequested", {
+              ...exit(3).data,
+              lsp_application_ref: "lspapp_someone_else",
+            }),
+          ),
+        ).rejects.toMatchObject({ reason: "application_mismatch" });
+      },
+    },
+    {
+      name: "the lender's status and reason texts, when given, are plain text for the codes it sent",
+      async run(l) {
+        const before = l.outbox().length;
+        if (l.script) l.script({ decision: "REJECTED" });
+        await l.submitApplication(application("lspapp_contract_texts"));
+        if (l.script) l.script({ decision: "SANCTIONED" });
+        const sent = l.outbox().slice(before);
+        for (const m of byName(sent, "ApplicationStatusChanged"))
+          ApplicationStatusChangedData.parse(m.event.data);
+        const d = DecisionMadeData.parse(byName(sent, "DecisionMade")[0]!.event.data);
+        for (const t of d.reason_texts ?? []) expect(d.reason_codes).toContain(t.reason_code);
+      },
+    },
+    {
+      name: "a KFS's detail, when given, is consistent: the schedule in order, the net disbursed within the loan amount, its document shared",
+      async run(l) {
+        const { docs } = await sanctioned(l, "lspapp_contract_kfs_detail");
+        const k = KfsIssuedData.parse(byName(l.outbox(), "KFSIssued").at(-1)!.event.data);
+        const sharedIds = new Map(docs.map((d) => [String(d.event.data.document_id), d]));
+        if (k.document_ref && sharedIds.size > 0) {
+          const doc = sharedIds.get(k.document_ref);
+          expect(doc, "document_ref names a shared document").toBeDefined();
+          expect(doc!.event.data.type).toBe("KFS");
+          expect(doc!.event.data.sha256).toBe(k.document_sha256);
+        }
+        if (k.cash_flows) {
+          const seqs = k.cash_flows.instalments.map((i) => i.seq);
+          expect(seqs).toEqual([...seqs].sort((a, b) => a - b));
+          if (k.loan_amount_paise !== undefined)
+            expect(k.cash_flows.net_disbursed_paise).toBeLessThanOrEqual(k.loan_amount_paise);
+        }
+        if (k.co_lending)
+          expect(k.co_lending.parties.reduce((t, p) => t + p.share_bp, 0)).toBe(10_000);
+        if (k.issued_at)
+          expect(Date.parse(k.issued_at)).toBeLessThanOrEqual(Date.parse(k.validity_expiry));
+      },
+    },
+    {
+      name: "a sanction letter's document reference names the shared letter, and LoanDisbursed's application id is the application",
+      async run(l) {
+        const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc_refs");
+        const s = SanctionLetterIssuedData.parse(
+          byName(l.outbox(), "SanctionLetterIssued").at(-1)!.event.data,
+        );
+        if (s.document_ref && docs.length > 0) {
+          const doc = docs.find((d) => d.event.data.document_id === s.document_ref);
+          expect(doc, "document_ref names a shared document").toBeDefined();
+          expect(doc!.event.data.type).toBe("SANCTION_LETTER");
+          expect(doc!.event.data.sha256).toBe(s.document_sha256);
+        }
+        const kfs = byName(l.outbox(), "KFSIssued").at(-1)!;
+        await l.accept(
+          lspEvent("BorrowerAccepted", {
+            kfs_id: kfs.event.data.kfs_id,
+            accepted_at: new Date().toISOString(),
+            explanation_acknowledged: true,
+          }),
+        );
+        await l.disburse(applicationId);
+        const d = LoanDisbursedData.parse(byName(l.outbox(), "LoanDisbursed").at(-1)!.event.data);
+        if (d.application_id !== undefined) expect(d.application_id).toBe(applicationId);
       },
     },
     {
