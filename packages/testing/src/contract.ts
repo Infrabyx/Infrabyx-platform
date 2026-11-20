@@ -174,6 +174,63 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
       },
     },
     {
+      // PR-UDF-068 (R1-D-239). A leg also configures, for `tnt_contract` in `REGULATED`, a named
+      // key `lender:contract-off` whose key is disabled; an adapter without per-object keys
+      // declares `keyRefStatus` unsupported.
+      name: "keyRefStatus answers resolves or the write's refusal label, and with describeKey the key's state, never a key id (PR-UDF-068)",
+      method: "keyRefStatus",
+      invoke: (p: StoragePort) =>
+        p.keyRefStatus
+          ? p.keyRefStatus("tnt_contract", "lender:contract", { bucketClass: "REGULATED" })
+          : Promise.reject(new Error("adapter lacks keyRefStatus")),
+      async run(p: StoragePort) {
+        if (!p.keyRefStatus) throw new Error("adapter lacks keyRefStatus");
+        const status = (
+          keyRef: string,
+          opts: Parameters<NonNullable<StoragePort["keyRefStatus"]>>[2],
+          t = "tnt_contract",
+        ) => p.keyRefStatus!(t, keyRef, opts);
+        const reg = { bucketClass: "REGULATED" } as const;
+        const answers = [
+          await status("lender:contract", reg),
+          await status("lender:contract", { ...reg, describeKey: true }),
+          await status("lender:contract-b", reg),
+          await status("lender:contract-off", reg),
+          await status("lender:contract-off", { ...reg, describeKey: true }),
+          await status("arn:aws:kms:ap-south-1:111122223333:key", reg),
+          await status("Lender", reg),
+          await status("lender:unknown", reg),
+          await status("lender:contract", { bucketClass: "GENERAL" }),
+          await status("lender:contract", reg, "tnt_other"),
+        ];
+        expect(answers[0]).toEqual({ status: "resolves" });
+        // A store that can read the key's state reports it; one that cannot only resolves.
+        expect(answers[1]!.status).toBe("resolves");
+        if (answers[1]!.keyState !== undefined) expect(answers[1]!.keyState).toBe("Enabled");
+        expect(answers[2]).toEqual({ status: "resolves" });
+        // Without describeKey the status is the configuration's alone: no KMS call.
+        expect(answers[3]).toEqual({ status: "resolves" });
+        expect(answers[4]).toMatchObject({ status: "refused", reason: "storage_key_unavailable" });
+        if (answers[4]!.keyState !== undefined) expect(answers[4]!.keyState).not.toBe("Enabled");
+        expect(answers[5]).toEqual({ status: "refused", reason: "key_ref_invalid" });
+        expect(answers[6]).toEqual({ status: "refused", reason: "key_ref_invalid" });
+        expect(answers[7]).toEqual({ status: "refused", reason: "key_ref_unknown" });
+        expect(answers[8]).toEqual({ status: "refused", reason: "key_ref_class" });
+        // A reference resolves only in its own tenant.
+        expect(answers[9]).toEqual({ status: "refused", reason: "key_ref_unknown" });
+        // Fixed labels only: no key id, ARN or other field in any answer.
+        for (const a of answers) {
+          for (const f of Object.keys(a)) expect(["status", "reason", "keyState"]).toContain(f);
+          expect(JSON.stringify(a)).not.toMatch(/arn:|key\/|[0-9a-f]{8}-[0-9a-f]{4}-/);
+        }
+        await expect(status("lender:contract", reg, "tnt_a/../x")).rejects.toMatchObject({
+          code: "IPB-PORT-003",
+        });
+        // Read-only: nothing was written under the tenant.
+        expect((await p.list("tenant/tnt_other/")).keys).toEqual([]);
+      },
+    },
+    {
       // PR-UDF-060 (R1-D-230). A leg has REGULATED, CONFIDENTIAL and GENERAL buckets. Where the URL
       // is HTTP (moto, MinIO, a sandbox), the store itself must answer with the signed headers.
       name: "a presigned download of a REGULATED or CONFIDENTIAL object signs no-cache response headers; a GENERAL one does not (PR-UDF-060)",

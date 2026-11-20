@@ -111,6 +111,46 @@ export function resolveStorageKeyRef(
 }
 
 /**
+ * Key states `keyRefStatus` may report (Udofin PR-UDF-068, R1-D-239): AWS KMS `KeyState` values.
+ * Only `Enabled` resolves; any other state answers `storage_key_unavailable`. A state the store
+ * reports that is not listed here reads as `Unavailable`.
+ */
+export const STORAGE_KEY_STATES = [
+  "Enabled",
+  "Disabled",
+  "PendingDeletion",
+  "PendingImport",
+  "PendingReplicaDeletion",
+  "Unavailable",
+  "Updating",
+  "Creating",
+] as const;
+export type StorageKeyState = (typeof STORAGE_KEY_STATES)[number];
+/** The label of a key that exists in configuration but cannot be used now (IPB-KMS-001). */
+export const STORAGE_KEY_UNAVAILABLE = "storage_key_unavailable" as const;
+/** Why `keyRefStatus` answers `refused`: a write's refusal label, or the key's state. */
+export type StorageKeyRefStatusReason = StorageKeyRefRefusal | typeof STORAGE_KEY_UNAVAILABLE;
+
+/** Where `keyRefStatus` checks a reference, and whether it asks the key store for the key's state. */
+export interface StorageKeyRefStatusOptions {
+  bucketClass: BucketClass;
+  compartment?: StorageCompartment;
+  /**
+   * Also read the key's state (a read-only KMS `DescribeKey` on `s3`): a key that is not `Enabled`
+   * then answers `storage_key_unavailable`. Off by default (configuration only, no KMS call).
+   */
+  describeKey?: boolean;
+}
+
+/**
+ * The answer of `keyRefStatus` (PR-UDF-068): fixed labels only, never a key id or ARN. `keyState`
+ * is present only when `describeKey` was asked and the store could report it.
+ */
+export type StorageKeyRefStatus =
+  | { status: "resolves"; keyState?: "Enabled" }
+  | { status: "refused"; reason: StorageKeyRefStatusReason; keyState?: StorageKeyState };
+
+/**
  * No-cache presigned downloads (Udofin PR-UDF-060, R1-D-230). A presigned GET of an object in one
  * of these classes (its compartments included) signs S3's response overrides
  * `response-cache-control` and `response-expires`, so the response tells browsers, iOS and
@@ -211,12 +251,51 @@ export interface StoragePort extends Port {
   extendRetention?(key: string, retainUntil: Date): Promise<ObjectRetention>;
   /** The object's retention, or `{ mode: null, retainUntil: null }` when it has none. */
   retentionOf?(key: string): Promise<ObjectRetention>;
+  /**
+   * Whether a write in `tenantId` naming `keyRef` at this location would resolve (Udofin
+   * PR-UDF-068, R1-D-239). Read-only: no object is written, nothing is ledgered. Applies the
+   * write's rules (`resolveStorageKeyRef`'s format, class and prefix-map checks, then the adapter's
+   * own: unknown reference, shared key, tenant CMK) and answers `refused` with that write's label;
+   * with `describeKey`, a key that is not `Enabled` answers `storage_key_unavailable`. Object-level
+   * refusals (`key_ref_changed`, `key_ref_prefix_conflict`) need an object and are not checked. A
+   * tenant other than the caller's, a malformed tenant id or a compartment outside its classes is
+   * refused (`IPB-PORT-003`) as a write would be; an adapter without per-object keys declares it
+   * `unsupported`. Optional on the interface; every platform adapter provides it.
+   */
+  keyRefStatus?(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusOptions,
+  ): Promise<StorageKeyRefStatus>;
   replicateTo(target: StoragePort, prefix: string): Promise<{ copied: number; verified: number }>;
 }
 
+/** The tenant segment of a storage key (`tenant/<tenant_id>/…`). */
+const TENANT_SEGMENT = "[a-z]{2,6}_[A-Za-z0-9]+";
 const KEY_REGEX = new RegExp(
-  `^tenant/[a-z]{2,6}_[A-Za-z0-9]+/[a-z][a-z0-9_]*/${ULID_PATTERN}(\\.[a-z0-9]+)?$`,
+  `^tenant/${TENANT_SEGMENT}/[a-z][a-z0-9_]*/${ULID_PATTERN}(\\.[a-z0-9]+)?$`,
 );
+const TENANT_REGEX = new RegExp(`^${TENANT_SEGMENT}$`);
+
+/** Whether `tenantId` can head a storage key (IPB-01-27), as `keyRefStatus` requires. */
+export const isValidStorageTenantId = (tenantId: string): boolean => TENANT_REGEX.test(tenantId);
+
+/**
+ * PR-UDF-068: the configuration-free part of `keyRefStatus`, shared by every adapter. `null` for a
+ * tenant id that cannot head a key (the adapter refuses the call, IPB-PORT-003); otherwise the
+ * label a write in that tenant naming `keyRef` would be refused with, or `{}`. The prefix map is
+ * checked as a write checks it (a prefix outside the tenant refuses every named-key write).
+ */
+export function storageKeyRefStatusRefusal(
+  tenantId: string,
+  keyRef: string,
+  bucketClass: BucketClass,
+  prefixes?: Readonly<Record<string, string>>,
+): { refusal?: StorageKeyRefRefusal } | null {
+  if (!isValidStorageTenantId(tenantId)) return null;
+  const r = resolveStorageKeyRef(`tenant/${tenantId}/`, { bucketClass, keyRef }, prefixes);
+  return r.refusal ? { refusal: r.refusal } : {};
+}
 
 /** IPB-01-27 key format check (provider never encoded in the key). */
 export const isValidStorageKey = (key: string): boolean => KEY_REGEX.test(key);
