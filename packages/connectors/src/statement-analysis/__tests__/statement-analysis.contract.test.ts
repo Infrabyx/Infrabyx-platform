@@ -7,6 +7,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { sha256Hex, ulid } from "@infrabyx/crypto";
 import {
+  aaStatementAnalysisJoinCases,
   contractStatement,
   defineContractSuite,
   MemoryStorage,
@@ -64,6 +65,18 @@ describe("@IPB-01-15 STATEMENT_ANALYSIS hermetic leg (platform-statement)", () =
   defineContractSuite("STATEMENT_ANALYSIS", platform, statementAnalysisContractCases(fixtures), {
     leg: "hermetic",
   });
+  // PR-UDF-065: the fake AA's FI payloads, analysed by reference from the same STORAGE.
+  defineContractSuite(
+    "STATEMENT_ANALYSIS",
+    platform,
+    aaStatementAnalysisJoinCases<PlatformStatementAnalyser>({
+      storage,
+      dataPrefix: `tenant/${TENANT}/aa_fi/`,
+      reportPrefix: base.reportPrefix,
+      calls: (p) => p.analyses,
+    }),
+    { leg: "hermetic" },
+  );
 });
 
 describe("@IPB-01-15 STATEMENT_ANALYSIS hermetic leg (http-statement, stub)", () => {
