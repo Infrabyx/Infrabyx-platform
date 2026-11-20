@@ -26,12 +26,25 @@
 // application, is refused (`kfs_mismatch`, `application_mismatch`). An exit request inside the
 // cooling-off period is answered once with `CoolingOffExitAnswered`: principal plus the APR for the
 // days held, a payment instruction in words and the lender's exit reference.
+// R1-D-236 (PR-UDF-061 items 12 to 17; PR-047 approved): every envelope's `subject` is the
+// aggregate id its spec names (`originationSubject`; a document's id for `DocumentShared`) and its
+// `seq` counts per subject from 1; the documents are small real synthetic PDFs (`pdfFixture`) whose
+// SHA-256 is over those bytes, the KFS's and the sanction letter's named by `document_ref` and
+// `document_version`; each is shared with a v2 document JWS (type, media type, size and
+// application bound) and its language, and `GET /v1/documents/{id}` answers those fields too. The
+// KFS and the sanction letter are shared after the sanction; the execution pack only after the
+// borrower's acceptance: the CF para 9(3) set (agreement, KFS, sanction letter, terms, product
+// summary, privacy policy), the agreement's e-stamp certificate, the signed `ExecutionPackIssued`
+// (the accepted KFS, enclosures, stamp evidence, not-stampable list, the covenant declared for a
+// business purpose) and, for consumers of the interim carrier, the `EXECUTION_PACK_MANIFEST`
+// document. `CoolingOffExitAnswered` is signed (v1.6).
 import {
   DOCUMENT_EVENTS,
   DOCUMENTS_SCHEMA_VERSION,
   DOCUMENT_URL_MAX_TTL_SECONDS,
   DocumentRetrieval,
   EXECUTION_PACK_MANIFEST_TYPE,
+  ExecutionPackIssuedData,
   ExecutionPackManifest,
   ELIGIBILITY_CHECK_BUDGET_MS,
   ELIGIBILITY_LENDER_UNAVAILABLE,
@@ -42,6 +55,7 @@ import {
   ORIGINATION_SCHEMA_VERSION,
   STAMP_EVIDENCE_MODE_OF,
   originationIdempotencyKey,
+  originationSubject,
   type OriginationEventName,
 } from "@infrabyx/contracts/events";
 import {
@@ -51,10 +65,17 @@ import {
   localRegulatedSigner,
   randomBytes,
   sha256Hex,
-  signDocumentJws,
+  signDocumentJwsV2,
   signRegulatedMessage,
   verifyRegulatedMessage,
 } from "@infrabyx/crypto";
+import { pdfFixture } from "./ports/pdf-text.js";
+
+/** A small real synthetic PDF (R1-D-236, PR-UDF-061 item 14): a title page and a body page. */
+const pdfOf = (title: string, lines: readonly string[]): Uint8Array =>
+  pdfFixture([`${title}\nSynthetic test document, not a real loan record`, lines.join("\n")]);
+
+const rupees = (paise: number): string => `INR ${(paise / 100).toFixed(2)}`;
 
 /**
  * The equated monthly instalment of `amountPaise` over `tenorMonths` at `aprBp` (R1-D-231), in
@@ -186,7 +207,12 @@ interface Application {
   amountPaise: number;
   tenorMonths: number;
   aprBp: number;
+  /** R1-D-236: the request's purpose is a business one (`BUSINESS…`): the WD covenant applies. */
+  businessPurpose: boolean;
+  /** R1-D-236: set at the sanction, used for the pack after the acceptance. */
+  sanction?: { sanctionId: string; kfsDocumentId: string; sanctionDocumentId: string };
   pack?: ExecutionPackManifest;
+  issued?: ExecutionPackIssuedData;
 }
 
 interface StoredDocument {
@@ -195,6 +221,9 @@ interface StoredDocument {
   sha256: string;
   jws: string;
   bytes: Uint8Array;
+  type: string;
+  mediaType: string;
+  applicationId: string;
 }
 
 export class FakeLender {
@@ -216,7 +245,8 @@ export class FakeLender {
   private readonly evidence = new Set<string>();
   private readonly lspReplay = new MemoryReplayStore();
   private next: FakeLenderScript = {};
-  private seq = 0;
+  /** R1-D-236: the last `seq` sent per envelope subject (§3.2 "per-subject sequence"). */
+  private readonly seqs = new Map<string, number>();
   private n = 0;
   private readonly now: () => Date;
 
@@ -241,7 +271,11 @@ export class FakeLender {
     return this.shared;
   }
 
-  /** The execution-pack manifest of a sanctioned application (PR-UDF-053; proposal PR-047). */
+  /**
+   * The interim execution-pack manifest of an accepted application (PR-UDF-053), as shared in its
+   * `EXECUTION_PACK_MANIFEST` document; refused `pack_unknown` before the borrower's acceptance
+   * (R1-D-236). The signed `ExecutionPackIssued` in `outbox()` carries the full pack.
+   */
   executionPack(applicationId: string): ExecutionPackManifest {
     const app = [...this.applications.values()].find((a) => a.applicationId === applicationId);
     if (!app?.pack) throw new LenderRefusal("pack_unknown");
@@ -268,6 +302,11 @@ export class FakeLender {
       issued_at: issued.toISOString(),
       url_expires_at: new Date(expires).toISOString(),
       data_residency: "IN",
+      // R1-D-236: the fields the v2 document JWS binds, so the answer verifies on its own.
+      media_type: d.mediaType,
+      size_bytes: d.bytes.byteLength,
+      type: d.type,
+      application_id: d.applicationId,
     });
   }
 
@@ -376,7 +415,8 @@ export class FakeLender {
     const offerRef = e.data.offer_ref as string | undefined;
     const chosen = offerRef === undefined ? undefined : this.offers.get(offerRef);
     if (offerRef !== undefined && !chosen) throw new LenderRefusal("offer_unknown");
-    const request = e.data.request as { amount_paise: number; tenor_days: number } | undefined;
+    const request = e.data.request as
+      { amount_paise: number; tenor_days: number; purpose: string } | undefined;
     const app: Application = {
       applicationId: this.id("app"),
       lspRef: ref,
@@ -387,6 +427,7 @@ export class FakeLender {
         chosen?.tenorMonths ??
         (request ? Math.min(600, Math.max(1, Math.round(request.tenor_days / 30))) : 12),
       aprBp: chosen?.aprBp ?? 1800,
+      businessPurpose: /^BUSINESS/.test(request?.purpose ?? ""),
     };
     this.applications.set(ref, app);
     await this.move(app, "UNDER_REVIEW");
@@ -441,8 +482,19 @@ export class FakeLender {
       const validityExpiry = new Date(
         this.now().getTime() + (this.o.kfsValidityMs ?? 3 * 86_400_000),
       );
-      const kfsSha256 = sha256Hex(`kfs:${kfsId}`);
+      // R1-D-236 (item 14): the hashes are over the real synthetic PDFs the lender shares.
+      const terms = [
+        `Application ${app.applicationId}`,
+        `Loan amount ${rupees(app.amountPaise)}`,
+        `Tenor ${app.tenorMonths} months`,
+        `Annual percentage rate ${(app.aprBp / 100).toFixed(2)}%`,
+      ];
+      const kfsPdf = pdfOf(`Key Facts Statement ${kfsId} version 1`, terms);
+      const sanctionId = this.id("snc");
+      const sanctionPdf = pdfOf(`Sanction letter ${sanctionId} version 1`, terms);
+      const kfsSha256 = sha256Hex(kfsPdf);
       app.kfs = { kfsId, validityExpiry, version: 1, sha256: kfsSha256 };
+      app.sanction = { sanctionId, kfsDocumentId, sanctionDocumentId };
       this.byKfs.set(kfsId, app);
       await this.emit("KFSIssued", {
         kfs_id: kfsId,
@@ -455,16 +507,21 @@ export class FakeLender {
         // R1-D-229: the KFS "Loan amount" (Annex A Part 1); the fake deducts nothing upfront.
         loan_amount_paise: app.amountPaise,
         ...this.kfsDetail(app, kfsDocumentId),
+        // R1-D-236 (item 16): the file's version beside its document_ref.
+        document_version: 1,
       });
       await this.emit("SanctionLetterIssued", {
-        sanction_id: this.id("snc"),
+        sanction_id: sanctionId,
         version: 1,
         application_id: app.applicationId,
         terms: { amount_paise: app.amountPaise, tenor_months: app.tenorMonths, apr_bp: app.aprBp },
-        document_sha256: sha256Hex(`sanction:${app.applicationId}`),
+        document_sha256: sha256Hex(sanctionPdf),
         document_ref: sanctionDocumentId,
+        document_version: 1,
       });
-      await this.shareExecutionDocuments(app, kfsId, kfsDocumentId, sanctionDocumentId);
+      // The KFS and the sanction letter go before the acceptance; the pack after it (item 17).
+      await this.share(app, "KFS", kfsPdf, "application/pdf", kfsDocumentId);
+      await this.share(app, "SANCTION_LETTER", sanctionPdf, "application/pdf", sanctionDocumentId);
     }
     return { applicationId: app.applicationId };
   }
@@ -533,6 +590,8 @@ export class FakeLender {
     )
       throw new LenderRefusal("kfs_expired");
     await this.move(app, "ACCEPTED");
+    // R1-D-236 (item 17): the execution pack follows the borrower's acceptance.
+    await this.issueExecutionPack(app);
   }
 
   /** Disburses an accepted application: `LoanDisbursed` with the cooling-off end (§6.3). */
@@ -590,27 +649,47 @@ export class FakeLender {
     });
   }
 
-  /** Shares the KFS, the sanction letter, the loan agreement and the execution-pack manifest. */
-  private async shareExecutionDocuments(
-    app: Application,
-    kfsId: string,
-    kfsDocumentId: string,
-    sanctionDocumentId: string,
-  ): Promise<void> {
-    const enc = (t: string) => new TextEncoder().encode(t);
-    const kfs = await this.share(app, "KFS", enc(`kfs:${kfsId}`), "application/pdf", kfsDocumentId);
-    await this.share(
-      app,
-      "SANCTION_LETTER",
-      enc(`sanction:${app.applicationId}`),
-      "application/pdf",
-      sanctionDocumentId,
-    );
+  /**
+   * After the acceptance (R1-D-236, item 17): shares the rest of the CF para 9(3) set (the loan
+   * agreement, the terms and conditions, the product summary, the privacy policy) and the
+   * agreement's e-stamp certificate, emits the signed `ExecutionPackIssued` listing the whole set
+   * with the KFS and the sanction letter shared at the sanction, and shares the interim manifest.
+   */
+  private async issueExecutionPack(app: Application): Promise<void> {
+    if (!app.kfs || !app.sanction || app.issued) return;
+    const { sanctionId, kfsDocumentId, sanctionDocumentId } = app.sanction;
+    const pdf = "application/pdf";
     const agreement = await this.share(
       app,
       "LOAN_AGREEMENT",
-      enc(`agreement:${app.applicationId}`),
-      "application/pdf",
+      pdfOf(`Loan agreement for ${app.applicationId}`, [
+        `Clause 1.2: the Key Facts Statement ${app.kfs.kfsId} is Annex A`,
+        `Clause 1.3: the sanction letter ${sanctionId} is Annex B`,
+        "Clause 1.4: the terms and conditions are Annex C",
+        `Clause 4.2: the lender disburses ${rupees(app.amountPaise)}`,
+        ...(app.businessPurpose
+          ? ["Clause 9.1: the borrower will not induct a wilful defaulter into its management"]
+          : []),
+      ]),
+      pdf,
+    );
+    const tnc = await this.share(
+      app,
+      "TERMS_AND_CONDITIONS",
+      pdfOf("Terms and conditions", [`For application ${app.applicationId}`]),
+      pdf,
+    );
+    const summary = await this.share(
+      app,
+      "PRODUCT_SUMMARY",
+      pdfOf("Product summary", ["A personal loan of the test lender"]),
+      pdf,
+    );
+    const privacy = await this.share(
+      app,
+      "PRIVACY_POLICY",
+      pdfOf("Privacy policy", ["How the test lender and its LSP use the borrower's data"]),
+      pdf,
     );
     const stamp = {
       state: "IN-MH",
@@ -619,45 +698,79 @@ export class FakeLender {
       mode: "E_STAMP",
       payer: "BORROWER",
     } as const;
-    const pack = ExecutionPackManifest.parse({
+    const certificateNo = `${stamp.state}-FAKE-${agreement.documentId.slice(-12).toUpperCase()}`;
+    const certificate = await this.share(
+      app,
+      "ESTAMP_CERTIFICATE",
+      pdfOf(`e-Stamp certificate ${certificateNo}`, [
+        `Duty ${rupees(stamp.duty_paise)} under article ${stamp.article}`,
+      ]),
+      pdf,
+    );
+    const docRow = (
+      d: StoredDocument,
+      kind: string,
+      over: Record<string, unknown> = {},
+    ): Record<string, unknown> => ({
+      document_id: d.documentId,
+      version: d.version,
+      kind,
+      sha256: d.sha256,
+      execution_mode: "NONE",
+      stamp_required: false,
+      signers: [],
+      ...over,
+    });
+    const kfsDoc = this.docs.get(kfsDocumentId)!;
+    const sanctionDoc = this.docs.get(sanctionDocumentId)!;
+    const reason = "A disclosure or notice, not an instrument chargeable with duty";
+    const issued = ExecutionPackIssuedData.parse({
       pack_id: this.id("pack"),
       version: 1,
       application_id: app.applicationId,
-      kfs_id: kfsId,
+      kfs_id: app.kfs.kfsId,
+      kfs_version: app.kfs.version,
+      kfs_sha256: app.kfs.sha256,
+      sanction_id: sanctionId,
       documents: [
-        {
-          document_id: agreement.documentId,
-          version: 1,
-          kind: "LOAN_AGREEMENT",
-          sha256: agreement.sha256,
+        docRow(agreement, "LOAN_AGREEMENT", {
           execution_mode: "ESIGN_AADHAAR",
           stamp_required: true,
           signers: ["BORROWER", "LENDER"],
-          // R1-D-231: the e-stamp of the agreement, in the pack's stamp State and duty.
+          instrument_code: "LOAN_AGREEMENT",
           stamp_evidence: {
-            mode: STAMP_EVIDENCE_MODE_OF[stamp.mode],
+            channel: stamp.mode,
+            certificate_no: certificateNo,
             state: stamp.state,
-            certificate_number: `${stamp.state}-FAKE-${agreement.documentId.slice(-12).toUpperCase()}`,
             duty_paise: stamp.duty_paise,
+            stated_duty_paise: stamp.duty_paise,
             stamped_document_sha256: agreement.sha256,
-            vendor_ref: "stv_fake_vendor",
+            issued_at: this.now().toISOString(),
+            vendor_certificate_id: "stv_fake_vendor",
+            certificate_document_id: certificate.documentId,
           },
-        },
-        {
-          document_id: kfs.documentId,
-          version: 1,
-          kind: "KFS",
-          sha256: kfs.sha256,
-          execution_mode: "NONE",
-          stamp_required: false,
-          signers: [],
-          not_stampable: true,
-          not_stampable_reason: "A disclosure statement, not an instrument chargeable with duty",
-        },
+        }),
+        docRow(kfsDoc, "KFS", { enclosure_code: "ANNEX_A" }),
+        docRow(sanctionDoc, "SANCTION_LETTER", { enclosure_code: "ANNEX_B" }),
+        docRow(tnc, "TERMS_AND_CONDITIONS", { enclosure_code: "ANNEX_C" }),
+        docRow(summary, "PRODUCT_SUMMARY"),
+        docRow(privacy, "PRIVACY_POLICY"),
       ],
       stamp,
       summary_box: { document_id: agreement.documentId, page: 2 },
-      covenant_declaration: { document_id: agreement.documentId, sha256: agreement.sha256 },
+      covenant: { business_purpose: app.businessPurpose, declared: app.businessPurpose },
+      ...(app.businessPurpose
+        ? { covenant_declaration: { document_id: agreement.documentId, sha256: agreement.sha256 } }
+        : {}),
+      enclosure_list: [
+        { code: "ANNEX_A", clause_ref: "cl.1.2" },
+        { code: "ANNEX_B", clause_ref: "cl.1.3" },
+        { code: "ANNEX_C", clause_ref: "cl.1.4" },
+      ],
+      not_stampable: [kfsDoc, sanctionDoc, summary, privacy].map((d) => ({
+        document_id: d.documentId,
+        reason,
+      })),
       countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
       // R1-D-229: the loan agreement's clause stating the amount to be disbursed.
       disbursement_clause: {
@@ -666,11 +779,15 @@ export class FakeLender {
         amount_stated_paise: app.amountPaise,
       },
     });
+    app.issued = issued;
+    await this.emit("ExecutionPackIssued", issued as unknown as Record<string, unknown>);
+    // The interim carrier (PR-UDF-053), unchanged in shape, for consumers that still read it.
+    const pack = ExecutionPackManifest.parse(manifestOf(issued, agreement));
     app.pack = pack;
     await this.share(
       app,
       EXECUTION_PACK_MANIFEST_TYPE,
-      enc(canonicalize(pack)),
+      new TextEncoder().encode(canonicalize(pack)),
       "application/json",
     );
   }
@@ -683,12 +800,30 @@ export class FakeLender {
     documentId = this.id("doc"),
   ): Promise<StoredDocument> {
     const sha256 = sha256Hex(bytes);
-    const jws = await signDocumentJws({
-      descriptor: { document_id: documentId, version: 1, sha256 },
+    // R1-D-236 (item 13): the v2 descriptor binds the type, media type, size and application.
+    const jws = await signDocumentJwsV2({
+      descriptor: {
+        document_id: documentId,
+        version: 1,
+        sha256,
+        type,
+        media_type: mediaType,
+        size_bytes: bytes.byteLength,
+        application_id: app.applicationId,
+      },
       kid: this.signer.kid,
       sign: this.signer.sign,
     });
-    const d: StoredDocument = { documentId, version: 1, sha256, jws, bytes };
+    const d: StoredDocument = {
+      documentId,
+      version: 1,
+      sha256,
+      jws,
+      bytes,
+      type,
+      mediaType,
+      applicationId: app.applicationId,
+    };
     this.docs.set(documentId, d);
     const spec = DOCUMENT_EVENTS.DocumentShared;
     const data = spec.schema.parse({
@@ -702,14 +837,10 @@ export class FakeLender {
       media_type: mediaType,
       size_bytes: bytes.byteLength,
       application_id: app.applicationId,
+      language: "en",
     });
     this.shared.push({
-      event: this.envelope(
-        spec.type,
-        `document_id=${documentId}|version=1`,
-        DOCUMENTS_SCHEMA_VERSION,
-        data,
-      ),
+      event: this.envelope(spec.type, documentId, DOCUMENTS_SCHEMA_VERSION, data),
     });
     return d;
   }
@@ -744,7 +875,7 @@ export class FakeLender {
     const now = this.now();
     const event = this.envelope(
       spec.type,
-      originationIdempotencyKey(name, data),
+      originationSubject(name, data),
       ORIGINATION_SCHEMA_VERSION,
       data,
     );
@@ -767,6 +898,9 @@ export class FakeLender {
   ): EcosystemEnvelope {
     const now = this.now();
     const tenant = this.o.tenantId ?? "tnt_fake_re";
+    // R1-D-236 (item 15): `subject` is the aggregate id, `seq` counts per subject from 1.
+    const seq = (this.seqs.get(subject) ?? 0) + 1;
+    this.seqs.set(subject, seq);
     return EcosystemEnvelope.parse({
       specversion: "1.0",
       id: uuidv7(now.getTime()),
@@ -782,9 +916,54 @@ export class FakeLender {
       legalbasis: "CONTRACT_PERFORMANCE_RE",
       dataclass: "FINANCIAL",
       schemaver,
-      seq: ++this.seq,
+      seq,
       environment: "test",
       data,
     });
   }
+}
+
+/** The interim manifest (PR-UDF-053's shape, unchanged) of an issued pack (R1-D-236). */
+function manifestOf(p: ExecutionPackIssuedData, agreement: StoredDocument): unknown {
+  const reasons = new Map((p.not_stampable ?? []).map((n) => [n.document_id, n.reason]));
+  return {
+    pack_id: p.pack_id,
+    version: p.version,
+    application_id: p.application_id,
+    kfs_id: p.kfs_id,
+    sanction_id: p.sanction_id,
+    documents: p.documents.map((d) => ({
+      document_id: d.document_id,
+      version: d.version,
+      kind: d.kind,
+      sha256: d.sha256,
+      execution_mode: d.execution_mode,
+      stamp_required: d.stamp_required,
+      signers: d.signers,
+      ...(d.stamp_evidence
+        ? {
+            stamp_evidence: {
+              mode: STAMP_EVIDENCE_MODE_OF[d.stamp_evidence.channel],
+              state: d.stamp_evidence.state,
+              certificate_number: d.stamp_evidence.certificate_no,
+              duty_paise: d.stamp_evidence.duty_paise,
+              stamped_document_sha256: d.stamp_evidence.stamped_document_sha256,
+              vendor_ref: d.stamp_evidence.vendor_certificate_id,
+            },
+          }
+        : {}),
+      ...(reasons.has(d.document_id)
+        ? { not_stampable: true, not_stampable_reason: reasons.get(d.document_id) }
+        : {}),
+    })),
+    stamp: p.stamp,
+    summary_box: p.summary_box,
+    // The interim shape requires a covenant declaration: the agreement, as before R1-D-236.
+    covenant_declaration: p.covenant_declaration ?? {
+      document_id: agreement.documentId,
+      sha256: agreement.sha256,
+    },
+    countersignature: p.countersignature,
+    disbursement_clause: p.disbursement_clause,
+  };
 }
