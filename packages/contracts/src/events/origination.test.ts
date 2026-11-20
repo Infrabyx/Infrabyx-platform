@@ -20,6 +20,7 @@ import {
   OriginationOffer,
   PENAL_CHARGE_BASES,
   originationIdempotencyKey,
+  originationSubject,
 } from "./origination.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
 
@@ -39,9 +40,11 @@ describe("origination schemas (PR-UDF-051)", () => {
     expect(ORIGINATION_EVENTS.KFSIssued.type).toBe("in.infrabyx.origination.KFSIssued.v1");
   });
 
-  it("lists the six regulated messages, as the Specification's regulated list has them", () => {
+  it("lists the eight regulated messages, as the Specification's regulated list has them", () => {
     expect([...ORIGINATION_REGULATED].sort()).toEqual(
       [
+        "CoolingOffExitAnswered",
+        "ExecutionPackIssued",
         "DecisionMade",
         "EStampCompleted",
         "ESignCompleted",
@@ -406,7 +409,8 @@ describe("the udf_ext v1 fields (PR-UDF-061)", () => {
       type: "in.infrabyx.servicing.CoolingOffExitAnswered.v1",
       idempotency: ["loan_id", "exit_ref"],
       direction: "LENDER_TO_LSP",
-      regulated: false,
+      // Signed from Spec v1.6 (PR-047 approved, owner 20 Nov 2026 18:50; R1-D-236).
+      regulated: true,
     });
     const a = {
       loan_id: "ln_1",
@@ -579,5 +583,88 @@ describe("the udf_ext v1 fields (PR-UDF-061)", () => {
         disbursed_at: T,
       }).success,
     ).toBe(true);
+  });
+});
+
+describe("PR-UDF-061 items 12 to 17 (owner, 20 Nov 2026 18:50; R1-D-236)", () => {
+  it("registers ExecutionPackIssued as a signed lender → LSP §6.2 event keyed (pack_id, version)", () => {
+    expect(ORIGINATION_EVENTS.ExecutionPackIssued).toMatchObject({
+      type: "in.infrabyx.origination.ExecutionPackIssued.v1",
+      idempotency: ["pack_id", "version"],
+      direction: "LENDER_TO_LSP",
+      regulated: true,
+      subject: "application_id",
+    });
+  });
+
+  it("names every event's subject field: its aggregate, the application or the loan (§3.2)", () => {
+    const subjects = Object.fromEntries(
+      Object.entries(ORIGINATION_EVENTS).map(([n, e]) => [n, e.subject]),
+    );
+    expect(subjects).toEqual({
+      ApplicationSubmitted: "lsp_application_ref",
+      ApplicationStatusChanged: "application_id",
+      AdditionalInfoRequested: "application_id",
+      DecisionMade: "application_id",
+      KFSIssued: "application_id",
+      SanctionLetterIssued: "application_id",
+      ExecutionPackIssued: "application_id",
+      BorrowerAccepted: "lsp_application_ref",
+      ESignCompleted: "application_id",
+      EStampCompleted: "application_id",
+      CoolingOffExitRequested: "loan_id",
+      CoolingOffExitAnswered: "loan_id",
+      LoanDisbursed: "loan_id",
+    });
+    // Every lender-produced origination event that carries application_id is on it.
+    for (const [n, e] of Object.entries(ORIGINATION_EVENTS))
+      if (e.direction === "LENDER_TO_LSP" && e.type.includes(".origination."))
+        expect(e.subject, n).toBe("application_id");
+    const kfs = { kfs_id: "kfs_1", application_id: "app_1" };
+    expect(originationSubject("KFSIssued", kfs)).toBe("app_1");
+    expect(originationSubject("AdditionalInfoRequested", { application_id: "app_1" })).toBe(
+      "app_1",
+    );
+    // The fallbacks, where the Specification makes the aggregate's field optional.
+    expect(
+      originationSubject("BorrowerAccepted", { kfs_id: "kfs_1", lsp_application_ref: "lsp_1" }),
+    ).toBe("lsp_1");
+    expect(originationSubject("BorrowerAccepted", { kfs_id: "kfs_1" })).toBe("kfs_1");
+    expect(
+      originationSubject("ESignCompleted", { document_id: "doc_1", application_id: "app_1" }),
+    ).toBe("app_1");
+    expect(originationSubject("EStampCompleted", { document_id: "doc_1" })).toBe("doc_1");
+    expect(() => originationSubject("LoanDisbursed", { utr: "X" })).toThrow(/loan_id/);
+    expect(() => originationSubject("KFSIssued", { kfs_id: "kfs_1" })).toThrow(/application_id/);
+  });
+
+  it("takes the KFS's and the sanction letter's document version beside the reference, refusing a bad one", () => {
+    const k = {
+      kfs_id: "kfs_1",
+      version: 1,
+      application_id: "app_1",
+      proposal_no: "PRP-1",
+      validity_expiry: T,
+      apr_bp: 1800,
+      document_sha256: H,
+    };
+    expect(
+      KfsIssuedData.safeParse({ ...k, document_ref: "doc_kfs_1", document_version: 2 }).success,
+    ).toBe(true);
+    const s = {
+      sanction_id: "snc_1",
+      version: 1,
+      application_id: "app_1",
+      terms: { amount_paise: 5_000_000, tenor_months: 12, apr_bp: 1800 },
+      document_sha256: H,
+    };
+    expect(
+      SanctionLetterIssuedData.safeParse({ ...s, document_ref: "doc_snc_1", document_version: 1 })
+        .success,
+    ).toBe(true);
+    for (const v of [0, 1.5, "1"]) {
+      expect(KfsIssuedData.safeParse({ ...k, document_version: v }).success).toBe(false);
+      expect(SanctionLetterIssuedData.safeParse({ ...s, document_version: v }).success).toBe(false);
+    }
   });
 });

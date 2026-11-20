@@ -181,8 +181,11 @@ export {
 } from "./app-attest.js";
 export {
   DOCUMENT_JWS_TYP,
+  DOCUMENT_JWS_V2_TYP,
   signDocumentJws,
+  signDocumentJwsV2,
   verifyDocumentJws,
   type DocumentDescriptor,
+  type DocumentDescriptorV2,
   type DocumentJwsResult,
 } from "./document-jws.js";
