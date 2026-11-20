@@ -9,7 +9,7 @@ import type { DocgenPort, RenderedDocument } from "@infrabyx/contracts/ports";
 import type { PortCall } from "@infrabyx/contracts/ports";
 import { assertHttpsUrl, type DocxDocument, type DocxListItem, type DocxRun } from "./docx.js";
 import { OfficeExportError } from "./ooxml.js";
-import { needsShaping, toPdf, type PdfOptions } from "./pdf.js";
+import { PDF_LANG_TAG, needsShaping, toPdf, type PdfOptions } from "./pdf.js";
 
 /** Whether any text of the document is in an Indic script (and so needs DOCGEN). */
 export function pdfNeedsShaping(doc: DocxDocument): boolean {
@@ -45,7 +45,6 @@ const esc = (s: string) =>
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
-const LANG = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 
 function runsHtml(rs: readonly DocxRun[]): string {
   return rs
@@ -80,7 +79,8 @@ function listHtml(items: readonly DocxListItem[], tag: "ul" | "ol"): string {
  * e.g. `hi`, `pa`), which the renderer uses to choose fonts and shaping.
  */
 export function blocksToHtml(doc: DocxDocument, o: { lang: string }): string {
-  if (!LANG.test(o.lang)) throw new OfficeExportError("block_invalid", "lang is a BCP 47 tag");
+  if (!PDF_LANG_TAG.test(o.lang))
+    throw new OfficeExportError("block_invalid", "lang is a BCP 47 tag");
   const body = doc.blocks
     .map((b) => {
       switch (b.type) {
@@ -123,7 +123,9 @@ export type PdfRoute =
 /**
  * A PDF of `doc` on the right path: `toPdf` in process when its fonts can show every character;
  * DOCGEN (`renderHtml`, format `pdf` or `pdfa`) when any text is in an Indic script. The DOCGEN
- * path needs the port, the document's `lang` and the STORAGE `outputPrefix` it writes to.
+ * path needs the port, the document's `lang` and the STORAGE `outputPrefix` it writes to. In
+ * process, `pdfa: "2b"` gives PDF/A-2b with `lang` as its language (PR-FBX-52); `format` applies
+ * to the DOCGEN path only.
  */
 export async function renderPdf(
   doc: DocxDocument,
@@ -136,7 +138,7 @@ export async function renderPdf(
   } = {},
 ): Promise<PdfRoute> {
   if (!pdfNeedsShaping(doc)) {
-    const { docgen: _d, lang: _l, outputPrefix: _p, format: _f, call: _c, ...pdf } = o;
+    const { docgen: _d, outputPrefix: _p, format: _f, call: _c, ...pdf } = o;
     return { via: "inline", pdf: toPdf(doc, pdf) };
   }
   if (!o.docgen || !o.lang || !o.outputPrefix)
