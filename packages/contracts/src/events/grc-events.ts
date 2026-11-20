@@ -229,11 +229,58 @@ export const SECURITY_INCIDENT_CLASSES = [
 export const SECURITY_INCIDENT_STATUSES = ["OPEN", "CONTAINED", "RESOLVED", "CLOSED"] as const;
 
 /**
+ * The CERT-In incident type (owner, 20 Nov 2026; R1-D-229; #159 (a)): a code for each type of
+ * cyber incident in Annexure I of the CERT-In Directions under section 70B(6) of the IT Act, 2000
+ * (28 April 2022), which a service provider or body corporate reports to CERT-In within six hours
+ * of noticing it, beside the incident's own `class`. `OTHER` covers a type the list does not name.
+ * [VERIFY: current Annexure list] against the Directions and any later CERT-In FAQ or amendment
+ * before a product relies on the codes for its report.
+ */
+export const CERT_IN_INCIDENT_CATEGORIES = [
+  "TARGETED_SCANNING_PROBING",
+  "COMPROMISE_OF_CRITICAL_SYSTEMS",
+  "UNAUTHORISED_ACCESS",
+  "WEBSITE_DEFACEMENT",
+  "MALICIOUS_CODE",
+  "ATTACK_ON_SERVERS",
+  "IDENTITY_THEFT_SPOOFING_PHISHING",
+  "DOS_DDOS",
+  "ATTACK_ON_CRITICAL_INFRASTRUCTURE",
+  "ATTACK_ON_APPLICATIONS",
+  "DATA_BREACH",
+  "DATA_LEAK",
+  "ATTACK_ON_IOT",
+  "ATTACK_VIA_MALICIOUS_MOBILE_APP",
+  "FAKE_MOBILE_APP",
+  "UNAUTHORISED_SOCIAL_MEDIA_ACCESS",
+  "ATTACK_ON_CLOUD",
+  "ATTACK_ON_BLOCKCHAIN_CRYPTO",
+  "ATTACK_ON_AI_ML",
+  "OTHER",
+] as const;
+export type CertInIncidentCategory = (typeof CERT_IN_INCIDENT_CATEGORIES)[number];
+
+/** The CERT-In reporting window: six hours from noticing the incident (Directions para (ii)). */
+export const CERT_IN_REPORT_WINDOW_MS = 6 * 3_600_000;
+
+/**
+ * The latest time a CERT-In report is due: `noticedAt` plus six hours, as an RFC 3339 UTC time.
+ * Takes a `Date` or an RFC 3339 string; an invalid time throws.
+ */
+export function certInReportBy(noticedAt: Date | string): string {
+  const t = typeof noticedAt === "string" ? Date.parse(noticedAt) : noticedAt.getTime();
+  if (!Number.isFinite(t)) throw new RangeError("certInReportBy: noticedAt is not a valid time");
+  return new Date(t + CERT_IN_REPORT_WINDOW_MS).toISOString();
+}
+
+/**
  * Idempotency key (incident_id, update_seq); a consumer applies updates in `update_seq` order and
  * never a lower one over a higher. The affected data are category codes (e.g. `CONTACT_DETAILS`,
  * `KYC_RECORDS`, `CREDENTIALS`), never the data. The clocks: the provider's notice to the RE
  * (`notified_re_at`) and the RE's report to RBI (`rbi_reported_at`, within 6 h of detection, OUT
- * para 61), neither before `detected_at`.
+ * para 61), neither before `detected_at`. Optional CERT-In fields (R1-D-229): `cert_in_category`
+ * (`CERT_IN_INCIDENT_CATEGORIES`) and `cert_in_report_by` (RFC 3339, `certInReportBy`), which is
+ * never after `detected_at` plus six hours.
  */
 export const SecurityIncidentNotifiedData = z
   .object({
@@ -248,6 +295,8 @@ export const SecurityIncidentNotifiedData = z
     status: z.enum(SECURITY_INCIDENT_STATUSES),
     notified_re_at: at.optional(),
     rbi_reported_at: at.optional(),
+    cert_in_category: z.enum(CERT_IN_INCIDENT_CATEGORIES).optional(),
+    cert_in_report_by: at.optional(),
   })
   .loose()
   .superRefine((d, ctx) => {
@@ -255,6 +304,15 @@ export const SecurityIncidentNotifiedData = z
     for (const k of ["notified_re_at", "rbi_reported_at"] as const)
       if (d[k] !== undefined && Date.parse(d[k]) < t)
         ctx.addIssue({ code: "custom", path: [k], message: `${k} is before detected_at` });
+    if (
+      d.cert_in_report_by !== undefined &&
+      Date.parse(d.cert_in_report_by) > t + CERT_IN_REPORT_WINDOW_MS
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["cert_in_report_by"],
+        message: "cert_in_report_by is after detected_at + 6 h (CERT-In Directions)",
+      });
     noPersonalData(d, ctx);
   });
 export type SecurityIncidentNotifiedData = z.infer<typeof SecurityIncidentNotifiedData>;
@@ -276,6 +334,8 @@ export function securityIncidentClockCopy(
     status: p.status,
     ...(p.notified_re_at !== undefined ? { notified_re_at: p.notified_re_at } : {}),
     ...(p.rbi_reported_at !== undefined ? { rbi_reported_at: p.rbi_reported_at } : {}),
+    ...(p.cert_in_category !== undefined ? { cert_in_category: p.cert_in_category } : {}),
+    ...(p.cert_in_report_by !== undefined ? { cert_in_report_by: p.cert_in_report_by } : {}),
   };
 }
 

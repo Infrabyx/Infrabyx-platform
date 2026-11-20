@@ -110,6 +110,26 @@ export function resolveStorageKeyRef(
   return { keyRef };
 }
 
+/**
+ * No-cache presigned downloads (Udofin PR-UDF-060, R1-D-230). A presigned GET of an object in one
+ * of these classes (its compartments included) signs S3's response overrides
+ * `response-cache-control` and `response-expires`, so the response tells browsers, iOS and
+ * webviews not to keep a copy. S3 has no `Pragma` override; `Cache-Control: no-store` supersedes
+ * it for HTTP/1.1 clients. Nothing a caller passes can drop or change the overrides.
+ */
+export const NO_CACHE_PRESIGN_CLASSES = [
+  "CONFIDENTIAL",
+  "REGULATED",
+] as const satisfies readonly BucketClass[];
+/** The signed overrides: `Expires` is a past HTTP-date (S3 takes a date, never a literal `0`). */
+export const PRESIGN_NO_CACHE = {
+  cacheControl: "no-store, private",
+  expires: "Thu, 01 Jan 1970 00:00:00 GMT",
+} as const;
+/** Whether a presigned GET of an object in `cls` carries the no-cache overrides. */
+export const presignNoCache = (cls: BucketClass): boolean =>
+  (NO_CACHE_PRESIGN_CLASSES as readonly string[]).includes(cls);
+
 export interface ObjectMeta {
   contentType?: string;
   bucketClass: BucketClass;
@@ -163,7 +183,11 @@ export interface StoragePort extends Port {
     meta: ObjectMeta,
   ): Promise<void>;
   get(key: string): Promise<StoredObject>;
-  /** SigV4 URL bound to the method (and for `put` the content type), TTL 1–300 s (IPB-02-15). */
+  /**
+   * SigV4 URL bound to the method (and for `put` the content type), TTL 1–300 s (IPB-02-15). A
+   * `get` of an object in a `NO_CACHE_PRESIGN_CLASSES` class signs the `PRESIGN_NO_CACHE`
+   * response overrides (PR-UDF-060).
+   */
   presign(
     key: string,
     op: "get" | "put",

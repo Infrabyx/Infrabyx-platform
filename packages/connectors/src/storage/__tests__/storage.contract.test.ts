@@ -27,18 +27,20 @@ import { MinioStorage, S3Storage } from "../s3.js";
 
 const REGION = "ap-south-1";
 const CREDS = { accessKeyId: "test", secretAccessKey: "test" };
-const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "GENERAL"];
+// CONFIDENTIAL: the no-cache download case (PR-UDF-060) reads from it.
+const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL"];
 let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
 const compartmentKeys: string[] = [];
-// PR-UDF-058: two lenders' keys, the named keys of the built-in contract case's tenant.
+// PR-UDF-058: lenders' keys, the named keys of the built-in contract case's tenant; the third is
+// configured with S3 Bucket Keys off (R1-D-229).
 const lenderKeys: string[] = [];
 // Every bucket name carries this run's suffix, so a run never meets a bucket an earlier or a
 // concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
 // `pnpm check:full --logs DIR` run again). Their objects cannot be removed afterwards: the AUDIT
 // cases lock them in COMPLIANCE mode for a day. The suffix is the random part of a ULID, lowercased
-// (Crockford base32 has no I, L, O or U): names stay S3-valid, at most 30 characters here.
+// (Crockford base32 has no I, L, O or U): names stay S3-valid, at most 33 characters here.
 const RUN = ulid().slice(-10).toLowerCase();
 const COMPARTMENT_BUCKETS = [`ipb-s3-conf-board-${RUN}`, `ipb-s3-reg-sealed-${RUN}`];
 let tenant: string | undefined;
@@ -79,7 +81,7 @@ beforeAll(async () => {
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage ${d}` }))).KeyMetadata!
         .KeyId!,
     );
-  for (const d of ["a", "b"])
+  for (const d of ["a", "b", "c"])
     lenderKeys.push(
       (await kms.send(new CreateKeyCommand({ Description: `ipb storage lender ${d}` })))
         .KeyMetadata!.KeyId!,
@@ -89,7 +91,11 @@ beforeAll(async () => {
 const lenderNamedKeys =
   (tenantId: string) => (t: string, w: { bucketClass: BucketClass; compartment?: string }) =>
     t === tenantId && w.bucketClass === "REGULATED" && !w.compartment
-      ? { "lender:contract": lenderKeys[0]!, "lender:contract-b": lenderKeys[1]! }
+      ? {
+          "lender:contract": lenderKeys[0]!,
+          "lender:contract-b": lenderKeys[1]!,
+          "lender:contract-nobk": { keyId: lenderKeys[2]!, bucketKey: false },
+        }
       : undefined;
 afterAll(async () => moto?.stop());
 
@@ -387,6 +393,16 @@ describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
     await expect(
       p.put(a, enc("x"), { bucketClass: "REGULATED", keyRef: "lender:contract-b" }),
     ).rejects.toMatchObject({ code: "IPB-PORT-003", meta: { reason: "key_ref_changed" } });
+    // R1-D-229: a reference configured with Bucket Keys off writes its objects without them.
+    const nobk = key("tnt_vault");
+    await p.put(nobk, enc("no bucket key"), {
+      bucketClass: "REGULATED",
+      keyRef: "lender:contract-nobk",
+    });
+    expect((await head(nobk)).SSEKMSKeyId).toContain(lenderKeys[2]);
+    expect((await head(nobk)).BucketKeyEnabled).toBe(false);
+    expect((await head(a)).BucketKeyEnabled).toBe(true);
+    expect(dec((await p.get(nobk)).body)).toBe("no bucket key");
   });
 
   it("refuses regions outside India and buckets without a KMS key (C-17)", () => {
