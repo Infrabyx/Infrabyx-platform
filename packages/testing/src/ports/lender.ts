@@ -12,7 +12,6 @@
 // lists the CF para 9(3) set; documents are real PDFs with a v2 document JWS; the KFS and the
 // sanction letter name their file's version.
 import { expect } from "vitest";
-import { findAadhaarLike } from "@infrabyx/contracts";
 import {
   CF_PARA_9_3_DOCUMENT_KINDS,
   DOCUMENT_EVENTS,
@@ -56,6 +55,7 @@ export {
   type FakeLenderScript,
   type LenderMessage,
 } from "@infrabyx/fakes";
+import { scanTextForAadhaar } from "../aadhaar-scan/index.js";
 import type { ContractCase } from "../contract.js";
 
 /** What the cases drive: the LSP-facing calls, the lender's sent messages and its key ring. */
@@ -205,8 +205,14 @@ const LINKISH = /:\/\/|www\.|\bupi:/i;
 const byName = (m: readonly LenderMessage[], name: OriginationEventName) =>
   m.filter((x) => x.name === name);
 
+/**
+ * No Aadhaar-like number in a message (R1-D-247). Read as the repository sweep reads text: UUIDs
+ * (the envelope `id`, RFC 9562) are identifiers and blanked first, and letters join a run (hashes,
+ * base64, ULIDs). Without the blanking, a random UUID whose middle groups are all digits reads as
+ * a grouped twelve-digit number about once in two thousand, and the case failed at random.
+ */
 function expectNoAadhaarLike(v: unknown): void {
-  expect(findAadhaarLike(JSON.stringify(v), { letters: "join" })).toEqual([]);
+  expect(scanTextForAadhaar(JSON.stringify(v), { letters: "join" })).toEqual([]);
 }
 
 const sanctioned = async (l: LenderUnderTest, ref: string) => {
