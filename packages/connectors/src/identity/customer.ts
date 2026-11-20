@@ -383,7 +383,28 @@ export interface CustomerAuthStore {
     tenantId: string,
     userId: string,
   ): Promise<{ email: string; verifiedAt: number } | undefined>;
+  /**
+   * Delete the account's verified email (owner answer #161 (3); R1-D-235), in one transaction
+   * with its `identity.customer.verified_email.delete` ledger entry (the reason, whether a row was
+   * found, the erasure request's reference; never the address). True if a row was deleted; a
+   * second call deletes nothing, does not fail, and is ledgered with `found: false`. Optional for
+   * stores written before 1.x of this method; a store that can save an address but not delete it
+   * makes `retireLogin` and `eraseVerifiedEmail` refuse (IPB-PORT-001 `unsupported`).
+   */
+  deleteVerifiedEmail?(
+    tenantId: string,
+    userId: string,
+    reason: VerifiedEmailDeletionReason,
+    requestRef?: string,
+  ): Promise<boolean>;
 }
+
+/** Why a verified email is deleted (R1-D-235): the account was closed, or the borrower asked. */
+export type VerifiedEmailDeletionReason = "account_closed" | "erasure_request";
+/** The action of the deletion's kernel transaction and ledger entry (`connectors/0016`). */
+export const VERIFIED_EMAIL_DELETE_ACTION = "identity.customer.verified_email.delete";
+/** An erasure request's reference, as the product's erasure workflow names it (as config's). */
+export const VERIFIED_EMAIL_ERASURE_REF = /^[A-Za-z0-9_.:-]{1,128}$/;
 
 const accountHash = (userId: string) => sha256Hex(`customer:${userId}`);
 /** Thrown inside a purge transaction that found nothing due, so it rolls back unledgered. */
@@ -427,6 +448,11 @@ export class MemoryCustomerAuthStore implements CustomerAuthStore {
   async verifiedEmail(tenantId: string, userId: string) {
     const e = this.emails.get(`${tenantId}|${userId}`);
     return e ? { ...e } : undefined;
+  }
+  async deleteVerifiedEmail(tenantId: string, userId: string) {
+    const found = this.emails.delete(`${tenantId}|${userId}`);
+    this.events.push({ tenantId, userId, action: VERIFIED_EMAIL_DELETE_ACTION });
+    return found;
   }
 
   private guard(tenantId: string, userId: string, now: number): GuardState {
@@ -992,6 +1018,38 @@ export class PgCustomerAuthStore implements CustomerAuthStore {
     );
     const row = r.rows[0];
     return row ? { email: row.email, verifiedAt: ms(row.verified_at)! } : undefined;
+  }
+
+  /**
+   * R1-D-235: the only delete of `connectors/0015` (0016's trigger refuses a delete under any other
+   * kernel action); the tenant policy scopes it. Ledgered even when nothing was there.
+   */
+  async deleteVerifiedEmail(
+    tenantId: string,
+    userId: string,
+    reason: VerifiedEmailDeletionReason,
+    requestRef?: string,
+  ): Promise<boolean> {
+    return this.mutate(tenantId, VERIFIED_EMAIL_DELETE_ACTION, async (tx) => {
+      const r = await tx.query<{ verified_at: Date }>(
+        `delete from connectors.customer_verified_email where tenant_id = $1 and user_id = $2
+         returning verified_at`,
+        [tenantId, userId],
+      );
+      const gone = r.rows[0];
+      await this.o.audit.record(tx as never, {
+        action: VERIFIED_EMAIL_DELETE_ACTION,
+        resourceType: "identity.customer_account",
+        resourceId: accountHash(userId),
+        ...(gone ? { before: { verified_at: iso(ms(gone.verified_at)) } } : {}),
+        after: {
+          reason,
+          found: gone !== undefined,
+          ...(requestRef !== undefined ? { request_ref: requestRef } : {}),
+        },
+      });
+      return gone !== undefined;
+    });
   }
 
   async purge(tenantId: string, c: CustomerRetentionCutoffs, limit: number) {
@@ -1608,8 +1666,9 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
 
   /**
    * Retire an account's login (account closed, or a number the operator reports recycled): every
-   * device is signed out and forgotten, the account is disabled, and the login is free for a new
-   * account. The account's id and its records stay.
+   * device is signed out and forgotten, the account's verified email is deleted (ledgered, reason
+   * `account_closed`; R1-D-235), the account is disabled, and the login is free for a new account.
+   * The account's id and its other records stay.
    */
   async retireLogin(req: {
     tenantId: string;
@@ -1625,7 +1684,12 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
     }
     if ((await this.idpFindUser(req.tenantId, req.channel, login)) !== req.userId)
       throw customerRefused("login", "the login is not this account's");
+    const deleteEmail = this.emailDeletion();
     await this.forgetDevices(req.tenantId, req.userId);
+    // R1-D-235 (owner answer #161 (3)): the verified email goes with the account, before the IdP
+    // frees the login, so a retry after an IdP failure still finds the account (and the second
+    // deletion finds nothing and does not fail).
+    await deleteEmail?.(req.tenantId, req.userId, "account_closed");
     await this.idpRetireLogin({
       tenantId: req.tenantId,
       userId: req.userId,
@@ -1660,6 +1724,46 @@ export abstract class CustomerIdentityBase implements CustomerIdentityPort {
       saveVerifiedEmail: st.saveVerifiedEmail.bind(st),
       verifiedEmail: st.verifiedEmail.bind(st),
     };
+  }
+
+  /**
+   * The store's deletion of a verified email; undefined for a store that keeps no address. A store
+   * that can save an address but not delete it is refused, so no closure or erasure leaves one.
+   */
+  private emailDeletion(): CustomerAuthStore["deleteVerifiedEmail"] {
+    const st = this.base.store;
+    if (st.deleteVerifiedEmail) return st.deleteVerifiedEmail.bind(st);
+    if (!st.saveVerifiedEmail) return undefined;
+    throw new PortError("IPB-PORT-001", "IDENTITY", {
+      adapter: this.descriptor.adapter,
+      detail: "the customer store can record a verified email but cannot delete it",
+      meta: { reason: "unsupported" },
+    });
+  }
+
+  /**
+   * Delete the account's verified email on the borrower's erasure request (owner answer #161 (3);
+   * R1-D-235), ledgered with reason `erasure_request` and the request's reference, never the
+   * address. Works whether or not the capture is on. Idempotent: `erased` is false when there was
+   * nothing to delete (still ledgered, so the request's handling is on the record).
+   */
+  async eraseVerifiedEmail(req: {
+    tenantId: string;
+    userId: string;
+    requestRef: string;
+  }): Promise<{ erased: boolean }> {
+    if (typeof req.userId !== "string" || req.userId.length < 1 || req.userId.length > 200)
+      throw new RangeError("a user id of 1 to 200 characters");
+    if (typeof req.requestRef !== "string" || !VERIFIED_EMAIL_ERASURE_REF.test(req.requestRef))
+      throw new RangeError("an erasure request reference of 1 to 128 of [A-Za-z0-9_.:-]");
+    const del = this.emailDeletion();
+    if (!del)
+      throw new PortError("IPB-PORT-001", "IDENTITY", {
+        adapter: this.descriptor.adapter,
+        detail: "the customer store keeps no verified email",
+        meta: { reason: "unsupported" },
+      });
+    return { erased: await del(req.tenantId, req.userId, "erasure_request", req.requestRef) };
   }
 
   private email(raw: string): string {
