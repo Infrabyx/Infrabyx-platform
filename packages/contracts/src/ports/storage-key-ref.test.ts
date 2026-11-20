@@ -38,10 +38,17 @@ describe("PR-UDF-058: storage key references", () => {
     expect(
       resolveStorageKeyRef(KEY, { bucketClass: "CONFIDENTIAL", keyRef: "lender:two" }, prefixes),
     ).toEqual({ keyRef: "lender:two" });
-    for (const bucketClass of ["GENERAL", "AUDIT", "QUARANTINE", "PUBLIC_ASSETS"] as const)
+    for (const bucketClass of ["GENERAL", "AUDIT", "PUBLIC_ASSETS"] as const)
       expect(resolveStorageKeyRef(KEY, { bucketClass, keyRef: "lender:one" })).toEqual({
         refusal: "key_ref_class",
       });
+    // PR-UDF-066 (R1-D-240): a lender's upload is under its key from the first byte.
+    expect(resolveStorageKeyRef(KEY, { bucketClass: "QUARANTINE", keyRef: "lender:one" })).toEqual({
+      keyRef: "lender:one",
+    });
+    expect(resolveStorageKeyRef(KEY, { bucketClass: "QUARANTINE" }, prefixes)).toEqual({
+      keyRef: "lender:two",
+    });
     // A class without a reference is untouched even with a prefix map that does not match.
     expect(
       resolveStorageKeyRef(KEY, { bucketClass: "GENERAL" }, { "tenant/tnt_a/x/": "lender:x" }),

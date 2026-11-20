@@ -51,10 +51,16 @@ const KEY_ID_SHAPED =
 /** Whether `ref` is a well-formed key reference (and not a key id in disguise). */
 export const isValidStorageKeyRef = (ref: string): boolean =>
   STORAGE_KEY_REF_PATTERN.test(ref) && !KEY_ID_SHAPED.test(ref);
-/** The bucket classes a named key may be used in. */
+/**
+ * The bucket classes a named key may be used in. `QUARANTINE` (Udofin PR-UDF-066, R1-D-240), so a
+ * lender's upload is under the lender's key from its first byte: the AV engine's workload, which
+ * reads the object through STORAGE to scan it, then needs `kms:Decrypt` on each such key. `AUDIT`
+ * (anchors the platform must always read), `PUBLIC_ASSETS` and `GENERAL` stay on platform keys.
+ */
 export const NAMED_KEY_CLASSES = [
   "CONFIDENTIAL",
   "REGULATED",
+  "QUARANTINE",
 ] as const satisfies readonly BucketClass[];
 /** Object metadata name that records the reference (S3 `x-amz-meta-ipb-key-ref`). */
 export const STORAGE_KEY_REF_META = "ipb-key-ref";
@@ -176,12 +182,35 @@ export interface ObjectMeta {
   /** PR-LDC-60: a separately keyed compartment of `bucketClass` (`CONFIDENTIAL` or `REGULATED`). */
   compartment?: StorageCompartment;
   /**
-   * PR-UDF-058: the tenant's named key the object is encrypted under (`CONFIDENTIAL` or
-   * `REGULATED`); a reference, never a key id. `get` returns it; an overwrite must keep it.
+   * PR-UDF-058: the tenant's named key the object is encrypted under (a `NAMED_KEY_CLASSES` class:
+   * `CONFIDENTIAL`, `REGULATED` or, PR-UDF-066, `QUARANTINE`); a reference, never a key id. `get`
+   * returns it; an overwrite must keep it.
    */
   keyRef?: string;
   sha256?: string;
   tags?: Record<string, string>;
+}
+
+/**
+ * PR-UDF-066 (R1-D-240): the meta of the clean copy of a scanned object (`from` is the `meta` that
+ * `get` returned for the `QUARANTINE` object), for the product's promotion `put` into `to`. The
+ * named key reference is carried over, so the copy is encrypted under that reference's key at the
+ * clean location, or the write is refused (`key_ref_unknown` where the reference has no key there,
+ * `key_ref_class` outside `NAMED_KEY_CLASSES`); it never falls back to the clean class's key. The
+ * content type, the SHA-256 and the tags are kept; the compartment is `to`'s.
+ */
+export function promotedObjectMeta(
+  from: ObjectMeta,
+  to: { bucketClass: BucketClass; compartment?: StorageCompartment },
+): ObjectMeta {
+  return {
+    bucketClass: to.bucketClass,
+    ...(to.compartment ? { compartment: to.compartment } : {}),
+    ...(from.contentType ? { contentType: from.contentType } : {}),
+    ...(from.keyRef ? { keyRef: from.keyRef } : {}),
+    ...(from.sha256 ? { sha256: from.sha256 } : {}),
+    ...(from.tags ? { tags: { ...from.tags } } : {}),
+  };
 }
 
 export interface StoredObject {
