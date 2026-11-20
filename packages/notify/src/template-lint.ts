@@ -14,6 +14,7 @@ import type {
   EmailTemplateContent,
   NotificationClass,
 } from "@infrabyx/contracts/ports";
+import { staffSubjectVariables } from "./staff.js";
 
 /** Template field limits (characters); the rendered subject is cut at 200. */
 export const TEMPLATE_LIMITS = Object.freeze({
@@ -42,6 +43,20 @@ export class TemplateLintError extends Error {
 export interface TemplateLintOptions {
   /** Link hosts the tenant may use (exact or a subdomain); omitted: any https host. */
   linkHosts?: readonly string[];
+  /**
+   * A staff class's subject variables (PR-UDF-052; R1-D-222): the subject may use only these, so
+   * it never carries personal data. Omitted for any other class.
+   */
+  subjectVariables?: readonly string[];
+}
+
+/** The lint options for a class: a staff class adds its subject variables (R1-D-222). */
+export function lintOptionsFor(
+  cls: NotificationClass,
+  opts: TemplateLintOptions = {},
+): TemplateLintOptions {
+  const subject = staffSubjectVariables(cls);
+  return subject ? { ...opts, subjectVariables: subject } : opts;
 }
 
 /**
@@ -507,6 +522,11 @@ export function lintEmailTemplate(
           field: f,
           message: `unknown variable {{${name}}}: this class offers ${allowed.length ? allowed.join(", ") : "no variables"}`,
         });
+      else if (f === "subject" && opts.subjectVariables && !opts.subjectVariables.includes(name))
+        out.push({
+          field: f,
+          message: `a staff subject carries no personal data: {{${name}}} is not a subject variable (${opts.subjectVariables.length ? opts.subjectVariables.join(", ") : "none"})`,
+        });
     if (f === "html") for (const m of lintHtml(v, opts)) out.push({ field: f, message: m });
   };
   field("subject", content.subject, TEMPLATE_LIMITS.subject, true);
@@ -543,7 +563,7 @@ export function renderEmailTemplate(
   vars: Readonly<Record<string, unknown>>,
   opts: TemplateLintOptions = {},
 ): EmailContent {
-  const findings = lintEmailTemplate(content, templateVariables(cls), opts);
+  const findings = lintEmailTemplate(content, templateVariables(cls), lintOptionsFor(cls, opts));
   if (findings.length)
     throw new PortError("IPB-PORT-001", "EMAIL", {
       adapter: "notify",

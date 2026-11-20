@@ -4,6 +4,7 @@
 // push tokens and the workflow `ApprovalNotifier`.
 // Tenant notification templates behind `TemplateResolver` (`TenantTemplateStore`, PR-LDC-27).
 // Inbound email replies (`NotifyService.receiveReplies`, `getReply`; PR-LDC-50, R1-D-177).
+// Staff by role (`NotifyService.notifyStaff`, `enqueueStaff`, `deliveryReceipt`; PR-UDF-052, R1-D-222).
 // Migrations: `notify/0001`–`0007`, applied by `infrabyx-migrate` when this package is installed.
 export const PACKAGE_NAME = "@infrabyx/notify" as const;
 export * from "./catalogue.js";
@@ -15,3 +16,4 @@ export * from "./otp-sender.js";
 export * from "./template-lint.js";
 export * from "./template-store.js";
 export * from "./reply.js";
+export * from "./staff.js";
