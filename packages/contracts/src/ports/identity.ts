@@ -215,11 +215,88 @@ export interface CustomerSession {
   device: CustomerDevice;
 }
 
-/** Claims of a verified customer request: the token's, with the device that proved it. */
+/**
+ * Claims of a verified customer request: the token's, with the device that proved it. `acr` and
+ * `auth_time` are the platform's (PR-UDF-056; R1-D-244), not the IdP's: the assurance of the
+ * session's latest authentication (its sign-in code or its last step-up) and when it happened.
+ */
 export interface VerifiedCustomerClaims extends VerifiedClaims {
   /** Thumbprint of the key that signed this request's proof. */
   jkt: string;
   deviceId: string;
+  /**
+   * Epoch seconds of the device session's latest authentication: its sign-in code or, if later,
+   * its last step-up. A refresh is not an authentication. Set by the platform adapters.
+   */
+  auth_time?: number;
+}
+
+// ---- customer step-up (Udofin PR-UDF-056; R1-D-244) -------------------------------------------
+// A product declares, per sensitive borrower action, the assurance it needs and how old that
+// assurance may be (OIDC `acr_values` and `max_age`). A session that is too old answers in the
+// RFC 9470 step-up form; the borrower then proves the registered login again with a fresh code,
+// bound to the same device key, and the session's `acr` and `auth_time` move to that step-up.
+
+/** Customer assurance levels, weakest first. `otp`: a one-time code to the account's login. */
+export const CUSTOMER_ACR_VALUES = ["otp"] as const;
+export const CustomerAcr = z.enum(CUSTOMER_ACR_VALUES);
+export type CustomerAcr = z.infer<typeof CustomerAcr>;
+
+/** Bounds of a policy's max age in seconds; the default is a fresh code within five minutes. */
+export const CUSTOMER_STEP_UP_MAX_AGE = Object.freeze({ default: 300, min: 60, max: 3600 });
+
+/** What one sensitive action needs: at least `acr`, proved at most `maxAgeSeconds` ago. */
+export const CustomerStepUpPolicy = z.strictObject({
+  acr: CustomerAcr.default("otp"),
+  maxAgeSeconds: z
+    .number()
+    .int()
+    .min(CUSTOMER_STEP_UP_MAX_AGE.min)
+    .max(CUSTOMER_STEP_UP_MAX_AGE.max)
+    .default(CUSTOMER_STEP_UP_MAX_AGE.default),
+});
+export type CustomerStepUpPolicyInput = z.input<typeof CustomerStepUpPolicy>;
+export type CustomerStepUpPolicy = z.output<typeof CustomerStepUpPolicy>;
+
+/** The default policy (e.g. downloading an original document): a fresh code within 300 s. */
+export const CUSTOMER_STEP_UP_DEFAULT: Readonly<CustomerStepUpPolicy> = Object.freeze({
+  acr: "otp",
+  maxAgeSeconds: CUSTOMER_STEP_UP_MAX_AGE.default,
+});
+
+/** A sensitive action's name in a product's policy table, e.g. `document.original.download`. */
+export const CustomerStepUpAction = z
+  .string()
+  .max(100)
+  .regex(/^[a-z][a-z0-9_]*(\.[a-z0-9_]+)*$/);
+
+/**
+ * Validate and freeze a product's policy table at boot, so a typo fails at start rather than at
+ * the borrower's request. Entries may leave out `acr` and `maxAgeSeconds` (the defaults).
+ */
+export function customerStepUpPolicies<K extends string>(
+  table: Readonly<Record<K, CustomerStepUpPolicyInput>>,
+): Readonly<Record<K, Readonly<CustomerStepUpPolicy>>> {
+  const out = {} as Record<K, Readonly<CustomerStepUpPolicy>>;
+  for (const [action, input] of Object.entries(table) as Array<[K, CustomerStepUpPolicyInput]>) {
+    if (!CustomerStepUpAction.safeParse(action).success)
+      throw new TypeError(`customerStepUpPolicies: "${action}" is not an action name`);
+    const p = CustomerStepUpPolicy.safeParse(input);
+    if (!p.success)
+      throw new TypeError(
+        `customerStepUpPolicies: ${action}: ${p.error.issues[0]?.path.join(".") || "policy"} ${p.error.issues[0]?.message ?? "is invalid"}`,
+      );
+    out[action] = Object.freeze(p.data);
+  }
+  return Object.freeze(out);
+}
+
+/** A step-up the borrower completed on one device session. */
+export interface CustomerStepUp {
+  deviceId: string;
+  acr: CustomerAcr;
+  /** When the step-up was proved (ISO 8601); the session's `auth_time` from now on. */
+  authTime: string;
 }
 
 /**
@@ -252,12 +329,18 @@ export interface CustomerIdentityPort extends Port {
     refreshToken: string;
     dpopProof: string;
   }): Promise<CustomerSession>;
-  /** Verify `Authorization: DPoP <token>` with the request's `DPoP` proof. */
+  /**
+   * Verify `Authorization: DPoP <token>` with the request's `DPoP` proof. `fresh` reads the
+   * device past the adapter's short device cache (PR-UDF-056): use it on a route that checks a
+   * step-up, so a step-up confirmed on another replica counts at once (and a revoked device is
+   * refused at once).
+   */
   verifyRequest(req: {
     authorization: string;
     dpopProof: string;
     method: string;
     url: string;
+    fresh?: boolean;
   }): Promise<VerifiedCustomerClaims>;
   listDevices(tenantId: string, userId: string): Promise<CustomerDevice[]>;
   /**
@@ -340,6 +423,33 @@ export interface CustomerIdentityPort extends Port {
     userId: string;
     requestRef: string;
   }): Promise<{ erased: boolean }>;
+  /**
+   * Start a step-up on one signed-in device session (Udofin PR-UDF-056; R1-D-244): a fresh
+   * one-time code to the account's registered `login` (it must be this account's) through NOTIFY,
+   * guarded like a sign-in code; the proof is by the key of the active device `deviceId`.
+   * Optional: an adapter or a store without it refuses with IPB-PORT-001 `unsupported`.
+   */
+  startStepUp?(req: {
+    tenantId: string;
+    userId: string;
+    deviceId: string;
+    channel: CustomerOtpChannel;
+    login: string;
+    dpopProof: string;
+    locale?: string;
+  }): Promise<CustomerChallenge>;
+  /**
+   * Finish it with the code, from the same device key and for the same device: the session's
+   * `acr` and `auth_time` become the step-up's (ledgered). Wrong code: IPB-IDN-001 `code`.
+   */
+  confirmStepUp?(req: {
+    tenantId: string;
+    userId: string;
+    deviceId: string;
+    challengeId: string;
+    code: string;
+    dpopProof: string;
+  }): Promise<CustomerStepUp>;
 }
 
 /** An email address a customer proved with a one-time code (PR-UDF-055; R1-D-224). */
