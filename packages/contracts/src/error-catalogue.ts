@@ -442,6 +442,11 @@ export const ERROR_CATALOGUE = {
     title: "Push payload carries more than a title, a deep link and INTERNAL data",
     source: "PL3 plan §10 (PR-017)",
   },
+  "IPB-NTF-007": {
+    status: 422,
+    title: "Staff notification refused: class, role, recipients or variables",
+    source: "R1-D-222 (PR-UDF-052)",
+  },
   "IPB-CST-001": {
     status: 403,
     title: "Custom field with PII class created without checker",
