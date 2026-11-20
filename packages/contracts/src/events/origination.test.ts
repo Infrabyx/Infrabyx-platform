@@ -3,6 +3,11 @@ import { describe, expect, it } from "vitest";
 import { ECOSYSTEM_TYPE_REGEX } from "./envelope.js";
 import {
   ApplicationStatusChangedData,
+  ApplicationSubmittedData,
+  CoolingOffExitAnsweredData,
+  CoolingOffExitRequestedData,
+  PRODUCT_CODE_PATTERN,
+  SanctionLetterIssuedData,
   BorrowerAcceptedData,
   DecisionMadeData,
   EligibilityCheckAnswer,
@@ -274,6 +279,304 @@ describe("origination schemas (PR-UDF-051)", () => {
       OriginationOffer.safeParse({
         ...base,
         penal_charges: Array.from({ length: 20 }, () => charge),
+      }).success,
+    ).toBe(true);
+  });
+});
+
+// PR-UDF-061 (owner, 20 Nov 2026 14:30; R1-D-232): Udofin's udf_ext v1 list, all optional.
+describe("the udf_ext v1 fields (PR-UDF-061)", () => {
+  const offer = { offer_id: "ofr_0001", amount_paise: 5_000_000, tenor_months: 12, apr_bp: 1800 };
+  const submitted = {
+    lsp_application_ref: "lspapp_1",
+    applicants: [{ applicant_ref: "cus_1", role: "PRIMARY" }],
+    kyc_evidence_refs: [],
+    bureau_refs: [],
+    aa_refs: [],
+    documents: [],
+    consents: ["cpr_bureau", "cpr_aa"],
+  };
+  const kfs = {
+    kfs_id: "kfs_1",
+    version: 1,
+    application_id: "app_1",
+    proposal_no: "prp_1",
+    validity_expiry: T,
+    apr_bp: 1800,
+    document_sha256: H,
+  };
+  const inst = (seq: number, due: string) => ({ seq, due_date: due, amount_paise: 45_840 });
+
+  it("takes two-character product codes and every earlier reference", () => {
+    for (const c of ["PL", "P1", "PL_STD", "A".repeat(16), "pl-01", "prd:v2"])
+      expect(EligibilityCheckRequest.shape.product_code.safeParse(c).success, c).toBe(true);
+    for (const c of ["P", "pl", "1P", "P-", ""])
+      expect(EligibilityCheckRequest.shape.product_code.safeParse(c).success, c).toBe(false);
+    expect(PRODUCT_CODE_PATTERN.test("PL")).toBe(true);
+  });
+
+  it("takes an offer's instalment figure, penal-charges text and KFS URL, and refuses a disagreeing instalment or a non-https URL", () => {
+    const good = {
+      ...offer,
+      monthly_instalment_paise: 45_840,
+      monthly_instalment: { amount_paise: 45_840, frequency: "MONTHLY" },
+      penal_charges_text: "2% a month on the overdue instalment.",
+      kfs_url: "https://documents.lender.example.in/kfs/1",
+    };
+    expect(OriginationOffer.safeParse(good).success).toBe(true);
+    expect(OriginationOffer.safeParse({ ...offer, monthly_instalment_paise: 1 }).success).toBe(
+      true,
+    );
+    for (const b of [
+      { monthly_instalment: { amount_paise: 45_841, frequency: "MONTHLY" } },
+      { monthly_instalment: { amount_paise: 45_840, frequency: "QUARTERLY" } },
+      { kfs_url: "http://documents.lender.example.in/kfs/1" },
+      { kfs_url: "https://user:pw@documents.lender.example.in/kfs/1" },
+      { kfs_url: "https://documents.lender.example.in/kfs/1#p2" },
+      { kfs_url: "doc_kfs_0001" },
+      { penal_charges_text: "" },
+      { penal_charges_text: "bad\u0007bell" },
+      { monthly_instalment_paise: 0 },
+    ])
+      expect(OriginationOffer.safeParse({ ...good, ...b }).success, JSON.stringify(b)).toBe(false);
+  });
+
+  it("takes ApplicationSubmitted's chosen offer, request, profile, household, KYC, credit modes and consent purposes", () => {
+    const full = {
+      ...submitted,
+      offer_ref: "ofr_0001",
+      product_code: "PL",
+      request: { amount_paise: 5_000_000, tenor_days: 365, purpose: "PERSONAL" },
+      economic_profile: {
+        age_years: 32,
+        occupation: "SALARIED",
+        monthly_income_paise: 6_000_000,
+        income_source: "SALARY",
+      },
+      household: {
+        household_ref: "hh_1",
+        monthly_household_income_paise: 9_000_000,
+        is_microfinance: false,
+      },
+      kyc: { level: "FULL_KYC", state: "VERIFIED" },
+      credit_data_modes: { bureau: true, aa: false },
+      consent_purposes: [{ purpose: "BUREAU_PULL", consent_ref: "cpr_bureau" }],
+    };
+    expect(ApplicationSubmittedData.safeParse(full).success).toBe(true);
+    expect(ApplicationSubmittedData.safeParse(submitted).success).toBe(true);
+    for (const b of [
+      { consent_purposes: [{ purpose: "BUREAU_PULL", consent_ref: "cpr_other" }] },
+      { economic_profile: { age_years: 17 } },
+      { economic_profile: { monthly_income_paise: -1 } },
+      { request: { amount_paise: 5_000_000, tenor_days: 0, purpose: "PERSONAL" } },
+      { request: { amount_paise: 5_000_000, tenor_days: 30, purpose: "personal" } },
+      { credit_data_modes: { bureau: true } },
+      { credit_data_modes: { bureau: true, aa: false, gst: true } },
+      { household: { monthly_household_income_paise: 1 } },
+      { product_code: "p" },
+    ])
+      expect(ApplicationSubmittedData.safeParse({ ...full, ...b }).success, JSON.stringify(b)).toBe(
+        false,
+      );
+  });
+
+  it("takes BorrowerAccepted's KFS version, hash and acknowledgement time, not after acceptance", () => {
+    const b = {
+      kfs_id: "kfs_1",
+      accepted_at: "2026-11-20T10:00:00+05:30",
+      explanation_acknowledged: true,
+      lsp_application_ref: "lspapp_1",
+      kfs_version: 1,
+      kfs_sha256: H,
+      acknowledged_at: "2026-11-20T09:59:00+05:30",
+      device_ref: "dev_1",
+    };
+    expect(BorrowerAcceptedData.safeParse(b).success).toBe(true);
+    expect(
+      BorrowerAcceptedData.safeParse({ ...b, acknowledged_at: "2026-11-20T10:00:01+05:30" })
+        .success,
+    ).toBe(false);
+    expect(BorrowerAcceptedData.safeParse({ ...b, kfs_sha256: "A".repeat(64) }).success).toBe(
+      false,
+    );
+  });
+
+  it("answers an exit request with an amount, a reference and a plain-text instruction with no link", () => {
+    expect(ORIGINATION_EVENTS.CoolingOffExitAnswered).toMatchObject({
+      type: "in.infrabyx.servicing.CoolingOffExitAnswered.v1",
+      idempotency: ["loan_id", "exit_ref"],
+      direction: "LENDER_TO_LSP",
+      regulated: false,
+    });
+    const a = {
+      loan_id: "ln_1",
+      exit_ref: "ext_1",
+      exit_amount_paise: 5_001_200,
+      payment_instruction: "Pay by NEFT to the lender's loan account quoting ext_1.",
+      answered_at: T,
+      lsp_application_ref: "lspapp_1",
+    };
+    expect(CoolingOffExitAnsweredData.safeParse(a).success).toBe(true);
+    for (const text of [
+      "Pay at https://pay.example.in/x",
+      "Pay at www.example.in",
+      "Pay at pay.example.in/x",
+      "Pay with upi:pay?pa=x@y",
+      "Open intent://pay",
+      "",
+    ])
+      expect(
+        CoolingOffExitAnsweredData.safeParse({ ...a, payment_instruction: text }).success,
+        text,
+      ).toBe(false);
+    expect(CoolingOffExitAnsweredData.safeParse({ ...a, exit_amount_paise: 1.5 }).success).toBe(
+      false,
+    );
+    expect(
+      CoolingOffExitRequestedData.safeParse({
+        loan_id: "ln_1",
+        requested_at: T,
+        evidence: { sha256: H, uri: "storage:x/1.pdf" },
+        lsp_application_ref: "lspapp_1",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("takes the lender's status and reason texts, the latter only for codes it sent, once each", () => {
+    expect(
+      ApplicationStatusChangedData.safeParse({
+        application_id: "app_1",
+        seq: 1,
+        from: "SUBMITTED",
+        to: "UNDER_REVIEW",
+        status_text: "Your application is with our credit team.",
+      }).success,
+    ).toBe(true);
+    const d = {
+      application_id: "app_1",
+      decision_version: 1,
+      decision: "REJECTED",
+      reason_codes: ["POLICY_DECLINE"],
+      rule_version: "r1",
+      offers: [],
+    };
+    expect(
+      DecisionMadeData.safeParse({
+        ...d,
+        reason_texts: [{ reason_code: "POLICY_DECLINE", text: "Outside our lending policy." }],
+      }).success,
+    ).toBe(true);
+    for (const rt of [
+      [{ reason_code: "OTHER", text: "Not a sent code" }],
+      [
+        { reason_code: "POLICY_DECLINE", text: "a" },
+        { reason_code: "POLICY_DECLINE", text: "b" },
+      ],
+    ])
+      expect(DecisionMadeData.safeParse({ ...d, reason_texts: rt }).success).toBe(false);
+  });
+
+  it("takes the KFS's schedule, charges, cooling-off, exit terms and Annex items, and refuses inconsistent ones", () => {
+    const full = {
+      ...kfs,
+      issued_at: T,
+      language: "en-IN",
+      document_ref: "doc_kfs_1",
+      tenor_days: 365,
+      loan_amount_paise: 5_000_000,
+      cash_flows: {
+        net_disbursed_paise: 4_950_000,
+        instalments: [
+          { ...inst(1, "2026-12-20"), principal_paise: 38_340, interest_paise: 7_500 },
+          inst(2, "2027-01-20"),
+        ],
+      },
+      charges: [
+        {
+          code: "PROCESSING_FEE",
+          description: "Processing fee",
+          amount_paise: 50_000,
+          payable_to: "RE",
+          recurrence: "ONE_TIME",
+        },
+        { code: "STAMP_DUTY", description: "At actuals", payable_to: "THIRD_PARTY" },
+      ],
+      cooling_off_days: 3,
+      exit_terms: "Repay the principal and the proportionate APR within the cooling-off period.",
+      nodal_gro: {
+        name: "Grievance Officer",
+        designation: "Nodal Officer",
+        phone: "+91 22 0000 0000",
+        email: "gro@lender.example.in",
+      },
+      co_lending: {
+        parties: [
+          { name: "Bank A", share_bp: 8_000, rate_bp: 1_600 },
+          { name: "NBFC B", share_bp: 2_000, rate_bp: 2_400 },
+        ],
+        blended_rate_bp: 1_760,
+      },
+      lsp_recovery_agent: [{ role: "LSP", name: "LSP Ltd", functions: "Sourcing" }],
+    };
+    expect(KfsIssuedData.safeParse(full).success).toBe(true);
+    for (const b of [
+      { cash_flows: { net_disbursed_paise: 5_000_001, instalments: [] } },
+      {
+        cash_flows: {
+          net_disbursed_paise: 1,
+          instalments: [inst(2, "2027-01-20"), inst(1, "2026-12-20")],
+        },
+      },
+      {
+        cash_flows: {
+          net_disbursed_paise: 1,
+          instalments: [{ ...inst(1, "2026-12-20"), principal_paise: 1, interest_paise: 1 }],
+        },
+      },
+      {
+        co_lending: {
+          parties: [
+            { name: "A", share_bp: 8_000 },
+            { name: "B", share_bp: 1_000 },
+          ],
+        },
+      },
+      { co_lending: { parties: [{ name: "A", share_bp: 10_000 }] } },
+      { language: "English" },
+      { document_ref: "https://lender.example.in/kfs.pdf" },
+      { nodal_gro: { name: "x", email: "not-an-email" } },
+      { cooling_off_days: -1 },
+      { charges: [{ code: "FEE", description: "" }] },
+      { lsp_recovery_agent: [{ role: "COLLECTOR", name: "x" }] },
+    ])
+      expect(KfsIssuedData.safeParse({ ...full, ...b }).success, JSON.stringify(b)).toBe(false);
+  });
+
+  it("takes the sanction letter's document reference and LoanDisbursed's application id and time", () => {
+    const s = {
+      sanction_id: "snc_1",
+      version: 1,
+      application_id: "app_1",
+      terms: { amount_paise: 5_000_000, tenor_months: 12, apr_bp: 1800 },
+      document_sha256: H,
+    };
+    expect(SanctionLetterIssuedData.safeParse({ ...s, document_ref: "doc_snc_1" }).success).toBe(
+      true,
+    );
+    expect(
+      SanctionLetterIssuedData.safeParse({ ...s, document_ref: "https://x.in/a" }).success,
+    ).toBe(false);
+    expect(
+      LoanDisbursedData.safeParse({
+        loan_id: "ln_1",
+        utr: "UTR123456789012",
+        amount_paise: 5_000_000,
+        value_date: "2026-11-20",
+        beneficiary_type: "BORROWER",
+        kind: "INITIAL",
+        cooling_off_end: T,
+        application_id: "app_1",
+        disbursed_at: T,
       }).success,
     ).toBe(true);
   });

@@ -12,6 +12,10 @@
 //
 // Conventions: money in integer paise, rates in integer basis points, hashes as lower-case SHA-256
 // hex, people by reference only (`applicant_ref`; never a name, PAN or Aadhaar number).
+//
+// PR-UDF-061 (owner, 20 Nov 2026 14:30; R1-D-232): Udofin's `udf_ext` v1 list as optional fields
+// on these events, two-character product codes, and one new event, `CoolingOffExitAnswered` (the
+// lender's answer to an exit request), proposed for the Specification in PR-047's draft.
 import { z } from "zod";
 import { indianState } from "./documents.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
@@ -32,6 +36,43 @@ const paise = z.number().int().positive().max(1e14);
 const bp = z.number().int().min(0).max(100_000);
 const tenor = z.number().int().min(1).max(600);
 const version = z.number().int().min(1);
+/** A non-negative amount in integer paise (a charge, an income, a net amount). */
+const paiseOrZero = z.number().int().min(0).max(1e14);
+/** A tenor in days (R1-D-232): one day to fifty years. */
+const tenorDays = z.number().int().min(1).max(18_300);
+/** A control character other than tab, line feed and carriage return. */
+const isControl = (ch: string): boolean => {
+  const c = ch.charCodeAt(0);
+  return (c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f;
+};
+/** The lender's own words (a status, a reason, terms): plain text, no control characters. */
+const lenderText = (max: number) =>
+  z
+    .string()
+    .min(1)
+    .max(max)
+    .refine((v) => ![...v].some(isControl), "plain text");
+
+/**
+ * A product code (R1-D-232; owner, 20 Nov 2026 14:30, item 2): the Udofin catalogue's pattern
+ * `^[A-Z][A-Z0-9_]{1,15}$`, so two characters are enough (`PL`), or any reference the contract
+ * already took (three to 128 of `[A-Za-z0-9_.:-]`). Nothing earlier is refused.
+ */
+export const PRODUCT_CODE_PATTERN = /^[A-Z][A-Z0-9_]{1,15}$/;
+const productCode = z.union([z.string().regex(PRODUCT_CODE_PATTERN), ref]);
+
+/** An `https` URL without credentials or a fragment, at most 2048 characters (R1-D-232). */
+const httpsUrl = z
+  .string()
+  .max(2048)
+  .refine((v) => {
+    try {
+      const u = new URL(v);
+      return u.protocol === "https:" && !u.username && !u.password && !u.hash && !!u.hostname;
+    } catch {
+      return false;
+    }
+  }, "an https URL without credentials");
 
 // ---- The offer (§6.2; R1-D-231 optional fields) --------------------------------------------------
 
@@ -105,8 +146,25 @@ export const OriginationOffer = z
       .object({ document_id: documentRef, version: version.optional() })
       .strict()
       .optional(),
+    /**
+     * R1-D-232 (PR-UDF-061, item 1; CF para 7(3)): the monthly instalment as one figure. When
+     * `monthly_instalment` is also given, it is `MONTHLY` and the same amount.
+     */
+    monthly_instalment_paise: paise.optional(),
+    /** R1-D-232: the lender's penal-charges text, as it stands in its terms (the list is `penal_charges`). */
+    penal_charges_text: lenderText(2000).optional(),
+    /** R1-D-232: the KFS at an `https` URL, beside or instead of the `kfs_link` reference. */
+    kfs_url: httpsUrl.optional(),
   })
-  .loose();
+  .loose()
+  .refine(
+    (o) =>
+      o.monthly_instalment === undefined ||
+      o.monthly_instalment_paise === undefined ||
+      (o.monthly_instalment.frequency === "MONTHLY" &&
+        o.monthly_instalment.amount_paise === o.monthly_instalment_paise),
+    "monthly_instalment_paise agrees with a MONTHLY monthly_instalment",
+  );
 export type OriginationOffer = z.infer<typeof OriginationOffer>;
 const Offer = OriginationOffer;
 
@@ -116,7 +174,7 @@ const Offer = OriginationOffer;
 export const EligibilityCheckRequest = z
   .object({
     lsp_ref: ref,
-    product_code: ref,
+    product_code: productCode,
     product_version: z.string().max(32).optional(),
     amount_paise: paise,
     tenor_months: tenor,
@@ -173,9 +231,50 @@ export const ApplicationSubmittedData = z
     aa_refs: z.array(ref).max(20),
     documents: z.array(Document).max(100),
     consents: z.array(ref).min(1).max(50),
-    household: z.object({ household_ref: ref }).loose().optional(),
+    household: z
+      .object({
+        household_ref: ref,
+        /** R1-D-232: the household's monthly income (microfinance assessment, MF Directions). */
+        monthly_household_income_paise: paiseOrZero.optional(),
+        /** R1-D-232: the loan is a microfinance loan. */
+        is_microfinance: z.boolean().optional(),
+      })
+      .loose()
+      .optional(),
+    // ---- R1-D-232 (PR-UDF-061, item 3): all optional ----
+    /** The offer the borrower chose (`offer_id` of an `EligibilityCheckAnswer` offer). */
+    offer_ref: ref.optional(),
+    product_code: productCode.optional(),
+    /** What the borrower asked for. */
+    request: z
+      .object({ amount_paise: paise, tenor_days: tenorDays, purpose: code })
+      .loose()
+      .optional(),
+    /** The primary applicant's economic profile (CF para 8): figures and codes, never a document. */
+    economic_profile: z
+      .object({
+        age_years: z.number().int().min(18).max(120).optional(),
+        occupation: code.optional(),
+        monthly_income_paise: paiseOrZero.optional(),
+        income_source: code.optional(),
+      })
+      .loose()
+      .optional(),
+    /** The KYC case at this lender: its level and state, by code. */
+    kyc: z.object({ level: code, state: code }).loose().optional(),
+    /** Which credit data the lender may use for this application. */
+    credit_data_modes: z.object({ bureau: z.boolean(), aa: z.boolean() }).strict().optional(),
+    /** Which consent artefact (one of `consents`) answers which purpose. */
+    consent_purposes: z
+      .array(z.object({ purpose: code, consent_ref: ref }).loose())
+      .max(50)
+      .optional(),
   })
-  .loose();
+  .loose()
+  .refine(
+    (a) => (a.consent_purposes ?? []).every((c) => a.consents.includes(c.consent_ref)),
+    "every consent_purposes entry names one of consents",
+  );
 
 export const APPLICATION_STATES = [
   "SUBMITTED",
@@ -196,6 +295,8 @@ export const ApplicationStatusChangedData = z
     from: z.enum(APPLICATION_STATES),
     to: z.enum(APPLICATION_STATES),
     reason_code: code.optional(),
+    /** R1-D-232 (item 7): the lender's words for the status, shown as they are. */
+    status_text: lenderText(1000).optional(),
   })
   .loose()
   .refine((e) => e.from !== e.to, "from and to differ");
@@ -220,12 +321,64 @@ export const DecisionMadeData = z
     reason_codes: z.array(code).max(20),
     rule_version: z.string().min(1).max(64),
     offers: z.array(Offer).max(20),
+    /** R1-D-232 (item 8): the lender's words for each of `reason_codes`, at most one each. */
+    reason_texts: z
+      .array(z.object({ reason_code: code, text: lenderText(1000) }).loose())
+      .max(20)
+      .optional(),
   })
   .loose()
   .refine(
     (d) => d.decision === "SANCTIONED" || d.offers.length === 0,
     "offers only when SANCTIONED",
+  )
+  .refine((d) => {
+    const codes = (d.reason_texts ?? []).map((t) => t.reason_code);
+    return codes.every((c) => d.reason_codes.includes(c)) && new Set(codes).size === codes.length;
+  }, "each reason text is for one of reason_codes, once");
+
+// ---- The KFS's optional detail (R1-D-232; PR-UDF-061, item 9; RBI KFS format, Annex A) ----------
+
+/** Who a KFS charge is paid to (Annex A, Part 1, item 8). */
+export const KFS_CHARGE_PAYEES = ["RE", "THIRD_PARTY"] as const;
+/** Whether a KFS charge is one-time or recurring (Annex A, Part 1, item 8). */
+export const KFS_CHARGE_RECURRENCES = ["ONE_TIME", "RECURRING"] as const;
+/** The roles of `lsp_recovery_agent` entries (Annex A, Part 2). */
+export const KFS_AGENT_ROLES = ["LSP", "RECOVERY_AGENT"] as const;
+
+/** One instalment of the KFS repayment schedule (Annex B). */
+export const KfsInstalment = z
+  .object({
+    seq: z.number().int().min(1).max(18_300),
+    due_date: date,
+    amount_paise: paise,
+    principal_paise: paiseOrZero.optional(),
+    interest_paise: paiseOrZero.optional(),
+  })
+  .loose()
+  .refine(
+    (i) =>
+      i.principal_paise === undefined ||
+      i.interest_paise === undefined ||
+      i.principal_paise + i.interest_paise === i.amount_paise,
+    "principal and interest add up to the instalment",
   );
+export type KfsInstalment = z.infer<typeof KfsInstalment>;
+
+/** One fee or charge of the KFS (Annex A, Part 1, item 8); an amount, a rate, or neither ("at actuals"). */
+export const KfsCharge = z
+  .object({
+    code,
+    description: lenderText(200),
+    amount_paise: paiseOrZero.optional(),
+    rate_bp: bp.optional(),
+    payable_to: z.enum(KFS_CHARGE_PAYEES).optional(),
+    recurrence: z.enum(KFS_CHARGE_RECURRENCES).optional(),
+  })
+  .loose();
+export type KfsCharge = z.infer<typeof KfsCharge>;
+
+const phone = z.string().regex(/^\+?[0-9][0-9 -]{5,19}$/);
 
 export const KfsIssuedData = z
   .object({
@@ -244,8 +397,92 @@ export const KfsIssuedData = z
      * as `loan_amount_paise`.
      */
     loan_amount_paise: paise.optional(),
+    // ---- R1-D-232 (PR-UDF-061, item 9): all optional, [VERIFY] against the RBI KFS format ----
+    issued_at: at.optional(),
+    /** The KFS's language, BCP 47 (`en`, `hi`, `mr-IN`). */
+    language: z
+      .string()
+      .regex(/^[a-z]{2,3}(?:-[A-Z]{2})?$/)
+      .optional(),
+    /** The KFS document, by reference (`document_id` of its `DocumentShared`). */
+    document_ref: documentRef.optional(),
+    tenor_days: tenorDays.optional(),
+    /** The cash flows: the net disbursed amount and the instalments, in order. */
+    cash_flows: z
+      .object({
+        net_disbursed_paise: paiseOrZero,
+        instalments: z.array(KfsInstalment).max(18_300),
+      })
+      .loose()
+      .refine(
+        (c) =>
+          c.instalments.every(
+            (x, i, a) => i === 0 || (x.seq > a[i - 1]!.seq && x.due_date >= a[i - 1]!.due_date),
+          ),
+        "instalments in order of seq and due date",
+      )
+      .optional(),
+    charges: z.array(KfsCharge).max(50).optional(),
+    cooling_off_days: z.number().int().min(0).max(365).optional(),
+    /** The terms of exit in the cooling-off period (CF para 11), the lender's words. */
+    exit_terms: lenderText(2000).optional(),
+    /** The nodal grievance redressal officer (Annex A, Part 2): the RE's published contact. */
+    nodal_gro: z
+      .object({
+        name: lenderText(200),
+        designation: lenderText(200).optional(),
+        phone: phone.optional(),
+        email: z.email().max(254).optional(),
+        address: lenderText(500).optional(),
+      })
+      .loose()
+      .optional(),
+    /** A co-lent loan (Annex A, Part 2): the parties, their shares adding up to 100 %, and the blended rate. */
+    co_lending: z
+      .object({
+        parties: z
+          .array(
+            z
+              .object({
+                name: lenderText(200),
+                share_bp: z.number().int().min(1).max(10_000),
+                rate_bp: bp.optional(),
+              })
+              .loose(),
+          )
+          .min(2)
+          .max(5),
+        blended_rate_bp: bp.optional(),
+      })
+      .loose()
+      .refine(
+        (c) => c.parties.reduce((t, p) => t + p.share_bp, 0) === 10_000,
+        "shares add up to 10000 bp",
+      )
+      .optional(),
+    /** The LSPs and recovery agents engaged (Annex A, Part 2), each with its role and functions. */
+    lsp_recovery_agent: z
+      .array(
+        z
+          .object({
+            role: z.enum(KFS_AGENT_ROLES),
+            name: lenderText(200),
+            functions: lenderText(500).optional(),
+            contact: lenderText(200).optional(),
+          })
+          .loose(),
+      )
+      .max(20)
+      .optional(),
   })
-  .loose();
+  .loose()
+  .refine(
+    (k) =>
+      k.cash_flows === undefined ||
+      k.loan_amount_paise === undefined ||
+      k.cash_flows.net_disbursed_paise <= k.loan_amount_paise,
+    "the net disbursed amount is at most the loan amount",
+  );
 
 export const SanctionLetterIssuedData = z
   .object({
@@ -254,6 +491,8 @@ export const SanctionLetterIssuedData = z
     application_id: ref,
     terms: z.object({ amount_paise: paise, tenor_months: tenor, apr_bp: bp }).loose(),
     document_sha256: sha256,
+    /** R1-D-232 (item 10): the sanction letter, by reference (`document_id` of its `DocumentShared`). */
+    document_ref: documentRef.optional(),
   })
   .loose();
 
@@ -263,8 +502,22 @@ export const BorrowerAcceptedData = z
     accepted_at: at,
     /** The borrower acknowledged the explanation of the KFS; never a bare default. */
     explanation_acknowledged: z.literal(true),
+    // ---- R1-D-232 (PR-UDF-061, item 4): all optional ----
+    lsp_application_ref: ref.optional(),
+    /** The KFS version and hash the borrower saw: the lender refuses a mismatch. */
+    kfs_version: version.optional(),
+    kfs_sha256: sha256.optional(),
+    /** When the borrower acknowledged the explanation; not after `accepted_at`. */
+    acknowledged_at: at.optional(),
+    /** The device the borrower accepted on, by the LSP's reference (never a device identifier). */
+    device_ref: ref.optional(),
   })
-  .loose();
+  .loose()
+  .refine(
+    (b) =>
+      b.acknowledged_at === undefined || Date.parse(b.acknowledged_at) <= Date.parse(b.accepted_at),
+    "acknowledged no later than accepted",
+  );
 
 // ---- §6.2 execution evidence (PR-UDF-053; R1-D-219) ---------------------------------------------
 
@@ -335,6 +588,30 @@ export const CoolingOffExitRequestedData = z
           .regex(/^(https:\/\/|storage:)/),
       })
       .loose(),
+    /** R1-D-232 (item 5). */
+    lsp_application_ref: ref.optional(),
+  })
+  .loose();
+
+/** A URL or a web address inside text: a payment instruction carries none (R1-D-232). */
+const LINK_IN_TEXT =
+  /\b[a-z][a-z0-9+.-]*:\/\/|\bupi:|www\.|\b[a-z0-9-]+\.(?:in|com|net|org|co|io|app|link|ly)\//i;
+
+/**
+ * `CoolingOffExitAnswered` (FX → UD; R1-D-232, PR-UDF-061 item 6; proposed for the Specification
+ * in PR-047's draft): the lender's answer to `CoolingOffExitRequested`, with the amount to repay
+ * (principal and proportionate APR, CF para 11), how to pay it in the lender's words, the lender's
+ * exit reference and the time. The instruction is plain text with no link; a product shows it as the
+ * lender's words and never routes the payment through an account of its own (CF para 10).
+ */
+export const CoolingOffExitAnsweredData = z
+  .object({
+    loan_id: ref,
+    exit_ref: ref,
+    exit_amount_paise: paiseOrZero,
+    payment_instruction: lenderText(1000).refine((v) => !LINK_IN_TEXT.test(v), "no link"),
+    answered_at: at,
+    lsp_application_ref: ref.optional(),
   })
   .loose();
 
@@ -349,6 +626,9 @@ export const LoanDisbursedData = z
     beneficiary_type: code,
     kind: z.enum(LOAN_DISBURSEMENT_KINDS),
     cooling_off_end: at,
+    /** R1-D-232 (item 11): the lender's application id, and the exact time of disbursal. */
+    application_id: ref.optional(),
+    disbursed_at: at.optional(),
   })
   .loose();
 
@@ -451,6 +731,13 @@ export const ORIGINATION_EVENTS = Object.freeze({
     CoolingOffExitRequestedData,
     ["loan_id"],
     "LSP_TO_LENDER",
+  ),
+  CoolingOffExitAnswered: spec(
+    "servicing",
+    "CoolingOffExitAnswered",
+    CoolingOffExitAnsweredData,
+    ["loan_id", "exit_ref"],
+    "LENDER_TO_LSP",
   ),
   LoanDisbursed: spec(
     "servicing",

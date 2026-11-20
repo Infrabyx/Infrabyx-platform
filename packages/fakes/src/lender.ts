@@ -15,6 +15,17 @@
 // has no `kfs_link`: no KFS exists before an application. In the manifest the loan agreement carries
 // `stamp_evidence` (ESTAMP, the pack's stamp State and duty, the agreement's SHA-256) and the KFS
 // `not_stampable: true` with a reason.
+// R1-D-232 (PR-UDF-061, Udofin's udf_ext v1 list): offers add `monthly_instalment_paise` and the
+// penal-charges text, a sanctioned offer a `kfs_url`; an application may name the eligibility
+// offer it takes (`offer_ref`, refused `offer_unknown` if the lender never made it) or carry its
+// request, whose amount and tenor the lender then uses; status changes and a rejection carry the
+// lender's words; the KFS carries its issue time, language, document reference, tenor in days,
+// cash flows (net disbursed and a monthly schedule), charges, cooling-off days, exit terms, nodal
+// grievance officer and the LSP entry; the sanction letter its document reference; `LoanDisbursed`
+// the application id and time. An acceptance naming another KFS version or hash, or another
+// application, is refused (`kfs_mismatch`, `application_mismatch`). An exit request inside the
+// cooling-off period is answered once with `CoolingOffExitAnswered`: principal plus the APR for the
+// days held, a payment instruction in words and the lender's exit reference.
 import {
   DOCUMENT_EVENTS,
   DOCUMENTS_SCHEMA_VERSION,
@@ -57,12 +68,18 @@ function fakeEmiPaise(amountPaise: number, tenorMonths: number, aprBp: number): 
   return Math.max(1, Math.round((amountPaise * r * f) / (f - 1)));
 }
 
-/** The fake's offer fields of R1-D-231, without `kfs_link`. */
+/** The fake's lender-text penal charges (R1-D-232), the words behind its `penal_charges` entry. */
+const PENAL_TEXT =
+  "A penal charge of 2% a month on the overdue instalment from its due date until paid; a charge, not penal interest, and never added to the principal.";
+
+/** The fake's offer fields of R1-D-231 and R1-D-232, without `kfs_link` and `kfs_url`. */
 const offerTerms = (amountPaise: number, tenorMonths: number, aprBp: number) => ({
   monthly_instalment: {
     amount_paise: fakeEmiPaise(amountPaise, tenorMonths, aprBp),
     frequency: "MONTHLY",
   },
+  monthly_instalment_paise: fakeEmiPaise(amountPaise, tenorMonths, aprBp),
+  penal_charges_text: PENAL_TEXT,
   penal_charges: [
     {
       basis: "PER_MONTH_ON_OVERDUE",
@@ -72,6 +89,24 @@ const offerTerms = (amountPaise: number, tenorMonths: number, aprBp: number) => 
     },
   ],
 });
+
+/** The fake's words for each application state (R1-D-232 `status_text`). */
+const STATUS_TEXT: Record<string, string> = {
+  UNDER_REVIEW: "Your application is with our credit team.",
+  INFO_REQUESTED: "We need one more document to continue.",
+  SANCTIONED: "Your loan is sanctioned. Read the Key Facts Statement before you accept.",
+  REJECTED: "We cannot offer you a loan at this time.",
+  ACCEPTED: "You accepted the offer. We will disburse the loan shortly.",
+  DISBURSED: "Your loan is disbursed.",
+};
+
+/** The same calendar day `months` months after `d` (UTC), clamped to the month's last day. */
+function addMonths(d: Date, months: number): Date {
+  const y = d.getUTCFullYear();
+  const m = d.getUTCMonth() + months;
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(d.getUTCDate(), last)));
+}
 
 const hex = (b: Uint8Array): string =>
   Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
@@ -140,11 +175,14 @@ export class LenderRefusal extends Error {
 
 interface Application {
   applicationId: string;
+  lspRef: string;
   seq: number;
   state: string;
-  kfs?: { kfsId: string; validityExpiry: Date };
+  kfs?: { kfsId: string; validityExpiry: Date; version: number; sha256: string };
   loanId?: string;
   coolingOffEnd?: Date;
+  disbursedAt?: Date;
+  exitRef?: string;
   amountPaise: number;
   tenorMonths: number;
   aprBp: number;
@@ -165,6 +203,10 @@ export class FakeLender {
   readonly keys: RegulatedKeyRing;
   private readonly sent: LenderMessage[] = [];
   private readonly checks = new Map<string, { body: string; answer: EligibilityCheckAnswer }>();
+  private readonly offers = new Map<
+    string,
+    { amountPaise: number; tenorMonths: number; aprBp: number }
+  >();
   private readonly applications = new Map<string, Application>();
   private readonly byKfs = new Map<string, Application>();
   private readonly byLoan = new Map<string, Application>();
@@ -315,6 +357,12 @@ export class FakeLender {
       valid_until: new Date(this.now().getTime() + 86_400_000).toISOString(),
     });
     this.checks.set(call.idempotencyKey, { body, answer });
+    for (const x of answer.offers)
+      this.offers.set(x.offer_id, {
+        amountPaise: x.amount_paise,
+        tenorMonths: x.tenor_months,
+        aprBp: x.apr_bp,
+      });
     return answer;
   }
 
@@ -324,13 +372,21 @@ export class FakeLender {
     const ref = String(e.data.lsp_application_ref);
     const known = this.applications.get(ref);
     if (known) return { applicationId: known.applicationId };
+    // R1-D-232: the offer the borrower chose, which the lender must have made, or the request.
+    const offerRef = e.data.offer_ref as string | undefined;
+    const chosen = offerRef === undefined ? undefined : this.offers.get(offerRef);
+    if (offerRef !== undefined && !chosen) throw new LenderRefusal("offer_unknown");
+    const request = e.data.request as { amount_paise: number; tenor_days: number } | undefined;
     const app: Application = {
       applicationId: this.id("app"),
+      lspRef: ref,
       seq: 0,
       state: "SUBMITTED",
-      amountPaise: 5_000_000,
-      tenorMonths: 12,
-      aprBp: 1800,
+      amountPaise: chosen?.amountPaise ?? request?.amount_paise ?? 5_000_000,
+      tenorMonths:
+        chosen?.tenorMonths ??
+        (request ? Math.min(600, Math.max(1, Math.round(request.tenor_days / 30))) : 12),
+      aprBp: chosen?.aprBp ?? 1800,
     };
     this.applications.set(ref, app);
     await this.move(app, "UNDER_REVIEW");
@@ -348,11 +404,22 @@ export class FakeLender {
     // R1-D-231: the KFS and its document id are fixed before the decision, so the offer can link it.
     const kfsId = decision === "SANCTIONED" ? this.id("kfs") : "";
     const kfsDocumentId = decision === "SANCTIONED" ? this.id("doc") : "";
+    const sanctionDocumentId = decision === "SANCTIONED" ? this.id("doc") : "";
     await this.emit("DecisionMade", {
       application_id: app.applicationId,
       decision_version: 1,
       decision,
       reason_codes: decision === "SANCTIONED" ? [] : ["POLICY_DECLINE"],
+      ...(decision === "SANCTIONED"
+        ? {}
+        : {
+            reason_texts: [
+              {
+                reason_code: "POLICY_DECLINE",
+                text: "The application falls outside our lending policy for this product.",
+              },
+            ],
+          }),
       rule_version: "fake-bre-1",
       offers:
         decision === "SANCTIONED"
@@ -364,6 +431,7 @@ export class FakeLender {
                 apr_bp: app.aprBp,
                 ...offerTerms(app.amountPaise, app.tenorMonths, app.aprBp),
                 kfs_link: { document_id: kfsDocumentId, version: 1 },
+                kfs_url: `https://documents.fake-lender.in/v1/kfs/${kfsDocumentId}`,
               },
             ]
           : [],
@@ -373,7 +441,8 @@ export class FakeLender {
       const validityExpiry = new Date(
         this.now().getTime() + (this.o.kfsValidityMs ?? 3 * 86_400_000),
       );
-      app.kfs = { kfsId, validityExpiry };
+      const kfsSha256 = sha256Hex(`kfs:${kfsId}`);
+      app.kfs = { kfsId, validityExpiry, version: 1, sha256: kfsSha256 };
       this.byKfs.set(kfsId, app);
       await this.emit("KFSIssued", {
         kfs_id: kfsId,
@@ -382,9 +451,10 @@ export class FakeLender {
         proposal_no: this.id("prp"),
         validity_expiry: validityExpiry.toISOString(),
         apr_bp: app.aprBp,
-        document_sha256: sha256Hex(`kfs:${kfsId}`),
+        document_sha256: kfsSha256,
         // R1-D-229: the KFS "Loan amount" (Annex A Part 1); the fake deducts nothing upfront.
         loan_amount_paise: app.amountPaise,
+        ...this.kfsDetail(app, kfsDocumentId),
       });
       await this.emit("SanctionLetterIssued", {
         sanction_id: this.id("snc"),
@@ -392,17 +462,70 @@ export class FakeLender {
         application_id: app.applicationId,
         terms: { amount_paise: app.amountPaise, tenor_months: app.tenorMonths, apr_bp: app.aprBp },
         document_sha256: sha256Hex(`sanction:${app.applicationId}`),
+        document_ref: sanctionDocumentId,
       });
-      await this.shareExecutionDocuments(app, kfsId, kfsDocumentId);
+      await this.shareExecutionDocuments(app, kfsId, kfsDocumentId, sanctionDocumentId);
     }
     return { applicationId: app.applicationId };
   }
 
-  /** Takes `BorrowerAccepted`; refused `kfs_expired` after the KFS's validity (§6.2). */
+  /** The KFS's optional detail of R1-D-232: a plausible test KFS, not a lender's figures. */
+  private kfsDetail(app: Application, kfsDocumentId: string): Record<string, unknown> {
+    const now = this.now();
+    const emi = fakeEmiPaise(app.amountPaise, app.tenorMonths, app.aprBp);
+    const instalments = Array.from({ length: app.tenorMonths }, (_, i) => ({
+      seq: i + 1,
+      due_date: addMonths(now, i + 1)
+        .toISOString()
+        .slice(0, 10),
+      amount_paise: emi,
+    }));
+    const last = Date.parse(instalments.at(-1)!.due_date);
+    const coolingOffDays = Math.round((this.o.coolingOffMs ?? 3 * 86_400_000) / 86_400_000);
+    return {
+      issued_at: now.toISOString(),
+      language: "en",
+      document_ref: kfsDocumentId,
+      tenor_days: Math.max(1, Math.ceil((last - now.getTime()) / 86_400_000)),
+      cash_flows: { net_disbursed_paise: app.amountPaise, instalments },
+      charges: [
+        {
+          code: "STAMP_DUTY",
+          description: "Stamp duty on the loan agreement, at actuals, paid by the borrower",
+          amount_paise: 50_000,
+          payable_to: "THIRD_PARTY",
+          recurrence: "ONE_TIME",
+        },
+      ],
+      cooling_off_days: coolingOffDays,
+      exit_terms: `You may exit within ${coolingOffDays} days of disbursal by repaying the principal and the APR for the days you held the loan, with no other charge.`,
+      nodal_gro: {
+        name: "Nodal Grievance Redressal Officer",
+        designation: "Nodal Officer, test lender",
+        phone: "+91 22 0000 0000",
+        email: "gro@fake-lender.in",
+      },
+      lsp_recovery_agent: [
+        { role: "LSP", name: "Test LSP", functions: "Sourcing, KYC and borrower communication" },
+      ],
+    };
+  }
+
+  /**
+   * Takes `BorrowerAccepted`; refused `kfs_expired` after the KFS's validity (§6.2), and
+   * `kfs_mismatch` or `application_mismatch` when it names another KFS version, hash or application.
+   */
   async accept(event: unknown): Promise<void> {
     const e = this.take("BorrowerAccepted", event);
     const app = this.byKfs.get(String(e.data.kfs_id));
     if (!app?.kfs) throw new LenderRefusal("kfs_unknown");
+    if (
+      (e.data.kfs_version !== undefined && e.data.kfs_version !== app.kfs.version) ||
+      (e.data.kfs_sha256 !== undefined && e.data.kfs_sha256 !== app.kfs.sha256)
+    )
+      throw new LenderRefusal("kfs_mismatch");
+    if (e.data.lsp_application_ref !== undefined && e.data.lsp_application_ref !== app.lspRef)
+      throw new LenderRefusal("application_mismatch");
     if (app.state === "ACCEPTED") return;
     if (
       Date.parse(String(e.data.accepted_at)) > app.kfs.validityExpiry.getTime() ||
@@ -419,29 +542,52 @@ export class FakeLender {
     const loanId = this.id("ln");
     const utr = `FAKE${hex(randomBytes(6)).toUpperCase()}`;
     const coolingOffEnd = new Date(this.now().getTime() + (this.o.coolingOffMs ?? 3 * 86_400_000));
+    const disbursedAt = this.now();
     app.loanId = loanId;
     app.coolingOffEnd = coolingOffEnd;
+    app.disbursedAt = disbursedAt;
     this.byLoan.set(loanId, app);
     await this.emit("LoanDisbursed", {
       loan_id: loanId,
       utr,
       amount_paise: app.amountPaise,
-      value_date: this.now().toISOString().slice(0, 10),
+      value_date: disbursedAt.toISOString().slice(0, 10),
       beneficiary_type: "BORROWER",
       kind: "INITIAL",
       cooling_off_end: coolingOffEnd.toISOString(),
+      application_id: app.applicationId,
+      disbursed_at: disbursedAt.toISOString(),
     });
     await this.move(app, "DISBURSED");
     return { loanId, utr };
   }
 
-  /** Takes `CoolingOffExitRequested`; refused `cooling_off_ended` after its end (CF para 11). */
+  /**
+   * Takes `CoolingOffExitRequested`; refused `cooling_off_ended` after its end (CF para 11) and
+   * `application_mismatch` when it names another application. The first request inside the period
+   * is answered with `CoolingOffExitAnswered` (R1-D-232); a repeat is taken without a second answer.
+   */
   async coolingOffExit(event: unknown): Promise<void> {
     const e = this.take("CoolingOffExitRequested", event);
     const app = this.byLoan.get(String(e.data.loan_id));
-    if (!app?.coolingOffEnd) throw new LenderRefusal("loan_unknown");
-    if (Date.parse(String(e.data.requested_at)) > app.coolingOffEnd.getTime())
-      throw new LenderRefusal("cooling_off_ended");
+    if (!app?.coolingOffEnd || !app.disbursedAt) throw new LenderRefusal("loan_unknown");
+    if (e.data.lsp_application_ref !== undefined && e.data.lsp_application_ref !== app.lspRef)
+      throw new LenderRefusal("application_mismatch");
+    const requested = Date.parse(String(e.data.requested_at));
+    if (requested > app.coolingOffEnd.getTime()) throw new LenderRefusal("cooling_off_ended");
+    if (app.exitRef) return;
+    // Principal plus the APR for the days held (CF para 11), at least one day.
+    const days = Math.max(1, Math.ceil((requested - app.disbursedAt.getTime()) / 86_400_000));
+    const interest = Math.round((app.amountPaise * app.aprBp * days) / (10_000 * 365));
+    app.exitRef = this.id("ext");
+    await this.emit("CoolingOffExitAnswered", {
+      loan_id: app.loanId,
+      exit_ref: app.exitRef,
+      exit_amount_paise: app.amountPaise + interest,
+      payment_instruction: `Pay the exit amount by NEFT or UPI to your loan account with the lender, quoting ${app.exitRef}. Do not pay anyone else.`,
+      answered_at: this.now().toISOString(),
+      lsp_application_ref: app.lspRef,
+    });
   }
 
   /** Shares the KFS, the sanction letter, the loan agreement and the execution-pack manifest. */
@@ -449,6 +595,7 @@ export class FakeLender {
     app: Application,
     kfsId: string,
     kfsDocumentId: string,
+    sanctionDocumentId: string,
   ): Promise<void> {
     const enc = (t: string) => new TextEncoder().encode(t);
     const kfs = await this.share(app, "KFS", enc(`kfs:${kfsId}`), "application/pdf", kfsDocumentId);
@@ -457,6 +604,7 @@ export class FakeLender {
       "SANCTION_LETTER",
       enc(`sanction:${app.applicationId}`),
       "application/pdf",
+      sanctionDocumentId,
     );
     const agreement = await this.share(
       app,
@@ -580,11 +728,13 @@ export class FakeLender {
     const from = app.state;
     app.state = to;
     app.seq += 1;
+    const statusText = STATUS_TEXT[to];
     await this.emit("ApplicationStatusChanged", {
       application_id: app.applicationId,
       seq: app.seq,
       from,
       to,
+      ...(statusText ? { status_text: statusText } : {}),
     });
   }
 

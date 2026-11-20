@@ -25,3 +25,26 @@ Replace "Documents travel by reference (`document_id`, `sha256`) with a detached
 ## 4. Interim (until approved)
 
 The platform ships `ExecutionPackManifest` in `@infrabyx/contracts/events` and the mock lender shares it as a `DocumentShared` of type `EXECUTION_PACK_MANIFEST` (`application/json`, the JCS form of the manifest, covered by the document JWS). No `ExecutionPackIssued` is emitted before the owner approves this proposal.
+
+## 5. Added 20 Nov 2026 for Udofin PR-UDF-061 (R1-D-232): the answer to a cooling-off exit, and optional fields
+
+**§6.3: one new row, after `CoolingOffExitRequested`:**
+
+| Event or API                        | Producer → consumer(s) | Trigger                                         | Key payload fields                                                                                                        | Owner | Idempotency key     | Latency |
+| ----------------------------------- | ---------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------- | ------- |
+| `CoolingOffExitAnswered` (E) signed | FX → UD                | The lender answers an exit request (CF para 11) | loan_id, exit_ref, exit amount (paise: principal and proportionate APR), payment instruction (text, no link), answered_at | FX    | (loan_id, exit_ref) | std     |
+
+**§3.6:** add `CoolingOffExitAnswered` to the regulated messages added in v1.6, because it states an amount owed and how to pay it.
+
+**§6.2 and §6.3 key payload fields (additive, optional):**
+
+- Offers: monthly instalment, the penal-charges text, a KFS URL.
+- `ApplicationSubmitted`: the chosen offer and product code, the request (amount, tenor in days, purpose), the economic profile (CF para 8), the household figures, the KYC level and state, the credit-data modes, and consent purposes.
+- `BorrowerAccepted`: the KFS version and hash, the acknowledgement time, a device reference.
+- `ApplicationStatusChanged`: the lender's status text.
+- `DecisionMade`: the reason texts.
+- `KFSIssued`: the issue time, language, document reference, tenor in days, cash flows, charges, cooling-off days, exit terms, and the Annex items (nodal grievance officer, co-lending, LSPs and recovery agents).
+- `SanctionLetterIssued`: the document reference.
+- `LoanDisbursed`: the lender's application id and the time of disbursal.
+
+**Interim (until approved):** the platform ships `CoolingOffExitAnswered` unsigned in `@infrabyx/contracts/events`, and the mock lender emits it. Once v1.6 lists it, signing it is a minor: the event joins `REGULATED_MESSAGE_EVENTS` and a consumer verifies its JWS like the other regulated messages.
