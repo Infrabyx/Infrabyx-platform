@@ -1130,6 +1130,16 @@ From the next release (`contracts`, `crypto`, `fakes` and `testing` minors), `@i
 - **Testing:** `new FakeLender()` answers `eligibilityCheck`, takes `submitApplication(ApplicationSubmitted)`, `accept(BorrowerAccepted)`, `coolingOffExit(CoolingOffExitRequested)`, and `disburse(applicationId)`; read what it sent with `outbox()` and verify with `fake.keys`. `script({ decision, infoRequest, latencyMs, outcome })` steers the next calls. Build your own messages with `lspEvent(name, data)` from `@infrabyx/testing`, and run `lenderContractCases()` against any lender client you write.
 - **Udofin:** `u21_connector/port.ts` can import these types instead of its local copies.
 
+## 7df. Documents, eSign and eStamp evidence and the execution pack (PR-UDF-053; R1-D-219)
+
+From the next release (`contracts`, `crypto`, `fakes` and `testing` minors), building on §7de:
+
+- **Documents travel by reference** (§6.13): `DocumentShared` (`in.infrabyx.documents.DocumentShared.v1`, `DocumentSharedData`, keyed by `document_id` and `version`) carries the type, `sha256`, retention class, legal hold and a **document JWS**. Verify it with `verifyDocumentJws(jws, { document_id, version, sha256 }, producerKeys)` before you fetch, then check the bytes' SHA-256 against `sha256`. Sign your own with `signDocumentJws` (your KMS key; C-22, `typ: ipb-document+jws`).
+- **Fetching:** `GET /v1/documents/{id}` answers `DocumentRetrieval`: an India-hosted `https` URL valid at most 15 minutes, with the hash and JWS. Treat the URL as a secret: never log it or put it in an event.
+- **Execution evidence:** `ESignCompleted` and `EStampCompleted` are in `ORIGINATION_EVENTS` (UD → FX, regulated, so `ORIGINATION_REGULATED` now has six). Send each with its detached JWS (`X-Infrabyx-JWS`). `ESignCompleted` needs the ESP transaction id, the certificate summary and the signed hash; a bare "signed" flag is not a valid message.
+- **The execution pack:** `ExecutionPackManifest` lists the documents to execute (kind, hash, execution mode, stamp requirement, signers by role), the stamp details, the page of the loan agreement with the KFS summary box, the covenant declaration and the countersignature rule. Until the Specification names a carrier (PR-047), the lender shares it as a document of type `EXECUTION_PACK_MANIFEST` whose bytes are the JCS form of the manifest; parse it with `ExecutionPackManifest.parse(JSON.parse(text))`.
+- **Testing:** `const lsp = lspSigner(); const lender = new FakeLender({ lspKeys: lsp.keys })`. After a sanction, `lender.sharedDocuments()` lists the shared documents (`outbox()` is unchanged), `getDocument(id)` and `fetchDocument(url)` serve them, `executionPack(applicationId)` returns the manifest, and `eSignCompleted(event, await lsp.sign(event))` and `eStampCompleted(...)` take your evidence. Run `lenderContractCases({ lsp })` against any lender client you write.
+
 ## 7dg. The GRC port and the §6.15 events (PR-FBX-51; R1-D-220)
 
 From the next release (`contracts`, `config`, `connectors`, `fakes` and `testing` minors), a product reports to its GRC system of record (LawDocsComply, Finbyx's embedded module, or a regulated entity's own tool) through one port on the Ecosystem Specification §9.2 generic connector contract.
