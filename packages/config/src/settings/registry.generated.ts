@@ -3142,6 +3142,34 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "the analyser's exact host name, India-resident; empty refuses every call (adapter_unconfigured)"
   },
   {
+    "key": "int.grc.generic.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0013 GRC; PR-FBX-51, R1-D-220 (reference adapter generic-grc; no vendor chosen)",
+    "note": "the Ecosystem Spec 9.2 generic GRC connector (references and hashes only, never personal data); off and unproven until a counterparty sandbox exists"
+  },
+  {
+    "key": "int.grc.generic.host",
+    "tier": "PLATFORM",
+    "type": "string",
+    "default": "",
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0013 GRC; PR-FBX-51, R1-D-220 (the generic adapter's only egress host)",
+    "note": "the GRC system's exact host name, India-resident; empty refuses every call (adapter_unconfigured); its token is in SECRETS"
+  },
+  {
     "key": "int.video_meet.livekit.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -7117,6 +7145,8 @@ export type SettingValueMap = {
   "int.statement_analysis.platform.enabled": boolean;
   "int.statement_analysis.http.enabled": boolean;
   "int.statement_analysis.http.host": string;
+  "int.grc.generic.enabled": boolean;
+  "int.grc.generic.host": string;
   "int.video_meet.livekit.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
   "int.av.clamav.enabled": boolean;
