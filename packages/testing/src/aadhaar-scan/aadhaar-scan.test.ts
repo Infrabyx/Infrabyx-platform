@@ -222,3 +222,11 @@ describe("PR-UDF-042 infrabyx-aadhaar-scan", () => {
     expect(a.finds.map((f) => f.kind)).toEqual(["AADHAAR", "VID"]);
   });
 });
+
+describe("UUIDs in messages (R1-D-247)", () => {
+  it("never reads a UUID's all-digit middle groups as a number", () => {
+    // The CI failure on #345: the envelope id of a lender event, whose groups 2 to 4 are digits.
+    const id = "01a1f98a-9694-7092-9478-0624acc5521e";
+    expect(scanTextForAadhaar(JSON.stringify({ event: { id } }), { letters: "join" })).toEqual([]);
+  });
+});
