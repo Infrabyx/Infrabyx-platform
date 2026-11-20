@@ -6,11 +6,15 @@
 // carries each signer's evidence in the shape of ESIGN's signer trail, and a document that bears no
 // stamp duty (a sanction letter, a KFS acknowledgement) is registered as not stampable with a reason
 // code, without a duty or an e-stamp (Finbyx PR-FBX-35, R1-D-84). No DDE call moves money.
+// A certificate the regulated entity bought through its own channel (its SHCIL account, a licensed
+// stamp vendor, a franking agent) is recorded with the optional `recordCertificate` (Udofin
+// PR-UDF-054, R1-D-245): nothing is bought, so it is not a money call; the adapter checks it with
+// the issuer where it can and keeps it once per State, channel and number.
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { DocFileRef, OutputPrefix } from "./doc-file.js";
 import type { SignatureRecord, SigningMethod } from "./esign.js";
-import { MoneyAuthorisation } from "./money.js";
+import { MoneyAuthorisation, MoneyIdempotencyKey } from "./money.js";
 import { AmountMinor } from "./payments.js";
 import { classed } from "./payload-class.js";
 
@@ -53,6 +57,94 @@ export const EstampPurchase = z
   })
   .strict();
 
+/**
+ * How a stamp was paid (R1-D-245): an e-stamp certificate, a franking impression or physical stamp
+ * paper. The names of the evidence's `channel` (`STAMP_MODES`) and of `EStampCompleted.stamp_mode`.
+ */
+export const STAMP_RECORD_CHANNELS = ["E_STAMP", "FRANKING", "PHYSICAL_PAPER"] as const;
+export type StampRecordChannel = (typeof STAMP_RECORD_CHANNELS)[number];
+
+/**
+ * How a recorded certificate was checked, usable as `EStampCompleted.stamp_verification_method`:
+ * read back from its issuer (SHCIL, the aggregator), or recorded by the regulated entity from the
+ * paper it holds, with nothing external to ask.
+ */
+export const STAMP_VERIFICATIONS = ["ISSUER_READBACK", "MANUAL_RECORD"] as const;
+export type StampVerification = (typeof STAMP_VERIFICATIONS)[number];
+
+/** The fixed refusal label of an adapter that never buys stamp duty (R1-D-245). */
+export const STAMP_PURCHASE_NOT_PERMITTED = "purchase_not_permitted";
+
+/** The certificate number rule of the stamp evidence (`PackStampEvidence.certificate_no`). */
+export const StampCertificateNumber = z.string().regex(/^[A-Za-z0-9/_.-]{3,64}$/);
+
+/** Who keyed a stamp record: a named user or a service, never an agent (R1-D-245). */
+export const StampRecorder = z
+  .object({
+    principalId: internal(z.string().min(1).max(255)),
+    principalType: internal(z.enum(["user", "service"])),
+  })
+  .strict();
+export type StampRecorder = z.infer<typeof StampRecorder>;
+
+/**
+ * A stamp the regulated entity already paid for, recorded against the stamped instrument (Udofin
+ * PR-UDF-054, R1-D-245). Physical paper and franking carry the licensed vendor's or franking
+ * agent's licence and the scanned certificate; the duty paid is never less than the duty the
+ * instrument states (no deficient stamping).
+ */
+export const StampCertificateRecord = z
+  .object({
+    channel: internal(z.enum(STAMP_RECORD_CHANNELS)),
+    state: internal(StateCode),
+    /** The article of the state's Stamp Act schedule, e.g. `5(h)` or `loan_agreement`. */
+    instrument: internal(z.string().min(1).max(80)),
+    /** The e-stamp certificate number, or the stamp paper's or franking impression's serial. */
+    certificateNumber: internal(StampCertificateNumber),
+    dutyMinor: regulated(AmountMinor),
+    /** The duty the instrument states it needs, where it states one. */
+    statedDutyMinor: regulated(AmountMinor).optional(),
+    /** When the certificate was issued, the paper sold or the impression made. */
+    issuedAt: internal(z.iso.datetime({ offset: true })),
+    purchaser: EstampParty,
+    /** The stamped instrument in STORAGE; its SHA-256 is the evidence's `stamped_document_sha256`. */
+    stampedDocument: DocFileRef,
+    /** The scanned certificate, paper or impression, as the product's document id. */
+    certificateDocumentId: internal(z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/)).optional(),
+    /** The licensed stamp vendor's or franking agent's licence number, as printed. */
+    vendorLicence: internal(z.string().regex(/^[A-Za-z0-9/_.-]{3,64}$/)).optional(),
+    /** The channel's own id for the certificate (SHCIL's or the aggregator's reference). */
+    vendorCertificateId: internal(z.string().regex(/^[A-Za-z0-9/_.:-]{3,128}$/)).optional(),
+    recordedBy: StampRecorder,
+  })
+  .strict()
+  .superRefine((r, ctx) => {
+    if (r.statedDutyMinor !== undefined && r.dutyMinor < r.statedDutyMinor)
+      ctx.addIssue({
+        code: "custom",
+        message: "the duty paid is at least the duty stated (no deficient stamping)",
+        path: ["statedDutyMinor"],
+      });
+    if (r.channel !== "E_STAMP") {
+      if (r.vendorLicence === undefined)
+        ctx.addIssue({
+          code: "custom",
+          message: "stamp paper and franking name the vendor's or agent's licence",
+          path: ["vendorLicence"],
+        });
+      if (r.certificateDocumentId === undefined)
+        ctx.addIssue({
+          code: "custom",
+          message: "stamp paper and franking carry the scanned certificate",
+          path: ["certificateDocumentId"],
+        });
+    }
+  });
+export type StampCertificateRecord = z.infer<typeof StampCertificateRecord>;
+
+/** Idempotency keys of `recordCertificate`: as for money calls (8 to 128 of A-Z a-z 0-9 _ . : -). */
+export const StampRecordKey = MoneyIdempotencyKey;
+
 export interface DutyQuote {
   dutyMinor: number;
   /** The RULES rule set and version that computed it (IPB-01: `quoteDuty` delegates to RULES). */
@@ -76,6 +168,15 @@ export interface EstampCertificate {
   vendorRef: string;
   adapter: string;
   issuedAt: string | null;
+  // ---- R1-D-245 (PR-UDF-054): set on a recorded certificate, all optional ----
+  channel?: StampRecordChannel;
+  statedDutyMinor?: number;
+  /** SHA-256 of the stamped instrument. */
+  stampedDocumentSha256?: string;
+  certificateDocumentId?: string;
+  vendorLicence?: string;
+  vendorCertificateId?: string;
+  verification?: StampVerification;
 }
 
 /**
@@ -162,6 +263,18 @@ export interface EstampPort extends Port {
   /** Money-moving: pays the duty and procures a certificate (`assertMoneyCall` first). */
   purchase(
     req: z.infer<typeof EstampPurchase>,
+    idempotencyKey: string,
+    call?: PortCall,
+  ): Promise<EstampCertificate>;
+  /**
+   * Records a stamp the regulated entity already paid for through its own channel (optional;
+   * `capabilities.recordCertificate`; R1-D-245). Never buys: an adapter that has it refuses
+   * `purchase` with `purchase_not_permitted`. Once per idempotency key, and a certificate number
+   * once per State and channel (`IPB-PORT-004`, `certificate_reused`). The product writes the
+   * record in its kernel mutation, so the ledger entry is in the same transaction.
+   */
+  recordCertificate?(
+    req: z.input<typeof StampCertificateRecord>,
     idempotencyKey: string,
     call?: PortCall,
   ): Promise<EstampCertificate>;

@@ -17,6 +17,7 @@
 // media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto), whose fields
 // `DocumentRetrieval` now carries too.
 import { z } from "zod";
+import type { EstampCertificate } from "../ports/estamp.js";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
 export const DOCUMENTS_SCHEMA_VERSION = "1.0.0";
@@ -372,6 +373,31 @@ export const PackStampEvidence = z
     "the duty paid is at least the duty stated (no deficient stamping)",
   );
 export type PackStampEvidence = z.infer<typeof PackStampEvidence>;
+
+/**
+ * The pack's stamp evidence of a certificate an ESTAMP adapter recorded (`recordCertificate`;
+ * PR-UDF-054, R1-D-245): the channel, number, State (`MH` → `IN-MH`), duty, stated duty, stamped
+ * document hash, issue time, the channel's certificate id and the scanned certificate's document id.
+ * Parsed, so a certificate without a channel, number, hash or issue time, or one stamped below its
+ * stated duty, throws rather than travel as incomplete evidence.
+ */
+export function stampEvidenceOf(cert: EstampCertificate): PackStampEvidence {
+  return PackStampEvidence.parse({
+    channel: cert.channel,
+    certificate_no: cert.certificateNumber,
+    state: `IN-${cert.stateCode}`,
+    duty_paise: cert.dutyMinor,
+    ...(cert.statedDutyMinor !== undefined ? { stated_duty_paise: cert.statedDutyMinor } : {}),
+    stamped_document_sha256: cert.stampedDocumentSha256,
+    issued_at: cert.issuedAt,
+    ...(cert.vendorCertificateId !== undefined
+      ? { vendor_certificate_id: cert.vendorCertificateId }
+      : {}),
+    ...(cert.certificateDocumentId !== undefined
+      ? { certificate_document_id: cert.certificateDocumentId }
+      : {}),
+  });
+}
 
 /** One document of an issued pack. */
 export const PackDocument = z
