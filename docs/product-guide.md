@@ -1409,6 +1409,28 @@ From the next `contracts`, `config`, `fakes`, `testing` and `connectors` minors 
 - Vendor shapes are to be confirmed against each sandbox: keep the adapters off until the owner's accounts exist. Whether a manually keyed stamp needs a checker before it enters a pack is the owner's question #177.
 - **Udofin:** keep Leegality or Digio for eSign until #177 decides NSDL's request signing.
 
+## 7dz. Checking a PDF's embedded signature locally (PR-UDF-059; C-28, R1-D-246)
+
+From the next `crypto` minor (no migration, no setting), `@infrabyx/crypto` verifies a PDF's embedded PAdES/CMS signatures without an ESP call. It only verifies; it never signs.
+
+```ts
+import { verifyPadesSignatures } from "@infrabyx/crypto";
+
+const result = verifyPadesSignatures(pdfBytes, {
+  revocation: { crls, ocsp }, // optional DER you fetched; nothing is fetched for you
+});
+if (!result.valid) {
+  // result.outcome: "invalid" | "incremental_update_after_signature" | "no_signature" | …
+}
+```
+
+- **Read the bytes yourself** (from STORAGE, after the AV and hash checks you already run). Files up to 32 MiB by default (`maxBytes`, at most 64 MiB) and 16 signatures.
+- **`result.valid`** is true only when every signature is valid and one covers the whole file. Per signature you get `outcome` (a fixed label, `PADES_OUTCOMES`), `signer` (subject, serial, issuer, certificate SHA-256), `signedAt` with `timeSource` (`timestamp`, `signing_time_attribute`, `signature_dictionary` or `verification_time`), `timestamp`, `chain`, `revocation` (`good`, `revoked` or `not_checked`) and `algorithm`. Do not log the signer block with document identifiers if your privacy notice does not cover it.
+- **Not trusted yet:** the pinned CCA India store (`CCA_INDIA_TRUST`) is empty until the owner supplies CCA's root and intermediates (owner question #178), so every signature reports `chain_untrusted` today. Do not switch a business decision to this verifier before a release says the pins are in.
+- **Revocation** is `not_checked` unless you pass CRLs or OCSP responses for every certificate below the root; a listed certificate makes the signature `certificate_revoked`.
+- **B-LT and B-LTA files** (a DSS or document timestamp added after signing) report `incremental_update_after_signature` (or `unsupported_subfilter` for the document timestamp); treat them as needing review.
+- **Tests:** `@infrabyx/crypto/pades-test` (dev only) gives `padesTestAuthority()`, which signs any classic-xref PDF (for example `pdfFixture`'s) and makes timestamps, CRLs and OCSP responses; pass its `trust` (results then say `trustStore: "custom"`). Never use it outside tests.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

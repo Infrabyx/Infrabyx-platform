@@ -26,6 +26,29 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "digests",
       "migration checksums",
       "partner mTLS client-certificate thumbprint x5t#S256 (RFC 8705 §3.1) and fingerprint (PR-UDF-064, R1-D-238)",
+      "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs (C-28, R1-D-246); verify only",
+    ],
+  },
+  {
+    id: "sha-384",
+    purpose: "hash",
+    status: "approved",
+    primitive: "hash",
+    parameterSet: "384",
+    oid: "2.16.840.1.101.3.4.2.2",
+    usedFor: [
+      "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs only (C-28, R1-D-246); verify only",
+    ],
+  },
+  {
+    id: "sha-512",
+    purpose: "hash",
+    status: "approved",
+    primitive: "hash",
+    parameterSet: "512",
+    oid: "2.16.840.1.101.3.4.2.3",
+    usedFor: [
+      "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs only (C-28, R1-D-246); verify only",
     ],
   },
   {
@@ -91,6 +114,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     oid: "1.2.840.10045.4.3.3",
     usedFor: [
       "Apple App Attest certificate chain to the pinned Apple App Attestation root only (C-27, R1-D-59); verify only",
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
     ],
   },
   {
@@ -100,7 +124,32 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     primitive: "signature",
     parameterSet: "RSA ≥ 2048, MGF1-SHA-256, salt 32",
     oid: "1.2.840.113549.1.1.10",
-    usedFor: ["JWT PS256 verification (C-11)"],
+    usedFor: [
+      "JWT PS256 verification (C-11)",
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
+    ],
+  },
+  {
+    id: "rsassa-pss-sha384",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA ≥ 2048, MGF1-SHA-384, salt as signed",
+    oid: "1.2.840.113549.1.1.10",
+    usedFor: [
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
+    ],
+  },
+  {
+    id: "rsassa-pss-sha512",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA ≥ 2048, MGF1-SHA-512, salt as signed",
+    oid: "1.2.840.113549.1.1.10",
+    usedFor: [
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
+    ],
   },
   {
     id: "rsassa-pkcs1-v1_5-sha256",
@@ -112,6 +161,29 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     usedFor: [
       "Amazon SNS SignatureVersion 2 verification only (C-13)",
       "Google service-account assertion for FCM, Vertex AI and Play Integrity OAuth only (C-24, PL4-C-01, R1-D-59); never for platform tokens",
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
+    ],
+  },
+  {
+    id: "rsassa-pkcs1-v1_5-sha384",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA ≥ 2048",
+    oid: "1.2.840.113549.1.1.12",
+    usedFor: [
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
+    ],
+  },
+  {
+    id: "rsassa-pkcs1-v1_5-sha512",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "RSA ≥ 2048",
+    oid: "1.2.840.113549.1.1.13",
+    usedFor: [
+      "PAdES/CMS signature verification only: the CMS signer, its certificate chain to the pinned CCA India trust, RFC 3161 timestamps, caller-supplied CRLs and OCSP responses (C-28, R1-D-246); verify only, never sign",
     ],
   },
   {

@@ -190,6 +190,26 @@ export {
   type DocumentJwsResult,
 } from "./document-jws.js";
 export {
+  verifyPadesSignatures,
+  customTrustStore,
+  CCA_INDIA_TRUST,
+  PADES_OUTCOMES,
+  PADES_DOCUMENT_OUTCOMES,
+  PADES_LIMITS,
+  type PadesVerifyOptions,
+  type PadesVerifyResult,
+  type PadesSignatureResult,
+  type PadesOutcome,
+  type PadesDocumentOutcome,
+  type PadesTimeSource,
+  type PadesTrustStore,
+  type PinnedCertificate,
+  type RevocationEvidence,
+  type RevocationStatus,
+} from "./pades.js";
+export { CCA_INDIA_ROOTS, CCA_INDIA_INTERMEDIATES } from "./cca-india-trust.js";
+export { REVOCATION_LIMITS } from "./pades-revocation.js";
+export {
   readClientCertificate,
   PinnedCaSet,
   CLIENT_CERT_REFUSALS,
