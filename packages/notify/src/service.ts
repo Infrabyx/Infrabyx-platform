@@ -14,6 +14,13 @@
 // Callers pass principal references only; addresses come from the product's `ContactResolver`
 // and are never stored, logged or put on a queue.
 //
+// Staff by role (Udofin PR-UDF-052; R1-D-222; plan `docs/phases/R1-udofin-staff-notify-plan.md`):
+// `notifyStaff` and `enqueueStaff` find the active holders of the roles in the context's tenant at
+// send time, inside the recording transaction, and send a staff class (`audience: staff`, in-app
+// and email) whose variables carry no personal data; nobody holding the roles is a recorded
+// `no_recipients` outcome; `deliveryReceipt` gives each recipient's deliveries. `send` and
+// `enqueue` refuse a staff class.
+//
 // Inbound replies (PR-LDC-50; R1-D-177; plan `docs/phases/R1-inbound-mail-plan.md` §4): an email
 // delivery of a notification that asks for replies carries `reply+<token>@<tenant reply domain>`;
 // `receiveReplies` takes the messages an EMAIL adapter's `verifyInbound` verified and accepts a
@@ -36,11 +43,13 @@ import {
 import {
   INBOUND_MAIL_LIMITS,
   NotificationRequest,
+  StaffNotificationRequest,
   isValidStorageKey,
   scanDecision,
   type AdapterDescriptor,
   type ChannelMatrix,
   type ContactResolver,
+  type DeliveryReceipt,
   type DeliveryRecord,
   type DeliveryState,
   type DomainCheck,
@@ -66,6 +75,7 @@ import {
   type SmsDeliveryReport,
   type SmsMessage,
   type SmsPort,
+  type StaffSendResult,
   type StoragePort,
   type SuppressionInput,
   type TemplateResolver,
@@ -87,6 +97,13 @@ import { NotFoundError, ServiceReader, type ServiceReadRecord } from "@infrabyx/
 import type { Catalogue } from "./catalogue.js";
 import { assertPreferences, effectiveChannels, isCollectionClass, timing } from "./routing.js";
 import { renderEmailTemplate } from "./template-lint.js";
+import {
+  MAX_STAFF_RECIPIENTS,
+  assertStaffVars,
+  isStaffClass,
+  lintStaffTitles,
+  staffHolders,
+} from "./staff.js";
 import {
   REPLY_DOMAIN,
   mintReplyToken,
@@ -297,6 +314,9 @@ export class NotifyService implements NotifyPort {
     this.dispatcher = reader("SVC_NOTIFY_DISPATCH", NOTIFY_DISPATCH_PRINCIPAL_ID);
     this.unsubscribeReader = reader("SVC_NOTIFY_UNSUBSCRIBE", "svc_notify_unsubscribe");
     this.replyReader = reader("SVC_NOTIFY_REPLY", "svc_notify_reply");
+    // A staff class's titles carry only its subject variables (R1-D-222): refused at boot.
+    const titles = lintStaffTitles(o.catalogue.all(), o.messages ?? {});
+    if (titles.length) throw new Error(`staff notification titles invalid: ${titles.join("; ")}`);
   }
 
   private now(): Date {
@@ -330,9 +350,15 @@ export class NotifyService implements NotifyPort {
     return (await this.write(tx, req, plan)).result;
   }
 
-  private async plan(ctx: KernelContext, raw: NotificationRequest) {
+  private async plan(ctx: KernelContext, raw: NotificationRequest, door: Door = "send") {
     const req = NotificationRequest.parse(raw);
     const cls = this.o.catalogue.get(req.class);
+    // Staff classes go out only by role, with their variables checked (R1-D-222).
+    if (door === "send" && isStaffClass(cls))
+      throw new IpbError("IPB-NTF-007", {
+        detail: `${cls.id} is a staff class: send it by role with notifyStaff`,
+        meta: { reason: "staff_class", class: cls.id },
+      });
     const at = this.now();
     const org = await this.setting(ctx, "ntf.org.routing");
     const bypass = await this.setting(ctx, "ntf.org.allow_quiet_hours_bypass");
@@ -373,6 +399,7 @@ export class NotifyService implements NotifyPort {
     tx: Tx,
     req: NotificationRequest,
     p: Awaited<ReturnType<NotifyService["plan"]>>,
+    ledger: Record<string, unknown> = {},
   ): Promise<{ result: SendResult; due: Set<string>; replay: boolean }> {
     const prior = await tx.query<{ id: string }>(
       "select id from notify.notification where idempotency_key = $1",
@@ -436,9 +463,135 @@ export class NotifyService implements NotifyPort {
             deliveries.filter((d) => d.state === s).length,
           ]),
         ),
+        ...ledger,
       },
     });
     return { result: { notificationId: id, deliveries }, due, replay: false };
+  }
+
+  // -------------------------------------------------------------------------------- staff
+
+  /**
+   * Notify everyone who holds one of `roles` in the context's tenant now (PR-UDF-052; R1-D-222):
+   * record the notification and its deliveries, then deliver what is due, as `send` does. The
+   * class must be a staff class; nobody holding the roles is the recorded outcome `no_recipients`.
+   */
+  async notifyStaff(ctx: KernelContext, raw: StaffNotificationRequest): Promise<StaffSendResult> {
+    const req = StaffNotificationRequest.parse(raw);
+    const res = await this.o.kernel.mutate(ctx, (tx) => this.recordStaff(tx, req), {
+      action: "notify.notification.create",
+    });
+    const r = res.result;
+    if (this.o.deferDelivery || res.replay || r.outcome === "no_recipients") return r;
+    for (const d of r.deliveries)
+      if (d.state === "queued" && res.due.has(d.deliveryId)) await this.deliver(ctx, d.deliveryId);
+    return {
+      ...(await this.result(ctx, r.notificationId)),
+      outcome: r.outcome,
+      recipients: r.recipients,
+    };
+  }
+
+  /** `notifyStaff` inside the caller's transaction; deliveries are left for `dispatchDue`. */
+  async enqueueStaff(tx: Tx, raw: StaffNotificationRequest): Promise<StaffSendResult> {
+    return (await this.recordStaff(tx, StaffNotificationRequest.parse(raw))).result;
+  }
+
+  private async recordStaff(
+    tx: Tx,
+    req: StaffNotificationRequest,
+  ): Promise<{ result: StaffSendResult; due: Set<string>; replay: boolean }> {
+    const cls = this.o.catalogue.get(req.class);
+    if (!isStaffClass(cls))
+      throw new IpbError("IPB-NTF-007", {
+        detail: `${cls.id} is not a staff class (audience: staff)`,
+        meta: { reason: "not_staff_class", class: cls.id },
+      });
+    assertStaffVars(cls, req.vars);
+    const prior = await tx.query<{ id: string }>(
+      "select id from notify.notification where idempotency_key = $1",
+      [req.idempotencyKey],
+    );
+    if (prior.rows[0]) {
+      const ds = await tx.query<DeliveryRow>(
+        "select * from notify.delivery where notification_id = $1 order by created_at, id",
+        [prior.rows[0].id],
+      );
+      await this.o.audit.record(tx, {
+        action: "notify.notification.replay",
+        resourceType: "notification",
+        resourceId: prior.rows[0].id,
+      });
+      const deliveries = ds.rows.map((d) => this.short(d));
+      return {
+        result: {
+          notificationId: prior.rows[0].id,
+          deliveries,
+          outcome: deliveries.length ? "targeted" : "no_recipients",
+          recipients: [...new Set(deliveries.map((d) => d.recipient))],
+        },
+        due: new Set(),
+        replay: true,
+      };
+    }
+    const exclude = (req.exclude ?? []).map((e) => e.ref);
+    const holders = await staffHolders(tx, tx.ctx.tenantId, req.roles, exclude);
+    if (holders.length > MAX_STAFF_RECIPIENTS)
+      throw new IpbError("IPB-NTF-007", {
+        detail: `more than ${MAX_STAFF_RECIPIENTS} people hold ${req.roles.join(", ")}`,
+        meta: { reason: "too_many_recipients", class: cls.id },
+      });
+    const ledger = { audience: "staff", roles: req.roles, targeted: holders };
+    if (holders.length === 0) {
+      const id = newId("ntf");
+      await tx.query(
+        `insert into notify.notification (id, tenant_id, class_id, idempotency_key, deep_link, vars, locale, created_by)
+         values ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)`,
+        [
+          id,
+          tx.ctx.tenantId,
+          cls.id,
+          req.idempotencyKey,
+          req.deepLink,
+          JSON.stringify(req.vars),
+          req.locale ?? null,
+          tx.ctx.principal.id,
+        ],
+      );
+      await this.o.audit.record(tx, {
+        action: "notify.notification.create",
+        resourceType: "notification",
+        resourceId: id,
+        after: {
+          class: cls.id,
+          recipients: 0,
+          deliveries: {},
+          outcome: "no_recipients",
+          ...ledger,
+        },
+      });
+      return {
+        result: { notificationId: id, deliveries: [], outcome: "no_recipients", recipients: [] },
+        due: new Set(),
+        replay: false,
+      };
+    }
+    const n: NotificationRequest = {
+      class: cls.id,
+      to: holders.map((ref) => ({ ref })),
+      vars: req.vars,
+      deepLink: req.deepLink,
+      idempotencyKey: req.idempotencyKey,
+      ...(req.locale ? { locale: req.locale } : {}),
+    };
+    const written = await this.write(tx, n, await this.plan(tx.ctx, n, "staff"), {
+      outcome: "targeted",
+      ...ledger,
+    });
+    return {
+      ...written,
+      result: { ...written.result, outcome: "targeted", recipients: holders },
+    };
   }
 
   /**
@@ -1889,6 +2042,43 @@ export class NotifyService implements NotifyPort {
     );
   }
 
+  /**
+   * A notification's delivery receipt (PR-UDF-052; R1-D-222): each recipient with every channel's
+   * delivery record and whether any was `sent` or `delivered`. Null for an unknown notification.
+   */
+  async deliveryReceipt(
+    ctx: KernelContext,
+    notificationId: string,
+  ): Promise<DeliveryReceipt | null> {
+    return this.o.kernel.read(ctx, async (tx) => {
+      const n = (
+        await tx.query<{ id: string; class_id: string }>(
+          "select id, class_id from notify.notification where id = $1",
+          [notificationId],
+        )
+      ).rows[0];
+      if (!n) return null;
+      const ds = (
+        await tx.query<DeliveryRow>(
+          "select * from notify.delivery where notification_id = $1 order by created_at, id",
+          [notificationId],
+        )
+      ).rows.map(toRecord);
+      const by = new Map<string, DeliveryRecord[]>();
+      for (const d of ds) by.set(d.recipient, [...(by.get(d.recipient) ?? []), d]);
+      return {
+        notificationId: n.id,
+        classId: n.class_id,
+        outcome: ds.length ? "targeted" : "no_recipients",
+        recipients: [...by].map(([recipient, deliveries]) => ({
+          recipient,
+          reached: deliveries.some((d) => d.state === "sent" || d.state === "delivered"),
+          deliveries,
+        })),
+      };
+    });
+  }
+
   /** The in-app list for the shell (PL5), newest first. */
   async inapp(
     ctx: KernelContext,
@@ -2030,6 +2220,9 @@ export class NotifyService implements NotifyPort {
 }
 
 const str = (v: unknown): string | undefined => (typeof v === "string" ? v : undefined);
+
+/** Which door a notification came through: `send`/`enqueue`, or `notifyStaff` (R1-D-222). */
+type Door = "send" | "staff";
 
 /** Where a channel's template came from in a preview. */
 export type TemplateSource = "tenant" | "catalogue";

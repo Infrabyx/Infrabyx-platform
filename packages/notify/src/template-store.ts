@@ -27,6 +27,7 @@ import type { Catalogue } from "./catalogue.js";
 import {
   TemplateLintError,
   lintEmailTemplate,
+  lintOptionsFor,
   templateVariables,
   type TemplateFinding,
   type TemplateLintOptions,
@@ -539,7 +540,7 @@ export class TenantTemplateStore {
         const findings = lintEmailTemplate(
           { subject: c.subject, text: c.text, ...(c.html !== undefined ? { html: c.html } : {}) },
           allowed,
-          this.o.lint,
+          lintOptionsFor(cls, this.o.lint),
         );
         if (findings.length) throw new TemplateLintError(findings);
         return { ...none, subject: c.subject, body_text: c.text, body_html: c.html ?? null };
