@@ -14,8 +14,11 @@ on:
   workflow_call:
 permissions:
   contents: read
+# The event is part of the group: a release calls this workflow (workflow_call, the caller's event
+# `push` on main), and a late nightly (`schedule` on main) must not cancel the release's matrix as it
+# did release run 282 on 20 Nov 2026 (R1-D-223). Superseded runs of the same event still cancel.
 concurrency:
-  group: port-contract-${{ github.ref }}
+  group: port-contract-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 env:
   TURBO_TELEMETRY_DISABLED: "1"
