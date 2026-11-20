@@ -1298,15 +1298,6 @@ From the next `tenancy` minor (no migration, no setting, no type change), three 
 - If a joined call's settings cannot be put back (a broken connection), the whole handler fails and rolls back, even if you caught the error.
 - **Udofin:** work you kept outside `kernel.ambient` for these three cases can move inside it.
 
-## 7du. Text from a PDF under a revoked lender key (PR-UDF-067; R1-D-241)
-
-From the next release (`connectors` minor, `contracts` patch; no setting, no migration), `PdfTextExtractor.extractText` (adapter `pdf-text`) no longer reports a file whose named lender key is disabled, deleted or no longer granted (§7dl) as a storage outage.
-
-- **Was:** `IPB-PORT-002` (`reason: "unavailable"`) for any STORAGE read failure.
-- **Now:** `IPB-KMS-001` (503) with `reason: "storage_key_unavailable"` when the read was refused for that key, and nothing else about the key (no key reference, key id or vendor error). Tell the user the lender's key is unavailable and do not retry blindly, as for a direct `storage.get` (§7dl).
-- **Unchanged:** any other read failure is still `IPB-PORT-002` `unavailable` (retry as before); a corrupt, unreadable or encrypted PDF is still `IPB-SEC-010`; the size, time and memory limits `IPB-SEC-013`; an unscanned or swapped file `IPB-SEC-015`.
-- **Adopt:** if you mapped `IPB-PORT-002` from `extractText` to a retry, add a case for `IPB-KMS-001` with `reason: "storage_key_unavailable"`. The AV scan of such a file still answers `ERROR` with `reason: "unavailable"` (R1-D-241 (4)).
-
 ## 7dr. Partner mTLS client certificates and the Standard Webhooks receiver (PR-UDF-064; R1-D-238)
 
 From the next release (a `crypto` minor; no setting, no migration), partner calls authenticated by client certificate and inbound Standard Webhooks are verified the same way in every product.
@@ -1354,6 +1345,15 @@ From the next release (`contracts`, `connectors` and `testing` minors; no settin
 - **Key policy statement** (your production configuration, in each lender's key policy, alongside the platform STORAGE role's `kms:GenerateDataKey` and `kms:Decrypt`): allow the scanner's role `kms:Decrypt`, with the conditions `kms:ViaService` = `s3.<region>.amazonaws.com` and `kms:EncryptionContext:aws:s3:arn` = the quarantine bucket's ARN (S3 Bucket Keys on, the default) or `StringLike` the bucket ARN followed by `/*` (a reference with `bucketKey: false`). The condition keeps the scanner from decrypting that lender's clean files when the lender uses one key for both classes; give the scanner's role `s3:GetObject` on the quarantine bucket only. The reference OpenTofu modules provision no `QUARANTINE` bucket, scanner role or per-lender key, so nothing there changes: add the statement where you manage the lender's key.
 - **Risk:** every workload with that grant can read the lender's uploads while they wait for a scan, and a lender-controlled key means the lender can stop scanning (and so the release) of its own uploads by revoking the grant. Keep the scanning workload separate and its network policy tight (threat model §3.113, §3.164).
 - **Testing:** `MemoryStorage` accepts a reference in `QUARANTINE` as in the other named classes; the STORAGE contract case covers the upload and its promotion.
+
+## 7du. Text from a PDF under a revoked lender key (PR-UDF-067; R1-D-241)
+
+From the next release (`connectors` minor, `contracts` patch; no setting, no migration), `PdfTextExtractor.extractText` (adapter `pdf-text`) no longer reports a file whose named lender key is disabled, deleted or no longer granted (§7dl) as a storage outage.
+
+- **Was:** `IPB-PORT-002` (`reason: "unavailable"`) for any STORAGE read failure.
+- **Now:** `IPB-KMS-001` (503) with `reason: "storage_key_unavailable"` when the read was refused for that key, and nothing else about the key (no key reference, key id or vendor error). Tell the user the lender's key is unavailable and do not retry blindly, as for a direct `storage.get` (§7dl).
+- **Unchanged:** any other read failure is still `IPB-PORT-002` `unavailable` (retry as before); a corrupt, unreadable or encrypted PDF is still `IPB-SEC-010`; the size, time and memory limits `IPB-SEC-013`; an unscanned or swapped file `IPB-SEC-015`.
+- **Adopt:** if you mapped `IPB-PORT-002` from `extractText` to a retry, add a case for `IPB-KMS-001` with `reason: "storage_key_unavailable"`. The AV scan of such a file still answers `ERROR` with `reason: "unavailable"` (R1-D-241 (4)).
 
 ## 8. Adopting 1.0.0
 
