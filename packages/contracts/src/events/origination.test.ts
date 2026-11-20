@@ -593,11 +593,11 @@ describe("PR-UDF-061 items 12 to 17 (owner, 20 Nov 2026 18:50; R1-D-236)", () =>
       idempotency: ["pack_id", "version"],
       direction: "LENDER_TO_LSP",
       regulated: true,
-      subject: "pack_id",
+      subject: "application_id",
     });
   });
 
-  it("names every event's subject field: the entity it is about (§3.2 aggregate id)", () => {
+  it("names every event's subject field: its aggregate, the application or the loan (§3.2)", () => {
     const subjects = Object.fromEntries(
       Object.entries(ORIGINATION_EVENTS).map(([n, e]) => [n, e.subject]),
     );
@@ -606,21 +606,36 @@ describe("PR-UDF-061 items 12 to 17 (owner, 20 Nov 2026 18:50; R1-D-236)", () =>
       ApplicationStatusChanged: "application_id",
       AdditionalInfoRequested: "application_id",
       DecisionMade: "application_id",
-      KFSIssued: "kfs_id",
-      SanctionLetterIssued: "sanction_id",
-      ExecutionPackIssued: "pack_id",
-      BorrowerAccepted: "kfs_id",
-      ESignCompleted: "document_id",
-      EStampCompleted: "document_id",
+      KFSIssued: "application_id",
+      SanctionLetterIssued: "application_id",
+      ExecutionPackIssued: "application_id",
+      BorrowerAccepted: "lsp_application_ref",
+      ESignCompleted: "application_id",
+      EStampCompleted: "application_id",
       CoolingOffExitRequested: "loan_id",
       CoolingOffExitAnswered: "loan_id",
       LoanDisbursed: "loan_id",
     });
-    expect(originationSubject("DecisionMade", { application_id: "app_1" })).toBe("app_1");
+    // Every lender-produced origination event that carries application_id is on it.
+    for (const [n, e] of Object.entries(ORIGINATION_EVENTS))
+      if (e.direction === "LENDER_TO_LSP" && e.type.includes(".origination."))
+        expect(e.subject, n).toBe("application_id");
+    const kfs = { kfs_id: "kfs_1", application_id: "app_1" };
+    expect(originationSubject("KFSIssued", kfs)).toBe("app_1");
     expect(originationSubject("AdditionalInfoRequested", { application_id: "app_1" })).toBe(
       "app_1",
     );
+    // The fallbacks, where the Specification makes the aggregate's field optional.
+    expect(
+      originationSubject("BorrowerAccepted", { kfs_id: "kfs_1", lsp_application_ref: "lsp_1" }),
+    ).toBe("lsp_1");
+    expect(originationSubject("BorrowerAccepted", { kfs_id: "kfs_1" })).toBe("kfs_1");
+    expect(
+      originationSubject("ESignCompleted", { document_id: "doc_1", application_id: "app_1" }),
+    ).toBe("app_1");
+    expect(originationSubject("EStampCompleted", { document_id: "doc_1" })).toBe("doc_1");
     expect(() => originationSubject("LoanDisbursed", { utr: "X" })).toThrow(/loan_id/);
+    expect(() => originationSubject("KFSIssued", { kfs_id: "kfs_1" })).toThrow(/application_id/);
   });
 
   it("takes the KFS's and the sanction letter's document version beside the reference, refusing a bad one", () => {

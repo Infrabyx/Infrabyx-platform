@@ -21,7 +21,9 @@
 // `CoolingOffExitAnswered` is signed and the new `ExecutionPackIssued` (`ExecutionPackIssuedData` in
 // `documents.ts`) joins the registry, signed; the KFS and the sanction letter name their file's
 // version (`document_version`, beside `document_ref`); and every event names the data field that is
-// its envelope `subject` (§3.2: the aggregate id; `seq` counts per subject).
+// its envelope `subject` (§3.2: the aggregate id; `seq` counts per subject): the lender's
+// application for the origination events, the loan once it exists, and the LSP's own application
+// reference for what the LSP sends before it holds the lender's id.
 import { z } from "zod";
 import { ExecutionPackIssuedData, indianState } from "./documents.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
@@ -659,10 +661,20 @@ export interface OriginationEventSpec {
   direction: "LSP_TO_LENDER" | "LENDER_TO_LSP";
   /**
    * The data field whose value is the envelope's `subject` (§3.2: "aggregate id; ordering and
-   * partition key"; `seq` is "per-subject"): the entity the event is about (R1-D-236). Optional in
-   * this interface so a spec built before it stays valid; every entry of `ORIGINATION_EVENTS` has it.
+   * partition key"; `seq` is "per-subject"; R1-D-236): the aggregate the event belongs to, so one
+   * application's lifecycle is one ordered stream: `application_id` for the origination events that
+   * carry it, `lsp_application_ref` (the LSP's own aggregate) for what the LSP sends before it holds
+   * the lender's id, `loan_id` once a loan exists. Optional in this interface so a spec built before
+   * it stays valid; every entry of `ORIGINATION_EVENTS` has it.
    */
   subject?: string;
+  /**
+   * The fields tried in order when `subject`'s field is absent from an event's data, because the
+   * Specification makes it optional there (R1-D-236): `BorrowerAccepted` without
+   * `lsp_application_ref` falls back to `kfs_id`; `ESignCompleted` and `EStampCompleted` without
+   * `application_id` fall back to `document_id`.
+   */
+  subjectFallback?: readonly string[];
 }
 
 const spec = (
@@ -671,14 +683,16 @@ const spec = (
   schema: z.ZodType,
   idempotency: readonly string[],
   direction: OriginationEventSpec["direction"],
-  subject: string = idempotency[0]!,
-): OriginationEventSpec & { subject: string } => ({
+  subject: string,
+  subjectFallback: readonly string[] = [],
+): OriginationEventSpec & { subject: string; subjectFallback: readonly string[] } => ({
   type: `in.infrabyx.${domain}.${name}.v1`,
   schema,
   idempotency,
   regulated: (REGULATED_MESSAGE_EVENTS as readonly string[]).includes(name),
   direction,
   subject,
+  subjectFallback,
 });
 
 /** Every event of the loan journey this file defines, by its Specification name. */
@@ -689,6 +703,8 @@ export const ORIGINATION_EVENTS = Object.freeze({
     ApplicationSubmittedData,
     ["lsp_application_ref"],
     "LSP_TO_LENDER",
+    // Before the lender assigns an application id: the LSP's own aggregate.
+    "lsp_application_ref",
   ),
   ApplicationStatusChanged: spec(
     "origination",
@@ -696,6 +712,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     ApplicationStatusChangedData,
     ["application_id", "seq"],
     "LENDER_TO_LSP",
+    "application_id",
   ),
   AdditionalInfoRequested: spec(
     "origination",
@@ -703,7 +720,6 @@ export const ORIGINATION_EVENTS = Object.freeze({
     AdditionalInfoRequestedData,
     ["request_id"],
     "LENDER_TO_LSP",
-    // The RE's query belongs to the application, beside its status changes.
     "application_id",
   ),
   DecisionMade: spec(
@@ -712,6 +728,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     DecisionMadeData,
     ["application_id", "decision_version"],
     "LENDER_TO_LSP",
+    "application_id",
   ),
   KFSIssued: spec(
     "origination",
@@ -719,6 +736,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     KfsIssuedData,
     ["kfs_id", "version"],
     "LENDER_TO_LSP",
+    "application_id",
   ),
   SanctionLetterIssued: spec(
     "origination",
@@ -726,6 +744,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     SanctionLetterIssuedData,
     ["sanction_id", "version"],
     "LENDER_TO_LSP",
+    "application_id",
   ),
   ExecutionPackIssued: spec(
     "origination",
@@ -733,6 +752,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     ExecutionPackIssuedData,
     ["pack_id", "version"],
     "LENDER_TO_LSP",
+    "application_id",
   ),
   BorrowerAccepted: spec(
     "origination",
@@ -740,6 +760,9 @@ export const ORIGINATION_EVENTS = Object.freeze({
     BorrowerAcceptedData,
     ["kfs_id"],
     "LSP_TO_LENDER",
+    // It carries no `application_id`: the LSP's own aggregate when sent, else the KFS it accepts.
+    "lsp_application_ref",
+    ["kfs_id"],
   ),
   ESignCompleted: spec(
     "origination",
@@ -747,6 +770,9 @@ export const ORIGINATION_EVENTS = Object.freeze({
     ESignCompletedData,
     ["document_id", "esp_txn_id"],
     "LSP_TO_LENDER",
+    // `application_id` is optional here: without it, the document it evidences.
+    "application_id",
+    ["document_id"],
   ),
   EStampCompleted: spec(
     "origination",
@@ -754,6 +780,8 @@ export const ORIGINATION_EVENTS = Object.freeze({
     EStampCompletedData,
     ["document_id", "certificate_no"],
     "LSP_TO_LENDER",
+    "application_id",
+    ["document_id"],
   ),
   CoolingOffExitRequested: spec(
     "servicing",
@@ -761,6 +789,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     CoolingOffExitRequestedData,
     ["loan_id"],
     "LSP_TO_LENDER",
+    "loan_id",
   ),
   CoolingOffExitAnswered: spec(
     "servicing",
@@ -768,6 +797,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     CoolingOffExitAnsweredData,
     ["loan_id", "exit_ref"],
     "LENDER_TO_LSP",
+    "loan_id",
   ),
   LoanDisbursed: spec(
     "servicing",
@@ -775,6 +805,7 @@ export const ORIGINATION_EVENTS = Object.freeze({
     LoanDisbursedData,
     ["loan_id", "utr"],
     "LENDER_TO_LSP",
+    "loan_id",
   ),
 });
 export type OriginationEventName = keyof typeof ORIGINATION_EVENTS;
@@ -792,17 +823,23 @@ export const ORIGINATION_REGULATED: readonly OriginationEventName[] = Object.fre
 
 /**
  * The envelope `subject` of one event's data (§3.2: the aggregate id; R1-D-236, PR-UDF-061 item 15):
- * the value of its spec's `subject` field, such as the application id of `DecisionMade`, the KFS
- * id of `KFSIssued` or the loan id of `LoanDisbursed`. A producer counts `seq` per subject from 1.
+ * the value of its spec's `subject` field, or of the first `subjectFallback` field present: the
+ * application id of `DecisionMade`, `KFSIssued`, `SanctionLetterIssued` or `ExecutionPackIssued`,
+ * the LSP's application reference of `ApplicationSubmitted`, the loan id of `LoanDisbursed`. A
+ * producer counts `seq` per subject from 1, so one application's events form one ordered stream.
  */
 export function originationSubject(
   name: OriginationEventName,
   data: Record<string, unknown>,
 ): string {
-  const v = data[ORIGINATION_EVENTS[name].subject];
-  if (typeof v !== "string" || v.length === 0)
-    throw new Error(`${name} has no ${ORIGINATION_EVENTS[name].subject} for its subject`);
-  return v;
+  const s = ORIGINATION_EVENTS[name];
+  for (const f of [s.subject, ...s.subjectFallback]) {
+    const v = data[f];
+    if (typeof v === "string" && v.length > 0) return v;
+  }
+  throw new Error(
+    `${name} has no ${[s.subject, ...s.subjectFallback].join(" or ")} for its subject`,
+  );
 }
 
 /** The idempotency key of one event's data, as `field=value` pairs joined by `|`. */
