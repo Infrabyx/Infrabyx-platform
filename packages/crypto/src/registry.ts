@@ -72,6 +72,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "DPoP proof verification for customer sessions: ES256 only, jkt binding, iat window, jti replay (C-11, R1-D-18)",
       "Apple App Attest assertion and credential-certificate verification, with the counter (C-27, R1-D-59); verify only",
       "on-premises agent request proofs: the C-22 profile with typ ipb-agent-request+jws, bound to tenant, agent, seq, method, path and body digest; agent-held P-256 keys (TallyPrime agent, R1-D-178)",
+      "document transfer integrity (Ecosystem §3.6): the C-22 profile with typ ipb-document+jws over the JCS descriptor { document_id, version, sha256 } (PR-UDF-053, R1-D-219)",
     ],
   },
   {
