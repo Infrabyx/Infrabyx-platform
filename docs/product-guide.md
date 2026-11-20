@@ -1240,6 +1240,33 @@ From the next release (`contracts`, `fakes` and `testing` minors; no setting, no
 - Send `economic_profile` and the household figures only under the purpose consent that `consent_purposes` names; `device_ref` is your own reference, never an IMEI, advertising id or other device identifier.
 - Send `kfs_version` and `kfs_sha256` on acceptance: the lender refuses an acceptance of a KFS other than the one it issued (`kfs_mismatch`).
 
+## 7dr. Partner mTLS client certificates and the Standard Webhooks receiver (PR-UDF-064; R1-D-238)
+
+From the next release (a `crypto` minor; no setting, no migration), partner calls authenticated by client certificate and inbound Standard Webhooks are verified the same way in every product.
+
+**Partner mTLS.**
+
+1. **Configure the edge** as `docs/platform/mtls-edge-header.md` §3 says: verify the client certificate, strip any client copy of `X-IPB-Client-Cert`, forward the verified leaf in it (percent-encoded PEM), only on the partner mTLS routes, and make the edge the only way to your partner listener. Check the nginx, ALB or Envoy lines marked [VERIFY] against your edge version.
+2. **Read it** in your partner-API guard: `readClientCertificate({ header: req.headers["x-ipb-client-cert"] })` (Envoy: `req.headers["x-forwarded-client-cert"]` with `format: "xfcc"`; your own TLS listener: `{ socket: req.socket }`). On `ok: false` answer `IPB-API-009` (401) and log the `reason` only, never the header.
+3. **Authorise on `certificate.x5tS256`**, looked up in your partner registry; never on `subject`. For an RFC 8705 token, compare `cnf["x5t#S256"]` with it. Register a partner's next certificate's `x5tS256` before its rotation.
+4. **Optional, defence in depth:** pass `trust: PinnedCaSet.fromPem([partnerCaPem], { intermediates })`, built once at start-up. It accepts only ECDSA P-256 / SHA-256 issuer signatures today; a partner CA that signs with RSA is refused `issuer_algorithm` until the owner answers #170, so leave `trust` out for such a partner and rely on the edge's verification.
+5. **Tests:** `mtlsTestAuthority()` from `@infrabyx/crypto/mtls-test` issues throwaway client certificates, and `edgeHeaderValueForTest(pem)` makes the header value.
+
+**Standard Webhooks.** For a sender that signs with Standard Webhooks v1 (`webhook-id`, `webhook-timestamp`, `webhook-signature`), use one receiver per endpoint:
+
+```ts
+const receiver = new StandardWebhookReceiver({
+  name: "partner-events",
+  secrets: () => secrets.read("partner-events/webhook"), // current and, during a rotation, previous whsec_
+  replay: redisReplayStore, // RedisReplayStore.fromUrl(…) from @infrabyx/connectors/identity
+});
+const r = await receiver.receive(rawBody, req.headers); // the raw bytes, before JSON parsing
+if (!r.ok) return reply.status(401).send(); // log r.reason only
+// then: inbox.firstSeen(tx, schema, "partner-events", r.id), queue the work and answer 2xx (IPB-10-27)
+```
+
+The default replay key is the delivery (id and signed timestamp): a captured delivery sent again is refused `replayed`, while the sender's signed retry verifies, so de-duplicate by `r.id` in your module inbox. A module without an inbox for these events passes `replayKey: "event"`. Use `MemoryReplayStore` only in tests or a single instance.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
