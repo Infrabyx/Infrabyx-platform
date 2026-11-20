@@ -32,13 +32,19 @@ let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
 const compartmentKeys: string[] = [];
-const COMPARTMENT_BUCKETS = ["ipb-s3-conf-board", "ipb-s3-reg-sealed"];
+// Every bucket name carries this run's suffix, so a run never meets a bucket an earlier or a
+// concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
+// `pnpm check:full --logs DIR` run again). Their objects cannot be removed afterwards: the AUDIT
+// cases lock them in COMPLIANCE mode for a day. The suffix is the random part of a ULID, lowercased
+// (Crockford base32 has no I, L, O or U): names stay S3-valid, at most 30 characters here.
+const RUN = ulid().slice(-10).toLowerCase();
+const COMPARTMENT_BUCKETS = [`ipb-s3-conf-board-${RUN}`, `ipb-s3-reg-sealed-${RUN}`];
 let tenant: string | undefined;
 
 const raw = () =>
   new S3Client({ region: REGION, endpoint, forcePathStyle: true, credentials: CREDS });
 const buckets = (set: string) =>
-  Object.fromEntries(CLASSES.map((c) => [c, `ipb-${set}-${c.toLowerCase()}`])) as Record<
+  Object.fromEntries(CLASSES.map((c) => [c, `ipb-${set}-${c.toLowerCase()}-${RUN}`])) as Record<
     BucketClass,
     string
   >;
