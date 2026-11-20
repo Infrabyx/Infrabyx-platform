@@ -1298,6 +1298,31 @@ From the next `tenancy` minor (no migration, no setting, no type change), three 
 - If a joined call's settings cannot be put back (a broken connection), the whole handler fails and rolls back, even if you caught the error.
 - **Udofin:** work you kept outside `kernel.ambient` for these three cases can move inside it.
 
+## 7ea. PDF/A-2b from `toPdf`, the same bytes on every render (PR-FBX-52; R1-D-248)
+
+From `@infrabyx/export` 1.9 (a minor; no migration, setting or environment variable), `toPdf` can write PDF/A-2b with a tagged structure. It is opt-in: without `pdfa`, every byte is as in 1.8.5.
+
+```ts
+const pdf = toPdf(statement, {
+  created: statementDate, // a fixed instant: it becomes /CreationDate, /ModDate and the XMP dates
+  creator: "Finbyx",
+  pdfa: "2b",
+  lang: "en-IN", // BCP 47; default "en"
+  pdfua: true, // optional: also claim PDF/UA-1
+});
+```
+
+**What you get:** XMP metadata (PDF/A-2 part 2, conformance B) consistent with /Info; an sRGB output intent (bundled CC0 profile); every font embedded (as before); printable link annotations; and tags for IPB-06-26: /Lang, headings H1 to H6, paragraphs, lists with labels, tables with column headers, links, reading order, and rules and repeated table headers as artifacts. The same blocks, options and `created` give the same bytes in any process, on any day: hash a statutory statement once and re-render it to prove it (master prompt Part 7C AC3.1 step 6). veraPDF 1.30.3 passes the files as PDF/A-2b, and as PDF/UA-1 with `pdfua`.
+
+**What to know:**
+
+- Pass `created` from the statement's own date, never `new Date()`: the bytes, the ids and /ID all follow from it.
+- `pdfua: true` needs a title and headings that start at level 1 and skip no level; otherwise `block_invalid`. Write link text that makes sense on its own (the annotation is described by its URL).
+- New refusal `pdfa_invalid`: an unknown `pdfa` value, a `lang` that is not a BCP 47 tag, or `pdfua` without `pdfa`. A title or creator with characters XML cannot carry is `block_invalid`.
+- The title, creator and language are written twice (/Info and XMP): if you redact metadata, redact both, or keep personal data out of them.
+- `renderPdf` passes `pdfa` and `lang` to the in-process path; documents with Indic text still go to DOCGEN (§7ay), whose PDF/A is not byte-deterministic.
+- **Adopt** with all `@infrabyx/*` pins moved together. To check your own templates, run the pinned veraPDF image the way `packages/export/src/__tests__/pdfa.int.test.ts` does (`TEST_IMAGES.verapdf`, `withJvmMitigation("verapdf")`, `--flavour 2b`, and `ua1` with `pdfua`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
