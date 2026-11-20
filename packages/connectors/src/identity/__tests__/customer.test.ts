@@ -779,4 +779,91 @@ describe("PR-UDF-055 the verified email of a customer on a fake IdP (@IPB-02-01,
       meta: { reason: "unsupported" },
     });
   });
+
+  /** Record an address on the signed-in account through the port. */
+  const verify = async (
+    p: FakeCustomerIdp,
+    mail: ReturnType<typeof capturingSender>,
+    e: string,
+  ) => {
+    now.t += 60_000;
+    const ch = await start(p, e);
+    return p.confirmEmailVerification({
+      tenantId: "tnt_a",
+      userId,
+      challengeId: ch.challengeId,
+      email: e,
+      code: mail.inbox.get(e)!,
+      dpopProof: pf(p),
+    });
+  };
+
+  it("R1-D-235: erasure deletes the address, ledgered; a second erasure deletes nothing; a new proof works", async () => {
+    const { p, mail, store } = await signedIn();
+    await verify(p, mail, "erase@mail.example");
+    await expect(
+      p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "bad ref" }),
+    ).rejects.toThrow(RangeError);
+    expect(await p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "er-1" })).toEqual({
+      erased: true,
+    });
+    expect(await p.verifiedEmail("tnt_a", userId)).toBeNull();
+    expect(store.events.at(-1)).toEqual({
+      tenantId: "tnt_a",
+      userId,
+      action: "identity.customer.verified_email.delete",
+    });
+    expect(await p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "er-1" })).toEqual({
+      erased: false,
+    });
+    await expect(verify(p, mail, "again@mail.example")).resolves.toMatchObject({
+      email: "again@mail.example",
+    });
+    // Erasure works with the capture off as well.
+    const off = make(false, store);
+    expect(
+      await off.p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "er-2" }),
+    ).toEqual({ erased: true });
+  });
+
+  it("R1-D-235: retireLogin deletes the address with the account; a store that cannot delete refuses first", async () => {
+    // A store that saves an address but cannot delete it: retireLogin and erasure refuse before
+    // any change (no device forgotten, the login still the account's).
+    const half: CustomerAuthStore = new Proxy(new MemoryCustomerAuthStore(), {
+      get: (t, k) => (k === "deleteVerifiedEmail" ? undefined : Reflect.get(t, k)),
+    });
+    const h = await signedIn(half as MemoryCustomerAuthStore);
+    const retire = (q: FakeCustomerIdp) =>
+      q.retireLogin({ tenantId: "tnt_a", userId, channel: "sms", login: "+919800000201" });
+    await expect(retire(h.p)).rejects.toMatchObject({
+      code: "IPB-PORT-001",
+      meta: { reason: "unsupported" },
+    });
+    await expect(
+      h.p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "er-3" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+    expect(await h.p.listDevices("tnt_a", userId)).toHaveLength(1);
+    // A store that keeps no address at all retires as before.
+    const none: CustomerAuthStore = new Proxy(new MemoryCustomerAuthStore(), {
+      get: (t, k) =>
+        k === "saveVerifiedEmail" || k === "verifiedEmail" || k === "deleteVerifiedEmail"
+          ? undefined
+          : Reflect.get(t, k),
+    });
+    const n = await signedIn(none as MemoryCustomerAuthStore);
+    await retire(n.p);
+    await expect(
+      n.p.eraseVerifiedEmail({ tenantId: "tnt_a", userId, requestRef: "er-4" }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+
+    const { p, mail, store } = await signedIn();
+    await verify(p, mail, "close@mail.example");
+    await retire(p);
+    expect(await p.verifiedEmail("tnt_a", userId)).toBeNull();
+    expect(await p.listDevices("tnt_a", userId)).toHaveLength(0);
+    expect(store.events.slice(-2).map((e) => e.action)).toEqual([
+      "identity.customer.verified_email.delete",
+      "identity.customer.login.retire",
+    ]);
+  });
 });
