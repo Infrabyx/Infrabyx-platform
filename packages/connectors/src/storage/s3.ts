@@ -12,9 +12,15 @@
 // key is refused at start or at write, never replaced by the class's. Named tenant keys (PR-UDF-058,
 // R1-D-227): a write may name one of its tenant's keys by reference (`keyRef`, or a prefix map); the
 // adapter resolves it, keeps it separate from every other key, records the reference on the object
-// and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`).
+// and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`). The
+// classes are `NAMED_KEY_CLASSES`, QUARANTINE included (PR-UDF-066, R1-D-240): the AV adapter's
+// workload then needs `kms:Decrypt` on each such key, and a promotion (`promotedObjectMeta`) keeps
+// the reference, so the clean copy is under its key or refused, never under the class key.
 // No-cache downloads (PR-UDF-060, R1-D-230): a presigned GET from a REGULATED or CONFIDENTIAL
 // bucket signs `response-cache-control=no-store, private` and a past `response-expires`.
+// Key reference status (PR-UDF-068, R1-D-239): `keyRefStatus` answers whether a write naming a
+// reference would resolve, by the write's own checks, and with `describeKey` the key's state from a
+// read-only KMS `DescribeKey`; fixed labels only, never a key id. `minio` declares it unsupported.
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -39,10 +45,13 @@ import {
   PRESIGN_NO_CACHE,
   STORAGE_COMPARTMENTS,
   STORAGE_KEY_REF_META,
+  STORAGE_KEY_STATES,
+  STORAGE_KEY_UNAVAILABLE,
   compartmentAllowed,
   isValidStorageKey,
   presignNoCache,
   resolveStorageKeyRef,
+  storageKeyRefStatusRefusal,
   type AdapterDescriptor,
   type BucketClass,
   type CompartmentClass,
@@ -53,6 +62,9 @@ import {
   type StoragePort,
   type StorageCompartment,
   type StorageKeyRefRefusal,
+  type StorageKeyRefStatus,
+  type StorageKeyRefStatusOptions,
+  type StorageKeyState,
   type StoredObject,
 } from "@infrabyx/contracts/ports";
 import { sha256Hex, toBase64Url } from "@infrabyx/crypto";
@@ -165,6 +177,21 @@ const KMS_KEY_STATE: ReadonlySet<string> = new Set([
   "KMS.AccessDeniedException",
   "KMS.InvalidGrantTokenException",
 ]);
+/**
+ * PR-UDF-068: KMS `DescribeKey` errors that say the key cannot be used by this role (it does not
+ * exist, is not shared, or the role may not describe it), answered `storage_key_unavailable`
+ * rather than thrown. Anything else (throttling, a network or 5xx failure) is IPB-PORT-002.
+ */
+const DESCRIBE_UNAVAILABLE: ReadonlySet<string> = new Set([
+  "NotFoundException",
+  "AccessDeniedException",
+  "KMSInvalidStateException",
+  "DisabledException",
+  "InvalidArnException",
+]);
+/** What `keyRefStatus` reads of a `DescribeKey` answer: the key's state, nothing else. */
+type DescribedKey = { KeyMetadata?: { KeyState?: string | undefined } | undefined };
+type DescribeKeySend = (keyId: string) => Promise<DescribedKey>;
 
 /** Where an object lives: a bucket class, and optionally a compartment of it (PR-LDC-60). */
 interface Slot {
@@ -195,6 +222,8 @@ export class S3Storage implements StoragePort {
   private readonly now: () => Date;
   /** key → location, learnt from writes and lookups. */
   private readonly located = new Map<string, Slot>();
+  /** PR-UDF-068: `DescribeKey`, bound to a KMS client on first use. */
+  private describeSend?: DescribeKeySend;
 
   constructor(
     protected readonly o: S3StorageOptions,
@@ -221,7 +250,15 @@ export class S3Storage implements StoragePort {
       residency: "IN",
       maxDataClass: "SECRET",
       // PR-UDF-058: MinIO encrypts with the bucket's SSE-S3 key; no per-object KMS key.
-      ...(adapter === "minio" ? { capabilities: { "put.keyRef": "unsupported" as const } } : {}),
+      ...(adapter === "minio"
+        ? {
+            capabilities: {
+              "put.keyRef": "unsupported" as const,
+              // PR-UDF-068: no named key can resolve on minio, so its status is never "resolves".
+              keyRefStatus: "unsupported" as const,
+            },
+          }
+        : {}),
     };
     const cfg: S3ClientConfig = {
       region: o.region,
@@ -848,6 +885,97 @@ export class S3Storage implements StoragePort {
     return found!.head.ObjectLockMode === "COMPLIANCE" && until
       ? { mode: "COMPLIANCE", retainUntil: new Date(until).toISOString() }
       : { mode: null, retainUntil: null };
+  }
+
+  /**
+   * PR-UDF-068 (R1-D-239): whether a write in `tenantId` naming `keyRef` at this location would
+   * resolve, by the same checks as the write (format, class, the tenant's prefix map, then the
+   * tenant CMK, unknown and shared-key rules of `namedKeyFor`), answered with the write's fixed
+   * label. With `describeKey`, a read-only KMS `DescribeKey` of the resolved key: `Enabled`
+   * resolves with that state, any other state (or a key the role cannot describe) answers
+   * `storage_key_unavailable`. The key id never leaves this method: not in the answer, an error or
+   * its cause. Nothing is written and nothing is ledgered (a read of configuration).
+   */
+  async keyRefStatus(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusOptions,
+  ): Promise<StorageKeyRefStatus> {
+    const current = this.o.currentTenant?.();
+    if (current !== undefined && tenantId !== current)
+      throw new PortError("IPB-PORT-003", "STORAGE", {
+        adapter: this.adapter,
+        detail: "tenant is not the caller's",
+      });
+    const tenantKeys = (BUCKET_CLASSES as readonly string[]).includes(opts.bucketClass)
+      ? storageKeyRefStatusRefusal(
+          tenantId,
+          keyRef,
+          opts.bucketClass,
+          this.o.tenantKeyRefPrefixes?.(tenantId),
+        )
+      : null;
+    if (!tenantKeys)
+      throw new PortError("IPB-PORT-003", "STORAGE", {
+        adapter: this.adapter,
+        detail: "the tenant id or bucket class is malformed",
+      });
+    if (tenantKeys.refusal) return { status: "refused", reason: tenantKeys.refusal };
+    if (this.adapter === "minio")
+      throw new PortError("IPB-PORT-001", "STORAGE", {
+        adapter: this.adapter,
+        detail: "minio encrypts with the bucket's key; a named key per object is not supported",
+        meta: { reason: "unsupported" },
+      });
+    const slot = slotOf(opts);
+    // A write to a location without a bucket (or a compartment outside its classes) fails the
+    // same way here: a call or configuration error, not a key answer.
+    this.bucket(slot);
+    let keyId: string;
+    try {
+      keyId = this.namedKeyFor(slot, `tenant/${tenantId}/`, keyRef).keyId;
+    } catch (e) {
+      const reason = (e as PortError).meta?.reason as StorageKeyRefRefusal | undefined;
+      if (e instanceof PortError && reason) return { status: "refused", reason };
+      throw e;
+    }
+    if (!opts.describeKey) return { status: "resolves" };
+    let state: string | undefined;
+    try {
+      state = (await this.describeKey(keyId)).KeyMetadata?.KeyState;
+    } catch (e) {
+      const name = (e as S3Error | undefined)?.name ?? "";
+      if (DESCRIBE_UNAVAILABLE.has(name))
+        return { status: "refused", reason: STORAGE_KEY_UNAVAILABLE };
+      // No `cause`: a KMS error message can carry the key's ARN.
+      throw new PortError("IPB-PORT-002", "STORAGE", {
+        adapter: this.adapter,
+        detail: "the key's state could not be read",
+        meta: { name, status: statusOf(e) },
+      });
+    }
+    if (state === "Enabled") return { status: "resolves", keyState: "Enabled" };
+    const keyState: StorageKeyState = (STORAGE_KEY_STATES as readonly string[]).includes(
+      state ?? "",
+    )
+      ? (state as StorageKeyState)
+      : "Unavailable";
+    return { status: "refused", reason: STORAGE_KEY_UNAVAILABLE, keyState };
+  }
+
+  /** A KMS client, created on first use only (most deployments never describe a key). */
+  protected async describeKey(keyId: string): Promise<DescribedKey> {
+    if (!this.describeSend) {
+      const k = await import("@aws-sdk/client-kms");
+      const client = new k.KMSClient({
+        region: this.o.region,
+        maxAttempts: 3,
+        ...(this.o.endpoint ? { endpoint: this.o.endpoint } : {}),
+        ...(this.o.credentials ? { credentials: this.o.credentials } : {}),
+      });
+      this.describeSend = (KeyId) => client.send(new k.DescribeKeyCommand({ KeyId }));
+    }
+    return this.describeSend!(keyId);
   }
 
   /**

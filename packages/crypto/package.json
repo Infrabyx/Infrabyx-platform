@@ -19,6 +19,14 @@
     "./app-attest-test": {
       "types": "./dist/app-attest-test.d.ts",
       "default": "./dist/app-attest-test.js"
+    },
+    "./pades-test": {
+      "types": "./dist/pades-test.d.ts",
+      "default": "./dist/pades-test.js"
+    },
+    "./mtls-test": {
+      "types": "./dist/mtls-test.d.ts",
+      "default": "./dist/mtls-test.js"
     }
   },
   "files": [

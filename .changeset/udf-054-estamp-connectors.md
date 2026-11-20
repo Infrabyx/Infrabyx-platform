@@ -1,0 +1,11 @@
+---
+"@infrabyx/connectors": minor
+---
+
+PR-UDF-054 (E8; R1-D-245): four new adapters, all off by default and `unproven` until their sandbox legs run. None buys anything and none adds cryptography.
+
+- **ESTAMP `shcil-estamp`** (`ShcilEstamp`, `int.estamp.shcil.enabled`): records an e-stamp certificate the RE bought through its own SHCIL channel and checks it with SHCIL's read-back (only the number, State and issue date are sent), `verify` reads it back, `attach` links one document. Vendor shapes are stub-shaped, to confirm against the sandbox.
+- **ESTAMP `digio-estamp`** (`DigioEstamp`, `int.estamp.digio.enabled`): the second stamping adapter; reads back a stamp Digio already issued to the RE, by Digio's id; never orders or affixes a stamp from prepaid inventory. Stub-shaped.
+- **ESTAMP `manual-paper`** (`ManualStampPaper`, `int.estamp.manual_paper.enabled`): records physical stamp paper or franking the RE holds (State, article, duty, serial, vendor's or agent's licence, stamped document hash checked against STORAGE, scanned certificate's document id); no network call at all.
+- The three share `RecordingEstamp` (`record.ts`): `purchase` refused `purchase_not_permitted`, `quoteDuty` and `handleWebhook` `unsupported`, `covers` false; one record per idempotency key; a certificate number once per State and channel (`certificate_reused`); the issuer's record compared (`certificate_mismatch`, `certificate_not_found`, `certificate_not_usable`); the purchaser's name never kept or sent. Products persist records through a `StampRecordStore` (`MemoryStampRecordStore` for tests; a product table needs a unique index on State, channel and number) and write them in their kernel mutation.
+- **ESIGN `nsdl-esign`** (`NsdlEsign`, `int.esign.nsdl.enabled`): a shell for NSDL eSign under the CCA eSign API. Envelopes are validated and kept locally (Aadhaar OTP and biometric only, never downgraded; the document checked against its SHA-256); `buildEsignRequestXml` builds the unsigned request; the ASP request signature (RSA XML-DSig) is refused `unsupported` (`step: asp_request_signature`) because it is not an approved cryptography item, and `downloadSigned`, `verifySignature`, `handleWebhook`, `dscSign` and `cancel` are `unsupported`. No network call; health is down.

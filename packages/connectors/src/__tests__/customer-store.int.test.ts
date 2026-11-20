@@ -16,6 +16,7 @@ import {
 import { startPostgres, withTenant, type TestDatabase } from "@infrabyx/testing";
 import { MemoryRevocationStore, type TokenVerifier } from "../identity/common.js";
 import {
+  CUSTOMER_STEP_UP_ACTION,
   CustomerIdentityBase,
   customerIdentitySettings,
   PgCustomerAuthStore,
@@ -595,5 +596,107 @@ describe("retention of customer sign-in state (connectors/0005; owner answer #86
     expect(await st.deleteDevice("tnt_c", live, "unbound")).toBe(true);
     expect(await exists("customer_device", "id", live)).toBe(false);
     expect(await st.listDevices("tnt_c", "kc-floor-2")).toEqual([]);
+  });
+});
+
+describe("the step-up of a device session (connectors/0017; PR-UDF-056, R1-D-244)", () => {
+  const t0 = Date.parse("2026-11-20T15:00:00Z");
+  const at = (t: number) => new Date(t).toISOString();
+  const newDevice = async (st: PgCustomerAuthStore, userId: string, jkt = JKT) => {
+    const id = newId("dev");
+    await st.createDevice({
+      id,
+      tenantId: "tnt_a",
+      userId,
+      jkt,
+      idpSession: `sess-${id}`,
+      refreshHash: sha256Hex(id),
+      createdAt: t0,
+      lastUsedAt: t0,
+    });
+    return id;
+  };
+  const stepUps = async (deviceId: string) =>
+    (
+      await db.admin.query<{ tenant_id: string; resource_type: string; after_digest: string }>(
+        `select tenant_id, resource_type, after_digest from audit.ledger
+          where action = $1 and resource_id = $2 order by occurred_at, seq`,
+        [CUSTOMER_STEP_UP_ACTION, deviceId],
+      )
+    ).rows;
+
+  it("adds two nullable INTERNAL columns and refuses an unknown level", async () => {
+    const cols = await db.admin.query<{ n: string; c: string; nn: boolean }>(
+      `select a.attname as n, col_description(a.attrelid, a.attnum) as c, a.attnotnull as nn
+         from pg_attribute a where a.attrelid = 'connectors.customer_device'::regclass
+          and a.attname in ('step_up_at', 'step_up_acr') order by a.attname`,
+    );
+    expect(cols.rows).toEqual([
+      { n: "step_up_acr", c: "dataclass:INTERNAL", nn: false },
+      { n: "step_up_at", c: "dataclass:INTERNAL", nn: false },
+    ]);
+    const st = store();
+    const id = await newDevice(st, "kc-step-0");
+    await expect(
+      db.admin.query(
+        "update connectors.customer_device set step_up_acr = 'pwd', step_up_at = now() where id = $1",
+        [id],
+      ),
+    ).rejects.toThrow(/check/);
+  });
+
+  it("records the step-up on an unrevoked device only, ledgered, under RLS; the time never moves back", async () => {
+    const st = store();
+    const id = await newDevice(st, "kc-step-1");
+    expect((await st.listDevices("tnt_a", "kc-step-1"))[0]?.stepUpAt).toBeUndefined();
+    expect(await st.recordStepUp("tnt_a", id, "otp", t0 + 60_000)).toBe(true);
+    expect(await st.recordStepUp("tnt_a", id, "otp", t0 + 30_000)).toBe(true);
+    expect((await st.listDevices("tnt_a", "kc-step-1"))[0]).toMatchObject({
+      stepUpAt: t0 + 60_000,
+      stepUpAcr: "otp",
+    });
+    // Another tenant cannot reach the row (forced RLS).
+    expect(await st.recordStepUp("tnt_b", id, "otp", t0 + 90_000)).toBe(false);
+    // A refresh keeps the step-up.
+    expect(await st.rotateRefresh("tnt_a", id, sha256Hex(id), "5".repeat(64), t0 + 95_000)).toBe(
+      true,
+    );
+    expect((await st.listDevices("tnt_a", "kc-step-1"))[0]?.stepUpAt).toBe(t0 + 60_000);
+    // A revoked device is not stepped up.
+    await st.revokeDevice("tnt_a", id, "sign_out", t0 + 100_000);
+    expect(await st.recordStepUp("tnt_a", id, "otp", t0 + 120_000)).toBe(false);
+    expect((await st.listDevices("tnt_a", "kc-step-1"))[0]?.stepUpAt).toBe(t0 + 60_000);
+    // Every call is on the record, in the caller's tenant, without any login or code.
+    expect(await stepUps(id)).toEqual(
+      [
+        ["tnt_a", t0 + 60_000, true],
+        ["tnt_a", t0 + 30_000, true],
+        ["tnt_b", t0 + 90_000, false],
+        ["tnt_a", t0 + 120_000, false],
+      ].map(([tenant_id, t, found]) => ({
+        tenant_id,
+        resource_type: "identity.customer_device",
+        after_digest: canonicalDigest({ acr: "otp", step_up_at: at(t as number), found }),
+      })),
+    );
+  });
+
+  it("`fresh` reads past the device cache; the writer's own cache is dropped at once", async () => {
+    let t = Date.now();
+    const writer = store(() => t);
+    const reader = store(() => t);
+    const jkt = "b".repeat(43);
+    const id = await newDevice(writer, "kc-step-2", jkt);
+    expect((await reader.activeDevice("tnt_a", "kc-step-2", jkt))?.stepUpAt).toBeUndefined();
+    expect((await writer.activeDevice("tnt_a", "kc-step-2", jkt))?.stepUpAt).toBeUndefined();
+    await writer.recordStepUp("tnt_a", id, "otp", t);
+    expect((await writer.activeDevice("tnt_a", "kc-step-2", jkt))?.stepUpAt).toBe(t);
+    // Another replica's cache still answers the old row for up to 15 s; `fresh` does not.
+    expect((await reader.activeDevice("tnt_a", "kc-step-2", jkt))?.stepUpAt).toBeUndefined();
+    expect((await reader.activeDevice("tnt_a", "kc-step-2", jkt, { fresh: true }))?.stepUpAt).toBe(
+      t,
+    );
+    t += 1000;
+    expect((await reader.activeDevice("tnt_a", "kc-step-2", jkt))?.stepUpAt).toBe(t - 1000);
   });
 });

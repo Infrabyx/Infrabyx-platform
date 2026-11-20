@@ -3091,6 +3091,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 ESIGN; PL3-D-23"
   },
   {
+    "key": "int.esign.nsdl.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 §01.4.4.2 ESIGN; PR-UDF-054, R1-D-245 (NSDL eSign under the CCA eSign API: an adapter shell whose ASP request signing is refused until the owner approves it; off and unproven, #177)"
+  },
+  {
     "key": "int.kyc.digio.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -3439,6 +3452,45 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     ],
     "mc": "R4",
     "source": "IPB-01 ESTAMP; R1-D-52, R1-D-62 (NeSL Digital Document Execution, off until the owner's NeSL account exists)"
+  },
+  {
+    "key": "int.estamp.shcil.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 ESTAMP; PR-UDF-054, R1-D-245 (SHCIL e-stamp certificate read-back, never a purchase; off and unproven until the owner's SHCIL account exists, #177)"
+  },
+  {
+    "key": "int.estamp.digio.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 ESTAMP; PR-UDF-054, R1-D-245 (Digio e-stamp read-back, never a purchase or an affixing from inventory; off and unproven until the owner's Digio e-stamp account exists, #177)"
+  },
+  {
+    "key": "int.estamp.manual_paper.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 ESTAMP; PR-UDF-054, R1-D-245 (records physical stamp paper and franking the RE holds, no external call and no purchase; off until the owner sets its evidence rules, #177)"
   },
   {
     "key": "rules.engine",
@@ -7183,6 +7235,7 @@ export type SettingValueMap = {
   "int.api.idempotency_ttl_hours": number;
   "int.esign.provider": "leegality" | "digio" | "memory";
   "int.esign.expire_in_days": number;
+  "int.esign.nsdl.enabled": boolean;
   "int.kyc.digio.enabled": boolean;
   "int.kyc.idfy.enabled": boolean;
   "int.bureau.cibil.enabled": boolean;
@@ -7209,6 +7262,9 @@ export type SettingValueMap = {
   "int.device_attestation.app_attest.enabled": boolean;
   "int.payments.digio_mandate.enabled": boolean;
   "int.estamp.nesl_dde.enabled": boolean;
+  "int.estamp.shcil.enabled": boolean;
+  "int.estamp.digio.enabled": boolean;
+  "int.estamp.manual_paper.enabled": boolean;
   "rules.engine": "zen" | "json-rules";
   "rules.cel.max_cost": number;
   "rules.eval.timeout_ms": number;

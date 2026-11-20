@@ -2,6 +2,7 @@
 // here: classic and stream cross-references, FlateDecode, ToUnicode CMaps, and hostile files.
 import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
+import { PortError } from "@infrabyx/contracts/errors";
 import { sha256Hex, ulid } from "@infrabyx/crypto";
 import { FakeFileScan, MemoryStorage } from "@infrabyx/testing";
 import type { DocFileRef, PdfTextLimits } from "@infrabyx/contracts/ports";
@@ -426,6 +427,91 @@ describe("pdf-text: refusals", () => {
       code: "IPB-SEC-013",
     });
     expect(await refusal(extract(enc("GIF89a not a pdf")))).toMatchObject({ code: "IPB-SEC-010" });
+  });
+});
+
+// ---- storage failures --------------------------------------------------------------------------
+
+/** MemoryStorage whose reads fail with `failure` once it is set (after the AV scan has read). */
+class FailingStorage extends MemoryStorage {
+  failure: Error | null = null;
+  override async get(key: string) {
+    if (this.failure) throw this.failure;
+    return super.get(key);
+  }
+}
+
+describe("pdf-text: storage failures (PR-UDF-067)", () => {
+  const failing = new FailingStorage();
+  const failingAv = new FakeFileScan(failing);
+  const extractor = new PdfTextExtractor({ storage: failing });
+  const plain = () => pagesDoc(["BT /F1 12 Tf 72 720 Td (Sanction letter) Tj ET"]);
+
+  /** Upload and scan under `failing`, then make its reads fail with `failure`. */
+  async function scannedThenFailing(bytes: Uint8Array, failure: Error | null) {
+    failing.failure = null;
+    const storageKey = `tenant/tnt_a/uploads/${ulid()}.pdf`;
+    await failing.put(storageKey, bytes, { bucketClass: "QUARANTINE" });
+    const file = { storageKey, sha256: sha256Hex(bytes) };
+    const scan = await failingAv.scan(file);
+    expect(scan.verdict).toBe("CLEAN");
+    failing.failure = failure;
+    return { file, scan };
+  }
+
+  /** As the `s3` adapter reports a named tenant key that is disabled or no longer granted. */
+  const keyGone = (reason = "storage_key_unavailable") =>
+    new PortError("IPB-KMS-001", "STORAGE", {
+      adapter: "s3",
+      detail: "the object's named key is disabled, deleted or no longer granted",
+      meta: { reason, keyRef: "lender:a", name: "KMS.DisabledException" },
+      cause: new Error("arn:aws:kms:ap-south-1:111122223333:key/0000 is disabled"),
+    });
+
+  it("a STORAGE read refused for a disabled or revoked named key is IPB-KMS-001 storage_key_unavailable, not IPB-PORT-002", async () => {
+    const req = await scannedThenFailing(plain(), keyGone());
+    const e = (await refusal(extractor.extractText(req))) as PortError;
+    expect(e).toBeInstanceOf(PortError);
+    expect(e).toMatchObject({
+      code: "IPB-KMS-001",
+      port: "PDF",
+      adapter: "pdf-text",
+      meta: { reason: "storage_key_unavailable" },
+    });
+    // Only the fixed label: no key reference, vendor error name, key id or cause.
+    expect(e.meta).toEqual({ reason: "storage_key_unavailable" });
+    expect(e.cause).toBeUndefined();
+    expect(`${e.message} ${e.detail ?? ""}`).not.toMatch(/arn:|lender:a|KMS\./);
+  });
+
+  it("any other STORAGE failure, including another IPB-KMS-001 reason, stays IPB-PORT-002 unavailable", async () => {
+    for (const failure of [
+      new Error("connection reset"),
+      new PortError("IPB-STOR-001", "STORAGE", { detail: "no such object" }),
+      keyGone("integrity"),
+    ]) {
+      const req = await scannedThenFailing(plain(), failure);
+      expect(await refusal(extractor.extractText(req))).toMatchObject({
+        code: "IPB-PORT-002",
+        meta: { reason: "unavailable" },
+      });
+    }
+  });
+
+  it("a readable but corrupt or encrypted PDF keeps its own refusal (IPB-SEC-010)", async () => {
+    const corrupt = await scannedThenFailing(enc("%PDF-1.7 not really a pdf"), null);
+    expect(await refusal(extractor.extractText(corrupt))).toMatchObject({ code: "IPB-SEC-010" });
+    const encrypted = plain()
+      .toString("latin1")
+      .replace("/Root 1 0 R", "/Root 1 0 R /Encrypt << /Filter /Standard /V 2 /R 3 /P -4 >>");
+    const locked = await scannedThenFailing(enc(encrypted), null);
+    expect(await refusal(extractor.extractText(locked))).toMatchObject({
+      code: "IPB-SEC-010",
+      meta: { reason: "encrypted" },
+    });
+    // And once the reads work, the same extractor reads the file.
+    const ok = await scannedThenFailing(plain(), null);
+    expect((await extractor.extractText(ok)).pages[0]?.text).toBe("Sanction letter");
   });
 });
 

@@ -72,6 +72,8 @@ describe("@IPB-01-15 AA_FIU hermetic leg (Setu stub)", () => {
       return stub.fiuId;
     },
     reportFiu: async (_p, id, fiu) => stub.reportFiu(id, fiu),
+    // PR-UDF-065: the fetch case reads each FI payload back from the adapter's STORAGE.
+    storageOf: () => storage,
   };
   defineContractSuite("AA_FIU", make, accountAggregatorContractCases(fixtures), {
     leg: "hermetic",

@@ -14,6 +14,7 @@ const withCheck = (stem: string): string => {
 };
 const UID = withCheck("23456789012");
 const VID = withCheck("912345678901234");
+const PHONE = withCheck("91987654321");
 const spaced = (n: string) => n.replace(/(\d{4})(?=\d)/g, "$1 ");
 
 describe("PR-UDF-042 scanTextForAadhaar", () => {
@@ -35,6 +36,53 @@ describe("PR-UDF-042 scanTextForAadhaar", () => {
     const uuid = `0190aaaa-bbbb-7ccc-8ddd-${UID}`;
     expect(scanTextForAadhaar(`"id":"${uuid}"`)).toEqual([]);
     expect(scanTextForAadhaar(`"id":"x-${UID}"`)).toHaveLength(1);
+  });
+
+  it("PR-UDF-063: blanks a standalone UUID only; digits glued to one are still read", () => {
+    const uuid = `0190aaaa-bbbb-7ccc-8ddd-${UID}`;
+    // Standalone: start or end of text, quotes, spaces, commas, a slash, a hyphen before a letter.
+    for (const t of [
+      uuid,
+      ` ${uuid} `,
+      `/${uuid}/`,
+      `[${uuid},${uuid}]`,
+      `${uuid}-v2`,
+      `a-${uuid}`,
+    ])
+      expect(scanTextForAadhaar(t), t).toEqual([]);
+    for (const letters of ["join", "boundary"] as const)
+      expect(scanTextForAadhaar(`id ${uuid}.`, { letters })).toEqual([]);
+    // A UUID-shaped run whose last group is the first twelve of a VID: the VID is found.
+    const glued = `0190aaaa-bbbb-7ccc-8ddd-${VID.slice(0, 12)} ${VID.slice(12)}`;
+    expect(scanTextForAadhaar(glued).map((f) => f.kind)).toEqual(["VID"]);
+    // Digits glued to the front through a separator: read as the rule groups them.
+    const front = `${UID.slice(0, 4)} ${UID.slice(4)}-bbbb-7ccc-8ddd-0190aaaa0000`;
+    expect(scanTextForAadhaar(front, { letters: "boundary" }).map((f) => f.kind)).toEqual([
+      "AADHAAR",
+    ]);
+    // A short number after a space is not a group: the UUID is still standalone.
+    expect(scanTextForAadhaar(`${uuid} 7 days`)).toEqual([]);
+    expect(scanTextForAadhaar(`12 ${uuid}`)).toEqual([]);
+    // Four digits after a space are a group the rule may join: the UUID is read as it stands.
+    expect(scanTextForAadhaar(`${uuid} ${UID.slice(0, 4)}`)).toHaveLength(1);
+    // Glued to a letter or digit run: not a UUID, so the rule reads it as it stands.
+    expect(scanTextForAadhaar(`${uuid}7`)).toEqual([]); // 13 digits: never a find
+    expect(scanTextForAadhaar(`9${uuid}`, { letters: "boundary" })).toHaveLength(1);
+    expect(scanTextForAadhaar(`x${uuid}`, { letters: "boundary" })).toHaveLength(1);
+    expect(scanTextForAadhaar(`${uuid}x`, { letters: "boundary" })).toHaveLength(1);
+    // The blanking keeps offsets: a number after a blanked UUID is at its own column.
+    expect(scanTextForAadhaar(`${uuid}, ${UID}`)).toEqual([
+      { line: 1, column: uuid.length + 3, kind: "AADHAAR", masked: `XXXX XXXX ${UID.slice(-4)}` },
+    ]);
+  });
+
+  it("PR-UDF-063: look-alikes are finds by default; allow lets the chosen ones through", () => {
+    const text = `tel +${PHONE}\namount 0.${UID}\n`;
+    expect(scanTextForAadhaar(text).map((f) => f.line)).toEqual([1, 2]);
+    expect(scanTextForAadhaar(text, { allow: ["e164_in"] }).map((f) => f.line)).toEqual([2]);
+    expect(scanTextForAadhaar(text, { allow: ["decimal"] }).map((f) => f.line)).toEqual([1]);
+    expect(scanTextForAadhaar(text, { allow: ["e164_in", "decimal"] })).toEqual([]);
+    expect(scanTextForAadhaar(`${PHONE}`, { allow: ["e164_in"] })).toHaveLength(1);
   });
 });
 
@@ -96,6 +144,59 @@ describe("PR-UDF-042 infrabyx-aadhaar-scan", () => {
     expect(out).toContain(`index.js:1: AADHAAR XXXX XXXX ${UID.slice(-4)}`);
   });
 
+  it("PR-UDF-063: exits 2 (fail closed) when no file is read", async () => {
+    const empty = join(root, "empty");
+    mkdirSync(join(empty, "sub"), { recursive: true });
+    expect(await run(empty)).toBe(2);
+    expect(err).toMatch(/0 file\(s\), 0 skipped, 0 find\(s\)/);
+    expect(err).toContain("no file read, so nothing is proven");
+    // Every file skipped (binary, too large, a symbolic link): nothing read either.
+    const skipped = join(root, "all-skipped");
+    mkdirSync(skipped);
+    writeFileSync(join(skipped, "blob.bin"), Buffer.from([0, 1, 2]));
+    writeFileSync(join(skipped, "big.txt"), "a".repeat(600));
+    symlinkSync(join(root, "clean/a.json"), join(skipped, "link.json"));
+    expect(await run("--max-bytes", "500", skipped)).toBe(2);
+    expect(err).toMatch(/0 file\(s\), 3 skipped, 0 find\(s\)/);
+    // Only skipped directories under the path given (node_modules, .git, dist).
+    const only = join(root, "only-skipped-dirs");
+    mkdirSync(join(only, "node_modules"), { recursive: true });
+    writeFileSync(join(only, "node_modules", "x.js"), "x");
+    expect(await run(only)).toBe(2);
+    // A find still exits 1 whatever else happened.
+    expect(await run(skipped, join(root, "dirty/notes.md"))).toBe(1);
+  });
+
+  it("PR-UDF-063: --allow lets the chosen look-alikes through; the default flags them", async () => {
+    const dir = join(root, "look-alikes");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "contacts.csv"), `name,phone,share\na,+${PHONE},0.${UID}\n`);
+    expect(await run(dir)).toBe(1);
+    expect(out.trim().split("\n")).toHaveLength(2);
+    expect(await run("--allow", "e164_in", dir)).toBe(1);
+    expect(out.trim().split("\n")).toHaveLength(1);
+    expect(await run("--allow", "e164_in,decimal", dir)).toBe(0);
+    expect(err).toContain("look-alikes let through: e164_in, decimal");
+    expect(await run("--allow", "e164_in", "--allow", "decimal", dir)).toBe(0);
+    expect(await run("--allow", "e164", dir)).toBe(2);
+    expect(err).toContain("unknown look-alike: e164");
+    expect(await run("--allow", "", dir)).toBe(2);
+  });
+
+  it("PR-UDF-063: --help names the options and every exit status", async () => {
+    expect(await run("--help")).toBe(0);
+    expect(out).toMatch(/usage:\s+infrabyx-aadhaar-scan\b/);
+    for (const s of [
+      "--allow",
+      "e164_in",
+      "decimal",
+      "Exit status: 0",
+      "1 a find",
+      "2 nothing proven",
+    ])
+      expect(out).toContain(s);
+  });
+
   it("exits 2 on a usage error", async () => {
     expect(await run()).toBe(2);
     expect(err).toMatch(/usage:\s+infrabyx-aadhaar-scan\b/);
@@ -119,5 +220,13 @@ describe("PR-UDF-042 infrabyx-aadhaar-scan", () => {
     const b = await scanPathsForAadhaar([join(root, "dirty")], { maxBytes: 500 });
     expect(a).toEqual(b);
     expect(a.finds.map((f) => f.kind)).toEqual(["AADHAAR", "VID"]);
+  });
+});
+
+describe("UUIDs in messages (R1-D-247)", () => {
+  it("never reads a UUID's all-digit middle groups as a number", () => {
+    // The CI failure on #345: the envelope id of a lender event, whose groups 2 to 4 are digits.
+    const id = "01a1f98a-9694-7092-9478-0624acc5521e";
+    expect(scanTextForAadhaar(JSON.stringify({ event: { id } }), { letters: "join" })).toEqual([]);
   });
 });
