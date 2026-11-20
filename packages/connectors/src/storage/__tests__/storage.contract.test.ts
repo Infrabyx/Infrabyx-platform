@@ -27,7 +27,8 @@ import { MinioStorage, S3Storage } from "../s3.js";
 
 const REGION = "ap-south-1";
 const CREDS = { accessKeyId: "test", secretAccessKey: "test" };
-const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "GENERAL"];
+// CONFIDENTIAL: the no-cache download case (PR-UDF-060) reads from it.
+const CLASSES: BucketClass[] = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL"];
 let moto: StartedService;
 let endpoint = "";
 let kmsKey = "";
@@ -39,7 +40,7 @@ const lenderKeys: string[] = [];
 // concurrent run created on the same server (a reused IPB_TEST_MINIO_URL or IPB_TEST_MOTO_URL, or a
 // `pnpm check:full --logs DIR` run again). Their objects cannot be removed afterwards: the AUDIT
 // cases lock them in COMPLIANCE mode for a day. The suffix is the random part of a ULID, lowercased
-// (Crockford base32 has no I, L, O or U): names stay S3-valid, at most 30 characters here.
+// (Crockford base32 has no I, L, O or U): names stay S3-valid, at most 33 characters here.
 const RUN = ulid().slice(-10).toLowerCase();
 const COMPARTMENT_BUCKETS = [`ipb-s3-conf-board-${RUN}`, `ipb-s3-reg-sealed-${RUN}`];
 let tenant: string | undefined;

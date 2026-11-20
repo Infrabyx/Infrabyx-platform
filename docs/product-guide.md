@@ -1203,6 +1203,10 @@ From the next release (`contracts`, `config`, `connectors`, `notify` and `testin
 - **Send only to the verified address:** have your `ContactResolver` answer a borrower's `email` with `verifiedEmail(tenantId, userId)` (null means no email). A `PgCustomerAuthStore` needs `connectors/0015`; a store of your own needs `saveVerifiedEmail` and `verifiedEmail`, or the capture is `unsupported`.
 - **Testing:** the SES and Brevo stubs record each attachment's `sha256` over the bytes they decoded, so a test can compare it with the stored object's.
 
+## 7dm. No-cache presigned downloads (PR-UDF-060; R1-D-230)
+
+From the next release (`contracts`, `connectors`, `fakes` and `testing` minors; no setting, no migration), `storage.presign(key, "get", ttl)` for an object in `REGULATED` or `CONFIDENTIAL` (`NO_CACHE_PRESIGN_CLASSES`, compartments included) signs S3's response overrides `response-cache-control=no-store, private` and `response-expires=Thu, 01 Jan 1970 00:00:00 GMT`, so S3 and MinIO answer the download with `Cache-Control: no-store, private` and an `Expires` in the past, and iOS, Android webviews and browsers keep no copy of the document. Nothing changes for `GENERAL`, `PUBLIC_ASSETS`, `AUDIT` and `QUARANTINE`, or for upload URLs. The headers follow the bucket the URL reads from, so nothing you pass can drop them; the URL is longer by about 110 characters. S3 has no `Pragma` override: `Cache-Control: no-store` supersedes it for HTTP/1.1 clients, and if a client of yours needs `Pragma: no-cache`, serve the bytes through your own endpoint instead of handing out the URL. Your app's own download code must not copy the file to a cache directory either. `MemoryStorage` puts the same two parameters on its `memory://` URLs, so a test can check them.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

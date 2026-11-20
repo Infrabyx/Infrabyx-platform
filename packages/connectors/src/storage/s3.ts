@@ -13,6 +13,8 @@
 // R1-D-227): a write may name one of its tenant's keys by reference (`keyRef`, or a prefix map); the
 // adapter resolves it, keeps it separate from every other key, records the reference on the object
 // and reports a disabled or revoked key as IPB-KMS-001; `minio` refuses it (`unsupported`).
+// No-cache downloads (PR-UDF-060, R1-D-230): a presigned GET from a REGULATED or CONFIDENTIAL
+// bucket signs `response-cache-control=no-store, private` and a past `response-expires`.
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -34,10 +36,12 @@ import { IpbError, PortError } from "@infrabyx/contracts/errors";
 import {
   BUCKET_CLASSES,
   COMPARTMENT_CLASSES,
+  PRESIGN_NO_CACHE,
   STORAGE_COMPARTMENTS,
   STORAGE_KEY_REF_META,
   compartmentAllowed,
   isValidStorageKey,
+  presignNoCache,
   resolveStorageKeyRef,
   type AdapterDescriptor,
   type BucketClass,
@@ -171,6 +175,19 @@ const slotName = (s: Slot) => (s.compartment ? `${s.cls}.${s.compartment}` : s.c
 const sameSlot = (a: Slot, b: Slot) => a.cls === b.cls && a.compartment === b.compartment;
 const slotOf = (m: { bucketClass: BucketClass; compartment?: StorageCompartment }): Slot =>
   m.compartment ? { cls: m.bucketClass, compartment: m.compartment } : { cls: m.bucketClass };
+/**
+ * PR-UDF-060 (R1-D-230): the signed response overrides of a download from a REGULATED or
+ * CONFIDENTIAL slot (compartments included): `response-cache-control=no-store, private` and a
+ * past `response-expires` (the SDK writes the Date as an HTTP-date). S3 has no `Pragma` override.
+ * Taken from the slot the URL reads from, never from the caller, so it cannot be weakened.
+ */
+const noCacheOverrides = (s: Slot): { ResponseCacheControl?: string; ResponseExpires?: Date } =>
+  presignNoCache(s.cls)
+    ? {
+        ResponseCacheControl: PRESIGN_NO_CACHE.cacheControl,
+        ResponseExpires: new Date(Date.parse(PRESIGN_NO_CACHE.expires)),
+      }
+    : {};
 
 export class S3Storage implements StoragePort {
   readonly descriptor: AdapterDescriptor;
@@ -691,10 +708,8 @@ export class S3Storage implements StoragePort {
     if (!cls) this.notFound(key);
     return getSignedUrl(
       this.client,
-      new GetObjectCommand({ Bucket: this.bucket(cls!), Key: key }),
-      {
-        expiresIn: ttlSeconds,
-      },
+      new GetObjectCommand({ Bucket: this.bucket(cls!), Key: key, ...noCacheOverrides(cls!) }),
+      { expiresIn: ttlSeconds },
     );
   }
 
