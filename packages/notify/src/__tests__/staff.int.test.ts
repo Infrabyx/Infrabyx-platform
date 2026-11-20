@@ -284,6 +284,20 @@ describe("outcomes, idempotency and the receipt (PR-UDF-052)", () => {
       }),
     );
   });
+  it("records inside the caller's transaction and leaves delivery to the dispatcher", async () => {
+    const r = await db.kernel.mutate(
+      caller("tnt_a"),
+      (tx) => svc.enqueueStaff(tx, alert("staff-alert-0016", { roles: ["FN:CCO"] })),
+      { action: "notify.notification.create" },
+    );
+    expect(r).toMatchObject({ outcome: "targeted", recipients: [C1] });
+    expect(r.deliveries.map((d) => d.state)).toEqual(["queued", "queued"]);
+    const before = emails.length;
+    await svc.dispatchDue();
+    expect(emails.slice(before)).toEqual(["cco.c1@example.test"]);
+    const rc = await svc.deliveryReceipt(caller("tnt_a"), r.notificationId);
+    expect(rc?.recipients.map((x) => [x.recipient, x.reached])).toEqual([[C1, true]]);
+  });
   it("sends once per idempotency key", async () => {
     const first = await svc.notifyStaff(caller("tnt_a"), alert("staff-alert-0008"));
     const sent = emails.length;
