@@ -1251,6 +1251,15 @@ From the next release (`contracts` and `connectors` minors; migration `connector
 - **A store of your own:** add `deleteVerifiedEmail(tenantId, userId, reason, requestRef?)`. A store with `saveVerifiedEmail` but without it makes `retireLogin` and `eraseVerifiedEmail` refuse with `IPB-PORT-001` `unsupported` before anything changes. A store that keeps no address retires as before.
 - **After an erasure** the borrower can prove an address again; that records a fresh row.
 
+## 7dw. The fake AA's FI payloads in STORAGE, for statement analysis (PR-UDF-065; R1-D-243)
+
+From the next release (`fakes` and `testing` minors; no setting, no migration), `FakeAccountAggregator.fetch` stores each FI payload the way `setu-aa` does, so you can wire the AA to statement analysis in a fixture environment or a test with no adapter of your own.
+
+- **Share one STORAGE:** `const storage = new MemoryStorage(); const aa = new FakeAccountAggregator({ storage }); const sa = new FakeStatementAnalysis({ storage });`. Each payload is a synthetic ReBIT-shaped JSON object (`fakeFiPayload`) in the `REGULATED` class under `<dataPrefix><ULID>.json` (an IPB-01-27 key), and `payload.sha256` is the SHA-256 of exactly those bytes.
+- **Analyse by reference:** pass `inputs: result.payloads.map(({ fiType, storageKey, sha256 }) => ({ fiType, storageKey, sha256 }))` with a `reportPrefix` in the same tenant as the fetch's `dataPrefix`. Never copy the payload's content into your own records or events.
+- **Without `storage`** the fake keeps its own `MemoryStorage` (read it as `aa.storage`), so existing tests run unchanged, except a test that matched the old key shape (`<dataPrefix><sessionId>-<fiType>.json`) or the old digest: read the payload from `storage` instead.
+- **Your own adapter's tests:** `accountAggregatorContractCases` now checks that every payload key is IPB-01-27's; give `storageOf: (p) => yourStorage` in the fixtures to have each payload read back (REGULATED, bytes matching the SHA-256). `aaStatementAnalysisJoinCases({ storage, dataPrefix, reportPrefix, calls })` runs your STATEMENT_ANALYSIS adapter against the fake AA over the same STORAGE: a tampered or removed payload, one outside `REGULATED` or a key outside IPB-01-27 must be refused before any analyser call.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
