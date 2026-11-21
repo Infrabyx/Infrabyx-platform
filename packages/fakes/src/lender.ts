@@ -22,7 +22,10 @@
 // lender's words; the KFS carries its issue time, language, document reference, tenor in days,
 // cash flows (net disbursed and a monthly schedule), charges, cooling-off days, exit terms, nodal
 // grievance officer and the LSP entry; the sanction letter its document reference; `LoanDisbursed`
-// the application id and time. An acceptance naming another KFS version or hash, or another
+// the application id and time (and, R1-D-256, the LSP's application reference).
+// R1-D-258 (PR-UDF-075): the agreement's e-stamp names its system (`SHCIL`), each not-stampable
+// entry its reason code (`NOT_AN_INSTRUMENT`) and the disbursement clause its `clause_ref`, in
+// both carriers. An acceptance naming another KFS version or hash, or another
 // application, is refused (`kfs_mismatch`, `application_mismatch`). An exit request inside the
 // cooling-off period is answered once with `CoolingOffExitAnswered`: principal plus the APR for the
 // days held, a payment instruction in words and the lender's exit reference.
@@ -617,6 +620,8 @@ export class FakeLender {
       cooling_off_end: coolingOffEnd.toISOString(),
       application_id: app.applicationId,
       disbursed_at: disbursedAt.toISOString(),
+      // R1-D-256 (PR-UDF-061 finding (i)): both references, so the LSP can match its own.
+      lsp_application_ref: app.lspRef,
     });
     await this.move(app, "DISBURSED");
     return { loanId, utr };
@@ -749,6 +754,8 @@ export class FakeLender {
             issued_at: this.now().toISOString(),
             vendor_certificate_id: "stv_fake_vendor",
             certificate_document_id: certificate.documentId,
+            // R1-D-258 (PR-UDF-075 (1)): the e-stamp system.
+            estamp_system: "SHCIL",
           },
         }),
         docRow(kfsDoc, "KFS", { enclosure_code: "ANNEX_A" }),
@@ -771,6 +778,7 @@ export class FakeLender {
       not_stampable: [kfsDoc, sanctionDoc, summary, privacy].map((d) => ({
         document_id: d.documentId,
         reason,
+        reason_code: "NOT_AN_INSTRUMENT", // R1-D-258 (PR-UDF-075 (2))
       })),
       countersignature: { required: true, by: "LENDER", order: "AFTER_BORROWER", within_days: 3 },
       // R1-D-229: the loan agreement's clause stating the amount to be disbursed.
@@ -778,6 +786,7 @@ export class FakeLender {
         document_id: agreement.documentId,
         page_or_clause_ref: "cl.4.2",
         amount_stated_paise: app.amountPaise,
+        clause_ref: "4.2", // R1-D-258 (PR-UDF-075 (3)): the same clause, structured
       },
     });
     app.issued = issued;
@@ -924,9 +933,24 @@ export class FakeLender {
   }
 }
 
-/** The interim manifest (PR-UDF-053's shape, unchanged) of an issued pack (R1-D-236). */
+/**
+ * The interim manifest (PR-UDF-053's shape, with only optional additions: R1-D-258's e-stamp
+ * system and reason code) of an issued pack (R1-D-236).
+ */
+/** A pack's not-stampable entry as the manifest item's fields (R1-D-231; the code R1-D-258). */
+function notStampable(
+  n: NonNullable<ExecutionPackIssuedData["not_stampable"]>[number] | undefined,
+): Record<string, unknown> {
+  if (!n) return {};
+  return {
+    not_stampable: true,
+    not_stampable_reason: n.reason,
+    ...(n.reason_code ? { not_stampable_reason_code: n.reason_code } : {}),
+  };
+}
+
 function manifestOf(p: ExecutionPackIssuedData, agreement: StoredDocument): unknown {
-  const reasons = new Map((p.not_stampable ?? []).map((n) => [n.document_id, n.reason]));
+  const reasons = new Map((p.not_stampable ?? []).map((n) => [n.document_id, n]));
   return {
     pack_id: p.pack_id,
     version: p.version,
@@ -950,12 +974,13 @@ function manifestOf(p: ExecutionPackIssuedData, agreement: StoredDocument): unkn
               duty_paise: d.stamp_evidence.duty_paise,
               stamped_document_sha256: d.stamp_evidence.stamped_document_sha256,
               vendor_ref: d.stamp_evidence.vendor_certificate_id,
+              ...(d.stamp_evidence.estamp_system
+                ? { estamp_system: d.stamp_evidence.estamp_system }
+                : {}),
             },
           }
         : {}),
-      ...(reasons.has(d.document_id)
-        ? { not_stampable: true, not_stampable_reason: reasons.get(d.document_id) }
-        : {}),
+      ...notStampable(reasons.get(d.document_id)),
     })),
     stamp: p.stamp,
     summary_box: p.summary_box,

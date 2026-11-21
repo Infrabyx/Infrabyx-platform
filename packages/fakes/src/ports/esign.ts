@@ -19,6 +19,12 @@
 // A signer is `signed` once they signed every document; the envelope completes only then for
 // every signer (all or nothing), and a decline on the envelope declines every document.
 //
+// PR-UDF-074 (R1-D-260): a download's `keyRef` writes the signed PDF and the chains under that
+// named STORAGE key (the STORAGE fake refuses an unknown reference, so nothing is written and the
+// download fails). The files are written once, at the first download: a later download naming a
+// different reference (or none, after one) is refused `IPB-PORT-003` `key_ref_changed`, as an
+// overwrite under another reference is in STORAGE; one naming the same reference returns them.
+//
 // Test hooks: `signedObjects()`, `failNextDownload()`, `setSignerCertificate()`, `decline()`,
 // `trustStore()`.
 import { PortError } from "@infrabyx/contracts/errors";
@@ -28,7 +34,9 @@ import {
   storageKey,
   type AdapterDescriptor,
   type EnvelopeDocument,
+  isValidStorageKeyRef,
   type EnvelopeStatus,
+  type EsignDownloadOptions,
   type EsignPort,
   type PortHealth,
   type SignatureRecord,
@@ -82,6 +90,8 @@ export interface FakeEsignSignedObject {
   base: "original" | "fixture";
   /** Per signer, the certificate chain written (PEM). */
   chains: { signerRef: string; storageKey: string; sha256: string }[];
+  /** PR-UDF-074: the named STORAGE key reference the files were written under, if any. */
+  keyRef?: string;
 }
 
 interface Certificate {
@@ -250,16 +260,21 @@ export class FakeEsign implements EsignPort {
     return this.status(id);
   }
 
-  async downloadSigned(id: string) {
+  async downloadSigned(id: string, opts?: EsignDownloadOptions) {
+    const keyRef = keyRefOf(opts);
     const e = this.get(id);
     if (e.docs.length > 1)
       throw refuse("multi_document", "an envelope of several documents: downloadSignedDocuments");
-    const [d] = (await this.download(e)) as [SignedEnvelopeDocument];
+    const [d] = (await this.download(e, keyRef)) as [SignedEnvelopeDocument];
     return { storageKey: d.storageKey, sha256: d.sha256, signatures: d.signatures };
   }
 
-  async downloadSignedDocuments(id: string): Promise<{ documents: SignedEnvelopeDocument[] }> {
-    return { documents: await this.download(this.get(id)) };
+  async downloadSignedDocuments(
+    id: string,
+    opts?: EsignDownloadOptions,
+  ): Promise<{ documents: SignedEnvelopeDocument[] }> {
+    const keyRef = keyRefOf(opts);
+    return { documents: await this.download(this.get(id), keyRef) };
   }
 
   async aadhaarEsign(session: { envelopeId: string; signerRef: string }) {
@@ -434,7 +449,10 @@ export class FakeEsign implements EsignPort {
     return storageKey(this.tenantOf(d), "esign", ulidOf(e.envelopeId, signerRef, "chain"), "pem");
   }
 
-  private async download(e: FakeEnvelope): Promise<SignedEnvelopeDocument[]> {
+  private async download(
+    e: FakeEnvelope,
+    keyRef: string | undefined,
+  ): Promise<SignedEnvelopeDocument[]> {
     if (this.failure) {
       const f = this.failure;
       this.failure = undefined;
@@ -459,7 +477,13 @@ export class FakeEsign implements EsignPort {
         });
         continue;
       }
-      d.written ??= await this.write(e, d);
+      if (d.written && d.written.keyRef !== keyRef)
+        throw new PortError("IPB-PORT-003", "ESIGN", {
+          adapter: "fake-esign",
+          detail: "the signed file exists under another key reference",
+          meta: { reason: "key_ref_changed" },
+        });
+      d.written ??= await this.write(e, d, keyRef);
       out.push({
         documentId: d.doc.documentId,
         storageKey: d.written.storageKey,
@@ -470,7 +494,11 @@ export class FakeEsign implements EsignPort {
     return out;
   }
 
-  private async write(e: FakeEnvelope, d: FakeDoc): Promise<FakeEsignSignedObject> {
+  private async write(
+    e: FakeEnvelope,
+    d: FakeDoc,
+    keyRef: string | undefined,
+  ): Promise<FakeEsignSignedObject> {
     const storage = this.storage!;
     const pdf = d.bytes!;
     const key = storageKey(
@@ -480,10 +508,12 @@ export class FakeEsign implements EsignPort {
       "pdf",
     );
     const sha256 = sha256Hex(pdf);
+    const named = keyRef !== undefined ? { keyRef } : {};
     await storage.put(key, pdf, {
       bucketClass: "REGULATED",
       contentType: "application/pdf",
       sha256,
+      ...named,
     });
     const chains: FakeEsignSignedObject["chains"] = [];
     for (const signerRef of d.signedBy) {
@@ -496,6 +526,7 @@ export class FakeEsign implements EsignPort {
         bucketClass: "REGULATED",
         contentType: "application/pem-certificate-chain",
         sha256: chainSha,
+        ...named,
       });
       chains.push({ signerRef, storageKey: chainKey, sha256: chainSha });
     }
@@ -506,10 +537,23 @@ export class FakeEsign implements EsignPort {
       sha256,
       base: d.base ?? "original",
       chains,
+      ...named,
     };
     this.written.push(w);
     return w;
   }
+}
+
+/** PR-UDF-074: a malformed reference is refused before anything is read or written. */
+function keyRefOf(opts: EsignDownloadOptions | undefined): string | undefined {
+  const keyRef = opts?.keyRef;
+  if (keyRef !== undefined && (typeof keyRef !== "string" || !isValidStorageKeyRef(keyRef)))
+    throw new PortError("IPB-PORT-003", "ESIGN", {
+      adapter: "fake-esign",
+      detail: "the signed file's key reference is malformed",
+      meta: { reason: "key_ref_invalid" },
+    });
+  return keyRef;
 }
 
 function pemToDer(text: string): Uint8Array {

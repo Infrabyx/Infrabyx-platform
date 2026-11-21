@@ -231,6 +231,62 @@ export const BUILT_IN_CASES: Partial<Record<PortName, Array<ContractCase<never>>
       },
     },
     {
+      // PR-UDF-076 (R1-D-261). The same configuration as the keyRefStatus case, with
+      // `lender:contract` and `lender:contract-off` also in `QUARANTINE`; an adapter without
+      // per-object keys declares `keyRefStatuses` unsupported.
+      name: "keyRefStatuses answers several classes in one call, each as keyRefStatus would, and refuses a malformed class list (PR-UDF-076)",
+      method: "keyRefStatuses",
+      invoke: (p: StoragePort) =>
+        p.keyRefStatuses
+          ? p.keyRefStatuses("tnt_contract", "lender:contract", { bucketClasses: ["REGULATED"] })
+          : Promise.reject(new Error("adapter lacks keyRefStatuses")),
+      async run(p: StoragePort) {
+        // Optional on the interface: an adapter without it (a product's own) is not checked here.
+        if (!p.keyRefStatuses) return;
+        const classes = ["REGULATED", "QUARANTINE", "GENERAL"] as const;
+        const statuses = (keyRef: string, describeKey = false) =>
+          p.keyRefStatuses!("tnt_contract", keyRef, { bucketClasses: classes, describeKey });
+        const plain = await statuses("lender:contract");
+        expect(Object.keys(plain).sort()).toEqual([...classes].sort());
+        expect(plain.REGULATED).toEqual({ status: "resolves" });
+        expect(plain.QUARANTINE).toEqual({ status: "resolves" });
+        expect(plain.GENERAL).toEqual({ status: "refused", reason: "key_ref_class" });
+        if (p.keyRefStatus)
+          for (const c of classes)
+            expect(plain[c]).toEqual(
+              await p.keyRefStatus("tnt_contract", "lender:contract", { bucketClass: c }),
+            );
+        const described = await statuses("lender:contract", true);
+        for (const c of ["REGULATED", "QUARANTINE"] as const) {
+          expect(described[c]!.status).toBe("resolves");
+          if (described[c]!.keyState !== undefined) expect(described[c]!.keyState).toBe("Enabled");
+        }
+        // Without describeKey a disabled key resolves; with it, it is unavailable in each class.
+        expect((await statuses("lender:contract-off")).REGULATED).toEqual({ status: "resolves" });
+        const off = await statuses("lender:contract-off", true);
+        for (const c of ["REGULATED", "QUARANTINE"] as const)
+          expect(off[c]).toMatchObject({ status: "refused", reason: "storage_key_unavailable" });
+        expect(off.GENERAL).toEqual({ status: "refused", reason: "key_ref_class" });
+        expect(await statuses("lender:unknown")).toMatchObject({
+          REGULATED: { status: "refused", reason: "key_ref_unknown" },
+        });
+        for (const a of [plain, described, off])
+          for (const v of Object.values(a)) {
+            for (const f of Object.keys(v!)) expect(["status", "reason", "keyState"]).toContain(f);
+            expect(JSON.stringify(v)).not.toMatch(/arn:|key\/|[0-9a-f]{8}-[0-9a-f]{4}-/);
+          }
+        for (const bucketClasses of [[], ["REGULATED", "REGULATED"]] as const)
+          await expect(
+            p.keyRefStatuses("tnt_contract", "lender:contract", {
+              bucketClasses: bucketClasses as unknown as ["REGULATED"],
+            }),
+          ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+        await expect(
+          p.keyRefStatuses("tnt_a/../x", "lender:contract", { bucketClasses: ["REGULATED"] }),
+        ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+      },
+    },
+    {
       // PR-UDF-066 (R1-D-240). A leg configures `lender:contract` for `tnt_contract` in `QUARANTINE`
       // as well as `REGULATED`, and has a `QUARANTINE` and an `AUDIT` bucket.
       name: "a named key in QUARANTINE: the upload is under it, and a promotion keeps it or is refused, never the class key (PR-UDF-066)",

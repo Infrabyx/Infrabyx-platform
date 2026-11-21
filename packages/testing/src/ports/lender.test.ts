@@ -2,8 +2,12 @@
 import { describe, expect, it } from "vitest";
 import {
   CF_PARA_9_3_DOCUMENT_KINDS,
+  DocumentSharedData,
   ExecutionPackIssuedData,
   ExecutionPackManifest,
+  LoanDisbursedData,
+  originationSubject,
+  parsePageOrClauseRef,
 } from "@infrabyx/contracts/events";
 import { sha256Hex, verifyDocumentJws } from "@infrabyx/crypto";
 import { FakeLender, type LenderMessage } from "@infrabyx/fakes";
@@ -162,5 +166,63 @@ describe("FakeLender: PR-UDF-061 items 14, 15 and 17 (R1-D-236)", () => {
       document_id: agreement.document_id,
       sha256: agreement.sha256,
     });
+  });
+});
+
+// PR-UDF-061 finding (i) (owner, 21 Nov 2026 11:00; R1-D-256).
+describe("FakeLender: LoanDisbursed names the application both ways (R1-D-256)", () => {
+  it("sends application_id and lsp_application_ref, and keeps loan_id as the subject", async () => {
+    const l = new FakeLender();
+    const { applicationId } = await l.submitApplication(submit("lspapp_fake_disbursed"));
+    await accept(l, applicationId);
+    const { loanId } = await l.disburse(applicationId);
+    const m = l.outbox().find((x) => x.name === "LoanDisbursed")!;
+    const d = LoanDisbursedData.parse(m.event.data);
+    expect(d.application_id).toBe(applicationId);
+    expect(d.lsp_application_ref).toBe("lspapp_fake_disbursed");
+    expect(m.event.subject).toBe(loanId);
+    expect(originationSubject("LoanDisbursed", m.event.data)).toBe(loanId);
+  });
+});
+
+// PR-UDF-075 (owner, 21 Nov 2026 11:00; R1-D-258).
+describe("FakeLender: the pack evidence additions in both carriers (R1-D-258)", () => {
+  it("names the e-stamp system, the not-stampable reason code and the clause_ref", async () => {
+    const l = new FakeLender();
+    const { applicationId } = await l.submitApplication(submit("lspapp_fake_evidence"));
+    await accept(l, applicationId);
+    const p = ExecutionPackIssuedData.parse(
+      l.outbox().find((x) => x.name === "ExecutionPackIssued")!.event.data,
+    );
+    const agreement = p.documents.find((d) => d.kind === "LOAN_AGREEMENT")!;
+    expect(agreement.stamp_evidence?.channel).toBe("E_STAMP");
+    expect(agreement.stamp_evidence?.estamp_system).toBe("SHCIL");
+    expect(p.not_stampable?.length).toBeGreaterThan(0);
+    for (const n of p.not_stampable ?? []) expect(n.reason_code).toBe("NOT_AN_INSTRUMENT");
+    expect(p.disbursement_clause?.clause_ref).toBe("4.2");
+    expect(parsePageOrClauseRef(p.disbursement_clause!.page_or_clause_ref)).toEqual({
+      clause: "4.2",
+    });
+    const m = ExecutionPackManifest.parse(l.executionPack(applicationId));
+    const item = m.documents.find((d) => d.kind === "LOAN_AGREEMENT")!;
+    expect(item.stamp_evidence?.estamp_system).toBe("SHCIL");
+    for (const d of m.documents.filter((x) => x.not_stampable))
+      expect(d.not_stampable_reason_code).toBe("NOT_AN_INSTRUMENT");
+    expect(m.disbursement_clause?.clause_ref).toBe("4.2");
+  });
+
+  it("verifies each shared document's v2 JWS from the announcement and reports the profile", async () => {
+    const l = new FakeLender();
+    const { applicationId } = await l.submitApplication(submit("lspapp_fake_profile"));
+    await accept(l, applicationId);
+    for (const d of l.sharedDocuments()) {
+      const data = DocumentSharedData.parse(d.event.data);
+      // The announcement as it arrives, at the event's time (guide §7ei).
+      const r = verifyDocumentJws(data.jws, data, l.keys, new Date(d.event.time), {
+        requireV2: true,
+        reportProfile: true,
+      });
+      expect(r, String(data.type)).toMatchObject({ ok: true, profile: "v2" });
+    }
   });
 });

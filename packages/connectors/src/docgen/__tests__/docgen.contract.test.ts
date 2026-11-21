@@ -1,11 +1,13 @@
 // DOCGEN contract leg (#120, R1-D-100; R1-plan M71). Hermetic: the pinned Gotenberg image (Chromium
 // and LibreOffice, fonts-noto-core). The generic `renderHtml` cases, then Hindi and Punjabi: the PDF
 // must embed Noto Sans Devanagari and Noto Sans Gurmukhi, so the text is shaped with real fonts
-// (no missing-glyph boxes from a fallback font).
+// (no missing-glyph boxes from a fallback font). The storage cases (PR-UDF-077, R1-D-259) check
+// that each PDF and PDF/A is in STORAGE with the bytes' own SHA-256.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   defineContractSuite,
   docgenHtmlContractCases,
+  docgenStorageContractCases,
   MemoryStorage,
   startService,
   type StartedService,
@@ -31,7 +33,12 @@ beforeAll(async () => {
 }, 240_000);
 afterAll(async () => gb?.stop());
 
-defineContractSuite("DOCGEN", () => adapter, docgenHtmlContractCases(), { leg: "hermetic" });
+defineContractSuite(
+  "DOCGEN",
+  () => adapter,
+  [...docgenHtmlContractCases(), ...docgenStorageContractCases(storage)],
+  { leg: "hermetic" },
+);
 
 describe("DOCGEN gotenberg: vernacular documents (#120)", () => {
   it("renders Hindi and Punjabi with Noto Sans Devanagari and Gurmukhi embedded", async () => {
