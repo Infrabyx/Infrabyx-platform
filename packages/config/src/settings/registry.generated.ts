@@ -3225,6 +3225,34 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "note": "the GRC system's exact host name, India-resident; empty refuses every call (adapter_unconfigured); its token is in SECRETS"
   },
   {
+    "key": "int.file_transfer.sftp.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0014 FILE_TRANSFER; PR-UDF-071, R1-D-254 (reference adapter sftp over ssh2; C-29 on the owner's instruction, R1-D-249)",
+    "note": "the SFTP client to counterparties' servers (pinned host keys, an Ed25519 key from SECRETS, India-hosted allow-list, public addresses only); off and unproven until a counterparty test server is used"
+  },
+  {
+    "key": "int.file_transfer.sftp.allow_hosts",
+    "tier": "PLATFORM",
+    "type": "json",
+    "default": [],
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "ADR-0014 FILE_TRANSFER; PR-UDF-071, R1-D-254; Ecosystem Spec 3.11 (SFTP from allow-listed Indian addresses)",
+    "note": "the India-hosted allow-list: [{ host, residency: IN, attestation? }], exact host names or IP literals, no wildcards; residency is the operator's record of the signed attestation of the server's location in India (Ecosystem Spec 12.2); empty refuses every connection (not_allowed)"
+  },
+  {
     "key": "int.video_meet.livekit.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -7245,6 +7273,8 @@ export type SettingValueMap = {
   "int.statement_analysis.http.host": string;
   "int.grc.generic.enabled": boolean;
   "int.grc.generic.host": string;
+  "int.file_transfer.sftp.enabled": boolean;
+  "int.file_transfer.sftp.allow_hosts": JsonValue;
   "int.video_meet.livekit.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
   "int.av.clamav.enabled": boolean;
