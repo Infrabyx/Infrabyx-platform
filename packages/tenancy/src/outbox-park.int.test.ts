@@ -104,7 +104,7 @@ beforeAll(async () => {
 });
 afterAll(async () => db?.end());
 
-describe("@IPB-01-15 outbox relay: a poison row is parked, the rest are published (R1-D-266)", () => {
+describe("outbox relay: a poison row is parked, the rest are published (R1-D-266)", () => {
   const failures: OutboxDeliveryFailure[] = [];
   let poisonOn = true;
   let relay: OutboxRelay;
