@@ -29,6 +29,6 @@ blockExoticSubdeps: true
 overrides:
   body-parser@2.3.0: 2.4.0
   multer@2.4.0: 2.5.0
-  unleash-client>make-fetch-happen: ^16.0.1
-  archiver-utils>glob: ^14.0.3
-  "minimatch@>=7.0.0 <11.0.1": ^11.0.8
+  unleash-client>make-fetch-happen: 16.0.1
+  archiver-utils>glob: 14.0.6
+  "minimatch@>=7.0.0 <11.0.1": 11.0.9
