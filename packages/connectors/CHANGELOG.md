@@ -1,5 +1,27 @@
 # @infrabyx/connectors
 
+## 1.28.0
+
+### Minor Changes
+
+- e7854b7: `PartnerMtlsClient` (`@infrabyx/connectors/egress`; Udofin PR-UDF-069; R1-D-250): one outbound call to a configured partner over mutual TLS. Built with the partner's exact `hosts`, `clientCertificateRef` and `clientKeyRef` (SECRETS references, resolved with `resolveSecret`, which `secretsResolver` from `@infrabyx/config` fits), an optional `serverCa` (otherwise Node's bundled roots) and limits. `request({ method, url, body, idempotencyKey, contentType?, accept?, headers?, signal?, timeoutMs?, maxResponseBytes? })`: `POST` or `PUT` only, a non-empty body (1 MiB by default), a required `Idempotency-Key` (`IPB-API-010` when missing or ill-formed), https on port 443 to one of the hosts with no user-info or IP literal; DNS once, every answer public, the socket pinned to the checked address, SNI and the server certificate verified against the host name, TLS 1.2 or later; a 3xx is refused (`redirect`), never followed; the answer is capped (1 MiB by default, `IPB-SEC-013`) and must be identity-encoded; one deadline (15 s by default) and the caller's `AbortSignal` (`IPB-PORT-002`, `timeout` or `aborted`, with `meta.maybeSent`). The certificate and key are checked with `checkClientCredential` and kept only in a TLS secure context for `credentialTtlMs` (5 minutes by default, never past notAfter); `checkCredentials()` resolves them without calling the partner and answers the dates and `x5tS256`; `forgetCredentials()` drops the cache. Refusals are `IPB-SEC-018`, `IPB-PORT-001`, `IPB-PORT-002` or `IPB-PORT-005` with a fixed `meta.reason`, never the URL's path or query, a header value, the body or the key. Only P-256 client keys and SECRETS-held keys (not KMS-held) for now (owner question #180). The public-address check, host-name rule and DNS pin of the `governed` adapter move unchanged to `egress/guard.ts` and are exported (`allAddressesPublic`, `checkPublicHostName`, `pinnedLookup`); `isPublicAddress` is exported as before. No setting or migration.
+- a48347d: ESIGN signer certificates (Udofin PR-UDF-070; R1-D-251). `leegality` and `digio` fill each signature record's `signerCertificate` from the signed PDF's own signatures (`signerCertificatesFromPdf`): the k-th bound signature is the k-th signer to sign (envelope order when sequential, the ESP's signing times when parallel), and only when that mapping is certain (one bound signature per signer, distinct times); otherwise it stays unset. `nsdl-esign` has no records yet (#177). All three refuse `createMultiDocumentEnvelope` and `downloadSignedDocuments` with `unsupported` (their descriptor capabilities say so) until a vendor's multi-document support is verified. New helpers `withSignerCertificate` and `NO_MULTI_DOCUMENT`.
+
+### Patch Changes
+
+- Updated dependencies [75cbd9a]
+- Updated dependencies [beca045]
+- Updated dependencies [5b1257d]
+- Updated dependencies [199c930]
+- Updated dependencies [27057c2]
+- Updated dependencies [a107b8d]
+- Updated dependencies [a702fdc]
+- Updated dependencies [f3293a2]
+  - @infrabyx/contracts@1.45.0
+  - @infrabyx/crypto@1.13.0
+  - @infrabyx/tenancy@1.23.0
+  - @infrabyx/config@1.23.1
+
 ## 1.27.0
 
 ### Minor Changes

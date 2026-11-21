@@ -1,5 +1,34 @@
 # @infrabyx/testing
 
+## 1.31.0
+
+### Minor Changes
+
+- aa0e0e8: The lender contract case on `LoanDisbursed` now requires at least one of `application_id` and `lsp_application_ref`, each naming the application submitted (Udofin PR-UDF-061 finding (i); R1-D-256). A lender endpoint that sent neither passed before and is now refused by this case; the event schema itself still accepts it.
+- 36ab734: ESIGN contract support for PR-UDF-070 (R1-D-251). The Leegality and Digio stubs return a real PAdES file signed once per signer in signing order by a throwaway CA (`esignStubAuthority()`), with `signerCertificate(documentId, n)` and `pdfMode` (`"pades"` or `"plain"`) hooks; the stub HTTP server sends byte bodies unchanged. `esignFakeCases()` gains signer-certificate and multi-document cases, and `esignFakeStorageCases(storage)` checks `FakeEsign({ storage })`: the signed PDF and chains in STORAGE, the document's hash check, the failure and certificate hooks, and multi-document writes. Re-exports the `FakeEsignOptions` and `FakeEsignSignedObject` types.
+- 0598167: The lender contract case on the signed execution pack also checks each stamp certificate's `certificate_document_id` against the rule of R1-D-258 (Udofin PR-UDF-075 (4)): a shared document of the same application and, when the pack lists it, not stamp-required and not itself stamped. A lender endpoint that shared the certificate under another application passed before and fails now.
+
+### Patch Changes
+
+- Updated dependencies [75cbd9a]
+- Updated dependencies [aa0e0e8]
+- Updated dependencies [beca045]
+- Updated dependencies [5b1257d]
+- Updated dependencies [199c930]
+- Updated dependencies [27057c2]
+- Updated dependencies [2a00cc7]
+- Updated dependencies [a107b8d]
+- Updated dependencies [a702fdc]
+- Updated dependencies [f3293a2]
+- Updated dependencies [0598167]
+  - @infrabyx/contracts@1.45.0
+  - @infrabyx/fakes@1.9.0
+  - @infrabyx/crypto@1.13.0
+  - @infrabyx/tenancy@1.23.0
+  - @infrabyx/audit@1.11.9
+  - @infrabyx/config@1.23.1
+  - @infrabyx/seed@1.0.55
+
 ## 1.30.0
 
 ### Minor Changes

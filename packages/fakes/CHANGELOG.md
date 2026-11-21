@@ -1,5 +1,26 @@
 # @infrabyx/fakes
 
+## 1.9.0
+
+### Minor Changes
+
+- aa0e0e8: `FakeLender`'s `LoanDisbursed` carries `lsp_application_ref` (the LSP's reference from `ApplicationSubmitted`) alongside `application_id` (Udofin PR-UDF-061 finding (i); R1-D-256). The subject and `seq` are unchanged.
+- 2a00cc7: `FakeEsign` as an ESP with certificates, STORAGE and multi-document envelopes (Udofin PR-UDF-070; R1-D-251). Every signature record carries `signerCertificate` from a throwaway test CA (made on first use; the common name is the signer's name). `new FakeEsign({ storage, now? })` reads each document from STORAGE (refusing `hash_mismatch` or a non-PDF), signs it as a real PAdES incremental update per signer, and on the first download writes the signed PDF and each signer's PEM chain to STORAGE (REGULATED, IPB-01-27 keys under the document's tenant, SHA-256 of the bytes; `certChainRef` is the chain's key). `createMultiDocumentEnvelope`, `downloadSignedDocuments`, `signDocument` and the envelope's `documents` status: it completes only when every document is signed by every signer. Test hooks: `signedObjects()`, `failNextDownload(error?)`, `setSignerCertificate(ref, testSignerOrDerOrPem)`, `decline(id, ref)`, `trustStore()`. `new FakeEsign()` and `new FakeEsign(() => date)` keep the earlier download reference; signing again for a signer who already signed is now a no-op, and the not-completed refusal carries `meta.reason: "not_completed"`.
+- 0598167: `FakeLender`'s execution pack uses the PR-UDF-075 additions (R1-D-258) in both carriers: the agreement's e-stamp evidence names `estamp_system: "SHCIL"`, each not-stampable entry `reason_code: "NOT_AN_INSTRUMENT"` (`not_stampable_reason_code` in the manifest) and the disbursement clause `clause_ref: "4.2"` beside `page_or_clause_ref: "cl.4.2"`.
+
+### Patch Changes
+
+- Updated dependencies [75cbd9a]
+- Updated dependencies [beca045]
+- Updated dependencies [5b1257d]
+- Updated dependencies [199c930]
+- Updated dependencies [27057c2]
+- Updated dependencies [a702fdc]
+- Updated dependencies [f3293a2]
+  - @infrabyx/contracts@1.45.0
+  - @infrabyx/crypto@1.13.0
+  - @infrabyx/config@1.23.1
+
 ## 1.8.0
 
 ### Minor Changes
