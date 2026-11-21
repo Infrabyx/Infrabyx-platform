@@ -119,7 +119,8 @@ function client(
   return { c, resolved, lookups };
 }
 
-const KEY = "01JD0Z6QK3M5W7Y9A1C3E5G7J9";
+// An idempotency key (a ULID), not a credential.
+const KEY = "01JD0Z6QK3M5W7Y9A1C3E5G7J9"; // gitleaks:allow
 const call = (r: Partial<PartnerMtlsRequest> = {}): PartnerMtlsRequest => ({
   method: "POST",
   url: `https://${HOST}/v1/disbursements?ref=secret-query-value`,

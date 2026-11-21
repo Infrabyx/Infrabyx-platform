@@ -1,5 +1,38 @@
 # @infrabyx/testing
 
+## 1.30.0
+
+### Minor Changes
+
+- f408dec: AA_FIU to STATEMENT_ANALYSIS by reference (Udofin PR-UDF-065; R1-D-243). New `aaStatementAnalysisJoinCases(fixtures)`: contract cases for a STATEMENT_ANALYSIS adapter fed by an Account Aggregator over the same STORAGE (`FakeAccountAggregator` by default): the AA's FI payloads are REGULATED objects under IPB-01-27 keys whose bytes match their SHA-256, the analysis reads them by reference into a REGULATED report, a payload altered or removed after the fetch is refused (`hash_mismatch`, `input_missing`) before any analyser call, and so are a payload outside the REGULATED class (`residency`), a key outside IPB-01-27 and an AA fetch to a prefix outside it. `accountAggregatorContractCases` now checks that every payload's `storageKey` is an IPB-01-27 key, and, when the fixtures give the new optional `storageOf`, reads each payload back (REGULATED, bytes matching its SHA-256). Re-exports `fakeFiPayload`.
+- 15bd11d: The no-Aadhaar sweep closes the gaps Udofin found (PR-UDF-063, R1-D-242). Stricter by default; each looser reading is opt-in.
+
+  - **Behaviour change, `infrabyx-aadhaar-scan`:** it now exits **2** (fail closed) when it reads no file at all (empty directories, only skipped directories, or every file skipped as binary, too large or a symbolic link), and when a file cannot be read (before: 0, or 1 on a read error). Exit statuses: 0 nothing found, 1 a find, 2 nothing proven (usage error, nothing read, read error). New `--help`, and `--allow e164_in,decimal` (repeatable; default none) to let those look-alikes through.
+  - **Behaviour change, `scanDatabaseForAadhaar`:** it reads every column of every type (numbers, arrays, `json` as written, `jsonb`, composites, `bytea` as hex and decoded), not only text-like ones, and of every table; it reports a column or JSON field named like an Aadhaar carrier (`aadhaar_number`, `uid_token`, `uid`, ...; `isAadhaarFieldName`) that holds a value as a `FIELD` find (`masked: "(value withheld)"`, `field` the JSON key path), whatever the value. It rejects with `AadhaarScanEmptyError` when it reads no table or no row (`allowEmpty: true` to pass), and with `AadhaarScanLimitError` past `maxRows` (default `AADHAAR_DB_SCAN_MAX_ROWS`, 100 000) rather than pass a partial read. Expect new finds in a suite whose database holds 12-digit numbers in numeric columns or uses a column named `uid`; skip a legitimate column with `skip: ["schema.table.column"]`.
+  - New `sweepDatabaseForAadhaar` returns `{ finds, tables, rows }`; `allow` on every scan option.
+  - A UUID is blanked only when it stands alone: digits glued to it (a letter or digit next to it, or a four-digit group joined by one space or hyphen) are read as the rule reads them.
+  - `TestDatabase.end()` is idempotent: a second call, later or concurrent, returns the first call's promise, so `beforeDrop` and the drop run once.
+
+- b5cfaa1: `TEST_IMAGES.verapdf`: the veraPDF CLI 1.30.3 image pinned by digest (pushed 27 Oct 2026), for PDF/A and PDF/UA validation in integration suites (PR-FBX-52, R1-D-248). It carries a JVM, so `withJvmMitigation("verapdf")` sets the CVE-2026-114938 flag on `JAVA_OPTS` (R1-D-192).
+- b51381a: PR-UDF-054 (E8; R1-D-245): `estampRecordContractCases(fixtures)`, the contract cases of ESTAMP's optional `recordCertificate` (declared, REGULATED and IN; once per key, read back, attached to one document, evidence that parses as `PackStampEvidence`; a certificate used once; the shared refusals), with `StampRecordFixtures`, `BoughtStamp` and `fakeStampRecordFixtures()`. Stubs `startShcilEstampStub()` and `startDigioEstampStub()` answer a read-back of a certificate the RE bought (stub-shaped, to confirm against the sandboxes); neither has a purchase route. Additive.
+
+### Patch Changes
+
+- Updated dependencies [674b8db]
+- Updated dependencies [d4636a3]
+- Updated dependencies [ae319d5]
+- Updated dependencies [2d543fe]
+- Updated dependencies [98a1d62]
+- Updated dependencies [373c28c]
+- Updated dependencies [461fe2c]
+  - @infrabyx/fakes@1.8.0
+  - @infrabyx/contracts@1.44.0
+  - @infrabyx/config@1.23.0
+  - @infrabyx/crypto@1.12.0
+  - @infrabyx/audit@1.11.8
+  - @infrabyx/seed@1.0.54
+  - @infrabyx/tenancy@1.22.2
+
 ## 1.29.0
 
 ### Minor Changes
