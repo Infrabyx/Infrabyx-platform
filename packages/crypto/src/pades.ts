@@ -37,6 +37,7 @@ import {
   verifySig,
   type ParsedCert,
 } from "./pades-x509.js";
+import { summaryOf, type SignerCertificateSummary } from "./signer-certificate.js";
 
 export type { RevocationEvidence, RevocationStatus } from "./pades-revocation.js";
 export type { PinnedCertificate } from "./cca-india-trust.js";
@@ -476,4 +477,60 @@ export function verifyPadesSignatures(
   if (!signatures.some((s) => s.coversWholeDocument))
     return res("incremental_update_after_signature", signatures);
   return res("valid", signatures);
+}
+
+/**
+ * PR-UDF-070 (R1-D-251): the signer certificate of each signature embedded in `pdf`, in file
+ * order, for an ESIGN signature record. An entry is the certificate's summary only when that
+ * signature is bound to it (the ByteRange leaves out exactly `/Contents`, the CMS digest equals
+ * the ByteRange digest, and the CMS signature over the signed attributes verifies with the
+ * certificate it names, with an allowed algorithm), else `null`. No chain, validity, key usage or
+ * revocation check: this names the certificate, `verifyPadesSignatures` says whether to trust it.
+ * Never throws for document content; a file that is not a PDF, too large, unsigned or with too
+ * many signatures gives `[]`.
+ */
+export function padesSignerCertificates(
+  pdf: Uint8Array,
+  o: { maxBytes?: number } = {},
+): Array<SignerCertificateSummary | null> {
+  const max = o.maxBytes ?? PADES_LIMITS.defaultMaxBytes;
+  if (!Number.isSafeInteger(max) || max < 1 || max > PADES_LIMITS.maxBytes)
+    throw new RangeError("maxBytes out of range");
+  if (pdf.length > max) return [];
+  const buf = Buffer.from(pdf.buffer, pdf.byteOffset, pdf.length);
+  if (buf.toString("latin1", 0, 5) !== "%PDF-") return [];
+  let found: ReturnType<typeof findSignatures>;
+  try {
+    found = findSignatures(buf, PADES_LIMITS.maxSignatures);
+  } catch {
+    return [];
+  }
+  if (found === "too_many") return [];
+  return found.map((sig) => {
+    if (!sig) return null;
+    const [a, b, c, d] = sig.byteRange;
+    if (
+      a !== 0 ||
+      b < 1 ||
+      sig.contents.start !== b ||
+      sig.contents.end !== c ||
+      c + d > buf.length
+    )
+      return null;
+    if (sig.type !== undefined && sig.type !== "Sig") return null;
+    if (sig.subFilter !== "ETSI.CAdES.detached" && sig.subFilter !== "adbe.pkcs7.detached")
+      return null;
+    try {
+      const sd = parseSignedData(contentsDer(buf, sig));
+      if (sd.eContentType !== OID.DATA || sd.eContent) return null;
+      const digest = digestOf(sd.signer.digest, buf.subarray(a, a + b), buf.subarray(c, c + d));
+      if (!digest.equals(sd.signer.messageDigest)) return null;
+      const cert = signerCert(sd.signer, sd.certificates);
+      if (!cert) return null;
+      checkSigner(sd.signer, cert, OID.DATA);
+      return summaryOf(cert);
+    } catch {
+      return null;
+    }
+  });
 }

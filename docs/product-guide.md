@@ -1456,6 +1456,82 @@ const pdf = toPdf(statement, {
 - `renderPdf` passes `pdfa` and `lang` to the in-process path; documents with Indic text still go to DOCGEN (§7ay), whose PDF/A is not byte-deterministic.
 - **Adopt** with all `@infrabyx/*` pins moved together. To check your own templates, run the pinned veraPDF image the way `packages/export/src/__tests__/pdfa.int.test.ts` does (`TEST_IMAGES.verapdf`, `withJvmMitigation("verapdf")`, `--flavour 2b`, and `ua1` with `pdfua`).
 
+## 7eb. Calling a partner over mTLS (PR-UDF-069; R1-D-250)
+
+From the next `connectors` and `crypto` minors (no setting, migration or environment variable), one class makes an outbound call to a partner with the platform's client certificate: `PartnerMtlsClient` from `@infrabyx/connectors/egress`. The inbound side is §7dr.
+
+```ts
+import { PartnerMtlsClient } from "@infrabyx/connectors/egress";
+
+const lender = new PartnerMtlsClient({
+  hosts: ["api.lender.example"], // exact names; no wildcard
+  clientCertificateRef: "secret://vault/partners/lender/mtls#certificate", // PEM, leaf first
+  clientKeyRef: "secret://vault/partners/lender/mtls#key", // unencrypted P-256 PEM
+  resolveSecret: secretsResolver(secretsAdapters), // from @infrabyx/config
+  serverCa: lenderServerCaPem, // optional: pin the partner's server CA
+});
+await lender.checkCredentials(); // at start-up: dates and x5tS256, no partner call
+
+const res = await lender.request({
+  method: "POST", // or PUT; nothing else
+  url: "https://api.lender.example/v1/disbursement-requests",
+  body: JSON.stringify(payload),
+  idempotencyKey: requestId, // required; reuse it on a retry
+  headers: { authorization: `Bearer ${token}` }, // optional (RFC 8705 token)
+  signal, // optional; the 15 s deadline applies as well
+});
+if (res.status >= 400) /* the partner's answer: decide */ ;
+```
+
+**What it enforces:** https on port 443 to the configured hosts; DNS once, every address public, the socket pinned to it, the server certificate verified against the host name (and your pinned CA); TLS 1.2 or later; no redirect followed (any 3xx is `IPB-SEC-018` `redirect`); the answer capped at 1 MiB (`maxResponseBytes`, up to 16 MiB; `IPB-SEC-013`); a body of at most 1 MiB (`maxRequestBytes`). Every refusal is a `PortError` with a fixed `meta.reason`; log the reason, never the URL's query or the body.
+
+**What to know:**
+
+- **The client key must be ECDSA P-256, in SECRETS.** RSA and P-384 keys are refused `key_type`, and a KMS-held key cannot be used (Node's TLS signs with an in-memory key only), until the owner answers #180. Ask the partner to issue the platform's client certificate on a P-256 key, and register its `x5tS256` (from `checkCredentials()`) with the partner.
+- **Rotation:** the certificate and key are re-read from SECRETS every 5 minutes (`credentialTtlMs`, up to an hour) and at the certificate's notAfter; call `forgetCredentials()` after a rotation to use the new one at once.
+- **Timeouts and aborts** are `IPB-PORT-002` with `reason` `timeout` or `aborted` and `meta.maybeSent`. When `maybeSent` is true the partner may have the request: retry with the same `idempotencyKey`, or reconcile.
+- **Record the call** in your module's own kernel mutation (the ledger entry is yours, as for every adapter call), with the partner, the idempotency key and the status; never the body or the certificate.
+- **Tests:** run a local `node:https` server with `requestCert: true` and certificates from `mtlsTestAuthority()` (`@infrabyx/crypto/mtls-test`), and pass the test-only `resolve`, `testAllowLoopback` and `testConnectPort` options, as `packages/connectors/src/egress/__tests__/partner-mtls.test.ts` does. Never set those options in a deployment.
+
+## 7ec. ESIGN: the signer's certificate on each record, the fake in STORAGE, multi-document envelopes (PR-UDF-070; R1-D-251)
+
+Minors of `contracts`, `crypto`, `fakes`, `testing` and `connectors`; no migration, setting or environment variable. Nothing changes for a caller that does not read the new fields.
+
+**The signer certificate.** `downloadSigned` records may now carry `signerCertificate`:
+
+```ts
+const { signatures } = await esign.downloadSigned(envelopeId);
+for (const s of signatures) {
+  s.signerCertificate; // { serialNumber, issuer, notBefore, notAfter, sha256, subjectCommonName? } | undefined
+}
+```
+
+- `leegality` and `digio` read it from the signed PDF's own signatures, so it is the certificate the ESP actually signed with. It is set only when each signature can be tied to one signer for certain (sequential: envelope order; parallel: the ESP's distinct signing times); otherwise it is absent, never guessed. `nsdl-esign` sets nothing until it can sign (#177).
+- It names the certificate; it does not say it is trusted. To decide, run `verifyPadesSignatures` on the stored file (its `signer.serial`, `signer.issuer` and `signer.certSha256` equal `serialNumber`, `issuer` and `sha256`).
+- `subjectCommonName` is usually the signer's name: keep it with your signing evidence (CONFIDENTIAL, like `signerIp`) and out of logs.
+- For a certificate you hold yourself (an ESP response, a PEM file), `signerCertificateSummary(derOrPem)` from `@infrabyx/crypto` gives the same shape; `padesSignerCertificates(pdf)` lists the certificate of each signature in a PDF.
+
+**The fake.** `new FakeEsign({ storage })` (from `@infrabyx/fakes` or `@infrabyx/testing`) reads your document from STORAGE (put it there first, with an IPB-01-27 key; a wrong SHA-256 is refused `hash_mismatch`), signs it with a real PAdES signature per signer, and on the first `downloadSigned` writes the signed PDF and each signer's PEM chain to STORAGE as REGULATED objects under the document's tenant (`certChainRef` is the chain's key). Verify its files with `verifyPadesSignatures(body, { trust: fake.trustStore() })`. Hooks: `signedObjects()`, `failNextDownload()`, `setSignerCertificate(ref, cert)` (a `pades-test` `TestSigner` signs; DER or PEM bytes are only named, to test a mismatch), `decline()`, `signDocument()`. `new FakeEsign()` without storage behaves as before; signing twice for the same signer is now a no-op.
+
+**Multi-document envelopes.** Where an adapter supports them (today only the fake; the vendor adapters refuse `unsupported` until verified, so check `descriptor.capabilities.createMultiDocumentEnvelope`):
+
+```ts
+const { envelopeId } = await esign.createMultiDocumentEnvelope!(
+  [
+    { doc: loanAgreement, fields: [] },
+    {
+      doc: keyFactStatement,
+      fields: [{ signerRef: "usr_b", page: 1, x: 40, y: 60, width: 160, height: 48 }],
+    },
+  ],
+  signers,
+  "sequential",
+);
+const { documents } = await esign.downloadSignedDocuments!(envelopeId); // after `completed`
+```
+
+One to ten documents, unique ids and storage keys. **All or nothing:** a signer is `signed` only after signing every document, the envelope completes only when every document is signed by every signer, a decline declines the whole envelope, and nothing downloads before completion (`not_completed`). `getStatus(...).documents` shows each document's progress; `downloadSigned` on several documents is refused `multi_document`.
+
 ## 7ed. Why a pack document needs a physical step, and the lender's instructions (PR-UDF-061 item 18; R1-D-252)
 
 From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), each document of an execution pack may carry two optional fields, in both carriers: `ExecutionPackManifest.documents[]` (the interim `DocumentShared` manifest) and `ExecutionPackIssuedData.documents[]` (the signed `ExecutionPackIssued` event).
