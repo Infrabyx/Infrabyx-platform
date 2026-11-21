@@ -5,37 +5,25 @@
 // the queue's dead-letter queue `<queue>.dlq`, from which `replay` re-enqueues it. An
 // idempotency key maps to a deterministic job id, so the same key never enqueues twice.
 import { PortError } from "@infrabyx/contracts/errors";
-import { QueueJobData, type QueueJob } from "@infrabyx/contracts/ports";
+import { assertQueueJob, assertQueueName, type QueueJob } from "@infrabyx/contracts/ports";
 import { sha256Hex } from "@infrabyx/crypto";
 
 export const DEFAULT_ATTEMPTS = 5;
 export const DEFAULT_BACKOFF_MS = 2000;
 export const dlqName = (queue: string) => `${queue}.dlq`;
 
-const QUEUE_NAME = /^[a-z][a-z0-9_-]{0,62}$/;
-const JOB_NAME = /^[a-z][a-z0-9_.-]{0,99}$/;
+// The name rule is the platform's one rule in `@infrabyx/contracts/ports` (`QUEUE_NAME_REGEX`,
+// `QUEUE_JOB_NAME_REGEX`; Finbyx PR-FBX-53, R1-D-266), a subset of what bullmq and pg-boss both
+// accept, so the in-memory fixtures refuse exactly what these adapters refuse.
 
+/** Refuse a queue name outside the platform rule (`IPB-PORT-003`, before any I/O). */
 export function checkQueue(adapter: string, queue: string): void {
-  if (!QUEUE_NAME.test(queue))
-    throw new PortError("IPB-PORT-003", "QUEUE", {
-      adapter,
-      detail: "queue names are lower-case identifiers (no dots; `.dlq` is reserved)",
-    });
+  assertQueueName(queue, adapter);
 }
 
 /** Validate the job before any I/O: identifier name, flat INTERNAL payload. */
 export function checkJob(adapter: string, job: QueueJob): void {
-  if (!JOB_NAME.test(job.name))
-    throw new PortError("IPB-PORT-003", "QUEUE", {
-      adapter,
-      detail: "job names are lower-case identifiers",
-    });
-  const r = QueueJobData.safeParse(job.data);
-  if (!r.success)
-    throw new PortError("IPB-PORT-003", "QUEUE", {
-      adapter,
-      detail: "job data must be a flat map of IDs and INTERNAL scalars",
-    });
+  assertQueueJob(job, adapter);
 }
 
 /** Deterministic job id for an idempotency key, scoped to the queue. */
