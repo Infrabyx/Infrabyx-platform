@@ -220,6 +220,7 @@ describe("FakeLender: the pack evidence additions in both carriers (R1-D-258)", 
       // The announcement as it arrives, at the event's time (guide §7ei).
       const r = verifyDocumentJws(data.jws, data, l.keys, new Date(d.event.time), {
         requireV2: true,
+        reportProfile: true,
       });
       expect(r, String(data.type)).toMatchObject({ ok: true, profile: "v2" });
     }

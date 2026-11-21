@@ -190,6 +190,7 @@ export {
   type DocumentJwsProfile,
   type DocumentJwsResult,
   type DocumentJwsVerification,
+  type DocumentJwsVerifyOptions,
 } from "./document-jws.js";
 export {
   verifyPadesSignatures,
