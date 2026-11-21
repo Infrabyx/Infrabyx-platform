@@ -1,5 +1,22 @@
 # @infrabyx/config
 
+## 1.24.0
+
+### Minor Changes
+
+- 2769b78: Registers the FILE_TRANSFER `sftp` adapter's settings (Udofin PR-UDF-071; R1-D-254, ADR-0014): `int.file_transfer.sftp.enabled` (bool, default false, PLATFORM, `PLT_SUPER_ADMIN`, R4) and `int.file_transfer.sftp.allow_hosts` (json, default `[]`, PLATFORM, `PLT_SUPER_ADMIN`, R4: the India-hosted allow-list `[{ host, residency: "IN", attestation? }]`, exact host names or IP literals; empty refuses every connection). Nothing existing changes.
+
+### Patch Changes
+
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+
 ## 1.23.1
 
 ### Patch Changes

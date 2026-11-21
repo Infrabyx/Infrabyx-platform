@@ -10,3 +10,4 @@ export * from "./spec-events.js";
 export * from "./origination.js";
 export * from "./documents.js";
 export * from "./grc-events.js";
+export * from "./job-name.js";
