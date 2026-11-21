@@ -21,6 +21,9 @@
 // Key reference status (PR-UDF-068, R1-D-239): `keyRefStatus` answers whether a write naming a
 // reference would resolve, by the write's own checks, and with `describeKey` the key's state from a
 // read-only KMS `DescribeKey`; fixed labels only, never a key id. `minio` declares it unsupported.
+// PR-UDF-076 (R1-D-261): `keyRefStatuses` answers several classes in one call with one
+// `DescribeKey` per distinct key, and labels a key the role may not describe
+// `storage_key_not_described`.
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -46,8 +49,10 @@ import {
   STORAGE_COMPARTMENTS,
   STORAGE_KEY_REF_META,
   STORAGE_KEY_STATES,
+  STORAGE_KEY_NOT_DESCRIBED,
   STORAGE_KEY_UNAVAILABLE,
   compartmentAllowed,
+  keyRefStatusClasses,
   isValidStorageKey,
   presignNoCache,
   resolveStorageKeyRef,
@@ -64,6 +69,8 @@ import {
   type StorageKeyRefRefusal,
   type StorageKeyRefStatus,
   type StorageKeyRefStatusOptions,
+  type StorageKeyRefStatuses,
+  type StorageKeyRefStatusesOptions,
   type StorageKeyState,
   type StoredObject,
 } from "@infrabyx/contracts/ports";
@@ -189,6 +196,11 @@ const DESCRIBE_UNAVAILABLE: ReadonlySet<string> = new Set([
   "DisabledException",
   "InvalidArnException",
 ]);
+/**
+ * PR-UDF-076 (R1-D-261): the `DescribeKey` error of a key the role may not describe. `keyRefStatuses`
+ * answers it `storage_key_not_described`; `keyRefStatus` keeps `storage_key_unavailable` (#171 (1)).
+ */
+const NOT_DESCRIBED = "AccessDeniedException";
 /** What `keyRefStatus` reads of a `DescribeKey` answer: the key's state, nothing else. */
 type DescribedKey = { KeyMetadata?: { KeyState?: string | undefined } | undefined };
 type DescribeKeySend = (keyId: string) => Promise<DescribedKey>;
@@ -256,6 +268,7 @@ export class S3Storage implements StoragePort {
               "put.keyRef": "unsupported" as const,
               // PR-UDF-068: no named key can resolve on minio, so its status is never "resolves".
               keyRefStatus: "unsupported" as const,
+              keyRefStatuses: "unsupported" as const,
             },
           }
         : {}),
@@ -901,66 +914,137 @@ export class S3Storage implements StoragePort {
     keyRef: string,
     opts: StorageKeyRefStatusOptions,
   ): Promise<StorageKeyRefStatus> {
+    this.checkStatusTenant(tenantId);
+    if (!(BUCKET_CLASSES as readonly string[]).includes(opts.bucketClass)) this.malformedStatus();
+    const r = this.statusKeyOf(tenantId, keyRef, slotOf(opts));
+    if ("refusal" in r) return { status: "refused", reason: r.refusal };
+    if (!opts.describeKey) return { status: "resolves" };
+    const d = await this.describedState(r.keyId);
+    // PR-UDF-076: `keyRefStatus` keeps R1-D-239's answer for a key it may not describe.
+    if ("notDescribed" in d) return { status: "refused", reason: STORAGE_KEY_UNAVAILABLE };
+    return d.answer;
+  }
+
+  /**
+   * PR-UDF-076 (R1-D-261): `keyRefStatus` for several classes in one call, each by the same
+   * checks. With `describeKey`, one `DescribeKey` per distinct key id the classes resolve to (one
+   * reference often uses one key across `REGULATED` and `QUARANTINE`), and a key the role may not
+   * describe (`AccessDeniedException`) answers `storage_key_not_described`. All or nothing: a
+   * malformed list, tenant or location, or a failed key read, refuses or throws for the whole call.
+   */
+  async keyRefStatuses(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusesOptions,
+  ): Promise<StorageKeyRefStatuses> {
+    this.checkStatusTenant(tenantId);
+    const classes = keyRefStatusClasses(opts);
+    if (!classes) this.malformedStatus();
+    const resolved = classes.map((cls) => ({
+      cls,
+      r: this.statusKeyOf(tenantId, keyRef, slotOf({ ...opts, bucketClass: cls })),
+    }));
+    const states = new Map<string, Awaited<ReturnType<S3Storage["describedState"]>>>();
+    if (opts.describeKey)
+      for (const { r } of resolved)
+        if ("keyId" in r && !states.has(r.keyId))
+          states.set(r.keyId, await this.describedState(r.keyId));
+    const out: StorageKeyRefStatuses = {};
+    for (const { cls, r } of resolved) {
+      if ("refusal" in r) out[cls] = { status: "refused", reason: r.refusal };
+      else if (!opts.describeKey) out[cls] = { status: "resolves" };
+      else {
+        const d = states.get(r.keyId)!;
+        out[cls] =
+          "notDescribed" in d ? { status: "refused", reason: STORAGE_KEY_NOT_DESCRIBED } : d.answer;
+      }
+    }
+    return out;
+  }
+
+  /** A status check runs in the caller's tenant only, as a write does. */
+  private checkStatusTenant(tenantId: string): void {
     const current = this.o.currentTenant?.();
     if (current !== undefined && tenantId !== current)
       throw new PortError("IPB-PORT-003", "STORAGE", {
         adapter: this.adapter,
         detail: "tenant is not the caller's",
       });
-    const tenantKeys = (BUCKET_CLASSES as readonly string[]).includes(opts.bucketClass)
-      ? storageKeyRefStatusRefusal(
-          tenantId,
-          keyRef,
-          opts.bucketClass,
-          this.o.tenantKeyRefPrefixes?.(tenantId),
-        )
-      : null;
-    if (!tenantKeys)
-      throw new PortError("IPB-PORT-003", "STORAGE", {
-        adapter: this.adapter,
-        detail: "the tenant id or bucket class is malformed",
-      });
-    if (tenantKeys.refusal) return { status: "refused", reason: tenantKeys.refusal };
+  }
+
+  private malformedStatus(): never {
+    throw new PortError("IPB-PORT-003", "STORAGE", {
+      adapter: this.adapter,
+      detail: "the tenant id or bucket class is malformed",
+    });
+  }
+
+  /**
+   * The key id a write in `tenantId` naming `keyRef` at `slot` would use, or the write's refusal
+   * label. A malformed tenant id is refused (IPB-PORT-003); `minio` refuses a reference that
+   * passed the format checks as `unsupported`; a location without a bucket throws as a write does.
+   */
+  private statusKeyOf(
+    tenantId: string,
+    keyRef: string,
+    slot: Slot,
+  ): { refusal: StorageKeyRefRefusal } | { keyId: string } {
+    const tenantKeys = storageKeyRefStatusRefusal(
+      tenantId,
+      keyRef,
+      slot.cls,
+      this.o.tenantKeyRefPrefixes?.(tenantId),
+    );
+    if (!tenantKeys) this.malformedStatus();
+    if (tenantKeys.refusal) return { refusal: tenantKeys.refusal };
     if (this.adapter === "minio")
       throw new PortError("IPB-PORT-001", "STORAGE", {
         adapter: this.adapter,
         detail: "minio encrypts with the bucket's key; a named key per object is not supported",
         meta: { reason: "unsupported" },
       });
-    const slot = slotOf(opts);
     // A write to a location without a bucket (or a compartment outside its classes) fails the
     // same way here: a call or configuration error, not a key answer.
     this.bucket(slot);
-    let keyId: string;
     try {
-      keyId = this.namedKeyFor(slot, `tenant/${tenantId}/`, keyRef).keyId;
+      return { keyId: this.namedKeyFor(slot, `tenant/${tenantId}/`, keyRef).keyId };
     } catch (e) {
       const reason = (e as PortError).meta?.reason as StorageKeyRefRefusal | undefined;
-      if (e instanceof PortError && reason) return { status: "refused", reason };
+      if (e instanceof PortError && reason) return { refusal: reason };
       throw e;
     }
-    if (!opts.describeKey) return { status: "resolves" };
+  }
+
+  /**
+   * One read-only `DescribeKey`: the answer for the key's state, or `notDescribed` when the role
+   * may not describe it (`AccessDeniedException`). A key that does not exist, is not shared or is
+   * in an unusable state answers `storage_key_unavailable`; any other failure throws IPB-PORT-002
+   * without a cause (a KMS error message can carry the key's ARN).
+   */
+  private async describedState(
+    keyId: string,
+  ): Promise<{ answer: StorageKeyRefStatus } | { notDescribed: true }> {
     let state: string | undefined;
     try {
       state = (await this.describeKey(keyId)).KeyMetadata?.KeyState;
     } catch (e) {
       const name = (e as S3Error | undefined)?.name ?? "";
+      if (name === NOT_DESCRIBED) return { notDescribed: true };
       if (DESCRIBE_UNAVAILABLE.has(name))
-        return { status: "refused", reason: STORAGE_KEY_UNAVAILABLE };
-      // No `cause`: a KMS error message can carry the key's ARN.
+        return { answer: { status: "refused", reason: STORAGE_KEY_UNAVAILABLE } };
       throw new PortError("IPB-PORT-002", "STORAGE", {
         adapter: this.adapter,
         detail: "the key's state could not be read",
         meta: { name, status: statusOf(e) },
       });
     }
-    if (state === "Enabled") return { status: "resolves", keyState: "Enabled" };
+    if (state === "Enabled") return { answer: { status: "resolves", keyState: "Enabled" } };
     const keyState: StorageKeyState = (STORAGE_KEY_STATES as readonly string[]).includes(
       state ?? "",
     )
       ? (state as StorageKeyState)
       : "Unavailable";
-    return { status: "refused", reason: STORAGE_KEY_UNAVAILABLE, keyState };
+    return { answer: { status: "refused", reason: STORAGE_KEY_UNAVAILABLE, keyState } };
   }
 
   /** A KMS client, created on first use only (most deployments never describe a key). */

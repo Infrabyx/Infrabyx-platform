@@ -12,16 +12,22 @@
 // Webhooks: the `mac` is HMAC-SHA1 of the document id with the private salt, checked by C-25
 // (PL3-C-02: constant time, replay window when a timestamp is sent); the envelope is then read
 // back from the API and only that status is returned.
+// PR-UDF-070 (R1-D-251): each signature record's `signerCertificate` is read from the signed PDF's
+// own signatures (`signerCertificatesFromPdf`); whether `/v3.0/document/details` also returns the
+// signer certificates is [VERIFY], as is one signature per invitation with no Leegality seal.
+// Multi-document requests (several `files`) are [VERIFY] and refused `unsupported` until then.
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
   DocumentRef,
   EnvelopeStatus,
+  EsignDownloadOptions,
   EsignEnvelopeStore,
   EsignPort,
   PortCall,
   PortHealth,
   SignatureRecord,
+  SignedEnvelopeDocument,
   Signer,
   SigningMethod,
   StoragePort,
@@ -34,11 +40,15 @@ import {
   ESIGN,
   loadEnvelope,
   methodRefused,
+  NO_MULTI_DOCUMENT,
   overallState,
   readDocument,
+  signerCertificatesFromPdf,
   storeSigned,
+  downloadKeyRef,
   unsupported,
   validateEnvelope,
+  withSignerCertificate,
 } from "./common.js";
 
 const HOSTS = { sandbox: "sandbox.leegality.com", production: "app1.leegality.com" } as const;
@@ -95,7 +105,7 @@ export class LeegalityEsign implements EsignPort {
       adapter: "leegality",
       residency: "IN",
       maxDataClass: "REGULATED",
-      capabilities: { verifySignature: "unsupported" },
+      capabilities: { verifySignature: "unsupported", ...NO_MULTI_DOCUMENT },
     };
     this.base = (o.baseUrl ?? `https://${HOSTS[mode]}/api`).replace(/\/$/, "");
     this.egress = createEgress({
@@ -210,7 +220,9 @@ export class LeegalityEsign implements EsignPort {
 
   async downloadSigned(
     envelopeId: string,
+    opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }> {
+    const keyRef = downloadKeyRef("leegality", opts);
     const st = await this.getStatus(envelopeId);
     if (st.state !== "completed")
       throw new PortError("IPB-PORT-001", ESIGN, {
@@ -225,17 +237,32 @@ export class LeegalityEsign implements EsignPort {
     const pdf = Buffer.from(file.file, "base64");
     if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-")
       throw vendorError(ESIGN, "leegality", 502, "the signed file is not a PDF");
-    const stored = await storeSigned(this.o.storage, r.doc, pdf);
+    const stored = await storeSigned(this.o.storage, r.doc, pdf, keyRef);
+    const certs = signerCertificatesFromPdf(pdf, r.order, st.signers);
     return {
       ...stored,
-      signatures: st.signers.map((s) => ({
-        alg: `esp:leegality:${s.method.toLowerCase()}`,
-        keyId: r.vendorRef,
-        certChainRef: `leegality:${r.vendorRef}:audit-trail`,
-        signerRef: s.ref,
-        signedAt: s.at ?? "",
-      })),
+      signatures: st.signers.map((s) =>
+        withSignerCertificate(
+          {
+            alg: `esp:leegality:${s.method.toLowerCase()}`,
+            keyId: r.vendorRef,
+            certChainRef: `leegality:${r.vendorRef}:audit-trail`,
+            signerRef: s.ref,
+            signedAt: s.at ?? "",
+          },
+          certs,
+        ),
+      ),
     };
+  }
+
+  /** No multi-document envelope until the vendor's support is verified (PR-UDF-070) [VERIFY]. */
+  async createMultiDocumentEnvelope(): Promise<{ envelopeId: string }> {
+    throw unsupported("leegality", "createMultiDocumentEnvelope");
+  }
+
+  async downloadSignedDocuments(): Promise<{ documents: SignedEnvelopeDocument[] }> {
+    throw unsupported("leegality", "downloadSignedDocuments");
   }
 
   private async session(

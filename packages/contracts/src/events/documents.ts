@@ -12,12 +12,27 @@
 // now travels as the signed §6.2 event `ExecutionPackIssued` (`ExecutionPackIssuedData` below, with
 // the accepted KFS, instrument and enclosure codes, the WD covenant, the RBC enclosure list, the
 // per-document stamp evidence, the not-stampable list and the signer roles as an enum);
-// `ExecutionPackManifest` stays, unchanged, as the interim carrier. `DocumentShared` takes an
-// optional `language`, and the document JWS may sign a v2 descriptor that also binds the type,
-// media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto), whose fields
-// `DocumentRetrieval` now carries too.
+// `ExecutionPackManifest` stays as the interim carrier, changed only by optional additions.
+// `DocumentShared` takes an optional `language`, and the document JWS may sign a v2 descriptor that
+// also binds the type, media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto),
+// whose fields `DocumentRetrieval` now carries too.
+//
+// PR-UDF-061 item 18 (R1-D-252): each pack document, in both carriers, may say why it needs a
+// physical step (`physical_reason`) and carry the lender's plain-text instructions
+// (`re_instructions`); a document with a physical reason is executed `WET_INK`.
+//
+// PR-UDF-075 (R1-D-258): optional `estamp_system` on both carriers' stamp evidence (only with an
+// e-stamp), optional reason codes on not-stampable entries, the accepted forms of
+// `page_or_clause_ref` with optional structured `page` and `clause_ref` beside it (agreeing with it
+// where both can be read), and the rule for `certificate_document_id` stated.
+//
+// PR-UDF-077 (R1-D-259): the shared type codes `EXECUTED_DOCUMENT`, `EXECUTION_EVIDENCE_SUMMARY`
+// and `PRIVACY_POLICY_LSP`, and the executed-file link. The binding of record is the signed
+// `ESignCompleted`: its `signed_sha256` is the executed file's `sha256`; `source_document` on
+// `DocumentShared` is an optional filing pointer that must agree (`executedDocumentMismatches`).
 import { z } from "zod";
 import type { EstampCertificate } from "../ports/estamp.js";
+import { linkFreeText } from "./text.js";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
 export const DOCUMENTS_SCHEMA_VERSION = "1.0.0";
@@ -29,6 +44,37 @@ export const DOCUMENT_URL_MAX_TTL_SECONDS = 900;
 export const DOCUMENT_GET_P95_MS = 800;
 /** The `DocumentShared.type` of an execution-pack manifest (until PR-047 is decided). */
 export const EXECUTION_PACK_MANIFEST_TYPE = "EXECUTION_PACK_MANIFEST";
+/**
+ * The `DocumentShared.type` of an executed file (Udofin PR-UDF-077, R1-D-259): the lender's
+ * document as it came back from the eSign Service Provider, signatures included. Its `sha256` is
+ * the `signed_sha256` of the `ESignCompleted` of the last signature, and that signed event is the
+ * binding of record to the lender's document (`ESignCompleted.document_id`); `source_document`
+ * names the same document and version for filing (`executedDocumentMismatches`).
+ */
+export const EXECUTED_DOCUMENT_TYPE = "EXECUTED_DOCUMENT";
+/**
+ * The `DocumentShared.type` of an execution-evidence summary (PR-UDF-077): the human-readable
+ * record of how a lender's document was executed (signers by role, method, time, the ESP's
+ * transaction ids, the stamp evidence). It summarises the signed `ESignCompleted` and
+ * `EStampCompleted` events, never replaces them; `source_document` names the document it covers.
+ */
+export const EXECUTION_EVIDENCE_SUMMARY_TYPE = "EXECUTION_EVIDENCE_SUMMARY";
+/**
+ * The `DocumentShared.type` of a Lending Service Provider's privacy policy (PR-UDF-077), shared
+ * with the lender it works for. A general policy: it carries no `application_id`.
+ */
+export const PRIVACY_POLICY_LSP_TYPE = "PRIVACY_POLICY_LSP";
+/**
+ * The `DocumentShared.type` codes the platform names (R1-D-259). `type` stays an open code
+ * (`KFS`, `SANCTION_LETTER`, `LOAN_AGREEMENT` and the products' own), so a code missing here is not
+ * refused; producers and consumers that use one of these spell it with the constant.
+ */
+export const SHARED_DOCUMENT_TYPES = Object.freeze([
+  EXECUTION_PACK_MANIFEST_TYPE,
+  EXECUTED_DOCUMENT_TYPE,
+  EXECUTION_EVIDENCE_SUMMARY_TYPE,
+  PRIVACY_POLICY_LSP_TYPE,
+] as const);
 
 const ref = z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/);
 const code = z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/);
@@ -78,9 +124,50 @@ export const DocumentSharedData = z
     application_id: ref.optional(),
     /** Optional (R1-D-236): the document's language, BCP 47 (`en`, `hi`, `mr-IN`). */
     language: language.optional(),
+    /**
+     * Optional (PR-UDF-077, R1-D-259): the lender's document, by id and version, that this one
+     * executes (`EXECUTED_DOCUMENT`) or summarises (`EXECUTION_EVIDENCE_SUMMARY`). A pointer for
+     * filing; the proof is the signed `ESignCompleted` whose `signed_sha256` equals this event's
+     * `sha256` and whose `document_id` equals `source_document.document_id`.
+     */
+    source_document: z.object({ document_id: ref, version }).strict().optional(),
   })
   .loose();
 export type DocumentSharedData = z.infer<typeof DocumentSharedData>;
+
+/** What `executedDocumentMismatches` can report, as fixed labels. */
+export const EXECUTED_DOCUMENT_MISMATCHES = [
+  "type",
+  "sha256",
+  "source_document",
+  "application_id",
+] as const;
+export type ExecutedDocumentMismatch = (typeof EXECUTED_DOCUMENT_MISMATCHES)[number];
+
+/**
+ * Whether a shared executed file is the one an eSign produced (PR-UDF-077, R1-D-259): `[]` when
+ * it is. `type` is `EXECUTED_DOCUMENT`; `sha256` equals the `signed_sha256` of the
+ * `ESignCompleted` (pass the last signature's: earlier ones name intermediate files); a
+ * `source_document` names the signed `document_id`; an `application_id` on both is the same. Both
+ * events must already be parsed and their signatures verified; this checks only that they agree.
+ */
+export function executedDocumentMismatches(
+  shared: Pick<DocumentSharedData, "type" | "sha256" | "source_document" | "application_id">,
+  esign: { document_id: string; signed_sha256: string; application_id?: string | undefined },
+): ExecutedDocumentMismatch[] {
+  const out: ExecutedDocumentMismatch[] = [];
+  if (shared.type !== EXECUTED_DOCUMENT_TYPE) out.push("type");
+  if (shared.sha256 !== esign.signed_sha256) out.push("sha256");
+  if (shared.source_document && shared.source_document.document_id !== esign.document_id)
+    out.push("source_document");
+  if (
+    shared.application_id !== undefined &&
+    esign.application_id !== undefined &&
+    shared.application_id !== esign.application_id
+  )
+    out.push("application_id");
+  return out;
+}
 
 /** Every event this file defines, with its Ecosystem type and the Specification's idempotency fields. */
 export const DOCUMENT_EVENTS = Object.freeze({
@@ -130,6 +217,34 @@ export type DocumentRetrieval = z.infer<typeof DocumentRetrieval>;
 
 export const EXECUTION_MODES = ["ESIGN_AADHAAR", "ESIGN_DSC", "WET_INK", "NONE"] as const;
 export const STAMP_MODES = ["E_STAMP", "FRANKING", "PHYSICAL_PAPER"] as const;
+/**
+ * Why a pack document needs a physical step outside the eSign flow (PR-UDF-061 item 18; R1-D-252):
+ * it is to be registered (Registration Act, 1908) or notarised (Notaries Act, 1952). A document with
+ * either is executed `WET_INK`; the field is optional, and a document without it is unaffected.
+ */
+export const PACK_PHYSICAL_REASONS = ["REGISTRATION_REQUIRED", "NOTARISATION_REQUIRED"] as const;
+/** The longest `re_instructions` a pack document carries, in characters (R1-D-252). */
+export const PACK_RE_INSTRUCTIONS_MAX = 1000;
+/**
+ * The two optional per-document fields of PR-UDF-061 item 18 (R1-D-252), the same in
+ * `ExecutionPackManifest` and `ExecutionPackIssuedData`: `physical_reason` (a
+ * `PACK_PHYSICAL_REASONS` code) and `re_instructions`, the lender's instructions for the document
+ * in its own words: plain text of 1 to 1,000 characters, no control character other than tab and
+ * line breaks, and no link (R1-D-232's rule for `CoolingOffExitAnswered.payment_instruction`).
+ */
+const physicalFields = {
+  physical_reason: z.enum(PACK_PHYSICAL_REASONS).optional(),
+  re_instructions: linkFreeText(PACK_RE_INSTRUCTIONS_MAX).optional(),
+};
+/** R1-D-252: a document that needs registration or notarisation is executed in wet ink. */
+const physicalIssue = (d: {
+  document_id: string;
+  execution_mode: string;
+  physical_reason?: string | undefined;
+}): string | undefined =>
+  d.physical_reason !== undefined && d.execution_mode !== "WET_INK"
+    ? `${d.document_id} needs ${d.physical_reason === "REGISTRATION_REQUIRED" ? "registration" : "notarisation"}: it is executed WET_INK`
+    : undefined;
 /** An Indian State or Union Territory, ISO 3166-2:IN (`IN-MH`, `IN-DL`, …). */
 export const indianState = z.string().regex(/^IN-[A-Z]{2}$/);
 /**
@@ -141,6 +256,105 @@ export const STAMP_EVIDENCE_MODES = ["ESTAMP", "PAPER", "FRANKING"] as const;
 export const STAMP_EVIDENCE_MODE_OF: Readonly<
   Record<(typeof STAMP_MODES)[number], (typeof STAMP_EVIDENCE_MODES)[number]>
 > = Object.freeze({ E_STAMP: "ESTAMP", PHYSICAL_PAPER: "PAPER", FRANKING: "FRANKING" });
+
+/**
+ * The system an e-stamp certificate was issued through (PR-UDF-075 (1); R1-D-258): `SHCIL` (Stock
+ * Holding Corporation of India, the Central Record Keeping Agency), `STATE_PORTAL` (a State's own
+ * e-stamp portal), `NESL_DDE` (NeSL's Digital Document Execution) and `GRAS` (Maharashtra's
+ * Government Receipt Accounting System, e-SBTR). Optional on the stamp evidence of both carriers,
+ * and only with an e-stamp (`channel: E_STAMP`, `mode: ESTAMP`): franking and stamp paper are not
+ * issued through one. Any other value is refused.
+ */
+export const ESTAMP_SYSTEMS = ["SHCIL", "STATE_PORTAL", "NESL_DDE", "GRAS"] as const;
+const estampSystemIssue = "an estamp_system is given only with an e-stamp";
+
+/**
+ * Why a pack document needs no stamp, by code (PR-UDF-075 (2); R1-D-258): `NOT_AN_INSTRUMENT` (a
+ * disclosure, a notice or a policy, not an instrument chargeable with duty), `ACKNOWLEDGEMENT` (an
+ * acknowledgement the State's stamp law does not charge or exempts) or `OTHER`. Optional beside the
+ * free-text reason, which stays required for every code, so `OTHER` always carries one.
+ */
+export const NOT_STAMPABLE_REASON_CODES = [
+  "NOT_AN_INSTRUMENT",
+  "ACKNOWLEDGEMENT",
+  "OTHER",
+] as const;
+
+// The forms of `page_or_clause_ref` the platform reads (PR-UDF-075 (3); R1-D-258); see
+// `parsePageOrClauseRef`.
+const PAGE_FORM = String.raw`(?:p|pg|page)\.?\s*(\d{1,4})`;
+const CLAUSE_TOKEN = String.raw`[0-9a-z]+(?:\.[0-9a-z]+)*(?:\([0-9a-z]+\))*`;
+const CLAUSE_FORM = String.raw`(?:cl|clause)\.?\s*(${CLAUSE_TOKEN})`;
+const SEP = String.raw`\s*[,;/]?\s*`;
+const PAGE_THEN_CLAUSE = new RegExp(String.raw`^\s*${PAGE_FORM}(?:${SEP}${CLAUSE_FORM})?\s*$`, "i");
+const CLAUSE_THEN_PAGE = new RegExp(String.raw`^\s*${CLAUSE_FORM}(?:${SEP}${PAGE_FORM})?\s*$`, "i");
+/** A structured `clause_ref` (R1-D-258): `4`, `4.2`, `4.2(a)`, `9A.1(ii)`, without `cl.`. */
+const clauseRef = z
+  .string()
+  .max(64)
+  .regex(new RegExp(String.raw`^${CLAUSE_TOKEN}$`, "i"));
+const pageNumber = z.number().int().min(1).max(2000);
+
+/**
+ * Reads a `page_or_clause_ref` (PR-UDF-075 (3); R1-D-258). The forms read, case-insensitive and
+ * with optional spaces: a page (`p.3`, `p 3`, `pg.3`, `page 3`), a clause (`cl.4.2`, `cl 4.2(a)`,
+ * `clause 4.2`), or both, either first, separated by a space, `,`, `;` or `/` (`p.3 cl.4.2`,
+ * `cl.4.2, p.3`). A page is 1 to 2000; a clause is digit or letter groups separated by dots, with
+ * optional bracketed sub-items (`4`, `4.2`, `4.2(a)`, `9A.1(ii)`). Answers the page and the clause
+ * (lower-cased, without its prefix), or `undefined` for any other text, which the schema still
+ * accepts (1 to 64 characters, as before) and does not read.
+ */
+export function parsePageOrClauseRef(ref: string): { page?: number; clause?: string } | undefined {
+  const a = PAGE_THEN_CLAUSE.exec(ref);
+  const b = a ? null : CLAUSE_THEN_PAGE.exec(ref);
+  if (!a && !b) return undefined;
+  const pageText = a ? a[1] : b?.[2];
+  const clause = a ? a[2] : b?.[1];
+  const n = pageText === undefined ? undefined : Number(pageText);
+  if (n !== undefined && (n < 1 || n > 2000)) return undefined;
+  return {
+    ...(n !== undefined ? { page: n } : {}),
+    ...(clause !== undefined ? { clause: clause.toLowerCase() } : {}),
+  };
+}
+
+/**
+ * Where a pack document states the amount to be disbursed (R1-D-229), the same in both carriers:
+ * `document_id` names a pack document, `page_or_clause_ref` locates the statement (the forms
+ * `parsePageOrClauseRef` reads, or free text) and `amount_stated_paise` is integer paise. Optional
+ * (R1-D-258): `page` and `clause_ref`, the same locator split; `page_or_clause_ref` stays required.
+ * When `page_or_clause_ref` names a page or a clause in a form read, a `page` or `clause_ref` given
+ * beside it must name the same one (clauses compared ignoring case); free text is not compared.
+ */
+const DisbursementClause = z
+  .object({
+    document_id: ref,
+    page_or_clause_ref: z.string().min(1).max(64),
+    amount_stated_paise: z.number().int().min(0).max(1e14),
+    page: pageNumber.optional(),
+    clause_ref: clauseRef.optional(),
+  })
+  .loose()
+  .superRefine((c, ctx) => {
+    if (c.page === undefined && c.clause_ref === undefined) return;
+    const read = parsePageOrClauseRef(c.page_or_clause_ref);
+    if (c.page !== undefined && read?.page !== undefined && read.page !== c.page)
+      ctx.addIssue({
+        code: "custom",
+        path: ["page"],
+        message: `page ${c.page} is not the page of page_or_clause_ref`,
+      });
+    if (
+      c.clause_ref !== undefined &&
+      read?.clause !== undefined &&
+      read.clause !== c.clause_ref.toLowerCase()
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["clause_ref"],
+        message: `clause_ref ${c.clause_ref} is not the clause of page_or_clause_ref`,
+      });
+  });
 
 /**
  * Evidence that one pack document was stamped (R1-D-231; PR-UDF-053; the owner's `stampEvidence`):
@@ -155,15 +369,22 @@ export const StampEvidence = z
     duty_paise: z.number().int().min(0).max(1e12),
     stamped_document_sha256: sha256,
     vendor_ref: ref.optional(),
+    /** Optional (R1-D-258): the `ESTAMP_SYSTEMS` system, only with `mode: ESTAMP`. */
+    estamp_system: z.enum(ESTAMP_SYSTEMS).optional(),
   })
-  .loose();
+  .loose()
+  .refine((e) => e.estamp_system === undefined || e.mode === "ESTAMP", {
+    message: estampSystemIssue,
+    path: ["estamp_system"],
+  });
 export type StampEvidence = z.infer<typeof StampEvidence>;
 
 /**
  * The interim execution-pack manifest (PR-UDF-053), shared as a `DocumentShared` of type
  * `EXECUTION_PACK_MANIFEST`. Deprecated in favour of the signed `ExecutionPackIssued` event
  * (`ExecutionPackIssuedData`; PR-047 approved 20 Nov 2026, R1-D-236), which carries the full
- * PR-UDF-061 shape; kept unchanged so existing consumers still parse it, and removed only in a major.
+ * PR-UDF-061 shape; kept so existing consumers still parse it (changed only by optional additions,
+ * such as item 18's `physical_reason` and `re_instructions`, R1-D-252), and removed only in a major.
  */
 export const ExecutionPackManifest = z
   .object({
@@ -193,6 +414,10 @@ export const ExecutionPackManifest = z
              */
             not_stampable: z.boolean().optional(),
             not_stampable_reason: z.string().min(1).max(200).optional(),
+            /** Optional (R1-D-258): the reason by code; only with `not_stampable: true`. */
+            not_stampable_reason_code: z.enum(NOT_STAMPABLE_REASON_CODES).optional(),
+            /** Optional (R1-D-252): `physical_reason` and `re_instructions`; see `physicalFields`. */
+            ...physicalFields,
           })
           .loose(),
       )
@@ -230,16 +455,10 @@ export const ExecutionPackManifest = z
      * `document_id` names a document in the pack; `page_or_clause_ref` is a short locator such as
      * `p.3` or `cl.4.2`; `amount_stated_paise` is integer paise. The owner named it
      * `disbursementClause { documentId, pageOrClauseRef, amountStated }`; the Ecosystem payloads
-     * here are snake case (§3.2).
+     * here are snake case (§3.2). Optional `page` and `clause_ref` (R1-D-258): see
+     * `DisbursementClause`.
      */
-    disbursement_clause: z
-      .object({
-        document_id: ref,
-        page_or_clause_ref: z.string().min(1).max(64),
-        amount_stated_paise: z.number().int().min(0).max(1e14),
-      })
-      .loose()
-      .optional(),
+    disbursement_clause: DisbursementClause.optional(),
   })
   .loose()
   .superRefine((m, ctx) => {
@@ -256,6 +475,9 @@ export const ExecutionPackManifest = z
       if (d.execution_mode !== "NONE" && d.signers.length === 0)
         ctx.addIssue({ code: "custom", message: `${d.document_id} is executed but has no signer` });
       const at = (field: string) => ["documents", i, field];
+      const physical = physicalIssue(d);
+      if (physical)
+        ctx.addIssue({ code: "custom", path: at("physical_reason"), message: physical });
       if (d.not_stampable === true) {
         if (d.not_stampable_reason === undefined)
           ctx.addIssue({
@@ -275,12 +497,20 @@ export const ExecutionPackManifest = z
             path: at("not_stampable"),
             message: `${d.document_id} is not stampable but is stamp-required`,
           });
-      } else if (d.not_stampable_reason !== undefined)
-        ctx.addIssue({
-          code: "custom",
-          path: at("not_stampable_reason"),
-          message: `${d.document_id} gives a not-stampable reason without not_stampable: true`,
-        });
+      } else {
+        if (d.not_stampable_reason !== undefined)
+          ctx.addIssue({
+            code: "custom",
+            path: at("not_stampable_reason"),
+            message: `${d.document_id} gives a not-stampable reason without not_stampable: true`,
+          });
+        if (d.not_stampable_reason_code !== undefined)
+          ctx.addIssue({
+            code: "custom",
+            path: at("not_stampable_reason_code"),
+            message: `${d.document_id} gives a not-stampable reason code without not_stampable: true`,
+          });
+      }
     }
     if (!ids.has(m.summary_box.document_id))
       ctx.addIssue({ code: "custom", message: "summary_box names a document outside the pack" });
@@ -351,6 +581,18 @@ const duty = z.number().int().min(0).max(1e12);
  * is refused), the SHA-256 of the stamped document, when the certificate was issued, the stamp
  * vendor's certificate id and the certificate itself as a shared document
  * (`certificate_document_id`, never the stamped document).
+ *
+ * `certificate_document_id` (the rule stated by R1-D-258, PR-UDF-075 (4)): the stamp certificate
+ * as a document the lender shared (`DocumentShared`, type `ESTAMP_CERTIFICATE` by convention) for
+ * the same application, so its `application_id` is the pack's. It need not be listed in the pack's
+ * `documents` (a certificate is not executed); when it is, it is a document of its own, not
+ * stamp-required and without stamp evidence. The schema refuses what it can see without refusing
+ * a pack valid before: the stamped document naming itself. The application and the listed
+ * document's flags are checked by the lender contract cases, and by a consumer against the
+ * `DocumentShared` it holds.
+ *
+ * `estamp_system` (R1-D-258, PR-UDF-075 (1)): optional, the `ESTAMP_SYSTEMS` system the e-stamp
+ * was issued through; only with `channel: E_STAMP`.
  */
 export const PackStampEvidence = z
   .object({
@@ -366,12 +608,17 @@ export const PackStampEvidence = z
       .regex(/^[A-Za-z0-9/_.:-]{3,128}$/)
       .optional(),
     certificate_document_id: ref.optional(),
+    estamp_system: z.enum(ESTAMP_SYSTEMS).optional(),
   })
   .loose()
   .refine(
     (e) => e.stated_duty_paise === undefined || e.duty_paise >= e.stated_duty_paise,
     "the duty paid is at least the duty stated (no deficient stamping)",
-  );
+  )
+  .refine((e) => e.estamp_system === undefined || e.channel === "E_STAMP", {
+    message: estampSystemIssue,
+    path: ["estamp_system"],
+  });
 export type PackStampEvidence = z.infer<typeof PackStampEvidence>;
 
 /**
@@ -419,6 +666,8 @@ export const PackDocument = z
     /** The `enclosure_list` code this document furnishes (RBC para 14). */
     enclosure_code: code.optional(),
     stamp_evidence: PackStampEvidence.optional(),
+    /** Optional (PR-UDF-061 item 18; R1-D-252): `physical_reason` and `re_instructions`. */
+    ...physicalFields,
   })
   .loose();
 export type PackDocument = z.infer<typeof PackDocument>;
@@ -447,6 +696,11 @@ export type PackDocument = z.infer<typeof PackDocument>;
  * - `not_stampable [{ document_id, reason }]`: pack documents that need no stamp, with the reason;
  *   never stamp-required and never with stamp evidence.
  * - `documents[].signers` as the `PACK_SIGNER_ROLES` enum, each role once.
+ *
+ * And PR-UDF-061 item 18 (R1-D-252): optional `documents[].physical_reason` (a document with one is
+ * executed `WET_INK`) and `documents[].re_instructions` (link-free plain text, 1 to 1,000 characters).
+ * PR-UDF-075 (R1-D-258): optional `stamp_evidence.estamp_system`, `not_stampable[].reason_code`
+ * and `disbursement_clause.page` and `clause_ref`.
  */
 export const ExecutionPackIssuedData = z
   .object({
@@ -477,8 +731,20 @@ export const ExecutionPackIssuedData = z
     enclosure_list: z
       .array(z.object({ code, clause_ref: z.string().min(1).max(64) }).loose())
       .max(50),
+    /**
+     * Pack documents that need no stamp: `reason` (1 to 200 characters, required) and, optional
+     * (R1-D-258), `reason_code` (`NOT_STAMPABLE_REASON_CODES`).
+     */
     not_stampable: z
-      .array(z.object({ document_id: ref, reason: z.string().min(1).max(200) }).loose())
+      .array(
+        z
+          .object({
+            document_id: ref,
+            reason: z.string().min(1).max(200),
+            reason_code: z.enum(NOT_STAMPABLE_REASON_CODES).optional(),
+          })
+          .loose(),
+      )
       .max(50)
       .optional(),
     countersignature: z
@@ -489,14 +755,8 @@ export const ExecutionPackIssuedData = z
         within_days: z.number().int().min(1).max(90).optional(),
       })
       .loose(),
-    disbursement_clause: z
-      .object({
-        document_id: ref,
-        page_or_clause_ref: z.string().min(1).max(64),
-        amount_stated_paise: z.number().int().min(0).max(1e14),
-      })
-      .loose()
-      .optional(),
+    /** As on the manifest (R1-D-229), with the optional `page` and `clause_ref` of R1-D-258. */
+    disbursement_clause: DisbursementClause.optional(),
   })
   .loose()
   .superRefine((p, ctx) => {
@@ -531,6 +791,8 @@ export const ExecutionPackIssuedData = z
           at("execution_mode"),
           `${d.document_id} is an IT Act First Schedule instrument: never executed electronically`,
         );
+      const physical = physicalIssue(d);
+      if (physical) issue(at("physical_reason"), physical);
       if (d.stamp_evidence) {
         if (!d.stamp_required)
           issue(at("stamp_evidence"), `${d.document_id} carries stamp evidence but needs no stamp`);

@@ -10,16 +10,22 @@
 // biometric Aadhaar and account eSign have no Digio type here and are refused (no downgrade).
 // Digio documents no webhook signature, so the callback URL carries our C-19 secret as
 // `ipb_token` (as for Gupshup, PL2-D-65), and the envelope is always read back from the API.
+// PR-UDF-070 (R1-D-251): each signature record's `signerCertificate` is read from the signed PDF's
+// own signatures (`signerCertificatesFromPdf`); whether the document response carries the signer
+// certificates is [VERIFY], as is one signature per signer with no Digio seal. Multi-document
+// envelopes are [VERIFY] and refused `unsupported` until then.
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
   DocumentRef,
   EnvelopeStatus,
+  EsignDownloadOptions,
   EsignEnvelopeStore,
   EsignPort,
   PortCall,
   PortHealth,
   SignatureRecord,
+  SignedEnvelopeDocument,
   Signer,
   SigningMethod,
   StoragePort,
@@ -32,11 +38,15 @@ import {
   ESIGN,
   loadEnvelope,
   methodRefused,
+  NO_MULTI_DOCUMENT,
   overallState,
   readDocument,
+  signerCertificatesFromPdf,
   storeSigned,
+  downloadKeyRef,
   unsupported,
   validateEnvelope,
+  withSignerCertificate,
 } from "./common.js";
 
 const HOSTS = { sandbox: "ext.digio.in", production: "api.digio.in" } as const;
@@ -89,7 +99,7 @@ export class DigioEsign implements EsignPort {
       adapter: "digio",
       residency: "IN",
       maxDataClass: "REGULATED",
-      capabilities: { verifySignature: "unsupported" },
+      capabilities: { verifySignature: "unsupported", ...NO_MULTI_DOCUMENT },
     };
     this.base = (o.baseUrl ?? `https://${HOSTS[mode]}`).replace(/\/$/, "");
     this.signBase = o.baseUrl ? this.base : `https://${SIGN_HOSTS[mode]}`;
@@ -213,7 +223,9 @@ export class DigioEsign implements EsignPort {
 
   async downloadSigned(
     envelopeId: string,
+    opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }> {
+    const keyRef = downloadKeyRef("digio", opts);
     const st = await this.getStatus(envelopeId);
     if (st.state !== "completed")
       throw new PortError("IPB-PORT-001", ESIGN, {
@@ -229,17 +241,32 @@ export class DigioEsign implements EsignPort {
     if (res.status !== 200) throw vendorError(ESIGN, "digio", res.status, "Digio download");
     if (Buffer.from(res.body.subarray(0, 5)).toString("latin1") !== "%PDF-")
       throw vendorError(ESIGN, "digio", 502, "the signed file is not a PDF");
-    const stored = await storeSigned(this.o.storage, r.doc, res.body);
+    const stored = await storeSigned(this.o.storage, r.doc, res.body, keyRef);
+    const certs = signerCertificatesFromPdf(res.body, r.order, st.signers);
     return {
       ...stored,
-      signatures: st.signers.map((s) => ({
-        alg: `esp:digio:${s.method.toLowerCase()}`,
-        keyId: r.vendorRef,
-        certChainRef: `digio:${r.vendorRef}`,
-        signerRef: s.ref,
-        signedAt: s.at ?? "",
-      })),
+      signatures: st.signers.map((s) =>
+        withSignerCertificate(
+          {
+            alg: `esp:digio:${s.method.toLowerCase()}`,
+            keyId: r.vendorRef,
+            certChainRef: `digio:${r.vendorRef}`,
+            signerRef: s.ref,
+            signedAt: s.at ?? "",
+          },
+          certs,
+        ),
+      ),
     };
+  }
+
+  /** No multi-document envelope until the vendor's support is verified (PR-UDF-070) [VERIFY]. */
+  async createMultiDocumentEnvelope(): Promise<{ envelopeId: string }> {
+    throw unsupported("digio", "createMultiDocumentEnvelope");
+  }
+
+  async downloadSignedDocuments(): Promise<{ documents: SignedEnvelopeDocument[] }> {
+    throw unsupported("digio", "downloadSignedDocuments");
   }
 
   private async session(

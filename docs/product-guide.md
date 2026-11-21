@@ -79,6 +79,7 @@ For an event that `isRegulatedMessage(type)` names (Ecosystem Spec §3.6):
   - `keys` is a `RegulatedKeyRing` of the producer's published keys;
   - `replay` is a shared `ReplayStore` when several instances verify.
   - A failure answers 401 and is logged with its reason, never with the event.
+  - From the next `tenancy` minor the inbox can verify it and keep it beside the event instead: `receive(ctx, envelope, { jws })` with the `regulated` option (§7eh).
 - **Rotation:** add the new key to every consumer's ring first, then sign with it, and finally set the old key's `notAfter` to the end of the overlap.
 
 ## 7c. Scheduled per-tenant jobs
@@ -1455,6 +1456,275 @@ const pdf = toPdf(statement, {
 - The title, creator and language are written twice (/Info and XMP): if you redact metadata, redact both, or keep personal data out of them.
 - `renderPdf` passes `pdfa` and `lang` to the in-process path; documents with Indic text still go to DOCGEN (§7ay), whose PDF/A is not byte-deterministic.
 - **Adopt** with all `@infrabyx/*` pins moved together. To check your own templates, run the pinned veraPDF image the way `packages/export/src/__tests__/pdfa.int.test.ts` does (`TEST_IMAGES.verapdf`, `withJvmMitigation("verapdf")`, `--flavour 2b`, and `ua1` with `pdfua`).
+
+## 7eb. Calling a partner over mTLS (PR-UDF-069; R1-D-250)
+
+From the next `connectors` and `crypto` minors (no setting, migration or environment variable), one class makes an outbound call to a partner with the platform's client certificate: `PartnerMtlsClient` from `@infrabyx/connectors/egress`. The inbound side is §7dr.
+
+```ts
+import { PartnerMtlsClient } from "@infrabyx/connectors/egress";
+
+const lender = new PartnerMtlsClient({
+  hosts: ["api.lender.example"], // exact names; no wildcard
+  clientCertificateRef: "secret://vault/partners/lender/mtls#certificate", // PEM, leaf first
+  clientKeyRef: "secret://vault/partners/lender/mtls#key", // unencrypted P-256 PEM
+  resolveSecret: secretsResolver(secretsAdapters), // from @infrabyx/config
+  serverCa: lenderServerCaPem, // optional: pin the partner's server CA
+});
+await lender.checkCredentials(); // at start-up: dates and x5tS256, no partner call
+
+const res = await lender.request({
+  method: "POST", // or PUT; nothing else
+  url: "https://api.lender.example/v1/disbursement-requests",
+  body: JSON.stringify(payload),
+  idempotencyKey: requestId, // required; reuse it on a retry
+  headers: { authorization: `Bearer ${token}` }, // optional (RFC 8705 token)
+  signal, // optional; the 15 s deadline applies as well
+});
+if (res.status >= 400) /* the partner's answer: decide */ ;
+```
+
+**What it enforces:** https on port 443 to the configured hosts; DNS once, every address public, the socket pinned to it, the server certificate verified against the host name (and your pinned CA); TLS 1.2 or later; no redirect followed (any 3xx is `IPB-SEC-018` `redirect`); the answer capped at 1 MiB (`maxResponseBytes`, up to 16 MiB; `IPB-SEC-013`); a body of at most 1 MiB (`maxRequestBytes`). Every refusal is a `PortError` with a fixed `meta.reason`; log the reason, never the URL's query or the body.
+
+**What to know:**
+
+- **The client key must be ECDSA P-256, in SECRETS.** RSA and P-384 keys are refused `key_type`, and a KMS-held key cannot be used (Node's TLS signs with an in-memory key only), until the owner answers #180. Ask the partner to issue the platform's client certificate on a P-256 key, and register its `x5tS256` (from `checkCredentials()`) with the partner.
+- **Rotation:** the certificate and key are re-read from SECRETS every 5 minutes (`credentialTtlMs`, up to an hour) and at the certificate's notAfter; call `forgetCredentials()` after a rotation to use the new one at once.
+- **Timeouts and aborts** are `IPB-PORT-002` with `reason` `timeout` or `aborted` and `meta.maybeSent`. When `maybeSent` is true the partner may have the request: retry with the same `idempotencyKey`, or reconcile.
+- **Record the call** in your module's own kernel mutation (the ledger entry is yours, as for every adapter call), with the partner, the idempotency key and the status; never the body or the certificate.
+- **Tests:** run a local `node:https` server with `requestCert: true` and certificates from `mtlsTestAuthority()` (`@infrabyx/crypto/mtls-test`), and pass the test-only `resolve`, `testAllowLoopback` and `testConnectPort` options, as `packages/connectors/src/egress/__tests__/partner-mtls.test.ts` does. Never set those options in a deployment.
+
+## 7ec. ESIGN: the signer's certificate on each record, the fake in STORAGE, multi-document envelopes (PR-UDF-070; R1-D-251)
+
+Minors of `contracts`, `crypto`, `fakes`, `testing` and `connectors`; no migration, setting or environment variable. Nothing changes for a caller that does not read the new fields.
+
+**The signer certificate.** `downloadSigned` records may now carry `signerCertificate`:
+
+```ts
+const { signatures } = await esign.downloadSigned(envelopeId);
+for (const s of signatures) {
+  s.signerCertificate; // { serialNumber, issuer, notBefore, notAfter, sha256, subjectCommonName? } | undefined
+}
+```
+
+- `leegality` and `digio` read it from the signed PDF's own signatures, so it is the certificate the ESP actually signed with. It is set only when each signature can be tied to one signer for certain (sequential: envelope order; parallel: the ESP's distinct signing times); otherwise it is absent, never guessed. `nsdl-esign` sets nothing until it can sign (#177).
+- It names the certificate; it does not say it is trusted. To decide, run `verifyPadesSignatures` on the stored file (its `signer.serial`, `signer.issuer` and `signer.certSha256` equal `serialNumber`, `issuer` and `sha256`).
+- `subjectCommonName` is usually the signer's name: keep it with your signing evidence (CONFIDENTIAL, like `signerIp`) and out of logs.
+- For a certificate you hold yourself (an ESP response, a PEM file), `signerCertificateSummary(derOrPem)` from `@infrabyx/crypto` gives the same shape; `padesSignerCertificates(pdf)` lists the certificate of each signature in a PDF.
+
+**The fake.** `new FakeEsign({ storage })` (from `@infrabyx/fakes` or `@infrabyx/testing`) reads your document from STORAGE (put it there first, with an IPB-01-27 key; a wrong SHA-256 is refused `hash_mismatch`), signs it with a real PAdES signature per signer, and on the first `downloadSigned` writes the signed PDF and each signer's PEM chain to STORAGE as REGULATED objects under the document's tenant (`certChainRef` is the chain's key). Verify its files with `verifyPadesSignatures(body, { trust: fake.trustStore() })`. Hooks: `signedObjects()`, `failNextDownload()`, `setSignerCertificate(ref, cert)` (a `pades-test` `TestSigner` signs; DER or PEM bytes are only named, to test a mismatch), `decline()`, `signDocument()`. `new FakeEsign()` without storage behaves as before; signing twice for the same signer is now a no-op.
+
+**Multi-document envelopes.** Where an adapter supports them (today only the fake; the vendor adapters refuse `unsupported` until verified, so check `descriptor.capabilities.createMultiDocumentEnvelope`):
+
+```ts
+const { envelopeId } = await esign.createMultiDocumentEnvelope!(
+  [
+    { doc: loanAgreement, fields: [] },
+    {
+      doc: keyFactStatement,
+      fields: [{ signerRef: "usr_b", page: 1, x: 40, y: 60, width: 160, height: 48 }],
+    },
+  ],
+  signers,
+  "sequential",
+);
+const { documents } = await esign.downloadSignedDocuments!(envelopeId); // after `completed`
+```
+
+One to ten documents, unique ids and storage keys. **All or nothing:** a signer is `signed` only after signing every document, the envelope completes only when every document is signed by every signer, a decline declines the whole envelope, and nothing downloads before completion (`not_completed`). `getStatus(...).documents` shows each document's progress; `downloadSigned` on several documents is refused `multi_document`.
+
+## 7ed. Why a pack document needs a physical step, and the lender's instructions (PR-UDF-061 item 18; R1-D-252)
+
+From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), each document of an execution pack may carry two optional fields, in both carriers: `ExecutionPackManifest.documents[]` (the interim `DocumentShared` manifest) and `ExecutionPackIssuedData.documents[]` (the signed `ExecutionPackIssued` event).
+
+| Field             | Values                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `physical_reason` | `REGISTRATION_REQUIRED` or `NOTARISATION_REQUIRED` (`PACK_PHYSICAL_REASONS`)                                       |
+| `re_instructions` | The lender's words: plain text, 1 to 1,000 characters (`PACK_RE_INSTRUCTIONS_MAX`), no control characters, no link |
+
+```ts
+{
+  document_id: "doc_mod_0001",
+  kind: "MORTGAGE_DEED",
+  execution_mode: "WET_INK", // required with a physical_reason
+  physical_reason: "REGISTRATION_REQUIRED",
+  re_instructions: "Bring the signed deed and two photo IDs to the Sub-Registrar office on a working day.",
+  // … the document's other fields as before
+}
+```
+
+**What is refused:**
+
+- A `physical_reason` on a document whose `execution_mode` is not `WET_INK` (eSign, DSC or `NONE`), on `documents[i].physical_reason`.
+- Any other `physical_reason` value.
+- `re_instructions` that are empty, longer than 1,000 characters, carry a control character other than tab or a line break, or contain a link (a URL with a scheme, `www.`, `upi:` or a domain with a path): the same rule as `CoolingOffExitAnswered.payment_instruction` (R1-D-232).
+
+**What to know:**
+
+- Both fields are optional and independent: `re_instructions` may be sent without a `physical_reason`, on any execution mode. A pack valid before stays valid.
+- Show `re_instructions` as the lender's words, escaped as text, never as HTML or Markdown; the schema refuses links but not every way of naming a place or a number.
+- The mock lender (`@infrabyx/fakes`) sets neither field today.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
+## 7eg. Telling which application a `LoanDisbursed` is for (PR-UDF-061 finding (i); R1-D-256)
+
+From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), `LoanDisbursedData` takes an optional `lsp_application_ref`: the LSP's own application reference, as on `CoolingOffExitAnswered`.
+
+```ts
+{
+  loan_id: "ln_0001", // still the envelope subject (R1-D-236)
+  utr: "FAKE0123456789AB",
+  // … amount, value date, beneficiary, kind, cooling-off end as before
+  application_id: "app_0001", // the lender's id (optional, R1-D-232)
+  lsp_application_ref: "lspapp_0001", // the LSP's own reference (optional, new)
+}
+```
+
+**What to know:**
+
+- Neither reference is required by the schema: `application_id` was optional, and requiring it (or one of the two) would refuse a payload valid before. A lender sends one or both; the lender contract cases in `@infrabyx/testing` require at least one, each naming the application.
+- **An LSP** matches `lsp_application_ref` against its own application first, else `application_id` against the id the lender gave in `ApplicationStatusChanged`; with neither, it holds the disbursal for review rather than guessing from the amount.
+- The mock lender (`@infrabyx/fakes`) sends both.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
+## 7eh. The inbox keeps the verified JWS beside the event (PR-UDF-073; R1-D-257)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0026`; no setting, no environment variable). §7dp says to store a regulated message's `X-Infrabyx-JWS` beside the event; `EcosystemInbox` now does it for you, in the same row and transaction as the event.
+
+```ts
+const inbox = new EcosystemInbox({
+  kernel,
+  audit,
+  schema: "lending",
+  environment: "live",
+  regulated: { keys: lenderKeys, replay: sharedReplayStore }, // RegulatedKeyRing, durable ReplayStore
+});
+const h = regulatedJwsFromHeaders(req.headers); // refuse !h.ok with signature-invalid (§7dp)
+const r = await inbox.receive(ctx, body, { businessKey, jws: h.jws }); // then answer 2xx
+// r.jws: the JWS stored with the event
+await inbox.drain(ctx, async (tx, event) => keepProof(event.envelope, event.jws));
+```
+
+**What you get:**
+
+- `receive(ctx, raw, { jws })` checks the value against the envelope's own limits (one compact detached JWS, at most 1,024 octets, as `X-Infrabyx-JWS`), verifies it with `verifyRegulatedMessage` and your `regulated` keys and replay store, and only then stores the event with it in the new nullable `jws` column. A JWS that fails is refused with IPB-API-018 (`meta.reason` `signature-invalid`, `meta.jws` the reason) and nothing is stored. Without `regulated`, a `jws` is refused rather than stored unverified.
+- The handler (`drain`, `sweep`) and `list` get it as `event.jws`; `null` for an event received unsigned.
+- A redelivery of a stored event is a `duplicate` whose `r.jws` is the JWS stored at the first receipt: its own fresh JWS must still verify; the very same JWS again (its `jti` already claimed) is a duplicate too, in the same tenant only.
+- The column is written once: the database refuses any later change of it, even from null to a value, and any value over 1,024 octets or not in compact detached form.
+
+**What to change:**
+
+1. Run `infrabyx-migrate`: `tenancy/0026` adds the column to every inbox `tenancy.create_ecosystem_inbox` made, and new inboxes get it.
+2. Pass the `X-Infrabyx-JWS` value to `receive` instead of calling `verifyRegulatedMessage` yourself first: a JWS you already verified with the same replay store has its `jti` claimed and is refused as `replay`.
+3. Keep refusing an unsigned regulated message yourself (`isRegulatedMessage`, `regulatedJwsFromHeaders`); `receive` without `jws` stores the event with none, as before.
+4. If you kept the JWS in a table of your own, you can read it from `event.jws` instead; rows received before 0026 have `null` (nothing is backfilled).
+
+## 7ei. Pack evidence: e-stamp system, not-stampable codes, page and clause, the JWS profile (PR-UDF-075; R1-D-258)
+
+From the next `@infrabyx/contracts` and `@infrabyx/crypto` minors (no migration, setting or environment variable). Every field is optional; a pack valid before stays valid.
+
+| Where                                                  | New                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `PackStampEvidence` and the manifest's `StampEvidence` | `estamp_system`: `SHCIL`, `STATE_PORTAL`, `NESL_DDE` or `GRAS` (`ESTAMP_SYSTEMS`), only with an e-stamp                     |
+| `ExecutionPackIssuedData.not_stampable[]`              | `reason_code`: `NOT_AN_INSTRUMENT`, `ACKNOWLEDGEMENT` or `OTHER` (`NOT_STAMPABLE_REASON_CODES`); `reason` is still required |
+| Manifest item                                          | `not_stampable_reason_code`, the same codes, only with `not_stampable: true`                                                |
+| `disbursement_clause` (both carriers)                  | `page` (1 to 2000) and `clause_ref` (`4.2`, `4.2(a)`, no `cl.`), beside the still-required `page_or_clause_ref`             |
+| `verifyDocumentJws` with `reportProfile: true`         | the success names `profile: "v1" \| "v2"`; without the option the result is unchanged                                       |
+
+**`page_or_clause_ref` forms** (read by `parsePageOrClauseRef`, case-insensitive): `p.3`, `p 3`, `pg.3`, `page 3`; `cl.4.2`, `cl 4.2(a)`, `clause 4.2`; or both in either order, separated by a space, `,`, `;` or `/` (`p.3 cl.4.2`, `cl.4.2, p.3`). Other text is still accepted and not read. When it is readable, a `page` or `clause_ref` beside it must name the same page or clause, else the pack is refused on `disbursement_clause.page` or `.clause_ref`.
+
+**`certificate_document_id`** names the stamp certificate as a document the lender shared (`DocumentShared`, type `ESTAMP_CERTIFICATE` by convention) **for the same application**: check that its `application_id` is the pack's before you file it. It need not be listed in the pack's `documents`; when it is, it is not stamp-required and carries no stamp evidence. It is never the stamped document (refused).
+
+**Verifying a v2 document JWS from a `DocumentShared` announcement:**
+
+```ts
+const data = DocumentSharedData.parse(event.data); // the announcement as it arrived
+const r = verifyDocumentJws(data.jws, data, lenderKeys, new Date(event.time), {
+  requireV2: true,
+  reportProfile: true, // opt-in: the success names the profile
+});
+if (!r.ok) refuse(r.reason); // malformed, wrong_typ (a v1 JWS), unknown_key, signature_invalid
+// r.profile === "v2": type, media_type, size_bytes and application_id are bound as announced
+```
+
+Pass the parsed data as it is (it carries the v2 fields; a v2 JWS without `media_type` or `size_bytes` on the event is `malformed`), and the event's `time` so a key rotated since still verifies a document announced while it was valid. Until your lender signs v2 everywhere, drop `requireV2`, keep `reportProfile` and log `r.profile` to see which documents are still v1. After the download, check the bytes' SHA-256 against `sha256` and their length against `size_bytes`.
+
+**What to know:**
+
+- Without `reportProfile` the result is exactly as before (`{ ok: true, kid }`, no `profile` key), so existing tests are unaffected; `DocumentJwsResult` values built by hand still type-check (`profile` is optional there).
+- No `physical_marks` list: the pack is issued before execution, so a notary's seal or a registration endorsement does not yet exist; use item 18's `re_instructions` (§7ed) for where the lender wants it (owner question #187).
+- The mock lender sends `estamp_system: "SHCIL"`, `reason_code: "NOT_AN_INSTRUMENT"` and `clause_ref: "4.2"`.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
+## 7ej. Executed documents, real files from `FakeDocgen`, and reading a PDF's PDF/A and PDF/UA claim (PR-UDF-077; R1-D-259)
+
+From `@infrabyx/contracts`, `@infrabyx/fakes`, `@infrabyx/testing` and `@infrabyx/export` minors (no migration, setting or environment variable).
+
+**Document type codes.** Spell the shared codes with their constants: `EXECUTED_DOCUMENT_TYPE` (the lender's document as the eSign Service Provider returned it, signatures included), `EXECUTION_EVIDENCE_SUMMARY_TYPE` (the human-readable record of how it was executed; it summarises the signed `ESignCompleted` and `EStampCompleted` events and never replaces them) and `PRIVACY_POLICY_LSP_TYPE` (an LSP's privacy policy; no `application_id`). `SHARED_DOCUMENT_TYPES` lists them with `EXECUTION_PACK_MANIFEST_TYPE`. `type` stays an open code.
+
+**The link from an executed file to the lender's document is `ESignCompleted.signed_sha256`.** Share the executed file as a `DocumentShared` of type `EXECUTED_DOCUMENT` whose `sha256` is the `signed_sha256` of the `ESignCompleted` of the **last** signature (earlier signatures name intermediate files); that signed event's `document_id` is the lender's document. Optionally add `source_document: { document_id, version }` (the lender's document and its version, which `ESignCompleted` does not carry) for filing; an `EXECUTION_EVIDENCE_SUMMARY` names the document it covers the same way. A consumer verifies both signatures, then:
+
+```ts
+const problems = executedDocumentMismatches(shared, esign); // [] when they agree
+// labels: "type", "sha256", "source_document", "application_id"
+```
+
+`source_document` is not signed by the document JWS: treat it as a pointer that must agree, never as proof.
+
+**Real files from `FakeDocgen`.** Pass STORAGE and the renderers (fakes cannot depend on export, so you wire them):
+
+```ts
+import { FakeDocgen, FAKE_TEMPLATES, MemoryStorage } from "@infrabyx/testing";
+import { toDocx, toPdf } from "@infrabyx/export";
+
+const storage = new MemoryStorage();
+const docgen = new FakeDocgen(FAKE_TEMPLATES, { storage, renderers: { pdf: toPdf, docx: toDocx } });
+const r = await docgen.render({
+  templateId: "kfs",
+  data,
+  format: "pdfa",
+  outputPrefix: "tenant/tnt_a/docs",
+});
+// r.file.storageKey = tenant/tnt_a/docs/0<25 hex>.pdf; r.file.sha256 = SHA-256 of the stored bytes
+```
+
+`pdfa` is PDF/A-2b claiming PDF/UA-1, `pdf` plain PDF, `docx` needs the `docx` renderer, `html` writes the escaped page. The layout is a fake's: the template and version as title and heading, one paragraph per data field in key order (for `renderHtml`, the page's title and block text), with text outside printable ASCII and the rupee sign shown as `?`. The same request gives the same key and bytes. The prefix must be `tenant/<tenant>/<module>` (one module segment). Without the second argument the fake behaves as before. Your own DOCGEN adapter can run `docgenStorageContractCases(storage)` from `@infrabyx/testing`.
+
+**Reading the claim.** `pdfIdentification(bytes)` from `@infrabyx/export` returns what the catalog's XMP metadata claims, for example `{ pdfa: { part: 2, conformance: "B" }, pdfua: { part: 1 } }`; `pdfUaClaimed(bytes)` is `true` when PDF/UA is claimed. It is a claim, not a validation: a file can claim what it does not meet, so gate a statutory acceptance on veraPDF (§7ea), not on this. It reads files up to 64 MiB by default (`maxBytes`; over it `too_large`), follows a catalog in an object stream and FlateDecode metadata, ignores page, image and font metadata, and answers `{}` for anything else, including a damaged file. Read the bytes from STORAGE after your AV and hash checks, as for any upload.
+
+## 7ek. ESIGN: the signed file under the lender's key (PR-UDF-074; R1-D-260)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration, setting or environment variable. Nothing changes for a download that names no key.
+
+```ts
+const out = await esign.downloadSigned(envelopeId, { keyRef: "lender:lnd_01…" });
+(await storage.get(out.storageKey)).meta.keyRef; // "lender:lnd_01…"
+// multi-document envelopes: esign.downloadSignedDocuments!(envelopeId, { keyRef })
+```
+
+- **What happens:** the adapter writes the ESP's signed PDF to `REGULATED` at `tenant/<tenant of the original>/esign/<ULID>.pdf` with `put(…, { bucketClass: "REGULATED", keyRef })`, so it is under that lender's key from its first byte (§7dl). `leegality`, `digio` and the fake support it; `nsdl-esign` still refuses `downloadSigned`.
+- **Fail closed:** a malformed reference is refused `IPB-PORT-003` `key_ref_invalid` before the ESP is called. Any STORAGE refusal fails the download with that error and its `reason` (`key_ref_unknown`, `key_ref_prefix_conflict`, `key_ref_shared`, `key_ref_tenant_cmk`, or `IPB-KMS-001` `storage_key_unavailable` for a disabled or revoked key): nothing is written and nothing falls back to the class key. The envelope stays `completed`, so download again once the key is fixed. Check the key first with `storage.keyRefStatus?.(tenantId, keyRef, { bucketClass: "REGULATED", describeKey: true })` (§7ds) if you want to tell the user before the ESP is called.
+- **Or the prefix map (no code change):** yes, a `tenantKeyRefPrefixes` entry `{ "tenant/<lender>/esign/": "lender:<lender>" }` (where your tenant is the lender) already puts every signed file of that tenant under the lender's key, today and without `keyRef`, and a download naming another reference is then refused `key_ref_prefix_conflict`. Use it when every signed file of the tenant belongs under one key. The ESIGN key has no lender segment, so when one tenant holds files for several lenders, name the key on each download instead (or as well: the same reference passes).
+- **Not through QUARANTINE:** the signed file is the contracted ESP's answer over its authenticated API, so it goes straight to `REGULATED`, as KYC, bureau, AA and e-stamp files do; the scan of IPB-02-44 is for uploads. If your policy also scans it, run `FileScanPort.scan({ storageKey, sha256 })` on the stored key, or write it to `QUARANTINE` yourself and promote it with `promotedObjectMeta` (§7dt), which keeps the reference (owner question #189).
+- **Testing:** `new FakeEsign({ storage })` over `new MemoryStorage(undefined, { keyRefs })` writes the PDF and the chains under the reference (`signedObjects()[i].keyRef`); an unknown reference fails as STORAGE does. The fake writes once, so a second download naming another reference (or none) is refused `key_ref_changed`. `esignFakeStorageCases(storage, { keyRef })` runs the cases.
+
+## 7el. Checking a lender's key in several classes at once (PR-UDF-076; R1-D-261)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration or setting. `keyRefStatus` (§7ds) is unchanged.
+
+```ts
+const s = await storage.keyRefStatuses?.(tenantId, "lender:lnd_01…", {
+  bucketClasses: ["QUARANTINE", "REGULATED"],
+  describeKey: true,
+});
+s?.QUARANTINE; // { status: "resolves", keyState: "Enabled" } | { status: "refused", reason, keyState? }
+```
+
+- **One call, one answer per class**, each exactly what `keyRefStatus` would answer for that class: use it when you onboard a lender (the upload class and the clean class) instead of one call per class. One to six distinct classes; a `compartment` applies to each and must be allowed in each. An empty list, a duplicate, an unknown class, another tenant or a bad compartment is `IPB-PORT-003`; a class your adapter has no bucket for is `IPB-PORT-001`.
+- **One `DescribeKey` per distinct key:** with `describeKey: true`, the `s3` adapter reads each key once, however many classes use it. A failed read (throttling, network) throws `IPB-PORT-002` for the whole call; retry later.
+- **`storage_key_not_described`:** `keyRefStatuses` answers this, status `refused`, when the platform's STORAGE role may not call `kms:DescribeKey` on the lender's key: fix the lender's key policy (your production configuration, §7ds). A disabled, missing or unshared key is still `storage_key_unavailable`. Handle both as "do not use this key now". `keyRefStatus` still answers `storage_key_unavailable` in that case (changing it would be a breaking change); call `keyRefStatuses` with one class if you need to tell them apart.
+- **Adapters:** `s3` and `MemoryStorage` provide it; `minio` declares it `unsupported`. It is optional on `StoragePort`, so call it as `storage.keyRefStatuses?.(…)`.
+- **Testing:** `new MemoryStorage(undefined, { keyRefs, keyStates, keyStateError })`, where `keyStateError(tenantId, keyRef)` returns `"unavailable"` (the key-state read throws `IPB-PORT-002`) or `"not_described"` (the not-described answer). The built-in STORAGE contract cases include one for `keyRefStatuses`.
 
 ## 7em. Recording a refused document-retrieval host (PR-UDF-072; R1-D-262)
 

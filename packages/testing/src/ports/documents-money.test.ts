@@ -1,5 +1,8 @@
 // The PR-FBX-29 fakes against their contract cases (R1-D-52).
 import { describe, expect, it } from "vitest";
+import { PortError } from "@infrabyx/contracts/errors";
+import { MemoryStorage, pdfFixture } from "@infrabyx/fakes";
+import { sha256Hex } from "@infrabyx/crypto";
 import { defineContractSuite } from "../contract.js";
 import {
   FakeDocgen,
@@ -11,7 +14,11 @@ import {
   CONTRACT_AUTH,
   docgenContractCases,
   docgenHtmlContractCases,
+  docgenStorageContractCases,
+  type FakeDocgenDocument,
+  type FakeDocgenPdfOptions,
   esignFakeCases,
+  esignFakeStorageCases,
   estampContractCases,
   estampDdeContractCases,
   ESTAMP_DDE_FAKE_FIXTURES,
@@ -34,6 +41,108 @@ defineContractSuite("DOCGEN", () => new FakeDocgen(), [
   ...docgenHtmlContractCases(),
 ]);
 defineContractSuite("PDF", () => new FakePdf(), pdfContractCases());
+
+describe("FakeDocgen writing real files to STORAGE (PR-UDF-077, R1-D-259)", () => {
+  const seen: Array<{ doc: FakeDocgenDocument; o: FakeDocgenPdfOptions }> = [];
+  /** A real (small) PDF of the document's text; `@infrabyx/export`'s `toPdf` in products. */
+  const pdf = (doc: FakeDocgenDocument, o: FakeDocgenPdfOptions) => {
+    seen.push({ doc, o });
+    const lines = doc.blocks.map((b) => (b.type === "heading" ? b.text : b.runs.join("")));
+    return pdfFixture([lines.join("\n")]);
+  };
+  const docx = (d: FakeDocgenDocument) => new TextEncoder().encode(`DOCX ${d.title}`);
+  const make = (withDocx = false) => {
+    const storage = new MemoryStorage();
+    const p = new FakeDocgen(undefined, {
+      storage,
+      renderers: withDocx ? { pdf, docx } : { pdf },
+    });
+    return { storage, p };
+  };
+  const shared = make();
+  defineContractSuite("DOCGEN", () => shared.p, [
+    ...docgenContractCases(),
+    ...docgenHtmlContractCases(),
+    ...docgenStorageContractCases(shared.storage),
+  ]);
+  const req = {
+    templateId: "sanction_letter",
+    data: { name: "Asha <b>", amount: 125000, city: "पुणे" },
+    format: "pdfa" as const,
+    outputPrefix: "tenant/tnt_a/docs",
+  };
+
+  it("lays out the template, sorted fields and printable text, and asks for PDF/A-2b with PDF/UA", async () => {
+    const { storage, p } = make();
+    seen.length = 0;
+    const r = await p.render(req);
+    expect(seen[0]!.o).toEqual({ pdfa: "2b", pdfua: true, lang: "en" });
+    expect(seen[0]!.doc).toEqual({
+      title: "sanction_letter v3",
+      blocks: [
+        { type: "heading", level: 1, text: "sanction_letter v3" },
+        { type: "paragraph", runs: ["amount: 125000"] },
+        { type: "paragraph", runs: ["city: ????"] },
+        { type: "paragraph", runs: ["name: Asha <b>"] },
+      ],
+    });
+    expect(r.file.storageKey).toMatch(/^tenant\/tnt_a\/docs\/0[0-9A-F]{25}\.pdf$/);
+    const o = await storage.get(r.file.storageKey);
+    expect(sha256Hex(o.body)).toBe(r.file.sha256);
+    expect(o.meta).toMatchObject({ bucketClass: "CONFIDENTIAL", contentType: "application/pdf" });
+    expect(r).toMatchObject({ format: "pdfa", templateVersion: "3", pageCount: 1 });
+    await p.render({ ...req, format: "pdf" });
+    expect(seen[1]!.o).toEqual({});
+  });
+
+  it("gives the same key and bytes for the same request, and others for other data", async () => {
+    const { p } = make();
+    const a = await p.render(req);
+    expect(await p.render(req)).toEqual(a);
+    expect((await p.render({ ...req, data: { name: "B" } })).file.sha256).not.toBe(a.file.sha256);
+  });
+
+  it("writes html as an escaped page and docx only with a docx renderer", async () => {
+    const { storage, p } = make();
+    const h = await p.render({ ...req, format: "html" });
+    expect(h.pageCount).toBeNull();
+    const page = new TextDecoder().decode((await storage.get(h.file.storageKey)).body);
+    expect(page).toContain("<p>name: Asha &#60;b&#62;</p>");
+    expect(h.file.storageKey.endsWith(".html")).toBe(true);
+    await expect(p.render({ ...req, format: "docx" })).rejects.toBeInstanceOf(PortError);
+    const w = make(true);
+    const d = await w.p.render({ ...req, format: "docx" });
+    expect(d.file.storageKey.endsWith(".docx")).toBe(true);
+    expect((await w.storage.get(d.file.storageKey)).meta.contentType).toMatch(/wordprocessingml/);
+  });
+
+  it("reads an HTML page's title and blocks, never its head, scripts or styles", async () => {
+    const { p } = make();
+    seen.length = 0;
+    await p.renderHtml({
+      html: "<html><head><title>KFS &amp; terms</title><style>p{}</style></head><body><script>alert(1)</script><h1>Key facts</h1><p>Rate: 18&#37;</p><p>Fee: &#8377;500</p></body></html>",
+      format: "pdfa",
+      outputPrefix: "tenant/tnt_a/kfs",
+    });
+    expect(seen[0]!.doc).toEqual({
+      title: "KFS & terms",
+      blocks: [
+        { type: "heading", level: 1, text: "KFS & terms" },
+        { type: "paragraph", runs: ["Key facts"] },
+        { type: "paragraph", runs: ["Rate: 18%"] },
+        { type: "paragraph", runs: ["Fee: ₹500"] },
+      ],
+    });
+  });
+
+  it("refuses a prefix that is not tenant/<tenant>/<module>, writing nothing", async () => {
+    const { storage, p } = make();
+    await expect(
+      p.render({ ...req, outputPrefix: "tenant/tnt_a/docs/sub" }),
+    ).rejects.toBeInstanceOf(PortError);
+    expect(storage.objects.size).toBe(0);
+  });
+});
 
 describe("the PAYMENTS mandate lifecycle fake (PR-FBX-29)", () => {
   for (const c of mandateContractCases()) it(c.name, () => c.run(new FakeMandates()));
@@ -59,6 +168,14 @@ describe("the PAYMENTS mandate lifecycle fake (PR-FBX-29)", () => {
 
 describe("the ESIGN fake (PR-FBX-29)", () => {
   for (const c of esignFakeCases()) it(c.name, () => c.run(new FakeEsign()));
+});
+
+describe("the ESIGN fake over STORAGE (PR-UDF-070, PR-UDF-074)", () => {
+  const storage = new MemoryStorage(undefined, {
+    keyRefs: (t) => (t === "tnt_contract" ? ["lender:contract"] : []),
+  });
+  for (const c of esignFakeStorageCases(storage, { keyRef: "lender:contract" }))
+    it(c.name, () => c.run(new FakeEsign({ storage })), 30_000);
 });
 
 describe("payouts and DDE settle only through the bank or the utility", () => {

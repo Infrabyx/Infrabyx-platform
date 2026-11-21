@@ -10,7 +10,6 @@ import {
   AccountValidation,
   BeneficiarySpec,
   DdeRegistration,
-  DocumentRef,
   DutyQuoteRequest,
   EstampPurchase,
   HtmlRenderRequest,
@@ -19,15 +18,15 @@ import {
   RenderRequest,
   assertMoneyCall,
   assertStampRecord,
+  isValidStorageKey,
   type AccountValidationResult,
   type AdapterDescriptor,
+  type BucketClass,
   type DdeRecord,
   type DdeSignerEvidence,
   type DocFileRef,
   type DocgenPort,
   type DutyQuote,
-  type EnvelopeStatus,
-  type EsignPort,
   type EstampCertificate,
   type EstampPort,
   type Mandate,
@@ -39,9 +38,8 @@ import {
   type PdfTextRequest,
   type PdfTextResult,
   type PortHealth,
+  type RenderFormat,
   type RenderedDocument,
-  type SignatureRecord,
-  type Signer,
   type StoragePort,
   type TemplateInfo,
 } from "@infrabyx/contracts/ports";
@@ -489,7 +487,149 @@ export class FakeMandates implements MandateLifecycle {
 
 // ----------------------------------------------------------------------------------- DOCGEN, PDF
 
-/** Deterministic rendering: the output's hash is the hash of the template, data and format. */
+/**
+ * The document `FakeDocgen` lays out for a renderer (PR-UDF-077, R1-D-259): a title, a level-1
+ * heading and paragraphs. It is a subset of `@infrabyx/export`'s block model, so `toPdf` and
+ * `toDocx` are renderers as they are.
+ */
+export interface FakeDocgenDocument {
+  title: string;
+  blocks: ReadonlyArray<
+    { type: "heading"; level: 1; text: string } | { type: "paragraph"; runs: readonly string[] }
+  >;
+}
+/** What `FakeDocgen` asks of the PDF renderer: plain PDF (`{}`) or PDF/A-2b with PDF/UA-1. */
+export interface FakeDocgenPdfOptions {
+  pdfa?: "2b";
+  pdfua?: boolean;
+  lang?: string;
+}
+/**
+ * The renderers that give `FakeDocgen` real bytes. `@infrabyx/fakes` cannot depend on
+ * `@infrabyx/export` (export's tests depend on `@infrabyx/testing`, which depends on this
+ * package), so the caller passes them: `{ pdf: toPdf, docx: toDocx }`.
+ */
+export interface FakeDocgenRenderers {
+  pdf: (doc: FakeDocgenDocument, o: FakeDocgenPdfOptions) => Uint8Array;
+  /** Without it, a `docx` render is refused (`IPB-PORT-001`) while files are written. */
+  docx?: (doc: FakeDocgenDocument) => Uint8Array;
+}
+/** Where `FakeDocgen` writes its files (PR-UDF-077). */
+export interface FakeDocgenFiles {
+  storage: StoragePort;
+  renderers: FakeDocgenRenderers;
+  /** STORAGE bucket class of rendered documents (default `CONFIDENTIAL`, as their data is). */
+  bucketClass?: BucketClass;
+}
+
+/** At most this many data fields (or HTML blocks) become paragraphs. */
+const FAKE_DOCGEN_MAX_FIELDS = 1_000;
+const FAKE_DOCGEN_MAX_TEXT = 2_000;
+const CONTENT_TYPES = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  html: "text/html; charset=utf-8",
+} as const;
+
+/** Text the bundled fonts always show: printable ASCII and the rupee sign; the rest become `?`. */
+function fakeText(s: string): string {
+  let t = "";
+  for (const ch of s) {
+    const cp = ch.codePointAt(0)!;
+    t += cp < 0x20 || cp === 0x7f ? " " : cp <= 0x7e || cp === 0x20b9 ? ch : "?";
+  }
+  t = t.replace(/ {2,}/g, " ").trim();
+  return t.length > FAKE_DOCGEN_MAX_TEXT ? `${t.slice(0, FAKE_DOCGEN_MAX_TEXT - 3)}...` : t;
+}
+
+/** A template render's document: the template and version as the title, a field per paragraph. */
+function templateDocument(t: TemplateInfo, data: Record<string, unknown>): FakeDocgenDocument {
+  const title = fakeText(`${t.templateId} v${t.version}`);
+  const keys = Object.keys(data).sort();
+  const paras = keys.slice(0, FAKE_DOCGEN_MAX_FIELDS).map((k) => {
+    const v = data[k];
+    return fakeText(`${k}: ${typeof v === "string" ? v : (JSON.stringify(v) ?? String(v))}`);
+  });
+  if (keys.length > FAKE_DOCGEN_MAX_FIELDS)
+    paras.push(`${keys.length - FAKE_DOCGEN_MAX_FIELDS} more fields`);
+  return {
+    title,
+    blocks: [
+      { type: "heading", level: 1, text: title },
+      ...paras.map((p) => ({ type: "paragraph" as const, runs: [p] })),
+    ],
+  };
+}
+
+const ENTITIES: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+  nbsp: " ",
+};
+const decodeEntities = (s: string): string =>
+  s.replace(/&(#x[0-9a-f]{1,6}|#[0-9]{1,7}|[a-z]{2,8});/gi, (m, e: string) => {
+    if (e[0] !== "#") return ENTITIES[e.toLowerCase()] ?? m;
+    const cp = e[1] === "x" || e[1] === "X" ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10);
+    return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : "?";
+  });
+
+/** An HTML render's document: its text, a paragraph per block element (a fake: no layout). */
+function htmlDocument(html: string): FakeDocgenDocument {
+  const named = /<title[^>]*>([^<]*)<\/title>/i.exec(html) ?? /<h1[^>]*>([^<]*)<\/h1>/i.exec(html);
+  const title = fakeText(decodeEntities(named?.[1] ?? "")) || "HTML document";
+  const text = decodeEntities(
+    html
+      .replace(/<(head|script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, "")
+      .replace(/<(?:br|\/p|\/h[1-6]|\/li|\/div|\/tr|\/td|\/th)\b[^>]*>/gi, "\n")
+      .replace(/<[^>]*>/g, ""),
+  );
+  const paras = text
+    .split("\n")
+    .map(fakeText)
+    .filter((x) => x !== "")
+    .slice(0, FAKE_DOCGEN_MAX_FIELDS);
+  return {
+    title,
+    blocks: [
+      { type: "heading", level: 1, text: title },
+      ...paras.map((p) => ({ type: "paragraph" as const, runs: [p] })),
+    ],
+  };
+}
+
+const escapeHtml = (s: string): string => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+/** A `html` render's page: the same document, escaped, with nothing to load. */
+function documentHtml(d: FakeDocgenDocument): string {
+  const body = d.blocks
+    .map((b) =>
+      b.type === "heading"
+        ? `<h1>${escapeHtml(b.text)}</h1>`
+        : `<p>${escapeHtml(b.runs.join(""))}</p>`,
+    )
+    .join("");
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(d.title)}</title></head><body>${body}</body></html>`;
+}
+
+/** Pages of a PDF, by its page objects (`/Type /Page`, not `/Pages`). */
+function pdfPages(b: Uint8Array): number {
+  return (
+    Buffer.from(b)
+      .toString("latin1")
+      .match(/\/Type\s*\/Page(?![A-Za-z])/g) ?? []
+  ).length;
+}
+
+/**
+ * Deterministic rendering. Without `files`, the output is a STORAGE reference whose hash is the
+ * hash of the template, data and format (nothing is written). With `files` (PR-UDF-077,
+ * R1-D-259), real bytes from the given renderers are written to STORAGE under the request's
+ * prefix, as `tenant/<tenant>/<module>/<ULID-shaped id>.<ext>`, with the SHA-256 of the bytes:
+ * `pdf` plain PDF, `pdfa` PDF/A-2b claiming PDF/UA-1, `docx` with a `docx` renderer, `html` the
+ * page as UTF-8. The id is taken from the bytes' hash, so the same request gives the same key.
+ */
 export class FakeDocgen implements DocgenPort {
   readonly descriptor: AdapterDescriptor = {
     port: "DOCGEN",
@@ -498,7 +638,10 @@ export class FakeDocgen implements DocgenPort {
     maxDataClass: "CONFIDENTIAL",
   };
   health = up;
-  constructor(private readonly templates: readonly TemplateInfo[] = FAKE_TEMPLATES) {}
+  constructor(
+    private readonly templates: readonly TemplateInfo[] = FAKE_TEMPLATES,
+    private readonly files?: FakeDocgenFiles,
+  ) {}
 
   private template(id: string): TemplateInfo {
     const t = this.templates.find((x) => x.templateId === id);
@@ -506,11 +649,56 @@ export class FakeDocgen implements DocgenPort {
     return t;
   }
 
+  /** Renders `doc` in `format` and writes it to STORAGE under `outputPrefix`. */
+  private async write(
+    files: FakeDocgenFiles,
+    doc: FakeDocgenDocument,
+    format: RenderFormat,
+    outputPrefix: string,
+  ): Promise<{ file: DocFileRef; pageCount: number | null }> {
+    let body: Uint8Array;
+    let ext: keyof typeof CONTENT_TYPES;
+    if (format === "pdf" || format === "pdfa") {
+      body = files.renderers.pdf(
+        doc,
+        format === "pdfa" ? { pdfa: "2b", pdfua: true, lang: "en" } : {},
+      );
+      ext = "pdf";
+    } else if (format === "docx") {
+      if (!files.renderers.docx)
+        throw new PortError("IPB-PORT-001", "DOCGEN", {
+          detail: "format docx needs a docx renderer",
+        });
+      body = files.renderers.docx(doc);
+      ext = "docx";
+    } else {
+      body = new TextEncoder().encode(documentHtml(doc));
+      ext = "html";
+    }
+    const sha256 = sha256Hex(body);
+    const storageKey = `${outputPrefix.replace(/\/$/, "")}/0${sha256.slice(0, 25).toUpperCase()}.${ext}`;
+    if (!isValidStorageKey(storageKey))
+      throw new PortError("IPB-PORT-001", "DOCGEN", {
+        detail: "the output prefix must be tenant/<tenant id>/<module>",
+      });
+    await files.storage.put(storageKey, body, {
+      contentType: CONTENT_TYPES[ext],
+      bucketClass: files.bucketClass ?? "CONFIDENTIAL",
+      sha256,
+    });
+    return { file: { storageKey, sha256 }, pageCount: ext === "pdf" ? pdfPages(body) : null };
+  }
+
   async render(req: unknown): Promise<RenderedDocument> {
     const r = RenderRequest.parse(req);
     const t = this.template(r.templateId);
     if (!t.formats.includes(r.format))
       throw new PortError("IPB-PORT-001", "DOCGEN", { detail: `format ${r.format} not offered` });
+    if (this.files) {
+      const doc = templateDocument(t, r.data);
+      const out = await this.write(this.files, doc, r.format, r.outputPrefix);
+      return { ...out, format: r.format, templateVersion: t.version, adapter: "fake-docgen" };
+    }
     return {
       file: fakeFile(r.outputPrefix, r.templateId, t.version, r.format, JSON.stringify(r.data)),
       format: r.format,
@@ -526,6 +714,10 @@ export class FakeDocgen implements DocgenPort {
 
   async renderHtml(req: unknown): Promise<RenderedDocument> {
     const r = HtmlRenderRequest.parse(req);
+    if (this.files) {
+      const out = await this.write(this.files, htmlDocument(r.html), r.format, r.outputPrefix);
+      return { ...out, format: r.format, templateVersion: null, adapter: "fake-docgen" };
+    }
     return {
       file: fakeFile(r.outputPrefix, "html", r.format, r.html),
       format: r.format,
@@ -648,125 +840,7 @@ export class FakePdf implements PdfPort {
   }
 }
 
-// ----------------------------------------------------------------------------------------- ESIGN
-
-/**
- * A deterministic ESIGN fake (PR-FBX-29 item 6): envelopes move to `completed` as each signer
- * signs through `sign()`, and every signature record carries the ESP's transaction id and the
- * signer's IP (item 7). It never downgrades a signer's method.
- */
-export class FakeEsign implements EsignPort {
-  readonly descriptor: AdapterDescriptor = {
-    port: "ESIGN",
-    adapter: "fake-esign",
-    residency: "IN",
-    maxDataClass: "REGULATED",
-  };
-  health = up;
-  private readonly envelopes = new Map<
-    string,
-    EnvelopeStatus & { doc: DocumentRef; records: SignatureRecord[] }
-  >();
-  private n = 0;
-  constructor(private readonly now: () => Date = () => new Date()) {}
-
-  async createEnvelope(
-    doc: DocumentRef,
-    signers: Signer[],
-    _order?: "sequential" | "parallel",
-    _fields?: unknown[],
-  ): Promise<{ envelopeId: string }> {
-    DocumentRef.parse(doc);
-    if (!signers.length) throw new RangeError("an envelope has a signer");
-    const id = `esr_FAKE${String(++this.n).padStart(22, "0")}`;
-    this.envelopes.set(id, {
-      envelopeId: id,
-      vendorRef: `fake-${this.n}`,
-      state: "draft",
-      signers: signers.map((s) => ({ ref: s.ref, state: "pending", method: s.method })),
-      doc,
-      records: [],
-    });
-    return { envelopeId: id };
-  }
-  private get(id: string) {
-    const e = this.envelopes.get(id);
-    if (!e) throw new PortError("IPB-PORT-001", "ESIGN", { detail: "unknown envelope" });
-    return e;
-  }
-  private status(id: string): EnvelopeStatus {
-    const e = this.get(id);
-    return {
-      envelopeId: e.envelopeId,
-      vendorRef: e.vendorRef,
-      state: e.state,
-      signers: e.signers.map((s) => ({ ...s })),
-    };
-  }
-  async sendForSignature(id: string): Promise<EnvelopeStatus> {
-    const e = this.get(id);
-    if (e.state === "draft") e.state = "sent";
-    return this.status(id);
-  }
-  async getStatus(id: string): Promise<EnvelopeStatus> {
-    return this.status(id);
-  }
-  /** Test helper: a signer signs at the ESP from `ip`. */
-  sign(id: string, signerRef: string, ip = "203.0.113.10"): EnvelopeStatus {
-    const e = this.get(id);
-    const s = e.signers.find((x) => x.ref === signerRef);
-    if (!s || !["sent", "partially_signed"].includes(e.state)) throw new Error("cannot sign now");
-    s.state = "signed";
-    s.at = this.now().toISOString();
-    e.records.push({
-      alg: "rsa-pkcs1-sha256",
-      keyId: `fake-key-${signerRef}`,
-      certChainRef: `fake-chain-${signerRef}`,
-      signerRef,
-      signedAt: s.at,
-      espTransactionId: `ESP-${sha256Hex(id + signerRef)
-        .slice(0, 16)
-        .toUpperCase()}`,
-      signerIp: ip,
-    });
-    e.state = e.signers.every((x) => x.state === "signed") ? "completed" : "partially_signed";
-    return this.status(id);
-  }
-  async downloadSigned(id: string) {
-    const e = this.get(id);
-    if (e.state !== "completed")
-      throw new PortError("IPB-PORT-001", "ESIGN", { detail: "envelope not completed" });
-    const sha256 = sha256Hex(e.doc.sha256 + JSON.stringify(e.records));
-    return {
-      storageKey: `${e.doc.storageKey}.signed.pdf`,
-      sha256,
-      signatures: e.records.map((r) => ({ ...r })),
-    };
-  }
-  async aadhaarEsign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
-    return { redirectUrl: `https://fake-esp.invalid/${session.envelopeId}/${session.signerRef}` };
-  }
-  async dscSign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
-    return { redirectUrl: `https://fake-dsc.invalid/${session.envelopeId}/${session.signerRef}` };
-  }
-  async verifySignature(doc: DocumentRef) {
-    const e = [...this.envelopes.values()].find(
-      (x) => `${x.doc.storageKey}.signed.pdf` === doc.storageKey,
-    );
-    return { valid: !!e && e.state === "completed", signatures: e?.records ?? [] };
-  }
-  async cancel(id: string): Promise<void> {
-    const e = this.get(id);
-    if (e.state === "completed") throw new RangeError("the envelope is completed");
-    e.state = "cancelled";
-  }
-  async handleWebhook(rawBody: Uint8Array): Promise<EnvelopeStatus> {
-    const { envelopeId } = JSON.parse(new TextDecoder().decode(rawBody)) as { envelopeId: string };
-    return this.status(envelopeId);
-  }
-}
+// ESIGN: FakeEsign lives in ./esign.ts (PR-UDF-070) and is exported from the package index.
 
 // -------------------------------------------------------------------------------- contract cases
 
