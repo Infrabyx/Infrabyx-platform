@@ -30,7 +30,8 @@ function rewrap(pem: string, edit: (raw: Buffer) => Buffer): string {
     .trim();
   const raw = edit(Buffer.from(body, "base64"));
   const lines = raw.toString("base64").match(/.{1,70}/g) ?? [];
-  return `-----BEGIN OPENSSH PRIVATE KEY-----\n${lines.join("\n")}\n-----END OPENSSH PRIVATE KEY-----\n`;
+  // The PEM armour around a test key built above, not key material.
+  return `-----BEGIN OPENSSH PRIVATE KEY-----\n${lines.join("\n")}\n-----END OPENSSH PRIVATE KEY-----\n`; // gitleaks:allow
 }
 
 describe("SSH keys (C-29)", () => {
