@@ -4,6 +4,8 @@ import {
   CF_PARA_9_3_DOCUMENT_KINDS,
   ExecutionPackIssuedData,
   ExecutionPackManifest,
+  LoanDisbursedData,
+  originationSubject,
 } from "@infrabyx/contracts/events";
 import { sha256Hex, verifyDocumentJws } from "@infrabyx/crypto";
 import { FakeLender, type LenderMessage } from "@infrabyx/fakes";
@@ -162,5 +164,21 @@ describe("FakeLender: PR-UDF-061 items 14, 15 and 17 (R1-D-236)", () => {
       document_id: agreement.document_id,
       sha256: agreement.sha256,
     });
+  });
+});
+
+// PR-UDF-061 finding (i) (owner, 21 Nov 2026 11:00; R1-D-256).
+describe("FakeLender: LoanDisbursed names the application both ways (R1-D-256)", () => {
+  it("sends application_id and lsp_application_ref, and keeps loan_id as the subject", async () => {
+    const l = new FakeLender();
+    const { applicationId } = await l.submitApplication(submit("lspapp_fake_disbursed"));
+    await accept(l, applicationId);
+    const { loanId } = await l.disburse(applicationId);
+    const m = l.outbox().find((x) => x.name === "LoanDisbursed")!;
+    const d = LoanDisbursedData.parse(m.event.data);
+    expect(d.application_id).toBe(applicationId);
+    expect(d.lsp_application_ref).toBe("lspapp_fake_disbursed");
+    expect(m.event.subject).toBe(loanId);
+    expect(originationSubject("LoanDisbursed", m.event.data)).toBe(loanId);
   });
 });

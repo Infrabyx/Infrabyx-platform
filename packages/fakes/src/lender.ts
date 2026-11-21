@@ -22,7 +22,7 @@
 // lender's words; the KFS carries its issue time, language, document reference, tenor in days,
 // cash flows (net disbursed and a monthly schedule), charges, cooling-off days, exit terms, nodal
 // grievance officer and the LSP entry; the sanction letter its document reference; `LoanDisbursed`
-// the application id and time. An acceptance naming another KFS version or hash, or another
+// the application id and time (and, R1-D-256, the LSP's application reference). An acceptance naming another KFS version or hash, or another
 // application, is refused (`kfs_mismatch`, `application_mismatch`). An exit request inside the
 // cooling-off period is answered once with `CoolingOffExitAnswered`: principal plus the APR for the
 // days held, a payment instruction in words and the lender's exit reference.
@@ -617,6 +617,8 @@ export class FakeLender {
       cooling_off_end: coolingOffEnd.toISOString(),
       application_id: app.applicationId,
       disbursed_at: disbursedAt.toISOString(),
+      // R1-D-256 (PR-UDF-061 finding (i)): both references, so the LSP can match its own.
+      lsp_application_ref: app.lspRef,
     });
     await this.move(app, "DISBURSED");
     return { loanId, utr };
