@@ -20,6 +20,7 @@ export * from "./ports/dispatch.js";
 export * from "./ports/documents-money.js";
 export * from "./ports/email-inbound.js";
 export * from "./ports/file-scan.js";
+export * from "./ports/file-transfer.js";
 export * from "./ports/grc.js";
 export * from "./ports/identity.js";
 export * from "./ports/kyc.js";
