@@ -1456,6 +1456,45 @@ const pdf = toPdf(statement, {
 - `renderPdf` passes `pdfa` and `lang` to the in-process path; documents with Indic text still go to DOCGEN (§7ay), whose PDF/A is not byte-deterministic.
 - **Adopt** with all `@infrabyx/*` pins moved together. To check your own templates, run the pinned veraPDF image the way `packages/export/src/__tests__/pdfa.int.test.ts` does (`TEST_IMAGES.verapdf`, `withJvmMitigation("verapdf")`, `--flavour 2b`, and `ua1` with `pdfua`).
 
+## 7ec. ESIGN: the signer's certificate on each record, the fake in STORAGE, multi-document envelopes (PR-UDF-070; R1-D-251)
+
+Minors of `contracts`, `crypto`, `fakes`, `testing` and `connectors`; no migration, setting or environment variable. Nothing changes for a caller that does not read the new fields.
+
+**The signer certificate.** `downloadSigned` records may now carry `signerCertificate`:
+
+```ts
+const { signatures } = await esign.downloadSigned(envelopeId);
+for (const s of signatures) {
+  s.signerCertificate; // { serialNumber, issuer, notBefore, notAfter, sha256, subjectCommonName? } | undefined
+}
+```
+
+- `leegality` and `digio` read it from the signed PDF's own signatures, so it is the certificate the ESP actually signed with. It is set only when each signature can be tied to one signer for certain (sequential: envelope order; parallel: the ESP's distinct signing times); otherwise it is absent, never guessed. `nsdl-esign` sets nothing until it can sign (#177).
+- It names the certificate; it does not say it is trusted. To decide, run `verifyPadesSignatures` on the stored file (its `signer.serial`, `signer.issuer` and `signer.certSha256` equal `serialNumber`, `issuer` and `sha256`).
+- `subjectCommonName` is usually the signer's name: keep it with your signing evidence (CONFIDENTIAL, like `signerIp`) and out of logs.
+- For a certificate you hold yourself (an ESP response, a PEM file), `signerCertificateSummary(derOrPem)` from `@infrabyx/crypto` gives the same shape; `padesSignerCertificates(pdf)` lists the certificate of each signature in a PDF.
+
+**The fake.** `new FakeEsign({ storage })` (from `@infrabyx/fakes` or `@infrabyx/testing`) reads your document from STORAGE (put it there first, with an IPB-01-27 key; a wrong SHA-256 is refused `hash_mismatch`), signs it with a real PAdES signature per signer, and on the first `downloadSigned` writes the signed PDF and each signer's PEM chain to STORAGE as REGULATED objects under the document's tenant (`certChainRef` is the chain's key). Verify its files with `verifyPadesSignatures(body, { trust: fake.trustStore() })`. Hooks: `signedObjects()`, `failNextDownload()`, `setSignerCertificate(ref, cert)` (a `pades-test` `TestSigner` signs; DER or PEM bytes are only named, to test a mismatch), `decline()`, `signDocument()`. `new FakeEsign()` without storage behaves as before; signing twice for the same signer is now a no-op.
+
+**Multi-document envelopes.** Where an adapter supports them (today only the fake; the vendor adapters refuse `unsupported` until verified, so check `descriptor.capabilities.createMultiDocumentEnvelope`):
+
+```ts
+const { envelopeId } = await esign.createMultiDocumentEnvelope!(
+  [
+    { doc: loanAgreement, fields: [] },
+    {
+      doc: keyFactStatement,
+      fields: [{ signerRef: "usr_b", page: 1, x: 40, y: 60, width: 160, height: 48 }],
+    },
+  ],
+  signers,
+  "sequential",
+);
+const { documents } = await esign.downloadSignedDocuments!(envelopeId); // after `completed`
+```
+
+One to ten documents, unique ids and storage keys. **All or nothing:** a signer is `signed` only after signing every document, the envelope completes only when every document is signed by every signer, a decline declines the whole envelope, and nothing downloads before completion (`not_completed`). `getStatus(...).documents` shows each document's progress; `downloadSigned` on several documents is refused `multi_document`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
