@@ -28,6 +28,12 @@ export const JVM_IMAGES = {
     variable: "JAVA_TOOL_OPTIONS",
     jvm: "OpenJDK 21.0.9 (/usr/lib/localstack/java/21)",
   },
+  // Test-only (TEST_IMAGES, PR-FBX-52; scanned 20 Nov 2026): the launcher /opt/verapdf/verapdf
+  // runs `exec java $JAVA_OPTS ...` with no JVM option after it that names the flag.
+  "verapdf/cli": {
+    variable: "JAVA_OPTS",
+    jvm: "Eclipse Temurin OpenJDK 11.0.32.1 (/opt/java/openjdk)",
+  },
 };
 
 /** Image repositories scanned on 19 Nov 2026 with no JVM in them. */

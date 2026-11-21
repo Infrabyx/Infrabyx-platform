@@ -1,6 +1,8 @@
-// PDF renderer (PR-LDC-28, R1-D-95): structure, determinism, the WinAnsi limit, links and limits.
+// PDF renderer (PR-LDC-28, R1-D-95): structure, determinism, the WinAnsi limit, links and limits;
+// PDF/A-2b and tagging (PR-FBX-52, R1-D-248; veraPDF runs in src/__tests__/pdfa.int.test.ts).
 import { inflateSync } from "node:zlib";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { sha256Hex } from "@infrabyx/crypto";
 import { OfficeExportError } from "./ooxml.js";
 import { toPdf, type PdfDocument } from "./pdf.js";
 import { blocksToHtml, pdfNeedsShaping, renderPdf } from "./pdf-route.js";
@@ -257,5 +259,226 @@ describe("renderPdf and blocksToHtml (Indic text through DOCGEN, #117)", () => {
     expect(html).toContain("thead{display:table-header-group}");
     expect(html).not.toMatch(/<script|<img|<link|@import|url\(/);
     expect(reason(() => blocksToHtml(hindi, { lang: 'hi"><script>' }))).toBe("block_invalid");
+  });
+});
+
+describe("toPdf PDF/A-2b, tagged (PR-FBX-52, R1-D-248; IPB-06-26)", () => {
+  const A = { created: T, creator: "Infrabyx", pdfa: "2b", lang: "en-IN" } as const;
+  const pdf = toPdf(DOC, A);
+  const s = latin(pdf);
+  /** The XMP packet and the offset of its object. */
+  const metadata = (b: Buffer) => {
+    const t = latin(b);
+    const m = /(\d+) 0 obj\n<< \/Type \/Metadata \/Subtype \/XML \/Length (\d+) >>\nstream\n/.exec(
+      t,
+    )!;
+    const start = m.index + m[0].length;
+    return { at: m.index, xml: b.subarray(start, start + Number(m[2])).toString("utf8") };
+  };
+
+  it("leaves the default output byte for byte as @infrabyx/export 1.8.5 wrote it", () => {
+    // SHA-256 of 1.8.5's output on Node 24.22.1 (its zlib): products' PDFs do not change unless
+    // they ask for PDF/A.
+    expect(sha256Hex(toPdf(DOC, { created: T, creator: "Infrabyx" }))).toBe(
+      "26318a0549d7c6744d5eb256284182f1aa7fcbc2f7f9b371122549c5effa138f",
+    );
+    expect(sha256Hex(toPdf({ blocks: [] }))).toBe(
+      "3266f351cdcd1c5b678d1c2808ec6667e95aad0852485301a47b58e8bad8dcc5",
+    );
+    const arrows: PdfDocument = {
+      blocks: [
+        { type: "paragraph", runs: ["Filed → Accepted ⇒ Closed ↔ ↩"] },
+        { type: "paragraph", runs: [{ text: "Step A→B", bold: true }] },
+        {
+          type: "numberedList",
+          items: [["x"], ["y", { text: "it", italic: true, underline: true }]],
+        },
+      ],
+    };
+    expect(sha256Hex(toPdf(arrows, { created: T }))).toBe(
+      "e3578323ac29a5d358c42d74dc50f7b7648de9bf0120c06f067528a17b7105d1",
+    );
+    // `lang` alone changes nothing: it is read in PDF/A mode only.
+    expect(
+      toPdf(DOC, { created: T, creator: "Infrabyx", lang: "hi" }).equals(
+        toPdf(DOC, { created: T, creator: "Infrabyx" }),
+      ),
+    ).toBe(true);
+    expect(s).not.toBe(latin(toPdf(DOC, { created: T, creator: "Infrabyx" })));
+  });
+
+  it("writes XMP metadata from the document and `created`, consistent with /Info, never the clock", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2031-07-01T12:34:56Z"));
+      expect(toPdf(DOC, A).equals(pdf)).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+    const { at, xml } = metadata(pdf);
+    for (const t of [
+      "<pdfaid:part>2</pdfaid:part>",
+      "<pdfaid:conformance>B</pdfaid:conformance>",
+      "<dc:format>application/pdf</dc:format>",
+      '<dc:title><rdf:Alt><rdf:li xml:lang="x-default">Report</rdf:li></rdf:Alt></dc:title>',
+      "<dc:language><rdf:Bag><rdf:li>en-IN</rdf:li></rdf:Bag></dc:language>",
+      "<xmp:CreateDate>2026-11-04T00:00:00Z</xmp:CreateDate>",
+      "<xmp:ModifyDate>2026-11-04T00:00:00Z</xmp:ModifyDate>",
+      "<xmp:MetadataDate>2026-11-04T00:00:00Z</xmp:MetadataDate>",
+      "<xmp:CreatorTool>Infrabyx</xmp:CreatorTool>",
+      "<pdf:Producer>Infrabyx export</pdf:Producer>",
+    ])
+      expect(xml).toContain(t);
+    expect(xml).not.toContain("pdfuaid");
+    expect(s).toContain(
+      "/Producer (Infrabyx export) /CreationDate (D:20261104000000Z) /ModDate (D:20261104000000Z)",
+    );
+    // The ids are the content digest: the /ID pair and the XMP document and instance ids, all
+    // from every byte before the metadata object (which is the last object).
+    const id = /\/ID \[<([0-9a-f]{32})> <\1>\]/.exec(s)![1]!;
+    expect(sha256Hex(pdf.subarray(0, at)).slice(0, 32)).toBe(id);
+    const uuid = id.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "uuid:$1-$2-$3-$4-$5");
+    expect(xml).toContain(`<xmpMM:DocumentID>${uuid}</xmpMM:DocumentID>`);
+    expect(xml).toContain(`<xmpMM:InstanceID>${uuid}</xmpMM:InstanceID>`);
+    expect(s.slice(at)).toMatch(/^\d+ 0 obj\n<< \/Type \/Metadata[\s\S]*?endobj\nxref\n/);
+    expect(s).toMatch(
+      /<< \/Type \/Catalog \/Pages 2 0 R \/Metadata \d+ 0 R \/OutputIntents \[\d+ 0 R\] \/StructTreeRoot \d+ 0 R \/MarkInfo << \/Marked true >> \/Lang \(en-IN\) \/ViewerPreferences << \/DisplayDocTitle true >> >>/,
+    );
+  });
+
+  it("embeds the bundled sRGB profile as the output intent, every font, and printable links", () => {
+    expect(s.startsWith("%PDF-1.7\n%\xe2\xe3\xcf\xd3\n")).toBe(true);
+    expect(s).toMatch(
+      /<< \/Type \/OutputIntent \/S \/GTS_PDFA1 \/OutputConditionIdentifier \(sRGB IEC61966-2\.1\) .*\/DestOutputProfile \d+ 0 R >>/,
+    );
+    const icc = /<< \/N 3 \/Length (\d+) \/Filter \/FlateDecode >>\nstream\n/.exec(s)!;
+    const start = icc.index + icc[0].length;
+    const profile = inflateSync(pdf.subarray(start, start + Number(icc[1])));
+    expect(sha256Hex(profile)).toBe(
+      "af4efe28f6d311799865f325ba39184a2e978b113ca74124d60af7de22b105f4",
+    );
+    expect(profile.toString("latin1", 12, 20)).toBe("mntrRGB ");
+    const fonts = (s.match(/\/Subtype \/CIDFontType2/g) ?? []).length;
+    expect(fonts).toBeGreaterThan(0);
+    expect((s.match(/\/FontFile2/g) ?? []).length).toBe(fonts);
+    expect(s).toMatch(
+      /\/Subtype \/Link \/Rect \[[^\]]*\] \/Border \[0 0 0\] \/F 4 \/StructParent \d+ \/Contents <FEFF[0-9A-F]+> \/A << \/S \/URI \/URI \(https:\/\/example\.com\/x\) >>/,
+    );
+    for (const k of ["/JavaScript", "/JS", "/AcroForm", "/EmbeddedFile", "/Launch", "/Encrypt"])
+      expect(s).not.toContain(k);
+  });
+
+  it("tags every drawing: text in structure elements with MCIDs, rules and repeated headers as artifacts", () => {
+    const streams = contents(pdf);
+    expect(streams.length).toBeGreaterThanOrEqual(4);
+    streams.forEach((c, page) => {
+      let open = 0;
+      const mcids: number[] = [];
+      for (const line of c.split("\n")) {
+        const m = /^\/(\w+) << \/MCID (\d+) >> BDC$/.exec(line);
+        if (m || line === "/Artifact BMC" || line === "/Artifact << /Type /Pagination >> BDC") {
+          expect(open, `page ${page}: nested marked content`).toBe(0);
+          open = 1;
+          if (m) mcids.push(Number(m[2]));
+        } else if (line === "EMC") {
+          expect(open).toBe(1);
+          open = 0;
+        } else expect(open, `page ${page}: untagged ${line}`).toBe(1);
+      }
+      expect(open).toBe(0);
+      expect(mcids).toEqual(mcids.map((_, i) => i));
+      // The table header repeated on later pages is a pagination artifact.
+      if (page > 0 && page < streams.length - 1)
+        expect(c).toContain("/Artifact << /Type /Pagination >> BDC");
+    });
+    expect(streams[0]).toMatch(/\/H1 << \/MCID 0 >> BDC\nBT /);
+    for (const t of [
+      "/S /Document",
+      "/S /H1",
+      "/S /P",
+      "/S /Link",
+      "/S /L",
+      "/S /LI",
+      "/S /Lbl",
+      "/S /LBody",
+      "/S /Table",
+      "/S /THead",
+      "/S /TBody",
+      "/S /TR",
+      "/S /TD",
+    ])
+      expect(s).toContain(t);
+    expect(
+      (s.match(/\/S \/TH \/P \d+ 0 R \/A << \/O \/Table \/Scope \/Column >>/g) ?? []).length,
+    ).toBe(2);
+    expect((s.match(/\/S \/TR /g) ?? []).length).toBe(151);
+    // One Link element per linked run, holding its text and its annotation (one per word).
+    expect((s.match(/\/S \/Link /g) ?? []).length).toBe(1);
+    expect((s.match(/<< \/Type \/OBJR \/Pg \d+ 0 R \/Obj \d+ 0 R >>/g) ?? []).length).toBe(2);
+    const pages = Number(/\/Type \/Pages \/Kids \[[^\]]*\] \/Count (\d+)/.exec(s)![1]);
+    expect(s).toContain(`/ParentTreeNextKey ${pages + 2}`);
+    expect((s.match(/\/StructParents \d+ \/Tabs \/S/g) ?? []).length).toBe(pages);
+  });
+
+  it("gives the same bytes twice; another `created` changes only the dates and the ids", () => {
+    expect(toPdf(DOC, A).equals(pdf)).toBe(true);
+    const other = toPdf(DOC, { ...A, created: new Date("2027-03-31T18:30:00Z") });
+    expect(other.length).toBe(pdf.length);
+    const allowed: Array<[number, number]> = [];
+    for (const re of [
+      /\/(CreationDate|ModDate) \(D:\d{14}Z\)/g,
+      /<xmp:(Create|Modify|Metadata)Date>[^<]+</g,
+      /uuid:[0-9a-f-]{36}/g,
+      /\/ID \[<[0-9a-f]{32}> <[0-9a-f]{32}>\]/g,
+    ])
+      for (const m of s.matchAll(re)) allowed.push([m.index, m.index + m[0].length]);
+    let changed = 0;
+    for (let i = 0; i < pdf.length; i++)
+      if (pdf[i] !== other[i]) {
+        changed++;
+        expect(
+          allowed.some(([a, b]) => i >= a && i < b),
+          `byte ${i}`,
+        ).toBe(true);
+      }
+    expect(changed).toBeGreaterThan(0);
+    expect(latin(other)).toContain("<xmp:CreateDate>2027-03-31T18:30:00Z</xmp:CreateDate>");
+  });
+
+  it("claims PDF/UA-1 on request, for a titled document whose headings skip no level", () => {
+    const ua = toPdf(DOC, { ...A, pdfua: true });
+    const { xml } = metadata(ua);
+    expect(xml).toContain("<pdfuaid:part>1</pdfuaid:part>");
+    expect(xml).toContain(
+      "<pdfaSchema:namespaceURI>http://www.aiim.org/pdfua/ns/id/</pdfaSchema:namespaceURI>",
+    );
+    const headed = (title: string | undefined, ...levels: number[]): PdfDocument => ({
+      ...(title !== undefined ? { title } : {}),
+      blocks: levels.map((level) => ({ type: "heading", level: level as 1, text: "x" })),
+    });
+    const ok = { pdfa: "2b", pdfua: true } as const;
+    expect(reason(() => toPdf(headed("T", 1, 2, 3, 2, 1, 2), ok))).toBeNull();
+    expect(reason(() => toPdf(headed("T", 2), ok))).toBe("block_invalid");
+    expect(reason(() => toPdf(headed("T", 1, 3), ok))).toBe("block_invalid");
+    expect(reason(() => toPdf(headed(undefined, 1), ok))).toBe("block_invalid");
+    expect(reason(() => toPdf(headed(" ", 1), ok))).toBe("block_invalid");
+  });
+
+  it("refuses options and text that PDF/A cannot honour", () => {
+    expect(reason(() => toPdf(DOC, { pdfa: "1b" as never }))).toBe("pdfa_invalid");
+    expect(reason(() => toPdf(DOC, { pdfa: "2b", lang: "en_IN" }))).toBe("pdfa_invalid");
+    expect(reason(() => toPdf(DOC, { pdfua: true }))).toBe("pdfa_invalid");
+    expect(reason(() => toPdf({ title: "a\u0001b", blocks: [] }, { pdfa: "2b" }))).toBe(
+      "block_invalid",
+    );
+    expect(reason(() => toPdf(DOC, { pdfa: "2b", creator: "\uffff" }))).toBe("block_invalid");
+    expect(reason(() => toPdf(DOC, { pdfa: "2b", maxBytes: 2_000 }))).toBe("too_large");
+    expect(reason(() => toPdf({ blocks: [] }, { pdfa: "2b" }))).toBeNull();
+    expect(latin(toPdf({ blocks: [] }, { pdfa: "2b" }))).toContain("/Lang (en)");
+  });
+
+  it("renderPdf passes PDF/A through on the in-process path", async () => {
+    const r = await renderPdf(DOC, { ...A, format: "pdfa" });
+    expect(r.via === "inline" && r.pdf.equals(pdf)).toBe(true);
   });
 });
