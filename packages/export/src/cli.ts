@@ -20,7 +20,7 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ExportMap } from "@infrabyx/contracts/export";
 import { diffArchives, loadArchiveFiles } from "./diff.js";
-import { exportMapGate, type MapChange } from "./gate.js";
+import { archiveModules, exportMapGate, type MapChange } from "./gate.js";
 import { readZip } from "./zip.js";
 
 const out = (s: string) => void process.stdout.write(`${s}\n`);
@@ -98,6 +98,11 @@ export function mapGate(argv: string[]): number {
       .map((f) => readFileSync(f, "utf8")),
     unchangedLabel: argv.includes("--unchanged-label"),
     exportDir,
+    // R1-D-263: only the source files an archive can depend on trigger (read at the PR head).
+    archiveModules: archiveModules((p) => {
+      const f = join(exportDir, p);
+      return existsSync(f) ? readFileSync(f, "utf8") : null;
+    }),
   });
   for (const t of r.triggers) out(`trigger: ${t}`);
   for (const f of r.findings) out(`IPB-ENG-006 ${f}`);

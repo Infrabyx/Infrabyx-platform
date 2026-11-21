@@ -5,12 +5,68 @@
 // map version bumped (at least as far as `requiredMapBump` says) with a changeset line
 // `export_map: <version>`, or the `export:unchanged` attestation (reviewed by PLT_RELEASE_MANAGER
 // through CODEOWNERS). A map that names a table or column no migration creates always fails.
+// R1-D-263 (owner, 21 Nov 2026): a TypeScript source file of the package triggers only when the
+// archive can depend on it, i.e. it is one of `ARCHIVE_ROOTS` or reached from them by relative
+// imports (`archiveModules`); a read-only reader such as `pdf-id.ts` that no archive module imports
+// does not. Maps, the verifier, migrations and any other file under `src/` trigger as before.
 import { parseMapVersion, requiredMapBump, type ExportMap } from "@infrabyx/contracts/export";
 
 export interface MapChange {
   path: string;
   before: ExportMap | null;
   after: ExportMap | null;
+}
+
+/**
+ * The modules an archive is built from (R1-D-263): the writer, the export job service, the tenant
+ * snapshot, the map loader and the golden archive. Paths relative to the export package.
+ */
+export const ARCHIVE_ROOTS: readonly string[] = Object.freeze([
+  "src/archive.ts",
+  "src/service.ts",
+  "src/snapshot.ts",
+  "src/maps.ts",
+  "src/golden.ts",
+]);
+
+const STATIC_IMPORT =
+  /\b(?:import|export)\s+(?:type\s+)?(?:[^"';]*?\s+from\s+)?["'](\.{1,2}\/[^"']+)["']/g;
+const DYNAMIC_IMPORT = /\bimport\s*\(/;
+
+function joinRelative(from: string, spec: string): string {
+  const parts = from.split("/").slice(0, -1);
+  for (const seg of spec.split("/")) {
+    if (seg === "." || seg === "") continue;
+    if (seg === "..") parts.pop();
+    else parts.push(seg);
+  }
+  return parts.join("/").replace(/\.js$/, ".ts");
+}
+
+/**
+ * The export package's source files an archive can depend on (R1-D-263): `roots` and every module
+ * they import by a relative path, directly or not (`import`, `export … from`, type imports
+ * included). `read` gives a file's text by its path relative to the package, or null if there is
+ * none. Undefined (the caller then keeps the old rule, every source file triggers) when a reached
+ * file cannot be read or holds a dynamic `import(`, whose target the graph cannot know.
+ */
+export function archiveModules(
+  read: (path: string) => string | null,
+  roots: readonly string[] = ARCHIVE_ROOTS,
+): Set<string> | undefined {
+  const seen = new Set<string>();
+  const todo = [...roots];
+  while (todo.length) {
+    const f = todo.pop() as string;
+    if (seen.has(f)) continue;
+    const text = read(f);
+    if (text === null) return undefined;
+    const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+    if (DYNAMIC_IMPORT.test(code)) return undefined;
+    seen.add(f);
+    for (const m of code.matchAll(STATIC_IMPORT)) todo.push(joinRelative(f, m[1] as string));
+  }
+  return seen;
 }
 
 export interface GateInput {
@@ -29,6 +85,12 @@ export interface GateInput {
   unchangedLabel: boolean;
   /** The export package directory (default `packages/export/`). */
   exportDir?: string;
+  /**
+   * R1-D-263: the package's source files an archive can depend on, relative to the package
+   * (`archiveModules`). When given, a `src/**\/*.ts` file outside it does not trigger; when
+   * absent, every source file does (the rule before).
+   */
+  archiveModules?: ReadonlySet<string> | undefined;
 }
 
 export interface GateResult {
@@ -159,9 +221,11 @@ const RANK = { none: 0, minor: 1, major: 2 } as const;
  * verifier and migrations. Tests, the golden fixture, the README, the changelog and `package.json`
  * (release metadata, e.g. the version PR) cannot.
  */
-export function shapesExports(path: string): boolean {
+export function shapesExports(path: string, archive?: ReadonlySet<string>): boolean {
   if (/^(golden|node_modules|dist)\//.test(path)) return false;
   if (/(^|\/)__tests__\//.test(path) || /\.test\.[cm]?[jt]s$/.test(path)) return false;
+  // R1-D-263: a TypeScript source file counts only when the archive can depend on it.
+  if (archive && /^src\/.*\.ts$/.test(path)) return archive.has(path);
   return /^(src|maps|verify|migrations)\//.test(path);
 }
 
@@ -201,7 +265,7 @@ export function exportMapGate(i: GateInput): GateResult {
         triggers.push(`${m.path} changes ${src} (${label})`);
   }
   for (const f of i.changedFiles)
-    if (f.startsWith(exportDir) && shapesExports(f.slice(exportDir.length)))
+    if (f.startsWith(exportDir) && shapesExports(f.slice(exportDir.length), i.archiveModules))
       triggers.push(`${f} is in the export package`);
   for (const c of i.mapChanges) triggers.push(`${c.path} changes an export map`);
 
