@@ -170,9 +170,11 @@ describe("the ESIGN fake (PR-FBX-29)", () => {
   for (const c of esignFakeCases()) it(c.name, () => c.run(new FakeEsign()));
 });
 
-describe("the ESIGN fake over STORAGE (PR-UDF-070)", () => {
-  const storage = new MemoryStorage();
-  for (const c of esignFakeStorageCases(storage))
+describe("the ESIGN fake over STORAGE (PR-UDF-070, PR-UDF-074)", () => {
+  const storage = new MemoryStorage(undefined, {
+    keyRefs: (t) => (t === "tnt_contract" ? ["lender:contract"] : []),
+  });
+  for (const c of esignFakeStorageCases(storage, { keyRef: "lender:contract" }))
     it(c.name, () => c.run(new FakeEsign({ storage })), 30_000);
 });
 

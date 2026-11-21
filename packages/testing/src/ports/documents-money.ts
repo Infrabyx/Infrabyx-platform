@@ -701,9 +701,14 @@ const esignDoc = (tag: string): DocumentRef => ({
 
 /**
  * PR-UDF-070: `FakeEsign({ storage })` cases. The fake must be built over `storage`; each case
- * puts its own documents there.
+ * puts its own documents there. PR-UDF-074 (R1-D-260): with `opts.keyRef`, a reference `storage`
+ * resolves in tenant `tnt_contract` (REGULATED), the named-key download cases run too; `storage`
+ * must not know `opts.unknownKeyRef` (default `lender:contract_unknown`).
  */
-export function esignFakeStorageCases(storage: StoragePort): Array<ContractCase<FakeEsign>> {
+export function esignFakeStorageCases(
+  storage: StoragePort,
+  opts: { keyRef?: string; unknownKeyRef?: string } = {},
+): Array<ContractCase<FakeEsign>> {
   let seq = 0;
   const put = async (body: Uint8Array): Promise<DocumentRef> => {
     const n = ++seq;
@@ -724,7 +729,85 @@ export function esignFakeStorageCases(storage: StoragePort): Array<ContractCase<
     for (const s of signers) p.sign(envelopeId, s.ref);
     return envelopeId;
   };
+  const keyRef = opts.keyRef;
+  const unknownKeyRef = opts.unknownKeyRef ?? "lender:contract_unknown";
+  // Own signer references, so the fake's chain keys (envelope and signer) never meet the other
+  // cases' chains, written without a reference, in a shared store (STORAGE's `key_ref_changed`).
+  const mine: Signer[] = two.map((s) => ({ ...s, ref: `${s.ref}_named` }));
+  const named: Array<ContractCase<FakeEsign>> = keyRef
+    ? [
+        {
+          name: "@IPB-01-15 PR-UDF-074 a download naming the tenant's key writes the signed PDF and the chains under it",
+          async run(p) {
+            const envelopeId = await complete(p, await put(minimalPdf()), mine);
+            const out = await p.downloadSigned(envelopeId, { keyRef });
+            const stored = await storage.get(out.storageKey);
+            expect(stored.meta).toMatchObject({ bucketClass: "REGULATED", keyRef });
+            expect(sha256Hex(stored.body)).toBe(out.sha256);
+            const [obj] = p.signedObjects().filter((o) => o.envelopeId === envelopeId);
+            expect(obj?.keyRef).toBe(keyRef);
+            for (const c of obj?.chains ?? [])
+              expect((await storage.get(c.storageKey)).meta.keyRef).toBe(keyRef);
+            // The same reference returns the same file; another (or none) is refused, never a
+            // second copy under another key.
+            expect((await p.downloadSigned(envelopeId, { keyRef })).storageKey).toBe(
+              out.storageKey,
+            );
+            for (const other of [{}, { keyRef: unknownKeyRef }])
+              await expect(p.downloadSigned(envelopeId, other)).rejects.toMatchObject({
+                code: "IPB-PORT-003",
+                meta: { reason: "key_ref_changed" },
+              });
+          },
+        },
+        {
+          name: "@IPB-01-15 PR-UDF-074 a key the tenant does not have, or a malformed reference, fails the download and writes nothing",
+          async run(p) {
+            const envelopeId = await complete(p, await put(minimalPdf()), mine);
+            const before = p.signedObjects().length;
+            await expect(
+              p.downloadSigned(envelopeId, { keyRef: unknownKeyRef }),
+            ).rejects.toMatchObject({ meta: { reason: "key_ref_unknown" } });
+            for (const bad of ["arn:aws:kms:ap-south-1:111122223333:key/x", "X", "mrk-1234"])
+              await expect(p.downloadSigned(envelopeId, { keyRef: bad })).rejects.toMatchObject({
+                code: "IPB-PORT-003",
+                meta: { reason: "key_ref_invalid" },
+              });
+            expect(p.signedObjects()).toHaveLength(before);
+            const tenantEsign = (await storage.list("tenant/tnt_contract/esign/")).keys;
+            // Never a fallback to the class key: the refused calls wrote no signed file.
+            const out = await p.downloadSigned(envelopeId, { keyRef });
+            expect(tenantEsign).not.toContain(out.storageKey);
+            expect((await storage.get(out.storageKey)).meta.keyRef).toBe(keyRef);
+            for (const c of p.signedObjects().at(-1)?.chains ?? [])
+              expect((await storage.get(c.storageKey)).meta.keyRef).toBe(keyRef);
+          },
+        },
+        {
+          name: "@IPB-01-15 PR-UDF-074 a multi-document download names one key for every signed document",
+          async run(p) {
+            const { envelopeId } = await p.createMultiDocumentEnvelope(
+              [
+                { doc: await put(minimalPdf()), fields: [] },
+                { doc: await put(minimalPdf()), fields: [] },
+              ],
+              mine,
+              "parallel",
+            );
+            await p.sendForSignature(envelopeId);
+            for (const s of mine) p.sign(envelopeId, s.ref);
+            await expect(
+              p.downloadSignedDocuments(envelopeId, { keyRef: unknownKeyRef }),
+            ).rejects.toMatchObject({ meta: { reason: "key_ref_unknown" } });
+            const out = await p.downloadSignedDocuments(envelopeId, { keyRef });
+            for (const d of out.documents)
+              expect((await storage.get(d.storageKey)).meta.keyRef).toBe(keyRef);
+          },
+        },
+      ]
+    : [];
   return [
+    ...named,
     {
       name: "@IPB-01-15 PR-UDF-070 the signed PDF and each signer's chain go to STORAGE (REGULATED, IPB-01-27 keys, SHA-256 of the bytes)",
       async run(p) {

@@ -19,6 +19,7 @@ import type {
   AdapterDescriptor,
   DocumentRef,
   EnvelopeStatus,
+  EsignDownloadOptions,
   EsignEnvelopeStore,
   EsignPort,
   PortCall,
@@ -42,6 +43,7 @@ import {
   readDocument,
   signerCertificatesFromPdf,
   storeSigned,
+  downloadKeyRef,
   unsupported,
   validateEnvelope,
   withSignerCertificate,
@@ -221,7 +223,9 @@ export class DigioEsign implements EsignPort {
 
   async downloadSigned(
     envelopeId: string,
+    opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }> {
+    const keyRef = downloadKeyRef("digio", opts);
     const st = await this.getStatus(envelopeId);
     if (st.state !== "completed")
       throw new PortError("IPB-PORT-001", ESIGN, {
@@ -237,7 +241,7 @@ export class DigioEsign implements EsignPort {
     if (res.status !== 200) throw vendorError(ESIGN, "digio", res.status, "Digio download");
     if (Buffer.from(res.body.subarray(0, 5)).toString("latin1") !== "%PDF-")
       throw vendorError(ESIGN, "digio", 502, "the signed file is not a PDF");
-    const stored = await storeSigned(this.o.storage, r.doc, res.body);
+    const stored = await storeSigned(this.o.storage, r.doc, res.body, keyRef);
     const certs = signerCertificatesFromPdf(res.body, r.order, st.signers);
     return {
       ...stored,
