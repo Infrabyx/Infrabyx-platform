@@ -32,6 +32,7 @@ import {
   type MoneyAuthorisation,
   type PayoutsPort,
   type PdfPort,
+  type StoragePort,
 } from "@infrabyx/contracts/ports";
 import { sha256Hex } from "@infrabyx/crypto";
 import type { ContractCase } from "../contract.js";
@@ -41,6 +42,10 @@ export {
   FakePayouts,
   FakeMandates,
   FakeDocgen,
+  type FakeDocgenDocument,
+  type FakeDocgenFiles,
+  type FakeDocgenPdfOptions,
+  type FakeDocgenRenderers,
   FAKE_TEMPLATES,
   FakePdf,
   FakeEsign,
@@ -282,6 +287,35 @@ export function docgenHtmlContractCases(): Array<ContractCase<DocgenPort>> {
           } as never),
         ).rejects.toThrow();
         expect(payloadClass(HtmlRenderRequest).bodyHighest).toBe("CONFIDENTIAL");
+      },
+    },
+  ];
+}
+
+/**
+ * DOCGEN cases for an adapter that writes its files (PR-UDF-077, R1-D-259): each render is an
+ * object in `storage` (the one the adapter writes to) under the prefix, whose bytes hash to the
+ * returned `sha256`; a PDF and a PDF/A start `%PDF-` and are stored as `application/pdf`.
+ */
+export function docgenStorageContractCases(storage: StoragePort): Array<ContractCase<DocgenPort>> {
+  return [
+    {
+      name: "writes each rendered PDF and PDF/A to STORAGE, its bytes hashing to the returned sha256",
+      method: "renderHtml",
+      async run(p) {
+        for (const format of ["pdf", "pdfa"] as const) {
+          const r = await p.renderHtml({
+            html: '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Notice</title></head><body><h1>Notice</h1><p>Loan amount: 1,25,000</p></body></html>',
+            format,
+            outputPrefix: PREFIX,
+          });
+          expect(r.file.storageKey.startsWith(`${PREFIX}/`)).toBe(true);
+          const o = await storage.get(r.file.storageKey);
+          expect(sha256Hex(o.body)).toBe(r.file.sha256);
+          expect(Buffer.from(o.body.subarray(0, 5)).toString("latin1")).toBe("%PDF-");
+          expect(o.meta.contentType).toBe("application/pdf");
+          expect(r.pageCount).toBeGreaterThan(0);
+        }
       },
     },
   ];
