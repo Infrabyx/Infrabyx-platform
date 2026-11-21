@@ -1565,6 +1565,27 @@ From the next `@infrabyx/contracts` minor (no migration, setting or environment 
 - The mock lender (`@infrabyx/fakes`) sets neither field today.
 - **Adopt** with all `@infrabyx/*` pins moved together.
 
+## 7eg. Telling which application a `LoanDisbursed` is for (PR-UDF-061 finding (i); R1-D-256)
+
+From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), `LoanDisbursedData` takes an optional `lsp_application_ref`: the LSP's own application reference, as on `CoolingOffExitAnswered`.
+
+```ts
+{
+  loan_id: "ln_0001", // still the envelope subject (R1-D-236)
+  utr: "FAKE0123456789AB",
+  // … amount, value date, beneficiary, kind, cooling-off end as before
+  application_id: "app_0001", // the lender's id (optional, R1-D-232)
+  lsp_application_ref: "lspapp_0001", // the LSP's own reference (optional, new)
+}
+```
+
+**What to know:**
+
+- Neither reference is required by the schema: `application_id` was optional, and requiring it (or one of the two) would refuse a payload valid before. A lender sends one or both; the lender contract cases in `@infrabyx/testing` require at least one, each naming the application.
+- **An LSP** matches `lsp_application_ref` against its own application first, else `application_id` against the id the lender gave in `ApplicationStatusChanged`; with neither, it holds the disbursal for review rather than guessing from the amount.
+- The mock lender (`@infrabyx/fakes`) sends both.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
