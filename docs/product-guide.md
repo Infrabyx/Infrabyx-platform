@@ -1456,6 +1456,43 @@ const pdf = toPdf(statement, {
 - `renderPdf` passes `pdfa` and `lang` to the in-process path; documents with Indic text still go to DOCGEN (§7ay), whose PDF/A is not byte-deterministic.
 - **Adopt** with all `@infrabyx/*` pins moved together. To check your own templates, run the pinned veraPDF image the way `packages/export/src/__tests__/pdfa.int.test.ts` does (`TEST_IMAGES.verapdf`, `withJvmMitigation("verapdf")`, `--flavour 2b`, and `ua1` with `pdfua`).
 
+## 7ef. Files over SFTP: the FILE_TRANSFER port (PR-UDF-071; R1-D-254)
+
+From the release that carries PR-UDF-071 (minors of `contracts`, `crypto`, `config`, `fakes`, `testing` and `connectors`; no migration, no environment variable), `@infrabyx/connectors/file-transfer` has an SFTP client behind the FILE_TRANSFER port, for a counterparty's server: a credit information company's submission server (Finbyx's `BureauSubmitter`), a lender's file drop (Udofin), the Ecosystem Spec §3.11 file fallback. It is off and unproven until you use it against the counterparty's test server.
+
+```ts
+import { SftpFileTransfer } from "@infrabyx/connectors/file-transfer";
+
+const cic = new SftpFileTransfer({
+  enabled: () => settings.get("int.file_transfer.sftp.enabled"),
+  allowHosts: () => settings.get("int.file_transfer.sftp.allow_hosts"),
+  target: () => ({
+    host: "sftp.cic.example.in", // exact host name or IP literal, on the allow-list
+    port: 22,
+    username: "member0042",
+    hostKeySha256: ["SHA256:…"], // from the counterparty, `ssh-keygen -l -E sha256` form; 1 to 4
+    clientKeySecret: "secrets/prod/file_transfer/sftp/cic", // OpenSSH ssh-ed25519 private key
+  }),
+  secrets, // your SECRETS port
+});
+
+const sent = await cic.put(`upload/${name}`, bytes, { ifAbsent: true }); // { path, size, sha256 }
+const acks = await cic.list("download"); // { entries: [{ name, type, size, modifiedAt }], truncated, skipped }
+const ack = await cic.get(`download/${acks.entries[0]!.name}`, { maxBytes: 8 * 1024 * 1024 });
+```
+
+**What you configure:** the platform allow-list `int.file_transfer.sftp.allow_hosts` (json, PLATFORM, R4): `[{ "host": "sftp.cic.example.in", "residency": "IN", "attestation": "<your reference>" }]`, one entry per server, residency `IN` only on the strength of the tenant's signed attestation of the server's location (§12.2). Per counterparty, in your own configuration: the target and its host-key pins. In SECRETS: the client key, made with `ssh-keygen -t ed25519 -N ''` (or `generateSshEd25519KeyPair` from `@infrabyx/crypto`), whose public half you register with the counterparty; rotate it yearly (§12.2) by registering the new public key, then swapping the secret.
+
+**What the adapter enforces:** the host on the allow-list and every resolved address public (no private, loopback or metadata address); the host key pinned (no trust on first use; a second pin for rotation); the client key an unencrypted OpenSSH `ssh-ed25519` key, public-key authentication only; curve25519 key exchange, AES-256-GCM or ChaCha20-Poly1305 only; `put` never overwrites (`exists`, `IPB-STOR-003`, even when two workers race) and removes its own half-written file on failure; `get` never reads past `maxBytes` (`too_large`, default 32 MiB, at most 256 MiB); one connection per call, a 120 s deadline, a 15 s handshake timeout and your `signal`. Refusals carry fixed labels only (`FILE_TRANSFER_REFUSALS`): `not_allowed`, `address`, `host_key_mismatch`, `residency`, `client_key`, `auth_failed`, `invalid_path`, `not_found`, `not_a_file`, `exists`, `too_large`, `timeout`, `aborted`, `unavailable`, `dns`, `adapter_disabled`, `adapter_unconfigured`, `data_class`.
+
+**What to know:**
+
+- Paths are relative to the account's home, in segments of `A-Z a-z 0-9 . _ -`; there is no mkdir, rename or delete. A file name in the §3.11 shape comes from `fileExchangeName({ producer, reid, layoutId, major, date, seq, ext })`; check a received manifest (after verifying its C-22 detached JWS) with `checkFileExchangeManifest(manifest, { fileName, sha256, count?, controlTotals? })`.
+- The calls are REGULATED by default; `SECRET` is refused. Keep the bytes you send and receive in your STORAGE: the platform keeps nothing.
+- A server with only RSA or ECDSA host keys, or without these ciphers, is refused; ask the owner (#184) before widening.
+- Tests: `FakeFileTransfer` and `fileTransferContractCases` from `@infrabyx/testing`; `startSftpServer()` runs the pinned OpenSSH image with keys made per run.
+- **Adopt** with all `@infrabyx/*` pins moved together; `ssh2` arrives as a dependency of `connectors` (no native build under pnpm 10; do not add it to `onlyBuiltDependencies`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
