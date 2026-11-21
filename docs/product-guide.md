@@ -1794,6 +1794,61 @@ if (!allowedHosts.has(new URL(r.url).hostname)) {
 - **Compare hosts as the parser gives them.** Build your allow-list of exact lower-case host names and compare `new URL(r.url).hostname`; never a prefix or substring of the URL text. Refuse any scheme but `https` (the schema already does).
 - **Reading them:** `select … from audit.security_event where kind = 'connector.retrieval.host_refused'` in your tenant (forced RLS), for your security on-call; no export yet (threat model §3.130, §3.181).
 
+## 7en. Event job names, the one queue name rule, and parked outbox rows (PR-FBX-53; R1-D-266)
+
+From the next release (`contracts`, `connectors`, `testing` and `tenancy` minors; migration `tenancy/0027`; no setting or environment variable). **Why:** a relay that enqueues an event under its CloudEvents type (`in.fbx.cms.ContentPublished.v1`) is refused `IPB-PORT-003` by both real QUEUE adapters, because job names are lower case. In-memory fixtures accepted it, so tests passed; on a real queue the refusal rolled the relay's batch back and every pass stopped on the same row, so no event left the outbox.
+
+**1. Name jobs with `eventJobName`, keep the type in the data.**
+
+```ts
+import { eventJobName, eventTypeOfJobName } from "@infrabyx/contracts/events";
+import { outboxEventJob } from "@infrabyx/tenancy";
+
+eventJobName("in.fbx.cms.ContentPublished.v1"); // "in.fbx.cms.content-published.v1"
+eventTypeOfJobName("in.fbx.cms.content-published.v1"); // "in.fbx.cms.ContentPublished.v1"
+
+// In your relay's deliver: name = eventJobName(type); data = ids, the full type, the envelope.
+deliver: async (_schema, e) =>
+  void (await queue.enqueue("events", outboxEventJob(e), { idempotencyKey: e.id })),
+```
+
+- Only the PascalCase event segment changes: each capital becomes `-` and its lower-case letter (none before the first). `KFSIssued` → `k-f-s-issued`, `ESignCompleted` → `e-sign-completed`, `Step2Done` → `step2-done`. Product, module or domain, and version are unchanged. The mapping is exact both ways for every valid internal and Ecosystem type; acronyms are spelt letter by letter so `KFSIssued` and `KfsIssued` stay different names.
+- Refused `IPB-PORT-003` with a fixed `meta.reason`: `not_event_type` (not an event type), `job_name_too_long` (over 100 characters, which needs an event name of about 80 letters), `not_event_job_name` (from `eventTypeOfJobName`).
+- **Consumers:** match on `job.data.type` (the full type), or on `eventTypeOfJobName(job.name)`; never on the old capitalised name. The reference app's relay now sends `in.<p>.hello.greeting-created.v1`.
+
+**2. Check your own relay and your fixtures.** Search your repository for `enqueue(` near an outbox type, or for a deliver that passes `e.type` as the name: a product relay that copied the reference uses the capitalised type and stalls on a real queue. The rule every adapter applies, now shared from `@infrabyx/contracts/ports`: a queue name is lower case, a letter first, then letters, digits, `_` or `-`, at most 63 characters, no `.` (`<queue>.dlq` is reserved); a job name is the same with `.` allowed, at most 100 characters (`QUEUE_NAME_REGEX`, `QUEUE_JOB_NAME_REGEX`). It sits inside what bullmq (no `:`) and pg-boss (`^[\w.\-/]+$`) both accept. Make your in-memory QUEUE refuse what the adapters refuse, and prove it with the shared cases:
+
+```ts
+import { assertQueueJob, assertQueueName } from "@infrabyx/contracts/ports";
+import { defineContractSuite, queueNameCases } from "@infrabyx/testing";
+
+// in your MemoryQueue: enqueue/schedule call both; consume, moveToDLQ, replay, stats call assertQueueName
+assertQueueName(queue, "memory");
+assertQueueJob(job, "memory");
+
+defineContractSuite("QUEUE", () => new MemoryQueue(), queueNameCases(), { leg: "unit" });
+```
+
+**3. How parking works (the platform `OutboxRelay`).** Apply `tenancy/0027` with your other platform migrations before deploying the new relay.
+
+- Each row's delivery is its own unit: a failure is counted on that row (`attempts`) and the rest of the batch is delivered and marked dispatched in the same commit. The batch's `<schema>.outbox.dispatch` ledger entry carries `{ dispatched, failed, parked }` when a row failed (`{ dispatched }` as before otherwise).
+- After `maxAttempts` failed attempts (constructor option, default 5) the row is **parked**: a row in `tenancy.outbox_parked` in its own tenant with a fixed `reason` (`queue_refused` for `IPB-PORT-003`, `queue_unavailable` for `IPB-PORT-002`, `delivery_failed` otherwise) and the attempt count, and a `<schema>.outbox.park` ledger entry naming the event. A parked row stays undispatched in your outbox and every later pass leaves it out (no read, no transaction, no ledger entry for it).
+- Log failures with `onFailure: (f) => log.warn({ reason: f.reason, event_id: f.eventId, attempts: f.attempts, parked: f.parked })`; the error itself is passed for your log and never written to the database.
+- An alert on `select count(*) from tenancy.outbox_parked where requeued_at is null` (per tenant, forced RLS) tells on-call that something is parked.
+
+**4. Requeue after the fix.**
+
+```ts
+import { OutboxParking } from "@infrabyx/tenancy";
+
+const parking = new OutboxParking({ kernel, audit, requeueRoles: ["ORG_ADMIN", "OPS_SUPPORT"] });
+const parked = await parking.list(ctx, { schema: "cms" }); // open parks of ctx's tenant, newest first
+await parking.requeue(ctx, "cms", parked[0].eventId); // ledgered `tenancy.outbox.requeue`
+```
+
+- Fix the cause first (deploy the mapped job name, or bring the queue back), then requeue: the next pass retries the row with a fresh budget of `maxAttempts`. A park is requeued once; the record stays (nothing is deleted), with `requeued_at` and `requeued_by`.
+- Only a person (`principal.type` `user`) holding one of `requeueRoles` (default `ORG_OWNER`, `ORG_ADMIN`) may requeue, in the row's own tenant; a row with no open park answers `NotFoundError` (404).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
