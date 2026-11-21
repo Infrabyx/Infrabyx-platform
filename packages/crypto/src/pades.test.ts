@@ -487,6 +487,7 @@ describe("C-28 registry and scope", () => {
       "pades-revocation.ts",
       "der.ts",
       "cca-india-trust.ts",
+      "signer-certificate.ts",
     ]) {
       const src = readFileSync(new URL(f, import.meta.url), "utf8");
       expect(src).not.toMatch(/\bsign\(|createSign|privateKey|node:(https?|net|tls|dns)|fetch\(/);

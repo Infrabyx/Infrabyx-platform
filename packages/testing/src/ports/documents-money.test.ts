@@ -18,6 +18,7 @@ import {
   type FakeDocgenDocument,
   type FakeDocgenPdfOptions,
   esignFakeCases,
+  esignFakeStorageCases,
   estampContractCases,
   estampDdeContractCases,
   ESTAMP_DDE_FAKE_FIXTURES,
@@ -167,6 +168,12 @@ describe("the PAYMENTS mandate lifecycle fake (PR-FBX-29)", () => {
 
 describe("the ESIGN fake (PR-FBX-29)", () => {
   for (const c of esignFakeCases()) it(c.name, () => c.run(new FakeEsign()));
+});
+
+describe("the ESIGN fake over STORAGE (PR-UDF-070)", () => {
+  const storage = new MemoryStorage();
+  for (const c of esignFakeStorageCases(storage))
+    it(c.name, () => c.run(new FakeEsign({ storage })), 30_000);
 });
 
 describe("payouts and DDE settle only through the bank or the utility", () => {

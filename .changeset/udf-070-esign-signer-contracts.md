@@ -1,0 +1,5 @@
+---
+"@infrabyx/contracts": minor
+---
+
+ESIGN signer certificates and multi-document envelopes (Udofin PR-UDF-070; R1-D-251). `SignatureRecord` gains an optional `signerCertificate` (`SignerCertificateSummary`: `serialNumber`, `issuer`, `notBefore`, `notAfter`, `sha256` of the DER, `subjectCommonName`), filled by adapters from the ESP's own certificate. `EsignPort` gains two optional methods, `createMultiDocumentEnvelope(documents, signers, order, call?)` (`EnvelopeDocuments`: 1 to `MAX_ENVELOPE_DOCUMENTS` = 10 documents, each an `EnvelopeDocument` with its own `DocumentRef` and signature fields, unique ids and storage keys) and `downloadSignedDocuments(envelopeId)` (`SignedEnvelopeDocument[]`), and `EnvelopeStatus` an optional `documents` (`EnvelopeDocumentStatus`). A multi-document envelope completes only when every document is signed by every signer (all or nothing); `downloadSigned` on an envelope of several documents is refused `multi_document`. Existing adapters and callers are unaffected.

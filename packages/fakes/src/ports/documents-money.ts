@@ -10,7 +10,6 @@ import {
   AccountValidation,
   BeneficiarySpec,
   DdeRegistration,
-  DocumentRef,
   DutyQuoteRequest,
   EstampPurchase,
   HtmlRenderRequest,
@@ -28,8 +27,6 @@ import {
   type DocFileRef,
   type DocgenPort,
   type DutyQuote,
-  type EnvelopeStatus,
-  type EsignPort,
   type EstampCertificate,
   type EstampPort,
   type Mandate,
@@ -43,8 +40,6 @@ import {
   type PortHealth,
   type RenderFormat,
   type RenderedDocument,
-  type SignatureRecord,
-  type Signer,
   type StoragePort,
   type TemplateInfo,
 } from "@infrabyx/contracts/ports";
@@ -845,125 +840,7 @@ export class FakePdf implements PdfPort {
   }
 }
 
-// ----------------------------------------------------------------------------------------- ESIGN
-
-/**
- * A deterministic ESIGN fake (PR-FBX-29 item 6): envelopes move to `completed` as each signer
- * signs through `sign()`, and every signature record carries the ESP's transaction id and the
- * signer's IP (item 7). It never downgrades a signer's method.
- */
-export class FakeEsign implements EsignPort {
-  readonly descriptor: AdapterDescriptor = {
-    port: "ESIGN",
-    adapter: "fake-esign",
-    residency: "IN",
-    maxDataClass: "REGULATED",
-  };
-  health = up;
-  private readonly envelopes = new Map<
-    string,
-    EnvelopeStatus & { doc: DocumentRef; records: SignatureRecord[] }
-  >();
-  private n = 0;
-  constructor(private readonly now: () => Date = () => new Date()) {}
-
-  async createEnvelope(
-    doc: DocumentRef,
-    signers: Signer[],
-    _order?: "sequential" | "parallel",
-    _fields?: unknown[],
-  ): Promise<{ envelopeId: string }> {
-    DocumentRef.parse(doc);
-    if (!signers.length) throw new RangeError("an envelope has a signer");
-    const id = `esr_FAKE${String(++this.n).padStart(22, "0")}`;
-    this.envelopes.set(id, {
-      envelopeId: id,
-      vendorRef: `fake-${this.n}`,
-      state: "draft",
-      signers: signers.map((s) => ({ ref: s.ref, state: "pending", method: s.method })),
-      doc,
-      records: [],
-    });
-    return { envelopeId: id };
-  }
-  private get(id: string) {
-    const e = this.envelopes.get(id);
-    if (!e) throw new PortError("IPB-PORT-001", "ESIGN", { detail: "unknown envelope" });
-    return e;
-  }
-  private status(id: string): EnvelopeStatus {
-    const e = this.get(id);
-    return {
-      envelopeId: e.envelopeId,
-      vendorRef: e.vendorRef,
-      state: e.state,
-      signers: e.signers.map((s) => ({ ...s })),
-    };
-  }
-  async sendForSignature(id: string): Promise<EnvelopeStatus> {
-    const e = this.get(id);
-    if (e.state === "draft") e.state = "sent";
-    return this.status(id);
-  }
-  async getStatus(id: string): Promise<EnvelopeStatus> {
-    return this.status(id);
-  }
-  /** Test helper: a signer signs at the ESP from `ip`. */
-  sign(id: string, signerRef: string, ip = "203.0.113.10"): EnvelopeStatus {
-    const e = this.get(id);
-    const s = e.signers.find((x) => x.ref === signerRef);
-    if (!s || !["sent", "partially_signed"].includes(e.state)) throw new Error("cannot sign now");
-    s.state = "signed";
-    s.at = this.now().toISOString();
-    e.records.push({
-      alg: "rsa-pkcs1-sha256",
-      keyId: `fake-key-${signerRef}`,
-      certChainRef: `fake-chain-${signerRef}`,
-      signerRef,
-      signedAt: s.at,
-      espTransactionId: `ESP-${sha256Hex(id + signerRef)
-        .slice(0, 16)
-        .toUpperCase()}`,
-      signerIp: ip,
-    });
-    e.state = e.signers.every((x) => x.state === "signed") ? "completed" : "partially_signed";
-    return this.status(id);
-  }
-  async downloadSigned(id: string) {
-    const e = this.get(id);
-    if (e.state !== "completed")
-      throw new PortError("IPB-PORT-001", "ESIGN", { detail: "envelope not completed" });
-    const sha256 = sha256Hex(e.doc.sha256 + JSON.stringify(e.records));
-    return {
-      storageKey: `${e.doc.storageKey}.signed.pdf`,
-      sha256,
-      signatures: e.records.map((r) => ({ ...r })),
-    };
-  }
-  async aadhaarEsign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
-    return { redirectUrl: `https://fake-esp.invalid/${session.envelopeId}/${session.signerRef}` };
-  }
-  async dscSign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
-    return { redirectUrl: `https://fake-dsc.invalid/${session.envelopeId}/${session.signerRef}` };
-  }
-  async verifySignature(doc: DocumentRef) {
-    const e = [...this.envelopes.values()].find(
-      (x) => `${x.doc.storageKey}.signed.pdf` === doc.storageKey,
-    );
-    return { valid: !!e && e.state === "completed", signatures: e?.records ?? [] };
-  }
-  async cancel(id: string): Promise<void> {
-    const e = this.get(id);
-    if (e.state === "completed") throw new RangeError("the envelope is completed");
-    e.state = "cancelled";
-  }
-  async handleWebhook(rawBody: Uint8Array): Promise<EnvelopeStatus> {
-    const { envelopeId } = JSON.parse(new TextDecoder().decode(rawBody)) as { envelopeId: string };
-    return this.status(envelopeId);
-  }
-}
+// ESIGN: FakeEsign lives in ./esign.ts (PR-UDF-070) and is exported from the package index.
 
 // -------------------------------------------------------------------------------- contract cases
 

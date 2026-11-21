@@ -6,9 +6,19 @@
 // open after that becomes a reconciliation break, handed to `raiseBreak` (the product publishes
 // `ReconciliationBreakRaised` through its outbox in the same transaction). The tables are the
 // module's own (`tenancy.create_ecosystem_inbox('<schema>')`); every write is ledgered.
+//
+// R1-D-257 (Udofin PR-UDF-073): a regulated message's detached JWS (Spec §3.6, `X-Infrabyx-JWS`)
+// is verified by `receive` (C-22 profile, the `regulated` option's key ring and replay store) and
+// kept beside the event in the nullable `jws` column (tenancy 0026), written once and never
+// updated (a database trigger refuses a change); the handler gets it as `InboxEvent.jws`.
 import { IpbError } from "@infrabyx/contracts/errors";
-import { EcosystemEnvelope } from "@infrabyx/contracts/events";
+import {
+  EcosystemEnvelope,
+  REGULATED_JWS_HEADER,
+  regulatedJwsFromHeaders,
+} from "@infrabyx/contracts/events";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
+import { verifyRegulatedMessage, type RegulatedKeyRing, type ReplayStore } from "@infrabyx/crypto";
 
 const SCHEMA = /^[a-z][a-z0-9_]*$/;
 
@@ -30,6 +40,13 @@ export interface InboxEvent {
   seq: number;
   businessKey: string | null;
   envelope: EcosystemEnvelope;
+  /**
+   * R1-D-257: the detached JWS `receive` verified and stored beside the event (Spec §3.6), to
+   * re-verify the proof later against `envelope`; `null` for an event received unsigned. Always
+   * set on events from `drain`, `sweep` and `list`; optional in the type only so a hand-built
+   * `InboxEvent` (a product's test fixture) stays valid in this minor.
+   */
+  jws?: string | null;
 }
 
 export type ReceiveOutcome = "accepted" | "duplicate" | "business_duplicate";
@@ -57,7 +74,30 @@ export interface EcosystemInboxOptions {
   firstSeq?: number;
   /** Handler failures before an event is `failed` and needs an operator (default 5). */
   maxAttempts?: number;
+  /**
+   * R1-D-257: verifies the detached JWS `receive({ jws })` is given (Spec §3.6; C-22: ES256, `kid`,
+   * the `iat` window, `jti` replay), with the producer's pinned keys and a durable replay store.
+   * Without it, `receive` refuses a `jws` rather than store one it did not verify.
+   */
+  regulated?: {
+    keys: RegulatedKeyRing;
+    replay: ReplayStore;
+    maxAgeSeconds?: number;
+    maxSkewSeconds?: number;
+  };
   now?: () => Date;
+}
+
+/** What `receive` answers. */
+export interface ReceiveResult {
+  outcome: ReceiveOutcome;
+  eventId: string;
+  /**
+   * R1-D-257: the JWS stored with the event: the one just verified when `accepted`, the one kept
+   * at the first receipt for a `duplicate` (null if that receipt was unsigned), null for a
+   * `business_duplicate` (stored nowhere).
+   */
+  jws: string | null;
 }
 
 interface Row {
@@ -71,6 +111,7 @@ interface Row {
   state: InboxState;
   attempts: number;
   parked_at: Date | null;
+  jws: string | null;
 }
 
 const toEvent = (r: Row): InboxEvent => ({
@@ -81,6 +122,7 @@ const toEvent = (r: Row): InboxEvent => ({
   seq: Number(r.seq),
   businessKey: r.business_key,
   envelope: r.envelope,
+  jws: r.jws,
 });
 
 export class EcosystemInbox {
@@ -112,12 +154,21 @@ export class EcosystemInbox {
    * the first stored of any of them is processed (Ecosystem Spec v1.3 §6.29: one provisioning
    * request ends in exactly one of `TenantProvisioned` or `ProvisioningFailed`). A later event of
    * another listed type is a `business_duplicate`, stored nowhere and ledgered as received.
+   *
+   * `jws` (R1-D-257): the event's detached JWS (the `X-Infrabyx-JWS` value, Spec §3.6). It must be
+   * one compact detached JWS of at most 1,024 octets and verify with the `regulated` option, or the
+   * event is refused with IPB-API-018 (`signature-invalid`) before anything is stored; it is then
+   * kept beside the event and given to the handler. A redelivery of a stored event verifies with
+   * its own fresh JWS and answers `duplicate` with the JWS stored first; a redelivery of the very
+   * same JWS (its `jti` already claimed) is a `duplicate` too. The product still refuses an
+   * unsigned regulated message itself (`isRegulatedMessage`); one passed without `jws` is stored
+   * with none.
    */
   async receive(
     ctx: KernelContext,
     raw: unknown,
-    opts: { businessKey?: string; exclusiveWith?: readonly string[] } = {},
-  ): Promise<{ outcome: ReceiveOutcome; eventId: string }> {
+    opts: { businessKey?: string; exclusiveWith?: readonly string[]; jws?: string } = {},
+  ): Promise<ReceiveResult> {
     const e = EcosystemEnvelope.parse(raw);
     if ((e.environment ?? "live") !== this.o.environment)
       throw new IpbError("IPB-API-005", {
@@ -127,6 +178,8 @@ export class EcosystemInbox {
     const action = `${this.o.schema}.eco_inbox.receive`;
     const others = (opts.exclusiveWith ?? []).filter((t) => t !== e.type);
     if (others.length && !opts.businessKey) throw new Error("exclusiveWith needs a businessKey");
+    const jws = opts.jws === undefined ? null : await this.verified(ctx, e, opts.jws);
+    const signed = jws ? { signed: true, kid: jws.kid } : {};
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -152,15 +205,16 @@ export class EcosystemInbox {
                 seq: e.seq,
                 outcome: "business_duplicate",
                 exclusive: true,
+                ...signed,
               },
             });
-            return { outcome: "business_duplicate" as const, eventId: e.id };
+            return { outcome: "business_duplicate" as const, eventId: e.id, jws: null };
           }
         }
         const ins = await tx.query(
           `insert into ${this.inbox}
-             (tenant_id, source, event_id, type, subject, seq, business_key, envelope)
-           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
+             (tenant_id, source, event_id, type, subject, seq, business_key, envelope, jws)
+           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
            on conflict do nothing returning event_id`,
           [
             tx.ctx.tenantId,
@@ -171,26 +225,83 @@ export class EcosystemInbox {
             e.seq,
             opts.businessKey ?? null,
             JSON.stringify(e),
+            jws?.jws ?? null,
           ],
         );
         let outcome: ReceiveOutcome = "accepted";
+        let stored = jws?.jws ?? null;
         if (!ins.rowCount) {
-          const same = await tx.query(
-            `select 1 from ${this.inbox} where tenant_id = $1 and source = $2 and event_id = $3`,
+          const same = await tx.query<{ jws: string | null }>(
+            `select jws from ${this.inbox} where tenant_id = $1 and source = $2 and event_id = $3`,
             [tx.ctx.tenantId, e.source, e.id],
           );
           outcome = same.rowCount ? "duplicate" : "business_duplicate";
+          stored = same.rows[0]?.jws ?? null;
         }
         await this.o.audit.record(tx, {
           action,
           resourceType: this.inbox,
           resourceId: e.id,
-          after: { source: e.source, type: e.type, subject: e.subject, seq: e.seq, outcome },
+          after: {
+            source: e.source,
+            type: e.type,
+            subject: e.subject,
+            seq: e.seq,
+            outcome,
+            ...signed,
+          },
         });
-        return { outcome, eventId: e.id };
+        return { outcome, eventId: e.id, jws: stored };
       },
       { action },
     );
+  }
+
+  /**
+   * R1-D-257: checks and verifies `jws` for `e` before anything is stored, or refuses the event
+   * with IPB-API-018. A `replay` failure (the `jti` was claimed after the signature and `iat`
+   * verified) is a redelivery when the tenant's inbox holds this event with this very JWS.
+   */
+  private async verified(
+    ctx: KernelContext,
+    e: EcosystemEnvelope,
+    jws: string,
+  ): Promise<{ jws: string; kid: string }> {
+    const refuse = (reason: string, detail: string) =>
+      new IpbError("IPB-API-018", { detail, meta: { reason: "signature-invalid", jws: reason } });
+    if (!this.o.regulated) throw new Error("receive({ jws }) needs the `regulated` option");
+    if (typeof jws !== "string") throw refuse("malformed", "the JWS is not a string");
+    // The envelope's own limits (Spec v1.4 §3.6): one compact detached JWS, at most 1,024 octets.
+    const h = regulatedJwsFromHeaders({ [REGULATED_JWS_HEADER]: jws });
+    if (!h.ok) throw refuse(h.reason, `the JWS is ${h.reason.replace("_", " ")}`);
+    const r = this.o.regulated;
+    const v = await verifyRegulatedMessage(e as Record<string, unknown>, jws, {
+      keys: r.keys,
+      replay: r.replay,
+      now: this.now(),
+      ...(r.maxAgeSeconds !== undefined ? { maxAgeSeconds: r.maxAgeSeconds } : {}),
+      ...(r.maxSkewSeconds !== undefined ? { maxSkewSeconds: r.maxSkewSeconds } : {}),
+    });
+    if (v.ok) return { jws, kid: v.kid };
+    if (v.reason === "replay") {
+      const stored = await this.o.kernel.read(
+        ctx,
+        async (tx) =>
+          (
+            await tx.query<{ jws: string | null }>(
+              `select jws from ${this.inbox} where source = $1 and event_id = $2`,
+              [e.source, e.id],
+            )
+          ).rows[0]?.jws ?? null,
+      );
+      if (stored === jws) {
+        const header = JSON.parse(
+          Buffer.from(jws.slice(0, jws.indexOf(".")), "base64url").toString("utf8"),
+        ) as { kid: string };
+        return { jws, kid: header.kid };
+      }
+    }
+    throw refuse(v.reason, `the event's JWS did not verify (${v.reason})`);
   }
 
   /**
@@ -239,7 +350,7 @@ export class EcosystemInbox {
         async (tx) => {
           const row = (
             await tx.query<Row>(
-              `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at
+              `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at, jws
                  from ${this.inbox}
                 where source = $1 and subject = $2 and state in ('received', 'parked')
                 order by seq, received_at limit 1 for update skip locked`,
@@ -453,7 +564,7 @@ export class EcosystemInbox {
     return this.o.kernel.read(ctx, async (tx) =>
       (
         await tx.query<Row>(
-          `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at
+          `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at, jws
              from ${this.inbox} where source = $1 and subject = $2 order by seq, received_at`,
           [source, subject],
         )

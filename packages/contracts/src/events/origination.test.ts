@@ -584,6 +584,31 @@ describe("the udf_ext v1 fields (PR-UDF-061)", () => {
       }).success,
     ).toBe(true);
   });
+
+  it("takes LoanDisbursed's optional lsp_application_ref, with or without application_id (R1-D-256)", () => {
+    const ld = {
+      loan_id: "ln_1",
+      utr: "UTR123456789012",
+      amount_paise: 5_000_000,
+      value_date: "2026-11-20",
+      beneficiary_type: "BORROWER",
+      kind: "INITIAL",
+      cooling_off_end: T,
+    };
+    // Valid before finding (i), so still valid: neither reference is required (a minor).
+    expect(LoanDisbursedData.safeParse(ld).success).toBe(true);
+    for (const x of [
+      { lsp_application_ref: "lspapp_1" },
+      { lsp_application_ref: "lspapp_1", application_id: "app_1" },
+    ])
+      expect(LoanDisbursedData.safeParse({ ...ld, ...x }).success, JSON.stringify(x)).toBe(true);
+    for (const bad of ["", "has space", "x".repeat(200)])
+      expect(LoanDisbursedData.safeParse({ ...ld, lsp_application_ref: bad }).success).toBe(false);
+    // The subject is still the loan (R1-D-236).
+    expect(originationSubject("LoanDisbursed", { ...ld, lsp_application_ref: "lspapp_1" })).toBe(
+      "ln_1",
+    );
+  });
 });
 
 describe("PR-UDF-061 items 12 to 17 (owner, 20 Nov 2026 18:50; R1-D-236)", () => {

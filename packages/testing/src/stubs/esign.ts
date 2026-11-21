@@ -4,15 +4,66 @@
 // and builds the vendor's webhook. The Leegality webhook `mac` (HMAC-SHA1 of the document id with
 // the private salt) is computed with the openssl CLI, because the platform's crypto package only
 // verifies it (C-25) and testing never imports node:crypto.
+// PR-UDF-070 (R1-D-251): the signed PDF is a real PAdES file, signed once per signer in signing
+// order (an incremental update each) by a throwaway CA (`@infrabyx/crypto/pades-test`, EC P-256),
+// so adapters can read each signer's certificate from it; `pdfMode = "plain"` returns the old
+// unsigned fixture instead. `signerCertificate(doc, n)` gives the DER a test expects.
 import { execFileSync } from "node:child_process";
+import {
+  minimalPdf,
+  padesTestAuthority,
+  type PadesTestAuthority,
+  type TestSigner,
+} from "@infrabyx/crypto/pades-test";
 import { startStub, stubCredential, type VendorStub } from "./http.js";
 
-const SIGNED_PDF = (id: string) => Buffer.from(`%PDF-1.7\n% signed by stub for ${id}\n%%EOF\n`);
+const PLAIN_PDF = (id: string) => Buffer.from(`%PDF-1.7\n% signed by stub for ${id}\n%%EOF\n`);
+
+let ca: PadesTestAuthority | undefined;
+/** The stubs' throwaway CA, made on first use (its `trust` verifies the stubs' signed PDFs). */
+export const esignStubAuthority = (): PadesTestAuthority =>
+  (ca ??= padesTestAuthority({ kind: "ec256" }));
+
+/** What a stub needs to sign as the ESP: a certificate per signer, and the order they signed. */
+interface Signing {
+  certs: Map<number, TestSigner>;
+  order: number[];
+  pdf?: Buffer;
+}
+const newSigning = (): Signing => ({ certs: new Map(), order: [] });
+function signedAt(s: Signing, index: number, name: string): void {
+  s.certs.set(index, esignStubAuthority().newSigner({ kind: "ec256", subject: name.slice(0, 64) }));
+  s.order.push(index);
+  delete s.pdf;
+}
+function signedPdf(s: Signing, id: string, mode: "pades" | "plain"): Buffer {
+  if (mode === "plain") return PLAIN_PDF(id);
+  if (!s.pdf) {
+    let pdf = minimalPdf();
+    for (const n of s.order)
+      pdf = esignStubAuthority().sign(pdf, { signer: s.certs.get(n)!, contentsBytes: 4096 });
+    s.pdf = pdf;
+  }
+  return s.pdf;
+}
+function certOf(s: Signing | undefined, n: number): Buffer {
+  const c = s?.certs.get(n);
+  if (!c) throw new Error(`signer ${n} has not signed`);
+  return c.der;
+}
 
 /** HMAC-SHA1 hex with the openssl CLI (test-only; the platform never computes HMAC-SHA1). */
 export function opensslHmacSha1(key: string, data: string): string {
   const out = execFileSync("openssl", ["dgst", "-sha1", "-hmac", key, "-r"], { input: data });
   return out.toString("utf8").trim().split(/\s+/)[0] as string;
+}
+
+/** PR-UDF-070 test hooks, on both stubs. */
+export interface EsignStubSigning {
+  /** `pades` (default): a PAdES-signed PDF; `plain`: an unsigned PDF fixture. */
+  pdfMode: "pades" | "plain";
+  /** The DER certificate the stub signed signer `n` of `documentId` with. */
+  signerCertificate(documentId: string, n: number): Buffer;
 }
 
 interface LgInvitation {
@@ -27,12 +78,19 @@ interface LgInvitation {
   signedAt?: string;
 }
 
-export interface LeegalityStub extends VendorStub {
+export interface LeegalityStub extends VendorStub, EsignStubSigning {
   authToken: string;
   privateSalt: string;
   readonly documents: Map<
     string,
-    { profileId: string; irn?: string; pdf: Buffer; invitations: LgInvitation[]; status: string }
+    {
+      profileId: string;
+      irn?: string;
+      pdf: Buffer;
+      invitations: LgInvitation[];
+      status: string;
+      signing: Signing;
+    }
   >;
   sign(documentId: string, index: number): void;
   reject(documentId: string, index: number): void;
@@ -77,6 +135,7 @@ export async function startLeegalityStub(): Promise<LeegalityStub> {
         pdf,
         invitations,
         status: "SENT",
+        signing: newSigning(),
       });
       return {
         status: 200,
@@ -121,7 +180,14 @@ export async function startLeegalityStub(): Promise<LeegalityStub> {
               ...(i.signedAt ? { signedAt: i.signedAt } : {}),
             })),
             ...(r.path === "/v3.0/document/details" && completed
-              ? { files: [{ name: `${docId}.pdf`, file: SIGNED_PDF(docId).toString("base64") }] }
+              ? {
+                  files: [
+                    {
+                      name: `${docId}.pdf`,
+                      file: signedPdf(d.signing, docId, s.pdfMode).toString("base64"),
+                    },
+                  ],
+                }
               : {}),
           },
         },
@@ -150,10 +216,13 @@ export async function startLeegalityStub(): Promise<LeegalityStub> {
     authToken: stubCredential(),
     privateSalt: stubCredential(),
     documents,
+    pdfMode: "pades" as "pades" | "plain",
+    signerCertificate: (id: string, n: number) => certOf(documents.get(id)?.signing, n),
     sign: (id: string, n: number) => {
       const i = inv(id, n);
       i.signed = true;
       i.signedAt = new Date().toISOString();
+      signedAt(documents.get(id)!.signing, n, i.name);
     },
     reject: (id: string, n: number) => void (inv(id, n).rejected = true),
     expire: (id: string) => {
@@ -181,12 +250,19 @@ interface DgParty {
   updated_at?: string;
 }
 
-export interface DigioStub extends VendorStub {
+export interface DigioStub extends VendorStub, EsignStubSigning {
   clientId: string;
   clientSecret: string;
   readonly documents: Map<
     string,
-    { pdf: Buffer; parties: DgParty[]; status: string; sequential: boolean; coordinates?: unknown }
+    {
+      pdf: Buffer;
+      parties: DgParty[];
+      status: string;
+      sequential: boolean;
+      coordinates?: unknown;
+      signing: Signing;
+    }
   >;
   sign(documentId: string, index: number): void;
   reject(documentId: string, index: number): void;
@@ -237,6 +313,7 @@ export async function startDigioStub(): Promise<DigioStub> {
         status: "requested",
         sequential: b.sequential === true,
         ...(b.sign_coordinates ? { coordinates: b.sign_coordinates } : {}),
+        signing: newSigning(),
       });
       return { status: 200, body: body(id) };
     }
@@ -248,7 +325,7 @@ export async function startDigioStub(): Promise<DigioStub> {
         return { status: 400, body: { code: "DOCUMENT_NOT_SIGNED" } };
       return {
         status: 200,
-        body: SIGNED_PDF(id).toString("latin1"),
+        body: signedPdf(d.signing, id, s.pdfMode),
         headers: { "content-type": "application/pdf" },
       };
     }
@@ -273,10 +350,13 @@ export async function startDigioStub(): Promise<DigioStub> {
     clientId: `ACK${stubCredential().slice(0, 16)}`,
     clientSecret: stubCredential(),
     documents,
+    pdfMode: "pades" as "pades" | "plain",
+    signerCertificate: (id: string, n: number) => certOf(documents.get(id)?.signing, n),
     sign: (id: string, n: number) => {
       const p = party(id, n);
       p.status = "signed" as const;
       p.updated_at = new Date().toISOString();
+      signedAt(documents.get(id)!.signing, n, p.name);
     },
     reject: (id: string, n: number) => void (party(id, n).status = "rejected"),
     expire: (id: string) => {

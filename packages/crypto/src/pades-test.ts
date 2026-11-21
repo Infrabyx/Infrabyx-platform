@@ -345,6 +345,8 @@ export interface PadesTestAuthority {
     unknownCritical?: boolean;
     /** The certificate signature algorithm OID (refusal tests). */
     algOid?: string;
+    /** The subject common name (default "Test PAdES Signer"); test names only. */
+    subject?: string;
   }): TestSigner;
   sign(pdf: Uint8Array, o?: PadesTestSignOptions): Buffer;
   /** A CRL issued by the intermediate (or `issuer`). */
@@ -415,7 +417,7 @@ export function padesTestAuthority(o: { kind?: PadesTestKeyKind } = {}): PadesTe
       chain = [unpinned.der, intermediate.der];
     }
     const c = testCertificate({
-      subject: "Test PAdES Signer",
+      subject: s.subject ?? "Test PAdES Signer",
       issuer: issuerName,
       key,
       issuerKey,
