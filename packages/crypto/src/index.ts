@@ -38,6 +38,20 @@ export {
 } from "./blind-index-keys.js";
 export { signRecord, verifyRecord, type SignatureRecord } from "./sign.js";
 export { ALGORITHMS, algorithmInfo, assertApproved, cbom, type AlgorithmInfo } from "./registry.js";
+export {
+  SSH_ED25519,
+  SSH_FINGERPRINT,
+  SshKeyError,
+  assertSshEd25519PrivateKey,
+  generateSshEd25519KeyPair,
+  sshEd25519PublicBlob,
+  sshHostKeyFingerprint,
+  sshHostKeyPinned,
+  sshPublicKeyType,
+  type SshEd25519KeyInfo,
+  type SshEd25519KeyPair,
+  type SshKeyFailure,
+} from "./ssh.js";
 export { generateSeedPassword, isValidSeedPassword, SEED_PASSWORD_LENGTH } from "./password.js";
 export {
   LocalKms,
