@@ -220,6 +220,16 @@ export const PORT_EXIT: readonly PortExit[] = [
       "Records and their idempotency keys live at the GRC system that took them: producers dual-publish for one compliance period (Ecosystem Spec 9.1), and an incident's update order restarts at the target from its last update",
   },
   {
+    port: "FILE_TRANSFER",
+    primary: "sftp",
+    exitTarget: "fake-file-transfer",
+    dataMove:
+      "Configuration swap: the platform keeps no files; the files sent and received are the product's (in its STORAGE) and the counterparty's. Another SFTP client is configured with the same targets, pinned host keys and client keys in SECRETS",
+    volumeClass: "S",
+    lockIn:
+      "None at the platform: SFTP is an open protocol, and each counterparty's server, host keys and accounts are the counterparty's; a key rotation is a SECRETS and pin change",
+  },
+  {
     port: "ESTAMP",
     primary: "nesl-dde",
     exitTarget: "fake-estamp",

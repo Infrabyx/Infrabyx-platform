@@ -38,6 +38,7 @@ export const PORTS = [
   "PDF",
   "STATEMENT_ANALYSIS",
   "GRC",
+  "FILE_TRANSFER",
 ];
 
 export const portDir = (port) => port.toLowerCase().replace(/_/g, "-");
@@ -84,6 +85,12 @@ const EXTRA_PATHS = {
   ],
   // PR-FBX-51: the fake lives in @infrabyx/fakes; the bodies are the §6.15 event schemas.
   GRC: ["packages/fakes/src/ports/grc.ts", "packages/contracts/src/events/grc-events.ts"],
+  // PR-UDF-071: the fake lives in @infrabyx/fakes; the §3.11 manifest helpers beside the port; the
+  // leg starts TEST_IMAGES.sftp (images.ts is a shared path already).
+  FILE_TRANSFER: [
+    "packages/fakes/src/ports/file-transfer.ts",
+    "packages/contracts/src/ports/file-exchange.ts",
+  ],
 };
 
 export const portPaths = (port) => [

@@ -123,6 +123,12 @@ export const TEST_IMAGES = {
     version: "1.30.3",
     role: "veraPDF CLI: PDF/A-2b and PDF/UA-1 validation of toPdf output (PR-FBX-52)",
   },
+  sftp: {
+    image:
+      "atmoz/sftp:alpine@sha256:c5fb9e4beb8b7054a4c0b65c5e11df47cc20da95ad6002e88aecff62bab06372",
+    version: "OpenSSH 10.3p1 on Alpine 3.24.4",
+    role: "OpenSSH SFTP server, chrooted internal-sftp, key login only (FILE_TRANSFER; PR-UDF-071)",
+  },
 } as const satisfies Record<string, TestImage>;
 export type TestImageName = keyof typeof TEST_IMAGES;
 

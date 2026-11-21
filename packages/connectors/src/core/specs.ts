@@ -160,6 +160,13 @@ export const PORT_METHODS: Readonly<Record<string, Readonly<Record<string, Metho
     updateReturnStatus: { kind: "write", callArg: 1, noFailover: true },
     recordPolicyAttestation: { kind: "write", callArg: 1, noFailover: true },
   },
+  // REGULATED by default and kept in India (PR-UDF-071, R1-D-254): a file is on one counterparty's
+  // server, and another server is another set of files, so nothing moves to a secondary.
+  FILE_TRANSFER: {
+    list: { kind: "read", callArg: 1, noFailover: true },
+    get: { kind: "read", callArg: 1, noFailover: true },
+    put: { kind: "write", callArg: 2, noFailover: true },
+  },
   // Provisional until PL4 (`ai`) defines the LLM interface; lets @IPB-01-AT-06 run at the router.
   LLM: {
     complete: { kind: "write", callArg: 1 },
