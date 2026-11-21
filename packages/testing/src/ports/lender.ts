@@ -980,7 +980,18 @@ export function lenderContractCases(
           }
           for (const d of p.documents) {
             const cert = d.stamp_evidence?.certificate_document_id;
-            if (cert) expect(shared.has(cert), "the stamp certificate is shared").toBe(true);
+            if (!cert) continue;
+            expect(shared.has(cert), "the stamp certificate is shared").toBe(true);
+            // R1-D-258 (PR-UDF-075 (4)): a document of the same application, and when the pack
+            // lists it, a document of its own: not stamp-required and not itself stamped.
+            expect(shared.get(cert)!.application_id, "the certificate's application").toBe(
+              applicationId,
+            );
+            const listed = p.documents.find((x) => x.document_id === cert);
+            if (listed) {
+              expect(listed.stamp_required).toBe(false);
+              expect(listed.stamp_evidence).toBeUndefined();
+            }
           }
         }
         expectNoAadhaarLike(m);
