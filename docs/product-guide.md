@@ -1708,6 +1708,24 @@ const out = await esign.downloadSigned(envelopeId, { keyRef: "lender:lnd_01…" 
 - **Not through QUARANTINE:** the signed file is the contracted ESP's answer over its authenticated API, so it goes straight to `REGULATED`, as KYC, bureau, AA and e-stamp files do; the scan of IPB-02-44 is for uploads. If your policy also scans it, run `FileScanPort.scan({ storageKey, sha256 })` on the stored key, or write it to `QUARANTINE` yourself and promote it with `promotedObjectMeta` (§7dt), which keeps the reference (owner question #189).
 - **Testing:** `new FakeEsign({ storage })` over `new MemoryStorage(undefined, { keyRefs })` writes the PDF and the chains under the reference (`signedObjects()[i].keyRef`); an unknown reference fails as STORAGE does. The fake writes once, so a second download naming another reference (or none) is refused `key_ref_changed`. `esignFakeStorageCases(storage, { keyRef })` runs the cases.
 
+## 7el. Checking a lender's key in several classes at once (PR-UDF-076; R1-D-261)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration or setting. `keyRefStatus` (§7ds) is unchanged.
+
+```ts
+const s = await storage.keyRefStatuses?.(tenantId, "lender:lnd_01…", {
+  bucketClasses: ["QUARANTINE", "REGULATED"],
+  describeKey: true,
+});
+s?.QUARANTINE; // { status: "resolves", keyState: "Enabled" } | { status: "refused", reason, keyState? }
+```
+
+- **One call, one answer per class**, each exactly what `keyRefStatus` would answer for that class: use it when you onboard a lender (the upload class and the clean class) instead of one call per class. One to six distinct classes; a `compartment` applies to each and must be allowed in each. An empty list, a duplicate, an unknown class, another tenant or a bad compartment is `IPB-PORT-003`; a class your adapter has no bucket for is `IPB-PORT-001`.
+- **One `DescribeKey` per distinct key:** with `describeKey: true`, the `s3` adapter reads each key once, however many classes use it. A failed read (throttling, network) throws `IPB-PORT-002` for the whole call; retry later.
+- **`storage_key_not_described`:** `keyRefStatuses` answers this, status `refused`, when the platform's STORAGE role may not call `kms:DescribeKey` on the lender's key: fix the lender's key policy (your production configuration, §7ds). A disabled, missing or unshared key is still `storage_key_unavailable`. Handle both as "do not use this key now". `keyRefStatus` still answers `storage_key_unavailable` in that case (changing it would be a breaking change); call `keyRefStatuses` with one class if you need to tell them apart.
+- **Adapters:** `s3` and `MemoryStorage` provide it; `minio` declares it `unsupported`. It is optional on `StoragePort`, so call it as `storage.keyRefStatuses?.(…)`.
+- **Testing:** `new MemoryStorage(undefined, { keyRefs, keyStates, keyStateError })`, where `keyStateError(tenantId, keyRef)` returns `"unavailable"` (the key-state read throws `IPB-PORT-002`) or `"not_described"` (the not-described answer). The built-in STORAGE contract cases include one for `keyRefStatuses`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

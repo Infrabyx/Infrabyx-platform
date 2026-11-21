@@ -1,8 +1,9 @@
 // PR-UDF-068 (R1-D-239): `keyRefStatus`, unit level. The S3 client fails any call (the status is
 // configuration only and never touches an object), and `DescribeKey` is replaced by a stand-in that
 // answers a key state or fails as KMS does; the moto leg (storage.contract.test.ts) runs the
-// built-in contract case with a real disabled moto KMS key.
+// built-in contract case with a real disabled moto KMS key. PR-UDF-076 (R1-D-261): `keyRefStatuses`.
 import { describe, expect, it } from "vitest";
+import type { BucketClass } from "@infrabyx/contracts/ports";
 import { MinioStorage, S3Storage, type S3StorageOptions } from "../s3.js";
 
 const LENDERS: Record<string, string> = {
@@ -207,6 +208,143 @@ describe("PR-UDF-068: STORAGE keyRefStatus", () => {
     expect(await m.keyRefStatus("tnt_a", "Bad", REG)).toEqual({
       status: "refused",
       reason: "key_ref_invalid",
+    });
+  });
+});
+
+describe("PR-UDF-076: STORAGE keyRefStatuses", () => {
+  const CLASSES = ["REGULATED", "CONFIDENTIAL", "GENERAL"] as const;
+
+  it("answers each class as keyRefStatus would, with no KMS call without describeKey", async () => {
+    const { p, described } = adapter();
+    const out = await p.keyRefStatuses("tnt_a", "lender:a", { bucketClasses: CLASSES });
+    expect(out).toEqual({
+      REGULATED: { status: "resolves" },
+      CONFIDENTIAL: { status: "resolves" },
+      GENERAL: { status: "refused", reason: "key_ref_class" },
+    });
+    for (const c of CLASSES)
+      expect(out[c]).toEqual(await p.keyRefStatus("tnt_a", "lender:a", { bucketClass: c }));
+    expect(await p.keyRefStatuses("tnt_a", "lender:z", { bucketClasses: ["REGULATED"] })).toEqual({
+      REGULATED: { status: "refused", reason: "key_ref_unknown" },
+    });
+    expect(described).toEqual([]);
+  });
+
+  it("describes each distinct key once", async () => {
+    const { p, described } = adapter();
+    const out = await p.keyRefStatuses("tnt_a", "lender:a", {
+      bucketClasses: CLASSES,
+      describeKey: true,
+    });
+    expect(out).toEqual({
+      REGULATED: { status: "resolves", keyState: "Enabled" },
+      CONFIDENTIAL: { status: "resolves", keyState: "Enabled" },
+      GENERAL: { status: "refused", reason: "key_ref_class" },
+    });
+    // lender:a uses one key in REGULATED and CONFIDENTIAL: one DescribeKey.
+    expect(described).toEqual([LENDERS["lender:a"]]);
+    // A key per class: two distinct keys, two reads.
+    const per = adapter({
+      tenantNamedKmsKeyIds: (t, w) =>
+        t === "tnt_a" && !w.compartment ? { "lender:a": `k-lender-a-${w.bucketClass}` } : undefined,
+    });
+    await per.p.keyRefStatuses("tnt_a", "lender:a", {
+      bucketClasses: ["REGULATED", "CONFIDENTIAL"],
+      describeKey: true,
+    });
+    expect(per.described).toEqual(["k-lender-a-REGULATED", "k-lender-a-CONFIDENTIAL"]);
+  });
+
+  it("a key the role may not describe answers storage_key_not_described; keyRefStatus keeps storage_key_unavailable", async () => {
+    const { p, describes } = adapter();
+    describes(async () => {
+      throw kmsError("AccessDeniedException", 400);
+    });
+    const out = await p.keyRefStatuses("tnt_a", "lender:a", {
+      bucketClasses: ["REGULATED", "CONFIDENTIAL"],
+      describeKey: true,
+    });
+    expect(out).toEqual({
+      REGULATED: { status: "refused", reason: "storage_key_not_described" },
+      CONFIDENTIAL: { status: "refused", reason: "storage_key_not_described" },
+    });
+    noKeyId(out);
+    expect(await p.keyRefStatus("tnt_a", "lender:a", { ...REG, describeKey: true })).toEqual({
+      status: "refused",
+      reason: "storage_key_unavailable",
+    });
+    // A key that does not exist, or a disabled one, is unavailable in both.
+    const one = { bucketClasses: ["REGULATED"], describeKey: true } as const;
+    describes(async () => {
+      throw kmsError("NotFoundException", 400);
+    });
+    expect(await p.keyRefStatuses("tnt_a", "lender:a", one)).toEqual({
+      REGULATED: { status: "refused", reason: "storage_key_unavailable" },
+    });
+    describes(async () => ({ KeyMetadata: { KeyState: "Disabled" } }));
+    expect(await p.keyRefStatuses("tnt_a", "lender:a", one)).toEqual({
+      REGULATED: { status: "refused", reason: "storage_key_unavailable", keyState: "Disabled" },
+    });
+  });
+
+  it("a failed key read throws IPB-PORT-002 for the whole call, without the key id", async () => {
+    const { p, describes } = adapter();
+    describes(async () => {
+      throw kmsError("ThrottlingException", 400);
+    });
+    const e = await p
+      .keyRefStatuses("tnt_a", "lender:a", { bucketClasses: CLASSES, describeKey: true })
+      .catch((x: unknown) => x);
+    expect(e).toMatchObject({ code: "IPB-PORT-002", meta: { name: "ThrottlingException" } });
+    expect((e as { cause?: unknown }).cause).toBeUndefined();
+    noKeyId(e);
+  });
+
+  it("refuses a malformed class list, compartment or tenant as keyRefStatus does", async () => {
+    const { p } = adapter({ currentTenant: () => "tnt_a" });
+    for (const bucketClasses of [
+      [],
+      ["REGULATED", "REGULATED"],
+      ["REGULATED", "NOPE"],
+    ] as unknown as BucketClass[][])
+      await expect(p.keyRefStatuses("tnt_a", "lender:a", { bucketClasses })).rejects.toMatchObject({
+        code: "IPB-PORT-003",
+      });
+    await expect(
+      p.keyRefStatuses("tnt_a", "lender:a", {
+        bucketClasses: ["REGULATED", "GENERAL"],
+        compartment: "SEALED",
+      }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+    await expect(
+      p.keyRefStatuses("tnt_b", "lender:a", { bucketClasses: ["REGULATED"] }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+    // A class without a bucket fails the whole call, as a write there would.
+    const noQ = adapter({
+      tenantNamedKmsKeyIds: (t) => (t === "tnt_a" ? LENDERS : undefined),
+    });
+    await expect(
+      noQ.p.keyRefStatuses("tnt_a", "lender:a", { bucketClasses: ["REGULATED", "QUARANTINE"] }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001" });
+  });
+
+  it("minio declares keyRefStatuses unsupported, after the same format checks", async () => {
+    const m = new MinioStorage({
+      region: "us-east-1",
+      buckets: { REGULATED: "b-reg" },
+      endpoint: "http://127.0.0.1:9",
+      credentials: { accessKeyId: "test", secretAccessKey: "test" },
+    });
+    expect(m.descriptor.capabilities).toMatchObject({ keyRefStatuses: "unsupported" });
+    await expect(
+      m.keyRefStatuses("tnt_a", "lender:a", { bucketClasses: ["REGULATED"] }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "unsupported" } });
+    expect(
+      await m.keyRefStatuses("tnt_a", "Bad", { bucketClasses: ["REGULATED", "GENERAL"] }),
+    ).toEqual({
+      REGULATED: { status: "refused", reason: "key_ref_invalid" },
+      GENERAL: { status: "refused", reason: "key_ref_invalid" },
     });
   });
 });

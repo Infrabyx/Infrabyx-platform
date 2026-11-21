@@ -71,4 +71,49 @@ describe("MemoryStorage named keys (PR-UDF-058)", () => {
     ).rejects.toMatchObject({ code: "IPB-PORT-003" });
     expect(s.objects.size).toBe(0);
   });
+
+  it("keyRefStatuses and keyStateError (PR-UDF-076): several classes, the not-described label, a failed read", async () => {
+    const s = new MemoryStorage(undefined, {
+      keyRefs: (t) => (t === "tnt_a" ? ["lender:a", "lender:hidden", "lender:flaky"] : undefined),
+      keyStateError: (_t, ref) =>
+        ref === "lender:hidden"
+          ? "not_described"
+          : ref === "lender:flaky"
+            ? "unavailable"
+            : undefined,
+    });
+    const both = {
+      bucketClasses: ["REGULATED", "QUARANTINE", "AUDIT"],
+      describeKey: true,
+    } as const;
+    expect(await s.keyRefStatuses("tnt_a", "lender:a", both)).toEqual({
+      REGULATED: { status: "resolves", keyState: "Enabled" },
+      QUARANTINE: { status: "resolves", keyState: "Enabled" },
+      AUDIT: { status: "refused", reason: "key_ref_class" },
+    });
+    expect(await s.keyRefStatuses("tnt_a", "lender:hidden", both)).toEqual({
+      REGULATED: { status: "refused", reason: "storage_key_not_described" },
+      QUARANTINE: { status: "refused", reason: "storage_key_not_described" },
+      AUDIT: { status: "refused", reason: "key_ref_class" },
+    });
+    // keyRefStatus keeps R1-D-239's label for a key it may not describe.
+    const reg = { bucketClass: "REGULATED", describeKey: true } as const;
+    expect(await s.keyRefStatus("tnt_a", "lender:hidden", reg)).toEqual({
+      status: "refused",
+      reason: "storage_key_unavailable",
+    });
+    for (const call of [
+      s.keyRefStatus("tnt_a", "lender:flaky", reg),
+      s.keyRefStatuses("tnt_a", "lender:flaky", both),
+    ])
+      await expect(call).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    // The injected error is only read with describeKey.
+    expect(
+      await s.keyRefStatuses("tnt_a", "lender:flaky", { bucketClasses: ["REGULATED"] }),
+    ).toEqual({ REGULATED: { status: "resolves" } });
+    await expect(
+      s.keyRefStatuses("tnt_a", "lender:a", { bucketClasses: ["REGULATED", "REGULATED"] }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-003" });
+    expect(s.objects.size).toBe(0);
+  });
 });
