@@ -1,5 +1,20 @@
 # @infrabyx/crypto
 
+## 1.14.0
+
+### Minor Changes
+
+- 2a0ea72: SSH key handling for the FILE_TRANSFER `sftp` adapter (Udofin PR-UDF-071; C-29 on the owner's instruction of 21 Nov 2026, R1-D-249, R1-D-254). New `ssh.ts` on `node:crypto` only: `sshHostKeyFingerprint` (the OpenSSH `SHA256:` fingerprint of a public-key blob), `sshHostKeyPinned` (constant-time match against pinned fingerprints; no pin, no match), `assertSshEd25519PrivateKey` (exactly one unencrypted OpenSSH `ssh-ed25519` private key, check integers and public half verified; `SshKeyError` with a fixed reason `format`, `encrypted`, `key_type`, `key_count` or `mismatch`, never key material), `generateSshEd25519KeyPair`, `sshEd25519PublicBlob`, `sshPublicKeyType`, `SSH_FINGERPRINT`, `SSH_ED25519`. Registry and CBOM: `ssh-ed25519` (signature, SSH only), `curve25519-sha256` (new purpose `key-agreement`) and `chacha20-poly1305` (SSH transport only) approved; `usedFor` lines on `aes-256-gcm`, `sha-256`, `sha-512` and `hmac-sha-256`. The generic `ed25519` entry stays `planned`, so `signRecord` and the KMS port still refuse it.
+
+### Patch Changes
+
+- Updated dependencies [5aba118]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/contracts@1.46.0
+
 ## 1.13.0
 
 ### Minor Changes
