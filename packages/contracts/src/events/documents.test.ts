@@ -22,6 +22,9 @@ import {
   PACK_PHYSICAL_REASONS,
   PACK_RE_INSTRUCTIONS_MAX,
   CoolingOffExitAnsweredData,
+  ESTAMP_SYSTEMS,
+  NOT_STAMPABLE_REASON_CODES,
+  parsePageOrClauseRef,
 } from "./index.js";
 
 const h = (c: string) => c.repeat(64);
@@ -734,5 +737,176 @@ describe("physical_reason and re_instructions on pack documents (PR-UDF-061 item
       const pack = ExecutionPackManifest.safeParse(inManifest(1, { re_instructions: text }));
       expect(pack.success, text).toBe(exit.success);
     }
+  });
+});
+
+// ---- PR-UDF-075 (owner, 21 Nov 2026 11:00; R1-D-258) ------------------------------------------
+
+describe("pack evidence additions (PR-UDF-075; R1-D-258)", () => {
+  const manifestEvidence = {
+    mode: "ESTAMP",
+    state: "IN-MH",
+    certificate_number: "IN-MH12345678901234X",
+    duty_paise: 50_000,
+    stamped_document_sha256: h("d"),
+  };
+  const inManifest = (i: number, over: Record<string, unknown>) => ({
+    ...manifest,
+    documents: manifest.documents.map((d, j) => (j === i ? { ...d, ...over } : d)),
+  });
+  const manifestOk = (v: unknown) => ExecutionPackManifest.safeParse(v).success;
+  const clause = (over: Record<string, unknown>) => ({
+    document_id: "doc_agr_0001",
+    page_or_clause_ref: "cl.4.2",
+    amount_stated_paise: 5_000_000,
+    ...over,
+  });
+  const issues = (v: unknown) => {
+    const r = ExecutionPackIssuedData.safeParse(v);
+    return r.success ? [] : r.error.issues.map((i) => i.path.join("."));
+  };
+
+  it("keeps every earlier pack valid: each addition is optional", () => {
+    expect(ok(issued)).toBe(true);
+    expect(manifestOk(manifest)).toBe(true);
+    expect(manifestOk({ ...manifest, disbursement_clause: clause({}) })).toBe(true);
+    expect(ESTAMP_SYSTEMS).toEqual(["SHCIL", "STATE_PORTAL", "NESL_DDE", "GRAS"]);
+    expect(NOT_STAMPABLE_REASON_CODES).toEqual(["NOT_AN_INSTRUMENT", "ACKNOWLEDGEMENT", "OTHER"]);
+  });
+
+  it("(1) takes an estamp_system only with an e-stamp, in both carriers", () => {
+    for (const system of ESTAMP_SYSTEMS) {
+      expect(PackStampEvidence.safeParse({ ...stampEvidence, estamp_system: system }).success).toBe(
+        true,
+      );
+      expect(StampEvidence.safeParse({ ...manifestEvidence, estamp_system: system }).success).toBe(
+        true,
+      );
+      expect(ok(withDoc(0, { stamp_evidence: { ...stampEvidence, estamp_system: system } }))).toBe(
+        true,
+      );
+    }
+    expect(PackStampEvidence.safeParse({ ...stampEvidence, estamp_system: "NSDL" }).success).toBe(
+      false,
+    );
+    for (const channel of ["FRANKING", "PHYSICAL_PAPER"]) {
+      const r = PackStampEvidence.safeParse({ ...stampEvidence, channel, estamp_system: "SHCIL" });
+      expect(r.success).toBe(false);
+      expect(r.error?.issues[0]?.path).toEqual(["estamp_system"]);
+      // Without the new field, those channels parse as before.
+      expect(PackStampEvidence.safeParse({ ...stampEvidence, channel }).success).toBe(true);
+    }
+    for (const mode of ["PAPER", "FRANKING"])
+      expect(
+        StampEvidence.safeParse({ ...manifestEvidence, mode, estamp_system: "GRAS" }).success,
+      ).toBe(false);
+  });
+
+  it("(2) takes a not-stampable reason code beside the reason, never instead of it", () => {
+    for (const reason_code of NOT_STAMPABLE_REASON_CODES)
+      expect(
+        ok({
+          ...issued,
+          not_stampable: issued.not_stampable.map((n) => ({ ...n, reason_code })),
+        }),
+      ).toBe(true);
+    const [first] = issued.not_stampable;
+    expect(ok({ ...issued, not_stampable: [{ ...first, reason_code: "EXEMPT" }] })).toBe(false);
+    // OTHER (and every code) still needs the free-text reason.
+    expect(
+      ok({ ...issued, not_stampable: [{ document_id: "doc_kfs_0001", reason_code: "OTHER" }] }),
+    ).toBe(false);
+    // The manifest: on a not-stampable item only, with its reason.
+    const kfs = {
+      not_stampable: true,
+      not_stampable_reason: "A disclosure, not an instrument",
+      not_stampable_reason_code: "NOT_AN_INSTRUMENT",
+    };
+    expect(manifestOk(inManifest(1, kfs))).toBe(true);
+    expect(
+      manifestOk(
+        inManifest(1, {
+          ...kfs,
+          not_stampable_reason: undefined,
+          not_stampable_reason_code: "OTHER",
+        }),
+      ),
+    ).toBe(false);
+    const stray = ExecutionPackManifest.safeParse(
+      inManifest(1, { not_stampable_reason_code: "ACKNOWLEDGEMENT" }),
+    );
+    expect(stray.error?.issues.map((i) => i.path.join("."))).toEqual([
+      "documents.1.not_stampable_reason_code",
+    ]);
+  });
+
+  it("(3) reads the stated forms of page_or_clause_ref", () => {
+    const cases: Array<[string, ReturnType<typeof parsePageOrClauseRef>]> = [
+      ["p.3", { page: 3 }],
+      ["P 3", { page: 3 }],
+      ["pg.12", { page: 12 }],
+      ["page 7", { page: 7 }],
+      ["cl.4.2", { clause: "4.2" }],
+      ["cl 4.2(a)", { clause: "4.2(a)" }],
+      ["Clause 9A.1(ii)", { clause: "9a.1(ii)" }],
+      ["p.3 cl.4.2", { page: 3, clause: "4.2" }],
+      ["p.3, cl.4.2", { page: 3, clause: "4.2" }],
+      ["cl.4.2; p.3", { page: 3, clause: "4.2" }],
+      ["cl.4.2/p.3", { page: 3, clause: "4.2" }],
+      ["Schedule II", undefined],
+      ["p.0", undefined],
+      ["p.2001", undefined],
+      ["4.2", undefined],
+      ["", undefined],
+    ];
+    for (const [text, read] of cases) expect(parsePageOrClauseRef(text), text).toEqual(read);
+  });
+
+  it("(3) takes page and clause_ref beside page_or_clause_ref, agreeing where it can be read", () => {
+    const at = (over: Record<string, unknown>) => ({
+      ...issued,
+      disbursement_clause: clause(over),
+    });
+    for (const over of [
+      { clause_ref: "4.2" },
+      { clause_ref: "4.2", page: 3 },
+      { page_or_clause_ref: "p.3 cl.4.2", page: 3, clause_ref: "4.2" },
+      { page_or_clause_ref: "P.3, CL.4.2(A)", page: 3, clause_ref: "4.2(a)" },
+      // Free text is not compared.
+      { page_or_clause_ref: "Schedule II, item 4", page: 9, clause_ref: "4" },
+    ]) {
+      expect(ok(at(over)), JSON.stringify(over)).toBe(true);
+      expect(manifestOk({ ...manifest, disbursement_clause: clause(over) })).toBe(true);
+    }
+    expect(issues(at({ clause_ref: "4.3" }))).toEqual(["disbursement_clause.clause_ref"]);
+    expect(issues(at({ page_or_clause_ref: "p.3", page: 4 }))).toEqual([
+      "disbursement_clause.page",
+    ]);
+    expect(issues(at({ page_or_clause_ref: "p.3 cl.4.2", page: 4, clause_ref: "4.1" }))).toEqual([
+      "disbursement_clause.page",
+      "disbursement_clause.clause_ref",
+    ]);
+    for (const bad of [
+      { page: 0 },
+      { page: 2001 },
+      { page: 1.5 },
+      { clause_ref: "cl.4.2" },
+      { clause_ref: "" },
+    ])
+      expect(ok(at(bad)), JSON.stringify(bad)).toBe(false);
+    expect(manifestOk({ ...manifest, disbursement_clause: clause({ clause_ref: "4.3" }) })).toBe(
+      false,
+    );
+  });
+
+  it("(4) still refuses a document naming itself as its certificate, and takes a certificate outside the pack", () => {
+    expect(ok(issued)).toBe(true); // doc_cert_0001 is not listed in the pack
+    expect(
+      issues(
+        withDoc(0, {
+          stamp_evidence: { ...stampEvidence, certificate_document_id: "doc_agr_0001" },
+        }),
+      ),
+    ).toEqual(["documents.0.stamp_evidence"]);
   });
 });
