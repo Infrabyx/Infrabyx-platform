@@ -79,6 +79,7 @@ For an event that `isRegulatedMessage(type)` names (Ecosystem Spec §3.6):
   - `keys` is a `RegulatedKeyRing` of the producer's published keys;
   - `replay` is a shared `ReplayStore` when several instances verify.
   - A failure answers 401 and is logged with its reason, never with the event.
+  - From the next `tenancy` minor the inbox can verify it and keep it beside the event instead: `receive(ctx, envelope, { jws })` with the `regulated` option (§7eh).
 - **Rotation:** add the new key to every consumer's ring first, then sign with it, and finally set the old key's `notAfter` to the end of the overlap.
 
 ## 7c. Scheduled per-tenant jobs
@@ -1585,6 +1586,38 @@ From the next `@infrabyx/contracts` minor (no migration, setting or environment 
 - **An LSP** matches `lsp_application_ref` against its own application first, else `application_id` against the id the lender gave in `ApplicationStatusChanged`; with neither, it holds the disbursal for review rather than guessing from the amount.
 - The mock lender (`@infrabyx/fakes`) sends both.
 - **Adopt** with all `@infrabyx/*` pins moved together.
+
+## 7eh. The inbox keeps the verified JWS beside the event (PR-UDF-073; R1-D-257)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0026`; no setting, no environment variable). §7dp says to store a regulated message's `X-Infrabyx-JWS` beside the event; `EcosystemInbox` now does it for you, in the same row and transaction as the event.
+
+```ts
+const inbox = new EcosystemInbox({
+  kernel,
+  audit,
+  schema: "lending",
+  environment: "live",
+  regulated: { keys: lenderKeys, replay: sharedReplayStore }, // RegulatedKeyRing, durable ReplayStore
+});
+const h = regulatedJwsFromHeaders(req.headers); // refuse !h.ok with signature-invalid (§7dp)
+const r = await inbox.receive(ctx, body, { businessKey, jws: h.jws }); // then answer 2xx
+// r.jws: the JWS stored with the event
+await inbox.drain(ctx, async (tx, event) => keepProof(event.envelope, event.jws));
+```
+
+**What you get:**
+
+- `receive(ctx, raw, { jws })` checks the value against the envelope's own limits (one compact detached JWS, at most 1,024 octets, as `X-Infrabyx-JWS`), verifies it with `verifyRegulatedMessage` and your `regulated` keys and replay store, and only then stores the event with it in the new nullable `jws` column. A JWS that fails is refused with IPB-API-018 (`meta.reason` `signature-invalid`, `meta.jws` the reason) and nothing is stored. Without `regulated`, a `jws` is refused rather than stored unverified.
+- The handler (`drain`, `sweep`) and `list` get it as `event.jws`; `null` for an event received unsigned.
+- A redelivery of a stored event is a `duplicate` whose `r.jws` is the JWS stored at the first receipt: its own fresh JWS must still verify; the very same JWS again (its `jti` already claimed) is a duplicate too, in the same tenant only.
+- The column is written once: the database refuses any later change of it, even from null to a value, and any value over 1,024 octets or not in compact detached form.
+
+**What to change:**
+
+1. Run `infrabyx-migrate`: `tenancy/0026` adds the column to every inbox `tenancy.create_ecosystem_inbox` made, and new inboxes get it.
+2. Pass the `X-Infrabyx-JWS` value to `receive` instead of calling `verifyRegulatedMessage` yourself first: a JWS you already verified with the same replay store has its `jti` claimed and is refused as `replay`.
+3. Keep refusing an unsigned regulated message yourself (`isRegulatedMessage`, `regulatedJwsFromHeaders`); `receive` without `jws` stores the event with none, as before.
+4. If you kept the JWS in a table of your own, you can read it from `event.jws` instead; rows received before 0026 have `null` (nothing is backfilled).
 
 ## 7ei. Pack evidence: e-stamp system, not-stampable codes, page and clause, the JWS profile (PR-UDF-075; R1-D-258)
 
