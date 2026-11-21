@@ -1,5 +1,20 @@
 # @infrabyx/config
 
+## 1.23.0
+
+### Minor Changes
+
+- 2d543fe: PR-UDF-054 (E8; R1-D-245): four new platform settings, all `bool`, default `false`, changed by `PLT_SUPER_ADMIN` under R4. `int.esign.nsdl.enabled` (the NSDL eSign shell, whose request signing is refused until the owner approves it), `int.estamp.shcil.enabled` (SHCIL e-stamp read-back), `int.estamp.digio.enabled` (Digio e-stamp read-back) and `int.estamp.manual_paper.enabled` (physical stamp paper and franking records). No existing key changes; nothing to set for a product that does not use them.
+
+### Patch Changes
+
+- Updated dependencies [d4636a3]
+- Updated dependencies [ae319d5]
+- Updated dependencies [98a1d62]
+- Updated dependencies [461fe2c]
+  - @infrabyx/contracts@1.44.0
+  - @infrabyx/crypto@1.12.0
+
 ## 1.22.3
 
 ### Patch Changes

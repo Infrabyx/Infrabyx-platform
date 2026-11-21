@@ -1,5 +1,23 @@
 # @infrabyx/fakes
 
+## 1.8.0
+
+### Minor Changes
+
+- 674b8db: `FakeAccountAggregator` writes each FI payload to STORAGE on `fetch` (Udofin PR-UDF-065; R1-D-243), as the `setu-aa` adapter does: the bytes of a synthetic ReBIT-shaped JSON payload (new export `fakeFiPayload`) in the `REGULATED` class, under an IPB-01-27 key `<dataPrefix><ULID>.json`, and the result's `sha256` is the lower-case hex SHA-256 of exactly the stored bytes, so a STATEMENT_ANALYSIS adapter can analyse the payloads by reference. New constructor option `storage` (a `StoragePort`) and property `storage`; without it the fake keeps its own `MemoryStorage`, so `new FakeAccountAggregator()` works as before. Changed: a payload's `storageKey` was `<dataPrefix><sessionId>-<fiType>.json`, which was not an IPB-01-27 key and named nothing in STORAGE, and its `sha256` hashed no stored bytes; a test that matched the old key shape or the old digest must read the payload from `storage` instead. `AccountAggregatorFixtures` gains optional `storageOf`, set in `ACCOUNT_AGGREGATOR_FAKE_FIXTURES`.
+- 373c28c: PR-UDF-054 (E8; R1-D-245): `FakeEstamp.recordCertificate` records a stamp bought outside the platform, with the shared `assertStampRecord` check, once per idempotency key and a certificate number once per State and channel (`IPB-PORT-004`, `certificate_reused`); `verify` and `attach` work on recorded certificates as on bought ones. Additive; `purchase` and DDE are unchanged.
+
+### Patch Changes
+
+- Updated dependencies [d4636a3]
+- Updated dependencies [ae319d5]
+- Updated dependencies [2d543fe]
+- Updated dependencies [98a1d62]
+- Updated dependencies [461fe2c]
+  - @infrabyx/contracts@1.44.0
+  - @infrabyx/config@1.23.0
+  - @infrabyx/crypto@1.12.0
+
 ## 1.7.0
 
 ### Minor Changes
