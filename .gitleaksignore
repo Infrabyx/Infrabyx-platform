@@ -42,3 +42,8 @@ d8a2f14ce302e57717d20590892101606cc4c524:packages/tenancy/migrations/checksums.j
 # (PR-UDF-069), read by generic-api-key because the constant is named KEY. It is not a credential;
 # the next commit marks the line gitleaks:allow with that reason.
 e7854b7ab482f0396bf8bef67ea9b1d7829f879d:packages/connectors/src/egress/__tests__/partner-mtls.test.ts:generic-api-key:122
+#
+# 2026-11-21: the OpenSSH PEM armour in a test helper that rewraps a key generated at run time
+# (PR-UDF-071, C-29 tests), read by private-key. It holds no key material; the next commit marks
+# the line gitleaks:allow with that reason.
+2a0ea727afc76938ba020c4c9c7cb1d232b7b901:packages/crypto/src/ssh.test.ts:private-key:33
