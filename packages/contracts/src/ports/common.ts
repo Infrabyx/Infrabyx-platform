@@ -118,6 +118,8 @@ export const PORT_DEFAULT_DATA_CLASS: Readonly<Record<string, DataClass>> = Obje
   IMAGE_GEN: "INTERNAL",
   /** Bank statements and their analysis (PR-UDF-048, R1-D-202): REGULATED, kept in India. */
   STATEMENT_ANALYSIS: "REGULATED",
+  /** Files to and from a counterparty's SFTP server, bureau files among them (PR-UDF-071, R1-D-254). */
+  FILE_TRANSFER: "REGULATED",
 });
 
 /** Port default data class; CONFIDENTIAL for every port not listed (plan §3.1). */

@@ -32,6 +32,8 @@ export * from "./credit-bureau.js";
 export * from "./account-aggregator.js";
 export * from "./statement-analysis.js";
 export * from "./grc.js";
+export * from "./file-transfer.js";
+export * from "./file-exchange.js";
 export * from "./money.js";
 export * from "./doc-file.js";
 export * from "./estamp.js";
