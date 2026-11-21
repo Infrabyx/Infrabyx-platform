@@ -1532,6 +1532,22 @@ const { documents } = await esign.downloadSignedDocuments!(envelopeId); // after
 
 One to ten documents, unique ids and storage keys. **All or nothing:** a signer is `signed` only after signing every document, the envelope completes only when every document is signed by every signer, a decline declines the whole envelope, and nothing downloads before completion (`not_completed`). `getStatus(...).documents` shows each document's progress; `downloadSigned` on several documents is refused `multi_document`.
 
+## 7ek. ESIGN: the signed file under the lender's key (PR-UDF-074; R1-D-260)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration, setting or environment variable. Nothing changes for a download that names no key.
+
+```ts
+const out = await esign.downloadSigned(envelopeId, { keyRef: "lender:lnd_01…" });
+(await storage.get(out.storageKey)).meta.keyRef; // "lender:lnd_01…"
+// multi-document envelopes: esign.downloadSignedDocuments!(envelopeId, { keyRef })
+```
+
+- **What happens:** the adapter writes the ESP's signed PDF to `REGULATED` at `tenant/<tenant of the original>/esign/<ULID>.pdf` with `put(…, { bucketClass: "REGULATED", keyRef })`, so it is under that lender's key from its first byte (§7dl). `leegality`, `digio` and the fake support it; `nsdl-esign` still refuses `downloadSigned`.
+- **Fail closed:** a malformed reference is refused `IPB-PORT-003` `key_ref_invalid` before the ESP is called. Any STORAGE refusal fails the download with that error and its `reason` (`key_ref_unknown`, `key_ref_prefix_conflict`, `key_ref_shared`, `key_ref_tenant_cmk`, or `IPB-KMS-001` `storage_key_unavailable` for a disabled or revoked key): nothing is written and nothing falls back to the class key. The envelope stays `completed`, so download again once the key is fixed. Check the key first with `storage.keyRefStatus?.(tenantId, keyRef, { bucketClass: "REGULATED", describeKey: true })` (§7ds) if you want to tell the user before the ESP is called.
+- **Or the prefix map (no code change):** yes, a `tenantKeyRefPrefixes` entry `{ "tenant/<lender>/esign/": "lender:<lender>" }` (where your tenant is the lender) already puts every signed file of that tenant under the lender's key, today and without `keyRef`, and a download naming another reference is then refused `key_ref_prefix_conflict`. Use it when every signed file of the tenant belongs under one key. The ESIGN key has no lender segment, so when one tenant holds files for several lenders, name the key on each download instead (or as well: the same reference passes).
+- **Not through QUARANTINE:** the signed file is the contracted ESP's answer over its authenticated API, so it goes straight to `REGULATED`, as KYC, bureau, AA and e-stamp files do; the scan of IPB-02-44 is for uploads. If your policy also scans it, run `FileScanPort.scan({ storageKey, sha256 })` on the stored key, or write it to `QUARANTINE` yourself and promote it with `promotedObjectMeta` (§7dt), which keeps the reference (owner question #189).
+- **Testing:** `new FakeEsign({ storage })` over `new MemoryStorage(undefined, { keyRefs })` writes the PDF and the chains under the reference (`signedObjects()[i].keyRef`); an unknown reference fails as STORAGE does. The fake writes once, so a second download naming another reference (or none) is refused `key_ref_changed`. `esignFakeStorageCases(storage, { keyRef })` runs the cases.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
