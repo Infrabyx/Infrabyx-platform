@@ -1656,6 +1656,42 @@ Pass the parsed data as it is (it carries the v2 fields; a v2 JWS without `media
 - The mock lender sends `estamp_system: "SHCIL"`, `reason_code: "NOT_AN_INSTRUMENT"` and `clause_ref: "4.2"`.
 - **Adopt** with all `@infrabyx/*` pins moved together.
 
+## 7ej. Executed documents, real files from `FakeDocgen`, and reading a PDF's PDF/A and PDF/UA claim (PR-UDF-077; R1-D-259)
+
+From `@infrabyx/contracts`, `@infrabyx/fakes`, `@infrabyx/testing` and `@infrabyx/export` minors (no migration, setting or environment variable).
+
+**Document type codes.** Spell the shared codes with their constants: `EXECUTED_DOCUMENT_TYPE` (the lender's document as the eSign Service Provider returned it, signatures included), `EXECUTION_EVIDENCE_SUMMARY_TYPE` (the human-readable record of how it was executed; it summarises the signed `ESignCompleted` and `EStampCompleted` events and never replaces them) and `PRIVACY_POLICY_LSP_TYPE` (an LSP's privacy policy; no `application_id`). `SHARED_DOCUMENT_TYPES` lists them with `EXECUTION_PACK_MANIFEST_TYPE`. `type` stays an open code.
+
+**The link from an executed file to the lender's document is `ESignCompleted.signed_sha256`.** Share the executed file as a `DocumentShared` of type `EXECUTED_DOCUMENT` whose `sha256` is the `signed_sha256` of the `ESignCompleted` of the **last** signature (earlier signatures name intermediate files); that signed event's `document_id` is the lender's document. Optionally add `source_document: { document_id, version }` (the lender's document and its version, which `ESignCompleted` does not carry) for filing; an `EXECUTION_EVIDENCE_SUMMARY` names the document it covers the same way. A consumer verifies both signatures, then:
+
+```ts
+const problems = executedDocumentMismatches(shared, esign); // [] when they agree
+// labels: "type", "sha256", "source_document", "application_id"
+```
+
+`source_document` is not signed by the document JWS: treat it as a pointer that must agree, never as proof.
+
+**Real files from `FakeDocgen`.** Pass STORAGE and the renderers (fakes cannot depend on export, so you wire them):
+
+```ts
+import { FakeDocgen, FAKE_TEMPLATES, MemoryStorage } from "@infrabyx/testing";
+import { toDocx, toPdf } from "@infrabyx/export";
+
+const storage = new MemoryStorage();
+const docgen = new FakeDocgen(FAKE_TEMPLATES, { storage, renderers: { pdf: toPdf, docx: toDocx } });
+const r = await docgen.render({
+  templateId: "kfs",
+  data,
+  format: "pdfa",
+  outputPrefix: "tenant/tnt_a/docs",
+});
+// r.file.storageKey = tenant/tnt_a/docs/0<25 hex>.pdf; r.file.sha256 = SHA-256 of the stored bytes
+```
+
+`pdfa` is PDF/A-2b claiming PDF/UA-1, `pdf` plain PDF, `docx` needs the `docx` renderer, `html` writes the escaped page. The layout is a fake's: the template and version as title and heading, one paragraph per data field in key order (for `renderHtml`, the page's title and block text), with text outside printable ASCII and the rupee sign shown as `?`. The same request gives the same key and bytes. The prefix must be `tenant/<tenant>/<module>` (one module segment). Without the second argument the fake behaves as before. Your own DOCGEN adapter can run `docgenStorageContractCases(storage)` from `@infrabyx/testing`.
+
+**Reading the claim.** `pdfIdentification(bytes)` from `@infrabyx/export` returns what the catalog's XMP metadata claims, for example `{ pdfa: { part: 2, conformance: "B" }, pdfua: { part: 1 } }`; `pdfUaClaimed(bytes)` is `true` when PDF/UA is claimed. It is a claim, not a validation: a file can claim what it does not meet, so gate a statutory acceptance on veraPDF (§7ea), not on this. It reads files up to 64 MiB by default (`maxBytes`; over it `too_large`), follows a catalog in an object stream and FlateDecode metadata, ignores page, image and font metadata, and answers `{}` for anything else, including a damaged file. Read the bytes from STORAGE after your AV and hash checks, as for any upload.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
