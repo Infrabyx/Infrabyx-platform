@@ -1566,6 +1566,43 @@ From the next `@infrabyx/contracts` minor (no migration, setting or environment 
 - The mock lender (`@infrabyx/fakes`) sets neither field today.
 - **Adopt** with all `@infrabyx/*` pins moved together.
 
+## 7ef. Files over SFTP: the FILE_TRANSFER port (PR-UDF-071; R1-D-254)
+
+From the release that carries PR-UDF-071 (minors of `contracts`, `crypto`, `config`, `fakes`, `testing` and `connectors`; no migration, no environment variable), `@infrabyx/connectors/file-transfer` has an SFTP client behind the FILE_TRANSFER port, for a counterparty's server: a credit information company's submission server (Finbyx's `BureauSubmitter`), a lender's file drop (Udofin), the Ecosystem Spec §3.11 file fallback. It is off and unproven until you use it against the counterparty's test server.
+
+```ts
+import { SftpFileTransfer } from "@infrabyx/connectors/file-transfer";
+
+const cic = new SftpFileTransfer({
+  enabled: () => settings.get("int.file_transfer.sftp.enabled"),
+  allowHosts: () => settings.get("int.file_transfer.sftp.allow_hosts"),
+  target: () => ({
+    host: "sftp.cic.example.in", // exact host name or IP literal, on the allow-list
+    port: 22,
+    username: "member0042",
+    hostKeySha256: ["SHA256:…"], // from the counterparty, `ssh-keygen -l -E sha256` form; 1 to 4
+    clientKeySecret: "secrets/prod/file_transfer/sftp/cic", // OpenSSH ssh-ed25519 private key
+  }),
+  secrets, // your SECRETS port
+});
+
+const sent = await cic.put(`upload/${name}`, bytes, { ifAbsent: true }); // { path, size, sha256 }
+const acks = await cic.list("download"); // { entries: [{ name, type, size, modifiedAt }], truncated, skipped }
+const ack = await cic.get(`download/${acks.entries[0]!.name}`, { maxBytes: 8 * 1024 * 1024 });
+```
+
+**What you configure:** the platform allow-list `int.file_transfer.sftp.allow_hosts` (json, PLATFORM, R4): `[{ "host": "sftp.cic.example.in", "residency": "IN", "attestation": "<your reference>" }]`, one entry per server, residency `IN` only on the strength of the tenant's signed attestation of the server's location (§12.2). Per counterparty, in your own configuration: the target and its host-key pins. In SECRETS: the client key, made with `ssh-keygen -t ed25519 -N ''` (or `generateSshEd25519KeyPair` from `@infrabyx/crypto`), whose public half you register with the counterparty; rotate it yearly (§12.2) by registering the new public key, then swapping the secret.
+
+**What the adapter enforces:** the host on the allow-list and every resolved address public (no private, loopback or metadata address); the host key pinned (no trust on first use; a second pin for rotation); the client key an unencrypted OpenSSH `ssh-ed25519` key, public-key authentication only; curve25519 key exchange, AES-256-GCM or ChaCha20-Poly1305 only; `put` never overwrites (`exists`, `IPB-STOR-003`, even when two workers race) and removes its own half-written file on failure; `get` never reads past `maxBytes` (`too_large`, default 32 MiB, at most 256 MiB); one connection per call, a 120 s deadline, a 15 s handshake timeout and your `signal`. Refusals carry fixed labels only (`FILE_TRANSFER_REFUSALS`): `not_allowed`, `address`, `host_key_mismatch`, `residency`, `client_key`, `auth_failed`, `invalid_path`, `not_found`, `not_a_file`, `exists`, `too_large`, `timeout`, `aborted`, `unavailable`, `dns`, `adapter_disabled`, `adapter_unconfigured`, `data_class`.
+
+**What to know:**
+
+- Paths are relative to the account's home, in segments of `A-Z a-z 0-9 . _ -`; there is no mkdir, rename or delete. A file name in the §3.11 shape comes from `fileExchangeName({ producer, reid, layoutId, major, date, seq, ext })`; check a received manifest (after verifying its C-22 detached JWS) with `checkFileExchangeManifest(manifest, { fileName, sha256, count?, controlTotals? })`.
+- The calls are REGULATED by default; `SECRET` is refused. Keep the bytes you send and receive in your STORAGE: the platform keeps nothing.
+- A server with only RSA or ECDSA host keys, or without these ciphers, is refused; ask the owner (#184) before widening.
+- Tests: `FakeFileTransfer` and `fileTransferContractCases` from `@infrabyx/testing`; `startSftpServer()` runs the pinned OpenSSH image with keys made per run.
+- **Adopt** with all `@infrabyx/*` pins moved together; `ssh2` arrives as a dependency of `connectors` (no native build under pnpm 10; do not add it to `onlyBuiltDependencies`).
+
 ## 7eg. Telling which application a `LoanDisbursed` is for (PR-UDF-061 finding (i); R1-D-256)
 
 From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), `LoanDisbursedData` takes an optional `lsp_application_ref`: the LSP's own application reference, as on `CoolingOffExitAnswered`.
@@ -1655,6 +1692,107 @@ Pass the parsed data as it is (it carries the v2 fields; a v2 JWS without `media
 - No `physical_marks` list: the pack is issued before execution, so a notary's seal or a registration endorsement does not yet exist; use item 18's `re_instructions` (§7ed) for where the lender wants it (owner question #187).
 - The mock lender sends `estamp_system: "SHCIL"`, `reason_code: "NOT_AN_INSTRUMENT"` and `clause_ref: "4.2"`.
 - **Adopt** with all `@infrabyx/*` pins moved together.
+
+## 7ej. Executed documents, real files from `FakeDocgen`, and reading a PDF's PDF/A and PDF/UA claim (PR-UDF-077; R1-D-259)
+
+From `@infrabyx/contracts`, `@infrabyx/fakes`, `@infrabyx/testing` and `@infrabyx/export` minors (no migration, setting or environment variable).
+
+**Document type codes.** Spell the shared codes with their constants: `EXECUTED_DOCUMENT_TYPE` (the lender's document as the eSign Service Provider returned it, signatures included), `EXECUTION_EVIDENCE_SUMMARY_TYPE` (the human-readable record of how it was executed; it summarises the signed `ESignCompleted` and `EStampCompleted` events and never replaces them) and `PRIVACY_POLICY_LSP_TYPE` (an LSP's privacy policy; no `application_id`). `SHARED_DOCUMENT_TYPES` lists them with `EXECUTION_PACK_MANIFEST_TYPE`. `type` stays an open code.
+
+**The link from an executed file to the lender's document is `ESignCompleted.signed_sha256`.** Share the executed file as a `DocumentShared` of type `EXECUTED_DOCUMENT` whose `sha256` is the `signed_sha256` of the `ESignCompleted` of the **last** signature (earlier signatures name intermediate files); that signed event's `document_id` is the lender's document. Optionally add `source_document: { document_id, version }` (the lender's document and its version, which `ESignCompleted` does not carry) for filing; an `EXECUTION_EVIDENCE_SUMMARY` names the document it covers the same way. A consumer verifies both signatures, then:
+
+```ts
+const problems = executedDocumentMismatches(shared, esign); // [] when they agree
+// labels: "type", "sha256", "source_document", "application_id"
+```
+
+`source_document` is not signed by the document JWS: treat it as a pointer that must agree, never as proof.
+
+**Real files from `FakeDocgen`.** Pass STORAGE and the renderers (fakes cannot depend on export, so you wire them):
+
+```ts
+import { FakeDocgen, FAKE_TEMPLATES, MemoryStorage } from "@infrabyx/testing";
+import { toDocx, toPdf } from "@infrabyx/export";
+
+const storage = new MemoryStorage();
+const docgen = new FakeDocgen(FAKE_TEMPLATES, { storage, renderers: { pdf: toPdf, docx: toDocx } });
+const r = await docgen.render({
+  templateId: "kfs",
+  data,
+  format: "pdfa",
+  outputPrefix: "tenant/tnt_a/docs",
+});
+// r.file.storageKey = tenant/tnt_a/docs/0<25 hex>.pdf; r.file.sha256 = SHA-256 of the stored bytes
+```
+
+`pdfa` is PDF/A-2b claiming PDF/UA-1, `pdf` plain PDF, `docx` needs the `docx` renderer, `html` writes the escaped page. The layout is a fake's: the template and version as title and heading, one paragraph per data field in key order (for `renderHtml`, the page's title and block text), with text outside printable ASCII and the rupee sign shown as `?`. The same request gives the same key and bytes. The prefix must be `tenant/<tenant>/<module>` (one module segment). Without the second argument the fake behaves as before. Your own DOCGEN adapter can run `docgenStorageContractCases(storage)` from `@infrabyx/testing`.
+
+**Reading the claim.** `pdfIdentification(bytes)` from `@infrabyx/export` returns what the catalog's XMP metadata claims, for example `{ pdfa: { part: 2, conformance: "B" }, pdfua: { part: 1 } }`; `pdfUaClaimed(bytes)` is `true` when PDF/UA is claimed. It is a claim, not a validation: a file can claim what it does not meet, so gate a statutory acceptance on veraPDF (§7ea), not on this. It reads files up to 64 MiB by default (`maxBytes`; over it `too_large`), follows a catalog in an object stream and FlateDecode metadata, ignores page, image and font metadata, and answers `{}` for anything else, including a damaged file. Read the bytes from STORAGE after your AV and hash checks, as for any upload.
+
+## 7ek. ESIGN: the signed file under the lender's key (PR-UDF-074; R1-D-260)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration, setting or environment variable. Nothing changes for a download that names no key.
+
+```ts
+const out = await esign.downloadSigned(envelopeId, { keyRef: "lender:lnd_01…" });
+(await storage.get(out.storageKey)).meta.keyRef; // "lender:lnd_01…"
+// multi-document envelopes: esign.downloadSignedDocuments!(envelopeId, { keyRef })
+```
+
+- **What happens:** the adapter writes the ESP's signed PDF to `REGULATED` at `tenant/<tenant of the original>/esign/<ULID>.pdf` with `put(…, { bucketClass: "REGULATED", keyRef })`, so it is under that lender's key from its first byte (§7dl). `leegality`, `digio` and the fake support it; `nsdl-esign` still refuses `downloadSigned`.
+- **Fail closed:** a malformed reference is refused `IPB-PORT-003` `key_ref_invalid` before the ESP is called. Any STORAGE refusal fails the download with that error and its `reason` (`key_ref_unknown`, `key_ref_prefix_conflict`, `key_ref_shared`, `key_ref_tenant_cmk`, or `IPB-KMS-001` `storage_key_unavailable` for a disabled or revoked key): nothing is written and nothing falls back to the class key. The envelope stays `completed`, so download again once the key is fixed. Check the key first with `storage.keyRefStatus?.(tenantId, keyRef, { bucketClass: "REGULATED", describeKey: true })` (§7ds) if you want to tell the user before the ESP is called.
+- **Or the prefix map (no code change):** yes, a `tenantKeyRefPrefixes` entry `{ "tenant/<lender>/esign/": "lender:<lender>" }` (where your tenant is the lender) already puts every signed file of that tenant under the lender's key, today and without `keyRef`, and a download naming another reference is then refused `key_ref_prefix_conflict`. Use it when every signed file of the tenant belongs under one key. The ESIGN key has no lender segment, so when one tenant holds files for several lenders, name the key on each download instead (or as well: the same reference passes).
+- **Not through QUARANTINE:** the signed file is the contracted ESP's answer over its authenticated API, so it goes straight to `REGULATED`, as KYC, bureau, AA and e-stamp files do; the scan of IPB-02-44 is for uploads. If your policy also scans it, run `FileScanPort.scan({ storageKey, sha256 })` on the stored key, or write it to `QUARANTINE` yourself and promote it with `promotedObjectMeta` (§7dt), which keeps the reference (owner question #189).
+- **Testing:** `new FakeEsign({ storage })` over `new MemoryStorage(undefined, { keyRefs })` writes the PDF and the chains under the reference (`signedObjects()[i].keyRef`); an unknown reference fails as STORAGE does. The fake writes once, so a second download naming another reference (or none) is refused `key_ref_changed`. `esignFakeStorageCases(storage, { keyRef })` runs the cases.
+
+## 7el. Checking a lender's key in several classes at once (PR-UDF-076; R1-D-261)
+
+Minors of `contracts`, `connectors`, `fakes` and `testing`; no migration or setting. `keyRefStatus` (§7ds) is unchanged.
+
+```ts
+const s = await storage.keyRefStatuses?.(tenantId, "lender:lnd_01…", {
+  bucketClasses: ["QUARANTINE", "REGULATED"],
+  describeKey: true,
+});
+s?.QUARANTINE; // { status: "resolves", keyState: "Enabled" } | { status: "refused", reason, keyState? }
+```
+
+- **One call, one answer per class**, each exactly what `keyRefStatus` would answer for that class: use it when you onboard a lender (the upload class and the clean class) instead of one call per class. One to six distinct classes; a `compartment` applies to each and must be allowed in each. An empty list, a duplicate, an unknown class, another tenant or a bad compartment is `IPB-PORT-003`; a class your adapter has no bucket for is `IPB-PORT-001`.
+- **One `DescribeKey` per distinct key:** with `describeKey: true`, the `s3` adapter reads each key once, however many classes use it. A failed read (throttling, network) throws `IPB-PORT-002` for the whole call; retry later.
+- **`storage_key_not_described`:** `keyRefStatuses` answers this, status `refused`, when the platform's STORAGE role may not call `kms:DescribeKey` on the lender's key: fix the lender's key policy (your production configuration, §7ds). A disabled, missing or unshared key is still `storage_key_unavailable`. Handle both as "do not use this key now". `keyRefStatus` still answers `storage_key_unavailable` in that case (changing it would be a breaking change); call `keyRefStatuses` with one class if you need to tell them apart.
+- **Adapters:** `s3` and `MemoryStorage` provide it; `minio` declares it `unsupported`. It is optional on `StoragePort`, so call it as `storage.keyRefStatuses?.(…)`.
+- **Testing:** `new MemoryStorage(undefined, { keyRefs, keyStates, keyStateError })`, where `keyStateError(tenantId, keyRef)` returns `"unavailable"` (the key-state read throws `IPB-PORT-002`) or `"not_described"` (the not-described answer). The built-in STORAGE contract cases include one for `keyRefStatuses`.
+
+## 7em. Recording a refused document-retrieval host (PR-UDF-072; R1-D-262)
+
+From the next release (`contracts` and `audit` minors; migration `audit/0013`; no setting or environment variable), a product that refuses to fetch a partner's document because the retrieval URL (`DocumentRetrieval.url`, §7df) names a host outside its allow-list records the security event `connector.retrieval.host_refused`. The platform has no retrieval client of its own: your fetcher applies the allow-list and records the refusal.
+
+```ts
+import { retrievalHostOf, retrievalHostRefusedEvent } from "@infrabyx/contracts/kernel";
+
+const r = DocumentRetrieval.parse(await partner.getDocument(documentId));
+if (!allowedHosts.has(new URL(r.url).hostname)) {
+  const host = retrievalHostOf(r.url); // bare host: no scheme, credentials, port, path or query
+  if (host)
+    await securityEvents.record(
+      ctx, // your tenant and the principal that made the fetch
+      retrievalHostRefusedEvent({
+        partner_tenant_id: partnerTenantId,
+        document_id: r.document_id,
+        version: r.version,
+        host,
+      }),
+    );
+  else log.warn({ reason: "retrieval_host_unrecordable", document_id: r.document_id });
+  throw new RetrievalRefused("host_refused"); // never fetch, never retry the same answer
+}
+```
+
+- **The sink:** `PgSecurityEvents` from `@infrabyx/audit`, built on your kernel's pool (its login may `set role svc_security_event`), as for refused reveals (§7cg). It writes in its own short transaction, so the record stays although your transaction rolls back. Apply `audit/0013` with your other platform migrations first; before it, the table refuses the kind.
+- **The detail is exactly** `{ partner_tenant_id, document_id, version, host }`: the partner tenant by the platform tenant-id rule, the document id and version as `DocumentRetrieval` gives them, and `host` a bare lower-case DNS name of at most 128 characters. Anything else (a URL, a query, a port, `user:pass@`, upper case, a trailing dot, an extra field) is refused with a `RangeError` that names the field, never its value, before the database is touched. The event targets `document` and the document id.
+- **Record the host, never the URL:** a presigned URL's query is a credential. `retrievalHostOf(url)` gives the host the WHATWG parser reads (lower case, punycode), or null for an IPv6 literal, a longer host or text that is not a URL; refuse those fetches the same way and log the refusal without the host (owner question #191).
+- **Compare hosts as the parser gives them.** Build your allow-list of exact lower-case host names and compare `new URL(r.url).hostname`; never a prefix or substring of the URL text. Refuse any scheme but `https` (the schema already does).
+- **Reading them:** `select … from audit.security_event where kind = 'connector.retrieval.host_refused'` in your tenant (forced RLS), for your security on-call; no export yet (threat model §3.130, §3.181).
 
 ## 8. Adopting 1.0.0
 

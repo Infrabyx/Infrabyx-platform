@@ -1,7 +1,15 @@
 // export-map-gate (IPB-09-34, PL3 plan §7.4) and the map registry (IPB-09 §09.4.7.1).
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ExportMap } from "@infrabyx/contracts/export";
-import { exportMapGate, schemaFromMigrations, type GateInput } from "./gate.js";
+import {
+  ARCHIVE_ROOTS,
+  archiveModules,
+  exportMapGate,
+  schemaFromMigrations,
+  type GateInput,
+} from "./gate.js";
 import { ExportMapRegistry, REF_EXPORT_MAP, assertExportable } from "./maps.js";
 
 const MIGRATION = `
@@ -141,6 +149,61 @@ describe("@IPB-09-AT-14 export map gate", () => {
       "packages/export/src/__tests__/export.int.test.ts",
     ])
       expect(exportMapGate(base({ changedFiles: [f] })).ok).toBe(true);
+  });
+
+  // R1-D-263 (owner, 21 Nov 2026): only source an archive can depend on triggers.
+  it("with the archive's module graph, a source file triggers only when an archive module reaches it", () => {
+    const archive = new Set(["src/archive.ts", "src/csv.ts"]);
+    const at = (f: string) =>
+      exportMapGate(base({ changedFiles: [`packages/export/${f}`], archiveModules: archive }));
+    for (const f of ["src/archive.ts", "src/csv.ts", "verify/verify.mjs", "maps/X-1.0.json"])
+      expect(at(f).ok, f).toBe(false);
+    // A non-TypeScript file under src/ still triggers.
+    expect(at("src/table.json").ok).toBe(false);
+    for (const f of ["src/pdf-id.ts", "src/index.ts", "src/xlsx-read.ts"])
+      expect(at(f), f).toMatchObject({ ok: true, triggers: [] });
+    // Without the graph, every source file triggers (the rule before).
+    expect(exportMapGate(base({ changedFiles: ["packages/export/src/pdf-id.ts"] })).ok).toBe(false);
+  });
+
+  it("follows relative imports from the roots, and gives up on a dynamic import or a missing file", () => {
+    const files: Record<string, string> = {
+      "src/archive.ts":
+        'import { a } from "./csv.js";\nimport type { Z } from "./zip.js";\n// import "./not.js"',
+      "src/csv.ts": 'export * from "./code-tables.js";\nimport x from "@infrabyx/contracts";',
+      "src/zip.ts": "export const zip = 1;",
+      "src/code-tables.ts": "",
+      "src/pdf-id.ts": 'import { o } from "./ooxml.js";',
+    };
+    const read = (p: string) => files[p] ?? null;
+    expect([...(archiveModules(read, ["src/archive.ts"]) ?? [])].sort()).toEqual([
+      "src/archive.ts",
+      "src/code-tables.ts",
+      "src/csv.ts",
+      "src/zip.ts",
+    ]);
+    expect(
+      archiveModules(
+        (p) => (p === "src/zip.ts" ? 'await import("./x.js")' : read(p)),
+        ["src/archive.ts"],
+      ),
+    ).toBeUndefined();
+    expect(
+      archiveModules((p) => (p === "src/zip.ts" ? null : read(p)), ["src/archive.ts"]),
+    ).toBeUndefined();
+  });
+
+  it("finds this package's archive modules: the writer and what it imports, not the office or PDF readers", () => {
+    const dir = join(import.meta.dirname, "..");
+    const graph = archiveModules((p) =>
+      existsSync(join(dir, p)) ? readFileSync(join(dir, p), "utf8") : null,
+    );
+    expect(graph).toBeDefined();
+    for (const f of ARCHIVE_ROOTS) expect(graph?.has(f), f).toBe(true);
+    for (const f of ["src/csv.ts", "src/zip.ts", "src/code-tables.ts"])
+      expect(graph?.has(f), f).toBe(true);
+    for (const f of ["src/pdf-id.ts", "src/index.ts", "src/gate.ts", "src/xlsx-read.ts"])
+      expect(graph?.has(f), f).toBe(false);
   });
 
   it("reads tables and columns from create table and add column", () => {

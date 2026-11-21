@@ -21,6 +21,7 @@ import type {
   AdapterDescriptor,
   DocumentRef,
   EnvelopeStatus,
+  EsignDownloadOptions,
   EsignEnvelopeStore,
   EsignPort,
   PortCall,
@@ -44,6 +45,7 @@ import {
   readDocument,
   signerCertificatesFromPdf,
   storeSigned,
+  downloadKeyRef,
   unsupported,
   validateEnvelope,
   withSignerCertificate,
@@ -218,7 +220,9 @@ export class LeegalityEsign implements EsignPort {
 
   async downloadSigned(
     envelopeId: string,
+    opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }> {
+    const keyRef = downloadKeyRef("leegality", opts);
     const st = await this.getStatus(envelopeId);
     if (st.state !== "completed")
       throw new PortError("IPB-PORT-001", ESIGN, {
@@ -233,7 +237,7 @@ export class LeegalityEsign implements EsignPort {
     const pdf = Buffer.from(file.file, "base64");
     if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-")
       throw vendorError(ESIGN, "leegality", 502, "the signed file is not a PDF");
-    const stored = await storeSigned(this.o.storage, r.doc, pdf);
+    const stored = await storeSigned(this.o.storage, r.doc, pdf, keyRef);
     const certs = signerCertificatesFromPdf(pdf, r.order, st.signers);
     return {
       ...stored,

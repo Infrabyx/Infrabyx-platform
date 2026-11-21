@@ -2224,6 +2224,28 @@ keys:
       source: "ADR-0013 GRC; PR-FBX-51, R1-D-220 (the generic adapter's only egress host)",
     }
 
+  # ---------------------------------------------------------------- R1: FILE_TRANSFER (ADR-0014; PR-UDF-071, R1-D-254; Ecosystem Spec 3.11, 12.2)
+  - {
+      key: int.file_transfer.sftp.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the SFTP client to counterparties' servers (pinned host keys, an Ed25519 key from SECRETS, India-hosted allow-list, public addresses only); off and unproven until a counterparty test server is used",
+      source: "ADR-0014 FILE_TRANSFER; PR-UDF-071, R1-D-254 (reference adapter sftp over ssh2; C-29 on the owner's instruction, R1-D-249)",
+    }
+  - {
+      key: int.file_transfer.sftp.allow_hosts,
+      tier: PLATFORM,
+      type: json,
+      default: [],
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      note: "the India-hosted allow-list: [{ host, residency: IN, attestation? }], exact host names or IP literals, no wildcards; residency is the operator's record of the signed attestation of the server's location in India (Ecosystem Spec 12.2); empty refuses every connection (not_allowed)",
+      source: "ADR-0014 FILE_TRANSFER; PR-UDF-071, R1-D-254; Ecosystem Spec 3.11 (SFTP from allow-listed Indian addresses)",
+    }
+
   # ---------------------------------------------------------------- R1: VIDEO_MEET (IPB-01 VIDEO_MEET; #88, C-26, R1-D-53)
   - {
       key: int.video_meet.livekit.enabled,

@@ -1,5 +1,6 @@
 // Algorithm registry and CBOM export (IPB-12 §12.6 item 1; fut.cbom-export OFF by default).
-export type AlgorithmPurpose = "hash" | "mac" | "aead" | "signature" | "kdf" | "rng";
+export type AlgorithmPurpose =
+  "hash" | "mac" | "aead" | "signature" | "kdf" | "rng" | "key-agreement";
 export type AlgorithmStatus = "approved" | "deprecated" | "planned";
 
 export interface AlgorithmInfo {
@@ -27,6 +28,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "migration checksums",
       "partner mTLS client-certificate thumbprint x5t#S256 (RFC 8705 §3.1) and fingerprint (PR-UDF-064, R1-D-238)",
       "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs (C-28, R1-D-246); verify only",
+      "SSH host-key fingerprints (OpenSSH SHA256:, pinned, no trust on first use) and the curve25519-sha256 exchange hash (RFC 8731), FILE_TRANSFER sftp only (C-29, R1-D-254)",
     ],
   },
   {
@@ -49,6 +51,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     oid: "2.16.840.1.101.3.4.2.3",
     usedFor: [
       "PAdES/CMS verification digests, ESS certificate hashes and OCSP CertIDs only (C-28, R1-D-246); verify only",
+      "inside Ed25519 (RFC 8032) for ssh-ed25519 only, in the SSH library (C-29, R1-D-254)",
     ],
   },
   {
@@ -65,6 +68,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "telemetry and flag-context ID hashes, 128-bit truncation (C-21)",
       "suppression and marketing-consent address hash (C-23)",
       "LiveKit only, as HS256 JWTs: join tokens (≤ 300 s, one room, one identity), server-API tokens (≤ 60 s, one grant) and webhook verification (C-26); never for any other token",
+      "offered in the SSH MAC list as hmac-sha2-256-etm@openssh.com only because the protocol needs a list; never negotiated, as every SSH cipher offered is AEAD (C-29, R1-D-254)",
     ],
   },
   {
@@ -83,7 +87,11 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     primitive: "ae",
     parameterSet: "256",
     oid: "2.16.840.1.101.3.4.1.46",
-    usedFor: ["field envelope encryption (C-04)", "LocalKms data-key wrap"],
+    usedFor: [
+      "field envelope encryption (C-04)",
+      "LocalKms data-key wrap",
+      "SSH transport cipher aes256-gcm@openssh.com (RFC 5647), inside the SSH library, FILE_TRANSFER sftp only (C-29, R1-D-254)",
+    ],
   },
   {
     id: "ecdsa-p256-sha256",
@@ -205,6 +213,42 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
     primitive: "drbg",
     parameterSet: "os",
     usedFor: ["node:crypto.randomBytes (C-06)"],
+  },
+  {
+    // C-29 (owner instruction 21 Nov 2026 07:30 IST, R1-D-249; R1-D-254): Ed25519 in SSH only. The
+    // generic `ed25519` entry below stays planned, so signRecord and the KMS port still refuse it.
+    id: "ssh-ed25519",
+    purpose: "signature",
+    status: "approved",
+    primitive: "signature",
+    parameterSet: "Ed25519",
+    oid: "1.3.101.112",
+    usedFor: [
+      "SFTP client authentication with the ssh-ed25519 user key held in SECRETS (RFC 8709), signed inside the SSH library, FILE_TRANSFER sftp only (C-29, R1-D-254)",
+      "verification of the server's ssh-ed25519 host-key signature, inside the SSH library, the key pinned by SHA-256 fingerprint (C-29, R1-D-254); verify only",
+    ],
+    note: "SSH only; key parsing and fingerprints in ssh.ts, the protocol in ssh2 on node:crypto",
+  },
+  {
+    id: "curve25519-sha256",
+    purpose: "key-agreement",
+    status: "approved",
+    primitive: "key-agree",
+    parameterSet: "X25519",
+    oid: "1.3.101.110",
+    usedFor: [
+      "SSH key exchange curve25519-sha256 (RFC 8731), inside the SSH library, FILE_TRANSFER sftp only (C-29, R1-D-254)",
+    ],
+  },
+  {
+    id: "chacha20-poly1305",
+    purpose: "aead",
+    status: "approved",
+    primitive: "ae",
+    parameterSet: "256",
+    usedFor: [
+      "SSH transport cipher chacha20-poly1305@openssh.com, inside the SSH library, FILE_TRANSFER sftp only (C-29, R1-D-254)",
+    ],
   },
   {
     id: "ed25519",

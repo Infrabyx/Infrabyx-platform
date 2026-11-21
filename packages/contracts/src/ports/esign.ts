@@ -5,6 +5,8 @@
 // from the vendor (PL3-D-15, #19). PR-UDF-070 (R1-D-251): each signature record may carry the
 // signer certificate's summary, and an envelope may hold several documents (optional methods, so
 // existing adapters and callers are unaffected; an adapter without them refuses `unsupported`).
+// PR-UDF-074 (R1-D-260): a download may name the tenant's STORAGE key (`keyRef`) the signed file is
+// written under; the write fails closed (a reference that cannot be used fails the download).
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed, recipient } from "./payload-class.js";
@@ -162,6 +164,22 @@ export interface SignedEnvelopeDocument {
   signatures: SignatureRecord[];
 }
 
+/**
+ * Options of `downloadSigned` and `downloadSignedDocuments` (Udofin PR-UDF-074, R1-D-260).
+ * `keyRef` names one of the document's tenant's STORAGE keys (PR-UDF-058: a reference such as
+ * `lender:lnd_01…`, never a key id) for the signed file, which is written to `REGULATED` under it
+ * as `storage.put(key, pdf, { bucketClass: "REGULATED", keyRef })`. Fail closed: a reference the
+ * STORAGE adapter refuses (`key_ref_invalid`, `key_ref_unknown`, `key_ref_prefix_conflict`, …) or a
+ * key that cannot be used (`IPB-KMS-001` `storage_key_unavailable`) fails the download with that
+ * STORAGE error, nothing is written, and the file is never written under the class key instead. A
+ * malformed reference is refused before the ESP is called (`IPB-PORT-003` `key_ref_invalid`).
+ * Without `keyRef` the write is as before: the class key, or the reference of the tenant's
+ * `tenantKeyRefPrefixes` entry covering `tenant/<tenant>/esign/`.
+ */
+export interface EsignDownloadOptions {
+  keyRef?: string;
+}
+
 export interface EsignPort extends Port {
   createEnvelope(
     doc: DocumentRef,
@@ -188,13 +206,19 @@ export interface EsignPort extends Port {
    * to STORAGE with its signature records. Refused `not_completed` until every document is signed
    * by every signer (all or nothing). Optional, as `createMultiDocumentEnvelope`.
    */
-  downloadSignedDocuments?(envelopeId: string): Promise<{ documents: SignedEnvelopeDocument[] }>;
+  downloadSignedDocuments?(
+    envelopeId: string,
+    opts?: EsignDownloadOptions,
+  ): Promise<{ documents: SignedEnvelopeDocument[] }>;
   /**
    * Signed PDF written to STORAGE; returns its key, SHA-256 and signature records. An envelope of
    * more than one document is refused (`multi_document`): use `downloadSignedDocuments`.
+   * PR-UDF-074: `opts.keyRef` writes it under the tenant's named key, failing closed
+   * (`EsignDownloadOptions`).
    */
   downloadSigned(
     envelopeId: string,
+    opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }>;
   aadhaarEsign(session: {
     envelopeId: string;

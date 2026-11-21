@@ -18,15 +18,19 @@ import type {
   StorageKeyRefRefusal,
   StorageKeyRefStatus,
   StorageKeyRefStatusOptions,
+  StorageKeyRefStatuses,
+  StorageKeyRefStatusesOptions,
   StorageKeyState,
   StoragePort,
   StoredObject,
 } from "@infrabyx/contracts/ports";
 import {
   PRESIGN_NO_CACHE,
+  STORAGE_KEY_NOT_DESCRIBED,
   STORAGE_KEY_UNAVAILABLE,
   compartmentAllowed,
   isValidStorageKey,
+  keyRefStatusClasses,
   presignNoCache,
   resolveStorageKeyRef,
   storageKeyRefStatusRefusal,
@@ -113,6 +117,15 @@ export interface MemoryStorageKeyRefs {
    * never fail on a key's state.
    */
   keyStates?: (tenantId: string, keyRef: string) => StorageKeyState | undefined;
+  /**
+   * PR-UDF-076: the key-state read of a known reference fails, as KMS can. `"unavailable"`: the
+   * read throws `IPB-PORT-002` (a throttled or failed `DescribeKey`), from `keyRefStatus` and
+   * `keyRefStatuses` alike. `"not_described"`: the role may not describe the key, so
+   * `keyRefStatuses` answers `storage_key_not_described` and `keyRefStatus`
+   * `storage_key_unavailable`, as the `s3` adapter does. Only status calls with `describeKey` read
+   * it.
+   */
+  keyStateError?: (tenantId: string, keyRef: string) => "unavailable" | "not_described" | undefined;
 }
 
 const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
@@ -288,27 +301,82 @@ export class MemoryStorage implements StoragePort {
    * PR-UDF-068: whether a write naming `keyRef` in `tenantId` would resolve, refused with the
    * write's label (`s3` adds the shared-key and tenant-CMK rules, which the fake does not model).
    * With `describeKey`, the configured `keyStates` (default `Enabled`): any other state answers
-   * `storage_key_unavailable` with that state.
+   * `storage_key_unavailable` with that state; PR-UDF-076: `keyStateError` makes that read fail.
    */
   async keyRefStatus(
     tenantId: string,
     keyRef: string,
     opts: StorageKeyRefStatusOptions,
   ): Promise<StorageKeyRefStatus> {
+    const a = this.classStatus(tenantId, keyRef, opts.bucketClass, opts.compartment);
+    if (a.status === "refused" || !opts.describeKey) return a;
+    const d = this.keyStateOf(tenantId, keyRef);
+    return d === "not_described" ? { status: "refused", reason: STORAGE_KEY_UNAVAILABLE } : d;
+  }
+  /**
+   * PR-UDF-076: `keyRefStatus` for several classes; with `describeKey` the reference's state is
+   * read once (the fake has one key per reference), and a key the role may not describe
+   * (`keyStateError` `"not_described"`) answers `storage_key_not_described`.
+   */
+  async keyRefStatuses(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusesOptions,
+  ): Promise<StorageKeyRefStatuses> {
+    const classes = keyRefStatusClasses(opts);
+    if (!classes)
+      throw new IpbError("IPB-PORT-003", {
+        detail: "the bucket classes or the compartment are malformed",
+      });
+    const answers = classes.map(
+      (c) => [c, this.classStatus(tenantId, keyRef, c, opts.compartment)] as const,
+    );
+    const out: StorageKeyRefStatuses = {};
+    let state: ReturnType<MemoryStorage["keyStateOf"]> | undefined;
+    for (const [c, a] of answers) {
+      if (a.status === "refused" || !opts.describeKey) {
+        out[c] = a;
+        continue;
+      }
+      state ??= this.keyStateOf(tenantId, keyRef);
+      out[c] =
+        state === "not_described"
+          ? { status: "refused", reason: STORAGE_KEY_NOT_DESCRIBED }
+          : state;
+    }
+    return out;
+  }
+  /** The configuration's answer for one class (no key state). */
+  private classStatus(
+    tenantId: string,
+    keyRef: string,
+    bucketClass: ObjectMeta["bucketClass"],
+    compartment: ObjectMeta["compartment"],
+  ): StorageKeyRefStatus {
     const r = storageKeyRefStatusRefusal(
       tenantId,
       keyRef,
-      opts.bucketClass,
+      bucketClass,
       this.named.keyRefPrefixes?.(tenantId),
     );
-    if (!r || !compartmentAllowed(opts.bucketClass, opts.compartment))
+    if (!r || !compartmentAllowed(bucketClass, compartment))
       throw new IpbError("IPB-PORT-003", {
         detail: "the tenant id, bucket class or compartment is malformed",
       });
     if (r.refusal) return { status: "refused", reason: r.refusal };
     if (!(this.named.keyRefs?.(tenantId) ?? []).includes(keyRef))
       return { status: "refused", reason: "key_ref_unknown" };
-    if (!opts.describeKey) return { status: "resolves" };
+    return { status: "resolves" };
+  }
+  /** The configured key state (default `Enabled`), or the injected read failure. */
+  private keyStateOf(tenantId: string, keyRef: string): StorageKeyRefStatus | "not_described" {
+    const err = this.named.keyStateError?.(tenantId, keyRef);
+    if (err === "unavailable")
+      throw new IpbError("IPB-PORT-002", {
+        detail: "the key's state could not be read",
+        meta: { name: "injected" },
+      });
+    if (err === "not_described") return "not_described";
     const keyState = this.named.keyStates?.(tenantId, keyRef) ?? "Enabled";
     return keyState === "Enabled"
       ? { status: "resolves", keyState }

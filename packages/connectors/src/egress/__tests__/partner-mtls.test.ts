@@ -7,7 +7,7 @@ import { createServer, type Server } from "node:https";
 import type { AddressInfo } from "node:net";
 import type { TLSSocket } from "node:tls";
 import type { SecretRef } from "@infrabyx/contracts/ports";
-import { checkClientCredential } from "@infrabyx/crypto";
+import { checkClientCredential, ulid } from "@infrabyx/crypto";
 import { mtlsTestAuthority, type TestIssued } from "@infrabyx/crypto/mtls-test";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -119,8 +119,8 @@ function client(
   return { c, resolved, lookups };
 }
 
-// An idempotency key (a ULID), not a credential.
-const KEY = "01JD0Z6QK3M5W7Y9A1C3E5G7J9"; // gitleaks:allow
+// The idempotency key, made fresh for each run (no fixed value is committed).
+const KEY = ulid();
 const call = (r: Partial<PartnerMtlsRequest> = {}): PartnerMtlsRequest => ({
   method: "POST",
   url: `https://${HOST}/v1/disbursements?ref=secret-query-value`,
