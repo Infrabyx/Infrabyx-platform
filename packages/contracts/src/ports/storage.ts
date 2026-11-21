@@ -157,6 +157,63 @@ export type StorageKeyRefStatus =
   | { status: "refused"; reason: StorageKeyRefStatusReason; keyState?: StorageKeyState };
 
 /**
+ * The label of a key the platform's STORAGE role may not describe (Udofin PR-UDF-076, R1-D-261):
+ * KMS `DescribeKey` answered `AccessDeniedException`, so the key's state is unknown. Answered by
+ * `keyRefStatuses` only; `keyRefStatus` keeps answering `storage_key_unavailable` for it (R1-D-239,
+ * #171 (1)), so its answer type and behaviour are unchanged. Either way the status is `refused`.
+ */
+export const STORAGE_KEY_NOT_DESCRIBED = "storage_key_not_described" as const;
+/** Why `keyRefStatuses` refuses a class: `keyRefStatus`'s reasons, or the key not described. */
+export type StorageKeyRefStatusesReason =
+  StorageKeyRefStatusReason | typeof STORAGE_KEY_NOT_DESCRIBED;
+
+/** Where `keyRefStatuses` checks a reference: several bucket classes in one call. */
+export interface StorageKeyRefStatusesOptions {
+  /** One to six distinct classes (`BUCKET_CLASSES`); each is answered as `keyRefStatus` would. */
+  bucketClasses: readonly BucketClass[];
+  /** Applies to every class: each must allow it (`COMPARTMENT_CLASSES`), or the call is refused. */
+  compartment?: StorageCompartment;
+  /**
+   * Also read each key's state, with one read-only KMS `DescribeKey` per distinct key the classes
+   * resolve to (a reference that uses one key in `REGULATED` and `QUARANTINE` is described once).
+   */
+  describeKey?: boolean;
+}
+
+/** One class's answer of `keyRefStatuses`: `StorageKeyRefStatus`, with the not-described label. */
+export type StorageKeyRefClassStatus =
+  | { status: "resolves"; keyState?: "Enabled" }
+  | { status: "refused"; reason: StorageKeyRefStatusesReason; keyState?: StorageKeyState };
+
+/** The answer of `keyRefStatuses`: one entry per class asked, keyed by class. */
+export type StorageKeyRefStatuses = Partial<Record<BucketClass, StorageKeyRefClassStatus>>;
+
+/** PR-UDF-076: the most classes `keyRefStatuses` takes (every class, once). */
+export const MAX_KEY_REF_STATUS_CLASSES = BUCKET_CLASSES.length;
+
+/**
+ * PR-UDF-076: the classes of a `keyRefStatuses` call, or `null` when the list is empty, longer
+ * than `BUCKET_CLASSES`, has a duplicate or an unknown class, or a class that does not allow the
+ * compartment (the adapter refuses the call, IPB-PORT-003).
+ */
+export function keyRefStatusClasses(opts: {
+  bucketClasses?: readonly unknown[];
+  compartment?: StorageCompartment;
+}): BucketClass[] | null {
+  const cs = opts.bucketClasses;
+  if (!Array.isArray(cs) || cs.length < 1 || cs.length > MAX_KEY_REF_STATUS_CLASSES) return null;
+  if (new Set(cs).size !== cs.length) return null;
+  for (const c of cs)
+    if (
+      typeof c !== "string" ||
+      !(BUCKET_CLASSES as readonly string[]).includes(c) ||
+      !compartmentAllowed(c as BucketClass, opts.compartment)
+    )
+      return null;
+  return cs as BucketClass[];
+}
+
+/**
  * No-cache presigned downloads (Udofin PR-UDF-060, R1-D-230). A presigned GET of an object in one
  * of these classes (its compartments included) signs S3's response overrides
  * `response-cache-control` and `response-expires`, so the response tells browsers, iOS and
@@ -296,6 +353,20 @@ export interface StoragePort extends Port {
     keyRef: string,
     opts: StorageKeyRefStatusOptions,
   ): Promise<StorageKeyRefStatus>;
+  /**
+   * `keyRefStatus` for several bucket classes in one call (Udofin PR-UDF-076, R1-D-261): one answer
+   * per class in `opts.bucketClasses`, each by the same checks. With `describeKey`, one read-only
+   * KMS `DescribeKey` per distinct key the classes resolve to; a key the role may not describe
+   * answers `storage_key_not_described` (not `storage_key_unavailable`), and a failed read throws
+   * `IPB-PORT-002` for the whole call. A malformed class list (`keyRefStatusClasses`), tenant or
+   * compartment is refused as `keyRefStatus` refuses it. Optional on the interface; every platform
+   * adapter provides it (`minio` declares it `unsupported`).
+   */
+  keyRefStatuses?(
+    tenantId: string,
+    keyRef: string,
+    opts: StorageKeyRefStatusesOptions,
+  ): Promise<StorageKeyRefStatuses>;
   replicateTo(target: StoragePort, prefix: string): Promise<{ copied: number; verified: number }>;
 }
 
