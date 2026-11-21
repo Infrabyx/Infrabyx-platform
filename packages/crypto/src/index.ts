@@ -187,7 +187,9 @@ export {
   verifyDocumentJws,
   type DocumentDescriptor,
   type DocumentDescriptorV2,
+  type DocumentJwsProfile,
   type DocumentJwsResult,
+  type DocumentJwsVerification,
 } from "./document-jws.js";
 export {
   verifyPadesSignatures,

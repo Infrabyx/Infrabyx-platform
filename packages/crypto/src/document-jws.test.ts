@@ -22,7 +22,11 @@ describe("document JWS (Ecosystem §3.6, C-22 profile)", () => {
     expect(jws).toMatch(/^[A-Za-z0-9_-]+\.\.[A-Za-z0-9_-]+$/);
     const header = JSON.parse(new TextDecoder().decode(fromBase64Url(jws.split(".")[0]!)));
     expect(header).toEqual({ alg: "ES256", kid: "lender-doc-1", typ: DOCUMENT_JWS_TYP });
-    expect(verifyDocumentJws(jws, d, keys)).toEqual({ ok: true, kid: "lender-doc-1" });
+    expect(verifyDocumentJws(jws, d, keys)).toEqual({
+      ok: true,
+      kid: "lender-doc-1",
+      profile: "v1",
+    });
   });
 
   it("fails for another hash, version or document, and for another key", async () => {
@@ -65,7 +69,11 @@ describe("document JWS (Ecosystem §3.6, C-22 profile)", () => {
       const jws = await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign });
       const header = JSON.parse(new TextDecoder().decode(fromBase64Url(jws.split(".")[0]!)));
       expect(header).toEqual({ alg: "ES256", kid: "lender-doc-1", typ: DOCUMENT_JWS_V2_TYP });
-      expect(verifyDocumentJws(jws, d2, keys)).toEqual({ ok: true, kid: "lender-doc-1" });
+      expect(verifyDocumentJws(jws, d2, keys)).toEqual({
+        ok: true,
+        kid: "lender-doc-1",
+        profile: "v2",
+      });
       expect(verifyDocumentJws(jws, d2, keys, new Date(), { requireV2: true }).ok).toBe(true);
       // A whole DocumentShared payload, with fields the descriptor does not sign, verifies too.
       expect(verifyDocumentJws(jws, { ...d2, legal_hold: false } as typeof d2, keys).ok).toBe(true);
@@ -106,6 +114,31 @@ describe("document JWS (Ecosystem §3.6, C-22 profile)", () => {
         ok: false,
         reason: "wrong_typ",
       });
+    });
+
+    it("names the profile that verified, so a v1 JWS on a v2-shaped descriptor shows (R1-D-258)", async () => {
+      const v1 = await signDocumentJws({ descriptor: d, kid: s.kid, sign: s.sign });
+      const v2 = await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign });
+      const r1 = verifyDocumentJws(v1, d2, keys);
+      const r2 = verifyDocumentJws(v2, d2, keys);
+      expect(r1.ok && r1.profile).toBe("v1");
+      expect(r2.ok && r2.profile).toBe("v2");
+      // A failure carries no profile: the typ is not trusted until the signature verifies.
+      expect("profile" in verifyDocumentJws(v2, { ...d2, size_bytes: 1 }, keys)).toBe(false);
+    });
+
+    it("verifies a whole DocumentShared announcement as it arrives, at the event's time", async () => {
+      const t = new Date("2026-11-21T10:00:00+05:30");
+      const announced = {
+        ...d2,
+        jws: await signDocumentJwsV2({ descriptor: d2, kid: s.kid, sign: s.sign }),
+        retention_class: "LOAN_DOCUMENT",
+        legal_hold: false,
+        language: "en",
+      };
+      expect(
+        verifyDocumentJws(announced.jws, announced, keys, t, { requireV2: true }),
+      ).toMatchObject({ ok: true, profile: "v2" });
     });
 
     it("refuses to sign bad v2 fields", async () => {

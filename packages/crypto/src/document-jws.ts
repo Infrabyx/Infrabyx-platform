@@ -108,9 +108,22 @@ export async function signDocumentJwsV2(o: {
   });
 }
 
+/** Which descriptor a document JWS signed (R1-D-258): v1 (`ipb-document+jws`) or v2. */
+export type DocumentJwsProfile = "v1" | "v2";
+
+/**
+ * A document JWS check's outcome. `profile` (R1-D-258, PR-UDF-075 (5)) is optional here so a value
+ * typed `DocumentJwsResult` that a caller builds itself (a mock, a stub) still compiles;
+ * `verifyDocumentJws` always sets it (`DocumentJwsVerification`).
+ */
 export type DocumentJwsResult =
-  | { ok: true; kid: string }
+  | { ok: true; kid: string; profile?: DocumentJwsProfile }
   | { ok: false; reason: "malformed" | "wrong_typ" | "unknown_key" | "signature_invalid" };
+
+/** What `verifyDocumentJws` answers: a `DocumentJwsResult` whose success names the profile. */
+export type DocumentJwsVerification =
+  | { ok: true; kid: string; profile: DocumentJwsProfile }
+  | Extract<DocumentJwsResult, { ok: false }>;
 
 /**
  * Verifies a document JWS against the descriptor the consumer holds (from `DocumentShared` or the
@@ -120,6 +133,8 @@ export type DocumentJwsResult =
  * must hold `type`, `media_type` and `size_bytes` (else `malformed`) and, exactly when the producer
  * signed one, `application_id`. With `requireV2` a v1 JWS is refused `wrong_typ`. The bytes are
  * checked separately against `descriptor.sha256` (and, for v2, their length against `size_bytes`).
+ * A success names the `profile` that verified (`"v1"` or `"v2"`; R1-D-258), so a consumer that
+ * has not yet set `requireV2` can see which documents a producer still signs v1.
  */
 export function verifyDocumentJws(
   jws: string,
@@ -127,7 +142,7 @@ export function verifyDocumentJws(
   keys: RegulatedKeyRing,
   at: Date = new Date(),
   opts: { requireV2?: boolean } = {},
-): DocumentJwsResult {
+): DocumentJwsVerification {
   let header: Record<string, unknown>;
   try {
     v1Fields(descriptor);
@@ -152,5 +167,7 @@ export function verifyDocumentJws(
   if (!pub) return { ok: false, reason: "unknown_key" };
   const spki = new Uint8Array(pub.export({ format: "der", type: "spki" }));
   const r = verifyDetachedJws(jws, payload, spki);
-  return r.ok ? { ok: true, kid: header.kid } : { ok: false, reason: "signature_invalid" };
+  return r.ok
+    ? { ok: true, kid: header.kid, profile: v2 ? "v2" : "v1" }
+    : { ok: false, reason: "signature_invalid" };
 }
