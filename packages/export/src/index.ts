@@ -17,6 +17,7 @@ export * from "./zip.js";
 export * from "./docx.js";
 export * from "./pdf.js";
 export * from "./pdf-route.js";
+export * from "./pdf-id.js";
 export {
   OFFICE_DEFAULT_CREATED,
   OFFICE_DEFAULT_MAX_BYTES,
