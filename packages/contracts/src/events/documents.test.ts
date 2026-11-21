@@ -19,6 +19,12 @@ import {
   IT_ACT_FIRST_SCHEDULE_INSTRUMENTS,
   PACK_SIGNER_ROLES,
   PackStampEvidence,
+  EXECUTED_DOCUMENT_TYPE,
+  EXECUTION_EVIDENCE_SUMMARY_TYPE,
+  EXECUTION_PACK_MANIFEST_TYPE,
+  PRIVACY_POLICY_LSP_TYPE,
+  SHARED_DOCUMENT_TYPES,
+  executedDocumentMismatches,
 } from "./index.js";
 
 const h = (c: string) => c.repeat(64);
@@ -595,5 +601,68 @@ describe("DocumentShared and the retrieval answer (PR-UDF-061 item 13)", () => {
       expect(DocumentRetrieval.safeParse({ ...full, ...bad }).success, JSON.stringify(bad)).toBe(
         false,
       );
+  });
+});
+
+describe("PR-UDF-077 (R1-D-259): shared document types and the executed-file link", () => {
+  const executed = {
+    ...shared,
+    document_id: "doc_exe_0001",
+    type: EXECUTED_DOCUMENT_TYPE,
+    sha256: esign.signed_sha256,
+    application_id: "app_0001",
+    source_document: { document_id: esign.document_id, version: 2 },
+  };
+
+  it("names the three new codes, each a valid DocumentShared type", () => {
+    expect([
+      EXECUTED_DOCUMENT_TYPE,
+      EXECUTION_EVIDENCE_SUMMARY_TYPE,
+      PRIVACY_POLICY_LSP_TYPE,
+    ]).toEqual(["EXECUTED_DOCUMENT", "EXECUTION_EVIDENCE_SUMMARY", "PRIVACY_POLICY_LSP"]);
+    expect(SHARED_DOCUMENT_TYPES).toContain(EXECUTION_PACK_MANIFEST_TYPE);
+    expect(Object.isFrozen(SHARED_DOCUMENT_TYPES)).toBe(true);
+    for (const type of SHARED_DOCUMENT_TYPES)
+      expect(DocumentSharedData.safeParse({ ...shared, type }).success, type).toBe(true);
+    // A general policy needs no application.
+    const policy = DocumentSharedData.parse({ ...shared, type: PRIVACY_POLICY_LSP_TYPE });
+    expect(policy.application_id).toBeUndefined();
+  });
+
+  it("takes an optional source_document by id and version, refusing a malformed one", () => {
+    expect(DocumentSharedData.parse(executed).source_document).toEqual({
+      document_id: "doc_agr_0001",
+      version: 2,
+    });
+    for (const bad of [
+      { document_id: "x", version: 1 },
+      { document_id: "doc_agr_0001", version: 0 },
+      { document_id: "doc_agr_0001" },
+      { document_id: "doc_agr_0001", version: 1, sha256: h("a") },
+    ])
+      expect(
+        DocumentSharedData.safeParse({ ...executed, source_document: bad }).success,
+        JSON.stringify(bad),
+      ).toBe(false);
+  });
+
+  it("links an executed file to the eSign that produced it by signed_sha256", () => {
+    const e = ESignCompletedData.parse({ ...esign, application_id: "app_0001" });
+    expect(executedDocumentMismatches(DocumentSharedData.parse(executed), e)).toEqual([]);
+    const { source_document: _s, ...bare } = executed;
+    expect(executedDocumentMismatches(bare, e)).toEqual([]);
+    expect(executedDocumentMismatches({ ...executed, sha256: h("d") }, e)).toEqual(["sha256"]);
+    expect(executedDocumentMismatches({ ...executed, type: "LOAN_AGREEMENT" }, e)).toEqual([
+      "type",
+    ]);
+    expect(
+      executedDocumentMismatches(
+        { ...executed, source_document: { document_id: "doc_other_01", version: 1 } },
+        e,
+      ),
+    ).toEqual(["source_document"]);
+    expect(executedDocumentMismatches({ ...executed, application_id: "app_0002" }, e)).toEqual([
+      "application_id",
+    ]);
   });
 });

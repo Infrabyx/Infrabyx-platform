@@ -16,6 +16,11 @@
 // optional `language`, and the document JWS may sign a v2 descriptor that also binds the type,
 // media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto), whose fields
 // `DocumentRetrieval` now carries too.
+//
+// PR-UDF-077 (R1-D-259): the shared type codes `EXECUTED_DOCUMENT`, `EXECUTION_EVIDENCE_SUMMARY`
+// and `PRIVACY_POLICY_LSP`, and the executed-file link. The binding of record is the signed
+// `ESignCompleted`: its `signed_sha256` is the executed file's `sha256`; `source_document` on
+// `DocumentShared` is an optional filing pointer that must agree (`executedDocumentMismatches`).
 import { z } from "zod";
 import type { EstampCertificate } from "../ports/estamp.js";
 
@@ -29,6 +34,37 @@ export const DOCUMENT_URL_MAX_TTL_SECONDS = 900;
 export const DOCUMENT_GET_P95_MS = 800;
 /** The `DocumentShared.type` of an execution-pack manifest (until PR-047 is decided). */
 export const EXECUTION_PACK_MANIFEST_TYPE = "EXECUTION_PACK_MANIFEST";
+/**
+ * The `DocumentShared.type` of an executed file (Udofin PR-UDF-077, R1-D-259): the lender's
+ * document as it came back from the eSign Service Provider, signatures included. Its `sha256` is
+ * the `signed_sha256` of the `ESignCompleted` of the last signature, and that signed event is the
+ * binding of record to the lender's document (`ESignCompleted.document_id`); `source_document`
+ * names the same document and version for filing (`executedDocumentMismatches`).
+ */
+export const EXECUTED_DOCUMENT_TYPE = "EXECUTED_DOCUMENT";
+/**
+ * The `DocumentShared.type` of an execution-evidence summary (PR-UDF-077): the human-readable
+ * record of how a lender's document was executed (signers by role, method, time, the ESP's
+ * transaction ids, the stamp evidence). It summarises the signed `ESignCompleted` and
+ * `EStampCompleted` events, never replaces them; `source_document` names the document it covers.
+ */
+export const EXECUTION_EVIDENCE_SUMMARY_TYPE = "EXECUTION_EVIDENCE_SUMMARY";
+/**
+ * The `DocumentShared.type` of a Lending Service Provider's privacy policy (PR-UDF-077), shared
+ * with the lender it works for. A general policy: it carries no `application_id`.
+ */
+export const PRIVACY_POLICY_LSP_TYPE = "PRIVACY_POLICY_LSP";
+/**
+ * The `DocumentShared.type` codes the platform names (R1-D-259). `type` stays an open code
+ * (`KFS`, `SANCTION_LETTER`, `LOAN_AGREEMENT` and the products' own), so a code missing here is not
+ * refused; producers and consumers that use one of these spell it with the constant.
+ */
+export const SHARED_DOCUMENT_TYPES = Object.freeze([
+  EXECUTION_PACK_MANIFEST_TYPE,
+  EXECUTED_DOCUMENT_TYPE,
+  EXECUTION_EVIDENCE_SUMMARY_TYPE,
+  PRIVACY_POLICY_LSP_TYPE,
+] as const);
 
 const ref = z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/);
 const code = z.string().regex(/^[A-Z][A-Z0-9_]{1,63}$/);
@@ -78,9 +114,50 @@ export const DocumentSharedData = z
     application_id: ref.optional(),
     /** Optional (R1-D-236): the document's language, BCP 47 (`en`, `hi`, `mr-IN`). */
     language: language.optional(),
+    /**
+     * Optional (PR-UDF-077, R1-D-259): the lender's document, by id and version, that this one
+     * executes (`EXECUTED_DOCUMENT`) or summarises (`EXECUTION_EVIDENCE_SUMMARY`). A pointer for
+     * filing; the proof is the signed `ESignCompleted` whose `signed_sha256` equals this event's
+     * `sha256` and whose `document_id` equals `source_document.document_id`.
+     */
+    source_document: z.object({ document_id: ref, version }).strict().optional(),
   })
   .loose();
 export type DocumentSharedData = z.infer<typeof DocumentSharedData>;
+
+/** What `executedDocumentMismatches` can report, as fixed labels. */
+export const EXECUTED_DOCUMENT_MISMATCHES = [
+  "type",
+  "sha256",
+  "source_document",
+  "application_id",
+] as const;
+export type ExecutedDocumentMismatch = (typeof EXECUTED_DOCUMENT_MISMATCHES)[number];
+
+/**
+ * Whether a shared executed file is the one an eSign produced (PR-UDF-077, R1-D-259): `[]` when
+ * it is. `type` is `EXECUTED_DOCUMENT`; `sha256` equals the `signed_sha256` of the
+ * `ESignCompleted` (pass the last signature's: earlier ones name intermediate files); a
+ * `source_document` names the signed `document_id`; an `application_id` on both is the same. Both
+ * events must already be parsed and their signatures verified; this checks only that they agree.
+ */
+export function executedDocumentMismatches(
+  shared: Pick<DocumentSharedData, "type" | "sha256" | "source_document" | "application_id">,
+  esign: { document_id: string; signed_sha256: string; application_id?: string | undefined },
+): ExecutedDocumentMismatch[] {
+  const out: ExecutedDocumentMismatch[] = [];
+  if (shared.type !== EXECUTED_DOCUMENT_TYPE) out.push("type");
+  if (shared.sha256 !== esign.signed_sha256) out.push("sha256");
+  if (shared.source_document && shared.source_document.document_id !== esign.document_id)
+    out.push("source_document");
+  if (
+    shared.application_id !== undefined &&
+    esign.application_id !== undefined &&
+    shared.application_id !== esign.application_id
+  )
+    out.push("application_id");
+  return out;
+}
 
 /** Every event this file defines, with its Ecosystem type and the Specification's idempotency fields. */
 export const DOCUMENT_EVENTS = Object.freeze({
