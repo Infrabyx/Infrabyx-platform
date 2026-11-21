@@ -128,11 +128,15 @@ describe("R1-D-245 the NSDL eSign shell", () => {
       () => p.verifySignature(),
       () => p.cancel(),
       () => p.handleWebhook(),
+      () => p.createMultiDocumentEnvelope(),
+      () => p.downloadSignedDocuments(),
     ])
       await expect(call()).rejects.toMatchObject({ meta: { reason: "unsupported" } });
     expect(p.descriptor.capabilities).toMatchObject({
       aadhaarEsign: "unsupported",
       verifySignature: "unsupported",
+      createMultiDocumentEnvelope: "unsupported",
+      downloadSignedDocuments: "unsupported",
     });
     expect(p.descriptor).toMatchObject({ residency: "IN", maxDataClass: "REGULATED" });
   });

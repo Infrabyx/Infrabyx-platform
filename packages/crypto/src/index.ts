@@ -191,6 +191,7 @@ export {
 } from "./document-jws.js";
 export {
   verifyPadesSignatures,
+  padesSignerCertificates,
   customTrustStore,
   CCA_INDIA_TRUST,
   PADES_OUTCOMES,
@@ -207,6 +208,7 @@ export {
   type RevocationEvidence,
   type RevocationStatus,
 } from "./pades.js";
+export { signerCertificateSummary, type SignerCertificateSummary } from "./signer-certificate.js";
 export { CCA_INDIA_ROOTS, CCA_INDIA_INTERMEDIATES } from "./cca-india-trust.js";
 export { REVOCATION_LIMITS } from "./pades-revocation.js";
 export {

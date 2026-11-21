@@ -33,9 +33,16 @@ import {
   type PayoutsPort,
   type PdfPort,
 } from "@infrabyx/contracts/ports";
-import { sha256Hex } from "@infrabyx/crypto";
+import {
+  padesSignerCertificates,
+  sha256Hex,
+  signerCertificateSummary,
+  verifyPadesSignatures,
+} from "@infrabyx/crypto";
+import { minimalPdf, padesTestAuthority } from "@infrabyx/crypto/pades-test";
 import type { ContractCase } from "../contract.js";
 import { CONTRACT_AUTH, type DdeFixtures, FakeEsign } from "@infrabyx/fakes";
+import type { DocumentRef, Signer, StoragePort } from "@infrabyx/contracts/ports";
 export {
   FakeEstamp,
   FakePayouts,
@@ -44,6 +51,8 @@ export {
   FAKE_TEMPLATES,
   FakePdf,
   FakeEsign,
+  type FakeEsignOptions,
+  type FakeEsignSignedObject,
   CONTRACT_AUTH,
   type DdeFixtures,
   ESTAMP_DDE_FAKE_FIXTURES,
@@ -526,6 +535,289 @@ export function esignFakeCases(): Array<ContractCase<FakeEsign>> {
             })
           ).valid,
         ).toBe(true);
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 every record carries its signer certificate's summary",
+      async run(p) {
+        const doc = esignDoc("cert");
+        const { envelopeId } = await p.createEnvelope(
+          doc,
+          [{ ref: "sgn_one", name: "One Test", method: "AADHAAR_OTP_ESIGN" }],
+          "parallel",
+          [],
+        );
+        await p.sendForSignature(envelopeId);
+        p.sign(envelopeId, "sgn_one");
+        const [r] = (await p.downloadSigned(envelopeId)).signatures;
+        expect(r?.signerCertificate).toMatchObject({
+          subjectCommonName: "One Test",
+          serialNumber: expect.stringMatching(/^[0-9A-F]+$/),
+          sha256: expect.stringMatching(/^[0-9a-f]{64}$/),
+          issuer: expect.stringContaining("CN="),
+        });
+        const c = r!.signerCertificate!;
+        expect(Date.parse(c.notBefore)).toBeLessThan(Date.parse(c.notAfter));
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 a multi-document envelope completes only when every document is signed by every signer",
+      method: "createMultiDocumentEnvelope",
+      async run(p) {
+        const a = esignDoc("multi-a");
+        const b = esignDoc("multi-b");
+        const signers: Signer[] = [
+          { ref: "sgn_one", name: "One", method: "AADHAAR_OTP_ESIGN" },
+          { ref: "sgn_two", name: "Two", method: "AADHAAR_OTP_ESIGN" },
+        ];
+        const field = { signerRef: "sgn_two", page: 1, x: 10, y: 10, width: 100, height: 40 };
+        const { envelopeId } = await p.createMultiDocumentEnvelope(
+          [
+            { doc: a, fields: [] },
+            { doc: b, fields: [field] },
+          ],
+          signers,
+          "sequential",
+        );
+        await p.sendForSignature(envelopeId);
+        let st = p.signDocument(envelopeId, "sgn_one", a.documentId);
+        expect(st.state).toBe("partially_signed");
+        expect(st.signers[0]?.state).toBe("pending");
+        expect(st.documents).toEqual([
+          { documentId: a.documentId, state: "partially_signed", signedBy: ["sgn_one"] },
+          { documentId: b.documentId, state: "pending", signedBy: [] },
+        ]);
+        p.sign(envelopeId, "sgn_one");
+        st = p.signDocument(envelopeId, "sgn_two", b.documentId);
+        expect(st.documents?.map((d) => d.state)).toEqual(["partially_signed", "signed"]);
+        // All or nothing: nothing downloads until every document is signed by every signer.
+        await expect(p.downloadSignedDocuments(envelopeId)).rejects.toMatchObject({
+          meta: { reason: "not_completed" },
+        });
+        st = p.sign(envelopeId, "sgn_two");
+        expect(st.state).toBe("completed");
+        await expect(p.downloadSigned(envelopeId)).rejects.toMatchObject({
+          code: "IPB-PORT-001",
+          meta: { reason: "multi_document" },
+        });
+        const out = await p.downloadSignedDocuments(envelopeId);
+        expect(out.documents.map((d) => d.documentId)).toEqual([a.documentId, b.documentId]);
+        for (const d of out.documents) {
+          expect(d.signatures.map((s) => s.signerRef).sort()).toEqual(["sgn_one", "sgn_two"]);
+          for (const s of d.signatures)
+            expect(s.signerCertificate?.sha256).toMatch(/^[0-9a-f]{64}$/);
+        }
+        // A single-document envelope downloads through either method.
+        const one = await p.createEnvelope(esignDoc("multi-c"), [signers[0]!], "parallel", []);
+        await p.sendForSignature(one.envelopeId);
+        p.sign(one.envelopeId, "sgn_one");
+        expect((await p.downloadSignedDocuments(one.envelopeId)).documents).toHaveLength(1);
+        expect((await p.getStatus(one.envelopeId)).documents).toBeUndefined();
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 a multi-document envelope refuses duplicates, more than ten documents and fields naming no signer; a decline declines it",
+      async run(p) {
+        const s: Signer[] = [{ ref: "sgn_one", name: "One", method: "DSC" }];
+        const a = esignDoc("bad-a");
+        for (const docs of [
+          [
+            { doc: a, fields: [] },
+            { doc: { ...esignDoc("bad-b"), documentId: a.documentId }, fields: [] },
+          ],
+          Array.from({ length: 11 }, (_, i) => ({ doc: esignDoc(`bad-${i}`), fields: [] })),
+          [
+            {
+              doc: a,
+              fields: [{ signerRef: "nobody", page: 1, x: 0, y: 0, width: 1, height: 1 }],
+            },
+          ],
+          [],
+        ])
+          await expect(p.createMultiDocumentEnvelope(docs, s, "parallel")).rejects.toMatchObject({
+            code: "IPB-PORT-001",
+            meta: { reason: "invalid_request" },
+          });
+        const { envelopeId } = await p.createMultiDocumentEnvelope(
+          [
+            { doc: a, fields: [] },
+            { doc: esignDoc("bad-b"), fields: [] },
+          ],
+          [...s, { ref: "sgn_two", name: "Two", method: "DSC" }],
+          "parallel",
+        );
+        await p.sendForSignature(envelopeId);
+        p.sign(envelopeId, "sgn_one");
+        expect(p.decline(envelopeId, "sgn_two").state).toBe("declined");
+        await expect(p.downloadSignedDocuments(envelopeId)).rejects.toMatchObject({
+          meta: { reason: "not_completed" },
+        });
+      },
+    },
+  ];
+}
+
+let esignSeq = 0;
+/** A document reference for the fake without STORAGE (its bytes are never read). */
+const esignDoc = (tag: string): DocumentRef => ({
+  documentId: `doc_${tag}_${++esignSeq}`,
+  sha256: sha256Hex(`esign-${tag}-${esignSeq}`),
+  storageKey: `tenant/tnt_contract/documents/01JA${String(esignSeq).padStart(22, "0")}.pdf`,
+});
+
+/**
+ * PR-UDF-070: `FakeEsign({ storage })` cases. The fake must be built over `storage`; each case
+ * puts its own documents there.
+ */
+export function esignFakeStorageCases(storage: StoragePort): Array<ContractCase<FakeEsign>> {
+  let seq = 0;
+  const put = async (body: Uint8Array): Promise<DocumentRef> => {
+    const n = ++seq;
+    const storageKey = `tenant/tnt_contract/documents/01JB${String(n).padStart(22, "0")}.pdf`;
+    await storage.put(storageKey, body, {
+      bucketClass: "REGULATED",
+      contentType: "application/pdf",
+    });
+    return { documentId: `doc_stored_${n}`, sha256: sha256Hex(body), storageKey };
+  };
+  const two: Signer[] = [
+    { ref: "sgn_one", name: "One Test", method: "AADHAAR_OTP_ESIGN" },
+    { ref: "sgn_two", name: "Two Test", method: "DSC" },
+  ];
+  const complete = async (p: FakeEsign, doc: DocumentRef, signers = two) => {
+    const { envelopeId } = await p.createEnvelope(doc, signers, "sequential", []);
+    await p.sendForSignature(envelopeId);
+    for (const s of signers) p.sign(envelopeId, s.ref);
+    return envelopeId;
+  };
+  return [
+    {
+      name: "@IPB-01-15 PR-UDF-070 the signed PDF and each signer's chain go to STORAGE (REGULATED, IPB-01-27 keys, SHA-256 of the bytes)",
+      async run(p) {
+        const envelopeId = await complete(p, await put(minimalPdf()));
+        const out = await p.downloadSigned(envelopeId);
+        expect(out.storageKey).toMatch(/^tenant\/tnt_contract\/esign\/[0-7][0-9A-Z]{25}\.pdf$/);
+        const stored = await storage.get(out.storageKey);
+        expect(sha256Hex(stored.body)).toBe(out.sha256);
+        expect(stored.meta).toMatchObject({
+          bucketClass: "REGULATED",
+          contentType: "application/pdf",
+        });
+        // A real PAdES file: one signature per signer, in signing order, each naming its record's certificate.
+        const v = verifyPadesSignatures(stored.body, { trust: p.trustStore() });
+        expect(v).toMatchObject({ outcome: "valid", trustStore: "custom" });
+        expect(v.signatures).toHaveLength(2);
+        expect(padesSignerCertificates(stored.body)).toEqual(
+          out.signatures.map((s) => s.signerCertificate),
+        );
+        expect(out.signatures.map((s) => s.signerCertificate?.subjectCommonName)).toEqual([
+          "One Test",
+          "Two Test",
+        ]);
+        const [obj] = p.signedObjects();
+        expect(obj).toMatchObject({ envelopeId, storageKey: out.storageKey, base: "original" });
+        expect(obj?.chains.map((c) => c.signerRef)).toEqual(["sgn_one", "sgn_two"]);
+        for (const [i, c] of (obj?.chains ?? []).entries()) {
+          expect(c.storageKey).toMatch(/^tenant\/tnt_contract\/esign\/[0-7][0-9A-Z]{25}\.pem$/);
+          expect(out.signatures[i]?.certChainRef).toBe(c.storageKey);
+          const chain = await storage.get(c.storageKey);
+          expect(sha256Hex(chain.body)).toBe(c.sha256);
+          expect(chain.meta.bucketClass).toBe("REGULATED");
+          const text = Buffer.from(chain.body).toString("utf8");
+          expect(text.match(/BEGIN CERTIFICATE/g)).toHaveLength(3);
+          expect(signerCertificateSummary(text)).toEqual(out.signatures[i]?.signerCertificate);
+        }
+        // A second download returns the same object; nothing is written twice.
+        expect((await p.downloadSigned(envelopeId)).storageKey).toBe(out.storageKey);
+        expect(p.signedObjects()).toHaveLength(1);
+        expect(
+          (
+            await p.verifySignature({
+              documentId: "x",
+              storageKey: out.storageKey,
+              sha256: out.sha256,
+            })
+          ).valid,
+        ).toBe(true);
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 the document is read from STORAGE: a SHA-256 mismatch or a non-PDF is refused",
+      async run(p) {
+        const doc = await put(minimalPdf());
+        await expect(
+          p.createEnvelope({ ...doc, sha256: "0".repeat(64) }, two, "parallel", []),
+        ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "hash_mismatch" } });
+        await expect(
+          p.createEnvelope(await put(Buffer.from("not a pdf")), two, "parallel", []),
+        ).rejects.toMatchObject({ meta: { reason: "invalid_request" } });
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 test hooks: an injected download failure writes nothing; an injected signer certificate is named",
+      async run(p) {
+        const envelopeId = await complete(p, await put(minimalPdf()));
+        const before = p.signedObjects().length;
+        p.failNextDownload();
+        await expect(p.downloadSigned(envelopeId)).rejects.toMatchObject({ code: "IPB-PORT-002" });
+        expect(p.signedObjects()).toHaveLength(before);
+        await p.downloadSigned(envelopeId);
+        expect(p.signedObjects()).toHaveLength(before + 1);
+
+        // A different ESP certificate that signs: the PDF verifies under that authority.
+        const other = padesTestAuthority({ kind: "ec256" });
+        const esp = other.newSigner({ kind: "ec256", subject: "Other ESP Signer" });
+        p.setSignerCertificate("sgn_solo", esp);
+        const solo: Signer[] = [{ ref: "sgn_solo", name: "Solo", method: "DSC" }];
+        const a = await p.downloadSigned(await complete(p, await put(minimalPdf()), solo));
+        expect(a.signatures[0]?.signerCertificate).toEqual(signerCertificateSummary(esp.der));
+        const body = (await storage.get(a.storageKey)).body;
+        expect(verifyPadesSignatures(body, { trust: other.trust }).valid).toBe(true);
+
+        // A certificate given as bytes is named, but the PDF is signed by another: a mismatch.
+        const named = other.newSigner({ kind: "ec256", subject: "Named Only" });
+        p.setSignerCertificate("sgn_named", named.der);
+        const b = await p.downloadSigned(
+          await complete(p, await put(minimalPdf()), [
+            { ref: "sgn_named", name: "N", method: "DSC" },
+          ]),
+        );
+        const inPdf = padesSignerCertificates((await storage.get(b.storageKey)).body);
+        expect(b.signatures[0]?.signerCertificate?.subjectCommonName).toBe("Named Only");
+        expect(inPdf[0]?.sha256).not.toBe(b.signatures[0]?.signerCertificate?.sha256);
+        expect(() => p.setSignerCertificate("sgn_bad", new Uint8Array([1, 2, 3]))).toThrow(
+          TypeError,
+        );
+      },
+    },
+    {
+      name: "@IPB-01-15 PR-UDF-070 a multi-document envelope writes each signed document; an original without a classic trailer is signed as a fixture",
+      async run(p) {
+        const a = await put(minimalPdf());
+        const b = await put(Buffer.from("%PDF-1.7\n% no classic cross-reference\n%%EOF\n"));
+        const { envelopeId } = await p.createMultiDocumentEnvelope(
+          [
+            { doc: a, fields: [] },
+            { doc: b, fields: [] },
+          ],
+          two,
+          "parallel",
+        );
+        await p.sendForSignature(envelopeId);
+        for (const s of two) p.sign(envelopeId, s.ref);
+        const out = await p.downloadSignedDocuments(envelopeId);
+        expect(new Set(out.documents.map((d) => d.storageKey)).size).toBe(2);
+        for (const d of out.documents) {
+          const body = (await storage.get(d.storageKey)).body;
+          expect(sha256Hex(body)).toBe(d.sha256);
+          expect(verifyPadesSignatures(body, { trust: p.trustStore() }).valid).toBe(true);
+        }
+        expect(
+          p
+            .signedObjects()
+            .filter((o) => o.envelopeId === envelopeId)
+            .map((o) => o.base),
+        ).toEqual(["original", "fixture"]);
       },
     },
   ];
