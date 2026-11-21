@@ -25,6 +25,15 @@ describe("port-contract matrix path filters (PL2-D-13)", () => {
       "packages/connectors/src/grc/generic.ts",
     ])
       expect(selectPorts([f])).toEqual(["GRC"]);
+    // PR-UDF-071: the FILE_TRANSFER port, its §3.11 helpers, its fake and its adapter (its cases are
+    // under the shared packages/testing/src/ports/).
+    for (const f of [
+      "packages/contracts/src/ports/file-transfer.ts",
+      "packages/contracts/src/ports/file-exchange.ts",
+      "packages/fakes/src/ports/file-transfer.ts",
+      "packages/connectors/src/file-transfer/sftp.ts",
+    ])
+      expect(selectPorts([f])).toEqual(["FILE_TRANSFER"]);
   });
   it("runs every port for a shared change, nightly and before a release", () => {
     expect(selectPorts(["packages/connectors/src/core/router.ts"])).toEqual(PORTS);

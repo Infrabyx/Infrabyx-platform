@@ -114,6 +114,10 @@
       "types": "./dist/grc/index.d.ts",
       "default": "./dist/grc/index.js"
     },
+    "./file-transfer": {
+      "types": "./dist/file-transfer/index.d.ts",
+      "default": "./dist/file-transfer/index.js"
+    },
     "./estamp": {
       "types": "./dist/estamp/index.d.ts",
       "default": "./dist/estamp/index.js"
@@ -227,6 +231,7 @@
     "json-rules-engine": "7.3.1",
     "pg-boss": "12.38.0",
     "re2js": "2.8.8",
+    "ssh2": "1.17.0",
     "unleash-client": "6.12.2",
     "yaml": "2.9.1",
     "zod": "4.6.7"
@@ -244,6 +249,7 @@
     "@infrabyx/tally-agent": "workspace:*",
     "@infrabyx/testing": "workspace:*",
     "@types/pg": "8.23.1",
+    "@types/ssh2": "1.15.6",
     "pg": "8.23.1",
     "sharp": "0.35.5"
   }
