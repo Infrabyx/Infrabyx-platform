@@ -1,5 +1,30 @@
 # @infrabyx/connectors
 
+## 1.27.0
+
+### Minor Changes
+
+- 450df6a: A customer step-up for sensitive borrower actions (Udofin PR-UDF-056; R1-D-244). `CustomerIdentityBase.startStepUp` and `confirmStepUp` (Keycloak and Zitadel customer adapters): a fresh one-time code to the account's registered login, made by the platform (salted SHA-256 only), sent through NOTIFY, bound to the key of the active device session and guarded like a sign-in code; on success the device's `step_up_at` and `step_up_acr` are recorded and ledgered (`identity.customer.device.step_up`). `verifyRequest` answers `acr` (`otp`) and `auth_time` (the later of the device's sign-in and its last step-up) and takes `fresh: true` to read the device past the 15 s cache. New `assertCustomerStepUp(claims, policy, now?)` (refuses with `IPB-SEC-001` in the step-up form: `meta.step_up`, `customer`, `required_acr`, `max_age`, nothing else) and `customerStepUpChallenge(e)` (the RFC 9470 401 with `WWW-Authenticate: DPoP error="insufficient_user_authentication", acr_values=..., max_age=...`); `stepUpChallenge` ignores a customer refusal. New optional `CustomerAuthStore.recordStepUp` (`PgCustomerAuthStore`, `MemoryCustomerAuthStore`), `activeDevice(..., { fresh })`, `DeviceRecord.stepUpAt`/`stepUpAcr`, `CUSTOMER_STEP_UP_ACTION`, `CUSTOMER_AUTH_TIME_SKEW_SECONDS`. Migration `0017_customer_device_step_up` (expand-only: two nullable columns on `connectors.customer_device`); apply it before upgrading. No IdP or Keycloak extension change.
+- 179ac80: PR-UDF-054 (E8; R1-D-245): four new adapters, all off by default and `unproven` until their sandbox legs run. None buys anything and none adds cryptography.
+
+  - **ESTAMP `shcil-estamp`** (`ShcilEstamp`, `int.estamp.shcil.enabled`): records an e-stamp certificate the RE bought through its own SHCIL channel and checks it with SHCIL's read-back (only the number, State and issue date are sent), `verify` reads it back, `attach` links one document. Vendor shapes are stub-shaped, to confirm against the sandbox.
+  - **ESTAMP `digio-estamp`** (`DigioEstamp`, `int.estamp.digio.enabled`): the second stamping adapter; reads back a stamp Digio already issued to the RE, by Digio's id; never orders or affixes a stamp from prepaid inventory. Stub-shaped.
+  - **ESTAMP `manual-paper`** (`ManualStampPaper`, `int.estamp.manual_paper.enabled`): records physical stamp paper or franking the RE holds (State, article, duty, serial, vendor's or agent's licence, stamped document hash checked against STORAGE, scanned certificate's document id); no network call at all.
+  - The three share `RecordingEstamp` (`record.ts`): `purchase` refused `purchase_not_permitted`, `quoteDuty` and `handleWebhook` `unsupported`, `covers` false; one record per idempotency key; a certificate number once per State and channel (`certificate_reused`); the issuer's record compared (`certificate_mismatch`, `certificate_not_found`, `certificate_not_usable`); the purchaser's name never kept or sent. Products persist records through a `StampRecordStore` (`MemoryStampRecordStore` for tests; a product table needs a unique index on State, channel and number) and write them in their kernel mutation.
+  - **ESIGN `nsdl-esign`** (`NsdlEsign`, `int.esign.nsdl.enabled`): a shell for NSDL eSign under the CCA eSign API. Envelopes are validated and kept locally (Aadhaar OTP and biometric only, never downgraded; the document checked against its SHA-256); `buildEsignRequestXml` builds the unsigned request; the ASP request signature (RSA XML-DSig) is refused `unsupported` (`step: asp_request_signature`) because it is not an approved cryptography item, and `downloadSigned`, `verifySignature`, `handleWebhook`, `dscSign` and `cancel` are `unsupported`. No network call; health is down.
+
+### Patch Changes
+
+- Updated dependencies [d4636a3]
+- Updated dependencies [ae319d5]
+- Updated dependencies [2d543fe]
+- Updated dependencies [98a1d62]
+- Updated dependencies [461fe2c]
+  - @infrabyx/contracts@1.44.0
+  - @infrabyx/config@1.23.0
+  - @infrabyx/crypto@1.12.0
+  - @infrabyx/tenancy@1.22.2
+
 ## 1.26.0
 
 ### Minor Changes
