@@ -2,13 +2,12 @@
 // requires a client certificate. Every certificate and key is made in memory per run by
 // `@infrabyx/crypto/mtls-test` (nothing is committed); names resolve through the test resolver, and
 // the test-only loopback admission lets the stub answer on 127.0.0.1.
-import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { createServer, type Server } from "node:https";
 import type { AddressInfo } from "node:net";
 import type { TLSSocket } from "node:tls";
 import type { SecretRef } from "@infrabyx/contracts/ports";
-import { checkClientCredential } from "@infrabyx/crypto";
+import { checkClientCredential, ulid } from "@infrabyx/crypto";
 import { mtlsTestAuthority, type TestIssued } from "@infrabyx/crypto/mtls-test";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -121,7 +120,7 @@ function client(
 }
 
 // The idempotency key, made fresh for each run (no fixed value is committed).
-const KEY = randomUUID();
+const KEY = ulid();
 const call = (r: Partial<PartnerMtlsRequest> = {}): PartnerMtlsRequest => ({
   method: "POST",
   url: `https://${HOST}/v1/disbursements?ref=secret-query-value`,
