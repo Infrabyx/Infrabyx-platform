@@ -23,5 +23,6 @@
   "0022_approval_cancel_reason.sql": "55b38822d9bdf1da7b1415cf6c27cca2d9e5bde29b5d7d7d34fd54ff811e5eea",
   "0023_approval_levels.sql": "328523274e9856d297c7bf97258c97c99397cfb4a15c60b6ac4c35d863ebcbbb",
   "0024_rate_limit.sql": "0d73f923706a165b777706910850fea4e765b133da9674590a1d7bf7df665138",
-  "0025_approval_checkable_index.sql": "ab34996bf1a473667695a8a6b21ce430ea92502ffee7d40d656c47648c8850b0"
+  "0025_approval_checkable_index.sql": "ab34996bf1a473667695a8a6b21ce430ea92502ffee7d40d656c47648c8850b0",
+  "0026_ecosystem_inbox_jws.sql": "d47b4cf9331ab1bc18aa0bc5fa6861c6c69eb24e5006fa1eaf45b33dfa3f0c82"
 }

@@ -847,7 +847,7 @@ export function lenderContractCases(
       },
     },
     {
-      name: "a sanction letter's document reference names the shared letter, and LoanDisbursed's application id is the application",
+      name: "a sanction letter's document reference names the shared letter, and LoanDisbursed names the application by application_id, lsp_application_ref or both",
       async run(l) {
         const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc_refs");
         const s = SanctionLetterIssuedData.parse(
@@ -869,7 +869,15 @@ export function lenderContractCases(
         );
         await l.disburse(applicationId);
         const d = LoanDisbursedData.parse(byName(l.outbox(), "LoanDisbursed").at(-1)!.event.data);
+        // R1-D-256 (PR-UDF-061 finding (i)): the schema requires neither (a minor), but an LSP must
+        // be able to tell which application was disbursed, so a lender sends at least one.
+        expect(
+          d.application_id !== undefined || d.lsp_application_ref !== undefined,
+          "LoanDisbursed carries application_id or lsp_application_ref",
+        ).toBe(true);
         if (d.application_id !== undefined) expect(d.application_id).toBe(applicationId);
+        if (d.lsp_application_ref !== undefined)
+          expect(d.lsp_application_ref).toBe("lspapp_contract_doc_refs");
       },
     },
     {
@@ -972,7 +980,18 @@ export function lenderContractCases(
           }
           for (const d of p.documents) {
             const cert = d.stamp_evidence?.certificate_document_id;
-            if (cert) expect(shared.has(cert), "the stamp certificate is shared").toBe(true);
+            if (!cert) continue;
+            expect(shared.has(cert), "the stamp certificate is shared").toBe(true);
+            // R1-D-258 (PR-UDF-075 (4)): a document of the same application, and when the pack
+            // lists it, a document of its own: not stamp-required and not itself stamped.
+            expect(shared.get(cert)!.application_id, "the certificate's application").toBe(
+              applicationId,
+            );
+            const listed = p.documents.find((x) => x.document_id === cert);
+            if (listed) {
+              expect(listed.stamp_required).toBe(false);
+              expect(listed.stamp_evidence).toBeUndefined();
+            }
           }
         }
         expectNoAadhaarLike(m);
