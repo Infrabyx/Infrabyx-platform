@@ -1,10 +1,13 @@
 // ESIGN contract legs (PL3 plan §8, §12; PL3-D-23). Hermetic: Leegality and Digio stubs; the
 // sandbox legs wait for the vendors' test accounts (port-contract issues) and stay `unproven`.
+// PR-UDF-070 (R1-D-251): the stubs return real PAdES files signed per signer by a throwaway CA, so
+// the legs check that each record's signer certificate is the one in the signed PDF.
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DocumentRef, EsignPort, Signer } from "@infrabyx/contracts/ports";
-import { sha256Hex } from "@infrabyx/crypto";
+import { sha256Hex, signerCertificateSummary, verifyPadesSignatures } from "@infrabyx/crypto";
 import {
   defineContractSuite,
+  esignStubAuthority,
   MemoryEsignEnvelopeStore,
   MemoryStorage,
   startDigioStub,
@@ -14,6 +17,8 @@ import {
   type DigioStub,
   type LeegalityStub,
 } from "@infrabyx/testing";
+import { minimalPdf } from "@infrabyx/crypto/pades-test";
+import { signerCertificatesFromPdf } from "../common.js";
 import { DigioEsign } from "../digio.js";
 import { LeegalityEsign } from "../leegality.js";
 
@@ -78,6 +83,8 @@ const vendorRef = async (p: EsignPort, envelopeId: string) =>
   (await stores.get(p)!.get(envelopeId))!.vendorRef;
 const signAt = (p: EsignPort, ref: string, n: number) =>
   p.descriptor.adapter === "leegality" ? lg.sign(ref, n) : dg.sign(ref, n);
+const stubOf = (p: EsignPort) => (p.descriptor.adapter === "leegality" ? lg : dg);
+const tick = () => new Promise((r) => setTimeout(r, 5));
 const webhook = (p: EsignPort, ref: string) =>
   p.descriptor.adapter === "leegality"
     ? p.handleWebhook(lg.webhook(ref), { "content-type": "application/json" })
@@ -178,6 +185,87 @@ const cases: ContractCase<EsignPort>[] = [
     },
   },
   {
+    name: "@IPB-01-15 PR-UDF-070 each record carries the signer certificate of its own signature in the signed PDF",
+    async run(p) {
+      const { envelopeId } = await p.createEnvelope(
+        await pdf(),
+        [signer(1), signer(2)],
+        "sequential",
+        [],
+      );
+      const ref = await vendorRef(p, envelopeId);
+      signAt(p, ref, 0);
+      signAt(p, ref, 1);
+      const out = await p.downloadSigned(envelopeId);
+      const stub = stubOf(p);
+      expect(out.signatures.map((s) => s.signerCertificate)).toEqual([
+        signerCertificateSummary(stub.signerCertificate(ref, 0)),
+        signerCertificateSummary(stub.signerCertificate(ref, 1)),
+      ]);
+      expect(out.signatures.map((s) => s.signerCertificate?.subjectCommonName)).toEqual([
+        "Signer 1",
+        "Signer 2",
+      ]);
+      // The file stored is the ESP's PAdES file, which the C-28 verifier accepts under its CA.
+      const body = (await storage.get(out.storageKey)).body;
+      expect(verifyPadesSignatures(body, { trust: esignStubAuthority().trust }).valid).toBe(true);
+    },
+  },
+  {
+    name: "@IPB-01-15 PR-UDF-070 a parallel envelope ties signatures to signers by the ESP's signing times",
+    async run(p) {
+      const { envelopeId } = await p.createEnvelope(
+        await pdf(),
+        [signer(1), signer(2)],
+        "parallel",
+        [],
+      );
+      const ref = await vendorRef(p, envelopeId);
+      signAt(p, ref, 1);
+      await tick();
+      signAt(p, ref, 0);
+      const out = await p.downloadSigned(envelopeId);
+      const stub = stubOf(p);
+      expect(out.signatures.map((s) => s.signerCertificate?.sha256)).toEqual([
+        signerCertificateSummary(stub.signerCertificate(ref, 0)).sha256,
+        signerCertificateSummary(stub.signerCertificate(ref, 1)).sha256,
+      ]);
+    },
+  },
+  {
+    name: "@IPB-01-15 PR-UDF-070 a signed PDF without a readable signature per signer leaves the certificate unset",
+    async run(p) {
+      const stub = stubOf(p);
+      stub.pdfMode = "plain";
+      try {
+        const { envelopeId } = await p.createEnvelope(await pdf(), [signer(1)], "parallel", []);
+        signAt(p, await vendorRef(p, envelopeId), 0);
+        const [r] = (await p.downloadSigned(envelopeId)).signatures;
+        expect(r?.signerRef).toBe("usr_signer_1");
+        expect(r).not.toHaveProperty("signerCertificate");
+      } finally {
+        stub.pdfMode = "pades";
+      }
+    },
+  },
+  {
+    name: "@IPB-01-15 PR-UDF-070 multi-document envelopes are refused until the vendor's support is verified",
+    method: "createMultiDocumentEnvelope",
+    invoke: async (p) =>
+      p.createMultiDocumentEnvelope!([{ doc: await pdf(), fields: [] }], [signer(1)], "parallel"),
+    async run() {
+      throw new Error("multi-document envelopes must be unsupported here");
+    },
+  },
+  {
+    name: "@IPB-01-15 PR-UDF-070 downloadSignedDocuments is refused with multi-document envelopes",
+    method: "downloadSignedDocuments",
+    invoke: (p) => p.downloadSignedDocuments!("esr_unknown"),
+    async run() {
+      throw new Error("downloadSignedDocuments must be unsupported here");
+    },
+  },
+  {
     name: "verifySignature: neither adapter validates PAdES yet (unsupported)",
     method: "verifySignature",
     invoke: async (p) => p.verifySignature(await pdf()),
@@ -257,5 +345,49 @@ describe("Digio specifics", () => {
     await expect(
       digio().createEnvelope(await pdf(), [signer(1, "AADHAAR_BIO_ESIGN")], "parallel", []),
     ).rejects.toMatchObject({ meta: { reason: "method_unsupported" } });
+  });
+});
+
+describe("PR-UDF-070 signerCertificatesFromPdf: filled only when each signature is certainly one signer's", () => {
+  const ca = esignStubAuthority();
+  const a = ca.newSigner({ kind: "ec256", subject: "A Test" });
+  const b = ca.newSigner({ kind: "ec256", subject: "B Test" });
+  const two = ca.sign(ca.sign(Buffer.from(minimalPdf()), { signer: a }), { signer: b });
+  const sa = signerCertificateSummary(a.der);
+  const sb = signerCertificateSummary(b.der);
+  const at = (ms: number) => new Date(Date.UTC(2026, 10, 21, 2, 0, 0, ms)).toISOString();
+
+  it("sequential: envelope order; parallel: by signing time", () => {
+    expect([...signerCertificatesFromPdf(two, "sequential", [{ ref: "x" }, { ref: "y" }])]).toEqual(
+      [
+        ["x", sa],
+        ["y", sb],
+      ],
+    );
+    const m = signerCertificatesFromPdf(two, "parallel", [
+      { ref: "x", at: at(9) },
+      { ref: "y", at: at(1) },
+    ]);
+    expect(m.get("y")).toEqual(sa);
+    expect(m.get("x")).toEqual(sb);
+  });
+
+  it("never guesses: equal or missing times, a count mismatch or an unbound signature leave it empty", () => {
+    for (const signers of [
+      [
+        { ref: "x", at: at(1) },
+        { ref: "y", at: at(1) },
+      ],
+      [{ ref: "x", at: at(1) }, { ref: "y" }],
+    ])
+      expect(signerCertificatesFromPdf(two, "parallel", signers).size).toBe(0);
+    expect(signerCertificatesFromPdf(two, "sequential", [{ ref: "x" }]).size).toBe(0);
+    expect(signerCertificatesFromPdf(two, "sequential", []).size).toBe(0);
+    const broken = Buffer.from(two);
+    broken[20] = broken[20]! ^ 0x01;
+    expect(signerCertificatesFromPdf(broken, "sequential", [{ ref: "x" }, { ref: "y" }]).size).toBe(
+      0,
+    );
+    expect(signerCertificatesFromPdf(minimalPdf(), "sequential", [{ ref: "x" }]).size).toBe(0);
   });
 });

@@ -40,12 +40,26 @@ const read = (req: IncomingMessage): Promise<Buffer> =>
   });
 
 function send(res: ServerResponse, r: StubReply): void {
+  // Bytes go out as they are (PR-UDF-070: a signed PDF is binary), text as UTF-8, the rest as JSON.
+  const isBytes = r.body instanceof Uint8Array;
   const isText = typeof r.body === "string";
   res.writeHead(r.status, {
-    "content-type": isText ? "text/plain" : "application/json",
+    "content-type": isBytes
+      ? "application/octet-stream"
+      : isText
+        ? "text/plain"
+        : "application/json",
     ...r.headers,
   });
-  res.end(r.body === undefined ? "" : isText ? (r.body as string) : JSON.stringify(r.body));
+  res.end(
+    r.body === undefined
+      ? ""
+      : isBytes
+        ? (r.body as Uint8Array)
+        : isText
+          ? (r.body as string)
+          : JSON.stringify(r.body),
+  );
 }
 
 export async function startStub(

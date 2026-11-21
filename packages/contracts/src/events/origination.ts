@@ -27,6 +27,7 @@
 import { z } from "zod";
 import { ExecutionPackIssuedData, indianState } from "./documents.js";
 import { REGULATED_MESSAGE_EVENTS } from "./regulated.js";
+import { lenderText, linkFreeText } from "./text.js";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
 export const ORIGINATION_SCHEMA_VERSION = "1.0.0";
@@ -48,18 +49,6 @@ const version = z.number().int().min(1);
 const paiseOrZero = z.number().int().min(0).max(1e14);
 /** A tenor in days (R1-D-232): one day to fifty years. */
 const tenorDays = z.number().int().min(1).max(18_300);
-/** A control character other than tab, line feed and carriage return. */
-const isControl = (ch: string): boolean => {
-  const c = ch.charCodeAt(0);
-  return (c < 0x20 && c !== 0x09 && c !== 0x0a && c !== 0x0d) || c === 0x7f;
-};
-/** The lender's own words (a status, a reason, terms): plain text, no control characters. */
-const lenderText = (max: number) =>
-  z
-    .string()
-    .min(1)
-    .max(max)
-    .refine((v) => ![...v].some(isControl), "plain text");
 
 /**
  * A product code (R1-D-232; owner, 20 Nov 2026 14:30, item 2): the Udofin catalogue's pattern
@@ -608,10 +597,6 @@ export const CoolingOffExitRequestedData = z
   })
   .loose();
 
-/** A URL or a web address inside text: a payment instruction carries none (R1-D-232). */
-const LINK_IN_TEXT =
-  /\b[a-z][a-z0-9+.-]*:\/\/|\bupi:|www\.|\b[a-z0-9-]+\.(?:in|com|net|org|co|io|app|link|ly)\//i;
-
 /**
  * `CoolingOffExitAnswered` (FX → UD, signed; R1-D-232, PR-UDF-061 item 6; PR-047 §5, approved by
  * the owner on 20 Nov 2026, so a regulated message from this minor, R1-D-236): the lender's answer to `CoolingOffExitRequested`, with the amount to repay
@@ -624,7 +609,7 @@ export const CoolingOffExitAnsweredData = z
     loan_id: ref,
     exit_ref: ref,
     exit_amount_paise: paiseOrZero,
-    payment_instruction: lenderText(1000).refine((v) => !LINK_IN_TEXT.test(v), "no link"),
+    payment_instruction: linkFreeText(1000),
     answered_at: at,
     lsp_application_ref: ref.optional(),
   })
