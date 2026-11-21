@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.47.0
+
+### Minor Changes
+
+- 5ee71f6: Finbyx PR-FBX-53 (R1-D-266): one mapping from a CloudEvents event type to a queue job name, and one queue name rule. `contracts/events` adds `eventJobName(type)` (`in.fbx.cms.ContentPublished.v1` → `in.fbx.cms.content-published.v1`: only the PascalCase event segment changes, every capital becoming `-` and its lower-case letter, so `KFSIssued` → `k-f-s-issued`) and its exact inverse `eventTypeOfJobName(name)`, with `isEventJobName`; both refuse `IPB-PORT-003` with a fixed `meta.reason` (`not_event_type`, `job_name_too_long` past 100 characters, `not_event_job_name`; `EVENT_JOB_NAME_REFUSALS`). `contracts/ports` adds the platform's queue name rule, the one the QUEUE adapters already applied: `QUEUE_NAME_REGEX`, `QUEUE_JOB_NAME_REGEX`, `QUEUE_NAME_MAX` (63), `QUEUE_JOB_NAME_MAX` (100), `isQueueName`, `isQueueJobName`, and `assertQueueName` / `assertQueueJob`, which refuse `IPB-PORT-003` (`meta.reason` `queue_name`, `job_name` or `job_data`) before any I/O; call them in an in-memory QUEUE fixture. Nothing existing changes.
+
 ## 1.46.0
 
 ### Minor Changes

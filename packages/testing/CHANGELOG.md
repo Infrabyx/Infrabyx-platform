@@ -1,5 +1,23 @@
 # @infrabyx/testing
 
+## 1.33.0
+
+### Minor Changes
+
+- 028d5c5: Finbyx PR-FBX-53 (R1-D-266): `queueNameCases()`, the QUEUE contract cases for the platform's name rule (every bad queue name refused `IPB-PORT-003` by `enqueue`, `schedule`, `consume`, `moveToDLQ`, `replay` and `stats`; every bad job name by `enqueue` and `schedule`), with the lists `QUEUE_BAD_QUEUE_NAMES` and `QUEUE_BAD_JOB_NAMES` (a raw CloudEvents type among them). The `bullmq` and `pg-boss` legs run them; run them on your own in-memory QUEUE: `defineContractSuite("QUEUE", () => fixture, queueNameCases())`.
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+- Updated dependencies [cb859aa]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/tenancy@1.24.0
+  - @infrabyx/audit@1.12.1
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+  - @infrabyx/fakes@1.10.1
+  - @infrabyx/seed@1.0.57
+
 ## 1.32.0
 
 ### Minor Changes
