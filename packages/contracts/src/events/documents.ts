@@ -12,12 +12,17 @@
 // now travels as the signed §6.2 event `ExecutionPackIssued` (`ExecutionPackIssuedData` below, with
 // the accepted KFS, instrument and enclosure codes, the WD covenant, the RBC enclosure list, the
 // per-document stamp evidence, the not-stampable list and the signer roles as an enum);
-// `ExecutionPackManifest` stays, unchanged, as the interim carrier. `DocumentShared` takes an
-// optional `language`, and the document JWS may sign a v2 descriptor that also binds the type,
-// media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto), whose fields
-// `DocumentRetrieval` now carries too.
+// `ExecutionPackManifest` stays as the interim carrier, changed only by optional additions.
+// `DocumentShared` takes an optional `language`, and the document JWS may sign a v2 descriptor that
+// also binds the type, media type, size and application (`signDocumentJwsV2` in @infrabyx/crypto),
+// whose fields `DocumentRetrieval` now carries too.
+//
+// PR-UDF-061 item 18 (R1-D-252): each pack document, in both carriers, may say why it needs a
+// physical step (`physical_reason`) and carry the lender's plain-text instructions
+// (`re_instructions`); a document with a physical reason is executed `WET_INK`.
 import { z } from "zod";
 import type { EstampCertificate } from "../ports/estamp.js";
+import { linkFreeText } from "./text.js";
 
 /** The schema version every type below starts at (the envelope's `schemaver`). */
 export const DOCUMENTS_SCHEMA_VERSION = "1.0.0";
@@ -130,6 +135,34 @@ export type DocumentRetrieval = z.infer<typeof DocumentRetrieval>;
 
 export const EXECUTION_MODES = ["ESIGN_AADHAAR", "ESIGN_DSC", "WET_INK", "NONE"] as const;
 export const STAMP_MODES = ["E_STAMP", "FRANKING", "PHYSICAL_PAPER"] as const;
+/**
+ * Why a pack document needs a physical step outside the eSign flow (PR-UDF-061 item 18; R1-D-252):
+ * it is to be registered (Registration Act, 1908) or notarised (Notaries Act, 1952). A document with
+ * either is executed `WET_INK`; the field is optional, and a document without it is unaffected.
+ */
+export const PACK_PHYSICAL_REASONS = ["REGISTRATION_REQUIRED", "NOTARISATION_REQUIRED"] as const;
+/** The longest `re_instructions` a pack document carries, in characters (R1-D-252). */
+export const PACK_RE_INSTRUCTIONS_MAX = 1000;
+/**
+ * The two optional per-document fields of PR-UDF-061 item 18 (R1-D-252), the same in
+ * `ExecutionPackManifest` and `ExecutionPackIssuedData`: `physical_reason` (a
+ * `PACK_PHYSICAL_REASONS` code) and `re_instructions`, the lender's instructions for the document
+ * in its own words: plain text of 1 to 1,000 characters, no control character other than tab and
+ * line breaks, and no link (R1-D-232's rule for `CoolingOffExitAnswered.payment_instruction`).
+ */
+const physicalFields = {
+  physical_reason: z.enum(PACK_PHYSICAL_REASONS).optional(),
+  re_instructions: linkFreeText(PACK_RE_INSTRUCTIONS_MAX).optional(),
+};
+/** R1-D-252: a document that needs registration or notarisation is executed in wet ink. */
+const physicalIssue = (d: {
+  document_id: string;
+  execution_mode: string;
+  physical_reason?: string | undefined;
+}): string | undefined =>
+  d.physical_reason !== undefined && d.execution_mode !== "WET_INK"
+    ? `${d.document_id} needs ${d.physical_reason === "REGISTRATION_REQUIRED" ? "registration" : "notarisation"}: it is executed WET_INK`
+    : undefined;
 /** An Indian State or Union Territory, ISO 3166-2:IN (`IN-MH`, `IN-DL`, …). */
 export const indianState = z.string().regex(/^IN-[A-Z]{2}$/);
 /**
@@ -163,7 +196,8 @@ export type StampEvidence = z.infer<typeof StampEvidence>;
  * The interim execution-pack manifest (PR-UDF-053), shared as a `DocumentShared` of type
  * `EXECUTION_PACK_MANIFEST`. Deprecated in favour of the signed `ExecutionPackIssued` event
  * (`ExecutionPackIssuedData`; PR-047 approved 20 Nov 2026, R1-D-236), which carries the full
- * PR-UDF-061 shape; kept unchanged so existing consumers still parse it, and removed only in a major.
+ * PR-UDF-061 shape; kept so existing consumers still parse it (changed only by optional additions,
+ * such as item 18's `physical_reason` and `re_instructions`, R1-D-252), and removed only in a major.
  */
 export const ExecutionPackManifest = z
   .object({
@@ -193,6 +227,8 @@ export const ExecutionPackManifest = z
              */
             not_stampable: z.boolean().optional(),
             not_stampable_reason: z.string().min(1).max(200).optional(),
+            /** Optional (R1-D-252): `physical_reason` and `re_instructions`; see `physicalFields`. */
+            ...physicalFields,
           })
           .loose(),
       )
@@ -256,6 +292,9 @@ export const ExecutionPackManifest = z
       if (d.execution_mode !== "NONE" && d.signers.length === 0)
         ctx.addIssue({ code: "custom", message: `${d.document_id} is executed but has no signer` });
       const at = (field: string) => ["documents", i, field];
+      const physical = physicalIssue(d);
+      if (physical)
+        ctx.addIssue({ code: "custom", path: at("physical_reason"), message: physical });
       if (d.not_stampable === true) {
         if (d.not_stampable_reason === undefined)
           ctx.addIssue({
@@ -419,6 +458,8 @@ export const PackDocument = z
     /** The `enclosure_list` code this document furnishes (RBC para 14). */
     enclosure_code: code.optional(),
     stamp_evidence: PackStampEvidence.optional(),
+    /** Optional (PR-UDF-061 item 18; R1-D-252): `physical_reason` and `re_instructions`. */
+    ...physicalFields,
   })
   .loose();
 export type PackDocument = z.infer<typeof PackDocument>;
@@ -447,6 +488,9 @@ export type PackDocument = z.infer<typeof PackDocument>;
  * - `not_stampable [{ document_id, reason }]`: pack documents that need no stamp, with the reason;
  *   never stamp-required and never with stamp evidence.
  * - `documents[].signers` as the `PACK_SIGNER_ROLES` enum, each role once.
+ *
+ * And PR-UDF-061 item 18 (R1-D-252): optional `documents[].physical_reason` (a document with one is
+ * executed `WET_INK`) and `documents[].re_instructions` (link-free plain text, 1 to 1,000 characters).
  */
 export const ExecutionPackIssuedData = z
   .object({
@@ -531,6 +575,8 @@ export const ExecutionPackIssuedData = z
           at("execution_mode"),
           `${d.document_id} is an IT Act First Schedule instrument: never executed electronically`,
         );
+      const physical = physicalIssue(d);
+      if (physical) issue(at("physical_reason"), physical);
       if (d.stamp_evidence) {
         if (!d.stamp_required)
           issue(at("stamp_evidence"), `${d.document_id} carries stamp evidence but needs no stamp`);

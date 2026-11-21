@@ -111,6 +111,7 @@ export const ALGORITHMS: readonly AlgorithmInfo[] = Object.freeze([
       "document transfer integrity (Ecosystem §3.6): the C-22 profile with typ ipb-document+jws over the JCS descriptor { document_id, version, sha256 } (PR-UDF-053, R1-D-219)",
       "document transfer integrity, descriptor v2: the same C-22 profile with typ ipb-document-v2+jws over the JCS descriptor { application_id?, document_id, media_type, sha256, size_bytes, type, version } (PR-UDF-061, R1-D-236)",
       "partner mTLS pinned-CA check: X.509 issuer signatures on P-256 only, verify only; any other issuer algorithm refused (PR-UDF-064, R1-D-238; owner question #170)",
+      "outbound partner mTLS client authentication: the TLS CertificateVerify signature with the platform's SECRETS-held P-256 client key; any other key type refused (PR-UDF-069, R1-D-250; owner question #180)",
     ],
   },
   {

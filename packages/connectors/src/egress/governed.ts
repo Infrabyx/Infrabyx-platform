@@ -7,17 +7,9 @@
 //   * A hop is `https:` on port 443, with no user-info and a host name (never an IP literal: an
 //     allow-list names hosts), on the allow-list (exact, or `*.suffix`).
 //   * DNS: every address the name resolves to must be public. One refused address refuses the hop,
-//     because a mixed answer is how DNS rebinding is staged. Refused: IPv4 outside the public
-//     unicast space (the IANA IPv4 Special-Purpose Address Registry, RFC 6890 / BCP 153, every block
-//     whether or not marked globally reachable, plus multicast 224.0.0.0/4 and the reserved
-//     240.0.0.0/4); IPv6 outside global unicast 2000::/3 (so loopback, unspecified, IPv4-mapped and
-//     -compatible, NAT64 64:ff9b::/96 and 64:ff9b:1::/48, discard 100::/64, ULA fc00::/7,
-//     link-local fe80::/10, site-local fec0::/10, SRv6 5f00::/16 and multicast ff00::/8 are all
-//     out), and inside it the IETF protocol assignments 2001::/23 (Teredo 2001::/32 included),
-//     documentation 2001:db8::/32 and 3fff::/20 (RFC 9637), and 6to4 2002::/16.
-//     Source: RFC 6890 and the IANA IPv4 and IPv6 Special-Purpose Address Registries as known on
-//     18 Nov 2026 [VERIFY: www.iana.org was not reachable from the build session; re-check the two
-//     registries at the next review and add any new block].
+//     because a mixed answer is how DNS rebinding is staged. The refused ranges (IANA IPv4 and
+//     IPv6 special-purpose registries, RFC 6890) live in `./guard.ts`, shared with
+//     `PartnerMtlsClient` (R1-D-250).
 //   * Pinning: the request's `lookup` returns only the address that was checked, so the socket goes
 //     to it; TLS still verifies the certificate against the host name (SNI unchanged).
 //   * Redirects (301, 302, 303, 307, 308) are followed by GET up to `maxRedirects` (5 at most), each
@@ -31,7 +23,6 @@
 import { request, type RequestOptions } from "node:https";
 import type { IncomingMessage } from "node:http";
 import { lookup as dnsLookup } from "node:dns/promises";
-import { BlockList, isIP, type LookupFunction } from "node:net";
 import { brotliDecompressSync, gunzipSync, inflateSync } from "node:zlib";
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
@@ -42,6 +33,10 @@ import type {
   PortHealth,
 } from "@infrabyx/contracts/ports";
 import { hostAllowed } from "../core/http.js";
+import { allAddressesPublic, checkPublicHostName, pinOf, pinnedLookup } from "./guard.js";
+
+/** The public-address check, shared with `PartnerMtlsClient` (`./guard.ts`). */
+export { isPublicAddress } from "./guard.js";
 
 const PORT = "EGRESS";
 const ADAPTER = "governed";
@@ -53,51 +48,6 @@ export const GOVERNED_EGRESS_DEFAULTS = { timeoutMs: 5_000, maxBytes: 2 * 1024 *
 export const GOVERNED_EGRESS_MAX_REDIRECTS = 5;
 type Encoding = NonNullable<EgressFetchResult["contentEncoding"]>;
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
-const HOST_LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
-
-const V4_REFUSED: ReadonlyArray<readonly [string, number]> = [
-  ["0.0.0.0", 8], // "this network"
-  ["10.0.0.0", 8], // private-use
-  ["100.64.0.0", 10], // shared address space (CGNAT)
-  ["127.0.0.0", 8], // loopback
-  ["169.254.0.0", 16], // link-local (cloud metadata 169.254.169.254)
-  ["172.16.0.0", 12], // private-use
-  ["192.0.0.0", 24], // IETF protocol assignments
-  ["192.0.2.0", 24], // documentation (TEST-NET-1)
-  ["192.31.196.0", 24], // AS112-v4
-  ["192.52.193.0", 24], // AMT
-  ["192.88.99.0", 24], // deprecated 6to4 relay anycast
-  ["192.168.0.0", 16], // private-use
-  ["192.175.48.0", 24], // direct delegation AS112 service
-  ["198.18.0.0", 15], // benchmarking
-  ["198.51.100.0", 24], // documentation (TEST-NET-2)
-  ["203.0.113.0", 24], // documentation (TEST-NET-3)
-  ["224.0.0.0", 4], // multicast
-  ["240.0.0.0", 4], // reserved, and the limited broadcast 255.255.255.255
-];
-const V6_REFUSED_IN_GLOBAL: ReadonlyArray<readonly [string, number]> = [
-  ["2001::", 23], // IETF protocol assignments (Teredo 2001::/32, benchmarking, ORCHID…)
-  ["2001:db8::", 32], // documentation
-  ["2002::", 16], // 6to4
-  ["3fff::", 20], // documentation (RFC 9637)
-];
-
-const refused = new BlockList();
-for (const [a, p] of V4_REFUSED) refused.addSubnet(a, p, "ipv4");
-for (const [a, p] of V6_REFUSED_IN_GLOBAL) refused.addSubnet(a, p, "ipv6");
-const globalUnicast = new BlockList();
-globalUnicast.addSubnet("2000::", 3, "ipv6");
-
-/** Whether an address may be connected to: public unicast only (see the header). */
-export function isPublicAddress(address: string): boolean {
-  const family = isIP(address);
-  if (family === 4) return !refused.check(address, "ipv4");
-  if (family === 6) {
-    const a = address.toLowerCase().split("%")[0]!;
-    return globalUnicast.check(a, "ipv6") && !refused.check(a, "ipv6");
-  }
-  return false;
-}
 
 export interface GovernedEgressOptions {
   /** `int.egress.governed.enabled` (off by default). */
@@ -229,13 +179,13 @@ export class GovernedEgress implements EgressPort {
       throw this.refuse(schemeReason, `refused ${u.protocol} (https only)`);
     if (u.username || u.password) throw this.refuse("userinfo", "user-info in the URL");
     if (u.port !== "" && u.port !== "443") throw this.refuse("port", "a non-default port");
-    const host = u.hostname.toLowerCase();
-    if (isIP(host.replace(/^\[|\]$/g, "")) !== 0) throw this.refuse("ip_literal", "an IP literal");
-    const labels = host.endsWith(".") ? host.slice(0, -1).split(".") : host.split(".");
-    if (labels.length < 2 || !labels.every((l) => HOST_LABEL.test(l)))
-      throw this.refuse("host", "not a public host name");
-    if (!hostAllowed(labels.join("."), allow))
-      throw this.refuse("not_allowed", `${labels.join(".")} is not on the allow-list`);
+    const name = checkPublicHostName(u.hostname);
+    if (!name.ok)
+      throw name.reason === "ip_literal"
+        ? this.refuse("ip_literal", "an IP literal")
+        : this.refuse("host", "not a public host name");
+    if (!hostAllowed(name.host, allow))
+      throw this.refuse("not_allowed", `${name.host} is not on the allow-list`);
     u.hash = "";
     return u;
   }
@@ -259,15 +209,9 @@ export class GovernedEgress implements EgressPort {
       });
     }
     if (answers.length === 0) throw this.refuse("dns", `${host} has no address`);
-    const loopbackOk = this.o.testAllowLoopback === true;
-    for (const a of answers) {
-      const ok =
-        isPublicAddress(a.address) ||
-        (loopbackOk && (a.address === "127.0.0.1" || a.address === "::1"));
-      if (!ok) throw this.refuse("address", `${host} resolves to a refused address range`);
-    }
-    const first = answers[0]!;
-    return { address: first.address, family: isIP(first.address) === 6 ? 6 : 4 };
+    if (!allAddressesPublic(answers, this.o.testAllowLoopback === true))
+      throw this.refuse("address", `${host} resolves to a refused address range`);
+    return pinOf(answers);
   }
 
   private get(
@@ -276,13 +220,7 @@ export class GovernedEgress implements EgressPort {
     accept: string | undefined,
     deadline: number,
   ): Promise<IncomingMessage> {
-    const lookup: LookupFunction = (_host, opts, cb) => {
-      if ((opts as { all?: boolean }).all)
-        (cb as unknown as (e: null, a: { address: string; family: number }[]) => void)(null, [
-          pinned,
-        ]);
-      else cb(null, pinned.address, pinned.family);
-    };
+    const lookup = pinnedLookup(pinned);
     const ms = deadline - Date.now();
     if (ms <= 0) return Promise.reject(timedOut());
     const opts: RequestOptions = {

@@ -27,6 +27,12 @@
 // `responseSigType`, `responseUrl`), `AuthMode` 1 for OTP and 2 for biometric, `InputHash` with
 // `hashAlgorithm="SHA256"` and `docInfo`, the `ts` format, and that the hash is of the prepared
 // PDF's signed byte range (PAdES), which this shell does not prepare: it hashes the stored bytes.
+//
+// PR-UDF-070 (R1-D-251): no signature record exists while `downloadSigned` is `unsupported`, so
+// `signerCertificate` is never set. When #177 (2) is answered, it is read from the verified
+// `<EsignResp>`'s signer certificate ([VERIFY] `UserX509Certificate`) with
+// `signerCertificateSummary`, or from the signed PDF. The CCA request carries up to five
+// `InputHash` documents, but multi-document envelopes are refused `unsupported` until then.
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
@@ -37,6 +43,7 @@ import type {
   PortCall,
   PortHealth,
   SignatureRecord,
+  SignedEnvelopeDocument,
   Signer,
   SigningMethod,
   StoragePort,
@@ -46,6 +53,7 @@ import {
   ESIGN,
   loadEnvelope,
   methodRefused,
+  NO_MULTI_DOCUMENT,
   readDocument,
   unsupported,
   validateEnvelope,
@@ -174,6 +182,7 @@ export class NsdlEsign implements EsignPort {
       verifySignature: "unsupported",
       handleWebhook: "unsupported",
       cancel: "unsupported",
+      ...NO_MULTI_DOCUMENT,
     },
   };
   /** Fixed: no option replaces it (see the header). */
@@ -271,6 +280,15 @@ export class NsdlEsign implements EsignPort {
     await this.signer.sign(xml);
     // Unreachable while the signer refuses; the ESP's gateway URL is added with the approval.
     throw unsupported(ADAPTER, "aadhaarEsign");
+  }
+
+  /** No multi-document envelope until the vendor's support is verified (PR-UDF-070) [VERIFY]. */
+  async createMultiDocumentEnvelope(): Promise<{ envelopeId: string }> {
+    throw unsupported(ADAPTER, "createMultiDocumentEnvelope (waits for #177)");
+  }
+
+  async downloadSignedDocuments(): Promise<{ documents: SignedEnvelopeDocument[] }> {
+    throw unsupported(ADAPTER, "downloadSignedDocuments (waits for #177)");
   }
 
   async dscSign(): Promise<{ redirectUrl: string }> {
