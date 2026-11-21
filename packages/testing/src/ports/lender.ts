@@ -847,7 +847,7 @@ export function lenderContractCases(
       },
     },
     {
-      name: "a sanction letter's document reference names the shared letter, and LoanDisbursed's application id is the application",
+      name: "a sanction letter's document reference names the shared letter, and LoanDisbursed names the application by application_id, lsp_application_ref or both",
       async run(l) {
         const { applicationId, docs } = await sanctioned(l, "lspapp_contract_doc_refs");
         const s = SanctionLetterIssuedData.parse(
@@ -869,7 +869,15 @@ export function lenderContractCases(
         );
         await l.disburse(applicationId);
         const d = LoanDisbursedData.parse(byName(l.outbox(), "LoanDisbursed").at(-1)!.event.data);
+        // R1-D-256 (PR-UDF-061 finding (i)): the schema requires neither (a minor), but an LSP must
+        // be able to tell which application was disbursed, so a lender sends at least one.
+        expect(
+          d.application_id !== undefined || d.lsp_application_ref !== undefined,
+          "LoanDisbursed carries application_id or lsp_application_ref",
+        ).toBe(true);
         if (d.application_id !== undefined) expect(d.application_id).toBe(applicationId);
+        if (d.lsp_application_ref !== undefined)
+          expect(d.lsp_application_ref).toBe("lspapp_contract_doc_refs");
       },
     },
     {

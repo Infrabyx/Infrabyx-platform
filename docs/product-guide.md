@@ -1566,6 +1566,27 @@ From the next `@infrabyx/contracts` minor (no migration, setting or environment 
 - The mock lender (`@infrabyx/fakes`) sets neither field today.
 - **Adopt** with all `@infrabyx/*` pins moved together.
 
+## 7eg. Telling which application a `LoanDisbursed` is for (PR-UDF-061 finding (i); R1-D-256)
+
+From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), `LoanDisbursedData` takes an optional `lsp_application_ref`: the LSP's own application reference, as on `CoolingOffExitAnswered`.
+
+```ts
+{
+  loan_id: "ln_0001", // still the envelope subject (R1-D-236)
+  utr: "FAKE0123456789AB",
+  // … amount, value date, beneficiary, kind, cooling-off end as before
+  application_id: "app_0001", // the lender's id (optional, R1-D-232)
+  lsp_application_ref: "lspapp_0001", // the LSP's own reference (optional, new)
+}
+```
+
+**What to know:**
+
+- Neither reference is required by the schema: `application_id` was optional, and requiring it (or one of the two) would refuse a payload valid before. A lender sends one or both; the lender contract cases in `@infrabyx/testing` require at least one, each naming the application.
+- **An LSP** matches `lsp_application_ref` against its own application first, else `application_id` against the id the lender gave in `ApplicationStatusChanged`; with neither, it holds the disbursal for review rather than guessing from the amount.
+- The mock lender (`@infrabyx/fakes`) sends both.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
 ## 7eh. The inbox keeps the verified JWS beside the event (PR-UDF-073; R1-D-257)
 
 From the next `@infrabyx/tenancy` minor (migration `tenancy/0026`; no setting, no environment variable). §7dp says to store a regulated message's `X-Infrabyx-JWS` beside the event; `EcosystemInbox` now does it for you, in the same row and transaction as the event.
