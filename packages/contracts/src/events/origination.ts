@@ -629,6 +629,15 @@ export const LoanDisbursedData = z
     /** R1-D-232 (item 11): the lender's application id, and the exact time of disbursal. */
     application_id: ref.optional(),
     disbursed_at: at.optional(),
+    /**
+     * R1-D-256 (PR-UDF-061 finding (i)): the LSP's own application reference, as on
+     * `CoolingOffExitAnswered`, so an LSP can tell which application was disbursed. A lender sends
+     * `application_id`, this, or both (the mock lender sends both); the schema does not require
+     * either, because `application_id` was optional before and a hard rule would refuse a payload
+     * valid then (a minor). The lender contract cases require at least one, each naming the
+     * application. The envelope subject stays `loan_id` (R1-D-236).
+     */
+    lsp_application_ref: ref.optional(),
   })
   .loose();
 
