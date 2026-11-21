@@ -1586,6 +1586,40 @@ From the next `@infrabyx/contracts` minor (no migration, setting or environment 
 - The mock lender (`@infrabyx/fakes`) sends both.
 - **Adopt** with all `@infrabyx/*` pins moved together.
 
+## 7ei. Pack evidence: e-stamp system, not-stampable codes, page and clause, the JWS profile (PR-UDF-075; R1-D-258)
+
+From the next `@infrabyx/contracts` and `@infrabyx/crypto` minors (no migration, setting or environment variable). Every field is optional; a pack valid before stays valid.
+
+| Where                                                  | New                                                                                                                         |
+| ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `PackStampEvidence` and the manifest's `StampEvidence` | `estamp_system`: `SHCIL`, `STATE_PORTAL`, `NESL_DDE` or `GRAS` (`ESTAMP_SYSTEMS`), only with an e-stamp                     |
+| `ExecutionPackIssuedData.not_stampable[]`              | `reason_code`: `NOT_AN_INSTRUMENT`, `ACKNOWLEDGEMENT` or `OTHER` (`NOT_STAMPABLE_REASON_CODES`); `reason` is still required |
+| Manifest item                                          | `not_stampable_reason_code`, the same codes, only with `not_stampable: true`                                                |
+| `disbursement_clause` (both carriers)                  | `page` (1 to 2000) and `clause_ref` (`4.2`, `4.2(a)`, no `cl.`), beside the still-required `page_or_clause_ref`             |
+| `verifyDocumentJws` success                            | `profile: "v1" \| "v2"`                                                                                                     |
+
+**`page_or_clause_ref` forms** (read by `parsePageOrClauseRef`, case-insensitive): `p.3`, `p 3`, `pg.3`, `page 3`; `cl.4.2`, `cl 4.2(a)`, `clause 4.2`; or both in either order, separated by a space, `,`, `;` or `/` (`p.3 cl.4.2`, `cl.4.2, p.3`). Other text is still accepted and not read. When it is readable, a `page` or `clause_ref` beside it must name the same page or clause, else the pack is refused on `disbursement_clause.page` or `.clause_ref`.
+
+**`certificate_document_id`** names the stamp certificate as a document the lender shared (`DocumentShared`, type `ESTAMP_CERTIFICATE` by convention) **for the same application**: check that its `application_id` is the pack's before you file it. It need not be listed in the pack's `documents`; when it is, it is not stamp-required and carries no stamp evidence. It is never the stamped document (refused).
+
+**Verifying a v2 document JWS from a `DocumentShared` announcement:**
+
+```ts
+const data = DocumentSharedData.parse(event.data); // the announcement as it arrived
+const r = verifyDocumentJws(data.jws, data, lenderKeys, new Date(event.time), { requireV2: true });
+if (!r.ok) refuse(r.reason); // malformed, wrong_typ (a v1 JWS), unknown_key, signature_invalid
+// r.profile === "v2": type, media_type, size_bytes and application_id are bound as announced
+```
+
+Pass the parsed data as it is (it carries the v2 fields; a v2 JWS without `media_type` or `size_bytes` on the event is `malformed`), and the event's `time` so a key rotated since still verifies a document announced while it was valid. Until your lender signs v2 everywhere, drop `requireV2` and log `r.profile` to see which documents are still v1. After the download, check the bytes' SHA-256 against `sha256` and their length against `size_bytes`.
+
+**What to know:**
+
+- A test comparing a success with `toEqual({ ok: true, kid })` now needs `profile`; `DocumentJwsResult` values built by hand still type-check (`profile` is optional there).
+- No `physical_marks` list: the pack is issued before execution, so a notary's seal or a registration endorsement does not yet exist; use item 18's `re_instructions` (§7ed) for where the lender wants it (owner question #187).
+- The mock lender sends `estamp_system: "SHCIL"`, `reason_code: "NOT_AN_INSTRUMENT"` and `clause_ref: "4.2"`.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
