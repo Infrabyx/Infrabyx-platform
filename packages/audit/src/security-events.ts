@@ -1,4 +1,6 @@
 // Security audit events (owner answer #132 (5); R1-D-187; `audit/0012`; threat model §3.130).
+// Kinds: `rules.reveal.refused`, and `connector.retrieval.host_refused` (PR-UDF-072; R1-D-262;
+// `audit/0013`; §3.181), whose detail is typed (`SECURITY_EVENT_SHAPES` in contracts/kernel).
 //
 // `PgSecurityEvents.record(ctx, event)` keeps one refused attempt (who, when, what, why) in
 // `audit.security_event`, in its own short transaction as `svc_security_event`, a role that may
@@ -12,6 +14,7 @@ import {
   SECURITY_EVENT_DETAIL_KEY,
   SECURITY_EVENT_DETAIL_VALUE,
   SECURITY_EVENT_KINDS,
+  securityEventShapeProblem,
   type KernelContext,
   type SecurityEventInput,
   type SecurityEventSink,
@@ -82,6 +85,10 @@ export class PgSecurityEvents implements SecurityEventSink {
     if (event.resourceId !== null && !RESOURCE_ID.test(event.resourceId))
       throw new RangeError("invalid resource id");
     const detail = checkDetail(event.detail);
+    // A kind with a typed detail (PR-UDF-072, `connector.retrieval.host_refused`) takes exactly
+    // its schema's fields, and targets the resource its shape names.
+    const problem = securityEventShapeProblem({ ...event, detail });
+    if (problem) throw new RangeError(problem);
     const traceId = ctx.traceId !== undefined && TRACE.test(ctx.traceId) ? ctx.traceId : null;
     const id = newId("sev");
     const client = await this.o.pool.connect();

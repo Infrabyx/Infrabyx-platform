@@ -1726,6 +1726,37 @@ s?.QUARANTINE; // { status: "resolves", keyState: "Enabled" } | { status: "refus
 - **Adapters:** `s3` and `MemoryStorage` provide it; `minio` declares it `unsupported`. It is optional on `StoragePort`, so call it as `storage.keyRefStatuses?.(…)`.
 - **Testing:** `new MemoryStorage(undefined, { keyRefs, keyStates, keyStateError })`, where `keyStateError(tenantId, keyRef)` returns `"unavailable"` (the key-state read throws `IPB-PORT-002`) or `"not_described"` (the not-described answer). The built-in STORAGE contract cases include one for `keyRefStatuses`.
 
+## 7em. Recording a refused document-retrieval host (PR-UDF-072; R1-D-262)
+
+From the next release (`contracts` and `audit` minors; migration `audit/0013`; no setting or environment variable), a product that refuses to fetch a partner's document because the retrieval URL (`DocumentRetrieval.url`, §7df) names a host outside its allow-list records the security event `connector.retrieval.host_refused`. The platform has no retrieval client of its own: your fetcher applies the allow-list and records the refusal.
+
+```ts
+import { retrievalHostOf, retrievalHostRefusedEvent } from "@infrabyx/contracts/kernel";
+
+const r = DocumentRetrieval.parse(await partner.getDocument(documentId));
+if (!allowedHosts.has(new URL(r.url).hostname)) {
+  const host = retrievalHostOf(r.url); // bare host: no scheme, credentials, port, path or query
+  if (host)
+    await securityEvents.record(
+      ctx, // your tenant and the principal that made the fetch
+      retrievalHostRefusedEvent({
+        partner_tenant_id: partnerTenantId,
+        document_id: r.document_id,
+        version: r.version,
+        host,
+      }),
+    );
+  else log.warn({ reason: "retrieval_host_unrecordable", document_id: r.document_id });
+  throw new RetrievalRefused("host_refused"); // never fetch, never retry the same answer
+}
+```
+
+- **The sink:** `PgSecurityEvents` from `@infrabyx/audit`, built on your kernel's pool (its login may `set role svc_security_event`), as for refused reveals (§7cg). It writes in its own short transaction, so the record stays although your transaction rolls back. Apply `audit/0013` with your other platform migrations first; before it, the table refuses the kind.
+- **The detail is exactly** `{ partner_tenant_id, document_id, version, host }`: the partner tenant by the platform tenant-id rule, the document id and version as `DocumentRetrieval` gives them, and `host` a bare lower-case DNS name of at most 128 characters. Anything else (a URL, a query, a port, `user:pass@`, upper case, a trailing dot, an extra field) is refused with a `RangeError` that names the field, never its value, before the database is touched. The event targets `document` and the document id.
+- **Record the host, never the URL:** a presigned URL's query is a credential. `retrievalHostOf(url)` gives the host the WHATWG parser reads (lower case, punycode), or null for an IPv6 literal, a longer host or text that is not a URL; refuse those fetches the same way and log the refusal without the host (owner question #191).
+- **Compare hosts as the parser gives them.** Build your allow-list of exact lower-case host names and compare `new URL(r.url).hostname`; never a prefix or substring of the URL text. Refuse any scheme but `https` (the schema already does).
+- **Reading them:** `select … from audit.security_event where kind = 'connector.retrieval.host_refused'` in your tenant (forced RLS), for your security on-call; no export yet (threat model §3.130, §3.181).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
