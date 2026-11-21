@@ -44,6 +44,18 @@ export class OutboxRelay extends PlatformOutboxRelay {
       schemas: o.schemas,
       ...(o.batch !== undefined ? { batch: o.batch } : {}),
       ...(o.maxAttempts !== undefined ? { maxAttempts: o.maxAttempts } : {}),
+      // The operational log of each failed attempt: ids, the fixed label and the count only.
+      onFailure: (f) =>
+        process.stderr.write(
+          `${JSON.stringify({
+            msg: f.parked ? "outbox row parked" : "outbox delivery failed",
+            schema: f.schema,
+            tenant_id: f.tenantId,
+            event_id: f.eventId,
+            reason: f.reason,
+            attempts: f.attempts,
+          })}\n`,
+        ),
       deliver: async (_schema, e) => {
         const job = outboxEventJob(e);
         await o.queue.enqueue(EVENTS_QUEUE, job, { idempotencyKey: e.id });
