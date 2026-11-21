@@ -1532,6 +1532,39 @@ const { documents } = await esign.downloadSignedDocuments!(envelopeId); // after
 
 One to ten documents, unique ids and storage keys. **All or nothing:** a signer is `signed` only after signing every document, the envelope completes only when every document is signed by every signer, a decline declines the whole envelope, and nothing downloads before completion (`not_completed`). `getStatus(...).documents` shows each document's progress; `downloadSigned` on several documents is refused `multi_document`.
 
+## 7ed. Why a pack document needs a physical step, and the lender's instructions (PR-UDF-061 item 18; R1-D-252)
+
+From the next `@infrabyx/contracts` minor (no migration, setting or environment variable), each document of an execution pack may carry two optional fields, in both carriers: `ExecutionPackManifest.documents[]` (the interim `DocumentShared` manifest) and `ExecutionPackIssuedData.documents[]` (the signed `ExecutionPackIssued` event).
+
+| Field             | Values                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `physical_reason` | `REGISTRATION_REQUIRED` or `NOTARISATION_REQUIRED` (`PACK_PHYSICAL_REASONS`)                                       |
+| `re_instructions` | The lender's words: plain text, 1 to 1,000 characters (`PACK_RE_INSTRUCTIONS_MAX`), no control characters, no link |
+
+```ts
+{
+  document_id: "doc_mod_0001",
+  kind: "MORTGAGE_DEED",
+  execution_mode: "WET_INK", // required with a physical_reason
+  physical_reason: "REGISTRATION_REQUIRED",
+  re_instructions: "Bring the signed deed and two photo IDs to the Sub-Registrar office on a working day.",
+  // … the document's other fields as before
+}
+```
+
+**What is refused:**
+
+- A `physical_reason` on a document whose `execution_mode` is not `WET_INK` (eSign, DSC or `NONE`), on `documents[i].physical_reason`.
+- Any other `physical_reason` value.
+- `re_instructions` that are empty, longer than 1,000 characters, carry a control character other than tab or a line break, or contain a link (a URL with a scheme, `www.`, `upi:` or a domain with a path): the same rule as `CoolingOffExitAnswered.payment_instruction` (R1-D-232).
+
+**What to know:**
+
+- Both fields are optional and independent: `re_instructions` may be sent without a `physical_reason`, on any execution mode. A pack valid before stays valid.
+- Show `re_instructions` as the lender's words, escaped as text, never as HTML or Markdown; the schema refuses links but not every way of naming a place or a number.
+- The mock lender (`@infrabyx/fakes`) sets neither field today.
+- **Adopt** with all `@infrabyx/*` pins moved together.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
