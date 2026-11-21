@@ -226,6 +226,13 @@ export {
   type ReadClientCertificateOptions,
 } from "./client-cert.js";
 export {
+  checkClientCredential,
+  CLIENT_CREDENTIAL_REFUSALS,
+  type ClientCredentialInfo,
+  type ClientCredentialRefusal,
+  type ClientCredentialResult,
+} from "./client-credential.js";
+export {
   StandardWebhookReceiver,
   STANDARD_WEBHOOK_REFUSALS,
   STANDARD_WEBHOOK_MAX_BODY_BYTES,
