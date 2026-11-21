@@ -159,7 +159,12 @@ const WIDENED_CHECKS: Record<string, ReadonlyArray<readonly [string, number]>> =
   // PR-LDC-30 (R1-D-125, R1-D-133): not a widened check but the same kind of reviewed drop: the
   // concurrent GIN build drops only an invalid index a failed earlier run of this file left, then
   // builds it again; no data and no constraint is lost.
-  audit: [["0011_business_ids_index.sql", 1]],
+  // and PR-UDF-072 (R1-D-262): the security-event kind check widened to admit
+  // connector.retrieval.host_refused (drop, add not valid, validate; every existing row passes).
+  audit: [
+    ["0011_business_ids_index.sql", 1],
+    ["0013_security_event_retrieval_host.sql", 1],
+  ],
 };
 
 describe("PL1 migrations", () => {
