@@ -1,8 +1,10 @@
 // Kernel interfaces shared by config, tenancy, audit and seed. They live here so the packages can
 // depend on interfaces, not on each other (tenancy implements MutationKernel; audit implements
 // AuditSink). See docs/phases/PL1-plan.md §3.2.
+import { z } from "zod";
 import type { PrincipalType } from "./roles.js";
 import type { DataClass } from "./data-class.js";
+import { TENANT_ID_REGEX } from "./ids.js";
 
 export interface Principal {
   /** usr_…, or a service/agent identity id. */
@@ -151,7 +153,10 @@ export interface AuditSink {
  * tenant's business history. `detail` holds ids, names and codes only, never a value, a free-text
  * purpose or personal data (each string at most 128 characters; 2 KiB in all).
  */
-export const SECURITY_EVENT_KINDS = ["rules.reveal.refused"] as const;
+export const SECURITY_EVENT_KINDS = [
+  "rules.reveal.refused",
+  "connector.retrieval.host_refused",
+] as const;
 export type SecurityEventKind = (typeof SECURITY_EVENT_KINDS)[number];
 /** Keys and string values of a security event's `detail`. */
 export const SECURITY_EVENT_DETAIL_KEY = /^[a-z][a-z0-9_]{0,31}$/;
@@ -163,6 +168,123 @@ export interface SecurityEventInput {
   resourceType: string;
   resourceId: string | null;
   detail: Readonly<Record<string, string | number | boolean>>;
+}
+
+/**
+ * A refused document-retrieval host (Udofin PR-UDF-072; R1-D-262; threat model §3.181): a
+ * product refused to fetch a document's bytes because the retrieval URL a partner answered
+ * (`DocumentRetrieval.url`, Ecosystem Specification §6.13) names a host outside its allow-list.
+ */
+export const RETRIEVAL_HOST_REFUSED_EVENT = "connector.retrieval.host_refused" as const;
+
+/**
+ * A refused host as it is recorded: a bare DNS name, lower case, labels of letters, digits and
+ * hyphens (1 to 63, no hyphen at either end) joined by dots, no trailing dot, 1 to 128 characters
+ * in all (the detail value limit). No scheme, userinfo, port, path, query or fragment can match,
+ * so a URL, its query or a credential is never recorded. An IPv4 address matches; an IPv6
+ * literal does not.
+ */
+export const RETRIEVAL_HOST_PATTERN =
+  /^(?=.{1,128}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
+
+/**
+ * The `detail` of `connector.retrieval.host_refused`, and nothing else (a strict object): the
+ * partner's tenant, the document id and version as on `DocumentRetrieval` / `DocumentShared`,
+ * and the refused host (`RETRIEVAL_HOST_PATTERN`).
+ */
+export const RetrievalHostRefusedDetail = z.strictObject({
+  /** The partner (producer) tenant whose retrieval answer named the host. */
+  partner_tenant_id: z.string().regex(TENANT_ID_REGEX),
+  document_id: z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/),
+  version: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+  host: z.string().regex(RETRIEVAL_HOST_PATTERN),
+});
+export type RetrievalHostRefusedDetail = z.infer<typeof RetrievalHostRefusedDetail>;
+
+/** The typed shape of a security event kind: its detail schema and what it targets. */
+export interface SecurityEventShape {
+  detail: z.ZodType<Readonly<Record<string, string | number | boolean>>>;
+  /** The event's `resourceType`. */
+  resourceType: string;
+  /** The detail field the event's `resourceId` equals. */
+  resourceIdField: string;
+}
+
+/**
+ * Kinds with a typed detail (PR-UDF-072): a sink refuses an event of such a kind whose detail
+ * fails the schema, or whose resource is not the one the shape names. `rules.reveal.refused`
+ * keeps the generic detail rule only.
+ */
+export const SECURITY_EVENT_SHAPES: Readonly<
+  Partial<Record<SecurityEventKind, SecurityEventShape>>
+> = Object.freeze({
+  [RETRIEVAL_HOST_REFUSED_EVENT]: Object.freeze({
+    detail: RetrievalHostRefusedDetail,
+    resourceType: "document",
+    resourceIdField: "document_id",
+  }),
+});
+
+/**
+ * Why `event` does not fit its kind's typed shape, or null when it fits or its kind has none.
+ * The reason names fields only, never a value.
+ */
+export function securityEventShapeProblem(event: SecurityEventInput): string | null {
+  const shape = SECURITY_EVENT_SHAPES[event.kind];
+  if (!shape) return null;
+  const r = shape.detail.safeParse(event.detail);
+  if (!r.success) {
+    const named = new Set<string>();
+    for (const i of r.error.issues) {
+      if (i.code === "unrecognized_keys") for (const k of i.keys) named.add(k);
+      else if (i.path.length > 0) named.add(i.path.map(String).join("."));
+    }
+    const fields = [...named].filter((f) => SECURITY_EVENT_DETAIL_KEY.test(f));
+    return `${event.kind} detail is not valid${fields.length > 0 ? ` (${fields.join(", ")})` : ""}`;
+  }
+  if (event.resourceType !== shape.resourceType)
+    return `${event.kind} targets resource type ${shape.resourceType}`;
+  if (event.resourceId !== r.data[shape.resourceIdField])
+    return `${event.kind} resource id is the detail's ${shape.resourceIdField}`;
+  return null;
+}
+
+/**
+ * The security event for a refused retrieval host (PR-UDF-072), checked: target `document` and
+ * the document id, detail exactly `{ partner_tenant_id, document_id, version, host }`. Throws a
+ * RangeError naming the bad fields (never their values) when the detail does not fit.
+ */
+export function retrievalHostRefusedEvent(detail: RetrievalHostRefusedDetail): SecurityEventInput {
+  const d: unknown = detail;
+  const documentId =
+    typeof d === "object" &&
+    d !== null &&
+    typeof (d as { document_id?: unknown }).document_id === "string"
+      ? (d as { document_id: string }).document_id
+      : null;
+  const event: SecurityEventInput = {
+    kind: RETRIEVAL_HOST_REFUSED_EVENT,
+    resourceType: "document",
+    resourceId: documentId,
+    detail,
+  };
+  const problem = securityEventShapeProblem(event);
+  if (problem) throw new RangeError(problem);
+  return { ...event, detail: Object.freeze({ ...detail }) };
+}
+
+/**
+ * The host to record for a refused retrieval URL: the URL's host name as the WHATWG URL parser
+ * gives it (lower case, IDNs in punycode; userinfo, port, path, query and fragment dropped), one
+ * trailing dot removed. Null when the text is not a URL or its host is not recordable (none, an
+ * IPv6 literal, longer than 128 characters): refuse the fetch all the same.
+ */
+export function retrievalHostOf(url: string): string | null {
+  if (typeof url !== "string" || url.length > 8192) return null;
+  const u = URL.parse(url);
+  if (!u) return null;
+  const host = u.hostname.endsWith(".") ? u.hostname.slice(0, -1) : u.hostname;
+  return RETRIEVAL_HOST_PATTERN.test(host) ? host : null;
 }
 
 /**
