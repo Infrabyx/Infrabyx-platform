@@ -38,6 +38,7 @@ export const JVM_IMAGES = {
 
 /** Image repositories scanned on 19 Nov 2026 with no JVM in them. */
 export const NO_JVM_IMAGES = [
+  "atmoz/sftp", // FILE_TRANSFER test server (PR-UDF-071; scanned 21 Nov 2026)
   "axllent/mailpit",
   "cerbos/cerbos",
   "clamav/clamav",

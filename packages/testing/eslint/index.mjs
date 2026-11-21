@@ -43,6 +43,9 @@ export const VENDOR_SDK_PATTERNS = [
   /^@signzy\//,
   // MEDIA reference adapter (OWNER-QUESTIONS #53): libvips under the licence exception, connectors only.
   /^sharp$/,
+  // FILE_TRANSFER reference adapter (PR-UDF-071, R1-D-254): the SSH/SFTP protocol library, connectors only.
+  /^ssh2$/,
+  /^ssh2-sftp-client$/,
 ];
 
 const toPosix = (p) => p.split(path.sep).join("/");
@@ -249,6 +252,7 @@ export const PORT_DEFAULTS = {
   PUSH: "INTERNAL",
   IMAGE_GEN: "INTERNAL",
   STATEMENT_ANALYSIS: "REGULATED",
+  FILE_TRANSFER: "REGULATED",
 };
 export const DATA_CLASS_ORDER = ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "REGULATED", "SECRET"];
 const PORT_NAME_RE = /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
