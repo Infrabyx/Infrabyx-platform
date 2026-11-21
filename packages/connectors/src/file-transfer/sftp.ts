@@ -427,6 +427,7 @@ export class SftpFileTransfer implements FileTransferPort {
     const before = async <V>(p: Promise<V>): Promise<V> => {
       const ms = deadline - Date.now();
       if (ms <= 0) throw refuse("timeout", "the call timed out");
+      if (signal?.aborted) throw refuse("aborted", "the call was aborted");
       let timer: NodeJS.Timeout | undefined;
       let onAbort: (() => void) | undefined;
       try {
