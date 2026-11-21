@@ -1,5 +1,21 @@
 # @infrabyx/crypto
 
+## 1.13.0
+
+### Minor Changes
+
+- 5b1257d: `checkClientCredential(certificatePem, keyPem, { now? })` (Udofin PR-UDF-069; R1-D-250): checks the platform's own mTLS client certificate and key before an outbound partner call uses them. Both must parse (an encrypted key is refused), the key must be ECDSA P-256 (the approved `ecdsa-p256-sha256` entry; any other key type is `key_type` until the owner widens it, owner question #180) and must be the certificate's, the certificate must be a leaf whose extended key usage, if present, allows TLS client authentication, and it must be valid at `now`. Answers `{ ok: true, credential: { notBefore, notAfter, x5tS256, fingerprintSha256 } }` or one of the fixed labels in `CLIENT_CREDENTIAL_REFUSALS`; never the key. The registry's `ecdsa-p256-sha256` entry gains the outbound partner mTLS use line. No new primitive, dependency, setting or migration; nothing existing changes.
+- 27057c2: Signer certificate summaries for ESIGN records (Udofin PR-UDF-070; R1-D-251). `signerCertificateSummary(derOrPem)` reads a certificate's serial (as Node prints it), issuer, validity, SHA-256 of the DER and the subject's most specific common name (`TypeError("not an X.509 certificate")` otherwise). `padesSignerCertificates(pdf, { maxBytes? })` names the signer certificate of each signature embedded in a PDF, in file order, only where that signature is bound to it (ByteRange, CMS digest and the CMS signature over the signed attributes, as C-28 checks them), else `null`; it does not judge trust, which stays with `verifyPadesSignatures`. Field reading and SHA-256 only: no new algorithm or registry entry. Tests only: `pades-test`'s `newSigner` takes an optional `subject`.
+- f3293a2: `verifyDocumentJws` can report which descriptor verified (Udofin PR-UDF-075 (5); R1-D-258), opt-in: with the new option `reportProfile: true` a success is `{ ok: true, kid, profile: "v1" | "v2" }` (typed `DocumentJwsVerification` by an overload). Without the option the result is exactly as before, `{ ok: true, kid }` with no `profile` key, so no existing test or caller sees a change. `DocumentJwsResult`'s success member gains `profile?`; new type exports `DocumentJwsProfile`, `DocumentJwsVerification` and `DocumentJwsVerifyOptions`. No new primitive, key or algorithm.
+
+### Patch Changes
+
+- Updated dependencies [75cbd9a]
+- Updated dependencies [beca045]
+- Updated dependencies [199c930]
+- Updated dependencies [a702fdc]
+  - @infrabyx/contracts@1.45.0
+
 ## 1.12.0
 
 ### Minor Changes
