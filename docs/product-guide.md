@@ -1849,6 +1849,34 @@ await parking.requeue(ctx, "cms", parked[0].eventId); // ledgered `tenancy.outbo
 - Fix the cause first (deploy the mapped job name, or bring the queue back), then requeue: the next pass retries the row with a fresh budget of `maxAttempts`. A park is requeued once; the record stays (nothing is deleted), with `requeued_at` and `requeued_by`.
 - Only a person (`principal.type` `user`) holding one of `requeueRoles` (default `ORG_OWNER`, `ORG_ADMIN`) may requeue, in the row's own tenant; a row with no open park answers `NotFoundError` (404).
 
+## 7eq. The no-Aadhaar sweep: empty carrier columns, longer names, labelled values (PR-UDF-079; R1-D-270)
+
+From the next release (`contracts` and `testing` minors, `ai` patch; no setting, no migration), the sweep of §7cs and §7dv has three more checks, **on by default with no switch to turn them off**. Expect new failures in suites that call `scanDatabaseForAadhaar` / `sweepDatabaseForAadhaar` from `beforeDrop` and in CI steps that run `infrabyx-aadhaar-scan`. Fix the data or the name; do not drop the check.
+
+**1. An empty carrier-named column is a find.** Every column whose name carries an Aadhaar (rule 2) is reported once, as `kind: "COLUMN"`, `ctid: ""`, `masked: "(column)"`, read from the catalogue: it needs no row, and it holds for a table that is empty or all nulls. The platform never stores an Aadhaar number, so a table built to hold one is the find. Two exceptions: a `boolean` column (it cannot hold a number), and a last-four column (`aadhaar_last_digits`, `aadhaarLast4`, `aadhaar_last_4`), which is judged by its values. A sweep that read no row but has finds now returns them instead of rejecting `AadhaarScanEmptyError` (still raised when it found nothing).
+
+**2. Carrier names inside longer names, and `uidai_token`.** `isAadhaarCarrierName` (`@infrabyx/contracts/aadhaar`) splits a name at separators, case changes and between letters and digits, and reads:
+
+| Name                                                              | Carrier? | Why                                                   |
+| ----------------------------------------------------------------- | -------- | ----------------------------------------------------- |
+| `borrower_aadhaar_ref`, `masked_aadhaar_no`, `borrowerAadhaarRef` | yes      | an `aadhaar` or `aadhar` segment, anywhere            |
+| `aadhaar_otp`, `aadhaar_verified_at`, `aadhar_card_copy`          | yes      | the same: strict                                      |
+| `user_uid`, `kyc_uid_token`, `borrower_uid_no`, `kycUidaiToken`   | yes      | ends with `uid`, `uid_token`, `uid_no`, `uidai_token` |
+| `aadhaar_last_digits`, `aadhaarLast4`                             | if > 4   | last four only: a value with more than four digits    |
+| `uid_kind`, `uid_type`, `uid_token_hash`, `uid2`                  | no       | `uid` must end the name                               |
+| `uuid`, `guid`, `fluid`, `uidx`, `vid`                            | no       | not a `uid` segment; `vid` alone is too common (#174) |
+
+The database sweep's `FIELD` rule now uses these names for columns and JSON keys (`findAadhaarCarrierFields(json)` for your own data). Files are still not read for keys; their labelled values are (rule 3).
+
+**3. A carrier name followed by a value in free text.** In files, the CLI, text columns and JSON strings, a carrier name, optional label words (`No.`, `number`, `card`, `id`, ...), a separator (`:`, `=`, `#`, `-`, `=>`, `->`, spaces; quotes allowed) and a value of digits, `X`, `x` or `*` is a `LABELLED` find (`masked: "(value withheld)"`, at the label), masked or not and whatever its check digit: `aadhaar: <digits>`, `Aadhaar No. XXXX XXXX dddd`, `"aadhaar_number": "<digits>"`, `uid=XXXX XXXX dddd`. The value needs four characters after a mark or label word for an `aadhaar` or `uidai_token` label, and eight after a bare space or for a `uid` label, so `uid=1000` (a Unix user id) and `Aadhaar 2016` are not finds. A last-four label counts only past four digits (`aadhaar_last_digits: "xxxx-xxxx-dddd"` passes). `allow` and `--letters` do not affect it. The CLI prints `file:line: LABELLED (value withheld)` and exits 1. `findAadhaarLabelledValues(text)` gives you offsets only.
+
+**What may newly fail, and the fix.**
+
+- A column such as `aadhaar_number`, `borrower_aadhaar_ref` or `user_uid`, even empty: drop it in an expand-contract migration, or rename it if it holds no Aadhaar (`user_uid` for a user id: `user_id`). If it must stay and truly holds no Aadhaar (an `aadhaar_verified_at` timestamp), skip it by name, `skip: ["schema.table.column"]`, and record why in your decisions log.
+- A log line or fixture that prints a labelled Aadhaar, masked or not (`Aadhaar: XXXX XXXX dddd`): log the last four under a last-four name (`aadhaar_last_digits=dddd`), or no number at all. The platform reworded one golden case of its own (`ai.grounded_answer`, `pii-restore-masked`) for this reason.
+- JSON with `uid`-style keys for other identifiers (`user_uid`, `owner_uid`): rename the key (`user_id`).
+- **Udofin:** the three checks of your request are the default; drop your own copies of them and keep the shared sweep.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
