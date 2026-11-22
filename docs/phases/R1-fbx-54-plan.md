@@ -57,4 +57,4 @@ API shape (executor 4th argument plus declared named capabilities); grant source
 
 ## F. Exit gate
 
-`pnpm turbo run build lint typecheck test --filter=@infrabyx/tenancy --filter=@infrabyx/contracts`; the new suite and the `ambient*`, `branch`, `approvals*` and `mandate-approval` integration suites; `node scripts/ipb-check.mjs`; `npx prettier --check .`. Changeset for `@infrabyx/tenancy` (minor). Threat model §3.183; guide §7er.
+`pnpm turbo run build lint typecheck test --filter=@infrabyx/tenancy --filter=@infrabyx/contracts`; the new suite and the `ambient*`, `branch`, `approvals*` and `mandate-approval` integration suites; `node scripts/ipb-check.mjs`; `npx prettier --check .`. Changeset for `@infrabyx/tenancy` (minor). Threat model §3.184; guide §7er.
