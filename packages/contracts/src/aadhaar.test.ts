@@ -4,14 +4,21 @@
 import { describe, expect, it } from "vitest";
 import * as index from "./index.js";
 import {
+  AADHAAR_CARRIER_NAME_ENDINGS,
   AADHAAR_FIELD_NAMES,
+  AADHAAR_LABELLED_VALUE_MAX,
   AADHAAR_LIKE_KINDS,
   AADHAAR_LOOK_ALIKES,
+  findAadhaarCarrierFields,
+  findAadhaarLabelledValues,
   findAadhaarLike,
   findAadhaarNamedFields,
+  holdsAadhaarCarrierValue,
   holdsAadhaarFieldValue,
   holdsAadhaarLike,
+  isAadhaarCarrierName,
   isAadhaarFieldName,
+  isAadhaarLastFourName,
   verhoeffValid,
   type AadhaarLikeFind,
   type AadhaarLookAlike,
@@ -284,5 +291,175 @@ describe("PR-UDF-063 fields named like an Aadhaar carrier", () => {
     expect(findAadhaarNamedFields([{ uid: 1 }])).toEqual([{ path: [0, "uid"] }]);
     expect(findAadhaarNamedFields("uid")).toEqual([]);
     expect(findAadhaarNamedFields(null)).toEqual([]);
+  });
+});
+
+describe("PR-UDF-079 carrier names inside longer names, and labelled values", () => {
+  // The rule's table: the name, whether it is a carrier name, and why.
+  const NAMES: [name: string, carrier: boolean, why: string][] = [
+    ["aadhaar_number", true, "listed (isAadhaarFieldName)"],
+    ["AADHAARNO", true, "listed, any case and separators"],
+    ["borrower_aadhaar_ref", true, "an aadhaar segment, anywhere"],
+    ["masked_aadhaar_no", true, "an aadhaar segment, anywhere"],
+    ["borrowerAadhaarRef", true, "camelCase segments"],
+    ["aadhar_card_copy", true, "the aadhar spelling"],
+    ["aadhaar_otp", true, "an aadhaar segment: strict"],
+    ["aadhaar_seeded", true, "an aadhaar segment: strict"],
+    ["kyc_aadhaar_otp_verify", true, "an aadhaar segment: strict"],
+    ["aadhaar_last_digits", true, "a last-four name: judged by its value"],
+    ["aadhaarLast4", true, "a last-four name: judged by its value"],
+    ["uid", true, "listed"],
+    ["user_uid", true, "ends with the segment uid"],
+    ["userUID", true, "ends with the segment uid"],
+    ["kyc_uid_token", true, "ends with uid_token"],
+    ["borrower_uid_no", true, "ends with uid_no"],
+    ["KycUIDNumber", true, "ends with uid number"],
+    ["uidai_token", true, "uidai_token, named in the request"],
+    ["kycUidaiToken", true, "ends with uidai token"],
+    ["uid_kind", false, "uid not at the end: a qualifier follows"],
+    ["uid_type", false, "uid not at the end"],
+    ["uid_token_hash", false, "uid_token not at the end"],
+    ["uid2", false, "the last segment is 2"],
+    ["uidx", false, "one segment, not uid"],
+    ["uuid", false, "one segment, not uid"],
+    ["UUID", false, "one segment, not uid"],
+    ["guid", false, "one segment, not uid"],
+    ["GUIDs", false, "segments gui, ds"],
+    ["fluid", false, "one segment, not uid"],
+    ["fluid_level", false, "no uid segment"],
+    ["uidai_txn", false, "uidai only as uidai_token"],
+    ["vid", false, "not on the list (#174)"],
+    ["virtual_id", false, "not on the list (#174)"],
+    ["fiu_id", false, "no carrier segment"],
+    ["aadhaarx", false, "one segment, not aadhaar"],
+  ];
+
+  it("isAadhaarCarrierName: the rule's table", () => {
+    for (const [name, carrier, why] of NAMES)
+      expect(isAadhaarCarrierName(name), `${name}: ${why}`).toBe(carrier);
+    // Every listed name is a carrier name; the exact rule is unchanged.
+    for (const n of AADHAAR_FIELD_NAMES) expect(isAadhaarCarrierName(n), n).toBe(true);
+    expect(isAadhaarFieldName("borrower_aadhaar_ref")).toBe(false);
+    expect(isAadhaarFieldName("user_uid")).toBe(false);
+    expect(AADHAAR_CARRIER_NAME_ENDINGS).toEqual([
+      "uid",
+      "uid_no",
+      "uid_num",
+      "uid_number",
+      "uid_token",
+      "uidai_token",
+    ]);
+    expect(index.isAadhaarCarrierName).toBe(isAadhaarCarrierName);
+    expect(index.findAadhaarLabelledValues).toBe(findAadhaarLabelledValues);
+  });
+
+  it("isAadhaarLastFourName and holdsAadhaarCarrierValue: four digits at most", () => {
+    for (const n of [
+      "aadhaar_last_digits",
+      "aadhaarLast4",
+      "aadhaar_last_4",
+      "kyc_aadhaar_last_four",
+      "aadhar_last_4_digits",
+    ])
+      expect(isAadhaarLastFourName(n), n).toBe(true);
+    for (const n of ["aadhaar", "aadhaar_last", "aadhaar_last_8", "last4_aadhaar", "uid_last4"])
+      expect(isAadhaarLastFourName(n), n).toBe(false);
+    expect(isAadhaarLastFourName("aadhaar_aadhaar_last4")).toBe(false);
+    for (const v of ["0124", "xxxx-xxxx-0124", "XXXX XXXX 0124", 124, "", null])
+      expect(holdsAadhaarCarrierValue("aadhaar_last_digits", v), String(v)).toBe(false);
+    for (const v of ["01245", UID, broken(UID), 12345, ["0124", "5"]])
+      expect(holdsAadhaarCarrierValue("aadhaarLast4", v), String(v)).toBe(true);
+    // Any other carrier name: whatever it holds (holdsAadhaarFieldValue).
+    expect(holdsAadhaarCarrierValue("borrower_aadhaar_ref", "x")).toBe(true);
+    expect(holdsAadhaarCarrierValue("borrower_aadhaar_ref", " ")).toBe(false);
+  });
+
+  it("findAadhaarCarrierFields: the wider names, never the value", () => {
+    const doc = {
+      borrower: { aadhaar_ref: "r1", aadhaarLast4: "0124", kyc_uid_token: "tok" },
+      users: [{ user_uid: 7, uid_kind: "x" }],
+      aadhaar_last_digits: broken(UID),
+      note: "aadhaar",
+    };
+    const f = findAadhaarCarrierFields(doc);
+    expect(f).toEqual([
+      { path: ["borrower", "aadhaar_ref"] },
+      { path: ["borrower", "kyc_uid_token"] },
+      { path: ["users", 0, "user_uid"] },
+      { path: ["aadhaar_last_digits"] },
+    ]);
+    expect(JSON.stringify(f)).not.toContain(UID.slice(0, 8));
+    // The exact rule is unchanged.
+    expect(findAadhaarNamedFields(doc)).toEqual([]);
+  });
+
+  // Free text: whether a carrier name followed by a value is a find. Numbers fail Verhoeff on
+  // purpose where marked: the label is the evidence.
+  const TEXTS: [text: string, find: boolean][] = [
+    [`aadhaar: ${UID}`, true],
+    [`aadhaar: ${broken(UID)}`, true], // fails Verhoeff
+    [`Aadhaar No. XXXX XXXX ${UID.slice(-4)}`, true], // masked
+    [`Aadhaar card number - ${grouped(broken(UID), "-")}`, true],
+    [`"aadhaar_number": "${grouped(broken(UID), " ")}"`, true],
+    [`borrower_aadhaar_ref=${UID.slice(0, 6)}`, true],
+    [`aadhaar => ****${UID.slice(-4)}`, true],
+    [`aadhaar -> ${UID.slice(-4)}`, true],
+    [`aadhaar#${UID.slice(-4)}`, true],
+    [`aadhaar-no-${UID.slice(-4)}`, true],
+    [`aadhaar :\t'XXXX-XXXX-${UID.slice(-4)}'`, true],
+    [`aadhaar: xxxx`, true], // fully masked: the label and the shape are enough
+    [`Aadhaar ${grouped(broken(UID), " ")}`, true], // a bare space: at least 8 characters
+    [`uid=XXXX XXXX ${UID.slice(-4)}`, true],
+    [`user.uid = ${UID.slice(0, 8)}`, true],
+    [`kyc_uidai_token: ${UID.slice(0, 4)}`, true],
+    [`aadhaar_last_digits: ${UID.slice(0, 6)}`, true], // a last-four name, six digits
+    [`aadhaar: ${"9".repeat(200)}`, true], // past the value cap: still a find
+    // Not finds.
+    [`aadhaar: ${UID.slice(0, 3)}`, false], // three characters
+    ["Aadhaar 2016 rules", false], // a bare space and four characters
+    ["the Aadhaar Act, 2016", false],
+    ["uid=1000(app) gid=1000", false], // a Unix user id: a uid label needs 8
+    [`UID no.: ${UID.slice(-4)}`, false], // a uid label needs 8
+    [`aadhaar_last_digits: "xxxx-xxxx-${UID.slice(-4)}"`, false], // four digits
+    [`aadhaarLast4=${UID.slice(-4)}`, false],
+    ["uid=1234abcd", false], // a letter after the digits: not a value
+    ["uid: 4f3a9c1e-0000-4000-8000-000000000000", false],
+    [`fluid: ${UID.slice(0, 8)}`, false],
+    [`uid_kind: ${UID.slice(0, 8)}`, false],
+    [`vid: ${UID.slice(0, 8)}`, false],
+    [`aadhaar\n${UID}`, false], // never across a line break
+    [`aadhaar${UID.slice(-4)}`, false], // no separator: one token
+    ["aadhaar OTP sent", false],
+  ];
+
+  it("findAadhaarLabelledValues: the rule's table", () => {
+    for (const [text, find] of TEXTS)
+      expect(findAadhaarLabelledValues(text).length > 0, text).toBe(find);
+  });
+
+  it("findAadhaarLabelledValues: offsets of the label and the value, in order", () => {
+    const text = `x Aadhaar No. XXXX XXXX ${UID.slice(-4)}; uid=${UID}`;
+    const f = findAadhaarLabelledValues(text);
+    expect(f).toEqual([
+      { start: 2, valueStart: 14, end: 28 },
+      { start: 30, valueStart: 34, end: 46 },
+    ]);
+    expect(text.slice(f[0]!.valueStart, f[0]!.end)).toBe(`XXXX XXXX ${UID.slice(-4)}`);
+    const long = findAadhaarLabelledValues(`aadhaar: ${"9".repeat(200)}`);
+    expect(long[0]!.end - long[0]!.valueStart).toBe(AADHAAR_LABELLED_VALUE_MAX);
+  });
+
+  it("findAadhaarLabelledValues runs in linear time on hostile input", () => {
+    for (const hostile of [
+      "aadhaar: ".repeat(100_000),
+      `${"a_".repeat(200_000)}uid`,
+      "UID".repeat(200_000),
+      `uid ${"1 ".repeat(40)}`.repeat(10_000),
+      `aadhaar ${"no ".repeat(50_000)}`,
+    ]) {
+      const t0 = performance.now();
+      findAadhaarLabelledValues(hostile);
+      expect(performance.now() - t0, hostile.slice(0, 20)).toBeLessThan(2000);
+    }
   });
 });
