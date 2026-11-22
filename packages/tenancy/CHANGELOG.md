@@ -1,5 +1,18 @@
 # @infrabyx/tenancy
 
+## 1.25.0
+
+### Minor Changes
+
+- a37e9fe: Finbyx PR-FBX-54 (R1-D-273): a scoped branch read inside a mutation. An approval executor gets a fourth argument, `kernel` (`ApprovalExecutorKernel`), whose `scopedBranchRead({ branchIds, reason }, fn)` runs `fn` read-only inside the executing transaction (a read unit as the read role, `transaction_read_only`, always rolled back) under the executor's context with its branch scope set to exactly the named branches (`allBranches` false, no current branch); it is bound to that one execution and refused once the executor returns. A capability named in the new `PgKernelOptions.scopedBranchReadCapabilities` is issued once by `kernel.scopedBranchReadCapability(name)` for the same call outside an executor (`cap.scopedBranchRead(tx, opts, fn)`); an ordinary request's `Tx` has no way in, and only a mutation transaction the kernel opened (or a joined call on one) is accepted. Every named branch (1 to 1000 distinct ids) must be granted to the caller: the new `PgKernelOptions.branchGrants(tx)` returns every branch the principal holds a grant on, closed ones included; without it the context's own `allBranches` or `branchIds` are the grants. The reason (1 to 500 characters, no control character) is required. Each read is ledgered `security.branch_scope.read` in the mutation's own transaction (it commits or rolls back with the mutation and does not count as the mutation's own ledger entry), naming the branches, the reason and the approval request (its business id) or the capability. A refusal is `IPB-SEC-005` with a fixed `meta.refusal` (`principal`, `branch_ids`, `reason`, `grants`, `ungranted`), ledgered `security.branch_scope.read_refused` after the transaction ends. Agents, support access, break-glass, service readers, external principals, impersonation and platform scope are refused. Writes inside are refused by PostgreSQL; units, nested scoped reads and any other statement on the mutation's transaction are refused while the read is open; the refusal of product code setting `app.*` is unchanged. Works inside `kernel.ambient` (the read takes its turn). New exports: `SCOPED_BRANCH_READ_ACTION`, `SCOPED_BRANCH_READ_REFUSED_ACTION`, `SCOPED_BRANCH_READ_REFUSALS`, `MAX_SCOPED_BRANCH_READ_REASON`, `BRANCH_ID_PATTERN`, `MAX_BRANCH_IDS` and the types `ScopedBranchReadOptions`, `ScopedBranchReadCapability`, `BranchGrantSource`, `ApprovalExecutorKernel`. No migration, setting or environment variable.
+
+### Patch Changes
+
+- Updated dependencies [4fbcf73]
+  - @infrabyx/contracts@1.49.0
+  - @infrabyx/config@1.24.3
+  - @infrabyx/crypto@1.15.1
+
 ## 1.24.1
 
 ### Patch Changes
