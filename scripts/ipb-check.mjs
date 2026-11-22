@@ -159,10 +159,18 @@ if (existsSync("docs/OWNER-QUESTIONS.md")) {
 if (!/Last updated:\*\* \d{4}-\d{2}-\d{2}/.test(read("docs/security/threat-model.md")))
   fail("docs/security/threat-model.md must carry a **Last updated:** date (PL2-D-43)");
 // Gate A (PL2 plan §11): every unproven adapter with a sandbox leg names its open port-contract
-// issue. minio has no sandbox leg; it stays unproven by owner decision (PL2-D-61).
+// issue or, until one is opened, the settings that keep it off (`offBy`; R1-D-268, whose unit test
+// checks each is a registered boolean defaulting to false). minio has no sandbox leg; it stays
+// unproven by owner decision (PL2-D-61).
 for (const [name, a] of Object.entries(json("packages/connectors/sandbox-status.json").adapters)) {
-  if (a.status !== "proven" && name !== "minio" && !Number.isInteger(a.issue))
-    fail(`sandbox-status.json: unproven adapter ${name} must name its port-contract issue`);
+  const offBy =
+    Array.isArray(a.offBy) &&
+    a.offBy.length > 0 &&
+    a.offBy.every((k) => /^int\.[a-z0-9_.]+\.enabled$/.test(k));
+  if (a.status !== "proven" && name !== "minio" && !Number.isInteger(a.issue) && !offBy)
+    fail(
+      `sandbox-status.json: unproven adapter ${name} must name its port-contract issue or offBy`,
+    );
 }
 if (existsSync("SEED_CREDENTIALS.md")) fail("SEED_CREDENTIALS.md must never be committed (IPB-11)");
 if (!read(".gitignore").includes("SEED_CREDENTIALS.md"))
