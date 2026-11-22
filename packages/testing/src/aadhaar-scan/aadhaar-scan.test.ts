@@ -21,6 +21,8 @@ describe("PR-UDF-042 scanTextForAadhaar", () => {
   it("gives the line and column of each find, masked", () => {
     const text = `first line\n  uid ${spaced(UID)}\r\nvid=${VID};\n`;
     expect(scanTextForAadhaar(text)).toEqual([
+      // PR-UDF-079: `uid` followed by a value is also a find, at the label (`vid` is no carrier).
+      { line: 2, column: 3, kind: "LABELLED", masked: "(value withheld)" },
       { line: 2, column: 7, kind: "AADHAAR", masked: `XXXX XXXX ${UID.slice(-4)}` },
       { line: 3, column: 5, kind: "VID", masked: `XXXX XXXX XXXX ${VID.slice(-4)}` },
     ]);
@@ -220,6 +222,82 @@ describe("PR-UDF-042 infrabyx-aadhaar-scan", () => {
     const b = await scanPathsForAadhaar([join(root, "dirty")], { maxBytes: 500 });
     expect(a).toEqual(b);
     expect(a.finds.map((f) => f.kind)).toEqual(["AADHAAR", "VID"]);
+  });
+});
+
+describe("PR-UDF-079 a carrier name followed by a value", () => {
+  /** The same number with a wrong check digit. */
+  const broken = (n: string) => `${n.slice(0, -1)}${(Number(n.at(-1)) + 1) % 10}`;
+  const LABELLED = { kind: "LABELLED", masked: "(value withheld)" } as const;
+
+  it("is a LABELLED find at the label, masked or not, Verhoeff-valid or not", () => {
+    const text = [
+      `aadhaar: ${broken(UID)}`,
+      `  Aadhaar No. XXXX XXXX ${UID.slice(-4)}`,
+      `borrower_aadhaar_ref=${UID.slice(0, 6)}`,
+      `kyc_uid_token = "${UID.slice(0, 8)}"`,
+      `aadhaar_last_digits: "xxxx-xxxx-${UID.slice(-4)}"`,
+      "uid=1000(app) gid=1000",
+      `uid: ${UID}`,
+    ].join("\n");
+    expect(scanTextForAadhaar(text)).toEqual([
+      { line: 1, column: 1, ...LABELLED },
+      { line: 2, column: 3, ...LABELLED },
+      { line: 3, column: 1, ...LABELLED },
+      { line: 4, column: 1, ...LABELLED },
+      // Line 5 keeps the last four digits only; line 6 is a Unix user id.
+      { line: 7, column: 1, ...LABELLED },
+      { line: 7, column: 6, kind: "AADHAAR", masked: `XXXX XXXX ${UID.slice(-4)}` },
+    ]);
+    expect(JSON.stringify(scanTextForAadhaar(text))).not.toContain(UID.slice(0, 6));
+    // `allow` and `letters` do not touch it: a label is no look-alike.
+    const masked = `aadhaar: XXXX XXXX ${UID.slice(-4)}`;
+    for (const letters of ["join", "boundary"] as const)
+      expect(scanTextForAadhaar(masked, { letters, allow: ["e164_in", "decimal"] })).toEqual([
+        { line: 1, column: 1, ...LABELLED },
+      ]);
+  });
+
+  it("a UUID after a label is blanked first, so it is no value", () => {
+    expect(scanTextForAadhaar(`uid: 01234567-89ab-4def-8123-${UID}`)).toEqual([]);
+  });
+
+  let root: string;
+  let out: string;
+  let err: string;
+  beforeAll(() => {
+    root = mkdtempSync(join(tmpdir(), "ipb-aadhaar-label-"));
+    mkdirSync(join(root, "dirty"));
+    mkdirSync(join(root, "clean"));
+    writeFileSync(
+      join(root, "dirty", "app.log"),
+      `INFO start\nWARN kyc done aadhaar_number=XXXX-XXXX-${UID.slice(-4)}\n`,
+    );
+    writeFileSync(
+      join(root, "clean", "kyc.json"),
+      JSON.stringify({ aadhaarLast4: UID.slice(-4), uid_kind: "AADHAAR", fluid: 12345678 }),
+    );
+  });
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  const run = async (...args: string[]) => {
+    out = "";
+    err = "";
+    vi.spyOn(process.stdout, "write").mockImplementation((s) => ((out += String(s)), true));
+    vi.spyOn(process.stderr, "write").mockImplementation((s) => ((err += String(s)), true));
+    return main(args);
+  };
+  afterEach(() => vi.restoreAllMocks());
+
+  it("the CLI exits 1 on a labelled value and prints no value; 0 on the last four alone", async () => {
+    expect(await run(join(root, "dirty"))).toBe(1);
+    // Exactly this line: the file, the line, the kind; no value, masked or not.
+    expect(out).toBe(`${join(root, "dirty", "app.log")}:2: LABELLED (value withheld)\n`);
+    expect(err).toMatch(/1 file\(s\), 0 skipped, 1 find\(s\)/);
+    expect(await run(join(root, "clean"))).toBe(0);
+    // --allow does not let a labelled value through.
+    expect(await run("--allow", "e164_in,decimal", join(root, "dirty"))).toBe(1);
+    expect(await run("--help")).toBe(0);
+    expect(out).toContain("LABELLED (value withheld)");
   });
 });
 

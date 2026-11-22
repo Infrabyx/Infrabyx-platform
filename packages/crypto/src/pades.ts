@@ -1,11 +1,13 @@
-// PAdES / CMS signature verification, verify only (C-28; owner answer #162, R1-D-228, R1-D-246;
-// Udofin PR-UDF-059). A PDF's embedded CAdES-detached or PKCS#7-detached signatures are checked
-// locally: the ByteRange digest, the CMS signature over the signed attributes, the signer's chain
-// to a pinned CCA India root through pinned intermediates, validity at the signing time, key
-// usage, a B-T signature timestamp when present, and revocation only from evidence the caller
-// passes. Nothing is signed, fetched or logged; results are fixed labels, never document text
-// (the signer block comes from the certificate). node:crypto only, with the package's own DER
-// reader (no third-party ASN.1 library).
+// PAdES / CMS signature verification, verify only (C-28; owner answers #162 and #178, R1-D-228,
+// R1-D-246, R1-D-272; Udofin PR-UDF-059). A PDF's embedded CAdES-detached or PKCS#7-detached
+// signatures are checked locally: the ByteRange digest, the CMS signature over the signed
+// attributes, the signer's chain to a pinned CCA India root (RFC 5280 path checks, through
+// intermediates that are pinned or carried in the signature's CMS certificate set, within fixed
+// work bounds), validity at the signing time, key usage, a B-T signature timestamp when present
+// (required when the caller says so), and revocation only from evidence the caller passes.
+// Nothing is signed, fetched or logged; results are fixed labels, never document text (the signer
+// block comes from the certificate). node:crypto only, with the package's own DER reader (no
+// third-party ASN.1 library).
 import { X509Certificate } from "node:crypto";
 import {
   CCA_INDIA_INTERMEDIATES,
@@ -61,6 +63,8 @@ export const PADES_OUTCOMES = Object.freeze([
   "chain_untrusted",
   "not_valid_at_signing_time",
   "certificate_revoked",
+  // R1-D-272 (owner answer #178): `requireTimestamp` was set and there is no verified timestamp.
+  "timestamp_required",
 ] as const);
 export type PadesOutcome = (typeof PADES_OUTCOMES)[number];
 
@@ -93,6 +97,14 @@ export interface PadesSignatureResult {
   timeSource: PadesTimeSource | null;
   timestamp: "valid" | "untrusted" | "invalid" | "absent";
   chain: "trusted" | "untrusted" | "not_checked";
+  /**
+   * R1-D-272: lowercase hex SHA-256 of the DER of each certificate on the path that was built,
+   * signer first and pinned root last; null when no path was found. A path whose certificates
+   * were not all valid at the signing time is still reported (`not_valid_at_signing_time`).
+   */
+  chainSha256: string[] | null;
+  /** R1-D-272: the same for the timestamp authority's path, when `timestamp` is `valid`. */
+  timestampChainSha256: string[] | null;
   revocation: RevocationStatus;
   /** The crypto registry id of the signature algorithm, once known. */
   algorithm: string | null;
@@ -106,12 +118,16 @@ export interface PadesVerifyResult {
   signatures: PadesSignatureResult[];
 }
 
-/** A set of trust anchors and intermediates. Build only with `customTrustStore` (tests). */
+/**
+ * A set of trust anchors and intermediates. Build only with `customTrustStore` (tests). Pinned
+ * intermediates are optional: an intermediate carried in the signature's CMS certificate set is
+ * accepted when the whole path validates to one of `roots` (R1-D-272).
+ */
 export interface PadesTrustStore {
   readonly id: "cca-india" | "custom";
   /** SHA-256 fingerprints of the roots. */
   readonly roots: readonly string[];
-  /** SHA-256 fingerprints of the intermediates. */
+  /** SHA-256 fingerprints of the pinned intermediates (none in the CCA India store). */
   readonly intermediates: readonly string[];
 }
 
@@ -146,8 +162,9 @@ function pinned(list: readonly PinnedCertificate[]): string[] {
 }
 
 /**
- * The pinned CCA India store (`cca-india-trust.ts`), checked at load. It is empty until the owner
- * supplies CCA's certificates (#178), so today every chain is `chain_untrusted`.
+ * The pinned CCA India store (`cca-india-trust.ts`), checked at load: the roots CCA India 2022 and
+ * CCA India 2022 SPL (owner answer #178, R1-D-272), no pinned intermediate. A licensed CA's
+ * intermediate must be carried in the signature's CMS certificate set.
  */
 export const CCA_INDIA_TRUST: PadesTrustStore = makeStore(
   "cca-india",
@@ -176,6 +193,12 @@ export interface PadesVerifyOptions {
   now?: Date;
   /** Largest file accepted, default 32 MiB, at most 64 MiB. */
   maxBytes?: number;
+  /**
+   * R1-D-272: refuse a signature without a verified B-T timestamp (`timestamp: "valid"`) as
+   * `timestamp_required` (default false). Evaluated last: any other refusal of the signature
+   * (including `timestamp_invalid` and `certificate_revoked`) is reported instead.
+   */
+  requireTimestamp?: boolean;
 }
 
 export const PADES_LIMITS = Object.freeze({
@@ -184,6 +207,15 @@ export const PADES_LIMITS = Object.freeze({
   maxSignatures: 16,
   maxCmsBytes: 1024 * 1024,
   maxPath: 6,
+  /**
+   * R1-D-272, bounds on one path build against a hostile CMS certificate set: at most this many
+   * of the set's certificates (other than the one the path starts from) are considered.
+   */
+  maxChainCandidates: 16,
+  /** Issuer-signature checks per path build; each (certificate, candidate) pair is checked once. */
+  maxChainSignatureChecks: 32,
+  /** Path-search steps per path build. */
+  maxChainSearchSteps: 128,
   skewMs: 5 * 60 * 1000,
 });
 
@@ -203,57 +235,131 @@ class Refusal extends Error {
   }
 }
 
-/** The path signer → … → pinned root, or the reason none exists. */
+/** The work budget of one path build ran out (R1-D-272). */
+class BudgetSpent extends Error {}
+
+type Candidate = { cert: ParsedCert; kind: "root" | "pinned" | "carried" };
+
+/**
+ * The CMS-carried certificates a path may use: the first `maxChainCandidates` of the set other
+ * than `leaf` itself, parsed, without duplicates or copies of a pinned certificate.
+ */
+function carriedCandidates(
+  carried: readonly Uint8Array[],
+  leaf: ParsedCert,
+  pinnedSha256: ReadonlySet<string>,
+): ParsedCert[] {
+  const out: ParsedCert[] = [];
+  const seen = new Set<string>([...pinnedSha256, leaf.sha256]);
+  let considered = 0;
+  for (const der of carried) {
+    if (considered >= PADES_LIMITS.maxChainCandidates) break;
+    if (leaf.der.equals(der)) continue;
+    considered++;
+    let c: ParsedCert;
+    try {
+      c = parseCert(der);
+    } catch {
+      continue;
+    }
+    if (seen.has(c.sha256)) continue;
+    seen.add(c.sha256);
+    out.push(c);
+  }
+  return out;
+}
+
+type PathResult = { path: ParsedCert[] } | { fail: PadesOutcome; path?: ParsedCert[] };
+
+/**
+ * The path signer → … → pinned root, or the reason none exists. RFC 5280 checks: names chain and
+ * each signature verifies under its issuer's key with an allowed algorithm; every CA on the path
+ * (root included) has cA TRUE, keyCertSign when keyUsage is present, its pathLenConstraint
+ * honoured and no unknown critical extension; at most `maxPath` certificates; all valid at `at`.
+ * Intermediates come from the store or from `carried` (the CMS certificate set); a carried one
+ * must have a keyUsage extension, with keyCertSign (R1-D-272). The search is bounded by
+ * `maxChainCandidates`, `maxChainSignatureChecks` and `maxChainSearchSteps`; running out of
+ * budget is `chain_untrusted`.
+ */
 function buildPath(
   leaf: ParsedCert,
   store: PadesTrustStore,
   at: Date,
-): { path: ParsedCert[] } | { fail: PadesOutcome } {
+  carried: readonly Uint8Array[] = [],
+): PathResult {
   const s = stores.get(store);
   if (!s) throw new TypeError("not a trust store");
   if (!criticalExtensionsKnown(leaf)) return { fail: "chain_untrusted" };
+  const pinnedSha256 = new Set([...s.roots, ...s.inters].map((c) => c.sha256));
+  const candidates: Candidate[] = [
+    ...s.roots.map((cert) => ({ cert, kind: "root" as const })),
+    ...s.inters.map((cert) => ({ cert, kind: "pinned" as const })),
+    ...carriedCandidates(carried, leaf, pinnedSha256).map((cert) => ({
+      cert,
+      kind: "carried" as const,
+    })),
+  ];
   let weak = false;
-  const caOk = (c: ParsedCert, below: number): boolean => {
-    const bc = basicConstraints(c);
-    const ku = keyUsage(c);
-    return (
-      bc.ca &&
-      (!ku || ku(KU.keyCertSign)) &&
-      (bc.pathLen === undefined || bc.pathLen >= below) &&
-      criticalExtensionsKnown(c)
-    );
+  let checks = 0;
+  let steps = 0;
+  const memo = new Map<string, boolean>();
+  const signs = (child: ParsedCert, issuer: ParsedCert): boolean => {
+    if (!child.issuer.equals(issuer.subject)) return false;
+    const key = `${child.sha256}:${issuer.sha256}`;
+    const known = memo.get(key);
+    if (known !== undefined) return known;
+    if (++checks > PADES_LIMITS.maxChainSignatureChecks) throw new BudgetSpent();
+    let ok = false;
+    try {
+      ok = issuedBy(child, issuer);
+    } catch (e) {
+      if (e instanceof AlgError && e.label === "weak_algorithm") weak = true;
+    }
+    memo.set(key, ok);
+    return ok;
   };
-  const issuers = (c: ParsedCert): Array<{ cert: ParsedCert; root: boolean }> => {
-    const out: Array<{ cert: ParsedCert; root: boolean }> = [];
-    for (const [list, root] of [
-      [s.roots, true],
-      [s.inters, false],
-    ] as const)
-      for (const cand of list) {
-        try {
-          if (issuedBy(c, cand)) out.push({ cert: cand, root });
-        } catch (e) {
-          if (e instanceof AlgError && e.label === "weak_algorithm") weak = true;
-        }
-      }
-    return out;
+  const caOk = (c: Candidate, below: number): boolean => {
+    try {
+      const bc = basicConstraints(c.cert);
+      const ku = keyUsage(c.cert);
+      return (
+        bc.ca &&
+        // A pinned CA without keyUsage is accepted as before; a carried one must assert it.
+        (ku ? ku(KU.keyCertSign) : c.kind !== "carried") &&
+        (bc.pathLen === undefined || bc.pathLen >= below) &&
+        criticalExtensionsKnown(c.cert)
+      );
+    } catch {
+      return false;
+    }
   };
   const search = (path: ParsedCert[]): ParsedCert[] | undefined => {
+    if (++steps > PADES_LIMITS.maxChainSearchSteps) throw new BudgetSpent();
     if (path.length >= PADES_LIMITS.maxPath) return undefined;
-    for (const { cert, root } of issuers(path[path.length - 1]!)) {
-      if (path.some((p) => p.sha256 === cert.sha256) && !root) continue;
-      if (!caOk(cert, path.length - 1)) continue;
-      if (root) return [...path, cert];
-      const found = search([...path, cert]);
+    const child = path[path.length - 1]!;
+    for (const c of candidates) {
+      if (c.kind !== "root" && path.some((p) => p.sha256 === c.cert.sha256)) continue;
+      if (!signs(child, c.cert)) continue;
+      if (!caOk(c, path.length - 1)) continue;
+      if (c.kind === "root") return [...path, c.cert];
+      const found = search([...path, c.cert]);
       if (found) return found;
     }
     return undefined;
   };
-  const path = search([leaf]);
+  let path: ParsedCert[] | undefined;
+  try {
+    path = search([leaf]);
+  } catch (e) {
+    if (e instanceof BudgetSpent) return { fail: "chain_untrusted" };
+    throw e;
+  }
   if (!path) return { fail: weak ? "weak_algorithm" : "chain_untrusted" };
-  if (!path.every((c) => validAt(c, at))) return { fail: "not_valid_at_signing_time" };
+  if (!path.every((c) => validAt(c, at))) return { fail: "not_valid_at_signing_time", path };
   return { path };
 }
+
+const fingerprints = (path: readonly ParsedCert[]): string[] => path.map((c) => c.sha256);
 
 function signerCert(si: ParsedSignerInfo, certs: Buffer[]): ParsedCert | undefined {
   for (const der of certs) {
@@ -285,7 +391,9 @@ function checkSigner(si: ParsedSignerInfo, cert: ParsedCert, contentType: string
 }
 
 type TimestampCheck =
-  { status: "valid"; genTime: Date } | { status: "untrusted" } | { status: "invalid" };
+  | { status: "valid"; genTime: Date; chain: string[] }
+  | { status: "untrusted" }
+  | { status: "invalid" };
 
 function checkTimestamp(
   token: Buffer,
@@ -295,6 +403,7 @@ function checkTimestamp(
 ): TimestampCheck {
   let tsa: ParsedCert;
   let genTime: Date;
+  let carried: Buffer[];
   try {
     const sd = parseSignedData(token);
     if (sd.eContentType !== OID.TST_INFO || !sd.eContent) return { status: "invalid" };
@@ -315,11 +424,15 @@ function checkTimestamp(
       return { status: "invalid" };
     tsa = cert;
     genTime = tst.genTime;
+    carried = sd.certificates;
   } catch {
     return { status: "invalid" };
   }
-  const p = buildPath(tsa, store, genTime);
-  return "path" in p ? { status: "valid", genTime } : { status: "untrusted" };
+  // The TSA's intermediates may come from the token's own certificate set (R1-D-272).
+  const p = buildPath(tsa, store, genTime, carried);
+  return "fail" in p
+    ? { status: "untrusted" }
+    : { status: "valid", genTime, chain: fingerprints(p.path) };
 }
 
 function contentsDer(pdf: Buffer, sig: FoundSignature): Buffer {
@@ -356,6 +469,8 @@ function verifyOne(
     timeSource: null,
     timestamp: "absent",
     chain: "not_checked",
+    chainSha256: null,
+    timestampChainSha256: null,
     revocation: "not_checked",
     algorithm: null,
   };
@@ -405,6 +520,7 @@ function verifyOne(
       if (ts.status === "valid") {
         at = ts.genTime;
         r.timeSource = "timestamp";
+        r.timestampChainSha256 = ts.chain;
       }
     }
     const m = pdfDate(sig.m);
@@ -429,7 +545,8 @@ function verifyOne(
     )
       return done("key_usage_not_allowed");
 
-    const p = buildPath(cert, store, at);
+    const p = buildPath(cert, store, at, sd.certificates);
+    if (p.path) r.chainSha256 = fingerprints(p.path);
     if ("fail" in p) {
       r.chain = p.fail === "not_valid_at_signing_time" ? "trusted" : "untrusted";
       return done(p.fail);
@@ -437,6 +554,8 @@ function verifyOne(
     r.chain = "trusted";
     r.revocation = revocationStatus(p.path, o.revocation, now);
     if (r.revocation === "revoked") return done("certificate_revoked");
+    // Last, after every cryptographic, chain and revocation check (R1-D-272).
+    if (o.requireTimestamp && r.timestamp !== "valid") return done("timestamp_required");
     return done("valid");
   } catch (e) {
     if (e instanceof Refusal) return done(e.outcome);

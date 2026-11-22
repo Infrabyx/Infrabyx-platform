@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // infrabyx-aadhaar-scan [--letters join|boundary] [--max-bytes N] [--allow e164_in,decimal] <path>...
-// (PR-UDF-042; PR-UDF-063). Prints `file:line: KIND XXXX XXXX dddd` for each find. Never prints a
-// number. Exit status:
+// (PR-UDF-042; PR-UDF-063). Prints `file:line: KIND XXXX XXXX dddd` for each find, and
+// `file:line: LABELLED (value withheld)` for a carrier name followed by a value (PR-UDF-079,
+// R1-D-270; always on). Never prints a number. Exit status:
 //   0  every file was read and nothing was found;
 //   1  at least one find;
 //   2  nothing proven (fail closed): a usage error (no path, an unknown option or look-alike, a
@@ -18,7 +19,10 @@ const USAGE =
 
 const HELP = `${USAGE}
 Sweeps files for what reads as an Aadhaar number or a VID (@infrabyx/contracts/aadhaar) and prints
-file:line: KIND and the number masked (XXXX XXXX dddd) for each find.
+file:line: KIND and the number masked (XXXX XXXX dddd) for each find. A name that carries an
+Aadhaar (aadhaar, aadhaar_number, borrower_aadhaar_ref, uid, kyc_uid_token, uidai_token, ...)
+followed by a value ("aadhaar: XXXX XXXX 1234", "Aadhaar No. ...", "uid=...") is a find too,
+masked or not, whatever its check digit: file:line: LABELLED (value withheld). Always on.
 
   --letters join|boundary  join (default): a letter next to digits is part of the run (hashes,
                            base64); boundary: a letter bounds the digits, as the AI scrubber reads

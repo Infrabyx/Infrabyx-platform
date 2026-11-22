@@ -29,7 +29,9 @@
 //
 // A column or JSON field *named* like an Aadhaar carrier (`isAadhaarFieldName`, the names in
 // `AADHAAR_FIELD_NAMES`) is suspicious whatever it holds; `findAadhaarNamedFields` walks a parsed
-// JSON value for such fields that hold a value (PR-UDF-063).
+// JSON value for such fields that hold a value (PR-UDF-063). `isAadhaarCarrierName` also reads a
+// carrier name inside a longer name, and `findAadhaarLabelledValues` a carrier name followed by a
+// value in free text (PR-UDF-079, R1-D-270; the rules are written out at the end of this file).
 //
 // A find carries the kind, the offsets and the number masked (`XXXX XXXX dddd`, `XXXX XXXX XXXX
 // dddd`): never a digit beyond the last four. Callers that hold the text can slice it by offset
@@ -256,16 +258,232 @@ export interface AadhaarNamedFieldFind {
  * again); a named field that holds nothing is not a find.
  */
 export function findAadhaarNamedFields(value: unknown): AadhaarNamedFieldFind[] {
+  return walkNamedFields(value, isAadhaarFieldName, (_k, x) => holdsAadhaarFieldValue(x));
+}
+
+function walkNamedFields(
+  value: unknown,
+  named: (key: string) => boolean,
+  holds: (key: string, v: unknown) => boolean,
+): AadhaarNamedFieldFind[] {
   const out: AadhaarNamedFieldFind[] = [];
   const walk = (v: unknown, path: (string | number)[]): void => {
     if (Array.isArray(v)) v.forEach((x, i) => walk(x, [...path, i]));
     else if (v && typeof v === "object")
       for (const [k, x] of Object.entries(v)) {
-        if (isAadhaarFieldName(k)) {
-          if (holdsAadhaarFieldValue(x)) out.push({ path: [...path, k] });
+        if (named(k)) {
+          if (holds(k, x)) out.push({ path: [...path, k] });
         } else walk(x, [...path, k]);
       }
   };
   walk(value, []);
   return out;
+}
+
+// ---- Carrier names inside longer names, and labelled values (PR-UDF-079, R1-D-270) --------------
+//
+// `isAadhaarCarrierName` widens `isAadhaarFieldName` (unchanged) to names that carry an Aadhaar
+// inside a longer name. A name is split into segments: at every character that is not an ASCII
+// letter or digit, at a lower-to-upper case change (`borrowerAadhaarRef`), before the last capital
+// of a run of capitals followed by a lower-case letter (`UIDToken` is `uid`, `token`), and between
+// letters and digits (`aadhaarLast4` is `aadhaar`, `last`, `4`). Segments compare in lower case. A
+// name is a carrier name when:
+//   - it is one of `AADHAAR_FIELD_NAMES` (`isAadhaarFieldName`); or
+//   - a segment is `aadhaar` or `aadhar`, anywhere (`borrower_aadhaar_ref`, `masked_aadhaar_no`,
+//     `aadhaar_otp`): the stems are unambiguous; or
+//   - it ends with the segments of `uid`, `uid_no`, `uid_num`, `uid_number`, `uid_token` or
+//     `uidai_token`, after any prefix (`user_uid`, `kyc_uid_token`, `kyc_uidai_token`). `uid` is
+//     short and overloaded, so it counts only as a whole segment run that ends the name: not
+//     `uid_kind`, `uid_type`, `uidx`, `uuid`, `guid` or `fluid`.
+// A last-four name (`isAadhaarLastFourName`: one `aadhaar`/`aadhar` segment followed by exactly
+// `last 4`, `last four`, `last digits`, `last 4 digits` or `last four digits`, after any prefix:
+// `aadhaar_last_digits`, `aadhaarLast4`, `aadhaar_last_4`) is a carrier name whose value is
+// reported only when it holds more than four ASCII digits: the platform's KYC results keep the
+// last four digits (`aadhaarLast4`), which UIDAI allows, and nothing more.
+//
+// `findAadhaarLabelledValues` reads free text for a carrier name followed by a value, whatever the
+// value's check digit and however it is masked (`aadhaar: <number>`, `Aadhaar No. XXXX XXXX dddd`,
+// `uid=<number>`), by the rule written out at that function.
+
+const NAME_SEGMENT = /[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+/g;
+/** A name's segments, lower case (see above). */
+function nameSegments(name: string): string[] {
+  return (name.match(NAME_SEGMENT) ?? []).map((s) => s.toLowerCase());
+}
+const STEM_SEGMENTS = new Set<string>(FIELD_STEMS);
+const TAIL_RUNS: readonly (readonly string[])[] = [
+  ["uid"],
+  ["uid", "no"],
+  ["uid", "num"],
+  ["uid", "number"],
+  ["uid", "token"],
+  ["uidai", "token"],
+];
+const LAST_FOUR_TAILS: readonly string[] = [
+  "last 4",
+  "last four",
+  "last digits",
+  "last 4 digits",
+  "last four digits",
+];
+const endsWithRun = (s: readonly string[], run: readonly string[]) =>
+  s.length >= run.length && run.every((x, i) => s[s.length - run.length + i] === x);
+
+/**
+ * The carrier names that `isAadhaarCarrierName` matches as the segments ending a longer name, in
+ * snake case: `uid`, `uid_no`, `uid_num`, `uid_number`, `uid_token` and `uidai_token`.
+ */
+export const AADHAAR_CARRIER_NAME_ENDINGS: readonly string[] = TAIL_RUNS.map((r) => r.join("_"));
+
+/**
+ * True when a column, field or label name carries an Aadhaar (PR-UDF-079): one of
+ * `AADHAAR_FIELD_NAMES`, a name with an `aadhaar` or `aadhar` segment anywhere, or a name ending
+ * with one of `AADHAAR_CARRIER_NAME_ENDINGS` as whole segments (the rule above).
+ */
+export function isAadhaarCarrierName(name: string): boolean {
+  if (isAadhaarFieldName(name)) return true;
+  const s = nameSegments(name);
+  return s.some((x) => STEM_SEGMENTS.has(x)) || TAIL_RUNS.some((r) => endsWithRun(s, r));
+}
+
+/**
+ * True when a carrier name names the last four digits only (`aadhaar_last_digits`,
+ * `aadhaarLast4`, `kyc_aadhaar_last_4`): one `aadhaar` or `aadhar` segment, followed by exactly
+ * `last 4`, `last four`, `last digits`, `last 4 digits` or `last four digits`.
+ */
+export function isAadhaarLastFourName(name: string): boolean {
+  const s = nameSegments(name);
+  const stems = s.flatMap((x, i) => (STEM_SEGMENTS.has(x) ? [i] : []));
+  return stems.length === 1 && LAST_FOUR_TAILS.includes(s.slice(stems[0]! + 1).join(" "));
+}
+
+/** The ASCII digits in a (parsed JSON) value: in its strings and numbers, at any depth. */
+function digitCount(v: unknown): number {
+  if (typeof v === "string") return v.replace(/[^0-9]/g, "").length;
+  if (typeof v === "number" || typeof v === "bigint") return digitCount(String(v));
+  if (Array.isArray(v)) return v.reduce((n: number, x) => n + digitCount(x), 0);
+  if (v && typeof v === "object") return digitCount(Object.values(v));
+  return 0;
+}
+
+/**
+ * True when the (parsed JSON, or text) value of a field named `name` is reportable: for a
+ * last-four name (`isAadhaarLastFourName`), more than four ASCII digits; for any other name,
+ * `holdsAadhaarFieldValue`.
+ */
+export function holdsAadhaarCarrierValue(name: string, v: unknown): boolean {
+  return isAadhaarLastFourName(name) ? digitCount(v) > 4 : holdsAadhaarFieldValue(v);
+}
+
+/**
+ * `findAadhaarNamedFields` with the wider names (PR-UDF-079): every field of a parsed JSON value
+ * whose name `isAadhaarCarrierName` and whose value `holdsAadhaarCarrierValue`, in document order,
+ * by key path; never the value. A carrier field is not searched below.
+ */
+export function findAadhaarCarrierFields(value: unknown): AadhaarNamedFieldFind[] {
+  return walkNamedFields(value, isAadhaarCarrierName, holdsAadhaarCarrierValue);
+}
+
+/** One carrier name followed by a value in free text: offsets only, never the value. */
+export interface AadhaarLabelledFind {
+  /** Offset of the label's first character. */
+  start: number;
+  /** Offset of the value's first character. */
+  valueStart: number;
+  /** Offset just past the value (or past `AADHAAR_LABELLED_VALUE_MAX` value characters). */
+  end: number;
+}
+
+/** Value characters read at most after a label; a longer value is a find all the same. */
+export const AADHAAR_LABELLED_VALUE_MAX = 64;
+/** Longest label read (a longer run of word characters is not a name). */
+const LABEL_MAX = 128;
+const TOKEN = /[A-Za-z0-9_]+/g;
+const LABEL_WORD = /[ \t._-]{0,3}(?:card|number|num|no|id|vid|token|ref)(?![A-Za-z0-9_])\.?/iy;
+const isValueChar = (c: number) => (c >= 48 && c <= 57) || c === 88 || c === 120 || c === 42;
+const isBlank = (c: number) => c === 32 || c === 9;
+const isQuote = (c: number) => c === 34 || c === 39 || c === 96;
+const isWordChar = (c: number) =>
+  (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95;
+
+/**
+ * Every carrier name followed by a value in `text` (PR-UDF-079), in order, never overlapping. The
+ * rule, exactly (ASCII letters in any case; never across a line break):
+ *   - the label: a run of `[A-Za-z0-9_]` (at most 128) that `isAadhaarCarrierName`, then up to
+ *     three label words, each after up to three of space, tab, `.`, `_` or `-`: `card`, `number`,
+ *     `num`, `no`, `id`, `vid`, `token` or `ref`, each optionally followed by `.` (`Aadhaar No.`,
+ *     `Aadhaar card number`, `UID no.`);
+ *   - the separator: an optional closing quote (`"`, `'` or a backtick), up to eight spaces or
+ *     tabs, an optional mark (`:`, `=`, `#`, `-`, `=>` or `->`) and up to eight more spaces or
+ *     tabs, then an optional opening quote; with no mark and no label word there must be a space
+ *     or tab;
+ *   - the value: characters from `0-9`, `X`, `x` and `*`, groups joined by one space or hyphen, not
+ *     followed by another letter, digit or `_`; at least 4 characters when there is a mark or a
+ *     label word and the label spells `aadhaar`/`aadhar` or ends with `uidai_token`, and at least 8
+ *     otherwise (a bare space after the label, or a `uid` label: `uid=1000`, a Unix user id, is not
+ *     a find; `uid=XXXX XXXX dddd` is);
+ *   - after a last-four label (`isAadhaarLastFourName`), only a value with more than four digits.
+ * Linear: one pass over the text for labels, and a bounded read after each.
+ */
+export function findAadhaarLabelledValues(text: string): AadhaarLabelledFind[] {
+  const out: AadhaarLabelledFind[] = [];
+  const token = new RegExp(TOKEN.source, "g");
+  for (let m = token.exec(text); m; m = token.exec(text)) {
+    const label = m[0];
+    if (label.length > LABEL_MAX || !/aadha|uid/i.test(label) || !isAadhaarCarrierName(label))
+      continue;
+    const f = readLabelledValue(text, m.index, m.index + label.length, label);
+    if (f) {
+      out.push(f);
+      token.lastIndex = f.end;
+    }
+  }
+  return out;
+}
+
+function readLabelledValue(
+  text: string,
+  start: number,
+  labelEnd: number,
+  label: string,
+): AadhaarLabelledFind | undefined {
+  const code = (i: number) => (i < text.length ? text.charCodeAt(i) : -1);
+  let p = labelEnd;
+  let worded = false;
+  for (let n = 0; n < 3; n++) {
+    LABEL_WORD.lastIndex = p;
+    const w = LABEL_WORD.exec(text);
+    if (!w) break;
+    p += w[0].length;
+    worded = true;
+  }
+  if (isQuote(code(p))) p++;
+  const blankAt = p;
+  while (p - blankAt < 8 && isBlank(code(p))) p++;
+  const blanks = p - blankAt;
+  let marked = true;
+  const c = code(p);
+  if ((c === 61 || c === 45) && code(p + 1) === 62) p += 2;
+  else if (c === 58 || c === 61 || c === 35 || c === 45) p++;
+  else marked = false;
+  if (marked) for (let n = 0; n < 8 && isBlank(code(p)); n++) p++;
+  if (!marked && !worded && blanks === 0) return undefined;
+  if (isQuote(code(p))) p++;
+  const valueStart = p;
+  let chars = 0;
+  let digits = 0;
+  while (chars < AADHAAR_LABELLED_VALUE_MAX) {
+    const v = code(p);
+    if (isValueChar(v)) {
+      chars++;
+      if (v <= 57) digits++;
+      p++;
+    } else if ((v === 32 || v === 45) && chars > 0 && isValueChar(code(p + 1))) p++;
+    else break;
+  }
+  if (chars < AADHAAR_LABELLED_VALUE_MAX && isWordChar(code(p))) return undefined;
+  const plain = /aadhaa?r/i.test(label) || endsWithRun(nameSegments(label), ["uidai", "token"]);
+  if (chars < ((marked || worded) && plain ? 4 : 8)) return undefined;
+  if (isAadhaarLastFourName(label) && digits <= 4) return undefined;
+  return { start, valueStart, end: p };
 }

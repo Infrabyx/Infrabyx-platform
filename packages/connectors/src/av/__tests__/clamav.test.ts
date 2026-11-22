@@ -131,6 +131,22 @@ describe("ClamAV AV adapter (clamd protocol)", () => {
     expect(received.length).toBe(sent);
   });
 
+  it("PR-UDF-080: an object STORAGE refuses for integrity is ERROR hash_mismatch, never sent to clamd", async () => {
+    behaviour = "normal";
+    const body = new TextEncoder().encode("lender upload");
+    const f = await put(body);
+    const sent = received.length;
+    const tampered = new MemoryStorage(undefined, { readError: () => "integrity" });
+    const down = new MemoryStorage(undefined, { readError: () => "unavailable" });
+    for (const s of [tampered, down])
+      await s.put(f.storageKey, body, { bucketClass: "QUARANTINE" });
+    const r = await make({ storage: tampered }).scan(f);
+    expect(r).toMatchObject({ verdict: "ERROR", reason: "hash_mismatch" });
+    expect(scanDecision(r)).toEqual({ action: "quarantine", code: "IPB-SEC-015" });
+    expect((await make({ storage: down }).scan(f)).reason).toBe("unavailable");
+    expect(received.length).toBe(sent);
+  });
+
   it("refuses stale signatures, and maps clamd's size limit, errors and silence", async () => {
     const f = await put(new TextEncoder().encode("doc"));
     behaviour = "normal";

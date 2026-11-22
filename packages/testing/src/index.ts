@@ -8,6 +8,7 @@ export * from "./context.js";
 export * from "./fakes.js";
 export * from "./nn.js";
 export * from "./contract.js";
+export * from "./storage-integrity.js";
 export * from "./at-report/index.js";
 export * from "./aadhaar-scan/index.js";
 export * from "./containers.js";

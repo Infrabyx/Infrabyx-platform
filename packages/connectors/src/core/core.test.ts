@@ -122,6 +122,14 @@ describe("@IPB-01-18 circuit breaker", () => {
     expect(tripsBreaker(new PortError("IPB-PORT-004", "KYC"))).toBe(false);
   });
 
+  it("a STORAGE integrity refusal is not an outage: it neither trips the breaker nor fails over (PR-UDF-080)", () => {
+    const tampered = new PortError("IPB-STOR-005", "STORAGE", {
+      meta: { reason: "hash_mismatch" },
+    });
+    expect(tripsBreaker(tampered)).toBe(false);
+    expect(tripsBreaker(new PortError("IPB-PORT-002", "STORAGE"))).toBe(true);
+  });
+
   it("a failure during half-open reopens", () => {
     let t = 0;
     const b = new CircuitBreaker({ failure_threshold: 1 }, () => t);
