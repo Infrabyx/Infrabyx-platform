@@ -1,5 +1,17 @@
 # @infrabyx/seed
 
+## 1.0.59
+
+### Patch Changes
+
+- Updated dependencies [a37e9fe]
+- Updated dependencies [4fbcf73]
+  - @infrabyx/tenancy@1.25.0
+  - @infrabyx/contracts@1.49.0
+  - @infrabyx/audit@1.12.3
+  - @infrabyx/config@1.24.3
+  - @infrabyx/crypto@1.15.1
+
 ## 1.0.58
 
 ### Patch Changes

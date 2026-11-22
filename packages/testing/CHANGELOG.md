@@ -1,5 +1,21 @@
 # @infrabyx/testing
 
+## 1.34.1
+
+### Patch Changes
+
+- cbbdb24: `PG_TEST_IMAGE` / `TEST_IMAGES.pgvector` move to `pgvector/pgvector:0.8.7-pg18` (pinned by digest; PostgreSQL 18, pgvector 0.8.7), the same image CI's integration jobs and the Compose stack now use (R1-D-277). Products should run pgvector 0.8.2 or later, as before.
+- Updated dependencies [a37e9fe]
+- Updated dependencies [4fbcf73]
+- Updated dependencies [4fbcf73]
+  - @infrabyx/tenancy@1.25.0
+  - @infrabyx/contracts@1.49.0
+  - @infrabyx/fakes@1.11.1
+  - @infrabyx/audit@1.12.3
+  - @infrabyx/seed@1.0.59
+  - @infrabyx/config@1.24.3
+  - @infrabyx/crypto@1.15.1
+
 ## 1.34.0
 
 ### Minor Changes

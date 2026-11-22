@@ -1,5 +1,18 @@
 # @infrabyx/rules
 
+## 1.6.13
+
+### Patch Changes
+
+- Updated dependencies [a37e9fe]
+- Updated dependencies [4fbcf73]
+- Updated dependencies [4fbcf73]
+  - @infrabyx/tenancy@1.25.0
+  - @infrabyx/connectors@1.32.0
+  - @infrabyx/contracts@1.49.0
+  - @infrabyx/config@1.24.3
+  - @infrabyx/crypto@1.15.1
+
 ## 1.6.12
 
 ### Patch Changes

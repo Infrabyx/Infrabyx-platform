@@ -1,5 +1,15 @@
 # @infrabyx/fakes
 
+## 1.11.1
+
+### Patch Changes
+
+- 4fbcf73: `FakeFileScan` maps a failed STORAGE read with `scanReasonOfReadError`, as `clamav` does: `IPB-KMS-001` is `storage_key_unavailable` (R1-D-276).
+- Updated dependencies [4fbcf73]
+  - @infrabyx/contracts@1.49.0
+  - @infrabyx/config@1.24.3
+  - @infrabyx/crypto@1.15.1
+
 ## 1.11.0
 
 ### Minor Changes
