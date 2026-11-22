@@ -71,6 +71,9 @@ const EXTRA_PATHS = {
   IMAGE_GEN: ["packages/connectors/src/llm/", "packages/contracts/src/ports/ai.ts"],
   // The AV contract and fake are named for what they do, not the catalogue's short name.
   AV: ["packages/contracts/src/ports/file-scan.ts", "packages/testing/src/ports/file-scan"],
+  // The BUREAU and AA_FIU contracts are named for what they do (R1-D-274).
+  BUREAU: ["packages/contracts/src/ports/credit-bureau.ts"],
+  AA_FIU: ["packages/contracts/src/ports/account-aggregator.ts"],
   // PDF text extraction (PR-LDC-39): the port lives beside DOCGEN, and needs a CLEAN scan.
   PDF: [
     "packages/contracts/src/ports/docgen.ts",
