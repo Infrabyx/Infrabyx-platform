@@ -23,7 +23,9 @@
 // read-only KMS `DescribeKey`; fixed labels only, never a key id. `minio` declares it unsupported.
 // PR-UDF-076 (R1-D-261): `keyRefStatuses` answers several classes in one call with one
 // `DescribeKey` per distinct key, and labels a key the role may not describe
-// `storage_key_not_described`.
+// `storage_key_not_described`. Integrity (PR-UDF-080, R1-D-269): a read whose bytes do not match
+// the SHA-256 recorded at write, or whose checksum as S3 returns it disagrees with them (the SDK's
+// response validation), is `IPB-STOR-005` (`hash_mismatch`), never `IPB-PORT-002`; no bytes leave.
 import {
   CreateBucketCommand,
   GetBucketReplicationCommand,
@@ -47,6 +49,8 @@ import {
   COMPARTMENT_CLASSES,
   PRESIGN_NO_CACHE,
   STORAGE_COMPARTMENTS,
+  STORAGE_HASH_MISMATCH,
+  STORAGE_INTEGRITY_ERROR,
   STORAGE_KEY_REF_META,
   STORAGE_KEY_STATES,
   STORAGE_KEY_NOT_DESCRIBED,
@@ -169,6 +173,13 @@ type S3Error = Error & { name: string; $metadata?: { httpStatusCode?: number } }
 const statusOf = (e: unknown) => (e as S3Error).$metadata?.httpStatusCode;
 const isNotFound = (e: unknown) =>
   ["NoSuchKey", "NotFound", "NoSuchVersion"].includes((e as S3Error).name) || statusOf(e) === 404;
+/**
+ * PR-UDF-080: the SDK's response checksum validation (on by default for `GetObject`) failed: the
+ * bytes S3 returned do not match the checksum it returned with them. The SDK throws a plain
+ * `Error` whose message starts with this text (`@aws-sdk/checksums`, `@smithy/core`).
+ */
+const isChecksumMismatch = (e: unknown) =>
+  e instanceof Error && !(e instanceof IpbError) && /^Checksum mismatch\b/.test(e.message);
 const tenantOf = (key: string) => /^tenant\/([^/]+)\//.exec(key)?.[1];
 /** IPB-PORT-001 (configuration) or IPB-PORT-003 (the call) for each named-key refusal. */
 const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
@@ -434,6 +445,18 @@ export class S3Storage implements StoragePort {
     throw new IpbError("IPB-STOR-001", { detail: "object not found", meta: { key } });
   }
 
+  /**
+   * PR-UDF-080 (R1-D-269): the read's bytes fail their integrity check. A fixed detail and label
+   * only: no key, bucket, hash or the SDK's message (which quotes both checksums), and no cause.
+   */
+  private integrity(): never {
+    throw new PortError(STORAGE_INTEGRITY_ERROR, "STORAGE", {
+      adapter: this.adapter,
+      detail: "object body does not match its stored SHA-256",
+      meta: { reason: STORAGE_HASH_MISMATCH },
+    });
+  }
+
   private unavailable(op: "read" | "write", e: unknown): never {
     if (e instanceof IpbError) throw e;
     throw new PortError(op === "write" ? "IPB-STOR-002" : "IPB-PORT-002", "STORAGE", {
@@ -680,11 +703,7 @@ export class S3Storage implements StoragePort {
       );
       const body = new Uint8Array(await r.Body!.transformToByteArray());
       const { sha256, [STORAGE_KEY_REF_META]: keyRef, ...tags } = r.Metadata ?? {};
-      if (sha256 && sha256 !== sha256Hex(body))
-        throw new PortError("IPB-PORT-002", "STORAGE", {
-          adapter: this.adapter,
-          detail: "object body does not match its stored SHA-256",
-        });
+      if (sha256 && sha256 !== sha256Hex(body)) this.integrity();
       const until = r.ObjectLockRetainUntilDate;
       return {
         key,
@@ -701,6 +720,7 @@ export class S3Storage implements StoragePort {
       };
     } catch (e) {
       if (isNotFound(e)) this.notFound(key);
+      if (isChecksumMismatch(e)) this.integrity();
       this.keyUnavailable(e, found!.head.Metadata?.[STORAGE_KEY_REF_META]);
       this.unavailable("read", e);
     }

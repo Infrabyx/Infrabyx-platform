@@ -9,6 +9,7 @@ import {
   PutBucketEncryptionCommand,
   ListObjectVersionsCommand,
   PutBucketVersioningCommand,
+  PutObjectCommand,
   S3Client,
   DeleteObjectCommand,
   HeadObjectCommand,
@@ -21,7 +22,9 @@ import {
   defineContractSuite,
   existingServiceUrl,
   startService,
+  storageIntegrityContractCases,
   type StartedService,
+  type StorageIntegrityFixture,
 } from "@infrabyx/testing";
 import { MinioStorage, S3Storage } from "../s3.js";
 
@@ -128,6 +131,33 @@ const minioAdapter = () =>
 
 const enc = (s: string) => new TextEncoder().encode(s);
 const dec = (b: Uint8Array) => new TextDecoder().decode(b);
+
+/**
+ * PR-UDF-080 (R1-D-269): tamper beneath the adapter with a raw `PutObject` of other bytes that keeps
+ * the object's metadata (its recorded SHA-256), as a writer outside the platform would; the outage
+ * is an adapter on a closed port.
+ */
+const integrityFixture = (
+  client: () => S3Client,
+  set: Record<BucketClass, string>,
+  down: () => StoragePort,
+): StorageIntegrityFixture => ({
+  async tamper(k, cls) {
+    const s3 = client();
+    const head = await s3.send(new HeadObjectCommand({ Bucket: set[cls], Key: k }));
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: set[cls],
+        Key: k,
+        Body: enc("altered beneath the adapter"),
+        Metadata: head.Metadata,
+        ...(head.ContentType ? { ContentType: head.ContentType } : {}),
+      }),
+    );
+  },
+  outage: down,
+});
+const closedPort = { endpoint: "http://127.0.0.1:9", forcePathStyle: true } as const;
 const key = (t = "tnt_a", ext = "pdf") => `tenant/${t}/docs/${ulid()}.${ext}`;
 const later = () => new Date(Date.now() + 86_400_000);
 
@@ -252,7 +282,28 @@ const cases = [
 ];
 
 describe("@IPB-01-15 STORAGE hermetic leg: s3 on moto 5.2.4", () => {
-  defineContractSuite("STORAGE", s3Adapter, cases, { leg: "hermetic" });
+  defineContractSuite(
+    "STORAGE",
+    s3Adapter,
+    [
+      ...cases,
+      ...storageIntegrityContractCases(
+        integrityFixture(
+          raw,
+          buckets("s3"),
+          () =>
+            new S3Storage({
+              region: REGION,
+              buckets: buckets("s3"),
+              kmsKeyIds: Object.fromEntries(CLASSES.map((c) => [c, kmsKey])),
+              credentials: CREDS,
+              ...closedPort,
+            }),
+        ),
+      ),
+    ],
+    { leg: "hermetic" },
+  );
 
   it("@IPB-02-AT-13 an AUDIT anchor survives a delete of its locked version", async () => {
     const p = s3Adapter();
@@ -499,7 +550,23 @@ describe("@IPB-01-15 STORAGE hermetic leg: minio adapter on the S3 API (moto 5.2
   defineContractSuite(
     "STORAGE",
     minioAdapter,
-    cases.filter((c) => !c.name.startsWith("health")),
+    [
+      ...cases.filter((c) => !c.name.startsWith("health")),
+      ...storageIntegrityContractCases(
+        integrityFixture(
+          raw,
+          buckets("minio"),
+          () =>
+            new MinioStorage({
+              region: REGION,
+              buckets: buckets("minio"),
+              credentials: CREDS,
+              allowLoopbackHttp: true,
+              ...closedPort,
+            }),
+        ),
+      ),
+    ],
     {
       leg: "hermetic",
     },
@@ -547,7 +614,35 @@ describe.skipIf(!minioUrl)(
       }
     });
 
-    defineContractSuite("STORAGE", server, cases, { leg: "hermetic" });
+    const serverClient = () =>
+      new S3Client({
+        region: "us-east-1",
+        endpoint: minioUrl!,
+        forcePathStyle: true,
+        credentials: MINIO_CREDS,
+      });
+    defineContractSuite(
+      "STORAGE",
+      server,
+      [
+        ...cases,
+        ...storageIntegrityContractCases(
+          integrityFixture(
+            serverClient,
+            minioBuckets,
+            () =>
+              new MinioStorage({
+                region: "us-east-1",
+                buckets: minioBuckets,
+                credentials: MINIO_CREDS,
+                allowLoopbackHttp: true,
+                ...closedPort,
+              }),
+          ),
+        ),
+      ],
+      { leg: "hermetic" },
+    );
 
     it("IPB-02-15: an expired, re-purposed or tampered presigned URL is refused", async () => {
       const p = server();
