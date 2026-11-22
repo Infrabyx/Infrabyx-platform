@@ -1,5 +1,12 @@
 # @infrabyx/contracts
 
+## 1.48.0
+
+### Minor Changes
+
+- 5fc6afe: Udofin PR-UDF-079 (R1-D-270): the no-Aadhaar rule's wider names and labelled values, additive in `@infrabyx/contracts/aadhaar` (and the root). `isAadhaarCarrierName(name)` is `isAadhaarFieldName` (unchanged) plus a carrier name inside a longer name: an `aadhaar` or `aadhar` segment anywhere (`borrower_aadhaar_ref`, `masked_aadhaar_no`), or a name ending with the segments of `uid`, `uid_no`, `uid_num`, `uid_number`, `uid_token` or `uidai_token` (`user_uid`, `kyc_uid_token`; not `uid_kind`, `uuid`, `guid`, `fluid`, `uidx`); segments split at separators, case changes and letter-digit boundaries (`AADHAAR_CARRIER_NAME_ENDINGS`). `isAadhaarLastFourName` (`aadhaar_last_digits`, `aadhaarLast4`, `aadhaar_last_4`) and `holdsAadhaarCarrierValue(name, value)`: a last-four name holds a reportable value only past four digits. `findAadhaarCarrierFields(json)` is `findAadhaarNamedFields` with the wider names. `findAadhaarLabelledValues(text)` finds a carrier name followed by a value in free text (`aadhaar: <digits>`, `Aadhaar No. XXXX XXXX dddd`, `uid=<8 or more>`), masked or not, Verhoeff-valid or not, in linear time, returning offsets only (`AadhaarLabelledFind`, `AADHAAR_LABELLED_VALUE_MAX`). `findAadhaarLike`, `isAadhaarFieldName` and `findAadhaarNamedFields` are unchanged, so the AI scrubber and the e-KYC check read as before.
+- daa13b9: Udofin PR-UDF-080 (R1-D-269): a STORAGE integrity mismatch has its own error code. New catalogue entry `IPB-STOR-005` "Stored object failed its integrity check; read refused" (500, help key `hlp.int.storage_integrity`; registration in IPB-01 §01.6.3 asked in PR-050), with `STORAGE_INTEGRITY_ERROR`, `STORAGE_HASH_MISMATCH` (`"hash_mismatch"`, its `meta.reason`) and `isStorageIntegrityError(e)` in `@infrabyx/contracts/ports`. `StoragePort.get` now documents both failures: bytes that do not match the SHA-256 recorded at write, or a checksum the store returns that disagrees with them, are `IPB-STOR-005`; an outage is `IPB-PORT-002`; neither returns bytes. The PDF port's note says `extractText` passes the integrity failure on as `IPB-STOR-005`. `toProblem` carries the code and the `hash_mismatch` label unchanged, with no `retry_after_seconds`.
+
 ## 1.47.0
 
 ### Minor Changes
