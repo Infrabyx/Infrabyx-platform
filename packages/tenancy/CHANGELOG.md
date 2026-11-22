@@ -1,5 +1,33 @@
 # @infrabyx/tenancy
 
+## 1.24.0
+
+### Minor Changes
+
+- cb859aa: Finbyx PR-FBX-53 (R1-D-266): the outbox relay keeps going past a row it cannot deliver. Each row's delivery is its own unit: a failure is counted on that row (`attempts`) and the rest of the batch is delivered and marked dispatched in the same commit; after `maxAttempts` failed attempts (new option, 1 to 100, default 5, `DEFAULT_OUTBOX_MAX_ATTEMPTS`) the row is parked in `tenancy.outbox_parked` (migration `tenancy/0027`, expand-only) with a fixed reason (`queue_refused`, `queue_unavailable`, `delivery_failed`; `OUTBOX_PARK_REASONS`, `outboxFailureReason`) and its attempt count, ledgered as `<schema>.outbox.park`, and skipped by every later pass. The batch's `<schema>.outbox.dispatch` entry gains `failed` and `parked` counts when a row failed. New `onFailure` option for the operational log. `OutboxParking` lists a tenant's parked rows and `requeue(ctx, schema, eventId)` hands one back with a fresh attempt budget: a ledgered mutation (`tenancy.outbox.requeue`) by a person holding `ORG_OWNER` or `ORG_ADMIN` (option `requeueRoles`). `outboxEventJob(event)` builds the QUEUE job (`eventJobName(type)` as the name, the full type in the data). Apply `tenancy/0027` before deploying the new relay.
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+
+## 1.23.1
+
+### Patch Changes
+
+- Updated dependencies [2769b78]
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/config@1.24.0
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+
 ## 1.23.0
 
 ### Minor Changes

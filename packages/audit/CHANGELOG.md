@@ -1,5 +1,33 @@
 # @infrabyx/audit
 
+## 1.12.1
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+
+## 1.12.0
+
+### Minor Changes
+
+- 25ba32e: Udofin PR-UDF-072 (R1-D-262): migration `audit/0013` widens `audit.security_event`'s kind check to admit `connector.retrieval.host_refused` (expand-only; existing rows pass). `PgSecurityEvents.record` refuses an event of a kind with a typed shape whose detail or resource does not fit it, before it takes a connection, so a URL, query or credential never reaches the table. Apply the migration before recording the new kind.
+
+### Patch Changes
+
+- Updated dependencies [2769b78]
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/config@1.24.0
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+
 ## 1.11.9
 
 ### Patch Changes

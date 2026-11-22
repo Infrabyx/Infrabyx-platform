@@ -5,6 +5,7 @@
 // staging upwards.
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import { IpbError, PortError } from "@infrabyx/contracts/errors";
+import { assertQueueJob, assertQueueName } from "@infrabyx/contracts/ports";
 import type {
   AdapterDescriptor,
   AuthzDecision,
@@ -286,7 +287,11 @@ export class MemoryQueue implements QueuePort {
   async health(): Promise<PortHealth> {
     return up();
   }
+  // The platform's one name rule, checked as the real adapters check it (R1-D-266), so this
+  // fixture never accepts a queue or job name that bullmq or pg-boss refuse.
   async enqueue(queue: string, job: QueueJob, opts: EnqueueOptions = {}) {
+    assertQueueName(queue, this.descriptor.adapter);
+    assertQueueJob(job, this.descriptor.adapter);
     const key = opts.idempotencyKey ? `${queue}:${opts.idempotencyKey}` : undefined;
     const prior = key ? this.seen.get(key) : undefined;
     if (prior) return { id: prior };
@@ -306,16 +311,20 @@ export class MemoryQueue implements QueuePort {
     queue: string,
     handler: (job: ConsumedJob) => Promise<void>,
   ): Promise<QueueSubscription> {
+    assertQueueName(queue, this.descriptor.adapter);
     this.handlers.set(queue, handler);
     return { close: async () => void this.handlers.delete(queue) };
   }
   async moveToDLQ(queue: string, jobId: string, reason: string): Promise<void> {
+    assertQueueName(queue, this.descriptor.adapter);
     this.dlq.push({ queue, jobId, reason });
   }
-  async replay(): Promise<{ replayed: number }> {
+  async replay(queue: string): Promise<{ replayed: number }> {
+    assertQueueName(queue, this.descriptor.adapter);
     return { replayed: 0 };
   }
   async stats(queue: string): Promise<QueueStats> {
+    assertQueueName(queue, this.descriptor.adapter);
     const dlq = this.dlq.filter((j) => j.queue === queue).length;
     return { waiting: 0, active: 0, delayed: 0, failed: dlq, dlq };
   }

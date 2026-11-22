@@ -24,6 +24,7 @@ import {
 } from "@infrabyx/testing";
 import { BrandStudio } from "@infrabyx/brand";
 import { CmsStudio } from "@infrabyx/cms";
+import { eventJobName, eventTypeOfJobName } from "@infrabyx/contracts/events";
 import { PLATFORM_TENANT_ID } from "@infrabyx/contracts/ids";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import type { VadDocument } from "@infrabyx/contracts/ports";
@@ -419,7 +420,10 @@ describe("the outbox relay (IPB-01 §01.4.3.3)", () => {
         (JSON.parse(String(j.job.data.envelope)) as { data?: { greeting_id?: string } }).data
           ?.greeting_id === g.id,
     );
-    expect(mine.map((j) => j.job.name)).toEqual([EVENT("GreetingCreated")]);
+    // The job name is the event job name (R1-D-266); the full type stays in the data.
+    expect(mine.map((j) => j.job.name)).toEqual([eventJobName(EVENT("GreetingCreated"))]);
+    expect(mine.map((j) => j.job.data.type)).toEqual([EVENT("GreetingCreated")]);
+    expect(eventTypeOfJobName(mine[0]!.job.name)).toBe(EVENT("GreetingCreated"));
     expect(await relay.once()).toBe(0);
     const left = await db.admin.query(
       "select count(*)::int as n from hello.outbox where dispatched_at is null",

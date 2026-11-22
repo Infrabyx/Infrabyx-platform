@@ -4,12 +4,15 @@
 // `hello.outbox` with `tenancy.register_outbox`, the relay finds the tenants with pending rows in
 // one ledgered platform-scope read, then in each tenant's own context enqueues each envelope
 // (idempotent on the event id), marks the rows dispatched and writes one ledger entry per batch.
-// The relay's database role is granted that outbox and the ledger append, nothing else.
+// The relay's database role is granted that outbox and the ledger append, nothing else. The job
+// name is `eventJobName(type)` (`in.<p>.hello.greeting-created.v1`), never the raw type, which no
+// real queue accepts; the full type is in the data. A row the queue refuses is parked after
+// `maxAttempts` and the pass goes on (PR-FBX-53, R1-D-266).
 import type { AuditSink, MutationKernel } from "@infrabyx/contracts/kernel";
 import type { QueuePort } from "@infrabyx/contracts/ports";
-import { OutboxRelay as PlatformOutboxRelay } from "@infrabyx/tenancy";
+import { outboxEventJob, OutboxRelay as PlatformOutboxRelay } from "@infrabyx/tenancy";
 
-/** The queue the relay publishes every outbox envelope to (`name` is the event type). */
+/** The queue the relay publishes every outbox envelope to (`name` is the event job name). */
 export const EVENTS_QUEUE = "events";
 
 export interface OutboxRelayOptions {
@@ -20,6 +23,8 @@ export interface OutboxRelayOptions {
   schemas: readonly string[];
   /** Rows per tenant and schema per pass (default 100). */
   batch?: number;
+  /** Failed attempts before a row is parked (default 5). */
+  maxAttempts?: number;
 }
 
 /** The job a consumer receives: the ids as fields and the CloudEvents envelope as JSON text. */
@@ -38,14 +43,22 @@ export class OutboxRelay extends PlatformOutboxRelay {
       audit: o.audit,
       schemas: o.schemas,
       ...(o.batch !== undefined ? { batch: o.batch } : {}),
+      ...(o.maxAttempts !== undefined ? { maxAttempts: o.maxAttempts } : {}),
+      // The operational log of each failed attempt: ids, the fixed label and the count only.
+      onFailure: (f) =>
+        process.stderr.write(
+          `${JSON.stringify({
+            msg: f.parked ? "outbox row parked" : "outbox delivery failed",
+            schema: f.schema,
+            tenant_id: f.tenantId,
+            event_id: f.eventId,
+            reason: f.reason,
+            attempts: f.attempts,
+          })}\n`,
+        ),
       deliver: async (_schema, e) => {
-        const data: EventJobData = {
-          event_id: e.id,
-          tenant_id: e.tenant_id,
-          type: e.type,
-          envelope: JSON.stringify(e.envelope),
-        };
-        await o.queue.enqueue(EVENTS_QUEUE, { name: e.type, data }, { idempotencyKey: e.id });
+        const job = outboxEventJob(e);
+        await o.queue.enqueue(EVENTS_QUEUE, job, { idempotencyKey: e.id });
       },
     });
   }

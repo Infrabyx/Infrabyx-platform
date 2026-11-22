@@ -1,5 +1,36 @@
 # @infrabyx/fakes
 
+## 1.10.1
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+
+## 1.10.0
+
+### Minor Changes
+
+- 86f3d6e: `FakeFileTransfer` (`fake-file-transfer`), the in-memory FILE_TRANSFER server and the CI-green alternative to the `sftp` adapter (Udofin PR-UDF-071; R1-D-254, ADR-0014), with `FakeFileTransferOptions`, `FileTransferFixtures` and `fileTransferFakeFixtures`. It keeps the port's rules: the path rule, the class (REGULATED at least, never SECRET), the `get` cap, no overwrite (`exists`), `not_found` (a put into a missing directory included), `not_a_file`, the list cap, an `enabled` switch and the abort signal; `seed`, `mkdir`, `freshDir` and `stored` for tests. Nothing existing changes.
+- c4e2d65: `FakeEsign` `downloadSigned(id, { keyRef })` and `downloadSignedDocuments(id, { keyRef })` write the signed PDF and the chains under the named STORAGE key (Udofin PR-UDF-074; R1-D-260); `signedObjects()` entries carry `keyRef`. A reference the STORAGE fake does not know fails the download with its refusal and writes nothing; a malformed one is refused `IPB-PORT-003` `key_ref_invalid`. The files are written once: a later download naming another reference (or none, after one) is refused `IPB-PORT-003` `key_ref_changed`. Without `storage` the reference is only checked for format.
+- af54ffe: `MemoryStorage.keyRefStatuses` and the `keyStateError(tenantId, keyRef)` option (Udofin PR-UDF-076; R1-D-261): `"unavailable"` makes the key-state read (`describeKey`) of that reference throw `IPB-PORT-002`, from `keyRefStatus` and `keyRefStatuses`; `"not_described"` answers `storage_key_not_described` from `keyRefStatuses` and `storage_key_unavailable` from `keyRefStatus`, as the `s3` adapter does. Without the option nothing changes.
+- b909f64: `FakeDocgen` can write real files to STORAGE (Udofin PR-UDF-077, R1-D-259): `new FakeDocgen(templates, { storage, renderers: { pdf: toPdf, docx: toDocx }, bucketClass? })`. Each `render` and `renderHtml` then lays out a document (the template and version as title and level-1 heading, one paragraph per data field in key order; for HTML, its title and block text, never its head, scripts or styles; text outside printable ASCII and the rupee sign shown as `?`), renders it and writes the bytes under the request's prefix as `tenant/<tenant>/<module>/<ULID-shaped id>.<ext>` with the bytes' SHA-256 (`CONFIDENTIAL` by default). `pdf` is plain PDF, `pdfa` asks for PDF/A-2b with PDF/UA-1 (`{ pdfa: "2b", pdfua: true, lang: "en" }`), `docx` needs a `docx` renderer (`IPB-PORT-001` otherwise), `html` writes the escaped page. The id comes from the bytes' hash, so a deterministic renderer gives the same key and bytes for the same request; a prefix that is not `tenant/<tenant>/<module>` is refused before anything is written. The renderers are passed in because `@infrabyx/fakes` cannot depend on `@infrabyx/export` (a cycle through `@infrabyx/testing`). New types `FakeDocgenFiles`, `FakeDocgenRenderers`, `FakeDocgenDocument`, `FakeDocgenPdfOptions`. Without the second argument nothing changes.
+
+### Patch Changes
+
+- Updated dependencies [2769b78]
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/config@1.24.0
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+
 ## 1.9.0
 
 ### Minor Changes

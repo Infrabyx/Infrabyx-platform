@@ -1,5 +1,42 @@
 # @infrabyx/connectors
 
+## 1.30.0
+
+### Minor Changes
+
+- 78cc372: Finbyx PR-FBX-53 (R1-D-266): the QUEUE adapters (`bullmq`, `pg-boss`) check names with the platform rule from `@infrabyx/contracts/ports` (`assertQueueName`, `assertQueueJob`), so a product's fixture can apply exactly the same rule. The rule is unchanged (lower case; a queue name has no `.` and at most 63 characters, a job name at most 100); refusals now also carry `meta.reason` (`queue_name`, `job_name`, `job_data`). `checkQueue` and `checkJob` stay exported.
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+- Updated dependencies [cb859aa]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/tenancy@1.24.0
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+
+## 1.29.0
+
+### Minor Changes
+
+- 0b912b6: `@infrabyx/connectors/file-transfer`: the FILE_TRANSFER reference adapter `sftp` (Udofin PR-UDF-071, Finbyx's BureauSubmitter its second user; R1-D-254, ADR-0014; C-29 on the owner's instruction, R1-D-249), `SftpFileTransfer` over `ssh2` 1.17.0 (MIT, new runtime dependency; no native addon is built). One connection per call to the product's configured target (`SftpTarget`: host, port, username, pinned `hostKeySha256`, `clientKeySecret`). Before the network: `int.file_transfer.sftp.enabled` (off by default), the target on the India-hosted allow-list `int.file_transfer.sftp.allow_hosts` (`SftpAllowList`, residency `IN`), the path rule and the class. Then: the host resolved once with every answer public (`isPublicAddress`) and the socket to the checked address; the client key from SECRETS checked as one unencrypted OpenSSH `ssh-ed25519` key; public-key authentication only; the host key `ssh-ed25519` and pinned by SHA-256 fingerprint (no trust on first use); fixed algorithms `SFTP_ALGORITHMS` (curve25519-sha256, AES-256-GCM and ChaCha20-Poly1305, no compression) and a fixed identification string; `put` by exclusive create (WRITE | CREAT | EXCL, never TRUNC), a partial file removed on failure; `get` capped before and while reading; a call deadline, a handshake timeout and the AbortSignal; fixed refusal labels only. Health makes no connection unless `healthProbe` is set. Router table entries (`noFailover`), the exit entry (`sftp` → `fake-file-transfer`) and the `FILE_TRANSFER` contract leg. Off and unproven; no migration.
+- fcded7e: `leegality` and `digio` `downloadSigned(envelopeId, { keyRef })` write the signed PDF to REGULATED under the tenant's named STORAGE key (Udofin PR-UDF-074; R1-D-260). A malformed reference is refused `IPB-PORT-003` `key_ref_invalid` before the ESP is called; STORAGE's refusals (`key_ref_unknown`, `key_ref_prefix_conflict`, `IPB-KMS-001` `storage_key_unavailable`, …) fail the download unchanged, with nothing written and no retry under the class key. Without `keyRef` nothing changes (a `tenantKeyRefPrefixes` entry for `tenant/<tenant>/esign/` still applies). `nsdl-esign` still refuses `downloadSigned` `unsupported`.
+- 6cdb714: `S3Storage.keyRefStatuses(tenantId, keyRef, { bucketClasses, compartment?, describeKey? })` (Udofin PR-UDF-076; R1-D-261): each class by `keyRefStatus`'s checks; with `describeKey`, one read-only KMS `DescribeKey` per distinct key id the classes resolve to, `AccessDeniedException` answering `storage_key_not_described` (a missing, unshared or unusable key stays `storage_key_unavailable`), and any other KMS failure throwing `IPB-PORT-002` for the whole call, without the key id. A malformed class list, compartment or tenant is refused `IPB-PORT-003`; a class without a bucket `IPB-PORT-001`. `keyRefStatus` is unchanged. `minio` declares `keyRefStatuses` `unsupported` (after the same format checks).
+
+### Patch Changes
+
+- Updated dependencies [2769b78]
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/config@1.24.0
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+  - @infrabyx/tenancy@1.23.1
+
 ## 1.28.0
 
 ### Minor Changes

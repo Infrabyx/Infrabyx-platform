@@ -1,5 +1,54 @@
 # @infrabyx/testing
 
+## 1.33.0
+
+### Minor Changes
+
+- 028d5c5: Finbyx PR-FBX-53 (R1-D-266): `queueNameCases()`, the QUEUE contract cases for the platform's name rule (every bad queue name refused `IPB-PORT-003` by `enqueue`, `schedule`, `consume`, `moveToDLQ`, `replay` and `stats`; every bad job name by `enqueue` and `schedule`), with the lists `QUEUE_BAD_QUEUE_NAMES` and `QUEUE_BAD_JOB_NAMES` (a raw CloudEvents type among them). The `bullmq` and `pg-boss` legs run them; run them on your own in-memory QUEUE: `defineContractSuite("QUEUE", () => fixture, queueNameCases())`.
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+- Updated dependencies [cb859aa]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/tenancy@1.24.0
+  - @infrabyx/audit@1.12.1
+  - @infrabyx/config@1.24.1
+  - @infrabyx/crypto@1.14.1
+  - @infrabyx/fakes@1.10.1
+  - @infrabyx/seed@1.0.57
+
+## 1.32.0
+
+### Minor Changes
+
+- 395e075: FILE_TRANSFER contract cases (Udofin PR-UDF-071; R1-D-254, ADR-0014): `fileTransferContractCases(fixtures)` (put and get the same bytes and SHA-256, list with sizes, sorted and capped; `exists` with the first bytes kept; `too_large` past the cap; `not_found`, `not_a_file`; invalid paths, a SECRET or lowered class, no `ifAbsent` and an aborted call refused with nothing written; no refusal carrying a host key, key or address), `expectFileTransferRefusal`, `fileTransferName`, `fileTransferBytes`, and `startSftpServer()` for adapters' hermetic legs (the pinned `TEST_IMAGES.sftp`, `atmoz/sftp` with OpenSSH 10.3p1, with a host key and an authorised client key generated per run). Re-exports `FakeFileTransfer`, `fileTransferFakeFixtures` and their types. The ESLint plugin lists `ssh2` and `ssh2-sftp-client` as vendor libraries (connectors only) and `FILE_TRANSFER` in `PORT_DEFAULTS` (REGULATED).
+- f2d6cd1: `esignFakeStorageCases(storage, { keyRef, unknownKeyRef? })`: with `keyRef` (a reference `storage` resolves in tenant `tnt_contract`), three PR-UDF-074 cases run: the signed PDF and chains under the named key, an unknown or malformed reference failing the download with nothing written, and a multi-document download under one key (R1-D-260). Without the option the cases are as before.
+- 4935333: A built-in STORAGE contract case for `keyRefStatuses` (Udofin PR-UDF-076; R1-D-261): several classes in one call, each equal to `keyRefStatus`'s answer, the disabled key unavailable in each class with `describeKey`, fixed labels only, and a malformed class list refused `IPB-PORT-003`. A leg configures `lender:contract` and `lender:contract-off` in `REGULATED` and `QUARANTINE` (as for PR-UDF-066); an adapter without per-object keys declares `keyRefStatuses` `unsupported`. An adapter without the optional method (a product's own) passes the case unchecked, so existing suites keep passing.
+- b909f64: `docgenStorageContractCases(storage)` (Udofin PR-UDF-077, R1-D-259): DOCGEN cases for an adapter that writes its files, checking that each PDF and PDF/A `renderHtml` output is an object in `storage` under the prefix, starts `%PDF-`, is stored as `application/pdf` and hashes to the returned `sha256`. Run against `FakeDocgen` with files, here with `pdfFixture` and in `@infrabyx/export` with `toPdf`. Re-exports the `FakeDocgenFiles`, `FakeDocgenRenderers`, `FakeDocgenDocument` and `FakeDocgenPdfOptions` types.
+
+### Patch Changes
+
+- Updated dependencies [2769b78]
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [86f3d6e]
+- Updated dependencies [25ba32e]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [c4e2d65]
+- Updated dependencies [01f9313]
+- Updated dependencies [af54ffe]
+- Updated dependencies [b909f64]
+- Updated dependencies [200a8a4]
+  - @infrabyx/config@1.24.0
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+  - @infrabyx/fakes@1.10.0
+  - @infrabyx/audit@1.12.0
+  - @infrabyx/seed@1.0.56
+  - @infrabyx/tenancy@1.23.1
+
 ## 1.31.0
 
 ### Minor Changes

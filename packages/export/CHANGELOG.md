@@ -1,5 +1,34 @@
 # @infrabyx/export
 
+## 1.10.1
+
+### Patch Changes
+
+- Updated dependencies [5ee71f6]
+- Updated dependencies [cb859aa]
+  - @infrabyx/contracts@1.47.0
+  - @infrabyx/tenancy@1.24.0
+  - @infrabyx/crypto@1.14.1
+
+## 1.10.0
+
+### Minor Changes
+
+- f88fc05: `export-map-gate` (R1-D-263, owner note of 21 Nov 2026): a TypeScript source file of the export package now triggers the gate only when an archive can depend on it, that is, when it is one of `ARCHIVE_ROOTS` (`archive.ts`, `service.ts`, `snapshot.ts`, `maps.ts`, `golden.ts`) or reached from them by relative imports (`archiveModules`). A read-only reader that no archive module imports, such as `pdf-id.ts`, no longer needs the `export:unchanged` label. Maps, the verifier, migrations, a mapped table changed in any migration, and any non-TypeScript file under `src/` trigger as before; a dynamic `import(` in a reached module, or a file that cannot be read, falls back to the old rule (every source file triggers).
+- 3b5b055: `pdfIdentification(bytes, { maxBytes? })` and `pdfUaClaimed(bytes)` (Udofin PR-UDF-077, R1-D-259): the PDF/A (`pdfaid:part`, `conformance`) and PDF/UA (`pdfuaid:part`) identification a PDF **claims** in its catalog's XMP metadata; not a validation (veraPDF says whether a file conforms). A bounded reader, not a parser: the file is capped (64 MiB by default; over it `too_large`), the catalog is the last top-level one or one inside an object stream (FlateDecode, at most 64 streams, each inflated to at most 4 MiB), its `/Metadata` stream is read uncompressed or FlateDecode only, and the XMP is matched by namespace (any prefix, element or attribute form). Metadata of pages, images or fonts never counts; anything missing, malformed or over a limit is no claim (`{}`). `toPdf`'s PDF/A-2b output reads as `{ pdfa: { part: 2, conformance: "B" } }`, with `pdfua: { part: 1 }` under `pdfua: true`.
+
+### Patch Changes
+
+- Updated dependencies [5aba118]
+- Updated dependencies [2a0ea72]
+- Updated dependencies [21a2bc4]
+- Updated dependencies [ef3adc2]
+- Updated dependencies [01f9313]
+- Updated dependencies [200a8a4]
+  - @infrabyx/contracts@1.46.0
+  - @infrabyx/crypto@1.14.0
+  - @infrabyx/tenancy@1.23.1
+
 ## 1.9.1
 
 ### Patch Changes

@@ -5,8 +5,11 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ConsumedJob, QueuePort } from "@infrabyx/contracts/ports";
 import { randomBytes, toHex } from "@infrabyx/crypto";
+import { eventJobName } from "@infrabyx/contracts/events";
+import { QUEUE_JOB_NAME_MAX, QUEUE_NAME_MAX } from "@infrabyx/contracts/ports";
 import {
   defineContractSuite,
+  queueNameCases,
   startPostgres,
   startService,
   type StartedService,
@@ -157,6 +160,29 @@ const cases = [
       });
     },
   },
+  {
+    name: "the longest and widest names the platform accepts work on the real queue (R1-D-266)",
+    async run(p: QueuePort) {
+      // The platform rule is inside both libraries' rules: a 63-character queue name with `_` and
+      // `-`, a 100-character job name with `.`, `_` and `-`, and an event job name are enqueued,
+      // scheduled and consumed as they are.
+      const name = `q${toHex(randomBytes(4))}_-${"q".repeat(QUEUE_NAME_MAX - 11)}`;
+      expect(name).toHaveLength(QUEUE_NAME_MAX);
+      const long = `a.b_c-${"j".repeat(QUEUE_JOB_NAME_MAX - 6)}`;
+      expect(long).toHaveLength(QUEUE_JOB_NAME_MAX);
+      const type = "in.infrabyx.origination.KFSIssued.v1";
+      const event = eventJobName(type);
+      const seen: string[] = [];
+      const sub = await p.consume(name, async (j) => void seen.push(j.name));
+      await p.enqueue(name, { name: long, data: { type: "x" } });
+      await p.enqueue(name, { name: event, data: { type } });
+      await p.schedule(name, "0 3 * * *", { name: long, data: {} });
+      await waitFor(() => seen.length === 2);
+      expect(seen.sort()).toEqual([long, event].sort());
+      await sub.close();
+    },
+  },
+  ...queueNameCases(),
   {
     name: "health is up",
     async run(p: QueuePort) {
