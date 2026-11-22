@@ -29,8 +29,10 @@ import {
 import { internalEvent } from "@infrabyx/config/events";
 import { canonicalDigest, newId, type SecretKey } from "@infrabyx/crypto";
 import { isAgentPrincipal } from "../context.js";
-import { ConflictError, NotFoundError } from "../errors.js";
+import { ConflictError, KernelGuardError, NotFoundError } from "../errors.js";
 import type { FieldCrypto } from "../field-crypto.js";
+import type { ScopedBranchReadOptions } from "../kernel.js";
+import { scopedBranchReadOf } from "../scoped-read-gate.js";
 
 export type ApprovalState =
   "pending" | "approved" | "rejected" | "cancelled" | "executed" | "expired";
@@ -157,8 +159,16 @@ export interface ActionPolicy {
    * R1-D-39). The checker still needs one of `checkerRoles`; a function never replaces a role.
    */
   checkerFunctions?: readonly string[];
-  /** Runs in the executing transaction with the decrypted payload. */
-  execute?: (tx: Tx, payload: Record<string, unknown>, request: ApprovalRecord) => Promise<void>;
+  /**
+   * Runs in the executing transaction with the decrypted payload. `kernel` is the executor's own
+   * kernel access for this one execution (Finbyx PR-FBX-54; R1-D-273), refused once it returns.
+   */
+  execute?: (
+    tx: Tx,
+    payload: Record<string, unknown>,
+    request: ApprovalRecord,
+    kernel: ApprovalExecutorKernel,
+  ) => Promise<void>;
   /** Execute in the approving transaction when no delay applies (default true). */
   autoExecute?: boolean;
   /** Delay in minutes; never below the risk class minimum (IPB-02 §02.4.6.1). */
@@ -167,6 +177,21 @@ export interface ActionPolicy {
   financial?: boolean;
   /** Amount in minor units, for the tenant's `mc.dual_checker_above.<action>` (PL3-D-08). */
   amountOf?: (payload: Record<string, unknown>) => number | undefined;
+}
+
+/**
+ * What an approval executor may ask the kernel for, during its own execution only (R1-D-273).
+ */
+export interface ApprovalExecutorKernel {
+  /**
+   * Run `fn` read-only, inside the executing transaction, under the executor's context with its
+   * branch scope set to exactly `opts.branchIds` (each granted to the caller, closed branches
+   * included through `PgKernelOptions.branchGrants`). Ledgered `security.branch_scope.read` in the
+   * executing transaction, naming this approval request; writes inside are refused. Throws
+   * `KernelGuardError` once the executor has returned, or when the engine's kernel is not a
+   * `PgKernel`; a refused request is `IPB-SEC-005`.
+   */
+  scopedBranchRead<T>(opts: ScopedBranchReadOptions, fn: (tx: Tx) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -1125,7 +1150,36 @@ export class ApprovalsEngine implements ApprovalGateway {
 
   private async runExecutor(tx: Tx, row: Row): Promise<Row> {
     const policy = this.policies.get(row.action);
-    if (policy?.execute) await policy.execute(tx, await this.payloadOf(tx, row), toRecord(row));
+    if (policy?.execute) {
+      const payload = await this.payloadOf(tx, row);
+      // Bound to this execution's transaction and request, and refused once the executor has
+      // returned (R1-D-273).
+      let live = true;
+      const impl = scopedBranchReadOf(this.o.kernel);
+      const source = Object.freeze({
+        kind: "approval" as const,
+        requestId: row.id,
+        action: row.action,
+      });
+      const kernel: ApprovalExecutorKernel = Object.freeze({
+        scopedBranchRead: <T>(opts: ScopedBranchReadOptions, fn: (tx: Tx) => Promise<T>) => {
+          if (!live)
+            return Promise.reject(
+              new KernelGuardError("the approval executor has returned: its kernel access ended"),
+            );
+          if (!impl)
+            return Promise.reject(
+              new KernelGuardError("the approvals engine's kernel has no scoped branch read"),
+            );
+          return impl(tx, source, opts, fn);
+        },
+      });
+      try {
+        await policy.execute(tx, payload, toRecord(row), kernel);
+      } finally {
+        live = false;
+      }
+    }
     const next = await this.update(tx, row.id, "state = 'executed', executed_at = now()");
     await this.o.audit.record(tx, {
       action: "approvals.request.execute",
