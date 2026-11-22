@@ -7,7 +7,8 @@
 //   * Fail-closed: every failure is a verdict, never an exception a caller could swallow: engine
 //     error, timeout, a size over `maxBytes` (keep it at or below clamd's `StreamMaxLength`), bytes
 //     that do not match the reference's SHA-256 (or that STORAGE refuses for integrity,
-//     `IPB-STOR-005`; both `hash_mismatch`, PR-UDF-080), and a signature set older than
+//     `IPB-STOR-005`; both `hash_mismatch`, PR-UDF-080), a named key the scanner may not use
+//     (`IPB-KMS-001`, `storage_key_unavailable`, R1-D-276), and a signature set older than
 //     `maxSignatureAgeHours` (IPB-02-44 wants daily updates; 48 hours by default) are all `ERROR`.
 //   * Only the verdict, the threat name and the engine version come back; the file's bytes are
 //     never logged. Off behind `int.av.clamav.enabled` (`ERROR` with reason `disabled` while off).
@@ -16,7 +17,7 @@ import { isIP, Socket } from "node:net";
 import { lookup } from "node:dns/promises";
 import {
   FileScanRequest,
-  isStorageIntegrityError,
+  scanReasonOfReadError,
   type AdapterDescriptor,
   type DocFileRef,
   type FileScanPort,
@@ -134,7 +135,7 @@ export class ClamavFileScan implements FileScanPort {
       // PR-UDF-080 (R1-D-269): bytes STORAGE refuses for integrity are a hash mismatch, not an
       // outage, as a mismatch against the reference is.
       return result("ERROR", {
-        reason: isStorageIntegrityError(e) ? "hash_mismatch" : "unavailable",
+        reason: scanReasonOfReadError(e),
       });
     }
     if (sha256Hex(body) !== file.sha256) return result("ERROR", { reason: "hash_mismatch" });
