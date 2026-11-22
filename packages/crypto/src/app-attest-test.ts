@@ -4,6 +4,7 @@
 // Apple's, so nothing it makes verifies against the pinned root: pass `roots: [authority.rootPem]`,
 // which production code never does. Certificates are minimal DER, signed with node:crypto.
 import { createHash, generateKeyPairSync, randomBytes, sign, type KeyObject } from "node:crypto";
+import { pemCertificate } from "./pem-armour.js";
 
 const der = (tag: number, ...parts: Uint8Array[]): Buffer => {
   const body = Buffer.concat(parts);
@@ -74,8 +75,7 @@ function certificate(c: CertInput): Buffer {
   return seq(tbs, alg(c.hash), der(0x03, Buffer.concat([Buffer.from([0]), sig])));
 }
 
-const pem = (d: Buffer) =>
-  `-----BEGIN CERTIFICATE-----\n${d.toString("base64").replace(/(.{64})/g, "$1\n")}\n-----END CERTIFICATE-----\n`;
+const pem = (d: Buffer): string => pemCertificate(d);
 
 const counterBytes = (n: number) => {
   const b = Buffer.alloc(4);
