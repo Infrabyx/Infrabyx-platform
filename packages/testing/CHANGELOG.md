@@ -1,5 +1,27 @@
 # @infrabyx/testing
 
+## 1.34.0
+
+### Minor Changes
+
+- b131e84: Udofin PR-UDF-079 (R1-D-270): Udofin's three extra no-Aadhaar checks are in the shared detector, **on by default with no switch to turn them off**. **Behaviour change, stricter: your CI may newly fail.** Fix the data or rename the column or label; do not drop the check (a column you must keep is skipped by name with `skip: ["schema.table.column"]`, as before). (1) `sweepDatabaseForAadhaar` / `scanDatabaseForAadhaar` report every column named like a carrier (`isAadhaarCarrierName` from `@infrabyx/contracts/aadhaar`) as a `COLUMN` find from the catalogue, with no row read and whatever it holds (`ctid: ""`, `masked: "(column)"`); not a `boolean` column and not a last-four column (`aadhaar_last_digits`, `aadhaarLast4`). A sweep that read no row now returns its finds instead of rejecting `AadhaarScanEmptyError`, which it still does when it found nothing. (2) The `FIELD` rule for columns and JSON keys uses the wider names: `borrower_aadhaar_ref`, `masked_aadhaar_no`, `kyc_uid_token`, `user_uid`, `uidai_token`, and a last-four column or key holding more than four digits. (3) A carrier name followed by a value in free text is a `LABELLED` find (`masked: "(value withheld)"`, at the label): in `scanTextForAadhaar`, `scanPathsForAadhaar`, the `infrabyx-aadhaar-scan` CLI (`file:line: LABELLED (value withheld)`, exit 1) and the database sweep's text values and JSON strings; masked values (`Aadhaar No. XXXX XXXX dddd`) and numbers that fail Verhoeff count. `allow` and `--letters` do not affect it. Types widened: `AadhaarTextFindKind` (`AADHAAR`, `VID`, `LABELLED`) on `AadhaarTextFind.kind`, and `AadhaarDatabaseFindKind` gains `COLUMN` and `LABELLED`.
+- 398d7c7: Udofin PR-UDF-080 (R1-D-269): `storageIntegrityContractCases({ tamper, outage, tenantId? })` (`StorageIntegrityFixture`): STORAGE contract cases that a tampered object is `IPB-STOR-005` `hash_mismatch` (a 500 without a retry hint, no bytes, a fixed detail without the key, tenant, bucket or a hash, and an untouched object still reads) and that a store that cannot be read is `IPB-PORT-002`. Run on `MemoryStorage` (through its new `readError` option, re-exported type `MemoryStorageOptions`) and on the `s3` and `minio` legs; run them against your own STORAGE fixture so it cannot pass what the `s3` adapter refuses.
+
+### Patch Changes
+
+- Updated dependencies [e98dfeb]
+- Updated dependencies [24c16c4]
+- Updated dependencies [5fc6afe]
+- Updated dependencies [daa13b9]
+- Updated dependencies [695bc94]
+  - @infrabyx/crypto@1.15.0
+  - @infrabyx/contracts@1.48.0
+  - @infrabyx/fakes@1.11.0
+  - @infrabyx/audit@1.12.2
+  - @infrabyx/config@1.24.2
+  - @infrabyx/seed@1.0.58
+  - @infrabyx/tenancy@1.24.1
+
 ## 1.33.0
 
 ### Minor Changes
