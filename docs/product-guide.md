@@ -1852,6 +1852,20 @@ await parking.requeue(ctx, "cms", parked[0].eventId); // ledgered `tenancy.outbo
 - Fix the cause first (deploy the mapped job name, or bring the queue back), then requeue: the next pass retries the row with a fresh budget of `maxAttempts`. A park is requeued once; the record stays (nothing is deleted), with `requeued_at` and `requeued_by`.
 - Only a person (`principal.type` `user`) holding one of `requeueRoles` (default `ORG_OWNER`, `ORG_ADMIN`) may requeue, in the row's own tenant; a row with no open park answers `NotFoundError` (404).
 
+## 7eo. Every adapter in `sandbox-status.json`, the unproven ones refused above staging (PR-UDF-078; R1-D-268)
+
+From the next release (`connectors` minor; no code path, setting, migration or environment variable), `@infrabyx/connectors/sandbox-status.json` lists every adapter the package publishes. Pass it to the routing check in CI as before:
+
+```sh
+infrabyx-routing check infra/routing/<product>/*.routing.yaml \
+  --sandbox-status node_modules/@infrabyx/connectors/sandbox-status.json
+```
+
+- **`adapters`:** an adapter with a vendor or counterparty sandbox leg, `unproven` until that leg runs green. The check refuses an unproven adapter in `staging`, `pre-prod`, `prod` and `dr` (`IPB-PORT-005`, "adapter … is unproven; not allowed in …"). New entries: `nsdl-esign`, `nesl-dde`, `shcil-estamp`, `digio-estamp`, `manual-paper` (beside `leegality` and `digio`), `digio-mandate`, `idfy-kyc`, `cibil`, `setu-aa`, `http-statement`, `generic-grc`, `sftp`, `tallyprime`, `native` (DEVICE_ATTESTATION), `turnstile` and `hcaptcha`. An entry names its port-contract issue or, until one is opened, `offBy`: the settings, off by default, that keep it off.
+- **What changes for you:** a staging or higher routing file that names one of the sixteen now fails the check. Keep it in `dev` and `test` files only, as for `leegality` and `digio`, until its sandbox leg is green and the entry says `proven`. The adapters' own `int.*.enabled` settings are unchanged and still off by default.
+- **`hermetic`:** the self-hosted, in-process and composite adapters (`keycloak`, `cerbos`, `vault`, `bullmq`, `temporal`, `clamav`, `gotenberg`, `livekit`, `pdf-text`, `kyc-method-router`, `vcip-conductor` and the rest). They have no vendor sandbox leg and the check does not refuse them for this file. `minio` stays under `adapters` (PL2-D-61).
+- A product that reads the file itself should read only `adapters` for refusals; `hermetic` is for completeness. The platform's unit test fails when an adapter is added to the package without an entry.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
