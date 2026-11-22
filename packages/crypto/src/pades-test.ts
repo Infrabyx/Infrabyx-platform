@@ -183,6 +183,8 @@ export interface TestCertSpec {
   ski?: Buffer;
   /** Adds a critical extension the verifier does not know. */
   unknownCritical?: boolean;
+  /** Adds a critical extension with each of these OIDs and an empty value (refusal tests). */
+  criticalOids?: string[];
   notBefore?: Date;
   notAfter?: Date;
 }
@@ -212,6 +214,7 @@ export function testCertificate(s: TestCertSpec): TestCert {
   if (s.eku?.length) exts.push(seq(oid("2.5.29.37"), octet(seq(...s.eku.map(oid)))));
   if (s.ski) exts.push(seq(oid("2.5.29.14"), octet(octet(s.ski))));
   if (s.unknownCritical) exts.push(seq(oid("1.3.6.1.4.1.99999.1"), bool(true), octet(nul())));
+  for (const o of s.criticalOids ?? []) exts.push(seq(oid(o), bool(true), octet(seq())));
   const serial = Buffer.concat([Buffer.from([0x01]), randomBytes(9)]);
   const alg = sigAlgId(s.issuerKey, s);
   const subject = name(s.subject);

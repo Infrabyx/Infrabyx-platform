@@ -1410,7 +1410,7 @@ From the next `contracts`, `config`, `fakes`, `testing` and `connectors` minors 
 - Vendor shapes are to be confirmed against each sandbox: keep the adapters off until the owner's accounts exist. Whether a manually keyed stamp needs a checker before it enters a pack is the owner's question #177.
 - **Udofin:** keep Leegality or Digio for eSign until #177 decides NSDL's request signing.
 
-## 7dz. Checking a PDF's embedded signature locally (PR-UDF-059; C-28, R1-D-246)
+## 7dz. Checking a PDF's embedded signature locally (PR-UDF-059; C-28, R1-D-246, R1-D-272)
 
 From the next `crypto` minor (no migration, no setting), `@infrabyx/crypto` verifies a PDF's embedded PAdES/CMS signatures without an ESP call. It only verifies; it never signs.
 
@@ -1419,6 +1419,7 @@ import { verifyPadesSignatures } from "@infrabyx/crypto";
 
 const result = verifyPadesSignatures(pdfBytes, {
   revocation: { crls, ocsp }, // optional DER you fetched; nothing is fetched for you
+  requireTimestamp: true, // optional (default false): refuse a signature without a verified timestamp
 });
 if (!result.valid) {
   // result.outcome: "invalid" | "incremental_update_after_signature" | "no_signature" | …
@@ -1426,8 +1427,10 @@ if (!result.valid) {
 ```
 
 - **Read the bytes yourself** (from STORAGE, after the AV and hash checks you already run). Files up to 32 MiB by default (`maxBytes`, at most 64 MiB) and 16 signatures.
-- **`result.valid`** is true only when every signature is valid and one covers the whole file. Per signature you get `outcome` (a fixed label, `PADES_OUTCOMES`), `signer` (subject, serial, issuer, certificate SHA-256), `signedAt` with `timeSource` (`timestamp`, `signing_time_attribute`, `signature_dictionary` or `verification_time`), `timestamp`, `chain`, `revocation` (`good`, `revoked` or `not_checked`) and `algorithm`. Do not log the signer block with document identifiers if your privacy notice does not cover it.
-- **Not trusted yet:** the pinned CCA India store (`CCA_INDIA_TRUST`) is empty until the owner supplies CCA's root and intermediates (owner question #178), so every signature reports `chain_untrusted` today. Do not switch a business decision to this verifier before a release says the pins are in.
+- **`result.valid`** is true only when every signature is valid and one covers the whole file. Per signature you get `outcome` (a fixed label, `PADES_OUTCOMES`), `signer` (subject, serial, issuer, certificate SHA-256), `signedAt` with `timeSource` (`timestamp`, `signing_time_attribute`, `signature_dictionary` or `verification_time`), `timestamp`, `chain`, `chainSha256` (the SHA-256 of each certificate on the path, signer first, CCA root last; null when no path was found), `timestampChainSha256` (the same for the timestamp authority when `timestamp` is `valid`), `revocation` (`good`, `revoked` or `not_checked`) and `algorithm`. Keep `chainSha256` with the signature record as evidence of the path used. Do not log the signer block with document identifiers if your privacy notice does not cover it.
+- **Trusted against CCA India (from the `crypto` minor of R1-D-272):** `CCA_INDIA_TRUST` pins the two existing CCA India roots, CCA India 2022 and CCA India 2022 SPL (owner answer #178); the expired 2014 and 2015 SPL roots are not pinned. Only the roots are pinned: the licensed CA's and sub-CA's certificates must be in the signature's CMS certificate set (eSign providers include them), and they are accepted only when the whole path validates to a pinned root (names, signatures, validity at the signing time, `cA` and `keyCertSign` with a keyUsage extension, path length, at most 6 certificates, no unknown critical extension). A file whose CMS lacks an intermediate is `chain_untrusted`. Path building is bounded (16 carried certificates, 32 signature checks), so a hostile file cannot make it slow.
+- **`requireTimestamp: true`** refuses a signature without a verified B-T timestamp (none, or an untrusted TSA) with `timestamp_required`. It is checked last: a signature with another fault reports that fault. Without it, an untimestamped signature's time is the signer's own claim (`timeSource` says which time was used); set it where a backdated signature would matter.
+- **What you must do:** nothing beyond adopting the minor. Results gain the two fingerprint fields and, only if you set `requireTimestamp`, the `timestamp_required` label (`PADES_OUTCOMES`); if you `switch` over `PadesOutcome` exhaustively, add it.
 - **Revocation** is `not_checked` unless you pass CRLs or OCSP responses for every certificate below the root; a listed certificate makes the signature `certificate_revoked`.
 - **B-LT and B-LTA files** (a DSS or document timestamp added after signing) report `incremental_update_after_signature` (or `unsupported_subfilter` for the document timestamp); treat them as needing review.
 - **Tests:** `@infrabyx/crypto/pades-test` (dev only) gives `padesTestAuthority()`, which signs any classic-xref PDF (for example `pdfFixture`'s) and makes timestamps, CRLs and OCSP responses; pass its `trust` (results then say `trustStore: "custom"`). Never use it outside tests.
@@ -1862,6 +1865,32 @@ infrabyx-routing check infra/routing/<product>/*.routing.yaml \
 - **What changes for you:** a staging or higher routing file that names one of the sixteen now fails the check. Keep it in `dev` and `test` files only, as for `leegality` and `digio`, until its sandbox leg is green and the entry says `proven`. The adapters' own `int.*.enabled` settings are unchanged and still off by default.
 - **`hermetic`:** the self-hosted, in-process and composite adapters (`keycloak`, `cerbos`, `vault`, `bullmq`, `temporal`, `clamav`, `gotenberg`, `livekit`, `pdf-text`, `kyc-method-router`, `vcip-conductor` and the rest). They have no vendor sandbox leg and the check does not refuse them for this file. `minio` stays under `adapters` (PL2-D-61).
 - A product that reads the file itself should read only `adapters` for refusals; `hermetic` is for completeness. The platform's unit test fails when an adapter is added to the package without an entry.
+
+## 7ep. A tampered file is `IPB-STOR-005`, not an outage (PR-UDF-080; R1-D-269)
+
+Minors of `contracts`, `connectors`, `fakes`, `testing` and `hlp`; no migration or setting. **Behaviour visible:** a STORAGE read whose bytes do not match the SHA-256 recorded at write, or whose checksum as S3 returns it disagrees with them, was `IPB-PORT-002` (503, "adapter unavailable"); it is now `IPB-STOR-005` (500, "Stored object failed its integrity check; read refused", help key `hlp.int.storage_integrity`) with `meta.reason` `hash_mismatch`. An outage stays `IPB-PORT-002`. Neither returns any bytes.
+
+```ts
+import type { IpbError } from "@infrabyx/contracts/errors";
+import { isStorageIntegrityError } from "@infrabyx/contracts/ports";
+
+try {
+  return await storage.get(key);
+} catch (e) {
+  if (isStorageIntegrityError(e)) {
+    // IPB-STOR-005: possible tamper. Do not retry; keep the record blocked; alert security.
+  } else if ((e as IpbError).code === "IPB-PORT-002") {
+    // Outage: retry later, as before.
+  }
+  throw e;
+}
+```
+
+- **Catch it, do not retry it:** a tampered object does not get better. Do not put `IPB-STOR-005` on a retry or back-off path, do not fall back to another copy, and do not treat it as "try again later" in the UI (the help entry says so). The circuit breaker ignores it, so the router does not fail over a read of it to the DR replica.
+- **Alert on it as a possible tamper:** raise it to your security or operations alerting with the object's own record id (the error carries no key, bucket or hash, so take them from your own record), and keep the document, case or loan that relies on it blocked until someone has looked. Do not delete or overwrite the object: it is the evidence.
+- **The label is unchanged:** match `code === "IPB-STOR-005"` (or `isStorageIntegrityError`); `reason: "hash_mismatch"` is on the error and on the problem response (`toProblem` → `{ status: 500, code: "<PRODUCT>-STOR-005", reason: "hash_mismatch" }`, no `retry_after_seconds`). If you matched `IPB-PORT-002` to retry STORAGE reads, this case now leaves that path, as intended.
+- **Through other ports:** `pdf-text` `extractText` now throws `IPB-STOR-005` `hash_mismatch` for such a file (it was `IPB-PORT-002` `unavailable`); the `clamav` adapter and `FakeFileScan` answer `ERROR` with reason `hash_mismatch` (it was `unavailable`), still quarantined. Ports that compare the bytes with the hash you pass (ESIGN, KYC, ESTAMP, STATEMENT_ANALYSIS, PDF text, web snapshots, AV) keep their own codes; a caller that only reads through STORAGE (a workflow input, an attachment) now sees `IPB-STOR-005` from the read.
+- **Testing:** `new MemoryStorage(undefined, { readError })`, where `readError(key)` returns `"integrity"` (`get` throws `IPB-STOR-005`) or `"unavailable"` (`get` throws `IPB-PORT-002`). Run `storageIntegrityContractCases({ tamper, outage })` from `@infrabyx/testing` against your own STORAGE fixture or adapter (`tamper(key, bucketClass)` changes the stored bytes beneath it; `outage(key)` gives a store that cannot be read), so a fixture cannot pass what the `s3` adapter refuses.
 
 ## 7eq. The no-Aadhaar sweep: empty carrier columns, longer names, labelled values (PR-UDF-079; R1-D-270)
 

@@ -484,6 +484,23 @@ describe("pdf-text: storage failures (PR-UDF-067)", () => {
     expect(`${e.message} ${e.detail ?? ""}`).not.toMatch(/arn:|lender:a|KMS\./);
   });
 
+  it("a read STORAGE refuses for integrity is IPB-STOR-005 hash_mismatch, not IPB-PORT-002 (PR-UDF-080)", async () => {
+    const tampered = new PortError("IPB-STOR-005", "STORAGE", {
+      adapter: "s3",
+      detail: "object body does not match its stored SHA-256",
+      meta: { reason: "hash_mismatch", key: "tenant/tnt_a/uploads/x.pdf" },
+      cause: new Error('Checksum mismatch: expected "abc" but received "def"'),
+    });
+    const req = await scannedThenFailing(plain(), tampered);
+    const e = (await refusal(extractor.extractText(req))) as PortError;
+    expect(e).toMatchObject({ code: "IPB-STOR-005", port: "PDF", adapter: "pdf-text" });
+    expect(e.httpStatus).toBe(500);
+    // Only the fixed label: no key, checksum or cause.
+    expect(e.meta).toEqual({ reason: "hash_mismatch" });
+    expect(e.cause).toBeUndefined();
+    expect(`${e.message} ${e.detail ?? ""}`).not.toMatch(/tenant\/|abc|def/);
+  });
+
   it("any other STORAGE failure, including another IPB-KMS-001 reason, stays IPB-PORT-002 unavailable", async () => {
     for (const failure of [
       new Error("connection reset"),

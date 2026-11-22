@@ -6,8 +6,9 @@
 //     for the file's SHA-256 (`assertScannedClean`); the bytes read from STORAGE must hash to it too,
 //     so a file swapped after its scan is refused (`IPB-SEC-015`).
 //   * A STORAGE read refused because the object's named tenant key is disabled or no longer granted
-//     is `IPB-KMS-001` (reason `storage_key_unavailable`, PR-UDF-067); any other read failure is
-//     `IPB-PORT-002` (reason `unavailable`).
+//     is `IPB-KMS-001` (reason `storage_key_unavailable`, PR-UDF-067); a read STORAGE refuses for
+//     integrity is `IPB-STOR-005` (reason `hash_mismatch`, PR-UDF-080, R1-D-269); any other read
+//     failure is `IPB-PORT-002` (reason `unavailable`).
 //   * Isolated: the parse (`parse.ts`) runs in a `worker_thread` with V8 heap and stack limits, an
 //     empty environment and no inherited flags, and is terminated at its deadline, so a hostile file
 //     can neither hang nor exhaust the calling process. A worker that runs out of memory or time is
@@ -20,7 +21,10 @@ import { Worker } from "node:worker_threads";
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   PdfTextRequest,
+  STORAGE_HASH_MISMATCH,
+  STORAGE_INTEGRITY_ERROR,
   assertScannedClean,
+  isStorageIntegrityError,
   resolvePdfTextLimits,
   type AdapterDescriptor,
   type DocFileRef,
@@ -94,6 +98,13 @@ export class PdfTextExtractor implements PdfPort {
           adapter: ADAPTER,
           detail: "the file's storage key is disabled or no longer granted",
           meta: { reason: "storage_key_unavailable" },
+        });
+      // PR-UDF-080 (R1-D-269): a tampered object is not an outage either.
+      if (isStorageIntegrityError(e))
+        throw new PortError(STORAGE_INTEGRITY_ERROR, PORT, {
+          adapter: ADAPTER,
+          detail: "the file failed STORAGE's integrity check",
+          meta: { reason: STORAGE_HASH_MISMATCH },
         });
       throw new PortError("IPB-PORT-002", PORT, {
         adapter: ADAPTER,

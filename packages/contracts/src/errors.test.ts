@@ -75,6 +75,10 @@ describe("reason and retry_after_seconds (PR-UDF-038)", () => {
     for (const reason of ["Has Space", "x".repeat(65), "1digit", "a@b.c", "123456789012", 7])
       expect(toProblem(new IpbError("IPB-PORT-002", { meta: { reason } })).reason).toBeUndefined();
     expect(toProblem(new IpbError("IPB-PORT-002")).reason).toBeUndefined();
+    // PR-UDF-080 (R1-D-269): a STORAGE integrity refusal keeps the label under its own code.
+    expect(
+      toProblem(new IpbError("IPB-STOR-005", { meta: { reason: "hash_mismatch" } })),
+    ).toMatchObject({ code: "IPB-STOR-005", status: 500, reason: "hash_mismatch" });
   });
 
   it("carries the wait on a 429 or 503 only, as whole seconds from 1 to 86400, with Retry-After", () => {

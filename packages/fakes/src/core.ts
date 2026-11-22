@@ -26,6 +26,8 @@ import type {
 } from "@infrabyx/contracts/ports";
 import {
   PRESIGN_NO_CACHE,
+  STORAGE_HASH_MISMATCH,
+  STORAGE_INTEGRITY_ERROR,
   STORAGE_KEY_NOT_DESCRIBED,
   STORAGE_KEY_UNAVAILABLE,
   compartmentAllowed,
@@ -128,6 +130,21 @@ export interface MemoryStorageKeyRefs {
   keyStateError?: (tenantId: string, keyRef: string) => "unavailable" | "not_described" | undefined;
 }
 
+/**
+ * The options of `MemoryStorage`: the named keys (`MemoryStorageKeyRefs`) and, PR-UDF-080
+ * (R1-D-269), an injected read failure.
+ */
+export interface MemoryStorageOptions extends MemoryStorageKeyRefs {
+  /**
+   * PR-UDF-080: a read of `key` fails, as the `s3` adapter's can. `"integrity"`: the stored bytes
+   * no longer match the SHA-256 recorded at write (a tampered object), so `get` throws
+   * `IPB-STOR-005` with `meta.reason` `hash_mismatch`. `"unavailable"`: the store cannot be read,
+   * so `get` throws `IPB-PORT-002`. Neither returns the bytes; `replicateTo` stops on either. Other
+   * methods ignore it. (Editing `objects` directly is not detected, as before.)
+   */
+  readError?: (key: string) => "integrity" | "unavailable" | undefined;
+}
+
 const KEY_REF_CONFIG: ReadonlySet<StorageKeyRefRefusal> = new Set([
   "key_ref_unknown",
   "key_ref_prefix_invalid",
@@ -144,8 +161,26 @@ export class MemoryStorage implements StoragePort {
   readonly objects = new Map<string, Obj>();
   constructor(
     private readonly now: () => Date = () => new Date(),
-    private readonly named: MemoryStorageKeyRefs = {},
+    private readonly named: MemoryStorageOptions = {},
   ) {}
+  /**
+   * PR-UDF-080: the injected read failure of `key`, thrown as the `s3` adapter throws it. An
+   * outage comes before the object is found (a store that is down cannot say it is missing); an
+   * integrity failure only for an object that exists.
+   */
+  private checkRead(key: string, exists: boolean): void {
+    const err = this.named.readError?.(key);
+    if (err === "unavailable")
+      throw new IpbError("IPB-PORT-002", {
+        detail: "memory read failed",
+        meta: { name: "injected" },
+      });
+    if (err === "integrity" && exists)
+      throw new IpbError(STORAGE_INTEGRITY_ERROR, {
+        detail: "object body does not match its stored SHA-256",
+        meta: { reason: STORAGE_HASH_MISMATCH },
+      });
+  }
   async health(): Promise<PortHealth> {
     return up();
   }
@@ -222,6 +257,7 @@ export class MemoryStorage implements StoragePort {
   }
   async get(key: string): Promise<StoredObject> {
     const o = this.objects.get(key);
+    this.checkRead(key, !!o && !o.deleted);
     if (!o || o.deleted) throw new IpbError("IPB-STOR-001", { meta: { key } });
     return {
       key,
@@ -389,6 +425,7 @@ export class MemoryStorage implements StoragePort {
     let copied = 0;
     for (const [k, o] of this.objects) {
       if (!k.startsWith(prefix) || o.deleted) continue;
+      this.checkRead(k, true);
       if (o.retainUntil) await target.putWithRetention(k, o.body, o.retainUntil, o.meta);
       else await target.put(k, o.body, o.meta);
       copied++;

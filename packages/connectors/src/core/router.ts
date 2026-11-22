@@ -93,7 +93,9 @@ const reportFor = (s: z.ZodType): PayloadClassReport => {
 /**
  * Errors that say the adapter is unhealthy, as opposed to a refused or invalid request. An
  * `IPB-PORT-002` with `meta.reason: "mode_unsupported"` (PR-UDF-043: the adapter cannot honour the
- * mode asked, and said so before any vendor call) is about the request, so it does not count.
+ * mode asked, and said so before any vendor call) is about the request, so it does not count. A
+ * STORAGE integrity refusal (`IPB-STOR-005`, PR-UDF-080) is about one object, so it neither counts
+ * nor sends reads to the replica: a tampered object fails closed and is never served from elsewhere.
  */
 export function tripsBreaker(e: unknown): boolean {
   if (!isIpbError(e)) return true;
