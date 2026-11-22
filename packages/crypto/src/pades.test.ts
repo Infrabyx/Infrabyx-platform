@@ -1,19 +1,31 @@
-// @IPB-02 C-28 (R1-D-246; owner answer #162; Udofin PR-UDF-059): the verify-only PAdES/CMS
-// verifier. Fixtures come from a throwaway CA made at test time (`pades-test`); no real
-// certificate or key is used or committed.
+// @IPB-02 C-28 (R1-D-246, R1-D-272; owner answers #162 and #178; Udofin PR-UDF-059): the
+// verify-only PAdES/CMS verifier. Fixtures come from a throwaway CA made at test time
+// (`pades-test`); no test key is committed. The only real certificates read are the CCA India
+// roots under `docs/regulations/cca/` (public trust anchors, read to check the pins).
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { X509Certificate, createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
 import {
   CCA_INDIA_TRUST,
   CCA_INDIA_ROOTS,
   CCA_INDIA_INTERMEDIATES,
   PADES_DOCUMENT_OUTCOMES,
+  PADES_LIMITS,
   PADES_OUTCOMES,
   customTrustStore,
   verifyPadesSignatures,
   type PadesVerifyResult,
 } from "./index.js";
-import { appendIncrementalUpdate, minimalPdf, padesTestAuthority } from "./pades-test.js";
+import {
+  appendIncrementalUpdate,
+  minimalPdf,
+  padesTestAuthority,
+  testCertificate,
+  testKey,
+  type TestCert,
+  type TestCertSpec,
+  type TestSigner,
+} from "./pades-test.js";
 import { assertApproved } from "./registry.js";
 
 const ca = padesTestAuthority();
@@ -29,6 +41,7 @@ const flip = (b: Buffer, at: number): Buffer => {
   c[at] = c[at]! ^ 0x01;
   return c;
 };
+const sha = (d: Uint8Array): string => createHash("sha256").update(d).digest("hex");
 const contentsRange = (pdf: Buffer): [number, number] => {
   const m = /\/ByteRange \[0 (\d+)\s+(\d+)/.exec(pdf.toString("latin1"))!;
   return [Number(m[1]), Number(m[2])];
@@ -52,6 +65,8 @@ describe("PAdES verification: valid signatures", () => {
     });
     expect(s.signer?.subject).toContain("CN=Test PAdES Signer");
     expect(s.signer?.certSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(s.chainSha256).toEqual([sha(ca.signer.der), sha(ca.intermediate.der), sha(ca.root.der)]);
+    expect(s.timestampChainSha256).toBeNull();
   });
 
   it.each([
@@ -115,6 +130,11 @@ describe("PAdES verification: valid signatures", () => {
       timeSource: "timestamp",
       signedAt: new Date(Math.floor(at.getTime() / 1000) * 1000).toISOString(),
     });
+    expect(one(r).timestampChainSha256).toEqual([
+      sha(ca.tsa.der),
+      sha(ca.intermediate.der),
+      sha(ca.root.der),
+    ]);
   });
 
   it("signs any classic-xref PDF and verifies two signatures in sequence", () => {
@@ -193,25 +213,23 @@ describe("PAdES verification: refusals", () => {
     expect(one(verifyPadesSignatures(cut, { trust })).outcome).toBe("malformed");
   });
 
-  it("another root, or an intermediate that is not pinned, is chain_untrusted", () => {
+  it("another root is chain_untrusted; an unpinned CA past a pathLen 0 intermediate too", () => {
     const other = padesTestAuthority();
     expect(one(verifyPadesSignatures(signed, { trust: other.trust }))).toMatchObject({
       outcome: "chain_untrusted",
       chain: "untrusted",
+      chainSha256: null,
     });
-    const rootOnly = customTrustStore({ roots: [ca.root.der] });
-    expect(one(verifyPadesSignatures(signed, { trust: rootOnly })).outcome).toBe("chain_untrusted");
+    // The unpinned CA is carried in the CMS, but the intermediate above it has pathLen 0.
     const viaUnpinned = ca.sign(minimalPdf(), { signer: ca.newSigner({ issuer: "unpinned" }) });
     expect(one(verifyPadesSignatures(viaUnpinned, { trust })).outcome).toBe("chain_untrusted");
   });
 
-  it("the pinned CCA India store is empty and refuses every chain (#178)", () => {
-    expect(CCA_INDIA_ROOTS).toHaveLength(0);
-    expect(CCA_INDIA_INTERMEDIATES).toHaveLength(0);
+  it("the default CCA India store refuses a chain to another root", () => {
     const r = verifyPadesSignatures(signed);
     expect(r.trustStore).toBe("cca-india");
     expect(r.outcome).toBe("invalid");
-    expect(one(r).outcome).toBe("chain_untrusted");
+    expect(one(r)).toMatchObject({ outcome: "chain_untrusted", chainSha256: null });
     expect(CCA_INDIA_TRUST.id).toBe("cca-india");
   });
 
@@ -493,5 +511,316 @@ describe("C-28 registry and scope", () => {
       expect(src).not.toMatch(/\bsign\(|createSign|privateKey|node:(https?|net|tls|dns)|fetch\(/);
       expect(src).not.toMatch(/createHash\("(sha1|md5)"\)/);
     }
+  });
+});
+
+// ---------------------------------------------------------------- R1-D-272 (owner answer #178)
+
+const ROOT_CN = "Test PAdES Root CA";
+interface CaNode {
+  cn: string;
+  cert: TestCert;
+}
+const rootNode: CaNode = { cn: ROOT_CN, cert: ca.root };
+/** Only the test root is pinned: every intermediate must come from the CMS set. */
+const rootOnly = customTrustStore({ roots: [ca.root.der] });
+const subCa = (
+  parent: CaNode,
+  cn: string,
+  o: Omit<Partial<TestCertSpec>, "subject" | "issuer" | "key" | "issuerKey"> = {},
+): CaNode => ({
+  cn,
+  cert: testCertificate({
+    subject: cn,
+    issuer: parent.cn,
+    key: testKey("ec256"),
+    issuerKey: parent.cert.key,
+    ca: true,
+    ...o,
+  }),
+});
+/** A signer under `parent` whose CMS carries `chain` (in that order). */
+const signerUnder = (
+  parent: CaNode,
+  chain: readonly TestCert[],
+  o: Partial<Pick<TestCertSpec, "keyUsage" | "eku">> = {},
+): TestSigner => ({
+  ...testCertificate({
+    subject: "Test PAdES Signer",
+    issuer: parent.cn,
+    key: testKey("ec256"),
+    issuerKey: parent.cert.key,
+    keyUsage: [0, 1],
+    ...o,
+  }),
+  chain: chain.map((c) => c.der),
+});
+const verifyWith = (signer: TestSigner, store = rootOnly) =>
+  one(verifyPadesSignatures(ca.sign(minimalPdf(), { signer }), { trust: store }));
+
+describe("PAdES verification: intermediates carried in the CMS (R1-D-272)", () => {
+  it("a path through a CMS-carried intermediate validates to a root-only store and reports chainSha256", () => {
+    const r = one(verifyPadesSignatures(signed, { trust: rootOnly }));
+    expect(r).toMatchObject({ outcome: "valid", chain: "trusted" });
+    expect(r.chainSha256).toEqual([sha(ca.signer.der), sha(ca.intermediate.der), sha(ca.root.der)]);
+  });
+
+  it("the same intermediate absent from the CMS is chain_untrusted", () => {
+    const r = one(
+      verifyPadesSignatures(ca.sign(minimalPdf(), { certificates: "signer" }), {
+        trust: rootOnly,
+      }),
+    );
+    expect(r).toMatchObject({ outcome: "chain_untrusted", chain: "untrusted", chainSha256: null });
+  });
+
+  it.each([
+    ["cA FALSE (no basicConstraints)", { ca: false, keyUsage: [5, 6] }],
+    ["keyUsage without keyCertSign", { keyUsage: [6] }],
+    ["no keyUsage", { keyUsage: [] }],
+    ["an unknown critical extension", { unknownCritical: true }],
+  ] as const)("a carried intermediate with %s fails the path", (_, o) => {
+    const inter = subCa(rootNode, "Test Carried Sub CA", {
+      ...("ca" in o ? { ca: o.ca } : {}),
+      ...("keyUsage" in o ? { keyUsage: [...o.keyUsage] } : {}),
+      ...("unknownCritical" in o ? { unknownCritical: true } : {}),
+    });
+    expect(verifyWith(signerUnder(inter, [inter.cert]))).toMatchObject({
+      outcome: "chain_untrusted",
+      chainSha256: null,
+    });
+  });
+
+  it("a pinned intermediate without keyUsage is still accepted (unchanged behaviour)", () => {
+    const inter = subCa(rootNode, "Test Pinned Sub CA", { keyUsage: [] });
+    const pinnedStore = customTrustStore({ roots: [ca.root.der], intermediates: [inter.cert.der] });
+    expect(verifyWith(signerUnder(inter, [inter.cert]), pinnedStore).outcome).toBe("valid");
+    expect(verifyWith(signerUnder(inter, []), pinnedStore).outcome).toBe("valid");
+  });
+
+  it.each([
+    ["nameConstraints", "2.5.29.30"],
+    ["policyConstraints", "2.5.29.36"],
+    ["inhibitAnyPolicy", "2.5.29.54"],
+    ["certificatePolicies", "2.5.29.32"],
+    ["policyMappings", "2.5.29.33"],
+  ])("a critical %s (%s) on a carried intermediate fails the path (not processed)", (_, oid) => {
+    const inter = subCa(rootNode, "Test Carried Sub CA", { criticalOids: [oid] });
+    expect(verifyWith(signerUnder(inter, [inter.cert])).outcome).toBe("chain_untrusted");
+    // …and the same extension not marked critical is ignored.
+    const plain = subCa(rootNode, "Test Carried Sub CA");
+    expect(verifyWith(signerUnder(plain, [plain.cert])).outcome).toBe("valid");
+  });
+
+  it("pathLenConstraint is honoured for carried intermediates", () => {
+    const tight = subCa(rootNode, "Test Upper CA", { pathLen: 0 });
+    const lower = subCa(tight, "Test Lower CA");
+    expect(verifyWith(signerUnder(lower, [lower.cert, tight.cert])).outcome).toBe(
+      "chain_untrusted",
+    );
+    const roomy = subCa(rootNode, "Test Upper CA", { pathLen: 1 });
+    const lower2 = subCa(roomy, "Test Lower CA");
+    const r = verifyWith(signerUnder(lower2, [lower2.cert, roomy.cert]));
+    expect(r.outcome).toBe("valid");
+    expect(r.chainSha256).toHaveLength(4);
+  });
+
+  it(`a path of ${PADES_LIMITS.maxPath} certificates validates; one of 7 fails`, () => {
+    const cas: CaNode[] = [];
+    let parent = rootNode;
+    for (let i = 1; i <= 5; i++) {
+      parent = subCa(parent, `Test Level ${i} CA`);
+      cas.push(parent);
+    }
+    const four = cas.slice(0, 4);
+    const r6 = verifyWith(signerUnder(four[3]!, four.map((c) => c.cert).reverse()));
+    expect(r6.outcome).toBe("valid");
+    expect(r6.chainSha256).toHaveLength(6);
+    const r7 = verifyWith(signerUnder(cas[4]!, cas.map((c) => c.cert).reverse()));
+    expect(r7).toMatchObject({ outcome: "chain_untrusted", chainSha256: null });
+  });
+
+  it("a carried intermediate expired at the signing time is not_valid_at_signing_time", () => {
+    const inter = subCa(rootNode, "Test Expired Sub CA", {
+      notBefore: new Date(Date.now() - 10 * 86_400_000),
+      notAfter: new Date(Date.now() - 86_400_000),
+    });
+    const r = verifyWith(signerUnder(inter, [inter.cert]));
+    expect(r).toMatchObject({ outcome: "not_valid_at_signing_time", chain: "trusted" });
+    expect(r.chainSha256).toEqual([r.signer!.certSha256, sha(inter.cert.der), sha(ca.root.der)]);
+  });
+
+  it(`only the first ${PADES_LIMITS.maxChainCandidates} carried certificates are considered`, () => {
+    const fillerKey = testKey("ec256");
+    const fillers = Array.from({ length: PADES_LIMITS.maxChainCandidates }, (_, i) =>
+      testCertificate({
+        subject: `Test Filler CA ${i}`,
+        issuer: `Test Filler CA ${i}`,
+        key: fillerKey,
+        issuerKey: fillerKey,
+        ca: true,
+      }),
+    );
+    const inter = subCa(rootNode, "Test Carried Sub CA");
+    const within = [...fillers.slice(1), inter.cert];
+    expect(verifyWith(signerUnder(inter, within)).outcome).toBe("valid");
+    const past = [...fillers, inter.cert];
+    expect(verifyWith(signerUnder(inter, past)).outcome).toBe("chain_untrusted");
+  });
+
+  it.each([
+    // Each CA signed by the next one's key: one valid issuer each, many signature checks.
+    ["a ring", (i: number, n: number) => [i, (i + 1) % n] as const],
+    // Every CA with the same key: each is a valid issuer of every other, so an unbounded search
+    // would walk 31 x 30 x 29 x 28 x 27 (about 20 million) paths.
+    ["one shared key", () => [0, 0] as const],
+  ])("a hostile set of look-alike CAs (%s) fails quickly as chain_untrusted", (_, keyOf) => {
+    // 31 look-alikes and the signer: the most certificates a CMS set may carry (32).
+    const n = 31;
+    const keys = Array.from({ length: n }, () => testKey("ec256"));
+    const cn = "Test Look-alike CA";
+    const mesh = keys.map((_k, i) => {
+      const [own, by] = keyOf(i, n);
+      return testCertificate({
+        subject: cn,
+        issuer: cn,
+        key: keys[own]!,
+        issuerKey: keys[by]!,
+        ca: true,
+      });
+    });
+    const leaf = signerUnder({ cn, cert: mesh[0]! }, mesh);
+    const t0 = performance.now();
+    const r = verifyWith(leaf);
+    expect(r).toMatchObject({ outcome: "chain_untrusted", chain: "untrusted", chainSha256: null });
+    expect(performance.now() - t0).toBeLessThan(1000);
+    // The same set against the store with the real intermediate pinned still fails.
+    expect(verifyWith(leaf, trust).outcome).toBe("chain_untrusted");
+  });
+
+  it("the TSA chain may use an intermediate carried in the timestamp token", () => {
+    const r = one(
+      verifyPadesSignatures(ca.sign(minimalPdf(), { timestamp: true }), { trust: rootOnly }),
+    );
+    expect(r).toMatchObject({ outcome: "valid", timestamp: "valid", timeSource: "timestamp" });
+    expect(r.timestampChainSha256).toEqual([
+      sha(ca.tsa.der),
+      sha(ca.intermediate.der),
+      sha(ca.root.der),
+    ]);
+    // Without the intermediate in the token, the TSA is untrusted and its time is not used.
+    const bare: TestSigner = { ...ca.tsa, chain: [] };
+    const u = one(
+      verifyPadesSignatures(ca.sign(minimalPdf(), { timestamp: { tsa: bare } }), {
+        trust: rootOnly,
+      }),
+    );
+    expect(u).toMatchObject({
+      outcome: "valid",
+      timestamp: "untrusted",
+      timestampChainSha256: null,
+      timeSource: "signature_dictionary",
+    });
+  });
+});
+
+describe("PAdES verification: requireTimestamp (R1-D-272)", () => {
+  it("is off by default: a signature without a timestamp is valid", () => {
+    expect(one(verifyPadesSignatures(signed, { trust })).outcome).toBe("valid");
+    expect(PADES_OUTCOMES).toContain("timestamp_required");
+  });
+
+  it("refuses a signature with no verified timestamp, accepts one with a valid timestamp", () => {
+    const r = verifyPadesSignatures(signed, { trust, requireTimestamp: true });
+    expect(r).toMatchObject({ outcome: "invalid", valid: false });
+    expect(one(r)).toMatchObject({
+      outcome: "timestamp_required",
+      valid: false,
+      timestamp: "absent",
+      chain: "trusted",
+    });
+    const stamped = ca.sign(minimalPdf(), { timestamp: true });
+    expect(verifyPadesSignatures(stamped, { trust, requireTimestamp: true })).toMatchObject({
+      outcome: "valid",
+    });
+    const untrustedTsa = ca.sign(minimalPdf(), { timestamp: { tsa: padesTestAuthority().tsa } });
+    expect(
+      one(verifyPadesSignatures(untrustedTsa, { trust, requireTimestamp: true })),
+    ).toMatchObject({ outcome: "timestamp_required", timestamp: "untrusted" });
+  });
+
+  it("is evaluated last: other refusals take precedence", () => {
+    const req = { trust, requireTimestamp: true } as const;
+    expect(one(verifyPadesSignatures(flip(signed, 30), req)).outcome).toBe("digest_mismatch");
+    expect(
+      one(verifyPadesSignatures(signed, { ...req, trust: padesTestAuthority().trust })).outcome,
+    ).toBe("chain_untrusted");
+    expect(
+      one(verifyPadesSignatures(ca.sign(minimalPdf(), { timestamp: { wrongImprint: true } }), req))
+        .outcome,
+    ).toBe("timestamp_invalid");
+    expect(
+      one(
+        verifyPadesSignatures(signed, {
+          ...req,
+          revocation: { crls: [ca.crl({ revoked: [ca.signer.serial] })] },
+        }),
+      ).outcome,
+    ).toBe("certificate_revoked");
+  });
+});
+
+describe("CCA India pinned roots (owner answer #178, R1-D-271, R1-D-272)", () => {
+  const dir = new URL("../../../docs/regulations/cca/", import.meta.url);
+  const derOf = (file: string): Buffer =>
+    Buffer.from(
+      readFileSync(new URL(file, dir), "latin1")
+        .replace(/-----(BEGIN|END) CERTIFICATE-----/g, "")
+        .replace(/[^A-Za-z0-9+/=]/g, ""),
+      "base64",
+    );
+  const files = Object.fromEntries(
+    readdirSync(dir)
+      .filter((f) => f.endsWith(".cer"))
+      .map((f) => [f, sha(derOf(f))]),
+  );
+  const EXISTING = {
+    "CCAIndia2022.cer": "9a3fd3176798e842ddcb12c262f11cfacca70a8b84c6ea6fda30842a95a94cd8",
+    "CCAIndia2022SPL.cer": "b724689b79b2ef9421ef8f5cc733eb093851b170ee715177005a09f226d8c91a",
+  };
+  const EXPIRED = {
+    "CCAIndia2014.cer": "60109bc6c38328598a112c7a25e38b0f23e5a7511cb815fb64e0c4ff05db7df7",
+    "CCAIndia2015.cer": "c34c5df53080078ffe45b21a7f600469917204f4f0293f1d7209393e5265c04f",
+  };
+
+  it("the files under docs/regulations/cca have the fingerprints in SOURCES.md", () => {
+    expect(files).toEqual({ ...EXISTING, ...EXPIRED });
+  });
+
+  it("pins exactly the two existing roots, as canonical PEM byte-identical to the files' DER", () => {
+    expect(CCA_INDIA_ROOTS.map((p) => [p.label, p.sha256])).toEqual([
+      ["CCA India 2022", EXISTING["CCAIndia2022.cer"]],
+      ["CCA India 2022 SPL", EXISTING["CCAIndia2022SPL.cer"]],
+    ]);
+    const canonical =
+      /^-----BEGIN CERTIFICATE-----\n(?:[A-Za-z0-9+/]{64}\n)*[A-Za-z0-9+/=]{1,64}\n-----END CERTIFICATE-----\n$/;
+    for (const [p, file] of [
+      [CCA_INDIA_ROOTS[0]!, "CCAIndia2022.cer"],
+      [CCA_INDIA_ROOTS[1]!, "CCAIndia2022SPL.cer"],
+    ] as const) {
+      expect(p.pem).toMatch(canonical);
+      const raw = new X509Certificate(p.pem).raw;
+      expect(raw.equals(derOf(file))).toBe(true);
+      expect(sha(raw)).toBe(p.sha256);
+    }
+    // The SPL file is not canonical PEM as served (CRLF): only the code's copy is normalised.
+    expect(readFileSync(new URL("CCAIndia2022SPL.cer", dir), "latin1")).toContain("\r\n");
+  });
+
+  it("the store holds exactly those two roots, no intermediate, and not the expired roots", () => {
+    expect([...CCA_INDIA_TRUST.roots].sort()).toEqual(Object.values(EXISTING).sort());
+    expect(CCA_INDIA_TRUST.intermediates).toEqual([]);
+    expect(CCA_INDIA_INTERMEDIATES).toHaveLength(0);
+    for (const fp of Object.values(EXPIRED)) expect(CCA_INDIA_TRUST.roots).not.toContain(fp);
   });
 });
