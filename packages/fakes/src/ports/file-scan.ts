@@ -4,6 +4,7 @@
 // The fake recognises EICAR itself; the ClamAV adapter runs the same cases against clamd.
 import {
   FileScanRequest,
+  isStorageIntegrityError,
   type AdapterDescriptor,
   type DocFileRef,
   type FileScanPort,
@@ -71,8 +72,11 @@ export class FakeFileScan implements FileScanPort {
     let body: Uint8Array;
     try {
       body = (await this.storage.get(file.storageKey)).body;
-    } catch {
-      return result("ERROR", { reason: "unavailable" });
+    } catch (e) {
+      // PR-UDF-080 (R1-D-269): bytes STORAGE refuses for integrity are a hash mismatch, as `clamav`.
+      return result("ERROR", {
+        reason: isStorageIntegrityError(e) ? "hash_mismatch" : "unavailable",
+      });
     }
     if (sha256Hex(body) !== file.sha256) return result("ERROR", { reason: "hash_mismatch" });
     if (body.length > this.maxBytes) return result("ERROR", { reason: "too_large" });
