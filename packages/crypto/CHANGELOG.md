@@ -1,5 +1,18 @@
 # @infrabyx/crypto
 
+## 1.15.0
+
+### Minor Changes
+
+- 24c16c4: PAdES verification is now usable against CCA India (owner answer #178; R1-D-272). `CCA_INDIA_TRUST` pins the two existing CCA India roots, CCA India 2022 and CCA India 2022 SPL, by the SHA-256 of their DER (checked at load); the expired 2014 and 2015 SPL roots are not pinned. Only roots are pinned: an intermediate carried in the signature's CMS certificate set (or in a timestamp token's, for the TSA) is accepted when the whole path validates to a pinned root (names chain, each signature verifies, every CA has cA TRUE and keyCertSign, with keyUsage required on a carried intermediate, path length constraints, at most 6 certificates, no unknown critical extension, all valid at the signing time). The search is bounded against a hostile certificate set (`PADES_LIMITS.maxChainCandidates` 16, `maxChainSignatureChecks` 32, `maxChainSearchSteps` 128; running out is `chain_untrusted`). Each signature result gains `chainSha256` (the path's certificate fingerprints, signer first, root last; null without a path) and `timestampChainSha256` (the TSA's path when the timestamp is valid). New option `requireTimestamp` (default false) refuses a signature without a verified B-T timestamp with the new outcome `timestamp_required`, reported only when no other refusal applies. Pinned intermediates in a `customTrustStore` work as before. `@infrabyx/crypto/pades-test` gains `criticalOids` on `testCertificate`.
+
+### Patch Changes
+
+- e98dfeb: `@infrabyx/crypto/app-attest-test` (tests only): the test root's `rootPem` no longer has a blank line before `-----END CERTIFICATE-----` when the certificate's base64 is a multiple of 64 characters, so strict PEM readers such as OpenSSL accept it (the same fix `mtls-test` had; R1-D-275).
+- Updated dependencies [5fc6afe]
+- Updated dependencies [daa13b9]
+  - @infrabyx/contracts@1.48.0
+
 ## 1.14.1
 
 ### Patch Changes

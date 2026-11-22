@@ -1,5 +1,20 @@
 # @infrabyx/ai
 
+## 1.2.11
+
+### Patch Changes
+
+- b131e84: Udofin PR-UDF-079 (R1-D-270): one `ai.grounded_answer` golden case (`pii-restore-masked`) words its masked record as "the masked number XXXX XXXX dddd" instead of "Aadhaar XXXX XXXX dddd", which the stricter no-Aadhaar sweep reads as a labelled value. The case still tests the masked form's tokenising and restoring; the golden set's score is unchanged (110/110).
+- Updated dependencies [e98dfeb]
+- Updated dependencies [24c16c4]
+- Updated dependencies [5fc6afe]
+- Updated dependencies [daa13b9]
+  - @infrabyx/crypto@1.15.0
+  - @infrabyx/contracts@1.48.0
+  - @infrabyx/audit@1.12.2
+  - @infrabyx/config@1.24.2
+  - @infrabyx/tenancy@1.24.1
+
 ## 1.2.10
 
 ### Patch Changes

@@ -10,6 +10,7 @@ import {
 } from "@infrabyx/contracts/roles";
 import { IpbError } from "@infrabyx/contracts/errors";
 import type {
+  AuditEntryInput,
   AuditSink,
   KernelContext,
   MutateOptions,
@@ -20,6 +21,8 @@ import type {
   UnitOutcome,
 } from "@infrabyx/contracts/kernel";
 import {
+  BRANCH_ID_PATTERN,
+  MAX_BRANCH_IDS,
   assertValidContext,
   isAgentPrincipal,
   isSupportContext,
@@ -27,6 +30,11 @@ import {
 } from "./context.js";
 import { KernelGuardError } from "./errors.js";
 import { isExternalGated } from "./external-gate.js";
+import {
+  bindScopedBranchRead,
+  type ScopedBranchReadRequest,
+  type ScopedBranchReadSource,
+} from "./scoped-read-gate.js";
 import {
   moduleGuard,
   refusalOf,
@@ -58,7 +66,68 @@ export interface PgKernelOptions {
    * a support principal's use of its grant are refused outright.
    */
   audit?: AuditSink;
+  /**
+   * Every branch the caller holds a grant on, open or closed (Finbyx PR-FBX-54; R1-D-273), for the
+   * grant check of a scoped branch read. It runs on the mutation's transaction under the caller's
+   * context and must only read. Without it the caller's own `allBranches` or `branchIds` are its
+   * grants, so a closed branch must then be in `branchIds`.
+   */
+  branchGrants?: BranchGrantSource;
+  /**
+   * The named scoped-branch-read capabilities this kernel issues (R1-D-273), each once, through
+   * `scopedBranchReadCapability(name)`: 2 to 4 dot-separated segments of `a-z 0-9 _`, a letter
+   * first, at most 32 characters each, never under `approvals.` (the approval executor's own
+   * path). None by default.
+   */
+  scopedBranchReadCapabilities?: readonly string[];
 }
+
+/** The branches a caller holds a grant on: every branch of the tenant, or these (R1-D-273). */
+export type BranchGrantSource = (
+  tx: Tx,
+) => Promise<ReadonlySet<string> | readonly string[] | "all">;
+
+/** What a scoped branch read names (R1-D-273). */
+export interface ScopedBranchReadOptions {
+  /** The branches the read sees, exactly: 1 to 1000 distinct branch ids, each granted to the caller. */
+  branchIds: readonly string[];
+  /** Why (1 to 500 characters, no control character), in the ledger entry. No personal data. */
+  reason: string;
+}
+
+/** A named scoped-branch-read capability (R1-D-273), issued once by the kernel that declared it. */
+export interface ScopedBranchReadCapability {
+  readonly name: string;
+  /**
+   * Inside the mutation `tx` (of the issuing kernel), run `fn` read-only under the caller's context
+   * with its branch scope set to exactly `opts.branchIds`; ledgered in `tx`'s transaction.
+   */
+  scopedBranchRead<T>(
+    tx: Tx,
+    opts: ScopedBranchReadOptions,
+    fn: (tx: Tx) => Promise<T>,
+  ): Promise<T>;
+}
+
+/** Ledger action of a scoped branch read, written in the mutation's transaction (R1-D-273). */
+export const SCOPED_BRANCH_READ_ACTION = "security.branch_scope.read";
+/** Ledger action of a refused scoped branch read, written after the transaction (R1-D-273). */
+export const SCOPED_BRANCH_READ_REFUSED_ACTION = "security.branch_scope.read_refused";
+/** The fixed `meta.refusal` labels of a refused scoped branch read (IPB-SEC-005). */
+export const SCOPED_BRANCH_READ_REFUSALS = [
+  "principal",
+  "branch_ids",
+  "reason",
+  "grants",
+  "ungranted",
+] as const;
+export type ScopedBranchReadRefusal = (typeof SCOPED_BRANCH_READ_REFUSALS)[number];
+/** The longest reason a scoped branch read states. */
+export const MAX_SCOPED_BRANCH_READ_REASON = 500;
+const CAPABILITY_NAME = /^[a-z][a-z0-9_]{0,31}(?:\.[a-z][a-z0-9_]{0,31}){1,3}$/;
+// C0 controls and DEL: a reason is one line of text.
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /** Ledger actions of the kernel's scope refusals (R1-D-75). */
 export const BREAKGLASS_SCOPE_REFUSED_ACTION = "security.breakglass.scope_refused";
@@ -119,6 +188,13 @@ class PgTx implements Tx {
    * every other transaction, whose statements run as before.
    */
   turn?: Turn;
+  /**
+   * Kernel only: set while a scoped branch read is open on this transaction (R1-D-273): no other
+   * statement, unit or read unit runs on it until the read's savepoint is rolled back.
+   */
+  scopedOpen = false;
+  /** Kernel only: scoped branch read refusals, ledgered after the transaction ends (R1-D-273). */
+  readonly branchScopeRefusals: Array<{ ctx: KernelContext; entry: AuditEntryInput }> = [];
   constructor(
     private readonly client: pg.PoolClient,
     readonly ctx: KernelContext,
@@ -131,8 +207,15 @@ class PgTx implements Tx {
   end(): void {
     this.ended = true;
   }
+  /** Kernel only: whether statements may still run on this transaction. */
+  get open(): boolean {
+    return !this.ended;
+  }
   private assertOpen(): void {
     if (this.ended) throw new KernelGuardError(ENDED);
+  }
+  private assertNoScopedRead(): void {
+    if (this.scopedOpen) throw new KernelGuardError(SCOPED_OPEN);
   }
 
   unit<T>(fn: (tx: Tx) => Promise<T>): Promise<UnitOutcome<T>> {
@@ -147,6 +230,7 @@ class PgTx implements Tx {
   async unitIn<T>(fn: (tx: Tx) => Promise<T>, turn?: Turn): Promise<UnitOutcome<T>> {
     if (turn) for (let w = turn(); w; w = turn()) await w;
     this.assertOpen();
+    this.assertNoScopedRead();
     if (this.readOnly) throw new KernelGuardError("units are for mutations");
     if (++this.units > MAX_UNITS_PER_TX)
       throw new KernelGuardError(`a transaction opens at most ${MAX_UNITS_PER_TX} units`);
@@ -179,6 +263,22 @@ class PgTx implements Tx {
     // never runs under another call's savepoint or settings (PR-UDF-062; R1-D-237).
     for (let w = this.turn?.(); w; w = this.turn?.()) await w;
     this.assertOpen();
+    this.assertNoScopedRead();
+    return this.send<R>(text, params);
+  }
+  /**
+   * Kernel only: a statement of the scoped branch read open on this transaction (R1-D-273), which
+   * alone may run while it is open. It takes its turn and passes the statement guard as any other.
+   */
+  async scopedQuery<R = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<QueryResult<R>> {
+    for (let w = this.turn?.(); w; w = this.turn?.()) await w;
+    this.assertOpen();
+    return this.send<R>(text, params);
+  }
+  private async send<R>(text: string, params?: readonly unknown[]): Promise<QueryResult<R>> {
     assertAllowedStatement(text);
     this.guard?.(text);
     const r = await this.client.query(text, params as unknown[] | undefined);
@@ -201,22 +301,28 @@ class PgTx implements Tx {
    * savepoint as `role`, read-only, with the read's own `app.*` settings; the savepoint is always
    * rolled back, which undoes the role, the read-only flag and the settings (each set with SET
    * LOCAL inside it), so the ambient transaction carries on as it was. The savepoint is opened and
-   * rolled back only when `turn` lets it (PR-UDF-062; R1-D-237).
+   * rolled back only when `turn` lets it (PR-UDF-062; R1-D-237). With `scoped` it is a scoped
+   * branch read (R1-D-273): nothing else runs on the transaction until its savepoint is rolled back.
    */
   async readUnit<T>(
     role: string,
     ctx: KernelContext,
     fn: () => Promise<T>,
     turn?: Turn,
+    scoped = false,
   ): Promise<UnitOutcome<T>> {
     if (turn) for (let w = turn(); w; w = turn()) await w;
     this.assertOpen();
+    this.assertNoScopedRead();
     if (this.readOnly) throw new KernelGuardError("units are for mutations");
     if (++this.units > MAX_UNITS_PER_TX)
       throw new KernelGuardError(`a transaction opens at most ${MAX_UNITS_PER_TX} units`);
     const name = `ipb_unit_${this.depth}`;
     const auditedBefore = this._audited;
     this.depth++;
+    // Set before the savepoint opens, in the tick of the checks, so no other statement can be sent
+    // in between (R1-D-273); cleared only once the savepoint is rolled back and released.
+    if (scoped) this.scopedOpen = true;
     await this.client.query(`savepoint ${name}`);
     try {
       await this.client.query(`set local role ${quoteIdent(role)}`);
@@ -227,12 +333,50 @@ class PgTx implements Tx {
       return { ok: false, error };
     } finally {
       if (turn) for (let w = turn(); w; w = turn()) await w;
-      // A failed rollback (a broken connection) fails the whole transaction.
+      // A failed rollback (a broken connection) fails the whole transaction; a scoped read's flag
+      // then stays set, so nothing more runs on it.
       await this.client.query(`rollback to savepoint ${name}`);
       await this.client.query(`release savepoint ${name}`);
+      if (scoped) this.scopedOpen = false;
       this._audited = auditedBefore;
       this.depth--;
     }
+  }
+}
+
+const SCOPED_OPEN =
+  "a scoped branch read is open on this transaction: nothing else runs on it until the read ends, and scoped reads do not nest";
+
+/**
+ * The transaction a scoped branch read's callback gets (R1-D-273): its statements run on the
+ * mutation's connection inside the read's savepoint, read-only, under the derived branch scope.
+ * It opens no units and its ledger mark counts for nothing.
+ */
+class ScopedBranchReadTx implements Tx {
+  private ended = false;
+  constructor(
+    private readonly parent: PgTx,
+    readonly ctx: KernelContext,
+  ) {}
+  /** Kernel only: the read is over; its tx may not be used again (R1-D-92). */
+  end(): void {
+    this.ended = true;
+  }
+  query<R = Record<string, unknown>>(
+    text: string,
+    params?: readonly unknown[],
+  ): Promise<QueryResult<R>> {
+    if (this.ended) return Promise.reject(new KernelGuardError(ENDED));
+    return this.parent.scopedQuery<R>(text, params);
+  }
+  markAudited(): void {
+    // A read writes no ledger entry; its unit is rolled back, so nothing it wrote would survive.
+  }
+  get audited(): boolean {
+    return false;
+  }
+  unit<T>(): Promise<UnitOutcome<T>> {
+    return Promise.reject(new KernelGuardError("units are for mutations"));
   }
 }
 
@@ -277,12 +421,17 @@ class JoinedTx implements Tx {
   private _audited = false;
   private ended = false;
   constructor(
-    private readonly parent: PgTx,
+    /** Kernel only: the ambient transaction this call runs on. */
+    readonly parent: PgTx,
     readonly ctx: KernelContext,
   ) {}
   /** Kernel only: the joined call's unit is over; its tx may not be used again (R1-D-92). */
   end(): void {
     this.ended = true;
+  }
+  /** Kernel only: whether the joined call's unit is still open. */
+  get open(): boolean {
+    return !this.ended;
   }
   query<R = Record<string, unknown>>(
     text: string,
@@ -492,12 +641,224 @@ export class PgKernel implements MutationKernel {
   private readonly readRole: string;
   private readonly audit: AuditSink | undefined;
   private readonly ambientFrame = new AsyncLocalStorage<AmbientFrame>();
+  private readonly branchGrants: BranchGrantSource | undefined;
+  /** Declared scoped-branch-read capabilities, and those already issued (R1-D-273). */
+  private readonly capabilities: ReadonlySet<string>;
+  private readonly issued = new Set<string>();
+  /** The mutation transactions this kernel opened: the only ones a scoped read runs in. */
+  private readonly mutationTxs = new WeakSet<PgTx>();
 
   constructor(opts: PgKernelOptions) {
     this.pool = opts.pool;
     this.role = opts.role ?? "app_rw";
     this.readRole = opts.readRole ?? this.role;
     this.audit = opts.audit;
+    this.branchGrants = opts.branchGrants;
+    const names = opts.scopedBranchReadCapabilities ?? [];
+    for (const n of names)
+      if (typeof n !== "string" || !CAPABILITY_NAME.test(n) || n.startsWith("approvals."))
+        throw new RangeError(`invalid scoped branch read capability name ${JSON.stringify(n)}`);
+    if (new Set(names).size !== names.length)
+      throw new RangeError("scoped branch read capability names must be distinct");
+    this.capabilities = new Set(names);
+    // The approval executor's path (R1-D-273): the approvals engine of this package finds it by
+    // this kernel instance; nothing outside the package can.
+    bindScopedBranchRead(this, (tx, source, req, fn) =>
+      this.#scopedBranchRead(tx, source, req, fn),
+    );
+  }
+
+  /**
+   * The named scoped-branch-read capability `name` (Finbyx PR-FBX-54; R1-D-273), declared in
+   * `PgKernelOptions.scopedBranchReadCapabilities`, issued once: wire it at start-up into the one
+   * service that needs it. A second call, or an undeclared name, throws `KernelGuardError`.
+   */
+  scopedBranchReadCapability(name: string): ScopedBranchReadCapability {
+    if (!this.capabilities.has(name))
+      throw new KernelGuardError(
+        `no scoped branch read capability ${JSON.stringify(name)} was declared (PgKernelOptions.scopedBranchReadCapabilities)`,
+      );
+    if (this.issued.has(name))
+      throw new KernelGuardError(
+        `the scoped branch read capability ${JSON.stringify(name)} was already issued`,
+      );
+    this.issued.add(name);
+    const source: ScopedBranchReadSource = Object.freeze({ kind: "capability", name });
+    return Object.freeze({
+      name,
+      scopedBranchRead: <T>(tx: Tx, opts: ScopedBranchReadOptions, fn: (tx: Tx) => Promise<T>) =>
+        this.#scopedBranchRead(tx, source, opts, fn),
+    });
+  }
+
+  /** The mutation transaction of this kernel `tx` runs on, if it is one and open (R1-D-273). */
+  #mutationBase(tx: Tx): PgTx {
+    if (tx instanceof PgTx && tx.open && this.mutationTxs.has(tx)) return tx;
+    if (tx instanceof JoinedTx && tx.open && tx.parent.open && this.mutationTxs.has(tx.parent))
+      return tx.parent;
+    throw new KernelGuardError(
+      "a scoped branch read runs only inside a mutation this kernel opened, on its own transaction",
+    );
+  }
+
+  /**
+   * A scoped branch read (Finbyx PR-FBX-54; R1-D-273): inside the mutation `tx`, `fn` runs
+   * read-only (a read unit as the read role, always rolled back) under the caller's context with
+   * its branch scope set to exactly the named branches, every one of which the caller must hold a
+   * grant on (`branchGrants`, else the context's own branches). Ledgered in the mutation's
+   * transaction before the read, so the entry commits or rolls back with the mutation; it does not
+   * count as the mutation's own ledger entry. A refusal is `IPB-SEC-005` with a fixed
+   * `meta.refusal`, ledgered in its own transaction after the mutation's has ended. Reached only by
+   * an approval executor (`ActionPolicy.execute`'s fourth argument) or a named capability.
+   */
+  async #scopedBranchRead<T>(
+    tx: Tx,
+    source: ScopedBranchReadSource,
+    req: ScopedBranchReadRequest,
+    fn: (tx: Tx) => Promise<T>,
+  ): Promise<T> {
+    const audit = this.audit;
+    if (!audit)
+      throw new KernelGuardError(
+        "a scoped branch read needs the kernel's audit sink (PgKernelOptions.audit)",
+      );
+    const base = this.#mutationBase(tx);
+    if (base.scopedOpen) throw new KernelGuardError(SCOPED_OPEN);
+    if (typeof fn !== "function") throw new TypeError("a scoped branch read needs a callback");
+    const caller = tx.ctx;
+    const resource =
+      source.kind === "approval"
+        ? { resourceType: "approval_request", resourceId: source.requestId }
+        : { resourceType: "kernel_capability", resourceId: source.name };
+    const origin =
+      source.kind === "approval"
+        ? { approval_request_id: source.requestId, approval_action: source.action }
+        : { capability: source.name };
+    const businessIds = source.kind === "approval" ? { businessIds: [source.requestId] } : {};
+    const refuse = (
+      refusal: ScopedBranchReadRefusal,
+      detail: string,
+      extra: Record<string, unknown> = {},
+    ): never => {
+      base.branchScopeRefusals.push({
+        ctx: caller,
+        entry: {
+          action: SCOPED_BRANCH_READ_REFUSED_ACTION,
+          ...resource,
+          after: { refusal, tenant_id: caller.tenantId, ...origin, ...extra },
+          ...businessIds,
+        },
+      });
+      throw new IpbError("IPB-SEC-005", { detail, meta: { refusal } });
+    };
+    // A person or a service of the tenant, acting as itself: never an agent (makers only), support
+    // access, break-glass, a service reader, an external principal, impersonation or platform scope.
+    if (
+      isAgentPrincipal(caller) ||
+      isSupportContext(caller) ||
+      caller.breakGlassGrantId ||
+      serviceReaderRole(caller) ||
+      isExternal(caller) ||
+      caller.act ||
+      caller.scope === "platform"
+    )
+      refuse("principal", "this principal does not open scoped branch reads");
+    const named = (req as { branchIds?: unknown } | null | undefined)?.branchIds;
+    if (
+      !Array.isArray(named) ||
+      named.length < 1 ||
+      named.length > MAX_BRANCH_IDS ||
+      !named.every((b) => typeof b === "string" && BRANCH_ID_PATTERN.test(b)) ||
+      new Set(named).size !== named.length
+    )
+      refuse(
+        "branch_ids",
+        `a scoped branch read names 1 to ${MAX_BRANCH_IDS} distinct branch ids of the branch id pattern`,
+      );
+    // A copy, taken before any await, so the caller cannot change the list after it is checked.
+    const ids: readonly string[] = Object.freeze([...(named as string[])]);
+    const reason = (req as { reason?: unknown }).reason;
+    if (
+      typeof reason !== "string" ||
+      reason.length < 1 ||
+      reason.length > MAX_SCOPED_BRANCH_READ_REASON ||
+      CONTROL.test(reason) ||
+      reason.trim().length === 0
+    )
+      refuse(
+        "reason",
+        `a scoped branch read states a reason of 1 to ${MAX_SCOPED_BRANCH_READ_REASON} characters, with no control character`,
+      );
+    // Reads on the mutation's transaction under the caller's context: it cannot mark the ledger
+    // or open a unit.
+    const view = (): Tx => ({
+      ctx: caller,
+      query: <R = Record<string, unknown>>(text: string, params?: readonly unknown[]) =>
+        base.query<R>(text, params),
+      markAudited: () => undefined,
+      get audited() {
+        return false;
+      },
+    });
+    const grants = await this.#grantsOf(caller, view());
+    if (!grants) refuse("grants", 'the branch grant source answered neither a list nor "all"');
+    const ungranted = grants === "all" ? [] : ids.filter((b) => !(grants as Set<string>).has(b));
+    if (ungranted.length)
+      refuse("ungranted", "the caller holds no grant on a named branch", {
+        branch_ids: ids,
+        ungranted,
+      });
+    await audit.record(view(), {
+      action: SCOPED_BRANCH_READ_ACTION,
+      ...resource,
+      after: { reason, branch_ids: ids, tenant_id: caller.tenantId, ...origin },
+      ...businessIds,
+    });
+    // The caller's tenant, principal, trace and kernel-read sandbox flag; exactly the named
+    // branches; no current branch (a read changes nothing in any branch).
+    const derived: KernelContext = { ...caller, branchIds: ids, allBranches: false };
+    delete derived.branchId;
+    assertValidContext(derived);
+    const frame = this.ambientFrame.getStore();
+    if (base.turn) {
+      if (frame?.scope.tx !== base)
+        throw new KernelGuardError(
+          "a scoped branch read in an ambient mutation runs from a call open on it",
+        );
+      return this.joined(frame, () => this.joinedRead(frame, derived, fn, true));
+    }
+    const out = await base.readUnit(
+      this.readRole,
+      derived,
+      async () => {
+        const child = new ScopedBranchReadTx(base, derived);
+        try {
+          return await fn(child);
+        } finally {
+          // Before the savepoint is rolled back: a statement the callback left behind never runs
+          // under the mutation's own settings.
+          child.end();
+        }
+      },
+      undefined,
+      true,
+    );
+    if (!out.ok) throw out.error;
+    return out.value;
+  }
+
+  /** The caller's branch grants (R1-D-273); null when the source answered something else. */
+  async #grantsOf(caller: KernelContext, view: Tx): Promise<ReadonlySet<string> | "all" | null> {
+    if (!this.branchGrants) return caller.allBranches ? "all" : new Set(caller.branchIds ?? []);
+    const g: unknown = await this.branchGrants(view);
+    if (g === "all") return "all";
+    if (!(g instanceof Set) && !Array.isArray(g)) return null;
+    const out = new Set<string>();
+    for (const b of g as Iterable<unknown>) {
+      if (typeof b !== "string") return null;
+      out.add(b);
+    }
+    return out;
   }
 
   async mutate<T>(
@@ -726,18 +1087,23 @@ export class PgKernel implements MutationKernel {
     return this.mayJoin(scope, ctx);
   }
 
+  /**
+   * A read joined to the ambient mutation (PR-UDF-037; R1-D-188), or with `scoped` a scoped branch
+   * read in it (R1-D-273), whose callback's statements alone run while it is open.
+   */
   private async joinedRead<T>(
     frame: AmbientFrame,
     ctx: KernelContext,
     fn: (tx: Tx) => Promise<T>,
+    scoped = false,
   ): Promise<T> {
     const { scope } = frame;
     // Its turn, as a joined mutation's (PR-UDF-062).
     for (let w = turnOf(scope, frame.token); w; w = turnOf(scope, frame.token)) await w;
-    const token = Symbol("joined-read");
+    const token = Symbol(scoped ? "scoped-read" : "joined-read");
     const call: OpenCall = { token, ctx, opts: {} };
     scope.stack.push(call);
-    let child: JoinedReadTx | undefined;
+    let child: JoinedReadTx | ScopedBranchReadTx | undefined;
     let out: UnitOutcome<T>;
     try {
       out = await scope.tx.readUnit(
@@ -745,7 +1111,10 @@ export class PgKernel implements MutationKernel {
         ctx,
         async () => {
           // Same tenant as the ambient transaction: its sandbox flag, not the caller's (R1-D-87).
-          child = new JoinedReadTx(scope.tx, withKernelSandbox(ctx, scope.tx.ctx.sandbox));
+          const kctx = withKernelSandbox(ctx, scope.tx.ctx.sandbox);
+          child = scoped
+            ? new ScopedBranchReadTx(scope.tx, kctx)
+            : new JoinedReadTx(scope.tx, kctx);
           const c = child;
           try {
             return await this.ambientFrame.run({ scope, token }, () => fn(c));
@@ -754,6 +1123,7 @@ export class PgKernel implements MutationKernel {
           }
         },
         () => turnOf(scope, token, true),
+        scoped,
       );
     } catch (error) {
       // The savepoint's rollback, which undoes the read's role, read-only flag and settings,
@@ -878,28 +1248,33 @@ export class PgKernel implements MutationKernel {
 
   /** Ledger a scope refusal in the context's tenant, in its own transaction (R1-D-75, R1-D-76). */
   private async ledgerRefusal(ctx: KernelContext, r: ScopeRefusal, action?: string): Promise<void> {
-    const audit = this.audit;
-    if (!audit) throw new KernelGuardError("a scoped grant needs the kernel's audit sink");
+    if (!this.audit) throw new KernelGuardError("a scoped grant needs the kernel's audit sink");
     const support = r.scope.kind === "support";
-    const ledgerAction = support ? SUPPORT_SCOPE_REFUSED_ACTION : BREAKGLASS_SCOPE_REFUSED_ACTION;
+    await this.ledgerOwn(ctx, {
+      action: support ? SUPPORT_SCOPE_REFUSED_ACTION : BREAKGLASS_SCOPE_REFUSED_ACTION,
+      resourceType: support ? "support_grant" : "breakglass_grant",
+      resourceId: r.scope.grantId,
+      after: {
+        reason: r.reason,
+        tenant_id: ctx.tenantId,
+        scope: { tenant_id: r.scope.tenantId, modules: r.scope.modules, access: r.scope.access },
+        ...(r.module ? { module: r.module } : {}),
+        ...(action ? { action } : {}),
+      },
+    });
+  }
+
+  /** Ledger a kernel entry in the context's tenant, in its own transaction. */
+  private async ledgerOwn(ctx: KernelContext, entry: AuditEntryInput): Promise<void> {
+    const audit = this.audit;
+    if (!audit) throw new KernelGuardError("the kernel has no audit sink");
     const client = await this.pool.connect();
     try {
       await client.query("begin");
       await client.query(`set local role ${quoteIdent(this.role)}`);
-      await applySettings(client, ctx, { action: ledgerAction });
+      await applySettings(client, ctx, { action: entry.action });
       const ltx = new PgTx(client, withKernelSandbox(ctx, undefined));
-      await audit.record(ltx, {
-        action: ledgerAction,
-        resourceType: support ? "support_grant" : "breakglass_grant",
-        resourceId: r.scope.grantId,
-        after: {
-          reason: r.reason,
-          tenant_id: ctx.tenantId,
-          scope: { tenant_id: r.scope.tenantId, modules: r.scope.modules, access: r.scope.access },
-          ...(r.module ? { module: r.module } : {}),
-          ...(action ? { action } : {}),
-        },
-      });
+      await audit.record(ltx, entry);
       ltx.end();
       await client.query("commit");
     } catch (e) {
@@ -1018,6 +1393,7 @@ export class PgKernel implements MutationKernel {
         sandbox = sb.rows[0]?.sandbox ?? false;
       }
       tx = new PgTx(client, withKernelSandbox(ctx, sandbox), readOnly !== false, guard);
+      if (readOnly === false) this.mutationTxs.add(tx);
       if (live) bindSupportGrant(tx, live);
       const result = await fn(tx);
       tx.end();
@@ -1039,6 +1415,8 @@ export class PgKernel implements MutationKernel {
         seen.add(key);
         await this.ledgerRefusal(ctx, r, m.action);
       }
+      // Refused scoped branch reads (R1-D-273), each in the tenant of the call that made it.
+      for (const r of tx?.branchScopeRefusals.splice(0) ?? []) await this.ledgerOwn(r.ctx, r.entry);
     }
   }
 }

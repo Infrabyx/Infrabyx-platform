@@ -1,5 +1,20 @@
 # @infrabyx/cms
 
+## 1.1.56
+
+### Patch Changes
+
+- Updated dependencies [e98dfeb]
+- Updated dependencies [24c16c4]
+- Updated dependencies [5fc6afe]
+- Updated dependencies [daa13b9]
+  - @infrabyx/crypto@1.15.0
+  - @infrabyx/contracts@1.48.0
+  - @infrabyx/brand@1.2.19
+  - @infrabyx/config@1.24.2
+  - @infrabyx/tenancy@1.24.1
+  - @infrabyx/ui@1.3.19
+
 ## 1.1.55
 
 ### Patch Changes

@@ -1922,6 +1922,79 @@ The database sweep's `FIELD` rule now uses these names for columns and JSON keys
 - JSON with `uid`-style keys for other identifiers (`user_uid`, `owner_uid`): rename the key (`user_id`).
 - **Udofin:** the three checks of your request are the default; drop your own copies of them and keep the shared sweep.
 
+## 7er. Reading other branches inside an approval executor (PR-FBX-54; R1-D-273)
+
+From the next release (`tenancy` minor; no migration, setting or environment variable). **Why:** Finbyx's month-lock approval reconciles loans of branches that are closed, which the checker's context (built per request from the open branches) does not list. Until now the executor needed a separate `kernel.read` with a hand-built context (the interim shim), outside the executing transaction. The kernel now runs that read inside the executor's own transaction, read-only, under a context whose branch scope is exactly the branches named, each of which the checker must hold a grant on.
+
+**1. Tell the kernel where grants live.** Give `PgKernel` a grant source returning every branch the principal holds a grant on, open or closed. It runs on the mutation's transaction under the caller's context; read only.
+
+```ts
+import { PgKernel } from "@infrabyx/tenancy";
+
+const kernel = new PgKernel({
+  pool,
+  audit, // required: every scoped read is ledgered
+  readRole: "app_ro",
+  branchGrants: async (tx) =>
+    (
+      await tx.query<{ branch_id: string }>(
+        "select branch_id from fbx.branch_grant where user_id = $1 and revoked_at is null",
+        [tx.ctx.principal.id],
+      )
+    ).rows.map((r) => r.branch_id), // or "all" for a head-office grant
+});
+```
+
+- Return grants, not what the principal happens to see: a branch closed last year that the checker still holds a grant on belongs in the list; a branch they never held does not.
+- Without `branchGrants`, the caller's own `allBranches` or `branchIds` are their grants, so a closed branch must then be in the context's `branchIds`.
+
+**2. Call it from the month-lock executor.** The executor's fourth argument is valid during that execution only:
+
+```ts
+engine.register("fbx.month.lock", {
+  checkerRoles: ["ORG_CHECKER"],
+  execute: async (tx, payload, request, kernel) => {
+    const branches = payload.branchIds as string[]; // closed ones included
+    const open = await kernel.scopedBranchRead(
+      { branchIds: branches, reason: `month-lock reconciliation ${String(payload.month)}` },
+      async (rtx) =>
+        (
+          await rtx.query<{ id: string; branch_id: string }>(
+            "select id, branch_id from loans.account where status <> 'closed'",
+          )
+        ).rows,
+    );
+    // ... reconcile, then write the lock with tx as before (and ledger it: the read's row is not yours)
+  },
+});
+```
+
+- `branchIds`: 1 to 1000 distinct branch ids, each granted to the caller; the read sees exactly those (`app.branch_scope` `listed`, no current branch), not the caller's own branches unless named. `reason`: 1 to 500 characters, one line, no personal data.
+- Read-only: an `insert`, `update`, `delete` or DDL inside is refused by PostgreSQL (`25006`) and nothing inside survives (the unit is always rolled back). Catch the error to carry on; uncaught, it fails the executing mutation. Inside the callback use `rtx` only: `tx`, `rtx.unit`, a nested `scopedBranchRead` and product code setting `app.*` are refused while the read is open.
+- It works when `decide` or `execute` runs inside `kernel.ambient` (the read takes its turn).
+
+**3. What is ledgered.** In the executing transaction, before the read: `security.branch_scope.read`, resource `approval_request` with the request id (also its business id, so `audit.history(ctx, requestId)` shows it), `after` = the reason, the branch ids, the tenant, the request id and action. It commits or rolls back with the mutation and does not count as the executor's own entry. A refusal is `IPB-SEC-005` with `meta.refusal` one of `principal` (agents, support access, break-glass, service readers, external principals, impersonation, platform scope), `branch_ids`, `reason`, `grants` (the source answered something else) or `ungranted`; it is ledgered `security.branch_scope.read_refused` after the transaction ends, even when you catch it.
+
+**4. Outside an approval executor (a named capability).** For a reviewed job that is not an approval, declare a name when the kernel is built and take the capability once at start-up; nothing a request carries can name one.
+
+```ts
+const kernel = new PgKernel({
+  pool,
+  audit,
+  branchGrants,
+  scopedBranchReadCapabilities: ["fbx.reconcile"],
+});
+const reconcile = kernel.scopedBranchReadCapability("fbx.reconcile"); // once; a second call throws
+await kernel.mutate(ctx, async (tx) => {
+  const rows = await reconcile.scopedBranchRead(tx, { branchIds, reason }, (rtx) => rtx.query(sql));
+  await audit.record(tx, { action: "fbx.reconcile.run", resourceType: "run", resourceId: runId });
+});
+```
+
+Its ledger row names `kernel_capability` and the name instead of a request.
+
+**5. Retire the interim shim.** Once on this release, replace the month-lock's separate `kernel.read` (and the context it built with the closed branches) by step 2, and drop any code that widened `branchIds` for it. The kernel's refusal of product code setting `app.*` is unchanged, so no other path widens a branch scope.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
