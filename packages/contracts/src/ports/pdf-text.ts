@@ -9,8 +9,9 @@
 // `CLEAN`, or the bytes are not the ones scanned), `IPB-SEC-013` (a size, count, depth, ratio, time
 // or memory limit; `meta.reason` says which), `IPB-SEC-010` (not a readable PDF, or encrypted).
 // A STORAGE read refused because the file's named tenant key is disabled or no longer granted is
-// `IPB-KMS-001` with `meta.reason` `storage_key_unavailable` and nothing else (PR-UDF-067); any
-// other read failure is `IPB-PORT-002` (`unavailable`).
+// `IPB-KMS-001` with `meta.reason` `storage_key_unavailable` and nothing else (PR-UDF-067); a read
+// STORAGE refuses for integrity is `IPB-STOR-005` with `meta.reason` `hash_mismatch` and nothing
+// else (PR-UDF-080, R1-D-269); any other read failure is `IPB-PORT-002` (`unavailable`).
 import { z } from "zod";
 import { DocFileRef } from "./doc-file.js";
 import { ScanProof } from "./file-scan.js";
