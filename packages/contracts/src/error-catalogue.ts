@@ -89,6 +89,15 @@ export const ERROR_CATALOGUE = {
     title: "Adapter cannot honour retention",
     source: "IPB-01 §01.6.3",
   },
+  // A stored object whose bytes do not match the SHA-256 recorded at write, or whose checksum as
+  // the store returns it disagrees with them (Udofin PR-UDF-080, R1-D-269): a possible tamper,
+  // never an outage, so not `IPB-PORT-002`'s 503 and never retried. IPB-01 §01.6.3 entry: PR-050.
+  "IPB-STOR-005": {
+    status: 500,
+    title: "Stored object failed its integrity check; read refused",
+    helpKey: "hlp.int.storage_integrity",
+    source: "R1-D-269 (PR-UDF-080, PR-050)",
+  },
   "IPB-IDN-001": { status: 401, title: "Token invalid or expired", source: "IPB-01 §01.6.3" },
   "IPB-IDN-002": {
     status: 503,

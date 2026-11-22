@@ -1866,6 +1866,32 @@ infrabyx-routing check infra/routing/<product>/*.routing.yaml \
 - **`hermetic`:** the self-hosted, in-process and composite adapters (`keycloak`, `cerbos`, `vault`, `bullmq`, `temporal`, `clamav`, `gotenberg`, `livekit`, `pdf-text`, `kyc-method-router`, `vcip-conductor` and the rest). They have no vendor sandbox leg and the check does not refuse them for this file. `minio` stays under `adapters` (PL2-D-61).
 - A product that reads the file itself should read only `adapters` for refusals; `hermetic` is for completeness. The platform's unit test fails when an adapter is added to the package without an entry.
 
+## 7ep. A tampered file is `IPB-STOR-005`, not an outage (PR-UDF-080; R1-D-269)
+
+Minors of `contracts`, `connectors`, `fakes`, `testing` and `hlp`; no migration or setting. **Behaviour visible:** a STORAGE read whose bytes do not match the SHA-256 recorded at write, or whose checksum as S3 returns it disagrees with them, was `IPB-PORT-002` (503, "adapter unavailable"); it is now `IPB-STOR-005` (500, "Stored object failed its integrity check; read refused", help key `hlp.int.storage_integrity`) with `meta.reason` `hash_mismatch`. An outage stays `IPB-PORT-002`. Neither returns any bytes.
+
+```ts
+import type { IpbError } from "@infrabyx/contracts/errors";
+import { isStorageIntegrityError } from "@infrabyx/contracts/ports";
+
+try {
+  return await storage.get(key);
+} catch (e) {
+  if (isStorageIntegrityError(e)) {
+    // IPB-STOR-005: possible tamper. Do not retry; keep the record blocked; alert security.
+  } else if ((e as IpbError).code === "IPB-PORT-002") {
+    // Outage: retry later, as before.
+  }
+  throw e;
+}
+```
+
+- **Catch it, do not retry it:** a tampered object does not get better. Do not put `IPB-STOR-005` on a retry or back-off path, do not fall back to another copy, and do not treat it as "try again later" in the UI (the help entry says so). The circuit breaker ignores it, so the router does not fail over a read of it to the DR replica.
+- **Alert on it as a possible tamper:** raise it to your security or operations alerting with the object's own record id (the error carries no key, bucket or hash, so take them from your own record), and keep the document, case or loan that relies on it blocked until someone has looked. Do not delete or overwrite the object: it is the evidence.
+- **The label is unchanged:** match `code === "IPB-STOR-005"` (or `isStorageIntegrityError`); `reason: "hash_mismatch"` is on the error and on the problem response (`toProblem` → `{ status: 500, code: "<PRODUCT>-STOR-005", reason: "hash_mismatch" }`, no `retry_after_seconds`). If you matched `IPB-PORT-002` to retry STORAGE reads, this case now leaves that path, as intended.
+- **Through other ports:** `pdf-text` `extractText` now throws `IPB-STOR-005` `hash_mismatch` for such a file (it was `IPB-PORT-002` `unavailable`); the `clamav` adapter and `FakeFileScan` answer `ERROR` with reason `hash_mismatch` (it was `unavailable`), still quarantined. Ports that compare the bytes with the hash you pass (ESIGN, KYC, ESTAMP, STATEMENT_ANALYSIS, PDF text, web snapshots, AV) keep their own codes; a caller that only reads through STORAGE (a workflow input, an attachment) now sees `IPB-STOR-005` from the read.
+- **Testing:** `new MemoryStorage(undefined, { readError })`, where `readError(key)` returns `"integrity"` (`get` throws `IPB-STOR-005`) or `"unavailable"` (`get` throws `IPB-PORT-002`). Run `storageIntegrityContractCases({ tamper, outage })` from `@infrabyx/testing` against your own STORAGE fixture or adapter (`tamper(key, bucketClass)` changes the stored bytes beneath it; `outage(key)` gives a store that cannot be read), so a fixture cannot pass what the `s3` adapter refuses.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

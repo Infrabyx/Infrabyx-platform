@@ -270,6 +270,22 @@ export function promotedObjectMeta(
   };
 }
 
+/**
+ * Integrity refusal of a STORAGE read (Udofin PR-UDF-080, R1-D-269): the object's bytes do not
+ * match the SHA-256 recorded at write, or the checksum the store returns disagrees with them.
+ * `get` then throws this code with `meta.reason` `STORAGE_HASH_MISMATCH` and a fixed detail, and
+ * never returns the bytes. Distinct from an outage (`IPB-PORT-002`, 503, retried later): a
+ * possible tamper is 500, never retried, and does not trip the circuit breaker or fail over.
+ */
+export const STORAGE_INTEGRITY_ERROR = "IPB-STOR-005" as const;
+/** The fixed `meta.reason` of `STORAGE_INTEGRITY_ERROR` (the label products already match on). */
+export const STORAGE_HASH_MISMATCH = "hash_mismatch" as const;
+
+/** Whether `e` is a STORAGE integrity refusal (`STORAGE_INTEGRITY_ERROR`), not an outage. */
+export function isStorageIntegrityError(e: unknown): boolean {
+  return (e as { code?: unknown } | null | undefined)?.code === STORAGE_INTEGRITY_ERROR;
+}
+
 export interface StoredObject {
   key: string;
   body: Uint8Array;
@@ -308,6 +324,12 @@ export interface StoragePort extends Port {
     retainUntil: Date,
     meta: ObjectMeta,
   ): Promise<void>;
+  /**
+   * The object's current version. Fails closed (PR-UDF-080, R1-D-269): bytes that do not match
+   * the SHA-256 recorded at write, or a checksum the store returns that disagrees with them, throw
+   * `STORAGE_INTEGRITY_ERROR` (`IPB-STOR-005`, `meta.reason` `hash_mismatch`); a store that cannot
+   * be read throws `IPB-PORT-002`. Neither returns bytes.
+   */
   get(key: string): Promise<StoredObject>;
   /**
    * SigV4 URL bound to the method (and for `put` the content type), TTL 1–300 s (IPB-02-15). A
