@@ -19,14 +19,22 @@ export * from "./vidhi.js";
 export * from "./search-refusal.js";
 // `verhoeffValid` comes through ./search-refusal.js (the same function).
 export {
+  AADHAAR_CARRIER_NAME_ENDINGS,
   AADHAAR_FIELD_NAMES,
+  AADHAAR_LABELLED_VALUE_MAX,
   AADHAAR_LIKE_KINDS,
   AADHAAR_LOOK_ALIKES,
+  findAadhaarCarrierFields,
+  findAadhaarLabelledValues,
   findAadhaarLike,
   findAadhaarNamedFields,
+  holdsAadhaarCarrierValue,
   holdsAadhaarLike,
   holdsAadhaarFieldValue,
+  isAadhaarCarrierName,
   isAadhaarFieldName,
+  isAadhaarLastFourName,
+  type AadhaarLabelledFind,
   type AadhaarLikeFind,
   type AadhaarLikeKind,
   type AadhaarLookAlike,

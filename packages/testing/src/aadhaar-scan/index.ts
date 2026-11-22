@@ -23,13 +23,25 @@
 //     named like an Aadhaar carrier (`isAadhaarFieldName`) is a `FIELD` find when it holds a
 //     value, whatever the value. A sweep that reads no table or no row, or more than `maxRows`,
 //     rejects instead of passing.
+//   - three more checks (PR-UDF-079, R1-D-270), on by default with no switch to turn them off:
+//     (1) a column named like a carrier is a `COLUMN` find from the catalogue alone, with no row
+//     read, even when every value is null or blank (the table's shape is the find); (2) a carrier
+//     name inside a longer name (`isAadhaarCarrierName`: `borrower_aadhaar_ref`, `kyc_uid_token`,
+//     `uidai_token`) counts as a carrier name for columns and JSON keys; (3) a carrier name followed
+//     by a value in free text (`findAadhaarLabelledValues`: `aadhaar: <number>`, `Aadhaar No. XXXX
+//     XXXX dddd`) is a `LABELLED` find in files and in text values, masked or not, Verhoeff-valid or
+//     not. A last-four name (`aadhaar_last_digits`, `aadhaarLast4`) is reported only for a value
+//     with more than four digits, and its column is no `COLUMN` find; a `boolean` column is none
+//     either. `skip` stays the product's per-column opt-out.
 import { lstat, open, readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
+  findAadhaarCarrierFields,
+  findAadhaarLabelledValues,
   findAadhaarLike,
-  findAadhaarNamedFields,
-  holdsAadhaarFieldValue,
-  isAadhaarFieldName,
+  holdsAadhaarCarrierValue,
+  isAadhaarCarrierName,
+  isAadhaarLastFourName,
   type AadhaarLikeKind,
   type AadhaarLookAlike,
   type FindAadhaarOptions,
@@ -45,13 +57,21 @@ export interface AadhaarScanOptions {
   allow?: readonly AadhaarLookAlike[];
 }
 
+/**
+ * `LABELLED` (PR-UDF-079): a carrier name followed by a value (`findAadhaarLabelledValues`); its
+ * `masked` is `(value withheld)`, and its column the label's.
+ */
+export type AadhaarTextFindKind = AadhaarLikeKind | "LABELLED";
+
 /** One find in a text: 1-based line and column, the kind and the masked number. */
 export interface AadhaarTextFind {
   line: number;
   column: number;
-  kind: AadhaarLikeKind;
+  kind: AadhaarTextFindKind;
   masked: string;
 }
+
+const WITHHELD = "(value withheld)";
 
 // Standalone only (PR-UDF-063): no letter or digit right before or after it, and no group of four
 // digits joined to it by one whitespace character or hyphen (the rule's own grouping, which would
@@ -63,7 +83,14 @@ const UUID =
 export function scanTextForAadhaar(text: string, o: AadhaarScanOptions = {}): AadhaarTextFind[] {
   // Same length, so offsets and lines stay those of the text.
   const t = text.replace(UUID, (m) => "u".repeat(m.length));
-  const finds = findAadhaarLike(t, { letters: o.letters ?? "join", allow: o.allow ?? [] });
+  const finds: { start: number; kind: AadhaarTextFindKind; masked: string }[] = [
+    ...findAadhaarLike(t, { letters: o.letters ?? "join", allow: o.allow ?? [] }),
+    ...findAadhaarLabelledValues(t).map((f) => ({
+      start: f.start,
+      kind: "LABELLED" as const,
+      masked: WITHHELD,
+    })),
+  ].sort((a, b) => a.start - b.start);
   if (!finds.length) return [];
   const out: AadhaarTextFind[] = [];
   let line = 1;
@@ -176,17 +203,25 @@ export interface AadhaarDatabaseScanOptions extends AadhaarScanOptions {
   allowEmpty?: boolean;
 }
 
-/** `FIELD`: a column or JSON field named like an Aadhaar carrier holds a value (PR-UDF-063). */
-export type AadhaarDatabaseFindKind = AadhaarLikeKind | "FIELD";
+/**
+ * `FIELD`: a column or JSON field named like an Aadhaar carrier holds a value (PR-UDF-063).
+ * `COLUMN`: a column is named like a carrier, whatever it holds (PR-UDF-079). `LABELLED`: a
+ * carrier name followed by a value in a text value or a JSON string (PR-UDF-079).
+ */
+export type AadhaarDatabaseFindKind = AadhaarTextFindKind | "FIELD" | "COLUMN";
 
 /** One find in a database: where it is (the row by `ctid`) and the masked number. */
 export interface AadhaarDatabaseFind {
   schema: string;
   table: string;
   column: string;
+  /** The row; `""` for a `COLUMN` find, which comes from the catalogue, not a row. */
   ctid: string;
   kind: AadhaarDatabaseFindKind;
-  /** The masked number, or `(value withheld)` for a `FIELD` find: never the value. */
+  /**
+   * The masked number; `(value withheld)` for a `FIELD` or `LABELLED` find and `(column)` for a
+   * `COLUMN` find: never the value.
+   */
   masked: string;
   /** For a `FIELD` find inside a JSON value: the key path below the column (`kyc.0.uid`). */
   field?: string;
@@ -212,7 +247,7 @@ export class AadhaarScanLimitError extends Error {
 }
 
 const ident = (s: string) => `"${s.replace(/"/g, '""')}"`;
-const WITHHELD = "(value withheld)";
+const COLUMN = "(column)";
 const CTID = /^\(\d+,\d+\)$/;
 
 /**
@@ -220,11 +255,15 @@ const CTID = /^\(\d+,\d+\)$/;
  * written, `jsonb`, composites, `bytea` as hex and also decoded) of every row of every ordinary
  * table and partition outside the system schemas, and sweep it: the number rule
  * (`scanTextForAadhaar`) over each value, and the named-field rule (PR-UDF-063): a column named
- * like an Aadhaar carrier (`isAadhaarFieldName`) holding a value, or such a field inside a JSON
- * value (a `json` or `jsonb` column, or text that parses as a JSON object or array). Rows are read
- * in batches by `ctid`, at most `maxRows` in all. Give it a superuser client (the `admin` of
- * `startPostgres`): row-level security does not apply to it, so every tenant's rows are read.
- * Meant for test databases, from `beforeDrop`.
+ * like an Aadhaar carrier (`isAadhaarCarrierName`, PR-UDF-079) holding a value, or such a field
+ * inside a JSON value (a `json` or `jsonb` column, or text that parses as a JSON object or array).
+ * Each carrier-named column is also a `COLUMN` find, from the catalogue before any row is read,
+ * and a carrier name followed by a value in a text value or a JSON string is a `LABELLED` find
+ * (PR-UDF-079). Rows are read in batches by `ctid`, at most `maxRows` in all. Give it a superuser
+ * client (the `admin` of `startPostgres`): row-level security does not apply to it, so every
+ * tenant's rows are read. Meant for test databases, from `beforeDrop`. A sweep that read no table
+ * or no row rejects (`AadhaarScanEmptyError`) only when it found nothing: a `COLUMN` find needs
+ * no row.
  */
 export async function sweepDatabaseForAadhaar(
   db: AadhaarScanQueryable,
@@ -263,6 +302,18 @@ export async function sweepDatabaseForAadhaar(
   }
   const scan: AadhaarDatabaseScan = { finds: [], tables: tables.size, rows: 0 };
   for (const t of tables.values()) {
+    // PR-UDF-079 (1): the shape is the find. A boolean holds no number, and a last-four column is
+    // judged by its values.
+    for (const c of t.columns)
+      if (isAadhaarCarrierName(c.name) && !isAadhaarLastFourName(c.name) && c.type !== "bool")
+        scan.finds.push({
+          schema: t.schema,
+          table: t.table,
+          column: c.name,
+          ctid: "",
+          kind: "COLUMN",
+          masked: COLUMN,
+        });
     const cols = t.columns.map((c, i) => `, r.${ident(c.name)}::text as c${i}`).join("");
     let after = "(0,0)";
     for (;;) {
@@ -283,7 +334,7 @@ export async function sweepDatabaseForAadhaar(
       if (!CTID.test(after)) throw new Error(`scanDatabaseForAadhaar: unexpected ctid ${after}`);
     }
   }
-  if (!o.allowEmpty && (scan.tables === 0 || scan.rows === 0))
+  if (!o.allowEmpty && !scan.finds.length && (scan.tables === 0 || scan.rows === 0))
     throw new AadhaarScanEmptyError(
       `scanDatabaseForAadhaar: read ${scan.tables} table(s) and ${scan.rows} row(s); a sweep that reads nothing proves nothing (allowEmpty)`,
     );
@@ -301,11 +352,11 @@ function sweepValue(
   if (v === null) return;
   const at = { schema: t.schema, table: t.table, column: c.name, ctid };
   const json = asJson(v, c.type);
-  if (isAadhaarFieldName(c.name)) {
-    if (namedColumnHolds(v, c.type, json))
+  if (isAadhaarCarrierName(c.name)) {
+    if (namedColumnHolds(c.name, v, c.type, json))
       scan.finds.push({ ...at, kind: "FIELD", masked: WITHHELD });
   } else if (json !== undefined)
-    for (const f of findAadhaarNamedFields(json))
+    for (const f of findAadhaarCarrierFields(json))
       scan.finds.push({ ...at, kind: "FIELD", masked: WITHHELD, field: f.path.join(".") });
   // bytea reads as `\x` and hex: the hex is read without its `\x` (which would join the run), and
   // the bytes are read as text too, so digits stored as bytes count.
@@ -315,19 +366,34 @@ function sweepValue(
       : [v];
   for (const text of texts)
     for (const f of scanTextForAadhaar(text, o))
-      scan.finds.push({ ...at, kind: f.kind, masked: f.masked });
+      // A JSON value's labels are read in its strings below (its keys are the field rule's).
+      if (!(json !== undefined && f.kind === "LABELLED"))
+        scan.finds.push({ ...at, kind: f.kind, masked: f.masked });
+  if (json !== undefined)
+    for (const s of jsonStrings(json))
+      if (findAadhaarLabelledValues(s).length)
+        scan.finds.push({ ...at, kind: "LABELLED", masked: WITHHELD });
+}
+
+/** Every string inside a parsed JSON value, keys left out, in document order. */
+function jsonStrings(v: unknown, out: string[] = []): string[] {
+  if (typeof v === "string") out.push(v);
+  else if (Array.isArray(v)) for (const x of v) jsonStrings(x, out);
+  else if (v && typeof v === "object") for (const x of Object.values(v)) jsonStrings(x, out);
+  return out;
 }
 
 /**
- * Whether a named column's value holds something: `holdsAadhaarFieldValue` over its JSON, or over
- * its text, except that a `boolean` holds nothing and an array (`{}`, `{NULL,""}`) holds something
- * only when an element does.
+ * Whether a carrier-named column's value holds something: `holdsAadhaarCarrierValue` over its
+ * JSON or its text (a last-four column: more than four digits), except that a `boolean` holds
+ * nothing and an array (`{}`, `{NULL,""}`) holds something only when an element does.
  */
-function namedColumnHolds(v: string, type: string, json: unknown): boolean {
-  if (json !== undefined) return holdsAadhaarFieldValue(json);
+function namedColumnHolds(name: string, v: string, type: string, json: unknown): boolean {
+  if (json !== undefined) return holdsAadhaarCarrierValue(name, json);
   if (type === "bool") return false;
+  if (isAadhaarLastFourName(name)) return holdsAadhaarCarrierValue(name, v);
   if (type.startsWith("_")) return /[^{}",\s]/.test(v.replace(/\bNULL\b/g, ""));
-  return holdsAadhaarFieldValue(v);
+  return holdsAadhaarCarrierValue(name, v);
 }
 
 /** The parsed value of a `json` or `jsonb` column, or of text holding a JSON object or array. */
