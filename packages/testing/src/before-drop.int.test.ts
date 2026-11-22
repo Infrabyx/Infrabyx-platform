@@ -162,6 +162,8 @@ describe("PR-UDF-042 scanDatabaseForAadhaar", () => {
     const field = { kind: "FIELD", masked: "(value withheld)" };
     expect(finds).toEqual([
       { ...at, table: "other", column: "body", kind: "VID", masked: v },
+      // PR-UDF-079: `uid` followed by a value, at the label, then the number.
+      { ...at, table: "t", column: "note", kind: "LABELLED", masked: "(value withheld)" },
       { ...at, table: "t", column: "note", kind: "AADHAAR", masked: m },
       { ...at, table: "t", column: "code", kind: "VID", masked: v },
       // PR-UDF-063: the `uid` field of the jsonb document, then the number in it.
@@ -173,6 +175,7 @@ describe("PR-UDF-042 scanDatabaseForAadhaar", () => {
       { ...at, table: "t", column: "n", kind: "AADHAAR", masked: m },
     ]);
     expect(skipped.map((f) => `${f.table}.${f.column}`)).toEqual([
+      "t.note",
       "t.note",
       "t.code",
       "t.doc",
@@ -222,13 +225,20 @@ describe("PR-UDF-063 sweepDatabaseForAadhaar", () => {
       );
     });
     expect(where(r)).toEqual([
+      // PR-UDF-079: each carrier-named column, from the catalogue (not the boolean, not the
+      // last-four column, not `uid_kind`).
+      "people.aadhaar_number:COLUMN",
+      "people.uidToken:COLUMN",
+      "people.uid:COLUMN",
+      "people.aadhaar_no:COLUMN",
       "people.aadhaar_number:FIELD",
       "people.uidToken:FIELD",
       "people.uid:FIELD",
       "people.profile.kyc.0.aadhaarNumber:FIELD",
       "people.body.customer.uid:FIELD",
     ]);
-    expect(r.finds.every((f) => f.masked === "(value withheld)")).toBe(true);
+    for (const f of r.finds)
+      expect(f.masked).toBe(f.kind === "COLUMN" ? "(column)" : "(value withheld)");
     // With `meta.migration_checksums` (empty without migrations), which is read too.
     expect(r).toMatchObject({ tables: 2, rows: 2 });
   });
@@ -321,5 +331,85 @@ describe("PR-UDF-063 sweepDatabaseForAadhaar", () => {
     for (const e of errors) expect(e).toBeInstanceOf(AadhaarScanEmptyError);
     // `empty` and `meta.migration_checksums`, both without a row.
     expect(scans).toEqual([{ finds: [], tables: 2, rows: 0 }]);
+  });
+});
+
+describe("PR-UDF-079 sweepDatabaseForAadhaar: carrier shapes, longer names, labelled values", () => {
+  const KYC = `create table kyc (id int, borrower_aadhaar_ref text, kyc_uid_token text, user_uid bigint,
+                                  uidai_token text, aadhaar_verified boolean,
+                                  aadhaar_last_digits text, uid_kind text, note text, doc jsonb)`;
+  const COLUMNS = [
+    "kyc.borrower_aadhaar_ref:COLUMN",
+    "kyc.kyc_uid_token:COLUMN",
+    "kyc.user_uid:COLUMN",
+    "kyc.uidai_token:COLUMN",
+  ];
+  const where = (s: AadhaarDatabaseScan) =>
+    s.finds.map((f) => `${f.table}.${f.column}${f.field ? `.${f.field}` : ""}:${f.kind}`);
+
+  it("an empty carrier-named column is a find from the catalogue: no row needed", async () => {
+    const scans: AadhaarDatabaseScan[] = [];
+    const db = await startPostgres({
+      platform: false,
+      beforeDrop: async (admin) => {
+        // No row anywhere: the finds come back instead of AadhaarScanEmptyError.
+        scans.push(await sweepDatabaseForAadhaar(admin));
+        await admin.query("insert into kyc (id) values (1), (2)");
+        scans.push(await sweepDatabaseForAadhaar(admin));
+        scans.push(await sweepDatabaseForAadhaar(admin, { skip: ["public.kyc.user_uid"] }));
+      },
+    });
+    await db.admin.query(KYC);
+    await db.end();
+    expect(where(scans[0]!)).toEqual(COLUMNS);
+    expect(scans[0]).toMatchObject({ tables: 2, rows: 0 });
+    // Every value null: the same finds, and nothing more.
+    expect(where(scans[1]!)).toEqual(COLUMNS);
+    expect(scans[1]).toMatchObject({ rows: 2 });
+    for (const f of scans[1]!.finds) expect(f).toMatchObject({ ctid: "", masked: "(column)" });
+    // `skip` is the product's per-column opt-out.
+    expect(where(scans[2]!)).toEqual(COLUMNS.filter((c) => !c.includes("user_uid")));
+  });
+
+  it("longer names hold values, and labelled values in text and JSON strings; masked", async () => {
+    const broken = `${UID.slice(0, -1)}${(Number(UID.at(-1)) + 1) % 10}`;
+    let r: AadhaarDatabaseScan | undefined;
+    const db = await startPostgres({
+      platform: false,
+      beforeDrop: async (admin) => void (r = await sweepDatabaseForAadhaar(admin)),
+    });
+    await db.admin.query(KYC);
+    await db.admin.query(
+      `insert into kyc values
+         (1, 'r-1', '', null, null, true, $1, 'x', $2, $3),
+         (2, null, null, null, null, false, $4, null, 'clean note', $5)`,
+      [
+        // A last-four column holding more than four digits.
+        broken,
+        `kyc ok aadhaar: XXXX XXXX ${UID.slice(-4)}`,
+        JSON.stringify({
+          remark: `Aadhaar No. ${broken}`,
+          borrower: { aadhaar_ref: "r-2", aadhaarLast4: UID.slice(-4) },
+          users: [{ user_uid: 7, uid_kind: "x" }],
+        }),
+        `xxxx-xxxx-${UID.slice(-4)}`,
+        JSON.stringify({ aadhaar_last_digits: `XXXX XXXX ${UID.slice(-4)}`, n: 1 }),
+      ],
+    );
+    await db.end();
+    expect(where(r!)).toEqual([
+      ...COLUMNS,
+      "kyc.borrower_aadhaar_ref:FIELD",
+      "kyc.aadhaar_last_digits:FIELD",
+      "kyc.note:LABELLED",
+      // jsonb keeps keys shortest first: users, remark, borrower.
+      "kyc.doc.users.0.user_uid:FIELD",
+      "kyc.doc.borrower.aadhaar_ref:FIELD",
+      "kyc.doc:LABELLED",
+    ]);
+    // Never a value: neither number, nor any of it.
+    const text = JSON.stringify(r!.finds);
+    for (const n of [UID, broken]) expect(text).not.toContain(n.slice(0, 6));
+    for (const f of r!.finds) expect(f.masked).toMatch(/^\((value withheld|column)\)$/);
   });
 });
