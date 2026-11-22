@@ -126,7 +126,8 @@ describe("ClamAV AV adapter (clamd protocol)", () => {
       });
     };
     const r = await make({ storage: denied }).scan(f);
-    expect(r).toMatchObject({ verdict: "ERROR", reason: "unavailable" });
+    // R1-D-276: told apart from an outage, still ERROR and quarantined.
+    expect(r).toMatchObject({ verdict: "ERROR", reason: "storage_key_unavailable" });
     expect(scanDecision(r).action).toBe("quarantine");
     expect(received.length).toBe(sent);
   });

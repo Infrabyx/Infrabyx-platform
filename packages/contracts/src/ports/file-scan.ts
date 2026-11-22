@@ -25,7 +25,18 @@ export const SCAN_ERROR_REASONS = [
   "stale_signatures",
   "unavailable",
   "disabled",
+  // The file's named STORAGE key is disabled, deleted or no longer granted (`IPB-KMS-001`), told
+  // apart from an outage (R1-D-276). Still `ERROR`: the file stays quarantined.
+  "storage_key_unavailable",
 ] as const;
+
+/** The scan reason for a STORAGE read that failed with `e` (R1-D-269, R1-D-276). */
+export function scanReasonOfReadError(e: unknown): ScanErrorReason {
+  const code = (e as { code?: unknown } | null | undefined)?.code;
+  if (code === "IPB-STOR-005") return "hash_mismatch";
+  if (code === "IPB-KMS-001") return "storage_key_unavailable";
+  return "unavailable";
+}
 export type ScanErrorReason = (typeof SCAN_ERROR_REASONS)[number];
 
 export const FileScanRequest = DocFileRef;

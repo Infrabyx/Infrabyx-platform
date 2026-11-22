@@ -355,7 +355,7 @@ export class S3Storage implements StoragePort {
         adapter: this.adapter,
         detail: "the object's named key is disabled, deleted or no longer granted",
         meta: { reason: "storage_key_unavailable", keyRef, name },
-        cause: e,
+        // No cause: a KMS error's message can carry the key's ARN (R1-D-276).
       });
   }
 
@@ -463,7 +463,8 @@ export class S3Storage implements StoragePort {
       adapter: this.adapter,
       detail: `${this.adapter} ${op} failed`,
       meta: { status: statusOf(e), name: (e as S3Error).name },
-      cause: e,
+      // No cause: an SDK error's message can carry a key ARN, a bucket or an object key; the fixed
+      // name and status are enough to diagnose (R1-D-276).
     });
   }
 

@@ -6,6 +6,15 @@ import { describe, expect, it } from "vitest";
 import { ulid } from "@infrabyx/crypto";
 import { MinioStorage, S3Storage, type S3StorageOptions } from "../s3.js";
 
+const FAKE_KEY_ARN = "arn:aws:kms:ap-south-1:000000000000:key/00000000-0000-0000-0000-000000000000";
+/** No ARN anywhere in the error, its meta or a cause (R1-D-276). */
+const noArn = (e: unknown) => {
+  expect((e as { cause?: unknown }).cause).toBeUndefined();
+  expect(JSON.stringify({ ...(e as object), message: (e as Error).message })).not.toContain(
+    "arn:aws:kms",
+  );
+};
+
 interface Put {
   Bucket: string;
   Key: string;
@@ -41,7 +50,11 @@ function adapter(over: Partial<S3StorageOptions> = {}) {
     ...over,
   });
   const err = (name: string, status: number) =>
-    Object.assign(new Error(name), { name, $metadata: { httpStatusCode: status } });
+    // The message quotes a (synthetic) key ARN, as a real KMS error can (R1-D-276).
+    Object.assign(new Error(`${name}: ${FAKE_KEY_ARN}`), {
+      name,
+      $metadata: { httpStatusCode: status },
+    });
   (p as unknown as { client: { send: (c: unknown) => Promise<unknown> } }).client.send = async (
     cmd: unknown,
   ) => {
@@ -216,10 +229,12 @@ describe("PR-UDF-058: STORAGE writes under a named tenant key", () => {
     await p.put(k, enc("a"), { bucketClass: "REGULATED", keyRef: "lender:a" });
     for (const name of ["KMS.DisabledException", "KMS.KMSInvalidStateException", "AccessDenied"]) {
       failOn("GetObjectCommand", name);
-      await expect(p.get(k)).rejects.toMatchObject({
+      const e = await p.get(k).catch((x: unknown) => x);
+      expect(e).toMatchObject({
         code: "IPB-KMS-001",
         meta: { reason: "storage_key_unavailable", keyRef: "lender:a" },
       });
+      noArn(e);
     }
     failOn("PutObjectCommand", "KMS.NotFoundException");
     await expect(
@@ -242,7 +257,9 @@ describe("PR-UDF-058: STORAGE writes under a named tenant key", () => {
     await p.put(named, enc("a"), { bucketClass: "REGULATED", keyRef: "lender:a" });
     await p.put(plain, enc("b"), { bucketClass: "REGULATED" });
     failOn("GetObjectCommand", "KMS.ThrottlingException");
-    await expect(p.get(named)).rejects.toMatchObject({ code: "IPB-PORT-002" });
+    const e = await p.get(named).catch((x: unknown) => x);
+    expect(e).toMatchObject({ code: "IPB-PORT-002" });
+    noArn(e);
     for (const name of ["AccessDenied", "KMS.DisabledException"]) {
       failOn("GetObjectCommand", name);
       await expect(p.get(plain)).rejects.toMatchObject({ code: "IPB-PORT-002" });
