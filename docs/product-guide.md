@@ -1848,6 +1848,7 @@ await parking.requeue(ctx, "cms", parked[0].eventId); // ledgered `tenancy.outbo
 
 - Fix the cause first (deploy the mapped job name, or bring the queue back), then requeue: the next pass retries the row with a fresh budget of `maxAttempts`. A park is requeued once; the record stays (nothing is deleted), with `requeued_at` and `requeued_by`.
 - Only a person (`principal.type` `user`) holding one of `requeueRoles` (default `ORG_OWNER`, `ORG_ADMIN`) may requeue, in the row's own tenant; a row with no open park answers `NotFoundError` (404).
+
 ## 7eo. Every adapter in `sandbox-status.json`, the unproven ones refused above staging (PR-UDF-078; R1-D-268)
 
 From the next release (`connectors` minor; no code path, setting, migration or environment variable), `@infrabyx/connectors/sandbox-status.json` lists every adapter the package publishes. Pass it to the routing check in CI as before:
