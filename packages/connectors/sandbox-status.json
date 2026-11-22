@@ -1,5 +1,5 @@
 {
-  "$comment": "IPB-DEV-04 gate B. Adapters with a vendor sandbox leg, each with its open port-contract issue. 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses unproven adapters in staging, pre-prod, prod and dr. Self-hosted adapters (hermetic leg only) are not listed unless the owner keeps them out of staging and above (minio, PL2-D-61).",
+  "$comment": "IPB-DEV-04 gate B. Every adapter this package publishes is listed here, in 'adapters' or 'hermetic' (src/__tests__/sandbox-status.test.ts fails otherwise). 'adapters': adapters with a vendor or counterparty sandbox leg, each 'unproven' until a green sandbox run closes its port-contract issue; infrabyx-routing check refuses an unproven adapter in staging, pre-prod, prod and dr. An unproven adapter names its open port-contract issue or, until one is opened, 'offBy': the settings (registered, default false) that keep it off (R1-D-268). Self-hosted adapters (hermetic leg only) are listed in 'adapters' only when the owner keeps them out of staging and above (minio, PL2-D-61). 'hermetic': the self-hosted, in-process and composite adapters, which have no vendor sandbox leg; the routing check does not read this list, so they are never refused for it.",
   "adapters": {
     "aws-sm": {
       "status": "unproven",
@@ -114,6 +114,207 @@
       "status": "unproven",
       "needs": "A self-hosted inference host (owner, 27 Oct 2026: not until a product needs one; #65)",
       "issue": 70
+    },
+    "nsdl-esign": {
+      "status": "unproven",
+      "needs": "the owner's NSDL ASP onboarding; ASP request signing stays refused until the owner approves it (OWNER-QUESTIONS #177 (2))",
+      "offBy": ["int.esign.nsdl.enabled"]
+    },
+    "nesl-dde": {
+      "status": "unproven",
+      "needs": "the owner's NeSL account (owner answer #100)",
+      "offBy": ["int.estamp.nesl_dde.enabled"]
+    },
+    "shcil-estamp": {
+      "status": "unproven",
+      "needs": "the owner's SHCIL account (OWNER-QUESTIONS #177 (4))",
+      "offBy": ["int.estamp.shcil.enabled"]
+    },
+    "digio-estamp": {
+      "status": "unproven",
+      "needs": "the owner's Digio e-stamp account (OWNER-QUESTIONS #177 (1), (4))",
+      "offBy": ["int.estamp.digio.enabled"]
+    },
+    "manual-paper": {
+      "status": "unproven",
+      "needs": "the owner's evidence rules for manually keyed stamps (OWNER-QUESTIONS #177 (3)); no vendor, kept out of staging and above until then",
+      "offBy": ["int.estamp.manual_paper.enabled"]
+    },
+    "digio-mandate": {
+      "status": "unproven",
+      "needs": "the owner's Digio mandate account (owner answer #100)",
+      "offBy": ["int.payments.digio_mandate.enabled"]
+    },
+    "idfy-kyc": {
+      "status": "unproven",
+      "needs": "the owner's IDfy sandbox (owner answer #91)",
+      "offBy": ["int.kyc.idfy.enabled"]
+    },
+    "cibil": {
+      "status": "unproven",
+      "needs": "the owner's TransUnion CIBIL sandbox (OWNER-QUESTIONS #97)",
+      "offBy": ["int.bureau.cibil.enabled"]
+    },
+    "setu-aa": {
+      "status": "unproven",
+      "needs": "the owner's Setu FIU sandbox (OWNER-QUESTIONS #97)",
+      "offBy": ["int.aa_fiu.setu.enabled"]
+    },
+    "http-statement": {
+      "status": "unproven",
+      "needs": "the owner's statement-analysis vendor and its sandbox (OWNER-QUESTIONS #152)",
+      "offBy": ["int.statement_analysis.http.enabled"]
+    },
+    "generic-grc": {
+      "status": "unproven",
+      "needs": "a counterparty GRC sandbox (PR-FBX-51)",
+      "offBy": ["int.grc.generic.enabled"]
+    },
+    "sftp": {
+      "status": "unproven",
+      "needs": "a counterparty's SFTP test server (PR-UDF-071, R1-D-254)",
+      "offBy": ["int.file_transfer.sftp.enabled"]
+    },
+    "tallyprime": {
+      "status": "unproven",
+      "needs": "a TallyPrime sandbox company (PR-FBX-46, R1-D-137)",
+      "offBy": ["int.accounting.tally.enabled"]
+    },
+    "native": {
+      "status": "unproven",
+      "needs": "the owner's Google Cloud project and Apple developer account (owner answer #99)",
+      "offBy": [
+        "int.device_attestation.play_integrity.enabled",
+        "int.device_attestation.app_attest.enabled"
+      ]
+    },
+    "turnstile": {
+      "status": "unproven",
+      "needs": "the owner's Cloudflare Turnstile site keys (R1-D-50)",
+      "offBy": ["int.captcha.turnstile.enabled"]
+    },
+    "hcaptcha": {
+      "status": "unproven",
+      "needs": "the owner's hCaptcha site keys (R1-D-50)",
+      "offBy": ["int.captcha.hcaptcha.enabled"]
+    }
+  },
+  "hermetic": {
+    "keycloak": {
+      "port": "IDENTITY",
+      "kind": "self-hosted"
+    },
+    "keycloak-customer": {
+      "port": "IDENTITY",
+      "kind": "self-hosted"
+    },
+    "zitadel": {
+      "port": "IDENTITY",
+      "kind": "self-hosted"
+    },
+    "zitadel-customer": {
+      "port": "IDENTITY",
+      "kind": "self-hosted"
+    },
+    "cerbos": {
+      "port": "AUTHZ",
+      "kind": "self-hosted"
+    },
+    "openfga": {
+      "port": "AUTHZ",
+      "kind": "self-hosted"
+    },
+    "vault": {
+      "port": "SECRETS",
+      "kind": "self-hosted"
+    },
+    "vault-transit": {
+      "port": "KMS",
+      "kind": "self-hosted"
+    },
+    "bullmq": {
+      "port": "QUEUE",
+      "kind": "self-hosted"
+    },
+    "pg-boss": {
+      "port": "QUEUE",
+      "kind": "self-hosted"
+    },
+    "temporal": {
+      "port": "WORKFLOW",
+      "kind": "self-hosted"
+    },
+    "unleash": {
+      "port": "FEATURE_FLAG",
+      "kind": "self-hosted"
+    },
+    "config-db": {
+      "port": "FEATURE_FLAG",
+      "kind": "in-process"
+    },
+    "otel": {
+      "port": "OBSERVABILITY",
+      "kind": "self-hosted"
+    },
+    "zen": {
+      "port": "RULES",
+      "kind": "in-process"
+    },
+    "json-rules": {
+      "port": "RULES",
+      "kind": "in-process"
+    },
+    "memory": {
+      "port": "RULES",
+      "kind": "in-process"
+    },
+    "clamav": {
+      "port": "AV",
+      "kind": "self-hosted"
+    },
+    "gotenberg": {
+      "port": "DOCGEN",
+      "kind": "self-hosted"
+    },
+    "pdf-text": {
+      "port": "PDF",
+      "kind": "in-process"
+    },
+    "sharp": {
+      "port": "MEDIA",
+      "kind": "in-process"
+    },
+    "passthrough": {
+      "port": "MEDIA",
+      "kind": "in-process"
+    },
+    "governed": {
+      "port": "EGRESS",
+      "kind": "in-process"
+    },
+    "partner-mtls": {
+      "port": "EGRESS",
+      "kind": "in-process"
+    },
+    "web-snapshot": {
+      "port": "EGRESS",
+      "kind": "composite"
+    },
+    "platform-statement": {
+      "port": "STATEMENT_ANALYSIS",
+      "kind": "in-process"
+    },
+    "livekit": {
+      "port": "VIDEO_MEET",
+      "kind": "self-hosted"
+    },
+    "kyc-method-router": {
+      "port": "KYC",
+      "kind": "composite"
+    },
+    "vcip-conductor": {
+      "port": "KYC",
+      "kind": "composite"
     }
   }
 }
