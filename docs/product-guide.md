@@ -1410,7 +1410,7 @@ From the next `contracts`, `config`, `fakes`, `testing` and `connectors` minors 
 - Vendor shapes are to be confirmed against each sandbox: keep the adapters off until the owner's accounts exist. Whether a manually keyed stamp needs a checker before it enters a pack is the owner's question #177.
 - **Udofin:** keep Leegality or Digio for eSign until #177 decides NSDL's request signing.
 
-## 7dz. Checking a PDF's embedded signature locally (PR-UDF-059; C-28, R1-D-246)
+## 7dz. Checking a PDF's embedded signature locally (PR-UDF-059; C-28, R1-D-246, R1-D-272)
 
 From the next `crypto` minor (no migration, no setting), `@infrabyx/crypto` verifies a PDF's embedded PAdES/CMS signatures without an ESP call. It only verifies; it never signs.
 
@@ -1419,6 +1419,7 @@ import { verifyPadesSignatures } from "@infrabyx/crypto";
 
 const result = verifyPadesSignatures(pdfBytes, {
   revocation: { crls, ocsp }, // optional DER you fetched; nothing is fetched for you
+  requireTimestamp: true, // optional (default false): refuse a signature without a verified timestamp
 });
 if (!result.valid) {
   // result.outcome: "invalid" | "incremental_update_after_signature" | "no_signature" | …
@@ -1426,8 +1427,10 @@ if (!result.valid) {
 ```
 
 - **Read the bytes yourself** (from STORAGE, after the AV and hash checks you already run). Files up to 32 MiB by default (`maxBytes`, at most 64 MiB) and 16 signatures.
-- **`result.valid`** is true only when every signature is valid and one covers the whole file. Per signature you get `outcome` (a fixed label, `PADES_OUTCOMES`), `signer` (subject, serial, issuer, certificate SHA-256), `signedAt` with `timeSource` (`timestamp`, `signing_time_attribute`, `signature_dictionary` or `verification_time`), `timestamp`, `chain`, `revocation` (`good`, `revoked` or `not_checked`) and `algorithm`. Do not log the signer block with document identifiers if your privacy notice does not cover it.
-- **Not trusted yet:** the pinned CCA India store (`CCA_INDIA_TRUST`) is empty until the owner supplies CCA's root and intermediates (owner question #178), so every signature reports `chain_untrusted` today. Do not switch a business decision to this verifier before a release says the pins are in.
+- **`result.valid`** is true only when every signature is valid and one covers the whole file. Per signature you get `outcome` (a fixed label, `PADES_OUTCOMES`), `signer` (subject, serial, issuer, certificate SHA-256), `signedAt` with `timeSource` (`timestamp`, `signing_time_attribute`, `signature_dictionary` or `verification_time`), `timestamp`, `chain`, `chainSha256` (the SHA-256 of each certificate on the path, signer first, CCA root last; null when no path was found), `timestampChainSha256` (the same for the timestamp authority when `timestamp` is `valid`), `revocation` (`good`, `revoked` or `not_checked`) and `algorithm`. Keep `chainSha256` with the signature record as evidence of the path used. Do not log the signer block with document identifiers if your privacy notice does not cover it.
+- **Trusted against CCA India (from the `crypto` minor of R1-D-272):** `CCA_INDIA_TRUST` pins the two existing CCA India roots, CCA India 2022 and CCA India 2022 SPL (owner answer #178); the expired 2014 and 2015 SPL roots are not pinned. Only the roots are pinned: the licensed CA's and sub-CA's certificates must be in the signature's CMS certificate set (eSign providers include them), and they are accepted only when the whole path validates to a pinned root (names, signatures, validity at the signing time, `cA` and `keyCertSign` with a keyUsage extension, path length, at most 6 certificates, no unknown critical extension). A file whose CMS lacks an intermediate is `chain_untrusted`. Path building is bounded (16 carried certificates, 32 signature checks), so a hostile file cannot make it slow.
+- **`requireTimestamp: true`** refuses a signature without a verified B-T timestamp (none, or an untrusted TSA) with `timestamp_required`. It is checked last: a signature with another fault reports that fault. Without it, an untimestamped signature's time is the signer's own claim (`timeSource` says which time was used); set it where a backdated signature would matter.
+- **What you must do:** nothing beyond adopting the minor. Results gain the two fingerprint fields and, only if you set `requireTimestamp`, the `timestamp_required` label (`PADES_OUTCOMES`); if you `switch` over `PadesOutcome` exhaustively, add it.
 - **Revocation** is `not_checked` unless you pass CRLs or OCSP responses for every certificate below the root; a listed certificate makes the signature `certificate_revoked`.
 - **B-LT and B-LTA files** (a DSS or document timestamp added after signing) report `incremental_update_after_signature` (or `unsupported_subfilter` for the document timestamp); treat them as needing review.
 - **Tests:** `@infrabyx/crypto/pades-test` (dev only) gives `padesTestAuthority()`, which signs any classic-xref PDF (for example `pdfFixture`'s) and makes timestamps, CRLs and OCSP responses; pass its `trust` (results then say `trustStore: "custom"`). Never use it outside tests.
