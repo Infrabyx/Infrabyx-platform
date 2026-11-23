@@ -1,5 +1,18 @@
 # @infrabyx/audit
 
+## 1.13.0
+
+### Minor Changes
+
+- 9abffba: Every refused retrieval host is recordable: `retrievalHostRecord(url)` never returns null or throws (the DNS name or IPv6 literal in clear; any other host as `sha256:` + the SHA-256 of `URL.hostname` without one trailing dot, with `host_length`; `RETRIEVAL_HOST_UNPARSABLE` (`unparsable.invalid`) when there is no host to read), and `retrievalHostRefusedEventOf({ partner_tenant_id, document_id, version, url })` builds the checked `connector.retrieval.host_refused` event from it. PR-UDF-082; R1-D-279.
+
+### Patch Changes
+
+- Updated dependencies [9abffba]
+  - @infrabyx/contracts@1.50.0
+  - @infrabyx/config@1.24.4
+  - @infrabyx/crypto@1.15.2
+
 ## 1.12.3
 
 ### Patch Changes

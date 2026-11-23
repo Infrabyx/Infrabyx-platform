@@ -1,5 +1,14 @@
 # @infrabyx/fakes
 
+## 1.11.2
+
+### Patch Changes
+
+- Updated dependencies [9abffba]
+  - @infrabyx/contracts@1.50.0
+  - @infrabyx/config@1.24.4
+  - @infrabyx/crypto@1.15.2
+
 ## 1.11.1
 
 ### Patch Changes

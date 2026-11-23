@@ -1,5 +1,19 @@
 # @infrabyx/tenancy
 
+## 1.26.0
+
+### Minor Changes
+
+- 613e0e0: R1-D-280 (PR-UDF-084). An inbox's JWS can be narrowed to named roles: migration `tenancy/0028` adds `tenancy.restrict_ecosystem_inbox_jws('<schema>', array[<roles>])` (run from the product's own migration; app_rw and app_ro then select every column of `<schema>.eco_inbox` but `jws`), `tenancy.refresh_ecosystem_inbox_jws_grants()`, the registry `tenancy.eco_inbox_jws_reader` and the definers `tenancy.eco_inbox_jws(...)` and `tenancy.eco_inbox_jws_readable(...)` (allow-listed in the RLS lint). The kernel now sets `app.roles` from the verified context (well-formed role names only). `EcosystemInbox` reads `jws` only through the definer, so `receive`, `drain`, `sweep` and `list` behave as before on an inbox that is not restricted; new `jwsOf(ctx, source, eventId)` refuses a non-reader with `IPB-UX-011` (`INBOX_JWS_REFUSED`). Product step: run `infrabyx-migrate` (0028) before deploying this version, as `EcosystemInbox` calls the new functions; nothing is restricted until your migration asks for it (guide §7et).
+- 90ffc18: R1-D-281 (PR-UDF-083). The inbox can keep a partner's original signed body beside the mapped event: migration `tenancy/0029` adds the nullable, write-once `<schema>.eco_inbox.original jsonb` (a JSON object of at most 262,144 octets, only with a JWS) to every inbox, `tenancy.add_ecosystem_inbox_original(...)`, and the definer `tenancy.eco_inbox_original(...)` (allow-listed in the RLS lint); a restricted inbox keeps `original` to the JWS's reader roles. `EcosystemInbox.receive(ctx, mapped, { jws, original })` refuses an original that is not an envelope, is too long or differs from the mapped event outside `data` (IPB-API-018, `meta.reason` `original-malformed`, `original-too-long`, `original-mismatch`), verifies the JWS over the original and stores both. `ReceiveResult` gains `original` (null without one), `InboxEvent` an optional `original`; new `originalOf(ctx, source, eventId)`, `INBOX_ORIGINAL_MAX_OCTETS` and `jsonbTextOctets`. Product step: run `infrabyx-migrate` (0029) before deploying this version, as `EcosystemInbox` writes and reads the new column (guide §7eu).
+
+### Patch Changes
+
+- Updated dependencies [9abffba]
+  - @infrabyx/contracts@1.50.0
+  - @infrabyx/config@1.24.4
+  - @infrabyx/crypto@1.15.2
+
 ## 1.25.0
 
 ### Minor Changes
