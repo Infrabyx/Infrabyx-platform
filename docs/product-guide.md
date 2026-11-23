@@ -1260,7 +1260,7 @@ From the next release (`contracts`, `crypto`, `fakes` and `testing` minors; no s
 
 **What changes for a consumer (Udofin):**
 
-- **Two more regulated messages.** `ExecutionPackIssued` and `CoolingOffExitAnswered` are in `REGULATED_MESSAGE_EVENTS`, so `isRegulatedMessage` is true for them: verify `X-Infrabyx-JWS` with `verifyRegulatedMessage` before your `2xx`, store it beside the event, and refuse an unsigned one with `signature-invalid`. `payment_instruction` still carries no link; show it as the lender's words and never collect the money yourself (CF para 10).
+- **Two more regulated messages.** `ExecutionPackIssued` and `CoolingOffExitAnswered` are in `REGULATED_MESSAGE_EVENTS`, so `isRegulatedMessage` is true for them: verify `X-Infrabyx-JWS` with `verifyRegulatedMessage` before your `2xx`, store it beside the event (`EcosystemInbox` does both, §7eh; to limit who reads it, §7et), and refuse an unsigned one with `signature-invalid`. `payment_instruction` still carries no link; show it as the lender's words and never collect the money yourself (CF para 10).
 - **Take the pack from `ExecutionPackIssued`** (`in.infrabyx.origination.ExecutionPackIssued.v1`, key `(pack_id, version)`; parse with `ExecutionPackIssuedData`). Execute only the latest version, within the KFS validity, and check `kfs_version` and `kfs_sha256` against the KFS your borrower accepted. The interim `EXECUTION_PACK_MANIFEST` document and `ExecutionPackManifest` stay for now, unchanged; move off them, they go in a major.
 
 | Your PR-UDF-061 item (12)                                          | Field of `ExecutionPackIssuedData`                                                                                                   |
@@ -1658,6 +1658,7 @@ await inbox.drain(ctx, async (tx, event) => keepProof(event.envelope, event.jws)
 2. Pass the `X-Infrabyx-JWS` value to `receive` instead of calling `verifyRegulatedMessage` yourself first: a JWS you already verified with the same replay store has its `jti` claimed and is refused as `replay`.
 3. Keep refusing an unsigned regulated message yourself (`isRegulatedMessage`, `regulatedJwsFromHeaders`); `receive` without `jws` stores the event with none, as before.
 4. If you kept the JWS in a table of your own, you can read it from `event.jws` instead; rows received before 0026 have `null` (nothing is backfilled).
+5. To limit who reads the stored JWS to named roles, see §7et.
 
 ## 7ei. Pack evidence: e-stamp system, not-stampable codes, page and clause, the JWS profile (PR-UDF-075; R1-D-258)
 
@@ -1994,6 +1995,40 @@ await kernel.mutate(ctx, async (tx) => {
 Its ledger row names `kernel_capability` and the name instead of a request.
 
 **5. Retire the interim shim.** Once on this release, replace the month-lock's separate `kernel.read` (and the context it built with the closed branches) by step 2, and drop any code that widened `branchIds` for it. The kernel's refusal of product code setting `app.*` is unchanged, so no other path widens a branch scope.
+
+## 7et. Narrowing who reads the inbox's JWS (PR-UDF-084; R1-D-280)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0028`; no setting, no environment variable). **Why:** since §7eh the verified JWS sits in `<schema>.eco_inbox.jws`, readable by every principal that may read the row. You kept these proofs in a table of your own limited to your connector service, the lender tenant's controllers and auditors, and your security role. You can now give the inbox's column the same narrower grant; the rest of the row keeps its grants and its RLS.
+
+**1. Opt in from your own migration.** Nothing changes until you do:
+
+```sql
+-- after tenancy.create_ecosystem_inbox('<schema>') and tenancy/0028
+select tenancy.restrict_ecosystem_inbox_jws('<schema>', array[
+  '<connector service role>', '<controller role>', '<auditor role>', '<security role>'
+]);
+```
+
+- Role names are your product's roles as the verified context carries them (`UDF_…`, `SVC_…`, `FN:…`; at least one). Calling it again replaces the set and refreshes the column grants; it is idempotent.
+- From then on app_rw and app_ro select every column of `<schema>.eco_inbox` **except** `jws`: `select jws` and `select *` on the table fail with `42501` for everyone, readers included. Name the columns you need in your own queries.
+- If a later migration adds a column to the inbox, run `select tenancy.refresh_ecosystem_inbox_jws_grants();` after it, or the new column stays unreadable.
+
+**2. Give your connector service a reader role.** The service that runs `receive`, `drain` and `sweep` must hold one of the roles you listed: `EcosystemInbox` now reads the JWS only through `tenancy.eco_inbox_jws(...)`, so without a reader role a redelivery and the handler's event fail with `42501` (the attempt is counted) instead of handing over the JWS. With one, `ReceiveResult.jws` and `InboxEvent.jws` are exactly as before.
+
+**3. Read the JWS where you need it.**
+
+```ts
+const jws = await inbox.jwsOf(ctx, source, eventId); // string | null
+```
+
+- Allowed when the caller's verified roles, in the event's own tenant, include a registered role; `null` for an event received unsigned or not in that tenant's inbox. Anyone else gets `IPB-UX-011` (403, `meta.reason` `jws_reader`; `INBOX_JWS_REFUSED`), before the event is looked up. A read is not ledgered.
+- Readers are roles held **in the row's tenant**: your security role reads a lender tenant's proofs in a context of that tenant (as your controllers and auditors do), not from your own platform context.
+- `list` gives `jws` to readers and leaves it out of each event for everyone else.
+- In SQL of your own, inside a kernel transaction: `select tenancy.eco_inbox_jws('<schema>', source, event_id) from <schema>.eco_inbox where …` (the kernel sets `app.roles` from the verified context; your callback cannot set it).
+
+**4. Move your own table.** Once your proofs are read from the inbox, retire your separate proofs table; the lenders you serve generically move with PR-UDF-083.
+
+**What to change:** run `infrabyx-migrate` (tenancy/0028) before deploying this version (`EcosystemInbox` calls the new functions on every inbox), then add step 1 to your migrations and step 2 to your connector's roles.
 
 ## 8. Adopting 1.0.0
 
