@@ -5,7 +5,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type pg from "pg";
 import {
   AGENT_FORBIDDEN_VERBS,
+  FUNCTION_ROLE_REGEX,
   OUTBOX_DISPATCH_ACTION,
+  PRODUCT_ROLE_REGEX,
   SERVICE_READER_ROLES,
 } from "@infrabyx/contracts/roles";
 import { IpbError } from "@infrabyx/contracts/errors";
@@ -535,18 +537,42 @@ interface AmbientFrame {
   token: symbol;
 }
 
+/** The longest role name `app.roles` carries (tenancy/0028's registry holds the same limit). */
+export const MAX_DB_ROLE_LENGTH = 128;
+
+/**
+ * The verified context's roles as `app.roles` carries them (PR-UDF-084; R1-D-280): comma-joined,
+ * each a well-formed role name (`RoleSchema`'s forms: `XX_…` to `XXXX_…`, or `FN:…`) of at most
+ * 128 characters, in the order given, without repeats. A role of any other form is left out (no
+ * comma or other character can reach the setting), so a database check on it fails closed.
+ */
+export function rolesSetting(ctx: KernelContext): string {
+  const out = new Set<string>();
+  for (const r of ctx.principal.roles)
+    if (
+      typeof r === "string" &&
+      r.length <= MAX_DB_ROLE_LENGTH &&
+      (PRODUCT_ROLE_REGEX.test(r) || FUNCTION_ROLE_REGEX.test(r))
+    )
+      out.add(r);
+  return [...out].join(",");
+}
+
 async function applySettings(
   client: pg.PoolClient,
   ctx: KernelContext,
   m: MutateOptions,
 ): Promise<void> {
+  // `app.roles` (R1-D-280) is set here with the rest, from the verified context only; callback
+  // SQL may not set any `app.*` setting (FORBIDDEN above), so it has the trust of `app.tenant_id`.
   await client.query(
     `select set_config('app.tenant_id', $1, true), set_config('app.entity_id', $2, true),
             set_config('app.actor_id', $3, true), set_config('app.trace_id', $4, true),
             set_config('app.scope', $5, true), set_config('app.breakglass', $6, true),
             set_config('app.action', $7, true), set_config('app.reason', $8, true),
             set_config('app.branch_id', $9, true), set_config('app.branch_ids', $10, true),
-            set_config('app.branch_scope', $11, true), set_config('app.external_grant', $12, true)`,
+            set_config('app.branch_scope', $11, true), set_config('app.external_grant', $12, true),
+            set_config('app.roles', $13, true)`,
     [
       ctx.tenantId,
       ctx.entityId ?? "",
@@ -560,6 +586,7 @@ async function applySettings(
       (ctx.branchIds ?? []).join(","),
       ctx.allBranches ? "all" : ctx.branchIds?.length ? "listed" : "none",
       ctx.externalGrantId ?? "",
+      rolesSetting(ctx),
     ],
   );
 }

@@ -11,6 +11,13 @@
 // is verified by `receive` (C-22 profile, the `regulated` option's key ring and replay store) and
 // kept beside the event in the nullable `jws` column (tenancy 0026), written once and never
 // updated (a database trigger refuses a change); the handler gets it as `InboxEvent.jws`.
+//
+// R1-D-280 (Udofin PR-UDF-084): a product may narrow the column to named roles of the row's own
+// tenant (`tenancy.restrict_ecosystem_inbox_jws`, tenancy 0028); app_rw and app_ro then select
+// every column but `jws`. This class reads `jws` only through `tenancy.eco_inbox_jws(...)`, which
+// returns it to a transaction holding a reader role (`app.roles`, set by the kernel) and refuses
+// (42501) anyone else, so it works the same on a restricted inbox and on one that is not. The
+// connector service that runs `receive` and `drain` must hold one of the inbox's reader roles.
 import { IpbError } from "@infrabyx/contracts/errors";
 import {
   EcosystemEnvelope,
@@ -43,8 +50,9 @@ export interface InboxEvent {
   /**
    * R1-D-257: the detached JWS `receive` verified and stored beside the event (Spec §3.6), to
    * re-verify the proof later against `envelope`; `null` for an event received unsigned. Always
-   * set on events from `drain`, `sweep` and `list`; optional in the type only so a hand-built
-   * `InboxEvent` (a product's test fixture) stays valid in this minor.
+   * set on events from `drain` and `sweep`, and from `list` for a caller that may read it; absent
+   * from `list` when the inbox's JWS is restricted to roles the caller does not hold (R1-D-280).
+   * Optional in the type so a hand-built `InboxEvent` (a product's test fixture) stays valid.
    */
   jws?: string | null;
 }
@@ -111,8 +119,13 @@ interface Row {
   state: InboxState;
   attempts: number;
   parked_at: Date | null;
-  jws: string | null;
+  /** Absent when the row was read without its JWS (R1-D-280). */
+  jws?: string | null;
 }
+
+/** The inbox columns every reader may select (all but `jws`, R1-D-280). */
+const ROW_COLUMNS =
+  "source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at";
 
 const toEvent = (r: Row): InboxEvent => ({
   source: r.source,
@@ -122,12 +135,20 @@ const toEvent = (r: Row): InboxEvent => ({
   seq: Number(r.seq),
   businessKey: r.business_key,
   envelope: r.envelope,
-  jws: r.jws,
+  ...(r.jws !== undefined ? { jws: r.jws } : {}),
 });
+
+/**
+ * Refusal of `jwsOf` to a caller holding none of the inbox's reader roles (R1-D-280): the code of
+ * the platform's other role refusals (403), with no role names and nothing about the event.
+ */
+export const INBOX_JWS_REFUSED = "IPB-UX-011";
 
 export class EcosystemInbox {
   private readonly inbox: string;
   private readonly position: string;
+  /** `tenancy.eco_inbox_jws` over the row's own source and event id (R1-D-280). */
+  private readonly jwsColumn: string;
   private readonly parkMs: number;
   private readonly firstSeq: number;
   private readonly maxAttempts: number;
@@ -136,6 +157,8 @@ export class EcosystemInbox {
     if (!SCHEMA.test(o.schema)) throw new Error(`invalid module schema ${o.schema}`);
     this.inbox = `${o.schema}.eco_inbox`;
     this.position = `${o.schema}.eco_position`;
+    // The schema is checked against SCHEMA above, so it is a safe literal.
+    this.jwsColumn = `tenancy.eco_inbox_jws('${o.schema}', source, event_id)`;
     this.parkMs = (o.parkMinutes ?? 15) * 60_000;
     this.firstSeq = o.firstSeq ?? 1;
     this.maxAttempts = o.maxAttempts ?? 5;
@@ -232,7 +255,8 @@ export class EcosystemInbox {
         let stored = jws?.jws ?? null;
         if (!ins.rowCount) {
           const same = await tx.query<{ jws: string | null }>(
-            `select jws from ${this.inbox} where tenant_id = $1 and source = $2 and event_id = $3`,
+            `select ${this.jwsColumn} as jws from ${this.inbox}
+              where tenant_id = $1 and source = $2 and event_id = $3`,
             [tx.ctx.tenantId, e.source, e.id],
           );
           outcome = same.rowCount ? "duplicate" : "business_duplicate";
@@ -289,7 +313,7 @@ export class EcosystemInbox {
         async (tx) =>
           (
             await tx.query<{ jws: string | null }>(
-              `select jws from ${this.inbox} where source = $1 and event_id = $2`,
+              `select ${this.jwsColumn} as jws from ${this.inbox} where source = $1 and event_id = $2`,
               [e.source, e.id],
             )
           ).rows[0]?.jws ?? null,
@@ -350,7 +374,7 @@ export class EcosystemInbox {
         async (tx) => {
           const row = (
             await tx.query<Row>(
-              `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at, jws
+              `select ${ROW_COLUMNS}
                  from ${this.inbox}
                 where source = $1 and subject = $2 and state in ('received', 'parked')
                 order by seq, received_at limit 1 for update skip locked`,
@@ -364,7 +388,9 @@ export class EcosystemInbox {
           if (seq <= last) result = "skipped";
           else if (seq > last + 1) result = "parked";
           else {
-            await handle(tx, toEvent(row));
+            // The JWS only for the event handed over (R1-D-280): 42501 to a non-reader.
+            const jws = await this.jwsIn(tx, row.source, row.event_id);
+            await handle(tx, toEvent({ ...row, jws }));
             await this.setLast(tx, source, subject, seq);
             result = "processed";
           }
@@ -555,21 +581,62 @@ export class EcosystemInbox {
     );
   }
 
-  /** The stored events of one subject, for an operator view. */
+  /**
+   * The stored events of one subject, for an operator view. Each event carries `jws` when the
+   * caller may read the inbox's JWS, and none when it is restricted to roles the caller does not
+   * hold (R1-D-280).
+   */
   async list(
     ctx: KernelContext,
     source: string,
     subject: string,
   ): Promise<(InboxEvent & { state: InboxState; attempts: number })[]> {
-    return this.o.kernel.read(ctx, async (tx) =>
-      (
+    return this.o.kernel.read(ctx, async (tx) => {
+      const jws = (await this.readable(tx)) ? `, ${this.jwsColumn} as jws` : "";
+      return (
         await tx.query<Row>(
-          `select source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at, jws
+          `select ${ROW_COLUMNS}${jws}
              from ${this.inbox} where source = $1 and subject = $2 order by seq, received_at`,
           [source, subject],
         )
-      ).rows.map((r) => ({ ...toEvent(r), state: r.state, attempts: r.attempts })),
+      ).rows.map((r) => ({ ...toEvent(r), state: r.state, attempts: r.attempts }));
+    });
+  }
+
+  /**
+   * R1-D-280: the JWS stored with one event of the caller's tenant, for a principal holding one of
+   * the inbox's reader roles (any principal while the inbox is not restricted); `null` for an event
+   * received unsigned or not in this tenant's inbox. A caller holding none of them is refused with
+   * `IPB-UX-011` (403) before the event is looked up. A read, so nothing is ledgered.
+   */
+  async jwsOf(ctx: KernelContext, source: string, eventId: string): Promise<string | null> {
+    if (typeof source !== "string" || typeof eventId !== "string")
+      throw new TypeError("source and eventId are strings");
+    return this.o.kernel.read(ctx, async (tx) => {
+      if (!(await this.readable(tx)))
+        throw new IpbError(INBOX_JWS_REFUSED, {
+          detail: "the JWS of this inbox is read by its reader roles only",
+          meta: { reason: "jws_reader" },
+        });
+      return this.jwsIn(tx, source, eventId);
+    });
+  }
+
+  /** Whether the transaction's roles may read this inbox's JWS (tenancy 0028). */
+  private async readable(tx: Tx): Promise<boolean> {
+    const r = await tx.query<{ ok: boolean }>("select tenancy.eco_inbox_jws_readable($1) as ok", [
+      this.o.schema,
+    ]);
+    return r.rows[0]?.ok === true;
+  }
+
+  /** One event's JWS through `tenancy.eco_inbox_jws` (42501 to a non-reader). */
+  private async jwsIn(tx: Tx, source: string, eventId: string): Promise<string | null> {
+    const r = await tx.query<{ jws: string | null }>(
+      "select tenancy.eco_inbox_jws($1, $2, $3) as jws",
+      [this.o.schema, source, eventId],
     );
+    return r.rows[0]?.jws ?? null;
   }
 
   private async lastSeq(tx: Tx, source: string, subject: string): Promise<number> {

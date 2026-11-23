@@ -50,6 +50,10 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   // and the lapse sweep's list, which returns nothing outside a platform context.
   "tenancy.entitlement_status",
   "tenancy.entitlement_lapses_due",
+  // An inbox's JWS readers (tenancy/0028, R1-D-280): whether the transaction's roles may read it,
+  // and one event's JWS of the transaction's own tenant to a reader role, 42501 to anyone else.
+  "tenancy.eco_inbox_jws_readable",
+  "tenancy.eco_inbox_jws",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

@@ -25,5 +25,6 @@
   "0024_rate_limit.sql": "0d73f923706a165b777706910850fea4e765b133da9674590a1d7bf7df665138",
   "0025_approval_checkable_index.sql": "ab34996bf1a473667695a8a6b21ce430ea92502ffee7d40d656c47648c8850b0",
   "0026_ecosystem_inbox_jws.sql": "d47b4cf9331ab1bc18aa0bc5fa6861c6c69eb24e5006fa1eaf45b33dfa3f0c82",
-  "0027_outbox_parked.sql": "3ceba31b146601eb3da6e09600a67b2ccaeb3555e1b180b96557f2947347174c"
+  "0027_outbox_parked.sql": "3ceba31b146601eb3da6e09600a67b2ccaeb3555e1b180b96557f2947347174c",
+  "0028_ecosystem_inbox_jws_readers.sql": "2a8158b87dc5a9731b66dabe26a327b9db7f6ba14aa655251079de3acff9bb75"
 }
