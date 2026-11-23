@@ -54,6 +54,9 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   // and one event's JWS of the transaction's own tenant to a reader role, 42501 to anyone else.
   "tenancy.eco_inbox_jws_readable",
   "tenancy.eco_inbox_jws",
+  // A partner's original signed body (tenancy/0029, R1-D-281): one event's original of the
+  // transaction's own tenant to the same reader roles as its JWS, 42501 to anyone else.
+  "tenancy.eco_inbox_original",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 

@@ -156,6 +156,7 @@ describe("R1-D-280 a narrower read grant on an inbox's JWS (PR-UDF-084)", () => 
       outcome: "accepted",
       eventId: e.id,
       jws,
+      original: null,
     });
     // Column privileges bind every principal, readers too: they read through the definer.
     for (const c of [maker(), connector(), as("tnt_g", ["UDF_SECURITY"])]) {
@@ -227,6 +228,7 @@ describe("R1-D-280 a narrower read grant on an inbox's JWS (PR-UDF-084)", () => 
       outcome: "duplicate",
       eventId: e.id,
       jws,
+      original: null,
     });
     // A connector without a reader role fails closed on the re-read and on the handler's event.
     expect(await code(i.receive(maker(t), e, { jws: await sign(e) }))).toBe("42501");

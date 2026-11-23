@@ -258,7 +258,7 @@ describe("R1-D-257 the verified detached JWS beside the event (PR-UDF-073, Spec 
     const e = event("jws_first", 1);
     const jws = await sign(e);
     const r = await i.receive(ctx("tnt_jws"), e, { jws });
-    expect(r).toEqual({ outcome: "accepted", eventId: e.id, jws });
+    expect(r).toEqual({ outcome: "accepted", eventId: e.id, jws, original: null });
     expect(await stored(e.id)).toBe(jws);
     const got: InboxEvent[] = [];
     await i.drain(ctx("tnt_jws"), async (_tx, ev) => void got.push(ev));
@@ -275,6 +275,7 @@ describe("R1-D-257 the verified detached JWS beside the event (PR-UDF-073, Spec 
       outcome: "accepted",
       eventId: e.id,
       jws: null,
+      original: null,
     });
     expect(await stored(e.id)).toBeNull();
     const got: InboxEvent[] = [];
@@ -294,12 +295,14 @@ describe("R1-D-257 the verified detached JWS beside the event (PR-UDF-073, Spec 
       outcome: "duplicate",
       eventId: e.id,
       jws: first,
+      original: null,
     });
     // The same bytes again: the `jti` is claimed, but this event holds that JWS.
     expect(await i.receive(ctx("tnt_jws"), e, { jws: first })).toEqual({
       outcome: "duplicate",
       eventId: e.id,
       jws: first,
+      original: null,
     });
     expect(await stored(e.id)).toBe(first);
     // A JWS over this event offered for another one does not verify.
