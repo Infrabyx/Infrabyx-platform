@@ -1,5 +1,21 @@
 # @infrabyx/testing
 
+## 1.34.2
+
+### Patch Changes
+
+- Updated dependencies [613e0e0]
+- Updated dependencies [90ffc18]
+- Updated dependencies [9abffba]
+- Updated dependencies [9abffba]
+  - @infrabyx/tenancy@1.26.0
+  - @infrabyx/audit@1.13.0
+  - @infrabyx/contracts@1.50.0
+  - @infrabyx/seed@1.0.60
+  - @infrabyx/config@1.24.4
+  - @infrabyx/crypto@1.15.2
+  - @infrabyx/fakes@1.11.2
+
 ## 1.34.1
 
 ### Patch Changes

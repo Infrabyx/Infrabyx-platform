@@ -1,5 +1,12 @@
 # @infrabyx/a11y
 
+## 1.1.29
+
+### Patch Changes
+
+- Updated dependencies [9abffba]
+  - @infrabyx/contracts@1.50.0
+
 ## 1.1.28
 
 ### Patch Changes
