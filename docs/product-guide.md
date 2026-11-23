@@ -1769,6 +1769,8 @@ s?.QUARANTINE; // { status: "resolves", keyState: "Enabled" } | { status: "refus
 
 ## 7em. Recording a refused document-retrieval host (PR-UDF-072; R1-D-262)
 
+> **Superseded in part by §7es (PR-UDF-082; R1-D-279):** every refused host is now recordable. Build the event with `retrievalHostRefusedEventOf` from `@infrabyx/audit` instead of the `if (host) … else log.warn(…)` below, and drop any placeholder host of your own.
+
 From the next release (`contracts` and `audit` minors; migration `audit/0013`; no setting or environment variable), a product that refuses to fetch a partner's document because the retrieval URL (`DocumentRetrieval.url`, §7df) names a host outside its allow-list records the security event `connector.retrieval.host_refused`. The platform has no retrieval client of its own: your fetcher applies the allow-list and records the refusal.
 
 ```ts
@@ -1995,6 +1997,34 @@ await kernel.mutate(ctx, async (tx) => {
 Its ledger row names `kernel_capability` and the name instead of a request.
 
 **5. Retire the interim shim.** Once on this release, replace the month-lock's separate `kernel.read` (and the context it built with the closed branches) by step 2, and drop any code that widened `branchIds` for it. The kernel's refusal of product code setting `app.*` is unchanged, so no other path widens a branch scope.
+
+## 7es. Every refused retrieval host recorded (PR-UDF-082; R1-D-279)
+
+From the next release (`contracts` and `audit` minors; no migration, setting or environment variable; `audit/0013` from §7em is still needed). **Why:** owner answer #178 (e) has no exception, but `retrievalHostOf` answered null for an IPv6 literal or a host it could not record in clear, so §7em's code dropped those events. Now every refused URL gives a recordable host, and you never decide whether to record.
+
+```ts
+import { PgSecurityEvents, retrievalHostRefusedEventOf } from "@infrabyx/audit";
+
+const r = DocumentRetrieval.parse(await partner.getDocument(documentId));
+if (!allowedHosts.has(new URL(r.url).hostname)) {
+  await securityEvents.record(
+    ctx, // your tenant and the principal that made the fetch
+    retrievalHostRefusedEventOf({
+      partner_tenant_id: partnerTenantId,
+      document_id: r.document_id,
+      version: r.version,
+      url: r.url, // only its host is recorded; the URL, query and credentials never are
+    }),
+  );
+  throw new RetrievalRefused("host_refused"); // never fetch, never retry the same answer
+}
+```
+
+- **What `host` holds**, from `retrievalHostRecord(url)` (also exported, if you build the detail yourself): a DNS name of at most 128 characters, as before; an IPv6 literal exactly as the WHATWG parser writes it (`http://[2001:0DB8:0:0::1]/` gives `[2001:db8::1]`); for any other host the parser reads (longer than 128 characters, or with characters the DNS pattern refuses, such as `_`), `sha256:` and the 64 lower-case hex digits of its SHA-256, with its length in a new field `host_length`; for text with no host to read (not a URL, `mailto:`, `file:///x`, over 8192 characters) the fixed host `unparsable.invalid`.
+- **Recomputing a digest** to match a suspect URL: SHA-256 of the UTF-8 of `new URL(url).hostname` with one trailing dot removed (lower case, punycode), never of the URL.
+- **The detail rule:** `host_length` (an integer, 1 to 1,048,576) is required with a digest host and refused with a name or an IPv6 literal; a mismatch is a `RangeError` naming `host_length`, before the database is touched. `retrievalHostRefusedEventOf` throws only for a bad `partner_tenant_id`, `document_id` or `version`, never because of the URL.
+- **Drop your workaround:** remove any placeholder host of your own (such as `unrecordable.invalid`) and the `log.warn({ reason: "retrieval_host_unrecordable" })` branch of §7em; keep your own refusal log if you want one. `retrievalHostOf` from contracts still answers null for a host it cannot record in clear (contracts cannot hash, IPB-12-05), so call the `audit` helper instead.
+- **Reading them:** as in §7em. Rows with a digest have `detail->>'host_length'`; `detail->>'host' = 'unparsable.invalid'` marks a URL the parser could not read. Threat model §3.185; owner question #199.
 
 ## 7et. Narrowing who reads the inbox's JWS (PR-UDF-084; R1-D-280)
 
