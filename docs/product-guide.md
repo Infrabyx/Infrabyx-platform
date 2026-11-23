@@ -1260,7 +1260,7 @@ From the next release (`contracts`, `crypto`, `fakes` and `testing` minors; no s
 
 **What changes for a consumer (Udofin):**
 
-- **Two more regulated messages.** `ExecutionPackIssued` and `CoolingOffExitAnswered` are in `REGULATED_MESSAGE_EVENTS`, so `isRegulatedMessage` is true for them: verify `X-Infrabyx-JWS` with `verifyRegulatedMessage` before your `2xx`, store it beside the event (`EcosystemInbox` does both, §7eh; to limit who reads it, §7et), and refuse an unsigned one with `signature-invalid`. `payment_instruction` still carries no link; show it as the lender's words and never collect the money yourself (CF para 10).
+- **Two more regulated messages.** `ExecutionPackIssued` and `CoolingOffExitAnswered` are in `REGULATED_MESSAGE_EVENTS`, so `isRegulatedMessage` is true for them: verify `X-Infrabyx-JWS` with `verifyRegulatedMessage` before your `2xx`, store it beside the event (`EcosystemInbox` does both, §7eh; to limit who reads it, §7et; for a generic lender's message you map to the shared schema, keep its signed original beside the mapped event, §7eu), and refuse an unsigned one with `signature-invalid`. `payment_instruction` still carries no link; show it as the lender's words and never collect the money yourself (CF para 10).
 - **Take the pack from `ExecutionPackIssued`** (`in.infrabyx.origination.ExecutionPackIssued.v1`, key `(pack_id, version)`; parse with `ExecutionPackIssuedData`). Execute only the latest version, within the KFS validity, and check `kfs_version` and `kfs_sha256` against the KFS your borrower accepted. The interim `EXECUTION_PACK_MANIFEST` document and `ExecutionPackManifest` stay for now, unchanged; move off them, they go in a major.
 
 | Your PR-UDF-061 item (12)                                          | Field of `ExecutionPackIssuedData`                                                                                                   |
@@ -2026,9 +2026,38 @@ const jws = await inbox.jwsOf(ctx, source, eventId); // string | null
 - `list` gives `jws` to readers and leaves it out of each event for everyone else.
 - In SQL of your own, inside a kernel transaction: `select tenancy.eco_inbox_jws('<schema>', source, event_id) from <schema>.eco_inbox where …` (the kernel sets `app.roles` from the verified context; your callback cannot set it).
 
-**4. Move your own table.** Once your proofs are read from the inbox, retire your separate proofs table; the lenders you serve generically move with PR-UDF-083.
+**4. Move your own table.** Once your proofs are read from the inbox, retire your separate proofs table; the lenders you serve generically move with PR-UDF-083 (§7eu).
 
 **What to change:** run `infrabyx-migrate` (tenancy/0028) before deploying this version (`EcosystemInbox` calls the new functions on every inbox), then add step 1 to your migrations and step 2 to your connector's roles.
+
+## 7eu. Keeping a generic lender's original signed body in the inbox (PR-UDF-083; R1-D-281)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0029`; no setting, no environment variable). **Why:** a generic (REST or SFTP) lender sends a CloudEvent envelope whose `data` is in its own format, signed with the C-22 detached JWS over that original envelope (§7dp). You map `data` to the shared schema and store the mapped event, so `receive({ jws })` over the mapped event cannot verify, and you kept the JWS and the original in tables of your own. The inbox can now keep both beside the mapped event, written once, and the proof stays re-verifiable from the inbox alone.
+
+**1. Pass the original with its JWS.**
+
+```ts
+const h = regulatedJwsFromHeaders(req.headers); // or the JWS from the SFTP file's sidecar
+const mapped = { ...lenderEnvelope, data: mapLenderData(lenderEnvelope.data) };
+const r = await inbox.receive(ctx, mapped, { businessKey, jws: h.jws, original: lenderEnvelope });
+// r.original: the original stored with the event (the first one for a duplicate)
+await inbox.drain(ctx, async (tx, event) => handle(event.envelope, event.jws, event.original));
+```
+
+- `original` needs `jws` (a `TypeError` otherwise) and the `regulated` option, as in §7eh.
+- The mapped event must equal the original in **every attribute but `data`**: `id`, `source`, `type`, `subject`, `seq`, `time`, `dataschema`, `schemaver`, `dataclass` and every optional attribute, the same set of them with the same values. Change only `data`.
+- Refused with IPB-API-018 (401) before the JWS is checked or anything is stored: `meta.reason` `original-malformed` (not an Ecosystem envelope), `original-too-long` (over 262,144 octets of its `jsonb` text, your own table's bound; `INBOX_ORIGINAL_MAX_OCTETS`, `jsonbTextOctets`), `original-mismatch` (differs outside `data`). Answer the lender as for `signature-invalid`.
+- The JWS is then verified over the original; a JWS over the mapped event is refused as `signature-invalid`. A redelivery answers `duplicate` with the original stored first.
+- The handler (`drain`, `sweep`) gets `event.original` (null when none was kept); `list` gives it to readers only, as `jws`. Read one with `await inbox.originalOf(ctx, source, eventId)` (`Record<string, unknown> | null`), refused like `jwsOf` (`IPB-UX-011`).
+- Without `original`, `receive` is unchanged; `ReceiveResult` gains `original: null` (update a test that compares the whole result with `toEqual`).
+
+**2. Restrict it as you restrict the JWS.** If you ran `tenancy.restrict_ecosystem_inbox_jws('<schema>', array[…])` (§7et), `tenancy/0029` already keeps `original` to the same reader roles: app_rw and app_ro select neither column, `select *` stays refused, and `EcosystemInbox` reads both through `tenancy.eco_inbox_jws(...)` and `tenancy.eco_inbox_original(...)`. If you have not, do it now from your own migration, as §7et step 1; your connector service needs a reader role (§7et step 2).
+
+**3. Stop writing your own table for new events.** Once your connector passes `original`, stop writing new rows to your own `mapped_event_original` / `lender_event_jws` table; read the proof from `event.jws` and `event.original` instead. Nothing is backfilled: events received before you switch keep their proof in your table, and whether and when that table is retired is the owner's decision.
+
+**Data class:** the column is tagged `INTERNAL` (the owner's word); it carries the same lender data as `envelope` (`REGULATED`), and owner question #201 asks whether to tag it `REGULATED`. Treat it as you treat `envelope` meanwhile.
+
+**What to change:** run `infrabyx-migrate` (tenancy/0029) before deploying this version (`EcosystemInbox` inserts and reads the new column on every inbox), then pass `original` from your generic-lender connector.
 
 ## 8. Adopting 1.0.0
 
