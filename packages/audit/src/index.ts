@@ -7,3 +7,4 @@ export * from "./service.js";
 export * from "./sweep.js";
 export * from "./capture.js";
 export * from "./security-events.js";
+export * from "./retrieval-host.js";
