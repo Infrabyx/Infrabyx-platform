@@ -178,27 +178,93 @@ export interface SecurityEventInput {
 export const RETRIEVAL_HOST_REFUSED_EVENT = "connector.retrieval.host_refused" as const;
 
 /**
- * A refused host as it is recorded: a bare DNS name, lower case, labels of letters, digits and
- * hyphens (1 to 63, no hyphen at either end) joined by dots, no trailing dot, 1 to 128 characters
- * in all (the detail value limit). No scheme, userinfo, port, path, query or fragment can match,
- * so a URL, its query or a credential is never recorded. An IPv4 address matches; an IPv6
- * literal does not.
+ * A refused host as it is recorded in clear (form (a)): a bare DNS name, lower case, labels of
+ * letters, digits and hyphens (1 to 63, no hyphen at either end) joined by dots, no trailing dot,
+ * 1 to 128 characters in all (the detail value limit). No scheme, userinfo, port, path, query or
+ * fragment can match, so a URL, its query or a credential is never recorded. An IPv4 address
+ * matches; an IPv6 literal does not (it is form (b), `isRetrievalHostIpv6Literal`).
  */
 export const RETRIEVAL_HOST_PATTERN =
   /^(?=.{1,128}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
 
 /**
- * The `detail` of `connector.retrieval.host_refused`, and nothing else (a strict object): the
- * partner's tenant, the document id and version as on `DocumentRetrieval` / `DocumentShared`,
- * and the refused host (`RETRIEVAL_HOST_PATTERN`).
+ * The characters of an IPv6 literal host (form (b); PR-UDF-082, R1-D-279): brackets around
+ * lower-case hex digits and colons, 4 to 41 characters in all. Necessary, not sufficient: the
+ * literal must also be exactly as the WHATWG URL parser serialises it
+ * (`isRetrievalHostIpv6Literal`).
  */
-export const RetrievalHostRefusedDetail = z.strictObject({
-  /** The partner (producer) tenant whose retrieval answer named the host. */
-  partner_tenant_id: z.string().regex(TENANT_ID_REGEX),
-  document_id: z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/),
-  version: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
-  host: z.string().regex(RETRIEVAL_HOST_PATTERN),
-});
+export const RETRIEVAL_HOST_IPV6_PATTERN = /^\[[0-9a-f:]{2,39}\]$/;
+
+/**
+ * Whether `host` is an IPv6 literal exactly as the WHATWG URL parser serialises it (form (b);
+ * PR-UDF-082): bracketed, RFC 5952 compressed (the first longest run of two or more zero groups as
+ * `::`, no leading zeros), lower case, with no zone id and no dotted IPv4 tail (the parser writes
+ * it in hex, `[::ffff:102:304]`). So `[2001:db8::1]` is one; `[2001:DB8::1]`, `[2001:0db8::1]`,
+ * `[2001:db8:0:0:0:0:0:1]`, `[fe80::1%eth0]` and `2001:db8::1` are not.
+ */
+export function isRetrievalHostIpv6Literal(host: string): boolean {
+  if (typeof host !== "string" || !RETRIEVAL_HOST_IPV6_PATTERN.test(host)) return false;
+  return URL.parse(`http://${host}/`)?.hostname === host;
+}
+
+/**
+ * A refused host recorded as a digest (form (c); PR-UDF-082, R1-D-279): `sha256:` and the 64
+ * lower-case hex digits of the SHA-256 of the host's UTF-8 bytes, always 71 characters. For a host
+ * that cannot be recorded in clear (longer than 128 characters, or outside
+ * `RETRIEVAL_HOST_PATTERN`); the detail then carries the host's length in `host_length`.
+ * `retrievalHostRecord` in `@infrabyx/audit` computes it (hashing is `@infrabyx/crypto`'s only,
+ * IPB-12-05).
+ */
+export const RETRIEVAL_HOST_DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;
+
+/** The longest retrieval URL text the host helpers read (`retrievalHostOf`, `retrievalHostRecord`). */
+export const RETRIEVAL_URL_MAX_LENGTH = 8192;
+
+/**
+ * The largest `host_length` a digest host may carry (R1-D-279): 1 MiB characters. The WHATWG
+ * parser can serialise a host much longer than the URL text it came from (an IDN label expands to
+ * punycode, `xn--…`, up to about nine times), so the bound is well above
+ * `RETRIEVAL_URL_MAX_LENGTH`.
+ */
+export const RETRIEVAL_HOST_LENGTH_MAX = 1_048_576;
+
+/** Whether `host` is one of the three recorded host forms (R1-D-279). */
+function isRecordedRetrievalHost(host: string): boolean {
+  return (
+    RETRIEVAL_HOST_PATTERN.test(host) ||
+    RETRIEVAL_HOST_DIGEST_PATTERN.test(host) ||
+    isRetrievalHostIpv6Literal(host)
+  );
+}
+
+/**
+ * The `detail` of `connector.retrieval.host_refused`, and nothing else (a strict object): the
+ * partner's tenant, the document id and version as on `DocumentRetrieval` / `DocumentShared`, and
+ * the refused host in one of three forms (PR-UDF-082, R1-D-279): (a) a bare DNS name
+ * (`RETRIEVAL_HOST_PATTERN`); (b) an IPv6 literal as the WHATWG parser serialises it
+ * (`isRetrievalHostIpv6Literal`); (c) a digest (`RETRIEVAL_HOST_DIGEST_PATTERN`) with the hashed
+ * host's length in `host_length` (an integer, 1 to `RETRIEVAL_HOST_LENGTH_MAX`). `host_length` is
+ * required with (c) and refused with (a) and (b). A misfit is named by field, never by value.
+ */
+export const RetrievalHostRefusedDetail = z
+  .strictObject({
+    /** The partner (producer) tenant whose retrieval answer named the host. */
+    partner_tenant_id: z.string().regex(TENANT_ID_REGEX),
+    document_id: z.string().regex(/^[A-Za-z0-9_.:-]{3,128}$/),
+    version: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+    host: z.string().max(128).refine(isRecordedRetrievalHost, { message: "host form" }),
+    /** The length of the hashed host: with a digest host (form (c)) only, and then required. */
+    host_length: z.number().int().min(1).max(RETRIEVAL_HOST_LENGTH_MAX).exactOptional(),
+  })
+  .superRefine((d, ctx) => {
+    const digest = RETRIEVAL_HOST_DIGEST_PATTERN.test(d.host);
+    if (digest !== (d.host_length !== undefined))
+      ctx.addIssue({
+        code: "custom",
+        path: ["host_length"],
+        message: digest ? "required with a digest host" : "only with a digest host",
+      });
+  });
 export type RetrievalHostRefusedDetail = z.infer<typeof RetrievalHostRefusedDetail>;
 
 /** The typed shape of a security event kind: its detail schema and what it targets. */
@@ -251,8 +317,10 @@ export function securityEventShapeProblem(event: SecurityEventInput): string | n
 
 /**
  * The security event for a refused retrieval host (PR-UDF-072), checked: target `document` and
- * the document id, detail exactly `{ partner_tenant_id, document_id, version, host }`. Throws a
- * RangeError naming the bad fields (never their values) when the detail does not fit.
+ * the document id, detail exactly `{ partner_tenant_id, document_id, version, host }`, plus
+ * `host_length` with a digest host (PR-UDF-082). Throws a RangeError naming the bad fields (never
+ * their values) when the detail does not fit. To build it from the refused URL itself, so the
+ * event is never dropped, use `retrievalHostRefusedEventOf` in `@infrabyx/audit`.
  */
 export function retrievalHostRefusedEvent(detail: RetrievalHostRefusedDetail): SecurityEventInput {
   const d: unknown = detail;
@@ -274,17 +342,22 @@ export function retrievalHostRefusedEvent(detail: RetrievalHostRefusedDetail): S
 }
 
 /**
- * The host to record for a refused retrieval URL: the URL's host name as the WHATWG URL parser
- * gives it (lower case, IDNs in punycode; userinfo, port, path, query and fragment dropped), one
- * trailing dot removed. Null when the text is not a URL or its host is not recordable (none, an
- * IPv6 literal, longer than 128 characters): refuse the fetch all the same.
+ * The host to record in clear for a refused retrieval URL: the URL's host as the WHATWG URL parser
+ * serialises it (lower case, IDNs in punycode; userinfo, port, path, query and fragment dropped),
+ * one trailing dot removed, when that is a DNS name of at most 128 characters
+ * (`RETRIEVAL_HOST_PATTERN`) or an IPv6 literal (bracketed, compressed, lower case, such as
+ * `[2001:db8::1]`; PR-UDF-082). Null when the text is not a string or a URL, is longer than
+ * `RETRIEVAL_URL_MAX_LENGTH`, has no host, or its host cannot be recorded in clear (longer than
+ * 128 characters, or characters outside the DNS pattern). Contracts cannot hash (IPB-12-05): for
+ * an answer that is never null (a digest for such a host) use `retrievalHostRecord` in
+ * `@infrabyx/audit`. Refuse the fetch either way.
  */
 export function retrievalHostOf(url: string): string | null {
-  if (typeof url !== "string" || url.length > 8192) return null;
+  if (typeof url !== "string" || url.length > RETRIEVAL_URL_MAX_LENGTH) return null;
   const u = URL.parse(url);
   if (!u) return null;
   const host = u.hostname.endsWith(".") ? u.hostname.slice(0, -1) : u.hostname;
-  return RETRIEVAL_HOST_PATTERN.test(host) ? host : null;
+  return RETRIEVAL_HOST_PATTERN.test(host) || isRetrievalHostIpv6Literal(host) ? host : null;
 }
 
 /**

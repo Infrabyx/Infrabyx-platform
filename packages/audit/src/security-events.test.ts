@@ -73,6 +73,10 @@ describe("PgSecurityEvents with connector.retrieval.host_refused (PR-UDF-072)", 
     ["a missing field", { partner_tenant_id: "tnt_lender01", document_id: "doc_1x", version: 1 }],
     ["a bad partner tenant", { ...detail, partner_tenant_id: "lender" }],
     ["a bad version", { ...detail, version: 0 }],
+    ["host_length with a DNS name (PR-UDF-082)", { ...detail, host_length: 200 }],
+    ["host_length with an IPv6 literal", { ...detail, host: "[2001:db8::1]", host_length: 13 }],
+    ["a digest host without host_length", { ...detail, host: `sha256:${"ab".repeat(32)}` }],
+    ["an upper-case IPv6 literal", { ...detail, host: "[2001:DB8::1]" }],
   ])("refuses %s before touching the database", async (_why, d) => {
     const f = fakePool();
     const event: SecurityEventInput = {
