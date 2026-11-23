@@ -18,6 +18,13 @@
 // returns it to a transaction holding a reader role (`app.roles`, set by the kernel) and refuses
 // (42501) anyone else, so it works the same on a restricted inbox and on one that is not. The
 // connector service that runs `receive` and `drain` must hold one of the inbox's reader roles.
+//
+// R1-D-281 (Udofin PR-UDF-083): a product that maps a partner's message from the partner's own data
+// format to the shared schema stores the mapped event, while the partner's JWS signs the original.
+// `receive({ jws, original })` verifies the JWS over the original, which must equal the mapped
+// envelope in every attribute but `data`, and keeps it, written once, in the nullable `original`
+// column (tenancy 0029) beside the JWS; it is read only through `tenancy.eco_inbox_original(...)`,
+// with the same reader roles as the JWS.
 import { IpbError } from "@infrabyx/contracts/errors";
 import {
   EcosystemEnvelope,
@@ -25,7 +32,12 @@ import {
   regulatedJwsFromHeaders,
 } from "@infrabyx/contracts/events";
 import type { AuditSink, KernelContext, MutationKernel, Tx } from "@infrabyx/contracts/kernel";
-import { verifyRegulatedMessage, type RegulatedKeyRing, type ReplayStore } from "@infrabyx/crypto";
+import {
+  canonicalize,
+  verifyRegulatedMessage,
+  type RegulatedKeyRing,
+  type ReplayStore,
+} from "@infrabyx/crypto";
 
 const SCHEMA = /^[a-z][a-z0-9_]*$/;
 
@@ -55,6 +67,12 @@ export interface InboxEvent {
    * Optional in the type so a hand-built `InboxEvent` (a product's test fixture) stays valid.
    */
   jws?: string | null;
+  /**
+   * R1-D-281: the partner's original signed envelope `receive` verified the JWS over and kept
+   * beside the mapped event; `null` when none was kept. Set like `jws`: always on events from
+   * `drain` and `sweep`, and from `list` only for a caller that may read the inbox's JWS.
+   */
+  original?: Record<string, unknown> | null;
 }
 
 export type ReceiveOutcome = "accepted" | "duplicate" | "business_duplicate";
@@ -106,6 +124,12 @@ export interface ReceiveResult {
    * `business_duplicate` (stored nowhere).
    */
   jws: string | null;
+  /**
+   * R1-D-281: the original stored with the event, as `jws`: the one just verified when `accepted`,
+   * the one kept at the first receipt for a `duplicate` (null if none was), null for a
+   * `business_duplicate`.
+   */
+  original: Record<string, unknown> | null;
 }
 
 interface Row {
@@ -121,9 +145,11 @@ interface Row {
   parked_at: Date | null;
   /** Absent when the row was read without its JWS (R1-D-280). */
   jws?: string | null;
+  /** Absent when the row was read without its original (R1-D-281). */
+  original?: Record<string, unknown> | null;
 }
 
-/** The inbox columns every reader may select (all but `jws`, R1-D-280). */
+/** The inbox columns every reader may select (all but `jws` and `original`, R1-D-280, R1-D-281). */
 const ROW_COLUMNS =
   "source, event_id, type, subject, seq, business_key, envelope, state, attempts, parked_at";
 
@@ -136,7 +162,54 @@ const toEvent = (r: Row): InboxEvent => ({
   businessKey: r.business_key,
   envelope: r.envelope,
   ...(r.jws !== undefined ? { jws: r.jws } : {}),
+  ...(r.original !== undefined ? { original: r.original } : {}),
 });
+
+/**
+ * R1-D-281: the largest original the inbox keeps, in octets of its JSON text as PostgreSQL prints
+ * a `jsonb` (the column's check, `octet_length(original::text) <= 262144`).
+ */
+export const INBOX_ORIGINAL_MAX_OCTETS = 262_144;
+
+/**
+ * Octets of a JSON value (already through `JSON.stringify`/`JSON.parse`) as PostgreSQL prints it
+ * from `jsonb`: `", "` and `": "` separators, the JSON string escapes, and numbers in plain decimal
+ * notation (a numeric never prints an exponent), so the inbox's bound matches the column's check.
+ */
+export function jsonbTextOctets(v: unknown): number {
+  if (v === null) return 4;
+  switch (typeof v) {
+    case "boolean":
+      return v ? 4 : 5;
+    case "string":
+      return Buffer.byteLength(JSON.stringify(v), "utf8");
+    case "number": {
+      const s = JSON.stringify(v);
+      const m = /^(-?)(\d)(?:\.(\d+))?e([+-]\d+)$/.exec(s);
+      if (!m) return s.length;
+      const digits = m[2]! + (m[3] ?? "");
+      const exp = Number(m[4]);
+      const sign = m[1]!.length;
+      // 1.5e21 prints as 22 digits; 1.5e-7 as "0." then six zeros then "15".
+      return exp >= 0 ? sign + Math.max(digits.length, exp + 1) : sign + 1 - exp + digits.length;
+    }
+    case "object": {
+      if (Array.isArray(v)) {
+        if (!v.length) return 2;
+        return 2 + 2 * (v.length - 1) + v.reduce<number>((n, x) => n + jsonbTextOctets(x), 0);
+      }
+      const entries = Object.entries(v as Record<string, unknown>);
+      if (!entries.length) return 2;
+      return (
+        2 +
+        2 * (entries.length - 1) +
+        entries.reduce((n, [k, x]) => n + jsonbTextOctets(k) + 2 + jsonbTextOctets(x), 0)
+      );
+    }
+    default:
+      throw new TypeError(`not a JSON value: ${typeof v}`);
+  }
+}
 
 /**
  * Refusal of `jwsOf` to a caller holding none of the inbox's reader roles (R1-D-280): the code of
@@ -149,6 +222,8 @@ export class EcosystemInbox {
   private readonly position: string;
   /** `tenancy.eco_inbox_jws` over the row's own source and event id (R1-D-280). */
   private readonly jwsColumn: string;
+  /** `tenancy.eco_inbox_original` over the row's own source and event id (R1-D-281). */
+  private readonly originalColumn: string;
   private readonly parkMs: number;
   private readonly firstSeq: number;
   private readonly maxAttempts: number;
@@ -159,6 +234,7 @@ export class EcosystemInbox {
     this.position = `${o.schema}.eco_position`;
     // The schema is checked against SCHEMA above, so it is a safe literal.
     this.jwsColumn = `tenancy.eco_inbox_jws('${o.schema}', source, event_id)`;
+    this.originalColumn = `tenancy.eco_inbox_original('${o.schema}', source, event_id)`;
     this.parkMs = (o.parkMinutes ?? 15) * 60_000;
     this.firstSeq = o.firstSeq ?? 1;
     this.maxAttempts = o.maxAttempts ?? 5;
@@ -186,12 +262,28 @@ export class EcosystemInbox {
    * same JWS (its `jti` already claimed) is a `duplicate` too. The product still refuses an
    * unsigned regulated message itself (`isRegulatedMessage`); one passed without `jws` is stored
    * with none.
+   *
+   * `original` (R1-D-281): the partner's own signed envelope when `raw` is the product's mapping of
+   * it, so `jws` signs `original`, not `raw`. It needs `jws` (a TypeError otherwise), must be an
+   * Ecosystem envelope equal to `raw` in every attribute but `data`, and at most
+   * `INBOX_ORIGINAL_MAX_OCTETS` in its `jsonb` text, or the event is refused with IPB-API-018
+   * (`meta.reason` `original-malformed`, `original-too-long` or `original-mismatch`) before the JWS
+   * is checked or anything is stored. The JWS is then verified over the original, with the same
+   * replay and redelivery rules, and the original is kept with it, written once; a redelivery
+   * answers `duplicate` with the original stored first.
    */
   async receive(
     ctx: KernelContext,
     raw: unknown,
-    opts: { businessKey?: string; exclusiveWith?: readonly string[]; jws?: string } = {},
+    opts: {
+      businessKey?: string;
+      exclusiveWith?: readonly string[];
+      jws?: string;
+      original?: unknown;
+    } = {},
   ): Promise<ReceiveResult> {
+    if (opts.original !== undefined && opts.jws === undefined)
+      throw new TypeError("receive({ original }) needs the jws that signs the original");
     const e = EcosystemEnvelope.parse(raw);
     if ((e.environment ?? "live") !== this.o.environment)
       throw new IpbError("IPB-API-005", {
@@ -201,8 +293,12 @@ export class EcosystemInbox {
     const action = `${this.o.schema}.eco_inbox.receive`;
     const others = (opts.exclusiveWith ?? []).filter((t) => t !== e.type);
     if (others.length && !opts.businessKey) throw new Error("exclusiveWith needs a businessKey");
-    const jws = opts.jws === undefined ? null : await this.verified(ctx, e, opts.jws);
-    const signed = jws ? { signed: true, kid: jws.kid } : {};
+    const original = opts.original === undefined ? null : this.checkedOriginal(e, opts.original);
+    const jws =
+      opts.jws === undefined ? null : await this.verified(ctx, e, opts.jws, original ?? e);
+    const signed = jws
+      ? { signed: true, kid: jws.kid, ...(original ? { original: true } : {}) }
+      : {};
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -231,13 +327,18 @@ export class EcosystemInbox {
                 ...signed,
               },
             });
-            return { outcome: "business_duplicate" as const, eventId: e.id, jws: null };
+            return {
+              outcome: "business_duplicate" as const,
+              eventId: e.id,
+              jws: null,
+              original: null,
+            };
           }
         }
         const ins = await tx.query(
           `insert into ${this.inbox}
-             (tenant_id, source, event_id, type, subject, seq, business_key, envelope, jws)
-           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+             (tenant_id, source, event_id, type, subject, seq, business_key, envelope, jws, original)
+           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10::jsonb)
            on conflict do nothing returning event_id`,
           [
             tx.ctx.tenantId,
@@ -249,18 +350,24 @@ export class EcosystemInbox {
             opts.businessKey ?? null,
             JSON.stringify(e),
             jws?.jws ?? null,
+            original ? JSON.stringify(original) : null,
           ],
         );
         let outcome: ReceiveOutcome = "accepted";
         let stored = jws?.jws ?? null;
+        let storedOriginal = original;
         if (!ins.rowCount) {
-          const same = await tx.query<{ jws: string | null }>(
-            `select ${this.jwsColumn} as jws from ${this.inbox}
+          const same = await tx.query<{
+            jws: string | null;
+            original: Record<string, unknown> | null;
+          }>(
+            `select ${this.jwsColumn} as jws, ${this.originalColumn} as original from ${this.inbox}
               where tenant_id = $1 and source = $2 and event_id = $3`,
             [tx.ctx.tenantId, e.source, e.id],
           );
           outcome = same.rowCount ? "duplicate" : "business_duplicate";
           stored = same.rows[0]?.jws ?? null;
+          storedOriginal = same.rows[0]?.original ?? null;
         }
         await this.o.audit.record(tx, {
           action,
@@ -275,21 +382,55 @@ export class EcosystemInbox {
             ...signed,
           },
         });
-        return { outcome, eventId: e.id, jws: stored };
+        return { outcome, eventId: e.id, jws: stored, original: storedOriginal };
       },
       { action },
     );
   }
 
   /**
+   * R1-D-281: checks the original `receive` was given against the mapped envelope `e`, before the
+   * JWS is checked and before anything is stored, and returns it as it will be stored (through
+   * JSON, as the `jsonb` column keeps it), or refuses the event with IPB-API-018.
+   */
+  private checkedOriginal(e: EcosystemEnvelope, raw: unknown): Record<string, unknown> {
+    const refuse = (reason: string, detail: string) =>
+      new IpbError("IPB-API-018", { detail, meta: { reason } });
+    const p = EcosystemEnvelope.safeParse(raw);
+    let o: Record<string, unknown>;
+    try {
+      if (!p.success) throw new TypeError("not an envelope");
+      o = JSON.parse(JSON.stringify(p.data)) as Record<string, unknown>;
+    } catch {
+      throw refuse("original-malformed", "the original is not an Ecosystem envelope");
+    }
+    if (jsonbTextOctets(o) > INBOX_ORIGINAL_MAX_OCTETS)
+      throw refuse(
+        "original-too-long",
+        `the original is longer than ${INBOX_ORIGINAL_MAX_OCTETS} octets`,
+      );
+    // Every attribute but `data`: the same set of them, each with the same value.
+    const { data: _o, ...oa } = o;
+    const { data: _e, ...ea } = JSON.parse(JSON.stringify(e)) as Record<string, unknown>;
+    if (canonicalize(oa) !== canonicalize(ea))
+      throw refuse(
+        "original-mismatch",
+        "the original differs from the mapped event outside `data`",
+      );
+    return o;
+  }
+
+  /**
    * R1-D-257: checks and verifies `jws` for `e` before anything is stored, or refuses the event
    * with IPB-API-018. A `replay` failure (the `jti` was claimed after the signature and `iat`
    * verified) is a redelivery when the tenant's inbox holds this event with this very JWS.
+   * `over` is what the JWS signs: `e` itself, or the partner's original of it (R1-D-281).
    */
   private async verified(
     ctx: KernelContext,
     e: EcosystemEnvelope,
     jws: string,
+    over: Record<string, unknown>,
   ): Promise<{ jws: string; kid: string }> {
     const refuse = (reason: string, detail: string) =>
       new IpbError("IPB-API-018", { detail, meta: { reason: "signature-invalid", jws: reason } });
@@ -299,7 +440,7 @@ export class EcosystemInbox {
     const h = regulatedJwsFromHeaders({ [REGULATED_JWS_HEADER]: jws });
     if (!h.ok) throw refuse(h.reason, `the JWS is ${h.reason.replace("_", " ")}`);
     const r = this.o.regulated;
-    const v = await verifyRegulatedMessage(e as Record<string, unknown>, jws, {
+    const v = await verifyRegulatedMessage(over, jws, {
       keys: r.keys,
       replay: r.replay,
       now: this.now(),
@@ -388,9 +529,10 @@ export class EcosystemInbox {
           if (seq <= last) result = "skipped";
           else if (seq > last + 1) result = "parked";
           else {
-            // The JWS only for the event handed over (R1-D-280): 42501 to a non-reader.
-            const jws = await this.jwsIn(tx, row.source, row.event_id);
-            await handle(tx, toEvent({ ...row, jws }));
+            // The JWS and original only for the event handed over (R1-D-280, R1-D-281): 42501
+            // to a non-reader.
+            const proof = await this.proofIn(tx, row.source, row.event_id);
+            await handle(tx, toEvent({ ...row, ...proof }));
             await this.setLast(tx, source, subject, seq);
             result = "processed";
           }
@@ -582,9 +724,9 @@ export class EcosystemInbox {
   }
 
   /**
-   * The stored events of one subject, for an operator view. Each event carries `jws` when the
-   * caller may read the inbox's JWS, and none when it is restricted to roles the caller does not
-   * hold (R1-D-280).
+   * The stored events of one subject, for an operator view. Each event carries `jws` and
+   * `original` when the caller may read the inbox's JWS, and neither when it is restricted to roles
+   * the caller does not hold (R1-D-280, R1-D-281).
    */
   async list(
     ctx: KernelContext,
@@ -592,7 +734,9 @@ export class EcosystemInbox {
     subject: string,
   ): Promise<(InboxEvent & { state: InboxState; attempts: number })[]> {
     return this.o.kernel.read(ctx, async (tx) => {
-      const jws = (await this.readable(tx)) ? `, ${this.jwsColumn} as jws` : "";
+      const jws = (await this.readable(tx))
+        ? `, ${this.jwsColumn} as jws, ${this.originalColumn} as original`
+        : "";
       return (
         await tx.query<Row>(
           `select ${ROW_COLUMNS}${jws}
@@ -622,6 +766,32 @@ export class EcosystemInbox {
     });
   }
 
+  /**
+   * R1-D-281: the partner's original stored with one event of the caller's tenant, with the reader
+   * roles and refusal of `jwsOf` (`IPB-UX-011` before the event is looked up); `null` when none was
+   * kept or the event is not in this tenant's inbox. A read, so nothing is ledgered.
+   */
+  async originalOf(
+    ctx: KernelContext,
+    source: string,
+    eventId: string,
+  ): Promise<Record<string, unknown> | null> {
+    if (typeof source !== "string" || typeof eventId !== "string")
+      throw new TypeError("source and eventId are strings");
+    return this.o.kernel.read(ctx, async (tx) => {
+      if (!(await this.readable(tx)))
+        throw new IpbError(INBOX_JWS_REFUSED, {
+          detail: "the original of this inbox is read by its reader roles only",
+          meta: { reason: "jws_reader" },
+        });
+      const r = await tx.query<{ original: Record<string, unknown> | null }>(
+        "select tenancy.eco_inbox_original($1, $2, $3) as original",
+        [this.o.schema, source, eventId],
+      );
+      return r.rows[0]?.original ?? null;
+    });
+  }
+
   /** Whether the transaction's roles may read this inbox's JWS (tenancy 0028). */
   private async readable(tx: Tx): Promise<boolean> {
     const r = await tx.query<{ ok: boolean }>("select tenancy.eco_inbox_jws_readable($1) as ok", [
@@ -637,6 +807,20 @@ export class EcosystemInbox {
       [this.o.schema, source, eventId],
     );
     return r.rows[0]?.jws ?? null;
+  }
+
+  /** One event's JWS and original through the definers (42501 to a non-reader). */
+  private async proofIn(
+    tx: Tx,
+    source: string,
+    eventId: string,
+  ): Promise<{ jws: string | null; original: Record<string, unknown> | null }> {
+    const r = await tx.query<{ jws: string | null; original: Record<string, unknown> | null }>(
+      `select tenancy.eco_inbox_jws($1, $2, $3) as jws,
+              tenancy.eco_inbox_original($1, $2, $3) as original`,
+      [this.o.schema, source, eventId],
+    );
+    return { jws: r.rows[0]?.jws ?? null, original: r.rows[0]?.original ?? null };
   }
 
   private async lastSeq(tx: Tx, source: string, subject: string): Promise<number> {
