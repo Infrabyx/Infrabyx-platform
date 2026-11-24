@@ -1,5 +1,13 @@
 # @infrabyx/vidhi
 
+## 1.0.63
+
+### Patch Changes
+
+- Updated dependencies [c07aefe]
+  - @infrabyx/tenancy@1.29.0
+  - @infrabyx/ai@1.2.16
+
 ## 1.0.62
 
 ### Patch Changes
