@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-24 (morning, thirty-second session handover)
+Updated: 2026-11-24 (afternoon, thirty-third session in progress)
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -53,6 +53,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 ## Platform backlog (owner-approved, not scheduled)
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Thirty-third session (24 Nov, owner chat, 14:29 IST onward) — in progress
+
+- **Lock:** SESSION LOCK #262 was FREE at 14:29 IST and taken. OWNER INBOX #263: no new owner comment since the last report (the answers came in the chat).
+- **Fixed-Keycloak check (14:30 IST):** none; the newest release tag is still `26.8.2-3` (19 Nov, `sha256:7e66a96e…`), only `nightly` since. OWNER-WAIVER-CRIT-01 and R1-D-208 stand.
+- **Owner answers (R1-D-285):** #202 accepted; #203 accepted with addition (A), `breakGlassTenantApproversForRead: 1 | 2`; #203 (5) confirmed (guide §7ev). PR-UDF-085 and PR-UDF-086 registered. Order: the answers PR, (A), PR-UDF-086, PR-UDF-085, each released as a minor when green.
 
 ## Thirty-second session (24 Nov 08:20 to about 10:40 IST, owner chat) — handover
 
