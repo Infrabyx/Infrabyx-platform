@@ -3,9 +3,10 @@
 // the mapped event; the partner's JWS signs the original, so `receive({ jws, original })` verifies
 // the JWS over the original and keeps it, written once, with the JWS. On an inbox restricted by
 // `restrict_ecosystem_inbox_jws` the original has the JWS's reader roles.
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { AuditEntryInput, AuditSink, KernelContext, Tx } from "@infrabyx/contracts/kernel";
 import {
@@ -493,7 +494,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
               (select count(*)::int from pg_trigger where tgrelid = ${t} and tgname = 'eco_inbox_original_once') as triggers,
               col_description(${t}, (select attnum from pg_attribute where attrelid = ${t} and attname = 'original' and not attisdropped)::int) as tag`,
     );
-    expect(r.rows[0]).toEqual({ cols: 1, checks: 3, triggers: 1, tag: "dataclass:INTERNAL" });
+    expect(r.rows[0]).toEqual({ cols: 1, checks: 3, triggers: 1, tag: "dataclass:REGULATED" });
     const sql = "select original from legacyo.eco_inbox";
     // Before and after the grants are refreshed, app_rw and app_ro cannot select the new column.
     expect(await code(asRo(maker(), sql))).toBe("42501");
@@ -529,6 +530,48 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
     }
     await db.admin.query("delete from tenancy.eco_inbox_jws_reader where schema_name = 'legacyo'");
     await db.admin.query("drop schema legacyo cascade");
+  });
+
+  it("R1-D-283 tenancy 0030 retags the original REGULATED, on new inboxes and on those 0029 tagged INTERNAL", async () => {
+    const tagOf = async (schema: string): Promise<unknown> => {
+      const r = await db.admin.query(
+        `select col_description(c.oid, a.attnum::int) as tag
+           from pg_attribute a join pg_class c on c.oid = a.attrelid
+          where c.oid = '${schema}.eco_inbox'::regclass and a.attname = 'original'`,
+      );
+      return r.rows[0]?.tag;
+    };
+    await db.admin.query("create schema retagnew");
+    await db.admin.query("select tenancy.create_ecosystem_inbox('retagnew')");
+    expect(await tagOf("retagnew")).toBe("dataclass:REGULATED");
+    // Two inboxes as tenancy 0029 left them, one restricted; and one a product retagged itself.
+    for (const s of ["retaga", "retagb", "retagc"]) {
+      await db.admin.query(`create schema ${s}`);
+      await db.admin.query(`select tenancy.create_ecosystem_inbox('${s}')`);
+    }
+    await db.admin.query(
+      "select tenancy.restrict_ecosystem_inbox_jws('retagb', array['UDF_SECURITY'])",
+    );
+    for (const s of ["retaga", "retagb"])
+      await db.admin.query(`comment on column ${s}.eco_inbox.original is 'dataclass:INTERNAL'`);
+    await db.admin.query("comment on column retagc.eco_inbox.original is 'dataclass:RESTRICTED'");
+    const sql = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../migrations/0030_ecosystem_inbox_original_regulated.sql",
+      ),
+      "utf8",
+    );
+    const loop = sql.slice(sql.indexOf("do $$"));
+    await db.admin.query(loop);
+    expect(await tagOf("retaga")).toBe("dataclass:REGULATED");
+    expect(await tagOf("retagb")).toBe("dataclass:REGULATED");
+    // Only INTERNAL is corrected: a stricter class a product chose stays.
+    expect(await tagOf("retagc")).toBe("dataclass:RESTRICTED");
+    // The restricted inbox's grants are untouched: app_ro still cannot select the column.
+    expect(await code(asRo(maker(), "select original from retagb.eco_inbox"))).toBe("42501");
+    await db.admin.query("delete from tenancy.eco_inbox_jws_reader where schema_name = 'retagb'");
+    await db.admin.query("drop schema retagnew, retaga, retagb, retagc cascade");
   });
 
   it("@IPB-02-12 the RLS lint passes with the original's definer allow-listed", async () => {
