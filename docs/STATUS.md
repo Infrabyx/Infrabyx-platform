@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-24 (night, thirty-first session handover)
+Updated: 2026-11-24 (morning, thirty-second session)
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,6 +53,15 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 ## Platform backlog (owner-approved, not scheduled)
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Thirty-second session (24 Nov 08:20 IST, owner chat) — in progress
+
+- **Lock:** SESSION LOCK #262 was FREE at 08:20 IST and taken. OWNER INBOX #263 had no new owner comment (the answers came in the chat).
+- **Fixed-Keycloak check (session start, 08:30 IST):** none. The newest release tag is still `26.8.2-3` (19 Nov, `sha256:7e66a96e…`), only `nightly` since; OWNER-WAIVER-CRIT-01 and R1-D-208 stand.
+- **Owner answers (R1-D-282):** #195 (4) and (5) accepted (the whole of #195 now), #199 (1) to (5), #200 (1) to (6) and #201 (2) to (7) accepted; **#201 (1) changed to REGULATED**, corrected by `tenancy/0030` and released as a minor, Udofin told in OWNER INBOX #263.
+- **PR-FBX-55 (owner's order):** a support or scoped break-glass grant usable only when the tenant's own administrator approves each grant (maker-checker in the tenant, time-boxed, ledgered in the tenant, revocable by the lender). Added to `docs/platform-requests.md` when Finbyx files it; not filed yet (`FinbyxCl` `77d2361` ends at PR-FBX-54).
+- **Dates:** today is 24 Nov, so the Keycloak `26.8.2-3` test-image move (on or after 26 Nov) and the waiver check (1 Dec, or the first chat on or after 28 Nov) wait for a later chat.
+- **Merge guard (owner):** compare the `docs/DECISIONS.md` row count with `main` before every merge.
 
 ## Thirty-first session (23 Nov 23:25 IST to 24 Nov, owner's night chat) — handover
 
