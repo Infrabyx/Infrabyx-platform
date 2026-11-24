@@ -1,5 +1,14 @@
 # @infrabyx/testing
 
+## 1.34.5
+
+### Patch Changes
+
+- Updated dependencies [c07aefe]
+  - @infrabyx/tenancy@1.29.0
+  - @infrabyx/audit@1.13.1
+  - @infrabyx/seed@1.0.63
+
 ## 1.34.4
 
 ### Patch Changes
