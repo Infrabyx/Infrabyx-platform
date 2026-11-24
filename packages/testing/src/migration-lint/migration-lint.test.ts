@@ -152,8 +152,13 @@ describe("@IPB-09-AT-12 released migration immutability", () => {
 // Reviewed widenings: a check constraint dropped and re-added wider in the same migration, so no
 // row becomes invalid and no contract step follows. Each entry: the file and its number of drops.
 const WIDENED_CHECKS: Record<string, ReadonlyArray<readonly [string, number]>> = {
-  // LawDocsComply PR-LDC-07 (R1-D-75): the external grantee kinds.
-  tenancy: [["0016_grantee_kinds_breakglass_scope.sql", 1]],
+  // LawDocsComply PR-LDC-07 (R1-D-75): the external grantee kinds; and owner addition (A) to #203
+  // (R1-D-286): 0031's no-second-approver-for-read check dropped, and its awaiting check replaced
+  // by a wider one (add not valid, validate; every existing row passes).
+  tenancy: [
+    ["0016_grantee_kinds_breakglass_scope.sql", 1],
+    ["0032_breakglass_tenant_read_two_approvers.sql", 2],
+  ],
   // PR-042 (R1-D-95): the UNIT tier in the tier and scope checks of setting_value and setting_change.
   config: [["0005_unit_tier.sql", 4]],
   // PR-LDC-30 (R1-D-125, R1-D-133): not a widened check but the same kind of reviewed drop: the
