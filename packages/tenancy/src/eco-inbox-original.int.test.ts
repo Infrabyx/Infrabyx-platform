@@ -163,6 +163,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
       eventId: o.id,
       jws,
       original: o,
+      originalSigned: true,
     });
     expect(await row("mapped", o.id)).toEqual({ jws, original: o });
     const env = await db.admin.query(`select envelope from mapped.eco_inbox where event_id = $1`, [
@@ -311,13 +312,8 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
     }
   });
 
-  it("an original needs its JWS: receive throws, and the database refuses one without a JWS", async () => {
-    const i = inbox("mapped");
+  it("the database checks the original: a JSON object of bounded size, with or without a JWS (R1-D-288)", async () => {
     const o = original("o_nojws", 1);
-    await expect(i.receive(connector(), mapped(o), { original: o })).rejects.toBeInstanceOf(
-      TypeError,
-    );
-    expect(await row("mapped", o.id)).toBeUndefined();
     // Without the `regulated` option the inbox cannot verify, so it keeps no original either.
     const bare = new EcosystemInbox({ kernel, audit, schema: "mapped", environment: "live" });
     await expect(
@@ -330,7 +326,9 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
         [SOURCE, uuidv7(), jws, orig],
       );
     const jws = "aaaa..bbbb";
-    await expect(insert("{}", null)).rejects.toMatchObject({ code: "23514" });
+    // tenancy 0033: an original without a JWS is kept (unsigned).
+    expect((await insert("{}", null)).rowCount).toBe(1);
+    await expect(insert("[]", null)).rejects.toMatchObject({ code: "23514" });
     await expect(insert("[]", jws)).rejects.toMatchObject({ code: "23514" });
     await expect(insert('"text"', jws)).rejects.toMatchObject({ code: "23514" });
     await expect(
@@ -385,6 +383,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
       eventId: o.id,
       jws: first,
       original: o,
+      originalSigned: true,
     });
     // The very same JWS again: its `jti` is claimed, but this event holds it.
     expect(await i.receive(connector("tnt_od"), m, { jws: first, original: o })).toEqual({
@@ -392,6 +391,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
       eventId: o.id,
       jws: first,
       original: o,
+      originalSigned: true,
     });
     // A redelivery mapped again with other `data` keeps what was stored first.
     const remapped = { ...o, data: { status: "S9" } };
@@ -424,6 +424,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
       eventId: o.id,
       jws,
       original: o,
+      originalSigned: true,
     });
     for (const c of [maker(), connector(), as("tnt_o", ["UDF_SECURITY"])]) {
       for (const sql of [
@@ -494,7 +495,7 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
               (select count(*)::int from pg_trigger where tgrelid = ${t} and tgname = 'eco_inbox_original_once') as triggers,
               col_description(${t}, (select attnum from pg_attribute where attrelid = ${t} and attname = 'original' and not attisdropped)::int) as tag`,
     );
-    expect(r.rows[0]).toEqual({ cols: 1, checks: 3, triggers: 1, tag: "dataclass:REGULATED" });
+    expect(r.rows[0]).toEqual({ cols: 1, checks: 2, triggers: 1, tag: "dataclass:REGULATED" });
     const sql = "select original from legacyo.eco_inbox";
     // Before and after the grants are refreshed, app_rw and app_ro cannot select the new column.
     expect(await code(asRo(maker(), sql))).toBe("42501");
@@ -576,5 +577,156 @@ describe("R1-D-281 the partner's original signed body beside the mapped event (P
 
   it("@IPB-02-12 the RLS lint passes with the original's definer allow-listed", async () => {
     expect(await lintRls(db.admin, { schemas: ["tenancy", "mapped", "guardedo"] })).toEqual([]);
+  });
+});
+
+describe("@IPB-02-19 an unsigned partner original in the inbox (Udofin PR-UDF-085, R1-D-288, tenancy/0033)", () => {
+  it("keeps an unsigned original, REGULATED and written once, and every reader says it is unsigned", async () => {
+    const i = inbox("mapped");
+    const o = original("u_first", 1, { status: "APPROVED" });
+    const m = mapped(o);
+    expect(await i.receive(connector("tnt_un"), m, { original: o })).toEqual({
+      outcome: "accepted",
+      eventId: o.id,
+      jws: null,
+      original: o,
+      originalSigned: false,
+    });
+    expect(await row("mapped", o.id)).toEqual({ jws: null, original: o });
+    // The ledger says an unsigned original was kept, never what it holds, and claims no signature.
+    const led = audit.entries.filter((a) => a.resourceId === o.id && a.action.endsWith("receive"));
+    expect(led.at(-1)?.after).toMatchObject({
+      outcome: "accepted",
+      original: true,
+      original_signed: false,
+    });
+    expect(led.at(-1)?.after).not.toHaveProperty("signed");
+    expect(led.at(-1)?.after).not.toHaveProperty("kid");
+    expect(JSON.stringify(led)).not.toContain("APPROVED");
+    const got: InboxEvent[] = [];
+    await i.drain(connector("tnt_un"), async (_tx, ev) => void got.push(ev));
+    expect(got.map((g) => [g.jws, g.original, g.originalSigned])).toEqual([[null, o, false]]);
+    expect((await i.list(maker("tnt_un"), SOURCE, "u_first"))[0]).toMatchObject({
+      jws: null,
+      original: o,
+      originalSigned: false,
+    });
+    expect(await i.originalOf(maker("tnt_un"), SOURCE, o.id)).toEqual(o);
+    expect(await i.originalRecordOf(maker("tnt_un"), SOURCE, o.id)).toEqual({
+      original: o,
+      signed: false,
+    });
+    expect(await i.originalRecordOf(maker("tnt_un"), SOURCE, uuidv7())).toBeNull();
+    // A signed one says so.
+    const s = original("u_signed", 1);
+    await i.receive(connector("tnt_un"), mapped(s), { jws: await sign(s), original: s });
+    expect(await i.originalRecordOf(maker("tnt_un"), SOURCE, s.id)).toEqual({
+      original: s,
+      signed: true,
+    });
+    // Written once, and an unsigned original never later looks signed: neither column changes.
+    for (const set of [`original = '{"x":1}'::jsonb`, "jws = 'aaaa..bbbb'"])
+      await expect(
+        db.admin.query(`update mapped.eco_inbox set ${set} where event_id = $1`, [o.id]),
+      ).rejects.toMatchObject({ code: "42501" });
+  });
+
+  it("checks an unsigned original against the mapped event before storing anything", async () => {
+    const i = inbox("mapped");
+    const o = original("u_check", 1);
+    const refused = async (orig: unknown, reason: string) => {
+      await expect(
+        i.receive(connector("tnt_un"), mapped(o), { original: orig }),
+      ).rejects.toMatchObject({
+        code: "IPB-API-018",
+        meta: { reason },
+      });
+      expect(await row("mapped", o.id)).toBeUndefined();
+    };
+    await refused({ ...o, subject: "u_other" }, "original-mismatch");
+    await refused({ nope: true }, "original-malformed");
+    await refused(
+      { ...o, data: { pad: "x".repeat(INBOX_ORIGINAL_MAX_OCTETS) } },
+      "original-too-long",
+    );
+  });
+
+  it("a redelivery answers duplicate with the original stored first, never upgraded to signed", async () => {
+    const i = inbox("mapped");
+    const o = original("u_dup", 1);
+    await i.receive(connector("tnt_ud"), mapped(o), { original: o });
+    expect(await i.receive(connector("tnt_ud"), mapped(o), { original: o })).toEqual({
+      outcome: "duplicate",
+      eventId: o.id,
+      jws: null,
+      original: o,
+      originalSigned: false,
+    });
+    expect(
+      await i.receive(connector("tnt_ud"), mapped(o), { jws: await sign(o), original: o }),
+    ).toMatchObject({ outcome: "duplicate", jws: null, original: o, originalSigned: false });
+    expect(await row("mapped", o.id)).toEqual({ jws: null, original: o });
+  });
+
+  it("@IPB-02-12 on a restricted inbox an unsigned original has the JWS's reader roles", async () => {
+    const i = inbox("guardedo");
+    const o = original("u_guard", 1);
+    await i.receive(connector(), mapped(o), { original: o });
+    expect(await code(asRo(maker(), "select original from guardedo.eco_inbox"))).toBe("42501");
+    await expect(i.originalRecordOf(maker(), SOURCE, o.id)).rejects.toMatchObject({
+      code: INBOX_JWS_REFUSED,
+      meta: { reason: "jws_reader" },
+    });
+    for (const role of READERS)
+      expect(
+        await i.originalRecordOf(as("tnt_o", ["ORG_MEMBER", role]), SOURCE, o.id),
+        role,
+      ).toEqual({
+        original: o,
+        signed: false,
+      });
+  });
+
+  it("tenancy 0033 drops 0029's original-with-JWS check from existing inboxes, and new ones never get it", async () => {
+    const checks = async (schema: string): Promise<string[]> =>
+      (
+        await db.admin.query<{ conname: string }>(
+          `select conname from pg_constraint
+            where conrelid = '${schema}.eco_inbox'::regclass and conname like 'eco_inbox_original_%'
+            order by conname`,
+        )
+      ).rows.map((r) => r.conname);
+    await db.admin.query("create schema unsnew");
+    await db.admin.query("select tenancy.create_ecosystem_inbox('unsnew')");
+    expect(await checks("unsnew")).toEqual([
+      "eco_inbox_original_object",
+      "eco_inbox_original_size",
+    ]);
+    // An inbox as tenancy 0029 left it, holding a signed row: the check goes, the row stays.
+    await db.admin.query("create schema unsold");
+    await db.admin.query("select tenancy.create_ecosystem_inbox('unsold')");
+    await db.admin.query(
+      "alter table unsold.eco_inbox add constraint eco_inbox_original_with_jws check (original is null or jws is not null)",
+    );
+    await db.admin.query(
+      `insert into unsold.eco_inbox (tenant_id, source, event_id, type, subject, seq, envelope, jws, original)
+       values ('tnt_o', $1, $2, 'in.infrabyx.servicing.LoanStatusChanged.v1', 'u_old', 1, '{}', 'aaaa..bbbb', '{"a":1}')`,
+      [SOURCE, uuidv7()],
+    );
+    const sql = readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        "../migrations/0033_ecosystem_inbox_unsigned_original.sql",
+      ),
+      "utf8",
+    );
+    await db.admin.query(sql.slice(sql.lastIndexOf("do $$")));
+    expect(await checks("unsold")).toEqual([
+      "eco_inbox_original_object",
+      "eco_inbox_original_size",
+    ]);
+    const kept = await db.admin.query("select jws, original from unsold.eco_inbox");
+    expect(kept.rows).toEqual([{ jws: "aaaa..bbbb", original: { a: 1 } }]);
+    await db.admin.query("drop schema unsnew, unsold cascade");
   });
 });

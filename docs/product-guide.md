@@ -2177,6 +2177,23 @@ const { redirectUrl } = await esign.aadhaarEsign({
 
 **What to change:** nothing unless you want the return. Add `returnUrl` to the signer (and, for Digio, to the session if it differs). If you compare a whole `EsignEnvelopeRecord` in a test, its signers may now carry `returnUrl`.
 
+## 7ey. An unsigned partner original in the inbox (PR-UDF-085; R1-D-288)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0033`; no setting, no environment variable). **Why:** keep what an unsigned partner sent (a generic lender's unsigned events) in the same place, class and retention as a signed original (§7eu), instead of a product-side copy.
+
+```ts
+const r = await inbox.receive(ctx, mapped, { original }); // no jws: kept unsigned
+r.originalSigned; // false: no JWS, no signature check claimed
+const rec = await inbox.originalRecordOf(readerCtx, source, eventId); // { original, signed: false }
+// in a drain handler: ev.original, ev.originalSigned (false)
+```
+
+- **The same checks as a signed original:** an Ecosystem envelope equal to the mapped event outside `data`, at most 262,144 octets, or `IPB-API-018` (`original-mismatch`, `-malformed`, `-too-long`) before anything is stored. Class REGULATED, written once, and on a restricted inbox (§7et) read only by its reader roles.
+- **Never claim a signature for it.** `originalSigned` is `false` on `ReceiveResult` and `InboxEvent`, `originalRecordOf` answers `signed: false`, and there is no JWS to re-verify. `originalOf` returns it as it returns a signed one: check `originalSigned` or `originalRecordOf` before showing an original as verified. A later redelivery with a JWS never upgrades it.
+- **Existing rows are not touched** (0033 only drops 0029's check). Moving old product-side copies into the inbox is a retention decision for your owner.
+
+**What to change:** run `infrabyx-migrate` (0033). Pass `original` without `jws` for unsigned partner events if you want them kept. If you compare a whole `ReceiveResult` or `InboxEvent` in a test, add `originalSigned` (`null` with no original).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
