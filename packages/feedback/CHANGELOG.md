@@ -1,5 +1,17 @@
 # @infrabyx/feedback
 
+## 1.0.62
+
+### Patch Changes
+
+- Updated dependencies [fc9e98c]
+  - @infrabyx/tenancy@1.28.0
+  - @infrabyx/contracts@1.51.0
+  - @infrabyx/ai@1.2.15
+  - @infrabyx/config@1.24.5
+  - @infrabyx/crypto@1.15.3
+  - @infrabyx/ui@1.3.22
+
 ## 1.0.61
 
 ### Patch Changes
