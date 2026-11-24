@@ -1,5 +1,12 @@
 # @infrabyx/connectors
 
+## 1.32.2
+
+### Patch Changes
+
+- Updated dependencies [061f0d4]
+  - @infrabyx/tenancy@1.27.0
+
 ## 1.32.1
 
 ### Patch Changes

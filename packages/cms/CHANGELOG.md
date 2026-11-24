@@ -1,5 +1,13 @@
 # @infrabyx/cms
 
+## 1.1.59
+
+### Patch Changes
+
+- Updated dependencies [061f0d4]
+  - @infrabyx/tenancy@1.27.0
+  - @infrabyx/brand@1.2.22
+
 ## 1.1.58
 
 ### Patch Changes
