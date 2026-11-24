@@ -449,6 +449,7 @@ describe("infrabyx-migrate", () => {
       "@infrabyx/tenancy/0030_ecosystem_inbox_original_regulated.sql",
       "@infrabyx/tenancy/0031_breakglass_tenant_approval.sql",
       "@infrabyx/tenancy/0032_breakglass_tenant_read_two_approvers.sql",
+      "@infrabyx/tenancy/0033_ecosystem_inbox_unsigned_original.sql",
     ]);
     await db.admin.query("update meta.migration_checksums set sha256 = repeat('0', 64)");
     expect(await err(migrate({ client: db.admin, sources: [TENANCY_SOURCE] }))).toBe("IPB-ENG-005");

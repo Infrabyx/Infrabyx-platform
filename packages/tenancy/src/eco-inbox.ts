@@ -25,6 +25,12 @@
 // envelope in every attribute but `data`, and keeps it, written once, in the nullable `original`
 // column (tenancy 0029) beside the JWS; it is read only through `tenancy.eco_inbox_original(...)`,
 // with the same reader roles as the JWS.
+//
+// R1-D-288 (Udofin PR-UDF-085): `receive({ original })` without a `jws` keeps an UNSIGNED partner
+// original the same way (the same checks against the mapped event, class REGULATED and so the same
+// retention, written once, the same reader roles; tenancy 0033). Unsigned is the row having no JWS
+// (itself written once), and every reader says so: `originalSigned` is false on `ReceiveResult` and
+// `InboxEvent`, `originalRecordOf` answers `signed: false`, and nothing claims a signature check.
 import { IpbError } from "@infrabyx/contracts/errors";
 import {
   EcosystemEnvelope,
@@ -73,6 +79,12 @@ export interface InboxEvent {
    * `drain` and `sweep`, and from `list` only for a caller that may read the inbox's JWS.
    */
   original?: Record<string, unknown> | null;
+  /**
+   * R1-D-288: whether `original` was verified with the event's JWS at receipt (`true`), or kept
+   * unsigned (`false`: no JWS, no signature check claimed); `null` with no original. Set with
+   * `original`.
+   */
+  originalSigned?: boolean | null;
 }
 
 export type ReceiveOutcome = "accepted" | "duplicate" | "business_duplicate";
@@ -130,6 +142,15 @@ export interface ReceiveResult {
    * `business_duplicate`.
    */
   original: Record<string, unknown> | null;
+  /** R1-D-288: as `InboxEvent.originalSigned`, for the original returned here. */
+  originalSigned: boolean | null;
+}
+
+/** R1-D-288: one event's original and whether it was signed (`originalRecordOf`). */
+export interface InboxOriginalRecord {
+  original: Record<string, unknown>;
+  /** `true`: verified with the event's JWS at receipt; `false`: kept unsigned, never verified. */
+  signed: boolean;
 }
 
 interface Row {
@@ -162,7 +183,12 @@ const toEvent = (r: Row): InboxEvent => ({
   businessKey: r.business_key,
   envelope: r.envelope,
   ...(r.jws !== undefined ? { jws: r.jws } : {}),
-  ...(r.original !== undefined ? { original: r.original } : {}),
+  ...(r.original !== undefined
+    ? {
+        original: r.original,
+        originalSigned: r.original === null ? null : r.jws !== undefined && r.jws !== null,
+      }
+    : {}),
 });
 
 /**
@@ -264,7 +290,9 @@ export class EcosystemInbox {
    * with none.
    *
    * `original` (R1-D-281): the partner's own signed envelope when `raw` is the product's mapping of
-   * it, so `jws` signs `original`, not `raw`. It needs `jws` (a TypeError otherwise), must be an
+   * it, so `jws` signs `original`, not `raw`. Without `jws` (R1-D-288) it is the partner's unsigned
+   * original, kept the same way with `originalSigned: false` and no signature check claimed. It must
+   * be an
    * Ecosystem envelope equal to `raw` in every attribute but `data`, and at most
    * `INBOX_ORIGINAL_MAX_OCTETS` in its `jsonb` text, or the event is refused with IPB-API-018
    * (`meta.reason` `original-malformed`, `original-too-long` or `original-mismatch`) before the JWS
@@ -282,8 +310,6 @@ export class EcosystemInbox {
       original?: unknown;
     } = {},
   ): Promise<ReceiveResult> {
-    if (opts.original !== undefined && opts.jws === undefined)
-      throw new TypeError("receive({ original }) needs the jws that signs the original");
     const e = EcosystemEnvelope.parse(raw);
     if ((e.environment ?? "live") !== this.o.environment)
       throw new IpbError("IPB-API-005", {
@@ -298,7 +324,9 @@ export class EcosystemInbox {
       opts.jws === undefined ? null : await this.verified(ctx, e, opts.jws, original ?? e);
     const signed = jws
       ? { signed: true, kid: jws.kid, ...(original ? { original: true } : {}) }
-      : {};
+      : original
+        ? { original: true, original_signed: false }
+        : {};
     return this.o.kernel.mutate(
       ctx,
       async (tx) => {
@@ -332,6 +360,7 @@ export class EcosystemInbox {
               eventId: e.id,
               jws: null,
               original: null,
+              originalSigned: null,
             };
           }
         }
@@ -382,7 +411,13 @@ export class EcosystemInbox {
             ...signed,
           },
         });
-        return { outcome, eventId: e.id, jws: stored, original: storedOriginal };
+        return {
+          outcome,
+          eventId: e.id,
+          jws: stored,
+          original: storedOriginal,
+          originalSigned: storedOriginal === null ? null : stored !== null,
+        };
       },
       { action },
     );
@@ -769,7 +804,9 @@ export class EcosystemInbox {
   /**
    * R1-D-281: the partner's original stored with one event of the caller's tenant, with the reader
    * roles and refusal of `jwsOf` (`IPB-UX-011` before the event is looked up); `null` when none was
-   * kept or the event is not in this tenant's inbox. A read, so nothing is ledgered.
+   * kept or the event is not in this tenant's inbox. A read, so nothing is ledgered. Signed or
+   * unsigned (R1-D-288): use `originalRecordOf` to know which; an unsigned one has no JWS, so it
+   * can never be re-verified.
    */
   async originalOf(
     ctx: KernelContext,
@@ -789,6 +826,30 @@ export class EcosystemInbox {
         [this.o.schema, source, eventId],
       );
       return r.rows[0]?.original ?? null;
+    });
+  }
+
+  /**
+   * R1-D-288: the original stored with one event of the caller's tenant and whether it was signed:
+   * `signed: true` only when the event's JWS was verified over it at receipt, `false` for an
+   * unsigned original (never verified); `null` when none was kept or the event is not in this
+   * tenant's inbox. The reader roles and refusal of `originalOf`. A read, so nothing is ledgered.
+   */
+  async originalRecordOf(
+    ctx: KernelContext,
+    source: string,
+    eventId: string,
+  ): Promise<InboxOriginalRecord | null> {
+    if (typeof source !== "string" || typeof eventId !== "string")
+      throw new TypeError("source and eventId are strings");
+    return this.o.kernel.read(ctx, async (tx) => {
+      if (!(await this.readable(tx)))
+        throw new IpbError(INBOX_JWS_REFUSED, {
+          detail: "the original of this inbox is read by its reader roles only",
+          meta: { reason: "jws_reader" },
+        });
+      const p = await this.proofIn(tx, source, eventId);
+      return p.original === null ? null : { original: p.original, signed: p.jws !== null };
     });
   }
 
