@@ -104,6 +104,13 @@ create function tenancy.breakglass_tenant_approval_guard() returns trigger
          or (new.ended_by is not null and new.ended_by <> v_actor) then
         raise exception 'breakglass_tenant_approval: a decision is the actor''s own' using errcode = '42501';
       end if;
+      -- The row decides on a scoped grant awaiting this tenant, with that grant's own access, so a
+      -- read_write grant can never be approved by one manager as if it were read.
+      if not exists (select 1 from tenancy.breakglass_tenant_pending() p
+                      where p.id = new.grant_id and p.scope_access = new.access) then
+        raise exception 'breakglass_tenant_approval: % is not a scoped grant awaiting this tenant with access %',
+          new.grant_id, new.access using errcode = '42501';
+      end if;
       return new;
     end if;
     if new.tenant_id is distinct from old.tenant_id or new.grant_id is distinct from old.grant_id

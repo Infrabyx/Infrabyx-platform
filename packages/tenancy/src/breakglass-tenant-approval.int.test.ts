@@ -617,6 +617,26 @@ describe("@IPB-02-06 a scoped break-glass grant approved by its tenant (PR-FBX-5
         [await grant({ tenantId: "tnt_a" })],
       ),
     ).rejects.toThrow(/actor's own/);
+    // A row must carry its grant's own access, and name a scoped grant awaiting this tenant: one
+    // manager cannot approve a read_write grant as if it were read, nor decide on another's grant.
+    const rw = await grant({ tenantId: "tnt_a", access: "read_write" });
+    const one = (g: string, access: string) =>
+      asRole(
+        "app_rw",
+        manager,
+        `insert into tenancy.breakglass_tenant_approval (tenant_id, grant_id, access, state, window_minutes,
+           first_approver_id, first_approved_at, expires_at)
+         values ('tnt_a', $1, $2, 'approved', 5, 'usr_admin_a', now(), now() + interval '5 minutes')`,
+        [g, access],
+      );
+    await expect(one(rw, "read")).rejects.toThrow(/not a scoped grant awaiting this tenant/);
+    await expect(one(await grant({ tenantId: "tnt_b" }), "read")).rejects.toThrow(
+      /not a scoped grant awaiting this tenant/,
+    );
+    expect(await tenant().status(ownerA, rw)).toMatchObject({
+      state: "none",
+      tenantApproved: false,
+    });
     // The checks: the second approver differs from the first.
     await expect(
       asRole("app_rw", { ...manager, "app.actor_id": "usr_owner_a" }, second, [id, "usr_owner_a"]),
