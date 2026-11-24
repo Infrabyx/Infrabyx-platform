@@ -1,5 +1,12 @@
 # @infrabyx/workflow
 
+## 1.5.16
+
+### Patch Changes
+
+- Updated dependencies [c07aefe]
+  - @infrabyx/tenancy@1.29.0
+
 ## 1.5.15
 
 ### Patch Changes
