@@ -2121,7 +2121,7 @@ const kernel = new PgKernel({ pool, audit, requireTenantApprovedBreakGlass: true
 ```
 
 - **Always, whatever the option:** a scoped grant the tenant refused or revoked is refused in that tenant from its next transaction (read again inside the transaction, so a revocation landing mid-request still stops it).
-- **With the option:** a scoped grant used in its tenant without a live approval (`none`, `awaiting_second_approval` or `expired`) is refused too. Without it, such a grant works as before. Recommended for every product serving lenders.
+- **With the option:** a scoped grant used in its tenant without a live approval (`none`, `awaiting_second_approval` or `expired`) is refused too. Without it, such a grant works as before. **Every product serving lenders sets it** (owner answer #203 (5), 24 Nov 2026; R1-D-285).
 - **The refusal:** `IPB-SEC-005` with `meta.reason` and `meta.refusal` `tenant_approval` (`BREAKGLASS_TENANT_APPROVAL_REFUSAL`), `meta.tenant_approval` the decision read and `meta.grant_id`; ledgered in the tenant as `security.breakglass.scope_refused` (`after.reason` `tenant_approval`); not recorded as a use (§7g). It answers as any `IPB-SEC-005` (404); tell the platform's staff, from `meta.refusal`, that the tenant must approve. The kernel needs its `audit` sink, as for any scoped grant.
 - Unscoped grants, and scoped grants in another tenant or a platform context (already refused, `meta.reason` `tenant`), are unchanged.
 
