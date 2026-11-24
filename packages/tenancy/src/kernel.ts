@@ -90,6 +90,29 @@ export interface PgKernelOptions {
    * revocation of a scoped grant is always enforced; an unscoped grant is never affected.
    */
   requireTenantApprovedBreakGlass?: boolean;
+  /**
+   * How many different tenant managers (ORG_OWNER or ORG_ADMIN) approve a scoped `read`
+   * break-glass grant (owner addition (A) to answer #203, 24 Nov 2026; R1-D-286; tenancy/0032):
+   * 1 (the default, as before) or 2, under the same rules as `read_write`, which always needs two.
+   * With 2 a `read` approval held by one manager is `awaiting_second_approval` here and in
+   * `BreakGlassTenantApproval` (which takes this kernel's value), and so is not admitted under
+   * `requireTenantApprovedBreakGlass`.
+   */
+  breakGlassTenantApproversForRead?: 1 | 2;
+}
+
+/**
+ * The tenant's decision as a kernel with `approversForRead` reads it (R1-D-286): with 2, a live
+ * `read` approval held by one manager still awaits its second approver.
+ */
+export function effectiveTenantApprovalState(
+  state: string,
+  singleReadApproval: boolean,
+  approversForRead: 1 | 2,
+): string {
+  return approversForRead === 2 && state === "approved" && singleReadApproval
+    ? "awaiting_second_approval"
+    : state;
 }
 
 /** The branches a caller holds a grant on: every branch of the tenant, or these (R1-D-273). */
@@ -684,6 +707,8 @@ export class PgKernel implements MutationKernel {
   private readonly ambientFrame = new AsyncLocalStorage<AmbientFrame>();
   private readonly branchGrants: BranchGrantSource | undefined;
   private readonly requireTenantApprovedBreakGlass: boolean;
+  /** Tenant managers who approve a scoped `read` grant: 1 or 2 (R1-D-286). */
+  readonly breakGlassTenantApproversForRead: 1 | 2;
   /** Declared scoped-branch-read capabilities, and those already issued (R1-D-273). */
   private readonly capabilities: ReadonlySet<string>;
   private readonly issued = new Set<string>();
@@ -697,6 +722,9 @@ export class PgKernel implements MutationKernel {
     this.audit = opts.audit;
     this.branchGrants = opts.branchGrants;
     this.requireTenantApprovedBreakGlass = opts.requireTenantApprovedBreakGlass === true;
+    const n = opts.breakGlassTenantApproversForRead ?? 1;
+    if (n !== 1 && n !== 2) throw new RangeError("breakGlassTenantApproversForRead is 1 or 2");
+    this.breakGlassTenantApproversForRead = n;
     const names = opts.scopedBranchReadCapabilities ?? [];
     for (const n of names)
       if (typeof n !== "string" || !CAPABILITY_NAME.test(n) || n.startsWith("approvals."))
@@ -1294,17 +1322,27 @@ export class PgKernel implements MutationKernel {
   /**
    * The tenant's decision on a scoped break-glass grant used in it (PR-FBX-55; R1-D-284;
    * tenancy/0031), read on `client` in the context's tenant: a refusal or revocation is always
-   * enforced; with `requireTenantApprovedBreakGlass`, anything but a live approval is refused.
+   * enforced; with `requireTenantApprovedBreakGlass`, anything but a live approval is refused. With
+   * `breakGlassTenantApproversForRead: 2` a `read` approval held by one manager is not live
+   * (`awaiting_second_approval`; R1-D-286).
    */
   private async tenantApprovalRefusal(
     client: pg.PoolClient,
     scope: GrantScope,
   ): Promise<ScopeRefusal | undefined> {
-    const r = await client.query<{ state: string | null }>(
-      "select tenancy.breakglass_tenant_approval_state($1) as state",
+    const r = await client.query<{ state: string | null; single_read: boolean | null }>(
+      `select tenancy.breakglass_tenant_approval_state($1) as state,
+              (select a.access = 'read' and a.second_approver_id is null
+                 from tenancy.breakglass_tenant_approval a
+                where a.tenant_id = current_setting('app.tenant_id', true)
+                  and a.grant_id = $1) as single_read`,
       [scope.grantId],
     );
-    const state = r.rows[0]?.state ?? "none";
+    const state = effectiveTenantApprovalState(
+      r.rows[0]?.state ?? "none",
+      r.rows[0]?.single_read === true,
+      this.breakGlassTenantApproversForRead,
+    );
     if (
       state === "refused" ||
       state === "revoked" ||

@@ -2129,6 +2129,29 @@ const kernel = new PgKernel({ pool, audit, requireTenantApprovedBreakGlass: true
 
 **What to change:** run `infrabyx-migrate` (0031); add the tenant page; set `requireTenantApprovedBreakGlass: true` once the page is live and the platform's on-call knows to ask the tenant; handle `meta.refusal === "tenant_approval"` in your problem responses. If you compare a whole `SupportGrant` with `toEqual` in a test, add `tenantApproved`.
 
+## 7ew. Two tenant approvers for a scoped `read` grant (owner addition (A) to #203; R1-D-286)
+
+From the next `@infrabyx/tenancy` minor (migration `tenancy/0032`; one kernel option; no setting, no environment variable). **Why:** a lender may want two of its own managers to approve every vendor access to its data, reads included (Udofin's owner answer #223).
+
+```ts
+const kernel = new PgKernel({
+  pool,
+  audit,
+  requireTenantApprovedBreakGlass: true, // every product serving lenders (§7ev)
+  breakGlassTenantApproversForRead: 2, // 1 (default): one manager approves a read grant
+});
+const approvals = new BreakGlassTenantApproval({ kernel, audit, outbox, product: "UDF" });
+await approvals.approve(ownerCtx, grantId); // read: awaiting_second_approval under 2
+await approvals.approve(adminCtx, grantId, { minutes: 30 }); // a second, different manager: approved
+```
+
+- **With 2:** a `read` grant follows the `read_write` rules of §7ev: two different ORG_OWNER or ORG_ADMIN approvers, never the grant's platform requester or approver (`IPB-TRUST-005`), the window the smaller of the two from the final approval, `BreakGlassTenantApproved` raised on the second approval. `pending`'s `tenantState` and `status` report `awaiting_second_approval` until then, and the kernel refuses the grant (`IPB-SEC-005`, `meta.tenant_approval` `awaiting_second_approval`) under `requireTenantApprovedBreakGlass`.
+- **Moving from 1 to 2:** a live `read` approval one manager gave earlier is then `awaiting_second_approval` and not admitted; a second, different manager's `approve` completes it without lengthening it (its window and expiry can only shrink), and `BreakGlassTenantApproved` is raised again with both approvers. Or revoke it and let the platform request a new grant.
+- **Moving from 2 to 1:** a `read` grant awaiting its second approver keeps waiting for one; the platform may request a new grant instead.
+- **The approvals take the kernel's value.** Give `approversForRead` to `BreakGlassTenantApproval` only for a kernel that is not a `PgKernel`; a value different from the kernel's is refused (`RangeError`). Any value but 1 or 2 is refused at construction.
+
+**What to change:** run `infrabyx-migrate` (0032) before deploying; set `breakGlassTenantApproversForRead: 2` if your lenders require two approvers for reads (Udofin: 2; Finbyx: 1 unless its owner answers otherwise); tell the tenant's administrators a read grant now needs two of them.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

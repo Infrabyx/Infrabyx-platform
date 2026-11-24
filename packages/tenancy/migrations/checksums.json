@@ -29,5 +29,6 @@
   "0028_ecosystem_inbox_jws_readers.sql": "2a8158b87dc5a9731b66dabe26a327b9db7f6ba14aa655251079de3acff9bb75",
   "0029_ecosystem_inbox_original.sql": "45fa0dbdbc2e1c1bd0a0095a6938bf7d34b873f1b272c17497d8b53466e9f2c0",
   "0030_ecosystem_inbox_original_regulated.sql": "bf474bfea9ee3716abf7088566bf0efec5eef8e893e6480ebccb988727cf4807",
-  "0031_breakglass_tenant_approval.sql": "ecd1f77070b0ff3a0a3a104126c584569c25c817903a415974c7b154f259ad2a"
+  "0031_breakglass_tenant_approval.sql": "ecd1f77070b0ff3a0a3a104126c584569c25c817903a415974c7b154f259ad2a",
+  "0032_breakglass_tenant_read_two_approvers.sql": "4e2cb5e37f389218b58e9fe9efe11e4429ee5edc577af7b4081c9e6bfee3fe32"
 }
