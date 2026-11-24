@@ -1,5 +1,13 @@
 # @infrabyx/trust
 
+## 1.0.61
+
+### Patch Changes
+
+- Updated dependencies [061f0d4]
+  - @infrabyx/tenancy@1.27.0
+  - @infrabyx/ai@1.2.14
+
 ## 1.0.60
 
 ### Patch Changes
