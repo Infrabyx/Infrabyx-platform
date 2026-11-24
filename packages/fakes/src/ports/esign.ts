@@ -25,8 +25,12 @@
 // different reference (or none, after one) is refused `IPB-PORT-003` `key_ref_changed`, as an
 // overwrite under another reference is in STORAGE; one naming the same reference returns them.
 //
+// PR-UDF-086 (R1-D-287): a signer's or a session's `returnUrl` is checked as the adapters check it
+// (`returnUrlProblem`; refused `return_url_invalid`) and recorded, the session's replacing the
+// signer's; `returnUrlOf(envelopeId, signerRef)` reads it. The fake's page addresses are unchanged.
+//
 // Test hooks: `signedObjects()`, `failNextDownload()`, `setSignerCertificate()`, `decline()`,
-// `trustStore()`.
+// `trustStore()`, `returnUrlOf()`.
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   DocumentRef,
@@ -35,6 +39,7 @@ import {
   type AdapterDescriptor,
   type EnvelopeDocument,
   isValidStorageKeyRef,
+  returnUrlProblem,
   type EnvelopeStatus,
   type EsignDownloadOptions,
   type EsignPort,
@@ -62,6 +67,15 @@ const up = async (): Promise<PortHealth> => ({
 
 const refuse = (reason: string, detail: string): PortError =>
   new PortError("IPB-PORT-001", "ESIGN", { adapter: "fake-esign", detail, meta: { reason } });
+function checkReturnUrl(url: unknown): asserts url is string {
+  const problem = returnUrlProblem(url);
+  if (problem)
+    throw new PortError("IPB-PORT-001", "ESIGN", {
+      adapter: "fake-esign",
+      detail: `invalid return URL (${problem})`,
+      meta: { reason: "return_url_invalid", problem },
+    });
+}
 
 let authority: PadesTestAuthority | undefined;
 /** The fake ESP's throwaway CA, shared by every `FakeEsign` in the process (made on first use). */
@@ -135,6 +149,7 @@ export class FakeEsign implements EsignPort {
   };
   health = up;
   private readonly envelopes = new Map<string, FakeEnvelope>();
+  private readonly returnUrls = new Map<string, string>();
   private readonly overrides = new Map<
     string,
     Omit<Certificate, "signer"> & { signer?: TestSigner }
@@ -152,6 +167,11 @@ export class FakeEsign implements EsignPort {
   }
 
   // ------------------------------------------------------------------ test hooks
+
+  /** PR-UDF-086: the return URL recorded for a signer (the last session's, else the signer's). */
+  returnUrlOf(envelopeId: string, signerRef: string): string | undefined {
+    return this.returnUrls.get(`${envelopeId}/${signerRef}`);
+  }
 
   /** The signed PDFs and chains written to STORAGE so far, in order. */
   signedObjects(): FakeEsignSignedObject[] {
@@ -277,13 +297,18 @@ export class FakeEsign implements EsignPort {
     return { documents: await this.download(this.get(id), keyRef) };
   }
 
-  async aadhaarEsign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
+  async aadhaarEsign(session: {
+    envelopeId: string;
+    signerRef: string;
+    method?: "AADHAAR_OTP_ESIGN" | "AADHAAR_BIO_ESIGN";
+    returnUrl?: string;
+  }) {
+    this.session(session);
     return { redirectUrl: `https://fake-esp.invalid/${session.envelopeId}/${session.signerRef}` };
   }
 
-  async dscSign(session: { envelopeId: string; signerRef: string }) {
-    this.get(session.envelopeId);
+  async dscSign(session: { envelopeId: string; signerRef: string; returnUrl?: string }) {
+    this.session(session);
     return { redirectUrl: `https://fake-dsc.invalid/${session.envelopeId}/${session.signerRef}` };
   }
 
@@ -311,11 +336,19 @@ export class FakeEsign implements EsignPort {
 
   // ------------------------------------------------------------------ internals
 
+  private session(session: { envelopeId: string; signerRef: string; returnUrl?: string }): void {
+    if (session.returnUrl !== undefined) checkReturnUrl(session.returnUrl);
+    this.get(session.envelopeId);
+    if (session.returnUrl)
+      this.returnUrls.set(`${session.envelopeId}/${session.signerRef}`, session.returnUrl);
+  }
+
   private async create(
     docs: ReadonlyArray<{ doc: DocumentRef; fields: unknown[] }>,
     signers: Signer[],
     multi: boolean,
   ): Promise<{ envelopeId: string }> {
+    for (const s of signers) if (s.returnUrl !== undefined) checkReturnUrl(s.returnUrl);
     const loaded: FakeDoc[] = [];
     for (const { doc, fields } of docs) {
       const d: FakeDoc = { doc, fields, signedBy: [], records: [] };
@@ -345,6 +378,7 @@ export class FakeEsign implements EsignPort {
       docs: loaded,
       multi,
     });
+    for (const s of signers) if (s.returnUrl) this.returnUrls.set(`${id}/${s.ref}`, s.returnUrl);
     return { envelopeId: id };
   }
 

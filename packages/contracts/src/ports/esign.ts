@@ -7,6 +7,8 @@
 // existing adapters and callers are unaffected; an adapter without them refuses `unsupported`).
 // PR-UDF-074 (R1-D-260): a download may name the tenant's STORAGE key (`keyRef`) the signed file is
 // written under; the write fails closed (a reference that cannot be used fails the download).
+// PR-UDF-086 (R1-D-287): an optional `returnUrl` on `createEnvelope`'s signer, `aadhaarEsign` and
+// `dscSign`, where the ESP's hosted signing page sends the signer back to (`returnUrlProblem`).
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { classed, recipient } from "./payload-class.js";
@@ -34,6 +36,42 @@ export const DocumentRef = z
   .strict();
 export type DocumentRef = z.infer<typeof DocumentRef>;
 
+/** The longest return URL an ESIGN adapter passes on (PR-UDF-086, R1-D-287). */
+export const ESIGN_RETURN_URL_MAX = 2048;
+
+/**
+ * Why a return URL for the ESP's hosted signing page is refused, or null when it is admitted
+ * (PR-UDF-086, R1-D-287): an absolute `https:` URL with a host, at most `ESIGN_RETURN_URL_MAX`
+ * characters of printable ASCII, with no user name or password, no `@` anywhere, no fragment and
+ * no query string, since the adapter adds nothing beyond the vendor's own redirect parameter and
+ * the vendor's own return parameters are the vendor's to append. It must carry no personal data:
+ * the product names its page by an opaque id only (e.g. `https://app.example/loans/<id>/sign/return`).
+ * The vendor's return is never a result: the envelope's state is read back from the vendor as now.
+ */
+export function returnUrlProblem(value: unknown): string | null {
+  if (typeof value !== "string" || value.length < 1 || value.length > ESIGN_RETURN_URL_MAX)
+    return "length";
+  if (!/^[\x21-\x7e]+$/.test(value)) return "characters";
+  if (!/^https:\/\//i.test(value)) return "scheme";
+  if (value.includes("@")) return "userinfo";
+  if (value.includes("?")) return "query";
+  if (value.includes("#")) return "fragment";
+  let u: URL;
+  try {
+    u = new URL(value);
+  } catch {
+    return "unparsable";
+  }
+  if (u.protocol !== "https:" || !u.hostname) return "scheme";
+  if (u.username || u.password) return "userinfo";
+  return null;
+}
+
+/** A return URL `returnUrlProblem` admits (INTERNAL: an opaque page address, no personal data). */
+export const ReturnUrl = z
+  .string()
+  .refine((v) => returnUrlProblem(v) === null, { message: "invalid return URL" });
+
 export const Signer = z
   .object({
     /** Principal or party reference. */
@@ -42,6 +80,11 @@ export const Signer = z
     email: recipient(z.email()).optional(),
     phone: recipient(z.string().regex(/^\+[1-9]\d{7,14}$/)).optional(),
     method: internal(z.enum(SIGNING_METHODS)),
+    /**
+     * PR-UDF-086: where the ESP's hosted page sends this signer back after signing
+     * (`returnUrlProblem`). Optional; without it the ESP account's own setting applies.
+     */
+    returnUrl: internal(ReturnUrl).optional(),
   })
   .strict();
 export type Signer = z.infer<typeof Signer>;
@@ -220,12 +263,24 @@ export interface EsignPort extends Port {
     envelopeId: string,
     opts?: EsignDownloadOptions,
   ): Promise<{ storageKey: string; sha256: string; signatures: SignatureRecord[] }>;
+  /**
+   * The ESP's hosted signing page for one signer. PR-UDF-086: `returnUrl` (`returnUrlProblem`;
+   * refused `IPB-PORT-001` `return_url_invalid` otherwise) is where that page sends the signer
+   * back, passed to the vendor's own redirect setting; without it, the one given on the signer at
+   * `createEnvelope`, else the ESP account's own setting. An adapter whose vendor fixes it at
+   * creation refuses a different one (`return_url_fixed`). The return is never a result.
+   */
   aadhaarEsign(session: {
     envelopeId: string;
     signerRef: string;
     method: "AADHAAR_OTP_ESIGN" | "AADHAAR_BIO_ESIGN";
+    returnUrl?: string;
   }): Promise<{ redirectUrl: string }>;
-  dscSign(session: { envelopeId: string; signerRef: string }): Promise<{ redirectUrl: string }>;
+  dscSign(session: {
+    envelopeId: string;
+    signerRef: string;
+    returnUrl?: string;
+  }): Promise<{ redirectUrl: string }>;
   verifySignature(doc: DocumentRef): Promise<{ valid: boolean; signatures: SignatureRecord[] }>;
   cancel(envelopeId: string, reason: string): Promise<void>;
   /** Parses the event, then reads the envelope back from the vendor; only that status is trusted. */
@@ -244,7 +299,7 @@ export interface EsignEnvelopeRecord {
   doc: DocumentRef;
   order: "sequential" | "parallel";
   /** Per signer: the method it was created with (never downgraded) and the vendor's handle. */
-  signers: { ref: string; method: SigningMethod; vendorKey: string }[];
+  signers: { ref: string; method: SigningMethod; vendorKey: string; returnUrl?: string }[];
   createdAt: string;
 }
 

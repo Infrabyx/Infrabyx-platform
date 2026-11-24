@@ -2152,6 +2152,31 @@ await approvals.approve(adminCtx, grantId, { minutes: 30 }); // a second, differ
 
 **What to change:** run `infrabyx-migrate` (0032) before deploying; set `breakGlassTenantApproversForRead: 2` if your lenders require two approvers for reads (Udofin: 2; Finbyx: 1 unless its owner answers otherwise); tell the tenant's administrators a read grant now needs two of them.
 
+## 7ex. A return URL on the ESP's hosted signing page (PR-UDF-086; R1-D-287)
+
+From the next `@infrabyx/contracts`, `@infrabyx/connectors` and `@infrabyx/fakes` minors (no migration, setting or environment variable). **Why:** send the signer back to your own page after the ESP's hosted signing page.
+
+```ts
+const back = `${webOrigin}/loans/${applicationId}/sign/return`; // an opaque id only
+await esign.createEnvelope(doc, [{ ...signer, returnUrl: back }], "sequential", fields);
+const { redirectUrl } = await esign.aadhaarEsign({
+  envelopeId,
+  signerRef,
+  method,
+  returnUrl: back,
+});
+// FakeEsign in tests: fake.returnUrlOf(envelopeId, signerRef) === back
+```
+
+- **Admitted:** an absolute `https:` URL with a host, printable ASCII, at most 2,048 characters, with **no query string, no fragment and no `@`** (`returnUrlProblem`). Anything else is refused before the ESP is called: `IPB-PORT-001` `return_url_invalid`, `meta.problem` the reason, never the URL.
+- **Never personal data:** name the page by an opaque id (the application or envelope id); never a name, phone number, e-mail address, PAN or Aadhaar number, in the path or anywhere.
+- **Digio:** the session's `returnUrl`, else the signer's, goes to the hosted page's own `redirect_url` parameter. Digio appends its own parameters on return.
+- **Leegality:** give it on `createEnvelope`'s signer. Leegality fixes it then (each invitation's sign URL), so a session's different `returnUrl` is refused `return_url_fixed`.
+- **NSDL** (off, `unproven`): checked, otherwise its operator's `responseUrl`.
+- **The return is never a result.** Read the envelope's state with `getStatus` (or from the webhook, which is itself read back) as now; a return to your page proves nothing.
+
+**What to change:** nothing unless you want the return. Add `returnUrl` to the signer (and, for Digio, to the session if it differs). If you compare a whole `EsignEnvelopeRecord` in a test, its signers may now carry `returnUrl`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

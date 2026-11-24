@@ -17,6 +17,7 @@ import {
   SignatureField,
   storageKey,
   isValidStorageKeyRef,
+  returnUrlProblem,
   type EnvelopeStatus,
   type EsignDownloadOptions,
   type EsignEnvelopeRecord,
@@ -100,12 +101,31 @@ export interface ValidatedEnvelope {
   fields: z.infer<typeof SignatureField>[];
 }
 
+/**
+ * Refuse a return URL `returnUrlProblem` does not admit (PR-UDF-086, R1-D-287), before any vendor
+ * call: `IPB-PORT-001` `return_url_invalid`, with the problem but never the URL (it may carry what
+ * it should not).
+ */
+export function assertReturnUrl(adapter: string, url: unknown): asserts url is string {
+  const problem = returnUrlProblem(url);
+  if (problem)
+    throw new PortError("IPB-PORT-001", ESIGN, {
+      adapter,
+      detail: `invalid return URL (${problem}): https, a host, no query string, fragment or user info`,
+      meta: { reason: "return_url_invalid", problem },
+    });
+}
+
 export function validateEnvelope(
   adapter: string,
   doc: unknown,
   signers: unknown,
   fields: unknown,
 ): ValidatedEnvelope {
+  if (Array.isArray(signers))
+    for (const x of signers)
+      if (x && typeof x === "object" && "returnUrl" in x && x.returnUrl !== undefined)
+        assertReturnUrl(adapter, x.returnUrl);
   const d = DocumentRef.safeParse(doc);
   const s = Signer.array().min(1).max(20).safeParse(signers);
   const f = SignatureField.array().max(100).safeParse(fields);

@@ -14,6 +14,9 @@
 // own signatures (`signerCertificatesFromPdf`); whether the document response carries the signer
 // certificates is [VERIFY], as is one signature per signer with no Digio seal. Multi-document
 // envelopes are [VERIFY] and refused `unsupported` until then.
+// PR-UDF-086 (R1-D-287): a signer's or a session's `returnUrl` goes to the gateway URL's own
+// `redirect_url` parameter [VERIFY], the only query the adapter adds; Digio appends its own
+// parameters on return, which are never a result (the status is read back from the API).
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
@@ -35,6 +38,7 @@ import { deterministicId, newId, toBase64Url, randomBytes } from "@infrabyx/cryp
 import { createEgress } from "../core/http.js";
 import { checkSharedSecret, parseJson, vendorError, webhookRefused } from "../messaging/common.js";
 import {
+  assertReturnUrl,
   ESIGN,
   loadEnvelope,
   methodRefused,
@@ -176,6 +180,7 @@ export class DigioEsign implements EsignPort {
         ref: s.ref,
         method: s.method,
         vendorKey: ids[i] as string,
+        ...(s.returnUrl ? { returnUrl: s.returnUrl } : {}),
       })),
       createdAt: new Date(this.o.now?.() ?? Date.now()).toISOString(),
     });
@@ -273,14 +278,19 @@ export class DigioEsign implements EsignPort {
     envelopeId: string,
     signerRef: string,
     asked: SigningMethod,
+    returnUrl: string | undefined,
   ): Promise<{ redirectUrl: string }> {
+    if (returnUrl !== undefined) assertReturnUrl("digio", returnUrl);
     const r = await loadEnvelope(this.o.store, "digio", envelopeId);
     const s = r.signers.find((x) => x.ref === signerRef);
     if (!s) throw unsupported("digio", `a session for unknown signer ${signerRef}`, "not_found");
     if (s.method !== asked || !SIGN_TYPE[asked]) throw methodRefused("digio", asked);
     const txn = toBase64Url(randomBytes(9));
+    const back = returnUrl ?? s.returnUrl;
     return {
-      redirectUrl: `${this.signBase}/#/gateway/login/${encodeURIComponent(r.vendorRef)}/${txn}/${encodeURIComponent(s.vendorKey)}`,
+      redirectUrl:
+        `${this.signBase}/#/gateway/login/${encodeURIComponent(r.vendorRef)}/${txn}/${encodeURIComponent(s.vendorKey)}` +
+        (back ? `?redirect_url=${encodeURIComponent(back)}` : ""),
     };
   }
 
@@ -288,12 +298,17 @@ export class DigioEsign implements EsignPort {
     envelopeId: string;
     signerRef: string;
     method: "AADHAAR_OTP_ESIGN" | "AADHAAR_BIO_ESIGN";
+    returnUrl?: string;
   }): Promise<{ redirectUrl: string }> {
-    return this.session(session.envelopeId, session.signerRef, session.method);
+    return this.session(session.envelopeId, session.signerRef, session.method, session.returnUrl);
   }
 
-  dscSign(session: { envelopeId: string; signerRef: string }): Promise<{ redirectUrl: string }> {
-    return this.session(session.envelopeId, session.signerRef, "DSC");
+  dscSign(session: {
+    envelopeId: string;
+    signerRef: string;
+    returnUrl?: string;
+  }): Promise<{ redirectUrl: string }> {
+    return this.session(session.envelopeId, session.signerRef, "DSC", session.returnUrl);
   }
 
   async verifySignature(): Promise<{ valid: boolean; signatures: SignatureRecord[] }> {
