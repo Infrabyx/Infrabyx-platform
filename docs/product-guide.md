@@ -2085,7 +2085,7 @@ await inbox.drain(ctx, async (tx, event) => handle(event.envelope, event.jws, ev
 
 **3. Stop writing your own table for new events.** Once your connector passes `original`, stop writing new rows to your own `mapped_event_original` / `lender_event_jws` table; read the proof from `event.jws` and `event.original` instead. Nothing is backfilled: events received before you switch keep their proof in your table, and whether and when that table is retired is the owner's decision.
 
-**Data class:** the column is tagged `INTERNAL` (the owner's word); it carries the same lender data as `envelope` (`REGULATED`), and owner question #201 asks whether to tag it `REGULATED`. Treat it as you treat `envelope` meanwhile.
+**Data class:** the column is tagged `REGULATED`, the class of `envelope`, whose lender data it carries (owner answer #201 (1), 24 Nov 2026; R1-D-283). Migration `tenancy/0030` corrects 0029's `INTERNAL` tag on every inbox that has the column, and `add_ecosystem_inbox_original` tags it `REGULATED` from then on; a class you set yourself that is not `INTERNAL` is left as it is. Run `infrabyx-migrate` (0030) with tenancy 1.27.0: nothing else changes, but your export, masking and AI-routing rules that read column classes now treat `original` as they treat `envelope`.
 
 **What to change:** run `infrabyx-migrate` (tenancy/0029) before deploying this version (`EcosystemInbox` inserts and reads the new column on every inbox), then pass `original` from your generic-lender connector.
 
