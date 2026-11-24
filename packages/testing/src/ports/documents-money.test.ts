@@ -170,6 +170,46 @@ describe("the ESIGN fake (PR-FBX-29)", () => {
   for (const c of esignFakeCases()) it(c.name, () => c.run(new FakeEsign()));
 });
 
+describe("@IPB-01-15 the ESIGN fake records the return URL (PR-UDF-086, R1-D-287)", () => {
+  const back = "https://app.example.test/loans/01JD3K7Q9M2X4B6C8D0E1F2G3H/sign/return";
+  const doc = { documentId: "doc_rt", sha256: "a".repeat(64), storageKey: "tenant/tnt_a/d.pdf" };
+  const s = (ref: string, returnUrl?: string) => ({
+    ref,
+    name: ref,
+    method: "AADHAAR_OTP_ESIGN" as const,
+    ...(returnUrl ? { returnUrl } : {}),
+  });
+
+  it("keeps the signer's, then a session's, and refuses a query string or a non-https URL", async () => {
+    const f = new FakeEsign();
+    const { envelopeId } = await f.createEnvelope(
+      doc,
+      [s("usr_1", back), s("usr_2")],
+      "parallel",
+      [],
+    );
+    expect(f.returnUrlOf(envelopeId, "usr_1")).toBe(back);
+    expect(f.returnUrlOf(envelopeId, "usr_2")).toBeUndefined();
+    const other = `${back}/again`;
+    await f.dscSign({ envelopeId, signerRef: "usr_2", returnUrl: other });
+    expect(f.returnUrlOf(envelopeId, "usr_2")).toBe(other);
+    for (const bad of [`${back}?loan=1&name=Asha`, "http://app.example.test/r"]) {
+      await expect(
+        f.aadhaarEsign({
+          envelopeId,
+          signerRef: "usr_1",
+          method: "AADHAAR_OTP_ESIGN",
+          returnUrl: bad,
+        }),
+      ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "return_url_invalid" } });
+      await expect(f.createEnvelope(doc, [s("usr_3", bad)], "parallel", [])).rejects.toMatchObject({
+        meta: { reason: "return_url_invalid" },
+      });
+    }
+    expect(f.returnUrlOf(envelopeId, "usr_1")).toBe(back);
+  });
+});
+
 describe("the ESIGN fake over STORAGE (PR-UDF-070, PR-UDF-074)", () => {
   const storage = new MemoryStorage(undefined, {
     keyRefs: (t) => (t === "tnt_contract" ? ["lender:contract"] : []),

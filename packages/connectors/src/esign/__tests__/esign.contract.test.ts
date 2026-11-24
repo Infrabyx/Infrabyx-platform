@@ -391,3 +391,121 @@ describe("PR-UDF-070 signerCertificatesFromPdf: filled only when each signature 
     expect(signerCertificatesFromPdf(minimalPdf(), "sequential", [{ ref: "x" }]).size).toBe(0);
   });
 });
+
+describe("@IPB-01-15 PR-UDF-086 the ESP's return URL (R1-D-287)", () => {
+  const back = "https://app.example.test/loans/01JD3K7Q9M2X4B6C8D0E1F2G3H/sign/return";
+  const withBack = (n: number, method: Signer["method"] = "AADHAAR_OTP_ESIGN"): Signer => ({
+    ...signer(n, method),
+    returnUrl: back,
+  });
+
+  for (const [name, make] of [
+    ["leegality", leegality],
+    ["digio", digio],
+  ] as const)
+    it(`${name}: a URL with a query string, or not https, is refused before any request`, async () => {
+      const p = make();
+      const stub = stubOf(p);
+      const doc = await pdf();
+      const before = stub.requests.length;
+      for (const bad of [
+        `${back}?loan=01JD3K&name=Asha`,
+        `${back}?status=success`,
+        "http://app.example.test/r",
+      ])
+        await expect(
+          p.createEnvelope(doc, [{ ...signer(1), returnUrl: bad }], "parallel", []),
+        ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "return_url_invalid" } });
+      expect(stub.requests.length).toBe(before);
+      const { envelopeId } = await p.createEnvelope(doc, [signer(1)], "parallel", []);
+      await expect(
+        p.aadhaarEsign({
+          envelopeId,
+          signerRef: "usr_signer_1",
+          method: "AADHAAR_OTP_ESIGN",
+          returnUrl: `${back}?loan=1`,
+        }),
+      ).rejects.toMatchObject({ meta: { reason: "return_url_invalid" } });
+      // The refusal never echoes the URL.
+      const e = await p
+        .aadhaarEsign({
+          envelopeId,
+          signerRef: "usr_signer_1",
+          method: "AADHAAR_OTP_ESIGN",
+          returnUrl: "https://app.example.test/r?mobile=9876543210",
+        })
+        .catch((x: unknown) => x);
+      expect(JSON.stringify(e)).not.toContain("9876543210");
+    });
+
+  it("leegality: the signer's return URL goes to its invitee's redirect setting; the sign URL is unchanged", async () => {
+    const p = leegality();
+    const { envelopeId } = await p.createEnvelope(
+      await pdf(),
+      [withBack(1), signer(2)],
+      "parallel",
+      [],
+    );
+    const d = lg.documents.get(await vendorRef(p, envelopeId))!;
+    const invitations = d.invitations as Array<{ redirectUrl?: string; signUrl: string }>;
+    expect(invitations[0]?.redirectUrl).toBe(back);
+    expect(invitations[1]?.redirectUrl).toBeUndefined();
+    const s = await p.aadhaarEsign({
+      envelopeId,
+      signerRef: "usr_signer_1",
+      method: "AADHAAR_OTP_ESIGN",
+      returnUrl: back,
+    });
+    expect(s.redirectUrl).toBe(invitations[0]?.signUrl);
+    expect(new URL(s.redirectUrl).search).toBe("");
+    // Leegality fixes it at creation: another one, or one for a signer created without, is refused.
+    await expect(
+      p.aadhaarEsign({
+        envelopeId,
+        signerRef: "usr_signer_1",
+        method: "AADHAAR_OTP_ESIGN",
+        returnUrl: "https://app.example.test/other",
+      }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { reason: "return_url_fixed" } });
+    const second = { envelopeId, signerRef: "usr_signer_2", method: "AADHAAR_OTP_ESIGN" } as const;
+    await expect(p.aadhaarEsign({ ...second, returnUrl: back })).rejects.toMatchObject({
+      meta: { reason: "return_url_fixed" },
+    });
+    expect((await p.aadhaarEsign(second)).redirectUrl).toBe(invitations[1]?.signUrl);
+  });
+
+  it("digio: the return URL is the gateway's own redirect_url parameter, the only query added", async () => {
+    const p = digio();
+    const { envelopeId } = await p.createEnvelope(
+      await pdf(),
+      [withBack(1), signer(2, "DSC")],
+      "parallel",
+      [],
+    );
+    const query = (u: string) => new URLSearchParams(u.split("?")[1] ?? "");
+    const a = await p.aadhaarEsign({
+      envelopeId,
+      signerRef: "usr_signer_1",
+      method: "AADHAAR_OTP_ESIGN",
+    });
+    expect([...query(a.redirectUrl).keys()]).toEqual(["redirect_url"]);
+    expect(query(a.redirectUrl).get("redirect_url")).toBe(back);
+    // A session's own replaces the signer's; without either, no query at all.
+    const other = "https://app.example.test/loans/01JD3K7Q9M2X4B6C8D0E1F2G3J/sign/return";
+    const b = await p.aadhaarEsign({
+      envelopeId,
+      signerRef: "usr_signer_1",
+      method: "AADHAAR_OTP_ESIGN",
+      returnUrl: other,
+    });
+    expect(query(b.redirectUrl).get("redirect_url")).toBe(other);
+    expect((await p.dscSign({ envelopeId, signerRef: "usr_signer_2" })).redirectUrl).not.toContain(
+      "?",
+    );
+    const c = await p.dscSign({ envelopeId, signerRef: "usr_signer_2", returnUrl: back });
+    expect(query(c.redirectUrl).get("redirect_url")).toBe(back);
+    // The record keeps the signer's, for later sessions.
+    const rec = await stores.get(p)!.get(envelopeId);
+    expect(rec?.signers.map((s) => s.returnUrl)).toEqual([back, undefined]);
+  });
+});

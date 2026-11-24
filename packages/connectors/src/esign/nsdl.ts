@@ -50,6 +50,7 @@ import type {
 } from "@infrabyx/contracts/ports";
 import { deterministicId, newId, sha256Hex } from "@infrabyx/crypto";
 import {
+  assertReturnUrl,
   ESIGN,
   loadEnvelope,
   methodRefused,
@@ -260,8 +261,12 @@ export class NsdlEsign implements EsignPort {
     envelopeId: string;
     signerRef: string;
     method: "AADHAAR_OTP_ESIGN" | "AADHAAR_BIO_ESIGN";
+    returnUrl?: string;
   }): Promise<{ redirectUrl: string }> {
     await this.guard();
+    // PR-UDF-086: checked as everywhere; NSDL's own `responseUrl` is the operator's option, and the
+    // session is refused below until its request signing is approved.
+    if (session.returnUrl !== undefined) assertReturnUrl(ADAPTER, session.returnUrl);
     const r = await loadEnvelope(this.o.store, ADAPTER, session.envelopeId);
     const s = r.signers.find((x) => x.ref === session.signerRef);
     if (!s)

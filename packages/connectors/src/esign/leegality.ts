@@ -16,6 +16,10 @@
 // own signatures (`signerCertificatesFromPdf`); whether `/v3.0/document/details` also returns the
 // signer certificates is [VERIFY], as is one signature per invitation with no Leegality seal.
 // Multi-document requests (several `files`) are [VERIFY] and refused `unsupported` until then.
+// PR-UDF-086 (R1-D-287): a signer's `returnUrl` goes to its invitee's `redirectUrl` [VERIFY] when
+// the request is created, since each invitation's `signUrl` is fixed then; a session's `returnUrl`
+// must be that same one (anything else is refused `return_url_fixed`). The adapter adds no query
+// to the `signUrl`; Leegality's return is never a result (the status is read back from the API).
 import { PortError } from "@infrabyx/contracts/errors";
 import type {
   AdapterDescriptor,
@@ -37,6 +41,7 @@ import { deterministicId, newId, verifyLeegalityMac } from "@infrabyx/crypto";
 import { createEgress } from "../core/http.js";
 import { parseJson, vendorError, webhookRefused } from "../messaging/common.js";
 import {
+  assertReturnUrl,
   ESIGN,
   loadEnvelope,
   methodRefused,
@@ -156,6 +161,7 @@ export class LeegalityEsign implements EsignPort {
         name: s.name,
         ...(s.email ? { email: s.email } : {}),
         ...(s.phone ? { phone: s.phone.replace(/^\+91/, "") } : {}),
+        ...(s.returnUrl ? { redirectUrl: s.returnUrl } : {}),
       })),
       irn: envelopeId,
     });
@@ -178,6 +184,7 @@ export class LeegalityEsign implements EsignPort {
         ref: s.ref,
         method: s.method,
         vendorKey: (invitations[i] as Invitation).signUrl,
+        ...(s.returnUrl ? { returnUrl: s.returnUrl } : {}),
       })),
       createdAt: new Date(this.o.now?.() ?? Date.now()).toISOString(),
     });
@@ -270,12 +277,20 @@ export class LeegalityEsign implements EsignPort {
     signerRef: string,
     allowed: readonly SigningMethod[],
     asked: SigningMethod,
+    returnUrl: string | undefined,
   ): Promise<{ redirectUrl: string }> {
+    if (returnUrl !== undefined) assertReturnUrl("leegality", returnUrl);
     const r = await loadEnvelope(this.o.store, "leegality", envelopeId);
     const s = r.signers.find((x) => x.ref === signerRef);
     if (!s)
       throw unsupported("leegality", `a session for unknown signer ${signerRef}`, "not_found");
     if (s.method !== asked || !allowed.includes(s.method)) throw methodRefused("leegality", asked);
+    if (returnUrl !== undefined && returnUrl !== s.returnUrl)
+      throw unsupported(
+        "leegality",
+        "a return URL other than the signer's at createEnvelope (Leegality fixes it then)",
+        "return_url_fixed",
+      );
     return { redirectUrl: s.vendorKey };
   }
 
@@ -283,17 +298,23 @@ export class LeegalityEsign implements EsignPort {
     envelopeId: string;
     signerRef: string;
     method: "AADHAAR_OTP_ESIGN" | "AADHAAR_BIO_ESIGN";
+    returnUrl?: string;
   }): Promise<{ redirectUrl: string }> {
     return this.session(
       session.envelopeId,
       session.signerRef,
       ["AADHAAR_OTP_ESIGN", "AADHAAR_BIO_ESIGN"],
       session.method,
+      session.returnUrl,
     );
   }
 
-  dscSign(session: { envelopeId: string; signerRef: string }): Promise<{ redirectUrl: string }> {
-    return this.session(session.envelopeId, session.signerRef, ["DSC"], "DSC");
+  dscSign(session: {
+    envelopeId: string;
+    signerRef: string;
+    returnUrl?: string;
+  }): Promise<{ redirectUrl: string }> {
+    return this.session(session.envelopeId, session.signerRef, ["DSC"], "DSC", session.returnUrl);
   }
 
   async verifySignature(): Promise<{ valid: boolean; signatures: SignatureRecord[] }> {
