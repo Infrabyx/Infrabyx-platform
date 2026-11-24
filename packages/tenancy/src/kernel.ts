@@ -41,6 +41,7 @@ import {
   moduleGuard,
   refusalOf,
   scopeRefusal,
+  TENANT_APPROVAL_REFUSAL,
   type GrantScope,
   type ScopeRefusal,
 } from "./scope-guard.js";
@@ -82,6 +83,13 @@ export interface PgKernelOptions {
    * path). None by default.
    */
   scopedBranchReadCapabilities?: readonly string[];
+  /**
+   * Admit a scoped break-glass grant in a tenant only while that tenant's own approval of it is
+   * live (Finbyx PR-FBX-55; R1-D-284; tenancy/0031; `BreakGlassTenantApproval`). Default false:
+   * a scoped grant needs no tenant approval, as before. Either way a tenant's refusal or
+   * revocation of a scoped grant is always enforced; an unscoped grant is never affected.
+   */
+  requireTenantApprovedBreakGlass?: boolean;
 }
 
 /** The branches a caller holds a grant on: every branch of the tenant, or these (R1-D-273). */
@@ -134,6 +142,12 @@ const CONTROL = /[\u0000-\u001f\u007f]/;
 /** Ledger actions of the kernel's scope refusals (R1-D-75). */
 export const BREAKGLASS_SCOPE_REFUSED_ACTION = "security.breakglass.scope_refused";
 export const SUPPORT_SCOPE_REFUSED_ACTION = "security.support_access.scope_refused";
+/**
+ * The fixed `meta.refusal` (and ledgered `reason`) of a scoped break-glass grant refused for want
+ * of the tenant's approval, or for its refusal or revocation (R1-D-284); `meta.tenant_approval`
+ * carries the decision the kernel read.
+ */
+export const BREAKGLASS_TENANT_APPROVAL_REFUSAL = TENANT_APPROVAL_REFUSAL;
 
 // Statements the callback may not run: session-level SET/RESET, role switches, set_config with
 // is_local = false, writes to the kernel's own settings, and trigger bypass (IPB-09 §09.4.6.3).
@@ -669,6 +683,7 @@ export class PgKernel implements MutationKernel {
   private readonly audit: AuditSink | undefined;
   private readonly ambientFrame = new AsyncLocalStorage<AmbientFrame>();
   private readonly branchGrants: BranchGrantSource | undefined;
+  private readonly requireTenantApprovedBreakGlass: boolean;
   /** Declared scoped-branch-read capabilities, and those already issued (R1-D-273). */
   private readonly capabilities: ReadonlySet<string>;
   private readonly issued = new Set<string>();
@@ -681,6 +696,7 @@ export class PgKernel implements MutationKernel {
     this.readRole = opts.readRole ?? this.role;
     this.audit = opts.audit;
     this.branchGrants = opts.branchGrants;
+    this.requireTenantApprovedBreakGlass = opts.requireTenantApprovedBreakGlass === true;
     const names = opts.scopedBranchReadCapabilities ?? [];
     for (const n of names)
       if (typeof n !== "string" || !CAPABILITY_NAME.test(n) || n.startsWith("approvals."))
@@ -1213,9 +1229,10 @@ export class PgKernel implements MutationKernel {
    * Before a break-glass context's transaction, in its own short one: the grant's scope (R1-D-75),
    * then the use, recorded in the tenant it touches, read or write, so the tenant sees every grant
    * used on its data (tenancy/0009, R1-D-28). A scoped grant used in another tenant, in a platform
-   * context or for a write under `read` is refused (IPB-SEC-005) and ledgered there, and not
-   * recorded as a use. An inactive grant records nothing; the transaction then refuses it
-   * (IPB-SEC-009).
+   * context, in a tenant that refused or revoked it (or, with `requireTenantApprovedBreakGlass`,
+   * has no live approval of it; R1-D-284) or for a write under `read` is refused (IPB-SEC-005) and
+   * ledgered there, and not recorded as a use. An inactive grant records nothing; the transaction
+   * then refuses it (IPB-SEC-009).
    */
   private async breakGlassPreflight(
     ctx: KernelContext,
@@ -1248,7 +1265,8 @@ export class PgKernel implements MutationKernel {
         };
         if (ctx.scope === "platform" || row.scope_tenant_id !== ctx.tenantId)
           refusal = { scope, reason: "tenant" };
-        else if (write && row.scope_access === "read") refusal = { scope, reason: "write" };
+        else refusal = await this.tenantApprovalRefusal(client, scope);
+        if (!refusal && write && row.scope_access === "read") refusal = { scope, reason: "write" };
         if (!this.audit)
           throw new KernelGuardError(
             "a scoped grant needs the kernel's audit sink (PgKernelOptions.audit)",
@@ -1273,6 +1291,29 @@ export class PgKernel implements MutationKernel {
     return scope;
   }
 
+  /**
+   * The tenant's decision on a scoped break-glass grant used in it (PR-FBX-55; R1-D-284;
+   * tenancy/0031), read on `client` in the context's tenant: a refusal or revocation is always
+   * enforced; with `requireTenantApprovedBreakGlass`, anything but a live approval is refused.
+   */
+  private async tenantApprovalRefusal(
+    client: pg.PoolClient,
+    scope: GrantScope,
+  ): Promise<ScopeRefusal | undefined> {
+    const r = await client.query<{ state: string | null }>(
+      "select tenancy.breakglass_tenant_approval_state($1) as state",
+      [scope.grantId],
+    );
+    const state = r.rows[0]?.state ?? "none";
+    if (
+      state === "refused" ||
+      state === "revoked" ||
+      (this.requireTenantApprovedBreakGlass && state !== "approved")
+    )
+      return { scope, reason: TENANT_APPROVAL_REFUSAL, tenantApproval: state };
+    return undefined;
+  }
+
   /** Ledger a scope refusal in the context's tenant, in its own transaction (R1-D-75, R1-D-76). */
   private async ledgerRefusal(ctx: KernelContext, r: ScopeRefusal, action?: string): Promise<void> {
     if (!this.audit) throw new KernelGuardError("a scoped grant needs the kernel's audit sink");
@@ -1286,6 +1327,7 @@ export class PgKernel implements MutationKernel {
         tenant_id: ctx.tenantId,
         scope: { tenant_id: r.scope.tenantId, modules: r.scope.modules, access: r.scope.access },
         ...(r.module ? { module: r.module } : {}),
+        ...(r.tenantApproval ? { tenant_approval: r.tenantApproval } : {}),
         ...(action ? { action } : {}),
       },
     });
@@ -1351,6 +1393,12 @@ export class PgKernel implements MutationKernel {
         );
         if (!r.rows[0]?.ok)
           throw new IpbError("IPB-SEC-009", { detail: "break-glass grant is not active" });
+        // Read again in this transaction, so a refusal or revocation that lands after the
+        // preflight still stops it (R1-D-284).
+        if (scope?.kind === "breakglass" && scope.tenantId !== null) {
+          const t = await this.tenantApprovalRefusal(client, scope);
+          if (t) throw scopeRefusal(t, m.action);
+        }
       }
       // An external read needs its grant active, the principal's own and in this tenant; the
       // ledger write that follows it is not refused, so a read is recorded even if the grant

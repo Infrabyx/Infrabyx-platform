@@ -69,6 +69,12 @@ export interface SupportGrant {
   expiresAt: Date | null;
   endedBy: string | null;
   endedAt: Date | null;
+  /**
+   * Whether the tenant's approval is complete and stands, as read (Finbyx PR-FBX-55; R1-D-284):
+   * consented, second-approved for `read_write`, not refused or revoked, and unexpired. The same
+   * test a product's guard makes on a break-glass grant (`BreakGlassTenantStatus.tenantApproved`).
+   */
+  readonly tenantApproved: boolean;
 }
 
 /** One read made under a grant, as the tenant sees it. */
@@ -120,6 +126,12 @@ const toGrant = (r: Row): SupportGrant => ({
   expiresAt: r.expires_at,
   endedBy: r.ended_by,
   endedAt: r.ended_at,
+  tenantApproved:
+    r.state === "active" &&
+    r.consented_by !== null &&
+    (r.access === "read" || r.second_approver_id !== null) &&
+    r.expires_at !== null &&
+    r.expires_at.getTime() > Date.now(),
 });
 
 interface ReadRow {

@@ -17,12 +17,17 @@ export interface GrantScope {
   access: "read" | "read_write";
 }
 
-export type RefusalReason = "tenant" | "write" | "module";
+export type RefusalReason = "tenant" | "write" | "module" | "tenant_approval";
+
+/** The fixed `meta.refusal` of a scoped break-glass grant the tenant has not approved (R1-D-284). */
+export const TENANT_APPROVAL_REFUSAL = "tenant_approval";
 
 export interface ScopeRefusal {
   scope: GrantScope;
   reason: RefusalReason;
   module?: string;
+  /** For `tenant_approval`: the tenant's decision as the kernel read it (R1-D-284). */
+  tenantApproval?: string;
 }
 
 // Errors the kernel raised for a scope, which it ledgers once the transaction has rolled back.
@@ -34,13 +39,20 @@ export function scopeRefusal(r: ScopeRefusal, action?: string): IpbError {
       ? "this tenant is outside the grant's scope"
       : r.reason === "write"
         ? "the grant is read-only"
-        : `module ${r.module} is outside the grant's scope`;
+        : r.reason === "tenant_approval"
+          ? r.tenantApproval === "refused" || r.tenantApproval === "revoked"
+            ? "the tenant refused or revoked the grant"
+            : "the tenant has not approved the grant"
+          : `module ${r.module} is outside the grant's scope`;
   const e = new IpbError("IPB-SEC-005", {
     detail: `${r.scope.kind === "breakglass" ? "break-glass" : "support access"}: ${what}`,
     meta: {
       grant_id: r.scope.grantId,
       reason: r.reason,
       ...(r.module ? { module: r.module } : {}),
+      ...(r.reason === "tenant_approval"
+        ? { refusal: TENANT_APPROVAL_REFUSAL, tenant_approval: r.tenantApproval ?? "none" }
+        : {}),
       ...(action ? { action } : {}),
     },
   });
