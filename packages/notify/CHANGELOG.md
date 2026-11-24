@@ -1,5 +1,12 @@
 # @infrabyx/notify
 
+## 1.6.15
+
+### Patch Changes
+
+- Updated dependencies [591ff53]
+  - @infrabyx/tenancy@1.30.0
+
 ## 1.6.14
 
 ### Patch Changes
