@@ -481,14 +481,19 @@ export class BreakGlassTenantApproval {
             )
           ).rows[0];
         } else {
-          throw new ConflictError(`the tenant's decision on ${grantId} is ${row.state}`);
+          const now = await this.now(tx);
+          throw new ConflictError(
+            this.stateNow(row, now) === "awaiting_second_approval" && row.state === "approved"
+              ? `the tenant's single approval of ${grantId} is revoked, not refused`
+              : `the tenant's decision on ${grantId} is ${this.stateNow(row, now)}`,
+          );
         }
         const rec = toRecord(r as Row);
         await this.o.audit.record(tx, {
           action,
           resourceType: "breakglass_grant",
           resourceId: grantId,
-          before: { state: row?.state ?? "none" },
+          before: { state: row ? this.stateNow(row, await this.now(tx)) : "none" },
           after: { state: to },
         });
         await this.emit(tx, "BreakGlassTenantRevoked", {

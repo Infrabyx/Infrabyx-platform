@@ -83,8 +83,14 @@ const refusedFor = (grantId: string, state: string) => ({
 });
 
 /** Runs `sql` as app_rw with a tenant manager's settings; resolves to its rows or rejects. */
-async function asManager(actor: string, sql: string, params: unknown[] = []): Promise<unknown[]> {
+async function asManager(
+  actor: string,
+  sql: string,
+  params: unknown[] = [],
+  commit = false,
+): Promise<unknown[]> {
   const c = await db.pool.connect();
+  let done = false;
   try {
     await c.query("begin");
     await c.query("set local role app_rw");
@@ -94,9 +100,14 @@ async function asManager(actor: string, sql: string, params: unknown[] = []): Pr
       "app.roles": "ORG_ADMIN",
     }))
       await c.query("select set_config($1, $2, true)", [k, v]);
-    return (await c.query(sql, params)).rows;
+    const rows = (await c.query(sql, params)).rows;
+    if (commit) {
+      await c.query("commit");
+      done = true;
+    }
+    return rows;
   } finally {
-    await c.query("rollback").catch(() => undefined);
+    if (!done) await c.query("rollback").catch(() => undefined);
     c.release();
   }
 }
@@ -309,9 +320,19 @@ describe("@IPB-02-06 breakGlassTenantApproversForRead (owner addition (A) to #20
             set second_approver_id = 'usr_admin_a', second_approved_at = now()
           where grant_id = $1 returning state`,
         [id],
+        true,
       ),
     ).toEqual([{ state: "approved" }]);
     expect(single.expiresAt).not.toBeNull();
+    await expect(
+      asManager(
+        "usr_admin_a2",
+        `update tenancy.breakglass_tenant_approval
+            set second_approver_id = 'usr_admin_a2', second_approved_at = now()
+          where grant_id = $1`,
+        [id],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
     // A read_write approval, already holding both, never takes another.
     const rw = await grant({ tenantId: "tnt_a", access: "read_write" });
     await approvals(one).approve(ownerA, rw);
@@ -325,5 +346,66 @@ describe("@IPB-02-06 breakGlassTenantApproversForRead (owner addition (A) to #20
         [rw],
       ),
     ).rejects.toMatchObject({ code: "42501" });
+  });
+  it("tenancy/0032's guard: a second approval is made now, never widens the window, and is never the platform side's", async () => {
+    const id = await grant({ tenantId: "tnt_a" }, 60);
+    await approvals(two).approve(ownerA, id, { minutes: 5 });
+    const second = (set: string) =>
+      asManager(
+        "usr_admin_a",
+        `update tenancy.breakglass_tenant_approval
+            set state = 'approved', second_approver_id = 'usr_admin_a', ${set}
+          where grant_id = $1`,
+        [id],
+      );
+    for (const set of [
+      "second_approved_at = now() + interval '10 years', expires_at = now() + interval '5 minutes'",
+      "second_approved_at = now(), window_minutes = 240, expires_at = now() + interval '4 hours'",
+      "second_approved_at = now(), expires_at = now() + interval '1 hour'",
+      "second_approved_at = now(), expires_at = now() + interval '5 minutes', ended_by = 'usr_x'",
+    ])
+      await expect(second(set)).rejects.toMatchObject({ code: "42501" });
+    // The grant's platform requester holding a tenant role is refused at the table too.
+    await expect(
+      asManager(
+        "usr_sa1",
+        `update tenancy.breakglass_tenant_approval
+            set state = 'approved', second_approver_id = 'usr_sa1', second_approved_at = now(),
+                expires_at = now() + interval '5 minutes'
+          where grant_id = $1`,
+        [id],
+      ),
+    ).rejects.toMatchObject({ code: "42501" });
+    expect(
+      await second("second_approved_at = now(), expires_at = now() + interval '5 minutes'"),
+    ).toHaveLength(0);
+    // A first approval is timed now, within the grant's duration, and never the platform side's.
+    const other = await grant({ tenantId: "tnt_a" }, 30);
+    const insert = (actor: string, window: number, at: string) =>
+      asManager(
+        actor,
+        `insert into tenancy.breakglass_tenant_approval
+           (tenant_id, grant_id, access, state, window_minutes, first_approver_id, first_approved_at)
+         values ('tnt_a', $1, 'read', 'awaiting_second_approval', $2, $3, ${at})`,
+        [other, window, actor],
+      );
+    await expect(insert("usr_admin_a", 30, "now() + interval '1 year'")).rejects.toMatchObject({
+      code: "42501",
+    });
+    await expect(insert("usr_admin_a", 60, "now()")).rejects.toMatchObject({ code: "42501" });
+    await expect(insert("usr_so", 30, "now()")).rejects.toMatchObject({ code: "42501" });
+    expect(await insert("usr_admin_a", 30, "now()")).toHaveLength(0);
+  });
+
+  it("with 2, a single read approval given under 1 is revoked, not refused", async () => {
+    const id = await grant({ tenantId: "tnt_a" }, 60);
+    await approvals(one).approve(ownerA, id);
+    await expect(approvals(two).refuse(adminA, id, "we want two")).rejects.toThrow(
+      /revoked, not refused/,
+    );
+    const before = audit.actions.length;
+    expect(await approvals(two).revoke(adminA, id)).toMatchObject({ state: "revoked" });
+    expect(audit.actions.slice(before)).toEqual(["security.breakglass_tenant.revoke"]);
+    await expect(readDocs(two, bgIn(id))).rejects.toMatchObject(refusedFor(id, "revoked"));
   });
 });
