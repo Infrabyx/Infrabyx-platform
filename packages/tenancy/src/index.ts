@@ -13,6 +13,7 @@ export * from "./idempotency.js";
 export * from "./rate-limit.js";
 export * from "./approvals/index.js";
 export * from "./breakglass.js";
+export * from "./breakglass-tenant.js";
 export * from "./external.js";
 export * from "./support.js";
 export * from "./impersonation.js";

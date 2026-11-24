@@ -2089,6 +2089,46 @@ await inbox.drain(ctx, async (tx, event) => handle(event.envelope, event.jws, ev
 
 **What to change:** run `infrabyx-migrate` (tenancy/0029) before deploying this version (`EcosystemInbox` inserts and reads the new column on every inbox), then pass `original` from your generic-lender connector.
 
+## 7ev. A scoped break-glass grant under the tenant's own control (PR-FBX-55; R1-D-284)
+
+From the next `@infrabyx/tenancy` and `@infrabyx/contracts` minors (migration `tenancy/0031`; one kernel option; no setting, no environment variable). **Why:** a lender wants vendor access to its data under its own control. A scoped break-glass grant (§7af, R1-D-75) is requested and approved by platform staff in the platform tenant; the tenant it is scoped to now decides on each such grant as a maker-checker in the tenant, and the kernel can admit a scoped grant only while that decision stands. Support access already needs the tenant's consent (§7af, R1-D-76); its grants now carry the same `tenantApproved` flag. Unscoped break-glass is unchanged.
+
+**1. Migrate.** Run `infrabyx-migrate` (`tenancy/0031`) before deploying this version, then `infrabyx-rls-lint` (the new definer `tenancy.breakglass_tenant_pending` is on its default list).
+
+**2. Give the tenant's administrators a page.** In the tenant's context, as a named ORG_OWNER or ORG_ADMIN:
+
+```ts
+const approvals = new BreakGlassTenantApproval({ kernel, audit, outbox, product: "FBX" });
+const waiting = await approvals.pending(ctx); // scoped grants of this tenant, requested or active
+// each: grantId, requesterId, approverId, reason, durationMinutes, modules, access,
+//       grantState ('requested' | 'active'), grantExpiresAt, approval, tenantState
+await approvals.approve(ctx, grantId, { minutes: 30 }); // read: approved; read_write: first of two
+await approvals.approve(otherAdminCtx, grantId); // read_write: a second, different manager
+await approvals.refuse(ctx, grantId, "no incident on our side"); // final
+await approvals.revoke(ctx, grantId); // at once, final; also blocks an undecided grant
+const s = await approvals.status(ctx, grantId); // { tenantApproved, state, expiresAt }
+```
+
+- **Who:** a named user (not an agent, service or support principal) holding ORG_OWNER or ORG_ADMIN and no platform role, in a customer tenant's context with no break-glass grant, impersonation or external grant; otherwise `IPB-SEC-005` (an agent `IPB-SEC-004`, a missing role `IPB-UX-011`). The grant's platform requester or approver is refused `IPB-TRUST-005`, and so is the same manager twice on a `read_write` grant.
+- **Window:** from the final approval, `minutes` (1 to 240) or by default the grant's duration, never more than it; for `read_write` the smaller of the two managers' minutes. The grant's own expiry applies as well.
+- **Refused:** an unscoped grant, a grant scoped to another tenant, a revoked or expired grant, or an unknown one: `NotFoundError` (404), so another tenant's grants are not disclosed. A second decision on a final one: `ConflictError` (409). A refusal reason has 1 to 500 characters on one line.
+- **Ledgered in the tenant:** `security.breakglass_tenant.approve`, `.refuse`, `.revoke` (resource `breakglass_grant`, the grant id); with an outbox, `BreakGlassTenantApproved` on the final approval and `BreakGlassTenantRevoked` (`data.state` `refused` or `revoked`), both raised in the tenant: notify the tenant's administrators and the platform's on-call from them.
+
+**3. Turn the kernel on.**
+
+```ts
+const kernel = new PgKernel({ pool, audit, requireTenantApprovedBreakGlass: true });
+```
+
+- **Always, whatever the option:** a scoped grant the tenant refused or revoked is refused in that tenant from its next transaction (read again inside the transaction, so a revocation landing mid-request still stops it).
+- **With the option:** a scoped grant used in its tenant without a live approval (`none`, `awaiting_second_approval` or `expired`) is refused too. Without it, such a grant works as before. Recommended for every product serving lenders.
+- **The refusal:** `IPB-SEC-005` with `meta.reason` and `meta.refusal` `tenant_approval` (`BREAKGLASS_TENANT_APPROVAL_REFUSAL`), `meta.tenant_approval` the decision read and `meta.grant_id`; ledgered in the tenant as `security.breakglass.scope_refused` (`after.reason` `tenant_approval`); not recorded as a use (§7g). It answers as any `IPB-SEC-005` (404); tell the platform's staff, from `meta.refusal`, that the tenant must approve. The kernel needs its `audit` sink, as for any scoped grant.
+- Unscoped grants, and scoped grants in another tenant or a platform context (already refused, `meta.reason` `tenant`), are unchanged.
+
+**4. A guard of your own.** Prefer the kernel option: it refuses before the request's first statement. A guard in a tenant manager's context may read `status(ctx, grantId).tenantApproved`; a break-glass context cannot call `status` (its read would itself be a recorded use). For support access, test `SupportGrant.tenantApproved` (active, consented, second-approved for `read_write`, unexpired as read); nothing else about support changes.
+
+**What to change:** run `infrabyx-migrate` (0031); add the tenant page; set `requireTenantApprovedBreakGlass: true` once the page is live and the platform's on-call knows to ask the tenant; handle `meta.refusal === "tenant_approval"` in your problem responses. If you compare a whole `SupportGrant` with `toEqual` in a test, add `tenantApproved`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

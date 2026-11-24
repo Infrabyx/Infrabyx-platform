@@ -57,6 +57,9 @@ export const DEFAULT_ALLOWED_DEFINERS = [
   // A partner's original signed body (tenancy/0029, R1-D-281): one event's original of the
   // transaction's own tenant to the same reader roles as its JWS, 42501 to anyone else.
   "tenancy.eco_inbox_original",
+  // The tenant's own decision on a scoped break-glass grant (tenancy/0031, R1-D-284): the scoped
+  // grants of the transaction's own tenant that are requested or active, nothing outside a tenant.
+  "tenancy.breakglass_tenant_pending",
 ];
 const SYSTEM = "('pg_catalog', 'information_schema', 'pg_toast')";
 
