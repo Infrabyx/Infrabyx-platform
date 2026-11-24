@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/fakes",
-  "version": "1.11.2",
+  "version": "1.11.3",
   "description": "In-memory port fakes and fixtures for fixture environments, without a test runner (IPB-01-15)",
   "license": "UNLICENSED",
   "private": false,
