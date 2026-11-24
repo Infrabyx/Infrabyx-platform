@@ -1,5 +1,15 @@
 # @infrabyx/workflow
 
+## 1.5.17
+
+### Patch Changes
+
+- Updated dependencies [95acbf9]
+  - @infrabyx/contracts@1.52.0
+  - @infrabyx/config@1.24.6
+  - @infrabyx/crypto@1.15.4
+  - @infrabyx/tenancy@1.29.1
+
 ## 1.5.16
 
 ### Patch Changes
