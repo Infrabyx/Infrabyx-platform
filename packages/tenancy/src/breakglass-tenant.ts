@@ -1,8 +1,9 @@
 // A scoped break-glass grant under the tenant's own control (Finbyx PR-FBX-55; owner order of 24 Nov
 // 2026; R1-D-284; tenancy/0031). A scoped grant (R1-D-75) is requested and approved by platform staff
 // in the platform tenant; here the tenant it is scoped to decides on it, as a maker-checker in the
-// tenant: one ORG_OWNER or ORG_ADMIN approves a `read` grant, a `read_write` grant needs a second,
-// different one (as support access, R1-D-76). The approval lasts at most the grant's duration from
+// tenant: one ORG_OWNER or ORG_ADMIN approves a `read` grant (two different ones with the kernel's
+// `breakGlassTenantApproversForRead: 2`; R1-D-286, tenancy/0032), a `read_write` grant needs a
+// second, different one (as support access, R1-D-76). The approval lasts at most the grant's duration from
 // the final approval; the tenant may refuse a grant or revoke its decision at once, and both are
 // final. Every step is ledgered in the tenant. The kernel always enforces a refusal or revocation,
 // and with `PgKernelOptions.requireTenantApprovedBreakGlass` admits a scoped grant only while its
@@ -21,6 +22,7 @@ import type { SecretKey } from "@infrabyx/crypto";
 import { BREAKGLASS_MAX_MINUTES } from "./breakglass.js";
 import { PLATFORM_TENANT_ID, isAgentPrincipal, isSupportContext } from "./context.js";
 import { ConflictError, NotFoundError } from "./errors.js";
+import { effectiveTenantApprovalState } from "./kernel.js";
 
 const MANAGER_ROLES = ["ORG_OWNER", "ORG_ADMIN"];
 const GRANT_ID = /^bgr_[0-9A-HJKMNP-TV-Z]{26}$/;
@@ -98,6 +100,12 @@ export interface BreakGlassTenantApprovalOptions {
   product: string;
   outbox?: OutboxWriter;
   pseudonymKey?: SecretKey;
+  /**
+   * Tenant managers who approve a scoped `read` grant, 1 or 2 (R1-D-286). Taken from the kernel's
+   * `breakGlassTenantApproversForRead` when the kernel is a `PgKernel`; give it here only for a
+   * kernel that does not carry it, and never a different value (refused).
+   */
+  approversForRead?: 1 | 2;
 }
 
 interface Row {
@@ -184,7 +192,32 @@ const stateOf = (r: Row | undefined, now: Date): BreakGlassTenantState =>
       : r.state;
 
 export class BreakGlassTenantApproval {
-  constructor(private readonly o: BreakGlassTenantApprovalOptions) {}
+  /** Tenant managers who approve a scoped `read` grant here: the kernel's value (R1-D-286). */
+  readonly approversForRead: 1 | 2;
+
+  constructor(private readonly o: BreakGlassTenantApprovalOptions) {
+    const k = (o.kernel as { breakGlassTenantApproversForRead?: unknown })
+      .breakGlassTenantApproversForRead;
+    if (k !== undefined && k !== 1 && k !== 2)
+      throw new RangeError("the kernel's breakGlassTenantApproversForRead is 1 or 2");
+    const given = o.approversForRead;
+    if (given !== undefined && given !== 1 && given !== 2)
+      throw new RangeError("approversForRead is 1 or 2");
+    if (given !== undefined && k !== undefined && given !== k)
+      throw new RangeError(
+        "approversForRead differs from the kernel's breakGlassTenantApproversForRead",
+      );
+    this.approversForRead = (k ?? given ?? 1) as 1 | 2;
+  }
+
+  /** The decision as read now, with this kernel's number of `read` approvers (R1-D-286). */
+  private stateNow(r: Row | undefined, now: Date): BreakGlassTenantState {
+    return effectiveTenantApprovalState(
+      stateOf(r, now),
+      r?.access === "read" && r.second_approver_id === null,
+      this.approversForRead,
+    ) as BreakGlassTenantState;
+  }
 
   /** The scoped grants of this tenant that are requested or active, with its decision on each. */
   async pending(ctx: KernelContext): Promise<PendingBreakGlassGrant[]> {
@@ -216,7 +249,7 @@ export class BreakGlassTenantApproval {
           requestedAt: g.requested_at,
           grantExpiresAt: g.expires_at,
           approval: r ? toRecord(r) : null,
-          tenantState: stateOf(r, now),
+          tenantState: this.stateNow(r, now),
         };
       });
     });
@@ -224,9 +257,11 @@ export class BreakGlassTenantApproval {
 
   /**
    * Approve a scoped grant of this tenant that is requested or active. A `read` grant is then
-   * approved; a `read_write` grant waits for a second, different manager. The approval lasts
-   * `minutes` (default and at most the grant's duration; the smaller of the two approvers' for
-   * read-write) from the final approval.
+   * approved; a `read_write` grant, and a `read` grant with `approversForRead` 2 (R1-D-286), waits
+   * for a second, different manager. The approval lasts `minutes` (default and at most the grant's
+   * duration; the smaller of the two approvers') from the final approval. With 2, a live `read`
+   * approval one manager gave earlier (under 1) takes a second manager's approval here, which never
+   * lengthens its window or its expiry.
    */
   async approve(
     ctx: KernelContext,
@@ -255,10 +290,12 @@ export class BreakGlassTenantApproval {
           throw new IpbError("IPB-TRUST-005", { meta: { grant_id: grantId } });
         const minutes = Math.min(opts.minutes ?? g.duration_minutes, g.duration_minutes);
         const row = await this.load(tx, grantId);
+        const now = await this.now(tx);
         let r: Row | undefined;
         if (!row) {
+          const one = g.scope_access === "read" && this.approversForRead === 1;
           const ins = await tx.query<Row>(
-            g.scope_access === "read"
+            one
               ? `insert into tenancy.breakglass_tenant_approval
                    (tenant_id, grant_id, access, state, window_minutes, first_approver_id,
                     first_approved_at, expires_at)
@@ -267,9 +304,11 @@ export class BreakGlassTenantApproval {
               : `insert into tenancy.breakglass_tenant_approval
                    (tenant_id, grant_id, access, state, window_minutes, first_approver_id,
                     first_approved_at)
-                 values ($1, $2, 'read_write', 'awaiting_second_approval', $3, $4, now())
+                 values ($1, $2, $5, 'awaiting_second_approval', $3, $4, now())
                  on conflict do nothing returning *`,
-            [ctx.tenantId, grantId, minutes, ctx.principal.id],
+            one
+              ? [ctx.tenantId, grantId, minutes, ctx.principal.id]
+              : [ctx.tenantId, grantId, minutes, ctx.principal.id, g.scope_access],
           );
           r = ins.rows[0];
           if (!r) throw new ConflictError(`the tenant's decision on ${grantId} changed; try again`);
@@ -286,15 +325,38 @@ export class BreakGlassTenantApproval {
               [ctx.tenantId, grantId, ctx.principal.id, minutes],
             )
           ).rows[0];
+        } else if (
+          this.approversForRead === 2 &&
+          row.access === "read" &&
+          row.second_approver_id === null &&
+          stateOf(row, now) === "approved"
+        ) {
+          // An approval one manager gave under 1: a second, different one completes it, never
+          // lengthening it (tenancy/0032's guard holds the same).
+          if (row.first_approver_id === ctx.principal.id)
+            throw new IpbError("IPB-TRUST-005", { meta: { grant_id: grantId } });
+          r = (
+            await tx.query<Row>(
+              `update tenancy.breakglass_tenant_approval
+                  set second_approver_id = $3, second_approved_at = now(),
+                      window_minutes = least(window_minutes, $4),
+                      expires_at = least(expires_at,
+                                         now() + make_interval(mins => least(window_minutes, $4)))
+                where tenant_id = $1 and grant_id = $2 returning *`,
+              [ctx.tenantId, grantId, ctx.principal.id, minutes],
+            )
+          ).rows[0];
         } else {
-          throw new ConflictError(`the tenant's decision on ${grantId} is ${row.state}`);
+          throw new ConflictError(
+            `the tenant's decision on ${grantId} is ${row ? this.stateNow(row, now) : "none"}`,
+          );
         }
         const rec = toRecord(r as Row);
         await this.o.audit.record(tx, {
           action,
           resourceType: "breakglass_grant",
           resourceId: grantId,
-          before: { state: row?.state ?? "none" },
+          before: { state: row ? this.stateNow(row, now) : "none" },
           after: {
             state: rec.state,
             access: rec.access,
@@ -358,14 +420,24 @@ export class BreakGlassTenantApproval {
     assertGrantId(grantId);
     return this.o.kernel.read(ctx, async (tx) => {
       const r = (
-        await tx.query<{ state: BreakGlassTenantState; expires_at: Date | null }>(
-          `select tenancy.breakglass_tenant_approval_state($1) as state,
-                  (select a.expires_at from tenancy.breakglass_tenant_approval a
-                    where a.tenant_id = $2 and a.grant_id = $1) as expires_at`,
+        await tx.query<{
+          state: BreakGlassTenantState;
+          expires_at: Date | null;
+          single_read: boolean | null;
+        }>(
+          `select tenancy.breakglass_tenant_approval_state($1) as state, a.expires_at,
+                  a.access = 'read' and a.second_approver_id is null as single_read
+             from (select 1) one
+             left join tenancy.breakglass_tenant_approval a
+               on a.tenant_id = $2 and a.grant_id = $1`,
           [grantId, ctx.tenantId],
         )
       ).rows[0];
-      const state = r?.state ?? "none";
+      const state = effectiveTenantApprovalState(
+        r?.state ?? "none",
+        r?.single_read === true,
+        this.approversForRead,
+      ) as BreakGlassTenantState;
       return { tenantApproved: state === "approved", state, expiresAt: r?.expires_at ?? null };
     });
   }
@@ -437,6 +509,10 @@ export class BreakGlassTenantApproval {
         grantId,
       ])
     ).rows[0];
+  }
+
+  private async now(tx: Tx): Promise<Date> {
+    return (await tx.query<{ now: Date }>("select now() as now")).rows[0]?.now ?? new Date();
   }
 
   private async load(tx: Tx, grantId: string): Promise<Row | undefined> {

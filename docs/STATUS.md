@@ -58,7 +58,8 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 
 - **Lock:** SESSION LOCK #262 was FREE at 14:29 IST and taken. OWNER INBOX #263: no new owner comment since the last report (the answers came in the chat).
 - **Fixed-Keycloak check (14:30 IST):** none; the newest release tag is still `26.8.2-3` (19 Nov, `sha256:7e66a96e…`), only `nightly` since. OWNER-WAIVER-CRIT-01 and R1-D-208 stand.
-- **Owner answers (R1-D-285):** #202 accepted; #203 accepted with addition (A), `breakGlassTenantApproversForRead: 1 | 2`; #203 (5) confirmed (guide §7ev). PR-UDF-085 and PR-UDF-086 registered. Order: the answers PR, (A), PR-UDF-086, PR-UDF-085, each released as a minor when green.
+- **Owner answers (R1-D-285):** #202 accepted; #203 accepted with addition (A), `breakGlassTenantApproversForRead: 1 | 2`; #203 (5) confirmed (guide §7ev). PR-UDF-085 and PR-UDF-086 registered. Order: the answers PR, (A), PR-UDF-086, PR-UDF-085, each released as a minor when green; merged as #400.
+- **(A) built (R1-D-286):** `breakGlassTenantApproversForRead: 1 | 2`, `tenancy/0032`, guide §7ew; owner question #204.
 
 ## Thirty-second session (24 Nov 08:20 to about 10:40 IST, owner chat) — handover
 
