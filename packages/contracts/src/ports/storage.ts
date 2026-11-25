@@ -233,6 +233,16 @@ export const PRESIGN_NO_CACHE = {
 export const presignNoCache = (cls: BucketClass): boolean =>
   (NO_CACHE_PRESIGN_CLASSES as readonly string[]).includes(cls);
 
+/**
+ * Served downloads are attachments (IPB-02-44; Finbyx PR-FBX-56 (d), R1-D-292): a presigned GET of
+ * an object in any class but `PUBLIC_ASSETS` signs `response-content-disposition: attachment`, so
+ * a browser saves the file instead of rendering it on the store's origin. Inline preview needs a
+ * sandboxed origin of the product's own. Nothing a caller passes can drop it.
+ */
+export const PRESIGN_ATTACHMENT_DISPOSITION = "attachment" as const;
+/** Whether a presigned GET of an object in `cls` signs `Content-Disposition: attachment`. */
+export const presignAttachment = (cls: BucketClass): boolean => cls !== "PUBLIC_ASSETS";
+
 export interface ObjectMeta {
   contentType?: string;
   bucketClass: BucketClass;
