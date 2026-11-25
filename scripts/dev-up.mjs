@@ -1,19 +1,59 @@
-// `pnpm dev:up` / `pnpm dev:down` (IPB-01-33, PL6 plan §4): the local Compose stack.
+// `pnpm dev:up` / `pnpm dev:down` (IPB-01-33, PL6 plan §4; DEV-LOCAL-01, R1-D-290): the local Compose stack.
+// The layout comes from one product setting, the root package.json's `infrabyx` block
+// (scripts/local-stack.mjs): the Compose project is `infrabyx-<product>` and every host port sits
+// in the product's own block, so products never share a project, a port or a volume.
 // up:   writes infra/compose/.env.local with generated local-only secrets on first run (the only
 //       place env-var secrets are allowed, IPB-02-28; `*.local` is never committed), starts the
-//       `core` profile and waits for every health check, then runs `infrabyx-migrate` and the `dev`
-//       seed (platform and public-site modules) against the stack's database. Extra profiles:
-//       `pnpm dev:up -- --profile apps --profile observability` (also `search`, `ai`, `video`).
-// down: stops the stack and removes its volumes (local data only).
+//       `core` profile and waits for every health check, applies the realm with every declared web
+//       app's callback, then runs `infrabyx-migrate` and the `dev` seeds of the declared apps that
+//       exist. Extra profiles: `pnpm dev:up --profile apps --profile observability` (also
+//       `search`, `ai`, `video`); `apps` builds and runs the declared apps.
+// down: stops this project's stack and keeps its volumes; `pnpm dev:down --volumes` also removes
+//       this project's volumes (local data only). Another project's volumes are never touched.
+// logs: this project's logs (`--tail <n>`).
 // Needs Docker and a built workspace (`pnpm build`).
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  appExists,
+  composeApps,
+  GENERATED_SECRETS,
+  LOCAL_REALM,
+  localStack,
+  PORT_DEFAULTS,
+  readLocalSetting,
+  realmRedirects,
+  SEED_REFUSED_ENVS,
+} from "./local-stack.mjs";
 
 const ROOT = new URL("..", import.meta.url).pathname;
 const COMPOSE = join(ROOT, "infra/compose/docker-compose.yml");
 const ENV_FILE = join(ROOT, "infra/compose/.env.local");
+/** The declared apps' services (generated on every run; `*.local`, never committed). */
+const APPS_FILE = join(ROOT, "infra/compose/.apps.local");
+const PROFILES = ["core", "apps", "search", "ai", "observability", "video"];
 
+if (SEED_REFUSED_ENVS.includes(process.env.APP_ENV ?? "")) {
+  console.error(
+    `dev:up: refused: APP_ENV is ${process.env.APP_ENV}; the local stack and its seeds never run there`,
+  );
+  process.exit(1);
+}
+
+/** The values in .env.local (none before the first run). */
+function readEnv() {
+  return existsSync(ENV_FILE)
+    ? Object.fromEntries(
+        readFileSync(ENV_FILE, "utf8")
+          .split("\n")
+          .filter((l) => /^[A-Z0-9_]+=/.test(l))
+          .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
+      )
+    : {};
+}
+
+/** The platform files dev:up runs, from the built workspace (or, in a product, node_modules). */
 const BUILT = [
   "packages/crypto/dist/index.js",
   "packages/tenancy/dist/migrate/cli.js",
@@ -23,30 +63,19 @@ const BUILT = [
   "packages/connectors/dist/storage/index.js",
   "packages/connectors/dist/feature-flag/index.js",
   "packages/config/dist/flags/index.js",
-  "apps/reference/api/dist/seed/index.js",
-  "apps/reference/api/dist/seed/adapters.js",
 ];
-for (const f of BUILT)
-  if (!existsSync(join(ROOT, f))) {
-    console.error(`dev:up: ${f} is missing; run pnpm build first`);
-    process.exit(1);
-  }
-// The platform's single crypto call-site (IPB-12-05), from the built workspace package.
-const { randomBytes, toHex } = await import(join(ROOT, "packages/crypto/dist/index.js"));
-/** The product apps/reference stands in for (its seed personas carry the product roles). */
-const PRODUCT = "LD";
-const secret = (bytes = 24) => toHex(randomBytes(bytes));
+
+const stack = localStack(readLocalSetting(ROOT), readEnv());
+const exists = appExists(ROOT);
+/** The declared apps of a kind whose folder exists in this repository. */
+const present = (kind) => stack.apps.filter((a) => a.kind === kind && exists(a.dir));
 
 /** The generated local secrets; existing values are kept so volumes stay usable. */
-function ensureEnv() {
-  const have = existsSync(ENV_FILE)
-    ? Object.fromEntries(
-        readFileSync(ENV_FILE, "utf8")
-          .split("\n")
-          .filter((l) => /^[A-Z0-9_]+=/.test(l))
-          .map((l) => [l.slice(0, l.indexOf("=")), l.slice(l.indexOf("=") + 1)]),
-      )
-    : {};
+async function ensureEnv() {
+  // The platform's single crypto call-site (IPB-12-05), from the built workspace package.
+  const { randomBytes, toHex } = await import(join(ROOT, "packages/crypto/dist/index.js"));
+  const secret = (bytes = 24) => toHex(randomBytes(bytes));
+  const have = readEnv();
   const want = {
     POSTGRES_PASSWORD: () => secret(),
     KEYCLOAK_DB_PASSWORD: () => secret(),
@@ -62,6 +91,8 @@ function ensureEnv() {
     // C-26: the LiveKit API secret encodes 32 random bytes (the `video` profile).
     LIVEKIT_API_SECRET: () => secret(32),
   };
+  if (Object.keys(want).join() !== GENERATED_SECRETS.join())
+    throw new Error("dev:up: GENERATED_SECRETS in local-stack.mjs is out of step");
   let changed = false;
   for (const [k, gen] of Object.entries(want)) {
     if (!have[k]) {
@@ -95,47 +126,52 @@ function setEnv(values) {
   );
 }
 
+/** The seed personas' product roles of every product the declared apps carry. */
+async function productRoles() {
+  const { PRODUCT_PERSONAS } = await import(join(ROOT, "packages/seed/dist/index.js"));
+  const codes = new Set([stack.product, ...present("api").map((a) => a.product)]);
+  return [...new Set([...codes].flatMap((c) => (PRODUCT_PERSONAS[c] ?? []).map((p) => p.role)))];
+}
+
 /**
- * The stack's real adapters, made ready for apps/reference (PL6-D-10): the Keycloak realm with the
- * API and admin clients (their generated secrets go to .env.local), the MinIO class buckets with
- * Object Lock, and the Unleash project synchronised with the flag registry. Every step is
- * idempotent, so a second dev:up only confirms.
+ * The stack's real adapters, made ready for the declared apps (PL6-D-10): the Keycloak realm with
+ * the API and admin clients (their generated secrets go to .env.local) and every declared web
+ * app's callback and post-logout URI, the MinIO class buckets with Object Lock, and the Unleash
+ * project synchronised with the flag registry. Every step is idempotent: a second dev:up only
+ * confirms, and the realm's redirect lists then match the declared apps exactly.
  */
 async function bootstrap(env) {
   const loopback = { allowLoopbackHttp: true };
+  const p = stack.ports;
   const { KeycloakIdentity } = await import(
     join(ROOT, "packages/connectors/dist/identity/index.js")
   );
-  const { PRODUCT_PERSONAS } = await import(join(ROOT, "packages/seed/dist/index.js"));
-  const apiPort = env.API_PORT ?? "53125";
-  const webPort = env.WEB_PORT ?? "53127";
+  const { redirectUris, postLogoutRedirectUris } = realmRedirects(stack);
   const secrets = await KeycloakIdentity.applyRealm({
-    baseUrl: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
+    baseUrl: `http://127.0.0.1:${p.KEYCLOAK_PORT}`,
     masterAdmin: { username: "ipb-bootstrap", password: env.KEYCLOAK_ADMIN_PASSWORD },
     spec: {
-      realm: "infrabyx-local",
+      realm: LOCAL_REALM.realm,
       profile: "tenant",
-      apiClient: {
-        clientId: "reference-api",
-        // The web app's origin (sign-in runs through it) and the api's own, for `pnpm start`.
-        redirectUris: [
-          `http://localhost:${webPort}/auth/callback`,
-          `http://localhost:${apiPort}/auth/callback`,
-        ],
-      },
-      adminClientId: "reference-admin",
-      audience: "reference-api",
+      // Every declared web app's callback (sign-in runs through it) and each api's own, for
+      // `pnpm start`; localhost only, nothing wider (`localOnly`).
+      apiClient: { clientId: LOCAL_REALM.apiClientId, redirectUris, postLogoutRedirectUris },
+      adminClientId: LOCAL_REALM.adminClientId,
+      audience: LOCAL_REALM.apiClientId,
       passkeys: false,
       // The product roles its seed personas carry (e.g. LD_CLIENT), beside the platform floor.
-      productRoles: [...new Set(PRODUCT_PERSONAS[PRODUCT].map((p) => p.role))],
+      productRoles: await productRoles(),
     },
+    localOnly: true,
     ...loopback,
   });
   setEnv({
     AUTH_CLIENT_SECRET: secrets.clientSecret,
     AUTH_ADMIN_CLIENT_SECRET: secrets.adminClientSecret,
   });
-  console.log("dev:up: Keycloak realm infrabyx-local applied (client secrets in .env.local)");
+  console.log(
+    `dev:up: Keycloak realm ${LOCAL_REALM.realm} applied with ${redirectUris.length} callback(s) (client secrets in .env.local)`,
+  );
 
   const { MinioStorage } = await import(join(ROOT, "packages/connectors/dist/storage/index.js"));
   const classes = ["AUDIT", "REGULATED", "CONFIDENTIAL", "GENERAL", "PUBLIC_ASSETS", "QUARANTINE"];
@@ -144,7 +180,7 @@ async function bootstrap(env) {
       classes.map((c) => [c, `ipb-local-${c.toLowerCase().replace(/_/g, "-")}`]),
     ),
     region: "ap-south-1",
-    endpoint: `http://127.0.0.1:${env.MINIO_PORT ?? "59000"}`,
+    endpoint: `http://127.0.0.1:${p.MINIO_PORT}`,
     credentials: { accessKeyId: env.MINIO_ROOT_USER, secretAccessKey: env.MINIO_ROOT_PASSWORD },
     ...loopback,
   });
@@ -156,7 +192,7 @@ async function bootstrap(env) {
   );
   const { defaultFlagRegistry } = await import(join(ROOT, "packages/config/dist/flags/index.js"));
   const flags = await UnleashFlags.start({
-    url: `http://127.0.0.1:${env.UNLEASH_PORT ?? "54242"}`,
+    url: `http://127.0.0.1:${p.UNLEASH_PORT}`,
     appName: "dev-up",
     environment: "development",
     clientToken: env.UNLEASH_CLIENT_TOKEN,
@@ -174,173 +210,197 @@ async function bootstrap(env) {
   }
 }
 
-const compose = (args, opts = {}) =>
-  execFileSync("docker", ["compose", "-f", COMPOSE, "--env-file", ENV_FILE, ...args], {
-    stdio: "inherit",
-    cwd: ROOT,
-    ...opts,
-  });
+/** Every Compose call names this project and carries its ports (a port set in .env.local is already in them). */
+const compose = (args, opts = {}) => {
+  const files = ["-f", COMPOSE, ...(existsSync(APPS_FILE) ? ["-f", APPS_FILE] : [])];
+  const ports = Object.fromEntries([
+    ...Object.keys(PORT_DEFAULTS).map((k) => [k, String(stack.ports[k])]),
+    ...stack.apps.map((a) => [a.portKey, String(a.port)]),
+  ]);
+  return execFileSync(
+    "docker",
+    ["compose", "-p", stack.project, ...files, "--env-file", ENV_FILE, ...args],
+    { stdio: "inherit", cwd: ROOT, env: { ...process.env, ...ports }, ...opts },
+  );
+};
 
 function profilesFrom(argv) {
   const out = ["core"];
   for (let i = 0; i < argv.length; i++)
     if (argv[i] === "--profile" && argv[i + 1]) out.push(argv[++i]);
+  for (const p of out)
+    if (!PROFILES.includes(p))
+      throw new Error(`dev:up: unknown profile ${p} (${PROFILES.join(", ")})`);
   return [...new Set(out)];
 }
 
+/** The seed environment every dev seed runs with (APP_ENV local, the product's own code). */
+const seedEnv = (env, db, product) => ({
+  ...process.env,
+  APP_ENV: "local",
+  APP_PRODUCT: product,
+  DB_URL: db,
+  DB_PASSWORD: env.POSTGRES_PASSWORD,
+  SEED_ENABLED: "true",
+  SEED_RANDOM_SEED: "1",
+  SEED_VAULT_PREFIX: "local",
+  // Gitignored and never committed (CLAUDE.md); the seeded personas' generated passwords.
+  SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
+});
+
 async function up(argv) {
-  const env = ensureEnv();
   const profiles = profilesFrom(argv);
+  for (const f of BUILT)
+    if (!existsSync(join(ROOT, f))) {
+      console.error(`dev:up: ${f} is missing; run pnpm build first`);
+      process.exit(1);
+    }
+  const env = await ensureEnv();
+  const p = stack.ports;
+  writeFileSync(APPS_FILE, `${JSON.stringify(composeApps(stack, exists), null, 2)}\n`);
   // The seed's file storage, mounted into the apps; created here so Docker does not create it as root.
   mkdirSync(join(ROOT, ".storage"), { recursive: true });
-  // The Cerbos policy bundle: the platform policies and the reference app's own, in one directory
+  // The Cerbos policy bundle: the platform policies and each declared api's own, in one directory
   // (a bind mount cannot be nested inside a read-only one).
   const bundle = join(ROOT, ".cerbos");
   rmSync(bundle, { recursive: true, force: true });
   cpSync(join(ROOT, "packages/connectors/policy/cerbos"), join(bundle, "platform"), {
     recursive: true,
   });
-  cpSync(join(ROOT, "apps/reference/api/policy/cerbos"), join(bundle, "reference"), {
-    recursive: true,
-  });
+  for (const a of present("api")) {
+    const own = join(ROOT, a.dir, "policy/cerbos");
+    if (existsSync(own)) cpSync(own, join(bundle, a.name), { recursive: true });
+  }
+  console.log(
+    `dev:up: project ${stack.project}, port block +${stack.offset} (PostgreSQL ${p.PG_PORT}, Keycloak ${p.KEYCLOAK_PORT})`,
+  );
   // The core services first: the apps need the realm's secrets and the buckets before they start.
   compose(["--profile", "core", "up", "-d", "--build", "--wait"]);
   await bootstrap(env);
-  const port = env.PG_PORT ?? "55432";
-  const db = `postgres://postgres:${env.POSTGRES_PASSWORD}@127.0.0.1:${port}/infrabyx`;
+  const db = `postgres://postgres:${env.POSTGRES_PASSWORD}@127.0.0.1:${p.PG_PORT}/infrabyx`;
   execFileSync("node", ["packages/tenancy/dist/migrate/cli.js", "--db", db], {
     stdio: "inherit",
     cwd: ROOT,
   });
-  // The reference app's own migrations (the product pattern: `--dir` and `--name` after the platform).
-  execFileSync(
-    "node",
-    [
-      "packages/tenancy/dist/migrate/cli.js",
-      "--db",
-      db,
-      "--dir",
-      "apps/reference/api/migrations",
-      "--name",
-      "reference",
-    ],
-    { stdio: "inherit", cwd: ROOT },
-  );
-  execFileSync(
-    "node",
-    ["../../packages/seed/dist/cli.js", "--profile", "dev", "--modules", "src/seed/public-site.ts"],
-    {
-      stdio: "inherit",
-      cwd: join(ROOT, "apps/public"),
-      env: {
-        ...process.env,
-        APP_ENV: "local",
-        APP_PRODUCT: "OH",
-        APP_BASE_URL: `http://localhost:${env.PUBLIC_PORT ?? "53123"}`,
-        APP_FIXTURE_ADAPTERS: "true",
-        STORAGE_DIR: join(ROOT, ".storage"),
-        DB_URL: db,
-        DB_PASSWORD: env.POSTGRES_PASSWORD,
-        SEED_ENABLED: "true",
-        SEED_RANDOM_SEED: "1",
-        SEED_VAULT_PREFIX: "local",
-        // Gitignored and never committed (CLAUDE.md); the seeded personas' generated passwords.
-        SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
-      },
-    },
-  );
-  // The reference app's seeds: the hello greetings of the demo and sandbox tenants, and the gate's
-  // welcome page and trust mirror.
-  execFileSync(
-    "node",
-    [
-      "packages/seed/dist/cli.js",
-      "--profile",
-      "dev",
-      "--modules",
-      "apps/reference/api/dist/seed/index.js",
-    ],
-    {
-      stdio: "inherit",
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        APP_ENV: "local",
-        APP_PRODUCT: PRODUCT,
-        DB_URL: db,
-        DB_PASSWORD: env.POSTGRES_PASSWORD,
-        SEED_ENABLED: "true",
-        SEED_RANDOM_SEED: "1",
-        SEED_VAULT_PREFIX: "local",
-        SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
-      },
-    },
-  );
-  // The seed personas into Keycloak (passwords to SEED_CREDENTIALS.md, never committed).
-  const current = ensureEnv();
-  execFileSync(
-    "node",
-    [
-      "packages/seed/dist/cli.js",
-      "credentials",
-      "--adapters",
-      "apps/reference/api/dist/seed/adapters.js",
-    ],
-    {
-      stdio: "inherit",
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        APP_ENV: "local",
-        APP_PRODUCT: PRODUCT,
-        APP_BASE_URL: `http://localhost:${env.API_PORT ?? "53125"}`,
-        DB_URL: db,
-        DB_PASSWORD: env.POSTGRES_PASSWORD,
-        SEED_ENABLED: "true",
-        SEED_RANDOM_SEED: "1",
-        SEED_VAULT_PREFIX: "local",
-        SEED_CREDENTIALS_PATH: join(ROOT, "SEED_CREDENTIALS.md"),
-        APP_FIXTURE_ADAPTERS: "false",
-        AUTH_BASE_URL: `http://127.0.0.1:${env.KEYCLOAK_PORT ?? "58080"}`,
-        AUTH_REALM: "infrabyx-local",
-        AUTH_CLIENT_ID: "reference-api",
-        AUTH_CLIENT_SECRET: current.AUTH_CLIENT_SECRET,
-        AUTH_ADMIN_CLIENT_ID: "reference-admin",
-        AUTH_ADMIN_CLIENT_SECRET: current.AUTH_ADMIN_CLIENT_SECRET,
-        AUTH_AUDIENCE: "reference-api",
-        AUTHZ_CERBOS_URL: `http://127.0.0.1:${env.CERBOS_PORT ?? "53592"}`,
-        STORAGE_ENDPOINT: `http://127.0.0.1:${env.MINIO_PORT ?? "59000"}`,
-        STORAGE_BUCKET_PREFIX: "ipb-local",
-        STORAGE_ACCESS_KEY: env.MINIO_ROOT_USER,
-        STORAGE_SECRET_KEY: env.MINIO_ROOT_PASSWORD,
-        QUEUE_REDIS_URL: `redis://:${env.REDIS_PASSWORD}@127.0.0.1:${env.REDIS_PORT ?? "56379"}`,
-        WORKFLOW_TEMPORAL_ADDRESS: `127.0.0.1:${env.TEMPORAL_PORT ?? "57233"}`,
-      },
-    },
-  );
+  // Each declared api's own migrations (the product pattern: `--dir` and `--name` after the platform).
+  for (const a of present("api"))
+    if (existsSync(join(ROOT, a.dir, "migrations")))
+      execFileSync(
+        "node",
+        [
+          "packages/tenancy/dist/migrate/cli.js",
+          "--db",
+          db,
+          "--dir",
+          `${a.dir}/migrations`,
+          "--name",
+          a.migrationName,
+        ],
+        { stdio: "inherit", cwd: ROOT },
+      );
+  // The public site's seed, only where the product has a public site.
+  for (const s of present("public"))
+    if (existsSync(join(ROOT, s.dir, "src/seed/public-site.ts")))
+      execFileSync(
+        "node",
+        [
+          join(ROOT, "packages/seed/dist/cli.js"),
+          "--profile",
+          "dev",
+          "--modules",
+          "src/seed/public-site.ts",
+        ],
+        {
+          stdio: "inherit",
+          cwd: join(ROOT, s.dir),
+          env: {
+            ...seedEnv(env, db, s.product),
+            APP_BASE_URL: s.url,
+            APP_FIXTURE_ADAPTERS: "true",
+            STORAGE_DIR: join(ROOT, ".storage"),
+          },
+        },
+      );
+  // Each api's seeds (its built `dist/seed/index.js`) and then its personas into Keycloak
+  // (passwords to SEED_CREDENTIALS.md, never committed).
+  const current = readEnv();
+  for (const a of present("api")) {
+    const seeds = `${a.dir}/dist/seed/index.js`;
+    if (existsSync(join(ROOT, seeds)))
+      execFileSync("node", ["packages/seed/dist/cli.js", "--profile", "dev", "--modules", seeds], {
+        stdio: "inherit",
+        cwd: ROOT,
+        env: seedEnv(env, db, a.product),
+      });
+    const adapters = `${a.dir}/dist/seed/adapters.js`;
+    if (existsSync(join(ROOT, adapters)))
+      execFileSync("node", ["packages/seed/dist/cli.js", "credentials", "--adapters", adapters], {
+        stdio: "inherit",
+        cwd: ROOT,
+        env: {
+          ...seedEnv(env, db, a.product),
+          APP_BASE_URL: a.url,
+          APP_FIXTURE_ADAPTERS: "false",
+          AUTH_BASE_URL: `http://127.0.0.1:${p.KEYCLOAK_PORT}`,
+          AUTH_REALM: LOCAL_REALM.realm,
+          AUTH_CLIENT_ID: LOCAL_REALM.apiClientId,
+          AUTH_CLIENT_SECRET: current.AUTH_CLIENT_SECRET,
+          AUTH_ADMIN_CLIENT_ID: LOCAL_REALM.adminClientId,
+          AUTH_ADMIN_CLIENT_SECRET: current.AUTH_ADMIN_CLIENT_SECRET,
+          AUTH_AUDIENCE: LOCAL_REALM.apiClientId,
+          AUTHZ_CERBOS_URL: `http://127.0.0.1:${p.CERBOS_PORT}`,
+          STORAGE_ENDPOINT: `http://127.0.0.1:${p.MINIO_PORT}`,
+          STORAGE_BUCKET_PREFIX: "ipb-local",
+          STORAGE_ACCESS_KEY: env.MINIO_ROOT_USER,
+          STORAGE_SECRET_KEY: env.MINIO_ROOT_PASSWORD,
+          QUEUE_REDIS_URL: `redis://:${env.REDIS_PASSWORD}@127.0.0.1:${p.REDIS_PORT}`,
+          WORKFLOW_TEMPORAL_ADDRESS: `127.0.0.1:${p.TEMPORAL_PORT}`,
+        },
+      });
+  }
   // The remaining profiles, with core again so their dependencies resolve (the apps read the
   // realm's secrets from .env.local).
   if (profiles.length > 1)
-    compose([...profiles.flatMap((p) => ["--profile", p]), "up", "-d", "--build", "--wait"]);
+    compose([...profiles.flatMap((x) => ["--profile", x]), "up", "-d", "--build", "--wait"]);
   console.log(
-    `dev:up ready (profiles: ${profiles.join(", ")}); database ${db.replace(/:[^:@]*@/, ":***@")}`,
+    `dev:up ready (project ${stack.project}, profiles: ${profiles.join(", ")}); database ${db.replace(/:[^:@]*@/, ":***@")}`,
+  );
+  for (const a of stack.apps.filter((x) => exists(x.dir)))
+    console.log(`  ${a.name} (${a.kind}): ${a.url}`);
+}
+
+function down(argv) {
+  if (!existsSync(ENV_FILE)) return console.log("dev:down: nothing to stop (no .env.local)");
+  const volumes = argv.includes("--volumes");
+  // `-p` scopes `down` to this project: its containers, networks and, with --volumes, its own
+  // volumes; no other project's volume is ever named.
+  compose([
+    ...PROFILES.flatMap((x) => ["--profile", x]),
+    "down",
+    ...(volumes ? ["--volumes"] : []),
+    "--remove-orphans",
+  ]);
+  console.log(
+    volumes
+      ? `dev:down: project ${stack.project} stopped and its volumes removed`
+      : `dev:down: project ${stack.project} stopped; its volumes are kept (pnpm dev:down --volumes removes them)`,
   );
 }
 
-function down() {
-  if (!existsSync(ENV_FILE)) return console.log("dev:down: nothing to stop (no .env.local)");
-  compose([
-    ...["core", "apps", "search", "ai", "observability", "video"].flatMap((p) => ["--profile", p]),
-    "down",
-    "--volumes",
-    "--remove-orphans",
-  ]);
+function logs(argv) {
+  const i = argv.indexOf("--tail");
+  const tail = i >= 0 && /^\d+$/.test(argv[i + 1] ?? "") ? argv[i + 1] : "80";
+  compose([...PROFILES.flatMap((x) => ["--profile", x]), "logs", "--tail", tail]);
 }
 
 const [cmd, ...rest] = process.argv.slice(2);
 if (cmd === "up") await up(rest);
-else if (cmd === "down") down();
+else if (cmd === "down") down(rest);
+else if (cmd === "logs") logs(rest);
+else if (cmd === "project") console.log(stack.project);
 else {
-  console.error("usage: node scripts/dev-up.mjs up [--profile <name>]... | down");
+  console.error(
+    "usage: node scripts/dev-up.mjs up [--profile <name>]... | down [--volumes] | logs [--tail <n>] | project",
+  );
   process.exit(2);
 }

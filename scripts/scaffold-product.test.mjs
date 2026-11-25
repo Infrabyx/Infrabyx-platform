@@ -46,7 +46,16 @@ describe("scaffold-product", () => {
     const root = json("package.json");
     expect(root.packageManager).toMatch(/^pnpm@10\./);
     expect(root.engines.node).toBe("24.22.1");
-    expect(root.infrabyx).toEqual({ product: "UDF" });
+    expect(root.infrabyx.product).toBe("UDF");
+    expect(root.infrabyx.local.project).toBeUndefined();
+    expect(root.infrabyx.local.apps.map((a) => [a.name, a.dir, a.kind, a.slot])).toEqual([
+      ["public", "apps/public", "public", 3],
+      ["console", "apps/console", "console", 4],
+      ["api", "apps/api", "api", 5],
+      ["worker", "apps/worker", "worker", 6],
+      ["web", "apps/web", "web", 7],
+    ]);
+    expect(root.infrabyx.local.apps.some((a) => "product" in a)).toBe(false);
     expect(root.devDependencies["@infrabyx/testing"]).toBe(pkgs["@infrabyx/testing"].version);
     const ws = read("pnpm-workspace.yaml");
     expect(ws).toContain('  - "apps/*"');
@@ -77,11 +86,22 @@ describe("scaffold-product", () => {
 
   it("writes the local stack, the chart values and the OpenTofu stacks for the product", () => {
     const devUp = read("scripts/dev-up.mjs");
-    expect(devUp).toContain('const PRODUCT = "UDF";');
-    expect(devUp).not.toContain('APP_PRODUCT: "OH"');
+    // DEV-LOCAL-01: no product constant and no fixed APP_PRODUCT; the setting decides both.
+    expect(devUp).not.toMatch(/const PRODUCT = |APP_PRODUCT: "[A-Z]+"/);
     expect(devUp).toContain("node_modules/@infrabyx/tenancy/dist/migrate/cli.js");
-    expect(devUp).not.toMatch(/"packages\/|apps\/reference\/api/);
-    expect(read("infra/compose/docker-compose.yml")).toContain("APP: api");
+    expect(devUp).not.toMatch(/"packages\/|apps\/reference/);
+    expect(read("scripts/local-stack.mjs")).toBe(
+      readFileSync(new URL("./local-stack.mjs", import.meta.url), "utf8"),
+    );
+    const compose = read("infra/compose/docker-compose.yml");
+    expect(compose).not.toMatch(/^name:/m);
+    expect(compose).not.toContain("APP_PRODUCT");
+    expect(read("infra/compose/.env.example")).toMatch(/^POSTGRES_PASSWORD=$/m);
+    expect(existsSync(join(out, "infra/compose/.env.local"))).toBe(false);
+    expect(existsSync(join(out, "infra/compose/.apps.local"))).toBe(false);
+    const ignore = read(".gitignore");
+    for (const line of [".cerbos/", "*.local", "SEED_CREDENTIALS.md", ".env.*", "!.env.example"])
+      expect(ignore.split("\n")).toContain(line);
     expect(existsSync(join(out, "infra/helm/api/values.prod.yaml"))).toBe(true);
     for (const env of ["dev", "staging", "prod"])
       expect(read(`infra/terraform/envs/udf/${env}/main.tf`)).toContain(
