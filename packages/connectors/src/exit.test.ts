@@ -9,9 +9,18 @@ const SRC = fileURLToPath(new URL(".", import.meta.url));
 /**
  * Adapter folders under src/ and their ports (`llm` is LLM; shared folders have no port;
  * `provisioning` consumes an Ecosystem event and is not an IPB-01 port, R1-D-68; `web-snapshot` is
- * a platform service over EGRESS, STORAGE and AV, R1-D-176).
+ * a platform service over EGRESS, STORAGE and AV, R1-D-176; `upload` is the IPB-02-44 step after
+ * the AV scan, over MEDIA, R1-D-292).
  */
-const NOT_PORTS = new Set(["__tests__", "ai", "core", "messaging", "provisioning", "web-snapshot"]);
+const NOT_PORTS = new Set([
+  "__tests__",
+  "ai",
+  "core",
+  "messaging",
+  "provisioning",
+  "upload",
+  "web-snapshot",
+]);
 const portFolders = readdirSync(SRC).filter(
   (d) => statSync(join(SRC, d)).isDirectory() && !NOT_PORTS.has(d),
 );
