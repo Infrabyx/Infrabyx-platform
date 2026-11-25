@@ -5,6 +5,50 @@
   "description": "Infrabyx shared platform packages implementing the Infrabyx Platform Baseline Standard (IPB) v1.0",
   "license": "UNLICENSED",
   "type": "module",
+  "infrabyx": {
+    "product": "LD",
+    "local": {
+      "project": "infrabyx-platform",
+      "portOffset": 0,
+      "apps": [
+        {
+          "name": "public",
+          "dir": "apps/public",
+          "kind": "public",
+          "slot": 3,
+          "product": "OH"
+        },
+        {
+          "name": "console",
+          "dir": "apps/console",
+          "kind": "console",
+          "slot": 4,
+          "product": "OH",
+          "site": "public"
+        },
+        {
+          "name": "api",
+          "dir": "apps/reference/api",
+          "kind": "api",
+          "slot": 5
+        },
+        {
+          "name": "worker",
+          "dir": "apps/reference/worker",
+          "kind": "worker",
+          "slot": 6,
+          "api": "api"
+        },
+        {
+          "name": "web",
+          "dir": "apps/reference/web",
+          "kind": "web",
+          "slot": 7,
+          "api": "api"
+        }
+      ]
+    }
+  },
   "engines": {
     "node": "24.22.1",
     "pnpm": "10"

@@ -2194,6 +2194,63 @@ const rec = await inbox.originalRecordOf(readerCtx, source, eventId); // { origi
 
 **What to change:** run `infrabyx-migrate` (0033). Pass `original` without `jws` for unsigned partner events if you want them kept. If you compare a whole `ReceiveResult` or `InboxEvent` in a test, add `originalSigned` (`null` with no original).
 
+## 7ez. A local stack of your own, and every web app's callback (DEV-LOCAL-01; R1-D-290)
+
+From the next `@infrabyx/connectors` minor and the scaffold of the same platform commit (no migration, no platform setting, no environment variable a package reads). **Why:** every product copied one Compose project (`infrabyx`) and one set of ports from the scaffold, so stacks clashed and one product's `dev:down` (`down --volumes`) deleted another product's data volumes; a product with two web apps could sign in on only one.
+
+**The product setting** (root `package.json`; the names are stable, align your own copy with them):
+
+```json
+"infrabyx": {
+  "product": "UDF",
+  "local": {
+    "apps": [
+      { "name": "api", "dir": "apps/api", "kind": "api", "slot": 5 },
+      { "name": "worker", "dir": "apps/worker", "kind": "worker", "slot": 6, "api": "api" },
+      { "name": "web", "dir": "apps/web", "kind": "web", "slot": 7, "api": "api" },
+      { "name": "portal", "dir": "apps/portal", "kind": "web", "slot": 8, "api": "api", "postLogoutPath": "/" }
+    ]
+  }
+}
+```
+
+- `product` gives the Compose project `infrabyx-<code>` (for example `infrabyx-udf`) and the port block. `local.project` and `local.portOffset` override them only for a repository that is not a product.
+- `local.apps`: what the `apps` profile builds and runs, each with its product code as `APP_PRODUCT` (`product` on an app only where it must differ). `kind` is `api`, `worker`, `web`, `public` or `console`; `slot` 0 to 19 gives the host port 53120 + slot + your offset; `callbackPath` (default `/auth/callback`) and `postLogoutPath` (web, default `/`) are registered on the realm for every web app, and each api's callback for `pnpm start`. An api's own migrations keep the name `reference` when there is one api (as every copy recorded them); `migrationName` sets another.
+- A port in `infra/compose/.env.local` (for example `PG_PORT=55633`) still moves one port.
+
+**Port blocks** (every service's default port plus the offset; no two blocks share a port, and a test holds it):
+
+| Product                     | Offset                          | PostgreSQL | Keycloak | Apps (slots 0 to 19) |
+| --------------------------- | ------------------------------- | ---------- | -------- | -------------------- |
+| Finbyx (`FBX`)              | 0                               | 55432      | 58080    | 53120 to 53139       |
+| Udofin (`UDF`)              | 100                             | 55532      | 58180    | 53220 to 53239       |
+| LawDocsComply (`LDC`)       | 500                             | 55932      | 58580    | 53620 to 53639       |
+| Equator (`EQ`)              | 600                             | 56032      | 58680    | 53720 to 53739       |
+| LawDocs (`LD`)              | 1200                            | 56632      | 59280    | 54320 to 54339       |
+| Operations Hub (`OH`)       | 1300                            | 56732      | 59380    | 54420 to 54439       |
+| The platform's own checkout | 0 (project `infrabyx-platform`) | 55432      | 58080    | 53120 to 53139       |
+
+The platform's checkout shares Finbyx's ports (its CI and tests use them) but never its project or volumes: run one of the two at a time.
+
+**What `dev:up` and `dev:down` now do:**
+
+- Every Compose call is `docker compose -p <project>` with the block's ports; `docker-compose.yml` has no `name:` and no app services (they are generated into `infra/compose/.apps.local`, git-ignored).
+- Each step runs only where its app exists: the public-site seed only with a declared `public` app, each api's migrations, seeds, personas and Cerbos policies only where that api has them.
+- The realm `infrabyx-local` gets every declared web app's callback and post-logout URI, localhost only (`applyRealm({ …, localOnly: true })`); a re-run with more or fewer apps changes the lists to exactly the declared ones.
+- `pnpm dev:down` stops your project and **keeps** its volumes; `pnpm dev:down --volumes` removes your project's volumes and nobody else's. `node scripts/dev-up.mjs logs` prints your project's logs.
+- `dev:up` refuses to run when `APP_ENV` is `prod`, `dr` or `pre-prod`; the seeds' credentials go only to the git-ignored `SEED_CREDENTIALS.md`.
+- `infra/compose/.env.example` lists every variable `dev:up`, the migrations and the seeds use, with no values; `.cerbos/`, `*.local` and `SEED_CREDENTIALS.md` stay git-ignored.
+
+**`applyRealm` for deploy jobs too** (`connectors` minor): on a realm that exists, the API client's `redirectUris`, `webOrigins` and, when your spec gives them, `postLogoutRedirectUris` are set to exactly the spec's on every run (a URI added by hand in the console is removed); a missing client is created. Web origins default to the exact origins of those URIs (what Keycloak's `+` stood for). A wildcard, a fragment, user info, plain HTTP off loopback, a duplicate or (with `localOnly`) a non-loopback host is refused before Keycloak is called: `IPB-PORT-001`, `meta.reason` `redirect_uri_invalid` with `field` and `problem`, never the URI (`realmRedirectProblem`).
+
+**What to change (migration note):**
+
+1. Take the platform files: `scripts/dev-up.mjs` and `scripts/local-stack.mjs` (copy them as they are, then point the `packages/<name>/dist/` paths at `node_modules/@infrabyx/<name>/dist/` as the scaffold does), `infra/compose/docker-compose.yml` and `infra/compose/.env.example`.
+2. Add `infrabyx.local.apps` to your root `package.json` with every app you run locally, a second web app included; keep `infrabyx.product`.
+3. Move every `@infrabyx/*` pin together to the release that carries this (connectors minor).
+4. Your data: the old stack's volumes belong to the project `infrabyx` (`infrabyx_pgdata` and the rest). Stop the old stack once with `docker compose -p infrabyx down` (no `--volumes`), then `pnpm dev:up` starts a fresh project and re-seeds. Remove the old volumes yourself only when no other product's stack still runs under `infrabyx`.
+5. Keep your deploy job's realm spec complete: every redirect URI it needs must be in `apiClient.redirectUris`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

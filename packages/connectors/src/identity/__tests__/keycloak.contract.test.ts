@@ -590,6 +590,67 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
     expect((await withFloor.getUser(earlyId)).mfaEnrolled).toBe(true);
   });
 
+  it("a second applyRealm run sets the API client's redirect, post-logout and origin lists to the spec's (DEV-LOCAL-01)", async () => {
+    type Client = {
+      id: string;
+      clientId: string;
+      redirectUris: string[];
+      webOrigins: string[];
+      attributes: Record<string, string>;
+    };
+    const client = async () =>
+      ((await adminCall("GET", `/clients?clientId=${API}`)) as Client[])[0]!;
+    const two = {
+      ...spec,
+      apiClient: {
+        ...spec.apiClient,
+        redirectUris: [
+          "http://localhost:53227/auth/callback",
+          "http://localhost:53228/auth/callback",
+        ],
+        postLogoutRedirectUris: ["http://localhost:53227/", "http://localhost:53228/"],
+      },
+    };
+    await KeycloakIdentity.applyRealm({
+      baseUrl: base,
+      masterAdmin: admin,
+      allowLoopbackHttp: true,
+      spec: two,
+    });
+    const after = await client();
+    expect([...after.redirectUris].sort()).toEqual(two.apiClient.redirectUris);
+    expect([...after.webOrigins].sort()).toEqual([
+      "http://localhost:53227",
+      "http://localhost:53228",
+    ]);
+    expect(after.attributes["post.logout.redirect.uris"]).toBe(
+      "http://localhost:53227/##http://localhost:53228/",
+    );
+    // The client's other settings are untouched by the update.
+    expect(after.attributes["pkce.code.challenge.method"]).toBe("S256");
+    // A wildcard is refused before Keycloak is called; the realm keeps the lists above.
+    await expect(
+      KeycloakIdentity.applyRealm({
+        baseUrl: base,
+        masterAdmin: admin,
+        allowLoopbackHttp: true,
+        spec: {
+          ...spec,
+          apiClient: { ...spec.apiClient, redirectUris: ["http://localhost:53227/*"] },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "IPB-PORT-001", meta: { problem: "wildcard" } });
+    expect([...(await client()).redirectUris].sort()).toEqual(two.apiClient.redirectUris);
+    // Back to the suite's spec: the lists narrow again.
+    await KeycloakIdentity.applyRealm({
+      baseUrl: base,
+      masterAdmin: admin,
+      allowLoopbackHttp: true,
+      spec,
+    });
+    expect((await client()).redirectUris).toEqual(["http://127.0.0.1/callback"]);
+  });
+
   it("JWKS stays cached across an IdP outage; new logins fail with IPB-IDN-002", async () => {
     const p = adapter();
     const t = await p.issueToken({ subject: API, audience: AUDIENCE }, 300);
