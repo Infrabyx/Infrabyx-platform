@@ -1,6 +1,6 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-24 (evening, thirty-third session handover)
+Updated: 2026-11-25 (night, thirty-fourth session in progress)
 
 | Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -53,6 +53,12 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 ## Platform backlog (owner-approved, not scheduled)
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Thirty-fourth session (25 Nov 22:28 IST onward, owner chat) — in progress
+
+- **Lock:** SESSION LOCK #262 was FREE at 22:28 IST and taken. OWNER INBOX #263 had no new owner comment (the answers came in the chat).
+- **Owner answers (R1-D-289):** #204, #205 and #206 accepted as recorded; Udofin's old product-side unsigned originals stay where they are (no move, no deletion), so that owner task is closed. Correction: Finbyx also sets `breakGlassTenantApproversForRead: 2`.
+- **Registered:** PR-FBX-56 (the IPB-02-44 upload pipeline after the AV scan) and DEV-LOCAL-01 (the scaffold's local stack, `applyRealm` redirect URIs). Order: the guide correction, DEV-LOCAL-01, PR-FBX-56, then the Keycloak `26.8.2-3` move (from 26 Nov).
 
 ## Thirty-third session (24 Nov 14:29 to about 21:15 IST, owner chat) — handover
 
