@@ -1,24 +1,41 @@
 // The PDF check of the upload pipeline (IPB-02-44: PDFs checked for JavaScript and launch actions;
-// PR-FBX-56, R1-D-292). Every PDF name in the file body and inside every object stream is read
-// with its `#xx` escapes decoded, so a name hidden in a compressed object stream or spelt
-// `/J#61vaScript` is found. Fail closed: an encrypted file, an object stream this reader cannot
-// decode, or one that inflates past the limits is refused, never passed as clean.
-import { inflateSync } from "node:zlib";
+// PR-FBX-56, R1-D-292). It parses nothing it could be fooled about: every PDF name anywhere in the
+// file is read (strings, comments and stream data included, `#xx` escapes decoded), and so is every
+// name in what each stream decodes to (Flate, ASCII85, ASCIIHex and RunLength, in any order, and a
+// PNG predictor found from the data's own row structure, whatever the dictionary claims). A name in
+// a string can therefore refuse an ordinary file, never pass an active one. Fail closed: an
+// encrypted file, an LZW, Crypt or TIFF-predictor stream, too many streams, or decoding past the
+// limits is refused.
+import { inflateRawSync, inflateSync } from "node:zlib";
 import {
   PDF_ACTIVE_NAMES,
   PDF_REPORTED_NAMES,
   UPLOAD_MAX_INFLATED_BYTES,
-  UPLOAD_MAX_INFLATION_RATIO,
 } from "@infrabyx/contracts/ports";
 
 export type PdfCheck =
   | { ok: true; active: string[]; reported: string[] }
   | { ok: false; reason: "pdf_unreadable" | "pdf_encrypted" | "inflation_limit" };
 
-const latin1 = (b: Uint8Array) => new TextDecoder("latin1").decode(b);
+/** The most streams one PDF may hold before it is refused as unreadable. */
+export const PDF_MAX_STREAMS = 20_000;
+/** Decoded streams up to this size are also searched for a PNG predictor's row structure. */
+const PREDICTOR_SEARCH_BYTES = 16 * 1024 * 1024;
+/** The most bytes undoing predictors may produce for one PDF (bounds the work, never the file). */
+const PREDICTOR_MAX_OUTPUT = 512 * 1024 * 1024;
+const CHUNK = 64 * 1024 * 1024;
 
-/** Every PDF name in `text`, `#xx` escapes decoded (PDF 1.7 §7.3.5). */
-export function pdfNames(text: string): Set<string> {
+function latin1(b: Uint8Array): string {
+  // Chunked: one decode of a very large file can exceed the engine's string limit.
+  const parts: string[] = [];
+  const d = new TextDecoder("latin1");
+  for (let i = 0; i < b.length; i += CHUNK) parts.push(d.decode(b.subarray(i, i + CHUNK)));
+  return parts.join("");
+}
+
+/** Every PDF name in `b` (Latin-1), `#xx` escapes decoded (PDF 1.7 §7.3.5). */
+export function pdfNames(b: Uint8Array | string): Set<string> {
+  const text = typeof b === "string" ? b : latin1(b);
   const out = new Set<string>();
   for (const m of text.matchAll(/\/([^\s/<>[\]()%{}]*)/g)) {
     const raw = m[1]!;
@@ -31,88 +48,202 @@ export function pdfNames(text: string): Set<string> {
   return out;
 }
 
-/** The dictionary text before a `stream` keyword at `at` (back to the object's `obj`). */
-function streamDict(text: string, at: number): string {
-  const start = text.lastIndexOf(" obj", at);
-  return text.slice(start >= 0 ? start : Math.max(0, at - 4096), at);
+class Limit extends Error {}
+
+/** The decode budget of one PDF. */
+class Budget {
+  left = UPLOAD_MAX_INFLATED_BYTES;
+  predicted = PREDICTOR_MAX_OUTPUT;
+  take(n: number) {
+    this.left -= n;
+    if (this.left < 0) throw new Limit();
+  }
+  predict(n: number) {
+    this.predicted -= n;
+    if (this.predicted < 0) throw new Limit();
+  }
 }
 
-/** The `/Filter` names of a stream dictionary (one name or an array). */
-function filters(dict: string): string[] {
-  const m = /\/Filter\s*(\[[^\]]*\]|\/[^\s/<>[\]]+)/.exec(dict);
-  if (!m) return [];
-  return [...pdfNames(m[1]!)];
+function inflate(data: Uint8Array, budget: Budget): Uint8Array | null {
+  for (const fn of [inflateSync, inflateRawSync]) {
+    try {
+      // No per-stream ratio: a blank scanned page compresses far past any; the budget bounds it.
+      const out = fn(data, {
+        maxOutputLength: Math.max(1, budget.left),
+        finishFlush: 2,
+      }) as Uint8Array;
+      budget.take(out.length);
+      return out;
+    } catch (e) {
+      if (e instanceof Limit) throw e;
+      if ((e as { code?: string }).code === "ERR_BUFFER_TOO_LARGE") throw new Limit();
+    }
+  }
+  return null;
+}
+
+function asciiHex(data: Uint8Array): Uint8Array | null {
+  const t = latin1(data).replace(/\s+/g, "");
+  const end = t.indexOf(">");
+  const hex = end >= 0 ? t.slice(0, end) : t;
+  if (hex.length < 2 || !/^[0-9A-Fa-f]+$/.test(hex)) return null;
+  const s = hex.length % 2 ? `${hex}0` : hex;
+  const out = new Uint8Array(s.length / 2);
+  for (let i = 0; i < out.length; i++) out[i] = parseInt(s.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+function ascii85(data: Uint8Array): Uint8Array | null {
+  let t = latin1(data).replace(/\s+/g, "");
+  if (t.startsWith("<~")) t = t.slice(2);
+  const end = t.indexOf("~>");
+  if (end >= 0) t = t.slice(0, end);
+  if (!t.length || !/^[!-uz]+$/.test(t)) return null;
+  const out: number[] = [];
+  let group: number[] = [];
+  const flush = (n: number) => {
+    while (group.length < 5) group.push(84);
+    let v = 0;
+    for (const c of group) v = v * 85 + c;
+    const bytes = [Math.floor(v / 2 ** 24) & 255, (v >>> 16) & 255, (v >>> 8) & 255, v & 255];
+    out.push(...bytes.slice(0, n));
+    group = [];
+  };
+  for (const ch of t) {
+    if (ch === "z" && group.length === 0) {
+      out.push(0, 0, 0, 0);
+      continue;
+    }
+    group.push(ch.charCodeAt(0) - 33);
+    if (group.length === 5) flush(4);
+  }
+  if (group.length > 1) flush(group.length - 1);
+  return Uint8Array.from(out);
+}
+
+function runLength(data: Uint8Array): Uint8Array | null {
+  const out: number[] = [];
+  for (let i = 0; i < data.length;) {
+    const n = data[i++]!;
+    if (n === 128) return Uint8Array.from(out);
+    if (n < 128) {
+      if (i + n + 1 > data.length) return null;
+      for (let k = 0; k <= n; k++) out.push(data[i + k]!);
+      i += n + 1;
+    } else {
+      if (i >= data.length) return null;
+      for (let k = 0; k < 257 - n; k++) out.push(data[i]!);
+      i++;
+    }
+    if (out.length > 64 * 1024 * 1024) return null;
+  }
+  return Uint8Array.from(out);
+}
+
+/**
+ * PNG predictor rows found from the data itself: a stride whose every row starts with a tag byte
+ * 0 to 4. Each such stride is undone for every pixel width, so a predicted object stream is read
+ * whatever `/Columns`, `/Colors` or `/BitsPerComponent` say.
+ */
+function unpredict(data: Uint8Array, budget?: Budget): Uint8Array[] {
+  if (data.length < 4 || data.length > PREDICTOR_SEARCH_BYTES) return [];
+  const out: Uint8Array[] = [];
+  for (let stride = 2; stride <= data.length; stride++) {
+    if (data.length % stride !== 0) continue;
+    let ok = true;
+    for (let i = 0; i < data.length; i += stride)
+      if (data[i]! > 4) {
+        ok = false;
+        break;
+      }
+    if (!ok) continue;
+    for (const bpp of [1, 2, 3, 4, 6, 8]) {
+      if (bpp >= stride) continue;
+      const row = stride - 1;
+      budget?.predict((data.length / stride) * row);
+      const res = new Uint8Array((data.length / stride) * row);
+      for (let r = 0; r * stride < data.length; r++) {
+        const tag = data[r * stride]!;
+        for (let c = 0; c < row; c++) {
+          const x = data[r * stride + 1 + c]!;
+          const a = c >= bpp ? res[r * row + c - bpp]! : 0;
+          const b = r > 0 ? res[(r - 1) * row + c]! : 0;
+          const d = r > 0 && c >= bpp ? res[(r - 1) * row + c - bpp]! : 0;
+          let v = x;
+          if (tag === 1) v = x + a;
+          else if (tag === 2) v = x + b;
+          else if (tag === 3) v = x + ((a + b) >> 1);
+          else if (tag === 4) {
+            const p = a + b - d;
+            const pa = Math.abs(p - a);
+            const pb = Math.abs(p - b);
+            const pc = Math.abs(p - d);
+            v = x + (pa <= pb && pa <= pc ? a : pb <= pc ? b : d);
+          }
+          res[r * row + c] = v & 255;
+        }
+      }
+      out.push(res);
+      if (out.length > 64) return out;
+    }
+  }
+  return out;
+}
+
+/** Everything a stream's data can decode to, each stage applied to the last (filter chains). */
+function decodings(data: Uint8Array, budget: Budget): Uint8Array[] {
+  const seen: Uint8Array[] = [];
+  let frontier = [data];
+  for (let depth = 0; depth < 3 && frontier.length; depth++) {
+    const next: Uint8Array[] = [];
+    for (const d of frontier) {
+      const flat = inflate(d, budget);
+      if (flat) {
+        next.push(flat, ...unpredict(flat, budget));
+      }
+      for (const fn of [ascii85, asciiHex, runLength]) {
+        const o = fn(d);
+        if (o && o.length) {
+          budget.take(o.length);
+          next.push(o);
+        }
+      }
+    }
+    seen.push(...next);
+    frontier = next;
+  }
+  return seen;
 }
 
 /**
  * Checks one PDF. `active` lists the always-active names found (`PDF_ACTIVE_NAMES`), `reported`
- * the names ordinary PDFs use (`PDF_REPORTED_NAMES`).
+ * the names ordinary PDFs use (`PDF_REPORTED_NAMES`). Never throws.
  */
 export function checkPdf(bytes: Uint8Array): PdfCheck {
-  const text = latin1(bytes);
-  // The names outside stream data: a stream's bytes (an image, a font) can hold `/JS` by chance.
-  const outside: string[] = [];
-  let at = 0;
-  const all = /(?<!end)stream\r?\n/g;
-  for (let m = all.exec(text); m; m = all.exec(text)) {
-    outside.push(text.slice(at, m.index));
-    const start = m.index + m[0].length;
-    const end = text.indexOf("endstream", start);
-    if (end < 0) return { ok: false, reason: "pdf_unreadable" };
-    const data = text.slice(start, end);
-    // A viewer that ends the stream at a direct /Length, or that finds an object inside the data
-    // through the cross-reference table, reads what follows as objects: such bytes count as
-    // outside stream data, so an object hidden there is still read.
-    const len = /\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(streamDict(text, m.index));
-    if (/\d+\s+\d+\s+obj\b/.test(data)) outside.push(data);
-    else if (len && Number(len[1]) < data.length) outside.push(data.slice(Number(len[1])));
-    at = end;
-    all.lastIndex = end + "endstream".length;
-  }
-  outside.push(text.slice(at));
-  const names = pdfNames(outside.join(" "));
-  if (names.has("Encrypt")) return { ok: false, reason: "pdf_encrypted" };
-  let inflated = 0;
-  // Every stream: object streams (`/Type /ObjStm`) hold dictionaries and must be read; XRef
-  // streams hold only offsets. Other streams (page content, images, fonts, embedded files) hold no
-  // dictionary a viewer acts on, so they are not decoded here (the AV scan read them).
-  const re = /(?<!end)stream\r?\n/g;
-  for (let m = re.exec(text); m; m = re.exec(text)) {
-    const dict = streamDict(text, m.index);
-    const dictNames = pdfNames(dict);
-    if (!dictNames.has("ObjStm")) continue;
-    const start = m.index + m[0].length;
-    const end = text.indexOf("endstream", start);
-    if (end < 0) return { ok: false, reason: "pdf_unreadable" };
-    let body = bytes.subarray(start, end);
-    const fs = filters(dict);
-    for (const f of fs) {
-      if (f !== "FlateDecode" && f !== "Fl") return { ok: false, reason: "pdf_unreadable" };
-      try {
-        const out: Uint8Array = inflateSync(body, {
-          maxOutputLength: Math.max(1, UPLOAD_MAX_INFLATED_BYTES - inflated),
-        });
-        if (out.length > Math.max(1024 * 1024, body.length * UPLOAD_MAX_INFLATION_RATIO))
-          return { ok: false, reason: "inflation_limit" };
-        inflated += out.length;
-        body = out;
-      } catch (e) {
-        if ((e as { code?: string }).code === "ERR_BUFFER_TOO_LARGE")
-          return { ok: false, reason: "inflation_limit" };
-        // A stream that does not inflate: some writers leave a trailing EOL inside the data.
-        try {
-          const trimmed = body.subarray(0, Math.max(0, body.length - 2));
-          body = inflateSync(trimmed, { maxOutputLength: UPLOAD_MAX_INFLATED_BYTES - inflated });
-          inflated += body.length;
-        } catch {
-          return { ok: false, reason: "pdf_unreadable" };
-        }
-      }
-      if (inflated > UPLOAD_MAX_INFLATED_BYTES) return { ok: false, reason: "inflation_limit" };
+  try {
+    const text = latin1(bytes);
+    const names = pdfNames(text);
+    if (names.has("Encrypt")) return { ok: false, reason: "pdf_encrypted" };
+    // Filters this check cannot undo: a stream behind them could hide any name.
+    for (const n of ["LZWDecode", "LZW", "Crypt"])
+      if (names.has(n)) return { ok: false, reason: "pdf_unreadable" };
+    if (/\/Predictor\s+2(?![0-9])/.test(text)) return { ok: false, reason: "pdf_unreadable" };
+    const budget = new Budget();
+    let streams = 0;
+    // Every `stream` keyword, even one inside a string or a comment, up to the next `endstream`.
+    const re = /stream\r?\n/g;
+    for (let m = re.exec(text); m; m = re.exec(text)) {
+      if (++streams > PDF_MAX_STREAMS) return { ok: false, reason: "pdf_unreadable" };
+      const start = m.index + m[0].length;
+      let end = text.indexOf("endstream", start);
+      if (end < 0) end = text.length;
+      for (const d of decodings(bytes.subarray(start, end), budget))
+        for (const n of pdfNames(d)) names.add(n);
     }
-    for (const n of pdfNames(latin1(body))) names.add(n);
+    const active = PDF_ACTIVE_NAMES.filter((n) => names.has(n));
+    const reported = PDF_REPORTED_NAMES.filter((n) => names.has(n));
+    return { ok: true, active, reported };
+  } catch (e) {
+    return { ok: false, reason: e instanceof Limit ? "inflation_limit" : "pdf_unreadable" };
   }
-  const active = PDF_ACTIVE_NAMES.filter((n) => names.has(n));
-  const reported = PDF_REPORTED_NAMES.filter((n) => names.has(n));
-  return { ok: true, active, reported };
 }

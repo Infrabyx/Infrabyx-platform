@@ -30,14 +30,15 @@ export function sniffType(b: Uint8Array): SniffedType {
 function isSvgText(b: Uint8Array): boolean {
   let text: string;
   try {
-    text = new TextDecoder("utf-8", { fatal: true }).decode(b.subarray(0, 64 * 1024));
+    // Not fatal: the 64 KB cut may split a multi-byte character; the root element decides.
+    text = new TextDecoder("utf-8").decode(b.subarray(0, 64 * 1024));
   } catch {
     return false;
   }
   const head = text
     .replace(/^\uFEFF/, "")
     .replace(/^\s*<\?xml[^>]*\?>/, "")
-    .replace(/^(\s*<!--[\s\S]*?-->)*/, "")
+    .replace(/^(\s*(<!--[\s\S]*?-->|<!DOCTYPE svg[^>]*>))*/i, "")
     .trimStart();
   return /^<svg[\s>]/i.test(head);
 }
@@ -73,15 +74,21 @@ const MARKUP = [
   "<embed",
   "<svg",
   "<?php",
-  "<%@",
   "javascript:",
 ];
 
 /** Whether the bytes carry markup a second parser would run (labels of what was found). */
 export function polyglotMarkers(b: Uint8Array): string[] {
-  // Latin-1 keeps one character per byte, so offsets and case folding are exact.
-  const text = new TextDecoder("latin1").decode(b).toLowerCase();
-  return MARKUP.filter((m) => text.includes(m));
+  // Latin-1 keeps one character per byte, so case folding is exact; chunked with an overlap, so a
+  // very large file never exceeds the engine's string limit and no marker is split unseen.
+  const found = new Set<string>();
+  const d = new TextDecoder("latin1");
+  const step = 16 * 1024 * 1024;
+  for (let i = 0; i < b.length; i += step) {
+    const text = d.decode(b.subarray(i, Math.min(b.length, i + step + 32))).toLowerCase();
+    for (const m of MARKUP) if (text.includes(m)) found.add(m);
+  }
+  return MARKUP.filter((m) => found.has(m));
 }
 
 /** Bytes after a raster's own end (PNG `IEND`, JPEG `EOI`): data no image decoder reads. */

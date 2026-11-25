@@ -33,8 +33,12 @@ function entries(b: Uint8Array): Entry[] | null {
     }
   if (eocd < 0) return null;
   const count = u16(b, eocd + 10);
+  const cdSize = u32(b, eocd + 12);
   const cdOffset = u32(b, eocd + 16);
   if (count === 0xffff || cdOffset === 0xffffffff || u16(b, eocd + 4) !== 0) return null;
+  // The record must end the file (its comment exactly fills the rest) and the central directory
+  // must end where it starts, so a second directory planted in a comment cannot be the one read.
+  if (eocd + 22 + u16(b, eocd + 20) !== b.length || cdOffset + cdSize !== eocd) return null;
   const out: Entry[] = [];
   let p = cdOffset;
   for (let n = 0; n < count; n++) {
@@ -53,6 +57,7 @@ function entries(b: Uint8Array): Entry[] | null {
     });
     p += 46 + nameLen + extraLen + commentLen;
   }
+  if (p !== eocd) return null;
   return out;
 }
 
@@ -88,11 +93,24 @@ function read(
 }
 
 const MACRO_PART =
-  /(^|\/)(vbaProject\.bin|vbaData\.xml|vbaProjectSignature\.bin)$|(^|\/)activeX\//i;
+  /(^|\/)(vbaProject\.bin|vbaData\.xml|vbaProjectSignature\.bin)$|(^|\/)(activeX|embeddings)\/|(^|\/)oleObject[^/]*\.bin$/i;
 const MACRO_TYPE =
   /ms-office\.vbaProject|ms-office\.activeX|macroEnabled|vbaData|ms-excel\.(sheet\.binary\.)?macro|ms-excel\.intlmacrosheet|\.xlm\b/i;
 const MACRO_REL =
-  /\/relationships\/(vbaProject|activeXControl|activeXControlBinary|wordVbaData|xlMacrosheet|xlIntlMacrosheet)\b/i;
+  /\/relationships\/(vbaProject|activeXControl|activeXControlBinary|wordVbaData|xlMacrosheet|xlIntlMacrosheet|oleObject|package|attachedTemplate|frame|subDocument)\b/i;
+
+/** XML character and entity references decoded, so an escaped type cannot hide (`vba&#80;roject`). */
+function decodeXml(t: string): string {
+  const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
+  return t
+    .replace(/&#x([0-9a-f]+);?/gi, (_m, h: string) =>
+      String.fromCodePoint(Math.min(parseInt(h, 16), 0x10ffff)),
+    )
+    .replace(/&#([0-9]+);?/g, (_m, d: string) =>
+      String.fromCodePoint(Math.min(parseInt(d, 10), 0x10ffff)),
+    )
+    .replace(/&(amp|lt|gt|quot|apos);/g, (_m, e: string) => named[e]!);
+}
 
 /**
  * Checks one OOXML package: every part name, `[Content_Types].xml` and every `.rels` file. `macros`
@@ -101,21 +119,39 @@ const MACRO_REL =
  */
 export function checkOoxml(bytes: Uint8Array): OfficeCheck {
   const list = entries(bytes);
-  if (!list || !list.some((e) => e.name === "[Content_Types].xml"))
+  if (!list || !list.some((e) => e.name.toLowerCase() === "[content_types].xml"))
     return { ok: false, reason: "office_unreadable" };
   const total = list.reduce((n, e) => n + e.size, 0);
   if (total > UPLOAD_MAX_INFLATED_BYTES) return { ok: false, reason: "inflation_limit" };
   const macros = new Set<string>();
   const budget = { left: UPLOAD_MAX_INFLATED_BYTES };
   for (const e of list) {
-    if (MACRO_PART.test(e.name))
-      macros.add(e.name.toLowerCase().includes("activex") ? "activex" : "vba_project");
+    if (MACRO_PART.test(e.name)) {
+      const n = e.name.toLowerCase();
+      macros.add(
+        n.includes("activex")
+          ? "activex"
+          : /embeddings\/|oleobject/.test(n)
+            ? "embedded_object"
+            : "vba_project",
+      );
+    }
     // Every entry is inflated once within the limits, so a zip bomb anywhere in the file is found.
     const body = read(bytes, e, budget);
     if (body === "limit") return { ok: false, reason: "inflation_limit" };
     if (body === "unreadable") return { ok: false, reason: "office_unreadable" };
-    if (e.name === "[Content_Types].xml" || e.name.endsWith(".rels")) {
-      const text = new TextDecoder("utf-8").decode(body);
+    const lower = e.name.toLowerCase();
+    if (lower === "[content_types].xml" || lower.endsWith(".rels")) {
+      // Only UTF-8 is read; a UTF-16 (or other) part could carry a type this check cannot see.
+      if (body.includes(0)) return { ok: false, reason: "office_unreadable" };
+      let raw: string;
+      try {
+        raw = new TextDecoder("utf-8", { fatal: true }).decode(body);
+      } catch {
+        return { ok: false, reason: "office_unreadable" };
+      }
+      if (/<!ENTITY|<!DOCTYPE/i.test(raw)) return { ok: false, reason: "office_unreadable" };
+      const text = decodeXml(raw);
       if (MACRO_TYPE.test(text)) macros.add("macro_content_type");
       if (MACRO_REL.test(text)) macros.add("macro_relationship");
     }

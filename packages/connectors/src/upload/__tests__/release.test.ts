@@ -1,5 +1,6 @@
 // `releaseUpload` (IPB-02-44, `@IPB-02-AT-16`; PR-FBX-56, R1-D-292) on the reference MEDIA adapter
 // (`sharp`), with the platform's upload corpus from `@infrabyx/testing`.
+import { deflateSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { sha256Hex } from "@infrabyx/crypto";
 import {
@@ -339,5 +340,140 @@ describe("releaseUpload: Office", () => {
       code: "IPB-SEC-010",
       reason: "office_unreadable",
     });
+  });
+});
+
+// The reviewer's bypasses of the first version (R1-D-292): each must now be found or refused.
+describe("releaseUpload: crafted PDFs and packages that hide active content", () => {
+  const pdfOf = (body: string | Uint8Array) =>
+    corpusPdf(["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [] /Count 0 >>", body]);
+  const stream = (dict: string, data: Uint8Array) =>
+    new Uint8Array([...enc(`${dict}\nstream\n`), ...data, ...enc("\nendstream")]);
+
+  it("a fake stream keyword in a string and an endstream comment hide nothing", () => {
+    const pdf = enc(
+      "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R/X(stream\n)/OpenAction<</S/JavaScript/JS(app.alert(1))>>>>\n%endstream\nendobj\ntrailer<</Root 1 0 R>>\n%%EOF",
+    );
+    expect(checkPdf(pdf)).toMatchObject({ ok: true, active: ["JavaScript", "JS"] });
+  });
+
+  it("an object stream behind a PNG predictor is undone, whatever its dictionary says", () => {
+    const objs = enc("5 0 << /S /JavaScript /JS (x) >>");
+    for (const tag of [0, 1, 2, 4]) {
+      // Columns 3, one tag byte per row, the rows encoded with the given filter type.
+      const cols = 3;
+      const rows: number[] = [];
+      const padded = [...objs, ...new Array((cols - (objs.length % cols)) % cols).fill(32)];
+      for (let r = 0; r < padded.length / cols; r++) {
+        rows.push(tag);
+        for (let c = 0; c < cols; c++) {
+          const x = padded[r * cols + c]!;
+          const a = c > 0 ? padded[r * cols + c - 1]! : 0;
+          const b = r > 0 ? padded[(r - 1) * cols + c]! : 0;
+          const d = r > 0 && c > 0 ? padded[(r - 1) * cols + c - 1]! : 0;
+          const p = a + b - d;
+          const pred =
+            tag === 1
+              ? a
+              : tag === 2
+                ? b
+                : tag === 4
+                  ? Math.abs(p - a) <= Math.abs(p - b) && Math.abs(p - a) <= Math.abs(p - d)
+                    ? a
+                    : Math.abs(p - b) <= Math.abs(p - d)
+                      ? b
+                      : d
+                  : 0;
+          rows.push((x - pred) & 255);
+        }
+      }
+      const data = deflateSync(Uint8Array.from(rows));
+      // The dictionary even lies: no /Type, a string with " obj" and other columns.
+      const pdf = pdfOf(
+        stream(
+          "<< /N 1 /First 4 /Z ( obj) /Filter /FlateDecode /DecodeParms << /Predictor 12 /Columns 9 >> >>",
+          data,
+        ),
+      );
+      expect(checkPdf(pdf), `tag ${tag}`).toMatchObject({ ok: true, active: ["JavaScript", "JS"] });
+    }
+  });
+
+  it("ASCII85 and ASCIIHex chains are decoded; LZW, Crypt, the TIFF predictor and too many streams are refused", () => {
+    const hex = Buffer.from(deflateSync(enc("<< /S /Launch >>"))).toString("hex");
+    expect(
+      checkPdf(pdfOf(stream("<< /Filter [/ASCIIHexDecode /FlateDecode] >>", enc(`${hex}>`)))),
+    ).toMatchObject({ ok: true, active: ["Launch"] });
+    expect(checkPdf(pdfOf("<< /Filter /LZWDecode >>"))).toEqual({
+      ok: false,
+      reason: "pdf_unreadable",
+    });
+    expect(checkPdf(pdfOf("<< /Filter /Crypt >>"))).toEqual({
+      ok: false,
+      reason: "pdf_unreadable",
+    });
+    expect(checkPdf(pdfOf("<< /DecodeParms << /Predictor 2 >> >>"))).toEqual({
+      ok: false,
+      reason: "pdf_unreadable",
+    });
+    expect(checkPdf(enc(`%PDF-1.7\n${"stream\nx\nendstream\n".repeat(20_001)}`))).toEqual({
+      ok: false,
+      reason: "pdf_unreadable",
+    });
+  });
+
+  it("a blank scanned page (a highly compressible image) is not refused", async () => {
+    const page = stream(
+      "<< /Type /XObject /Subtype /Image /Filter /FlateDecode >>",
+      deflateSync(new Uint8Array(8 * 1024 * 1024).fill(255)),
+    );
+    const r = await run({ name: "scan.pdf", declaredType: "application/pdf", bytes: pdfOf(page) });
+    expect(r).toMatchObject({ released: true });
+  });
+
+  it("an escaped or UTF-16 VBA type, an embedded object and a planted second directory are refused", async () => {
+    const escaped = corpusZip({
+      "[Content_Types].xml":
+        '<Types><Override PartName="/x/payload.bin" ContentType="application/vnd.ms-office.vba&#80;roject"/></Types>',
+      "x/payload.bin": "x",
+    });
+    expect(await run({ name: "a.docx", declaredType: DOCX, bytes: escaped })).toMatchObject({
+      code: "IPB-SEC-012",
+      reason: "office_macros",
+    });
+    const utf16 = corpusZip({
+      "[Content_Types].xml": new Uint8Array([0xff, 0xfe, 0x3c, 0, 0x54, 0]),
+    });
+    expect(await run({ name: "a.docx", declaredType: DOCX, bytes: utf16 })).toMatchObject({
+      reason: "office_unreadable",
+    });
+    const embedded = corpusZip({
+      "[Content_Types].xml": "<Types/>",
+      "word/embeddings/oleObject1.bin": "x",
+    });
+    expect(await run({ name: "a.docx", declaredType: DOCX, bytes: embedded })).toMatchObject({
+      code: "IPB-SEC-012",
+      findings: ["embedded_object"],
+    });
+    const template = corpusZip({
+      "[Content_Types].xml": "<Types/>",
+      "word/_rels/settings.xml.rels":
+        '<Relationships><Relationship Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/attachedTemplate" Target="https://x.test/t.dotm" TargetMode="External"/></Relationships>',
+    });
+    expect(await run({ name: "a.docx", declaredType: DOCX, bytes: template })).toMatchObject({
+      code: "IPB-SEC-012",
+    });
+    // A clean directory planted in the zip comment after the real one is not the one read.
+    const real = uploadCorpus.docxWithMacro().bytes;
+    const clean = uploadCorpus.cleanDocx().bytes;
+    const planted = new Uint8Array([
+      ...real.slice(0, real.length - 2),
+      0,
+      0,
+      ...clean.slice(clean.length - 22),
+    ]);
+    expect((await run({ name: "a.docx", declaredType: DOCX, bytes: planted })).released).toBe(
+      false,
+    );
   });
 });
