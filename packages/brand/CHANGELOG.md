@@ -1,5 +1,16 @@
 # @infrabyx/brand
 
+## 1.2.27
+
+### Patch Changes
+
+- Updated dependencies [f4f525b]
+  - @infrabyx/contracts@1.53.0
+  - @infrabyx/config@1.24.7
+  - @infrabyx/crypto@1.15.5
+  - @infrabyx/tenancy@1.30.1
+  - @infrabyx/ui@1.3.24
+
 ## 1.2.26
 
 ### Patch Changes
