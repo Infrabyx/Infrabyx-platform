@@ -64,8 +64,18 @@ class Budget {
   }
 }
 
-function inflate(data: Uint8Array, budget: Budget): Uint8Array | null {
-  for (const fn of [inflateSync, inflateRawSync]) {
+/** A zlib stream header (RFC 1950): deflate, and the check bits right. */
+const zlibHeader = (d: Uint8Array) =>
+  d.length > 2 && (d[0]! & 0x0f) === 8 && d[0]! >> 4 <= 7 && ((d[0]! << 8) | d[1]!) % 31 === 0;
+
+/**
+ * Flate data: zlib (the PDF form) behind a valid header, or raw deflate where the stream's own
+ * dictionary names Flate (`raw`), as lenient viewers read it. Trying neither elsewhere keeps a file
+ * of many small streams cheap to check.
+ */
+function inflate(data: Uint8Array, budget: Budget, raw: boolean): Uint8Array | null {
+  const fns = [...(zlibHeader(data) ? [inflateSync] : []), ...(raw ? [inflateRawSync] : [])];
+  for (const fn of fns) {
     try {
       // No per-stream ratio: a blank scanned page compresses far past any; the budget bounds it.
       const out = fn(data, {
@@ -191,13 +201,13 @@ function unpredict(data: Uint8Array, budget?: Budget): Uint8Array[] {
 }
 
 /** Everything a stream's data can decode to, each stage applied to the last (filter chains). */
-function decodings(data: Uint8Array, budget: Budget): Uint8Array[] {
+function decodings(data: Uint8Array, budget: Budget, flateNamed: boolean): Uint8Array[] {
   const seen: Uint8Array[] = [];
   let frontier = [data];
   for (let depth = 0; depth < 3 && frontier.length; depth++) {
     const next: Uint8Array[] = [];
     for (const d of frontier) {
-      const flat = inflate(d, budget);
+      const flat = inflate(d, budget, flateNamed || depth > 0);
       if (flat) {
         next.push(flat, ...unpredict(flat, budget));
       }
@@ -230,15 +240,29 @@ export function checkPdf(bytes: Uint8Array): PdfCheck {
     if (/\/Predictor\s+2(?![0-9])/.test(text)) return { ok: false, reason: "pdf_unreadable" };
     const budget = new Budget();
     let streams = 0;
+    let examined = 0;
+    let prevEnd = 0;
     // Every `stream` keyword, even one inside a string or a comment, up to the next `endstream`.
+    // Keywords inside another stream's data overlap it, so the bytes examined are bounded too.
     const re = /stream\r?\n/g;
     for (let m = re.exec(text); m; m = re.exec(text)) {
       if (++streams > PDF_MAX_STREAMS) return { ok: false, reason: "pdf_unreadable" };
       const start = m.index + m[0].length;
       let end = text.indexOf("endstream", start);
       if (end < 0) end = text.length;
-      for (const d of decodings(bytes.subarray(start, end), budget))
+      examined += end - start;
+      if (examined > 2 * bytes.length + 16 * 1024 * 1024)
+        return { ok: false, reason: "pdf_unreadable" };
+      // The dictionary before the keyword, back to the previous object or stream end (searched
+      // only since the last stream, so the whole loop stays linear), for whether to try raw
+      // deflate.
+      const gap = text.slice(Math.min(prevEnd, m.index), m.index);
+      const dictFrom = Math.max(gap.lastIndexOf("endobj"), gap.lastIndexOf("endstream"), 0);
+      const flateNamed = /\/Fl(ateDecode)?\b/.test(gap.slice(dictFrom));
+      prevEnd = Math.max(prevEnd, end);
+      for (const d of decodings(bytes.subarray(start, end), budget, flateNamed))
         for (const n of pdfNames(d)) names.add(n);
+      if (end === text.length) break;
     }
     const active = PDF_ACTIVE_NAMES.filter((n) => names.has(n));
     const reported = PDF_REPORTED_NAMES.filter((n) => names.has(n));

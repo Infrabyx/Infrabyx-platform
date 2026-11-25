@@ -1728,6 +1728,22 @@ Changes the local stack's layout (local only, never a deployment) and one data f
 - **E:** unchanged; the apps still run read-only, as UID 10001, with every capability dropped (tested in the generated file).
 - **S (supply):** no new dependency, port, table, column, setting or algorithm. Owner question #207.
 
+### 3.193 The upload pipeline after the AV scan (`releaseUpload`, `UploadRoute`, the upload corpus, `presignAttachment`; PR-FBX-56, R1-D-292)
+
+A new step in the upload data flow: after the AV scan and before the bytes are stored, untrusted files are parsed (PDF names and object streams, zip directories and parts) and re-encoded.
+
+- **S/T (a file read as something else):** the bytes' type must match the declared one and the route's list (tested). Markup in a raster is a polyglot and is refused (tested). Only a CLEAN scan of exactly these bytes releases (tested).
+- **E (active content reaching a viewer):**
+  - Raster images are re-encoded by MEDIA (tested).
+  - SVG is refused unless sanitised by the allow-list sanitiser, or rasterised from its output.
+  - PDF active names are found anywhere in the file and in every decoded stream, behind `#xx` escapes, predictors, fake `stream` keywords and spoofed dictionaries (each a test), and refused, or flattened and checked again (tested).
+  - Office macros are found by part name, content type and relationship (tested); legacy OLE is refused.
+  - Served downloads are attachments (tested).
+- **D (decompression bombs, parser cost):** inflation is capped at 256 MiB per upload and 200:1 per part or stream. An over-limit, encrypted or undecodable input is refused, never passed (tested).
+- **I:** a refusal and `findings` carry labels only, never content (tested). With `keepOriginalAsEvidence` the original is stored unchanged, metadata included, as the record. Products serve only `viewing` and keep the original behind their download route.
+- **R:** the result names every step taken and both hashes, for the product's ledger entry.
+- **S (supply):** no new dependency (`node:zlib`, the existing optional `sharp`). No reference PDF flattener yet. Owner question #208.
+
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
 - **E (a tenant licensing itself, or one person licensing a tenant):** a version is written only on the platform's approved path: the insert policy needs a platform context and the action `tenancy.entitlement.change`, the service checks two different platform people (requester PLT_SUPER_ADMIN or PLT_FINANCE; approver a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER), refuses services, support roles, tenant users and impersonations, and the table refuses a row whose approver is its requester. R4 (60-minute delay) in production. **R:** versions and notices are insert-only; both steps are ledgered in the tenant. **D (a licence lapsing mid-work):** a lapse or revocation refuses writes only; every record stays readable until the product's detach workflow, and the tenant is told of each grant, revocation and lapse. **I:** the tenant reads only its own licences and notices (forced RLS); of the two SECURITY DEFINER functions, `entitlement_status` reads only the transaction's own tenant and `entitlement_lapses_due` (the sweep's cross-tenant list) returns nothing outside a platform context; both are on the RLS lint's reviewed list.
