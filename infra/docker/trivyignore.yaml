@@ -84,6 +84,9 @@ vulnerabilities:
   - id: CVE-2025-6020
     statement: linux-pam 1.5.2-6+deb12u2 in the Debian 12 base (libpam-modules, libpam-modules-bin, libpam-runtime, libpam0g; Trivy status affected, no fixed version), a directory traversal in pam_namespace. The images run one Node.js process as UID 10001 with a read-only root and no capabilities; nothing logs in, no PAM stack or pam_namespace is used, and no shell or su is reached. Waived 2026-11-16 under the standing 30-day rule (R1-D-162); removed with the first fixed package
     expired_at: 2026-12-16
+  - id: CVE-2026-124851
+    statement: libzstd1 1.5.4+dfsg2-5 in the Debian 12 base, an information disclosure through an uninitialised buffer (Trivy status affected, no fixed version; first matched 25 Nov 2026). Node.js links its own bundled zstd for node:zlib, not the system library; the system libzstd is used by apt and dpkg, which never run in the images at runtime. The images run one Node.js process as UID 10001 with a read-only root and no capabilities. Waived 2026-11-25 under the standing 30-day rule (R1-D-291); removed with the first fixed package
+    expired_at: 2026-12-25
   # Four HIGH findings in the same OpenJDK build of the Keycloak 26.8.2-0 base, from the OpenJDK
   # advisory of 17 Nov 2026 (first matched by the scanner's database of 19 Nov): no fixed build;
   # the 26.8.2-3 rebuild of 19 Nov (OpenJDK 21.0.13.1) is still reported affected. Waived under the
