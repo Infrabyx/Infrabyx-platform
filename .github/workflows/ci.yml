@@ -264,9 +264,11 @@ jobs:
           IPB_JVM_IMAGES=1 \
             pnpm images:test
   compose:
-    # The local stack (IPB-01-33, PL6 plan §4): `pnpm dev:up` starts the `core` profile, waits for
-    # every health check, migrates and seeds; then the seeded site is checked through the `apps`
-    # profile images, and `pnpm dev:down` removes everything. Generated local secrets only.
+    # The local stack (IPB-01-33, PL6 plan §4): `pnpm dev:up` from this clean checkout starts the
+    # `core` profile, waits for every health check, migrates and seeds; then the seeded site is
+    # checked through the `apps` profile images, every declared web app signs in through its own
+    # registered callback, and `pnpm dev:down` stops it without touching another project's volumes
+    # (DEV-LOCAL-01, R1-D-290). Generated local secrets only.
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-24.04
@@ -291,6 +293,13 @@ jobs:
       # range: reserve them so no outgoing connection holds one when a service binds it.
       - name: reserve the local stack's host ports
         run: sudo sysctl -w net.ipv4.ip_local_reserved_ports=53120-53130
+      # Another product's stack and the old shared project's, as Compose labels their volumes:
+      # nothing this job does may remove them.
+      - name: decoy volumes of other projects
+        run: |
+          for v in infrabyx-udf:pgdata infrabyx:pgdata; do
+            docker volume create --label "com.docker.compose.project=${v%%:*}" --label "com.docker.compose.volume=${v##*:}" "${v%%:*}_${v##*:}"
+          done
       - name: dev:up (core and apps profiles)
         run: pnpm dev:up --profile apps
       - name: the seeded site, console, reference API, worker and web answer through their images
@@ -310,12 +319,38 @@ jobs:
           test -s SEED_CREDENTIALS.md
           curl -fsS -o /dev/null http://127.0.0.1:53123/
           curl -fsS http://127.0.0.1:53123/legal/index.json | grep -q '"policies"'
+      - name: every declared web app signs in through its own callback (DEV-LOCAL-01)
+        run: |
+          # Each web app of the root package.json's `infrabyx.local.apps` sends the browser to the
+          # realm with its own callback, and Keycloak serves its sign-in page for it: an
+          # unregistered redirect URI answers "Invalid parameter: redirect_uri" instead.
+          node --input-type=module -e '
+            import { localStack, readLocalSetting } from "./scripts/local-stack.mjs";
+            for (const a of localStack(readLocalSetting(".")).apps.filter((x) => x.kind === "web"))
+              console.log(`${a.url} ${a.url}${a.callbackPath}`);
+          ' > web-apps.txt
+          test -s web-apps.txt
+          while read -r url callback; do
+            location="$(curl -sS -o /dev/null -w '%{redirect_url}' "$url/auth/login")"
+            enc="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$callback")"
+            case "$location" in *"/realms/infrabyx-local/"*"redirect_uri=$enc"*) ;; *) echo "$url: no sign-in redirect with its callback"; exit 1;; esac
+            page="$(curl -sS -c /tmp/kc-jar -b /tmp/kc-jar "$location")"
+            echo "$page" | grep -q 'id="kc-form-login"' || { echo "$url: Keycloak did not serve its sign-in page"; echo "$page" | head -c 400; exit 1; }
+          done < web-apps.txt
+          # The same realm refuses a callback no app declared.
+          curl -sS "http://127.0.0.1:58080/realms/infrabyx-local/protocol/openid-connect/auth?client_id=reference-api&response_type=code&scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A53199%2Fauth%2Fcallback" | grep -q 'Invalid parameter: redirect_uri'
       - name: logs on failure
         if: failure()
-        run: docker compose -f infra/compose/docker-compose.yml --env-file infra/compose/.env.local --profile core --profile apps logs --tail 80 || true
-      - name: dev:down
+        run: node scripts/dev-up.mjs logs --tail 80 || true
+      - name: dev:down keeps this project's volumes; --volumes removes them and no other project's
         if: always()
-        run: pnpm dev:down
+        run: |
+          project="$(node scripts/dev-up.mjs project)"
+          pnpm dev:down
+          docker volume ls -q --filter "label=com.docker.compose.project=$project" | grep -q pgdata
+          pnpm dev:down --volumes
+          test -z "$(docker volume ls -q --filter "label=com.docker.compose.project=$project")"
+          docker volume inspect infrabyx-udf_pgdata infrabyx_pgdata > /dev/null
   reference:
     # The reference application's gate (PL6 plan §8.2, IPB-14 §14.5 items 2 and 4): the Compose stack
     # with the reference api, worker and web on the real Keycloak, Cerbos, MinIO, Redis and Temporal;
@@ -366,10 +401,10 @@ jobs:
             pnpm --filter @infrabyx/reference-api test:int
       - name: logs on failure
         if: failure()
-        run: docker compose -f infra/compose/docker-compose.yml --env-file infra/compose/.env.local --profile core --profile apps logs --tail 120 || true
+        run: node scripts/dev-up.mjs logs --tail 120 || true
       - name: dev:down
         if: always()
-        run: pnpm dev:down
+        run: pnpm dev:down --volumes
   scaffold:
     # A new product scaffolds from the template and passes CI (IPB-14 §14.5 item 5; PL6 plan §9.1):
     # every platform package is packed and served from a local registry inside the job (no external

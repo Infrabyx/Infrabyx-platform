@@ -14,8 +14,9 @@
 //   template;
 // - CLAUDE.md, docs/STATUS.md, docs/DECISIONS.md (one "provided by @infrabyx/<package>" row per
 //   package), docs/platform-requests.md;
-// - infra/docker and infra/compose (the local stack and `pnpm dev:up`, resolving the platform's
-//   files from node_modules), infra/helm/values.<env>.yaml for the shared chart, and
+// - infra/docker and infra/compose (the local stack and `pnpm dev:up` with scripts/local-stack.mjs,
+//   resolving the platform's files from node_modules; the project, ports and apps from the root
+//   package.json's `infrabyx` block, with infra/compose/.env.example), infra/helm/values.<env>.yaml for the shared chart, and
 //   infra/terraform/envs/<product>/<env>/ from the example stack (modules referenced by git at the
 //   platform commit the scaffold ran from).
 import {
@@ -56,6 +57,15 @@ export const APPS = [
   { from: "apps/public", to: "public" },
   { from: "apps/console", to: "console" },
 ];
+
+/**
+ * The scaffolded product's local apps (root package.json `infrabyx.local.apps`): the platform's
+ * own list with each folder under apps/ and no product override (the copies carry the product's
+ * code). A product adds an app (a second web app, say) by adding a line with a free slot.
+ */
+export const PRODUCT_LOCAL_APPS = JSON.parse(read("package.json")).infrabyx.local.apps.map(
+  ({ product: _p, ...a }) => ({ ...a, dir: `apps/${APPS.find((x) => x.from === a.dir).to}` }),
+);
 
 /** The platform packages and their versions, from this checkout. */
 export function platformPackages() {
@@ -142,8 +152,10 @@ const rootPackage = (slug, name, pkgs, product) => {
     description: `${name}: built on the Infrabyx platform packages (@infrabyx/*)`,
     type: "module",
     // Read by the platform bins that run before the product's configuration (infrabyx-seed's
-    // refusal report, PR-FBX-04 note).
-    infrabyx: { product },
+    // refusal report, PR-FBX-04 note) and by `pnpm dev:up` (scripts/local-stack.mjs): the product
+    // code gives the Compose project and the port block; `local.apps` the apps the `apps` profile
+    // builds and runs and the callbacks the realm registers (DEV-LOCAL-01, R1-D-290).
+    infrabyx: { product, local: { apps: PRODUCT_LOCAL_APPS } },
     engines: platform.engines,
     packageManager: platform.packageManager,
     scripts: {
@@ -325,12 +337,9 @@ Changes this product needs from \`@infrabyx/*\`, for the platform's owner: the I
 `;
 
 /** The product's copy of `pnpm dev:up`: the platform's files come from node_modules. */
-const devUp = (pairs, product) =>
+const devUp = (pairs) =>
   pairs
     .reduce((t, [re, to]) => t.replace(re, to), read("scripts/dev-up.mjs"))
-    .replace(/^const PRODUCT = "[A-Z]+";/m, `const PRODUCT = "${product}";`)
-    // The platform's stack seeds its public site as the group's (OH); a product's as its own.
-    .replace(/APP_PRODUCT: "OH",/g, "APP_PRODUCT: PRODUCT,")
     .replace(/"packages\/([a-z-]+)\/dist\//g, '"node_modules/@infrabyx/$1/dist/')
     .replace(/"\.\.\/\.\.\/packages\/([a-z-]+)\/dist\//g, '"../../node_modules/@infrabyx/$1/dist/')
     .replace(
@@ -503,12 +512,14 @@ export async function scaffold({
   write("docs/STATUS.md", statusMd(product, name, date));
   write("docs/DECISIONS.md", decisionsMd(pkgs, date));
   write("docs/platform-requests.md", requestsMd());
-  write("scripts/dev-up.mjs", devUp(pairs, product));
+  write("scripts/dev-up.mjs", devUp(pairs));
+  write("scripts/local-stack.mjs", read("scripts/local-stack.mjs"));
 
   for (const dir of ["infra/compose", "infra/docker"]) {
     cpSync(join(ROOT, dir), join(out, dir), {
       recursive: true,
-      filter: (p) => !p.endsWith(".test.mjs"),
+      // Never this checkout's local state: its generated secrets (.env.local) or apps file.
+      filter: (p) => !p.endsWith(".test.mjs") && !p.endsWith(".local"),
     });
     walk(join(out, dir), (f) => rewriteFile(f, pairs));
   }

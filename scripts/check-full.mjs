@@ -458,7 +458,7 @@ function heavySteps(o, ci) {
       "compose and reference: dev:up, the seeded site, the gate journey, the api's integration suites",
       [
         "pnpm dev:up --profile apps",
-        'trap "pnpm dev:down" EXIT',
+        'trap "pnpm dev:down --volumes" EXIT',
         checks,
         'IPB_CHROMIUM="${IPB_CHROMIUM:-/usr/bin/google-chrome}" IPB_TEST_WEB_URL=http://localhost:53127 IPB_TEST_CREDENTIALS="$PWD/SEED_CREDENTIALS.md" NEXT_TELEMETRY_DISABLED=1 pnpm --filter @infrabyx/reference-web test:e2e',
         'POSTGRES_PASSWORD="$(grep "^POSTGRES_PASSWORD=" infra/compose/.env.local | cut -d= -f2-)"',
