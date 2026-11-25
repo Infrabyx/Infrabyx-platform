@@ -339,6 +339,13 @@ jobs:
           done < web-apps.txt
           # The same realm refuses a callback no app declared.
           curl -sS "http://127.0.0.1:58080/realms/infrabyx-local/protocol/openid-connect/auth?client_id=reference-api&response_type=code&scope=openid&redirect_uri=http%3A%2F%2Flocalhost%3A53199%2Fauth%2Fcallback" | grep -q 'Invalid parameter: redirect_uri'
+      - name: a second dev:up keeps the stack and its personas (PR-UDF-087)
+        run: |
+          before="$(sha256sum SEED_CREDENTIALS.md)"
+          pnpm dev:up --profile apps
+          test "$before" = "$(sha256sum SEED_CREDENTIALS.md)"
+          curl -fsS "http://127.0.0.1:53127/health/ready" | grep -q '"status":"up"'
+          curl -sS -o /dev/null -w '%{redirect_url}\n' http://localhost:53127/auth/login | grep -q 'redirect_uri=http%3A%2F%2Flocalhost%3A53127%2Fauth%2Fcallback'
       - name: logs on failure
         if: failure()
         run: node scripts/dev-up.mjs logs --tail 80 || true

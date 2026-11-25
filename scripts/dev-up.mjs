@@ -210,6 +210,31 @@ async function bootstrap(env) {
   }
 }
 
+/** Whether the local realm has any user yet (service accounts aside), through the Admin API. */
+async function realmHasUsers(env) {
+  const base = `http://127.0.0.1:${stack.ports.KEYCLOAK_PORT}`;
+  const tr = await fetch(`${base}/realms/master/protocol/openid-connect/token`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "password",
+      client_id: "admin-cli",
+      username: "ipb-bootstrap",
+      password: env.KEYCLOAK_ADMIN_PASSWORD,
+    }),
+  });
+  if (!tr.ok) throw new Error(`dev:up: the Keycloak admin token answered ${tr.status}`);
+  const { access_token: token } = await tr.json();
+  const r = await fetch(
+    `${base}/admin/realms/${LOCAL_REALM.realm}/users?first=0&max=1&briefRepresentation=true`,
+    {
+      headers: { authorization: `Bearer ${token}` },
+    },
+  );
+  if (!r.ok) throw new Error(`dev:up: the realm's user list answered ${r.status}`);
+  return (await r.json()).length > 0;
+}
+
 /** Every Compose call names this project and carries its ports (a port set in .env.local is already in them). */
 const compose = (args, opts = {}) => {
   const files = ["-f", COMPOSE, ...(existsSync(APPS_FILE) ? ["-f", APPS_FILE] : [])];
@@ -322,8 +347,16 @@ async function up(argv) {
         },
       );
   // Each api's seeds (its built `dist/seed/index.js`) and then its personas into Keycloak
-  // (passwords to SEED_CREDENTIALS.md, never committed).
+  // (passwords to SEED_CREDENTIALS.md, never committed). The personas are provisioned once, on a
+  // realm with no users: a second dev:up keeps them and their passwords (PR-UDF-087).
   const current = readEnv();
+  const personasExist = await realmHasUsers(env);
+  if (personasExist)
+    console.log(
+      existsSync(join(ROOT, "SEED_CREDENTIALS.md"))
+        ? "dev:up: the seed personas exist; their passwords are in SEED_CREDENTIALS.md"
+        : "dev:up: the seed personas exist but SEED_CREDENTIALS.md is gone; pnpm dev:down --volumes starts afresh",
+    );
   for (const a of present("api")) {
     const seeds = `${a.dir}/dist/seed/index.js`;
     if (existsSync(join(ROOT, seeds)))
@@ -333,7 +366,7 @@ async function up(argv) {
         env: seedEnv(env, db, a.product),
       });
     const adapters = `${a.dir}/dist/seed/adapters.js`;
-    if (existsSync(join(ROOT, adapters)))
+    if (!personasExist && existsSync(join(ROOT, adapters)))
       execFileSync("node", ["packages/seed/dist/cli.js", "credentials", "--adapters", adapters], {
         stdio: "inherit",
         cwd: ROOT,
