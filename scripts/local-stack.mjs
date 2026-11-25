@@ -206,6 +206,9 @@ export function localStack(setting, overrides = {}) {
       if (a[f] !== undefined && (typeof a[f] !== "string" || !PATH.test(a[f])))
         throw new Error(`local stack: ${where}.${f} must be a path starting with /`);
     const key = `${a.name.toUpperCase().replace(/-/g, "_")}_PORT`;
+    // An app named like a service (`redis`, `keycloak`) would take that service's port variable.
+    if (key in PORT_DEFAULTS)
+      throw new Error(`local stack: app name ${a.name} is a service's name; choose another`);
     const appPort = port(key, APP_PORT_BASE + a.slot);
     const callbackPath =
       a.callbackPath ?? (a.kind === "web" || a.kind === "api" ? "/auth/callback" : undefined);

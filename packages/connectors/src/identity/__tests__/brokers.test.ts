@@ -14,6 +14,7 @@ import {
   KeycloakIdentity,
   ipbRealm,
   realmRedirectProblem,
+  realmWebOrigins,
 } from "../keycloak.js";
 import { oidcIssuerOf, ZITADEL_BROKER_PREFIX, ZitadelIdentity } from "../zitadel.js";
 import {
@@ -1047,21 +1048,45 @@ describe("KeycloakIdentity.applyRealm: the API client's redirect lists on a real
     expect(a.createdClients).toContain("ipb-new-api");
   });
 
-  it("ipbRealm lists the exact origins (what + stood for) and the post-logout URIs", () => {
-    const rep = ipbRealm(
-      spec({
+  it("outside localOnly the lists are applied as given and web origins stay +, as before", async () => {
+    const a = realmAdmin();
+    await apply(
+      a,
+      {
         clientId: "ipb-api",
-        redirectUris: [
-          "http://localhost:53127/auth/callback",
-          "http://localhost:53125/auth/callback",
-        ],
-        postLogoutRedirectUris: ["http://localhost:53127/"],
-      }),
-    ) as { clients: Array<{ webOrigins: string[]; attributes: Record<string, string> }> };
-    expect(rep.clients[0]!.webOrigins).toEqual([
-      "http://localhost:53127",
-      "http://localhost:53125",
-    ]);
+        redirectUris: ["com.example.app:/oauth/callback", "https://app.example.test/*"],
+      },
+      false,
+    );
+    expect(a.apiClient()).toMatchObject({
+      redirectUris: ["com.example.app:/oauth/callback", "https://app.example.test/*"],
+      webOrigins: ["+"],
+    });
+    // strictRedirects opts a deploy job into the same checks.
+    const e = await KeycloakIdentity.applyRealm({
+      baseUrl: "https://id.example.test",
+      masterAdmin: { username: "u", password: "p" },
+      spec: spec({ clientId: "ipb-api", redirectUris: ["https://app.example.test/*"] }),
+      strictRedirects: true,
+      fetchImpl: realmAdmin().rec.fetch,
+    }).catch((x: unknown) => x);
+    expect(e).toMatchObject({ code: "IPB-PORT-001", meta: { problem: "wildcard" } });
+  });
+
+  it("ipbRealm keeps + unless origins are given; realmWebOrigins lists the exact origins", () => {
+    const client = {
+      clientId: "ipb-api",
+      redirectUris: [
+        "http://localhost:53127/auth/callback",
+        "http://localhost:53125/auth/callback",
+      ],
+      postLogoutRedirectUris: ["http://localhost:53127/"],
+    };
+    const rep = ipbRealm(spec(client)) as {
+      clients: Array<{ webOrigins: string[]; attributes: Record<string, string> }>;
+    };
+    expect(rep.clients[0]!.webOrigins).toEqual(["+"]);
     expect(rep.clients[0]!.attributes["post.logout.redirect.uris"]).toBe("http://localhost:53127/");
+    expect(realmWebOrigins(client)).toEqual(["http://localhost:53127", "http://localhost:53125"]);
   });
 });

@@ -129,6 +129,13 @@ describe("local stack: project and port blocks", () => {
       },
       /callbackPath/,
     ],
+    [
+      {
+        product: "UDF",
+        local: { apps: [{ name: "redis", dir: "apps/redis", kind: "api", slot: 1 }] },
+      },
+      /a service's name/,
+    ],
   ])("refuses an invalid setting (%#)", (setting, msg) => {
     expect(() => localStack(setting)).toThrow(msg);
   });

@@ -210,7 +210,7 @@ async function bootstrap(env) {
   }
 }
 
-/** Every Compose call names this project and carries its ports (shell values win over .env.local). */
+/** Every Compose call names this project and carries its ports (a port set in .env.local is already in them). */
 const compose = (args, opts = {}) => {
   const files = ["-f", COMPOSE, ...(existsSync(APPS_FILE) ? ["-f", APPS_FILE] : [])];
   const ports = Object.fromEntries([

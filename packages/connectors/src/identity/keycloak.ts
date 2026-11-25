@@ -120,15 +120,19 @@ export interface KeycloakRealmSpec {
   /**
    * The API client: authorisation code + PKCE, client credentials, back-channel logout. On every
    * `applyRealm` run its redirect URIs and web origins (and, when given, its post-logout redirect
-   * URIs) are set to exactly these (DEV-LOCAL-01, R1-D-290); `realmRedirectProblem` refuses a
-   * wildcard, a fragment, user info or plain HTTP off loopback.
+   * URIs) are set to exactly these (DEV-LOCAL-01, R1-D-290). With `applyRealm`'s `localOnly` or
+   * `strictRedirects`, `realmRedirectProblem` refuses a wildcard, a fragment, user info or plain
+   * HTTP off loopback first; without them the lists are applied as given, as before.
    */
   apiClient: {
     clientId: string;
     redirectUris: readonly string[];
     /** RP-initiated logout targets (`post.logout.redirect.uris`). Omitted, left as the realm has them. */
     postLogoutRedirectUris?: readonly string[];
-    /** CORS origins. Omitted, the exact origins of the redirect and post-logout URIs. */
+    /**
+     * CORS origins. Omitted: `+` (Keycloak's origins of the redirect URIs), or with `localOnly`
+     * the exact origins of the redirect and post-logout URIs, listed.
+     */
     webOrigins?: readonly string[];
     backchannelLogoutUrl?: string;
   };
@@ -353,7 +357,7 @@ export function ipbRealm(spec: KeycloakRealmSpec): Record<string, unknown> {
         serviceAccountsEnabled: true,
         frontchannelLogout: false,
         redirectUris: [...spec.apiClient.redirectUris],
-        webOrigins: realmWebOrigins(spec.apiClient),
+        webOrigins: [...(spec.apiClient.webOrigins ?? ["+"])],
         attributes: {
           ...(spec.apiClient.postLogoutRedirectUris
             ? { "post.logout.redirect.uris": spec.apiClient.postLogoutRedirectUris.join("##") }
@@ -1238,13 +1242,26 @@ export class KeycloakIdentity implements IdentityPort {
     masterAdmin: { username: string; password: string };
     spec: KeycloakRealmSpec;
     allowLoopbackHttp?: boolean;
-    /** A local stack's realm (`pnpm dev:up`): every redirect URI and web origin on a loopback host. */
+    /**
+     * A local stack's realm (`pnpm dev:up`): the redirect lists are checked strictly and every
+     * redirect URI and web origin must be on a loopback host; web origins default to the exact
+     * origins of the URIs.
+     */
     localOnly?: boolean;
+    /**
+     * Check the redirect lists with `realmRedirectProblem` before any call (implied by
+     * `localOnly`). Off by default so a deploy job's spec (a mobile app's own scheme, say) is
+     * applied as before; owner question #207 asks whether it becomes the default in a major.
+     */
+    strictRedirects?: boolean;
     /** Tests only: recorded HTTP fixtures. */
     fetchImpl?: typeof fetch;
   }): Promise<{ clientSecret: string; adminClientSecret: string }> {
     // Never wider than declared (R1-D-290): refused before any call, naming the field, never the URI.
-    const problem = realmRedirectProblem(o.spec.apiClient, { localOnly: o.localOnly === true });
+    const strict = o.localOnly === true || o.strictRedirects === true;
+    const problem = strict
+      ? realmRedirectProblem(o.spec.apiClient, { localOnly: o.localOnly === true })
+      : null;
     if (problem)
       throw new PortError("IPB-PORT-001", "IDENTITY", {
         adapter: "keycloak",
@@ -1287,7 +1304,11 @@ export class KeycloakIdentity implements IdentityPort {
       return (r.body.byteLength ? r.json<T>() : undefined) as T;
     };
     const realm = o.spec.realm;
-    const rep = ipbRealm(o.spec);
+    const apiClient =
+      o.localOnly === true && !o.spec.apiClient.webOrigins
+        ? { ...o.spec.apiClient, webOrigins: realmWebOrigins(o.spec.apiClient) }
+        : o.spec.apiClient;
+    const rep = ipbRealm({ ...o.spec, apiClient });
     const exists = await egress(`${base}/admin/realms/${realm}`, {
       headers: { authorization: `Bearer ${token}` },
     });
@@ -1314,7 +1335,7 @@ export class KeycloakIdentity implements IdentityPort {
         await call("PUT", `/${realm}/clients/${api.id}`, {
           ...cur,
           redirectUris: [...o.spec.apiClient.redirectUris],
-          webOrigins: realmWebOrigins(o.spec.apiClient),
+          webOrigins: [...(apiClient.webOrigins ?? ["+"])],
           attributes: {
             ...(cur.attributes ?? {}),
             ...(post ? { "post.logout.redirect.uris": post.join("##") } : {}),

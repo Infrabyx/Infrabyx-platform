@@ -615,6 +615,7 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
       baseUrl: base,
       masterAdmin: admin,
       allowLoopbackHttp: true,
+      localOnly: true,
       spec: two,
     });
     const after = await client();
@@ -634,6 +635,7 @@ describe("@IPB-01-15 IDENTITY hermetic leg: keycloak 26.8.1", () => {
         baseUrl: base,
         masterAdmin: admin,
         allowLoopbackHttp: true,
+        localOnly: true,
         spec: {
           ...spec,
           apiClient: { ...spec.apiClient, redirectUris: ["http://localhost:53227/*"] },
