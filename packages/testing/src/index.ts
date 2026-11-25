@@ -9,6 +9,7 @@ export * from "./fakes.js";
 export * from "./nn.js";
 export * from "./contract.js";
 export * from "./storage-integrity.js";
+export * from "./upload-corpus.js";
 export * from "./at-report/index.js";
 export * from "./aadhaar-scan/index.js";
 export * from "./containers.js";

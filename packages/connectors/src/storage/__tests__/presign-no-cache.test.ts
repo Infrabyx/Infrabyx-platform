@@ -134,3 +134,44 @@ describe("PR-UDF-060: no-cache presigned downloads", () => {
     expect([g.get(CC), g.get(EXP)]).toEqual([null, null]);
   });
 });
+
+describe("PR-FBX-56 (d): presigned downloads are attachments (IPB-02-44)", () => {
+  const CD = "response-content-disposition";
+  it("every class but PUBLIC_ASSETS, compartments included, signs Content-Disposition: attachment", async () => {
+    const objects = new Set<string>();
+    const p = s3(objects);
+    for (const bucket of [
+      "b-reg",
+      "b-conf",
+      "b-conf-board",
+      "b-reg-sealed",
+      "b-general",
+      "b-audit",
+    ]) {
+      const k = key();
+      objects.add(`${bucket}/${k}`);
+      const q = await params(p, k);
+      expect(q.getAll(CD), bucket).toEqual(["attachment"]);
+    }
+    const pub = key();
+    objects.add(`b-public/${pub}`);
+    expect((await params(p, pub)).get(CD)).toBeNull();
+  });
+
+  it("nothing the caller passes drops or changes it; upload URLs carry none", async () => {
+    const p = s3(new Set());
+    const forged = {
+      bucketClass: "REGULATED" as BucketClass,
+      ResponseContentDisposition: "inline",
+      responseContentDisposition: "inline",
+    } as PresignOptions;
+    expect((await params(p, key(), forged)).getAll(CD)).toEqual(["attachment"]);
+    const put = new URL(
+      await p.presign(key(), "put", 60, {
+        bucketClass: "REGULATED",
+        contentType: "application/pdf",
+      }),
+    ).searchParams;
+    expect(put.get(CD)).toBeNull();
+  });
+});

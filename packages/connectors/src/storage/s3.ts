@@ -59,6 +59,8 @@ import {
   keyRefStatusClasses,
   isValidStorageKey,
   presignNoCache,
+  presignAttachment,
+  PRESIGN_ATTACHMENT_DISPOSITION,
   resolveStorageKeyRef,
   storageKeyRefStatusRefusal,
   type AdapterDescriptor,
@@ -779,7 +781,15 @@ export class S3Storage implements StoragePort {
     if (!cls) this.notFound(key);
     return getSignedUrl(
       this.client,
-      new GetObjectCommand({ Bucket: this.bucket(cls!), Key: key, ...noCacheOverrides(cls!) }),
+      new GetObjectCommand({
+        Bucket: this.bucket(cls!),
+        Key: key,
+        ...noCacheOverrides(cls!),
+        // PR-FBX-56 (d): a served download is an attachment (IPB-02-44).
+        ...(presignAttachment(cls!.cls)
+          ? { ResponseContentDisposition: PRESIGN_ATTACHMENT_DISPOSITION }
+          : {}),
+      }),
       { expiresIn: ttlSeconds },
     );
   }

@@ -2251,6 +2251,69 @@ The platform's checkout shares Finbyx's ports (its CI and tests use them) but ne
 4. Your data: the old stack's volumes belong to the project `infrabyx` (`infrabyx_pgdata` and the rest). Stop the old stack once with `docker compose -p infrabyx down` (no `--volumes`), then `pnpm dev:up` starts a fresh project and re-seeds. Remove the old volumes yourself only when no other product's stack still runs under `infrabyx`.
 5. Keep your deploy job's realm spec complete: every redirect URI it needs must be in `apiClient.redirectUris`.
 
+## 7fa. The upload pipeline after the AV scan (PR-FBX-56; R1-D-292)
+
+From the next `@infrabyx/contracts`, `@infrabyx/connectors` and `@infrabyx/testing` minors (no migration, no setting, no environment variable). **Why:** IPB-02-44 asks every upload route for the same steps after the AV scan. Each product would otherwise rebuild them, and Finbyx had only a PDF byte check (its shim).
+
+```ts
+import { releaseUpload } from "@infrabyx/connectors/upload";
+import { SharpMedia } from "@infrabyx/connectors/media";
+import { sanitiseSvg } from "@infrabyx/brand";
+
+const scan = await av.scan({ storageKey, sha256 }); // FILE_SCAN first (§7bl)
+const r = await releaseUpload(
+  { bytes, declaredType, scan },
+  {
+    name: "fv.photos",
+    accept: ["image/jpeg", "image/png", "application/pdf"],
+    maxBytes: 10 * 1024 * 1024,
+    raster: { keepOriginalAsEvidence: true }, // evidentiary photos (Finbyx #333)
+  },
+  { media: new SharpMedia(), sanitiseSvg },
+);
+if (!r.released) throw new IpbError(r.code, { meta: { reason: r.reason } }); // IPB-SEC-010…015
+// r.record: { bytes, mime, sha256 } to store; r.viewing: the re-encoded copy, or null
+```
+
+- **Order:**
+  1. A CLEAN scan of exactly these bytes (`IPB-SEC-011`; a scan of other bytes is `IPB-SEC-015`).
+  2. The route's `accept` list (`IPB-SEC-014`) and `maxBytes` (`IPB-SEC-013`).
+  3. The bytes' own type must match the declared one (`IPB-SEC-010`).
+  4. Then the type's own step.
+- **Raster** (PNG, JPEG, WebP, AVIF; GIF is not accepted):
+  - Markup anywhere in the bytes is a polyglot: `IPB-SEC-010`.
+  - Otherwise MEDIA re-encodes the image at its size and format, which drops EXIF, XMP, IPTC, ICC and trailing bytes; that copy is the record.
+  - With `raster.keepOriginalAsEvidence`, the **unchanged original is the record** (its SHA-256 equals `originalSha256`, the scanned bytes'), and `viewing` holds the re-encoded copy with its own SHA-256.
+  - **Evidentiary uploads (Finbyx #333):** for KYC documents, field-verification photos and Board resolutions, use `keepOriginalAsEvidence`. Store both, show users only `viewing`, and keep the original behind the download route.
+- **SVG:** refused unless the route sets `svg: { mode: "sanitise" }` (the sanitiser's re-serialised SVG) or `"rasterise"` (a PNG of `size` pixels). Pass `sanitiseSvg` from `@infrabyx/brand`; without it, SVG is refused.
+- **PDF:**
+  - Every name anywhere in the file is read, and so is every name in whatever each stream decodes to (Flate, ASCII85, ASCIIHex, RunLength, PNG predictors), with `#xx` escapes decoded. An encrypted file, LZW, a Crypt filter, the TIFF predictor or decoding past 256 MiB is refused (fail closed). Because names inside strings count too, a rare ordinary file (a link whose path contains `/Launch`, say) is refused, never the other way round.
+  - These are active and always refused: `JavaScript`, `JS`, `Launch`, `RichMedia`, `XFA`, `SubmitForm` and `ImportData`, as `IPB-SEC-012` `pdf_active_content`.
+  - `OpenAction`, `AA`, embedded files, `URI`, `GoToR` and `GoToE` are reported in `findings` and refused only if your route lists them in `pdf.refuseAlso`.
+  - `pdf: { onActive: "flatten" }` needs a `flattenPdf` you pass. Its output is checked again, and anything active left is refused. **The platform ships no flattener yet** (owner question #208), so a flatten route without one refuses (`pdf_flatten_unavailable`).
+- **Office (OOXML):**
+  - Refused (`IPB-SEC-012` `office_macros`) if the file has a VBA project under any part name, ActiveX, Excel 4 macro sheets or a macro-enabled type.
+  - Legacy `.doc`, `.xls` and `.ppt` are refused as `office_legacy`.
+  - `office: { allowMacros: true }` admits both.
+  - Every part is inflated within 256 MiB in total and 200:1 per part, so a zip bomb is `IPB-SEC-013`. Encrypted or damaged zips are refused.
+- **Never throws for a file.** `findings` holds labels only (a PDF name, an SVG removal), never content.
+- **Downloads:** every presigned STORAGE download except `PUBLIC_ASSETS` now signs `Content-Disposition: attachment` (`presignAttachment`), so a browser saves the file instead of rendering it on the store's origin. Inline preview needs a sandboxed origin of your own (IPB-02-44). An `<img>` still shows an image.
+
+**Test your routes** with the corpus (`@IPB-02-AT-16`). A PNG/HTML polyglot, EICAR, an SVG with a script, two PDFs with JavaScript (one hidden in an object stream), two DOCX files with macros and a zip bomb are each refused or neutralised, and a clean file of every type you accept is released:
+
+```ts
+import { uploadCorpusContractCases } from "@infrabyx/testing";
+for (const c of uploadCorpusContractCases())
+  it(c.name, () => c.run({ accepts: route.accept, upload: (f) => myRoute(f) })); // scan + releaseUpload
+```
+
+**What to change:**
+
+1. Call `releaseUpload` after the AV scan on every upload route, and store `record` (and `viewing`).
+2. Finbyx: remove your PDF byte-check shim once this is in.
+3. If you show PDFs inline from a presigned URL, move that to a sandboxed preview origin.
+4. Whole-object test assertions on a presigned URL gain `response-content-disposition=attachment`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
