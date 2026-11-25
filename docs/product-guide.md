@@ -2150,7 +2150,7 @@ await approvals.approve(adminCtx, grantId, { minutes: 30 }); // a second, differ
 - **Moving from 2 to 1:** a `read` grant awaiting its second approver keeps waiting for one; the platform may request a new grant instead.
 - **The approvals take the kernel's value.** Give `approversForRead` to `BreakGlassTenantApproval` only for a kernel that is not a `PgKernel`; a value different from the kernel's is refused (`RangeError`). Any value but 1 or 2 is refused at construction.
 
-**What to change:** run `infrabyx-migrate` (0032) before deploying; set `breakGlassTenantApproversForRead: 2` if your lenders require two approvers for reads (Udofin: 2; Finbyx: 1 unless its owner answers otherwise); tell the tenant's administrators a read grant now needs two of them.
+**What to change:** run `infrabyx-migrate` (0032) before deploying; set `breakGlassTenantApproversForRead: 2` if your lenders require two approvers for reads. **Both lender-serving products set 2:** Udofin (its owner answer #223) and Finbyx (its owner answer #322, 25 Nov 2026; corrected from "Finbyx: 1", R1-D-289). Tell the tenant's administrators a read grant now needs two of them.
 
 ## 7ex. A return URL on the ESP's hosted signing page (PR-UDF-086; R1-D-287)
 
