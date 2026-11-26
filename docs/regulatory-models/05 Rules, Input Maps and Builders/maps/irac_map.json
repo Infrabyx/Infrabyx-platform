@@ -1,0 +1,306 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Reporting date",
+"source": "Company",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "Company",
+"default": "₹"
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "Company",
+"default": "Middle Layer"
+},
+{
+"key": "norm.npa",
+"sheet": "Setup",
+"cell": "B8",
+"label": "A loan is non-performing when overdue for more than (days)",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 90
+},
+{
+"key": "norm.ss",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Months as sub-standard before a loan becomes doubtful",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356) – confirm for the layer",
+"default": 12
+},
+{
+"key": "norm.borrower",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Classify at borrower level (all loans of a borrower follow the worst loan)",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": "Yes"
+},
+{
+"key": "norm.upgrade",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Upgrade to standard only when all arrears are cleared",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": "Yes"
+},
+{
+"key": "norm.fraud",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Treat accounts declared as fraud as loss assets",
+"source": "Provisioning policy of the company; fraud risk management directions",
+"default": "Yes"
+},
+{
+"key": "rate.std",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Provision on standard assets (leave blank to use the layer default)",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356), para 48 (Base Layer 0.25 per cent) and para 55 (Middle Layer 0.40 per cent); Upper Layer rates are category-wise – enter the weighted rate",
+"default": null
+},
+{
+"key": "rate.ss",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Provision on sub-standard assets",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 0.1
+},
+{
+"key": "rate.d1",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Doubtful – secured portion – up to 1 year",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 0.2
+},
+{
+"key": "rate.d2",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Doubtful – secured portion – 1 to 3 years",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 0.3
+},
+{
+"key": "rate.d3",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Doubtful – secured portion – over 3 years",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 0.5
+},
+{
+"key": "rate.du",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Doubtful – unsecured portion",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 1.0
+},
+{
+"key": "rate.loss",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Loss assets",
+"source": "RBI (NBFCs – Income Recognition, Asset Classification and Provisioning) Directions, 2025 (MD 356)",
+"default": 1.0
+},
+{
+"key": "thr.gnpa.amber",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Gross NPA ratio: amber from",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "thr.gnpa.red",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Gross NPA ratio: red from",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "thr.nnpa.amber",
+"sheet": "Setup",
+"cell": "B24",
+"label": "Net NPA ratio: amber from",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "thr.nnpa.red",
+"sheet": "Setup",
+"cell": "B25",
+"label": "Net NPA ratio: red from",
+"source": "Dividend and Prompt Corrective Action thresholds (6 per cent)",
+"default": 0.06
+},
+{
+"key": "thr.sma.amber",
+"sheet": "Setup",
+"cell": "B26",
+"label": "SMA-2 share of standard loans: amber from",
+"source": "Risk appetite statement",
+"default": 0.02
+},
+{
+"key": "thr.sma.red",
+"sheet": "Setup",
+"cell": "B27",
+"label": "SMA-2 share of standard loans: red from",
+"source": "Risk appetite statement",
+"default": 0.04
+},
+{
+"key": "loans",
+"sheet": "Loan Input",
+"cell": "A7:N1006",
+"label": "Loan table: Loan ID; Borrower ID; Product; Secured / Unsecured; Principal outstanding; Interest overdue included in dues; Days past due; Date first classified NPA; Realisable value of security; Restructured; Declared fraud; Identified as loss; NPA at last reporting date; All arrears cleared",
+"source": "Loan management system – loan-wise outstanding, days past due, security and flags as on the reporting date",
+"default": null
+},
+{
+"key": "summary.product.1",
+"sheet": "Summary",
+"cell": "A24",
+"label": "Product 1 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.2",
+"sheet": "Summary",
+"cell": "A25",
+"label": "Product 2 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.3",
+"sheet": "Summary",
+"cell": "A26",
+"label": "Product 3 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.4",
+"sheet": "Summary",
+"cell": "A27",
+"label": "Product 4 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.5",
+"sheet": "Summary",
+"cell": "A28",
+"label": "Product 5 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.6",
+"sheet": "Summary",
+"cell": "A29",
+"label": "Product 6 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.7",
+"sheet": "Summary",
+"cell": "A30",
+"label": "Product 7 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.8",
+"sheet": "Summary",
+"cell": "A31",
+"label": "Product 8 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.9",
+"sheet": "Summary",
+"cell": "A32",
+"label": "Product 9 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.10",
+"sheet": "Summary",
+"cell": "A33",
+"label": "Product 10 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.11",
+"sheet": "Summary",
+"cell": "A34",
+"label": "Product 11 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.12",
+"sheet": "Summary",
+"cell": "A35",
+"label": "Product 12 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.13",
+"sheet": "Summary",
+"cell": "A36",
+"label": "Product 13 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.14",
+"sheet": "Summary",
+"cell": "A37",
+"label": "Product 14 name",
+"source": "Product list of the company",
+"default": null
+},
+{
+"key": "summary.product.15",
+"sheet": "Summary",
+"cell": "A38",
+"label": "Product 15 name",
+"source": "Product list of the company",
+"default": null
+}
+]

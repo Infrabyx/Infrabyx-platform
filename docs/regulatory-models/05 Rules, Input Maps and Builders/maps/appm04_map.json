@@ -1,0 +1,1986 @@
+[
+{
+"key": "profile.name",
+"sheet": "Profile",
+"cell": "B4",
+"label": "Name of the entity",
+"source": "Entity Profile and Engagement Preferences",
+"default": null
+},
+{
+"key": "profile.date",
+"sheet": "Profile",
+"cell": "B5",
+"label": "Profile as on",
+"source": "Entity Profile",
+"default": null
+},
+{
+"key": "profile.category",
+"sheet": "Profile",
+"cell": "B6",
+"label": "Category of the entity (one of the categories listed on the Profile sheet)",
+"source": "Certificate of registration, licence or listing status",
+"default": null
+},
+{
+"key": "profile.answer.CSR",
+"sheet": "Profile",
+"cell": "C13",
+"label": "Profile question CSR: Does the company meet a CSR threshold of section 135(1) of the Companies Act in the preceding year (net worth ",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.BIG",
+"sheet": "Profile",
+"cell": "C14",
+"label": "Profile question BIG: Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (pa",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.RPT",
+"sheet": "Profile",
+"cell": "C15",
+"label": "Profile question RPT: Does the entity enter into related-party transactions?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.FORM",
+"sheet": "Profile",
+"cell": "C16",
+"label": "Profile question FORM: Is the entity a company (as opposed to a branch of a foreign or Indian entity)?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.NONGRP",
+"sheet": "Profile",
+"cell": "C17",
+"label": "Profile question NONGRP: Does the entity serve clients outside its group?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.RETAIL",
+"sheet": "Profile",
+"cell": "C18",
+"label": "Profile question RETAIL: Does the entity deal with retail consumers?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.LEND",
+"sheet": "Profile",
+"cell": "C19",
+"label": "Profile question LEND: Does the finance company or unit undertake lending or factoring?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.LEASE",
+"sheet": "Profile",
+"cell": "C20",
+"label": "Profile question LEASE: Is the entity an aircraft or ship lessor, or a leasing SPV?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.GRCTC",
+"sheet": "Profile",
+"cell": "C21",
+"label": "Profile question GRCTC: Is the entity a global or regional corporate treasury centre?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.ITFS",
+"sheet": "Profile",
+"cell": "C22",
+"label": "Profile question ITFS: Is the entity an ITFS platform operator?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.IBUDEP",
+"sheet": "Profile",
+"cell": "C23",
+"label": "Profile question IBUDEP: IBU: does it accept deposits, offer safe custody or offer liability products online?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.PSP",
+"sheet": "Profile",
+"cell": "C24",
+"label": "Profile question PSP: Is the entity an authorised payment service provider, or joining a payment system?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.VCIP",
+"sheet": "Profile",
+"cell": "C25",
+"label": "Profile question VCIP: Does the entity onboard customers through V-CIP?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.XB",
+"sheet": "Profile",
+"cell": "C26",
+"label": "Profile question XB: Does the entity make cross-border transfers or offer correspondent services?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.IIO",
+"sheet": "Profile",
+"cell": "C27",
+"label": "Profile question IIO: IIO: does it source through foreign intermediaries, write reinsurance or act as an insurance intermediary offi",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.FMESG",
+"sheet": "Profile",
+"cell": "C28",
+"label": "Profile question FMESG: FME: is AUM above USD 3 billion, or are ESG-labelled schemes, PMS, co-investment or listed equity holdings off",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.CUST",
+"sheet": "Profile",
+"cell": "C29",
+"label": "Profile question CUST: Is the entity a broker-dealer, clearing member, GAP, custodian, research entity or rating provider?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.S147",
+"sheet": "Profile",
+"cell": "C30",
+"label": "Profile question S147: Does the unit claim the deduction under section 147 of the Income-tax Act, 2025?",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "profile.answer.SUBTYPE",
+"sheet": "Profile",
+"cell": "C31",
+"label": "Profile question SUBTYPE: Is the entity an IFSC Banking Unit (IBU) or IFSC insurance office (IIO) set up as a branch of its parent bank ",
+"source": "Entity Profile, Part A",
+"default": null
+},
+{
+"key": "policy.override.1",
+"sheet": "Policies",
+"cell": "M7",
+"label": "Override for line 1",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.1",
+"sheet": "Policies",
+"cell": "O7",
+"label": "In place – line 1",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.2",
+"sheet": "Policies",
+"cell": "K8",
+"label": "Condition met for line 2: IBU branches: parent bank's fit-and-proper process",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.2",
+"sheet": "Policies",
+"cell": "M8",
+"label": "Override for line 2",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.2",
+"sheet": "Policies",
+"cell": "O8",
+"label": "In place – line 2",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.3",
+"sheet": "Policies",
+"cell": "K9",
+"label": "Condition met for line 3: Company-form entities (s. 188); IBUs: arm's-length related-party credit; IIOs: RPT disclosure",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.3",
+"sheet": "Policies",
+"cell": "M9",
+"label": "Override for line 3",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.3",
+"sheet": "Policies",
+"cell": "O9",
+"label": "In place – line 3",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.4",
+"sheet": "Policies",
+"cell": "M10",
+"label": "Override for line 4",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.4",
+"sheet": "Policies",
+"cell": "O10",
+"label": "In place – line 4",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.5",
+"sheet": "Policies",
+"cell": "M11",
+"label": "Override for line 5",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.5",
+"sheet": "Policies",
+"cell": "O11",
+"label": "In place – line 5",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.6",
+"sheet": "Policies",
+"cell": "K12",
+"label": "Condition met for line 6: Company-form entities meeting Companies Act thresholds",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.6",
+"sheet": "Policies",
+"cell": "M12",
+"label": "Override for line 6",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.6",
+"sheet": "Policies",
+"cell": "O12",
+"label": "In place – line 6",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.7",
+"sheet": "Policies",
+"cell": "K13",
+"label": "Condition met for line 7: Branch-form entities",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.7",
+"sheet": "Policies",
+"cell": "M13",
+"label": "Override for line 7",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.7",
+"sheet": "Policies",
+"cell": "O13",
+"label": "In place – line 7",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.8",
+"sheet": "Policies",
+"cell": "M14",
+"label": "Override for line 8",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.8",
+"sheet": "Policies",
+"cell": "O14",
+"label": "In place – line 8",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.9",
+"sheet": "Policies",
+"cell": "K15",
+"label": "Condition met for line 9: FCs / FUs serving non-group clients",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.9",
+"sheet": "Policies",
+"cell": "M15",
+"label": "Override for line 9",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.9",
+"sheet": "Policies",
+"cell": "O15",
+"label": "In place – line 9",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.10",
+"sheet": "Policies",
+"cell": "M16",
+"label": "Override for line 10",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.10",
+"sheet": "Policies",
+"cell": "O16",
+"label": "In place – line 10",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.11",
+"sheet": "Policies",
+"cell": "M17",
+"label": "Override for line 11",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.11",
+"sheet": "Policies",
+"cell": "O17",
+"label": "In place – line 11",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.12",
+"sheet": "Policies",
+"cell": "M18",
+"label": "Override for line 12",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.12",
+"sheet": "Policies",
+"cell": "O18",
+"label": "In place – line 12",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.13",
+"sheet": "Policies",
+"cell": "K19",
+"label": "Condition met for line 13: REs dealing with retail consumers",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.13",
+"sheet": "Policies",
+"cell": "M19",
+"label": "Override for line 13",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.13",
+"sheet": "Policies",
+"cell": "O19",
+"label": "In place – line 13",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.14",
+"sheet": "Policies",
+"cell": "K20",
+"label": "Condition met for line 14: IIOs: Principal Officer with home-office compliance function",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.14",
+"sheet": "Policies",
+"cell": "M20",
+"label": "Override for line 14",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.14",
+"sheet": "Policies",
+"cell": "O20",
+"label": "In place – line 14",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.15",
+"sheet": "Policies",
+"cell": "K21",
+"label": "Condition met for line 15: Others: Principal Officer and Designated Director NISM-IFSCA-01; IIO KMP approval in Form A",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.15",
+"sheet": "Policies",
+"cell": "M21",
+"label": "Override for line 15",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.15",
+"sheet": "Policies",
+"cell": "O21",
+"label": "In place – line 15",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.16",
+"sheet": "Policies",
+"cell": "M22",
+"label": "Override for line 16",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.16",
+"sheet": "Policies",
+"cell": "O22",
+"label": "In place – line 16",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.17",
+"sheet": "Policies",
+"cell": "K23",
+"label": "Condition met for line 17: IBUs: capital per IFSCA (Banking) Regulations, 2020 and home regulator",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.17",
+"sheet": "Policies",
+"cell": "M23",
+"label": "Override for line 17",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.17",
+"sheet": "Policies",
+"cell": "O23",
+"label": "In place – line 17",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.18",
+"sheet": "Policies",
+"cell": "M24",
+"label": "Override for line 18",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.18",
+"sheet": "Policies",
+"cell": "O24",
+"label": "In place – line 18",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.19",
+"sheet": "Policies",
+"cell": "M25",
+"label": "Override for line 19",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.19",
+"sheet": "Policies",
+"cell": "O25",
+"label": "In place – line 19",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.20",
+"sheet": "Policies",
+"cell": "M26",
+"label": "Override for line 20",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.20",
+"sheet": "Policies",
+"cell": "O26",
+"label": "In place – line 20",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.21",
+"sheet": "Policies",
+"cell": "M27",
+"label": "Override for line 21",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.21",
+"sheet": "Policies",
+"cell": "O27",
+"label": "In place – line 21",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.22",
+"sheet": "Policies",
+"cell": "M28",
+"label": "Override for line 22",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.22",
+"sheet": "Policies",
+"cell": "O28",
+"label": "In place – line 22",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.23",
+"sheet": "Policies",
+"cell": "M29",
+"label": "Override for line 23",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.23",
+"sheet": "Policies",
+"cell": "O29",
+"label": "In place – line 23",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.24",
+"sheet": "Policies",
+"cell": "K30",
+"label": "Condition met for line 24: Entities making cross-border transfers or correspondent services; FATF-list EDD applies to all",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.24",
+"sheet": "Policies",
+"cell": "M30",
+"label": "Override for line 24",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.24",
+"sheet": "Policies",
+"cell": "O30",
+"label": "In place – line 24",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.25",
+"sheet": "Policies",
+"cell": "K31",
+"label": "Condition met for line 25: Entities onboarding customers through V-CIP",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.25",
+"sheet": "Policies",
+"cell": "M31",
+"label": "Override for line 25",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.25",
+"sheet": "Policies",
+"cell": "O31",
+"label": "In place – line 25",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.26",
+"sheet": "Policies",
+"cell": "K32",
+"label": "Condition met for line 26: FCs / FUs undertaking lending or factoring",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.26",
+"sheet": "Policies",
+"cell": "M32",
+"label": "Override for line 26",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.26",
+"sheet": "Policies",
+"cell": "O32",
+"label": "In place – line 26",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.27",
+"sheet": "Policies",
+"cell": "K33",
+"label": "Condition met for line 27: FCs / FUs with credit exposures",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.27",
+"sheet": "Policies",
+"cell": "M33",
+"label": "Override for line 27",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.27",
+"sheet": "Policies",
+"cell": "O33",
+"label": "In place – line 27",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.28",
+"sheet": "Policies",
+"cell": "K34",
+"label": "Condition met for line 28: Lending, leasing, treasury and factoring FCs / FUs",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.28",
+"sheet": "Policies",
+"cell": "M34",
+"label": "Override for line 28",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.28",
+"sheet": "Policies",
+"cell": "O34",
+"label": "In place – line 28",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.29",
+"sheet": "Policies",
+"cell": "K35",
+"label": "Condition met for line 29: Lending and factoring FCs / FUs",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.29",
+"sheet": "Policies",
+"cell": "M35",
+"label": "Override for line 29",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.29",
+"sheet": "Policies",
+"cell": "O35",
+"label": "In place – line 29",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.30",
+"sheet": "Policies",
+"cell": "M36",
+"label": "Override for line 30",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.30",
+"sheet": "Policies",
+"cell": "O36",
+"label": "In place – line 30",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.31",
+"sheet": "Policies",
+"cell": "M37",
+"label": "Override for line 31",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.31",
+"sheet": "Policies",
+"cell": "O37",
+"label": "In place – line 31",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.32",
+"sheet": "Policies",
+"cell": "M38",
+"label": "Override for line 32",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.32",
+"sheet": "Policies",
+"cell": "O38",
+"label": "In place – line 32",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.33",
+"sheet": "Policies",
+"cell": "K39",
+"label": "Condition met for line 33: Factors / forfaiting units",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.33",
+"sheet": "Policies",
+"cell": "M39",
+"label": "Override for line 33",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.33",
+"sheet": "Policies",
+"cell": "O39",
+"label": "In place – line 33",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.34",
+"sheet": "Policies",
+"cell": "K40",
+"label": "Condition met for line 34: Global / Regional Corporate Treasury Centres",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.34",
+"sheet": "Policies",
+"cell": "M40",
+"label": "Override for line 34",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.34",
+"sheet": "Policies",
+"cell": "O40",
+"label": "In place – line 34",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.35",
+"sheet": "Policies",
+"cell": "K41",
+"label": "Condition met for line 35: Aircraft and ship lessors, incl. leasing SPVs",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.35",
+"sheet": "Policies",
+"cell": "M41",
+"label": "Override for line 35",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.35",
+"sheet": "Policies",
+"cell": "O41",
+"label": "In place – line 35",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.36",
+"sheet": "Policies",
+"cell": "K42",
+"label": "Condition met for line 36: Lending / factoring FCs and IBUs that are credit institutions",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.36",
+"sheet": "Policies",
+"cell": "M42",
+"label": "Override for line 36",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.36",
+"sheet": "Policies",
+"cell": "O42",
+"label": "In place – line 36",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.37",
+"sheet": "Policies",
+"cell": "K43",
+"label": "Condition met for line 37: ITFS platform operators",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.37",
+"sheet": "Policies",
+"cell": "M43",
+"label": "Override for line 37",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.37",
+"sheet": "Policies",
+"cell": "O43",
+"label": "In place – line 37",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.38",
+"sheet": "Policies",
+"cell": "K44",
+"label": "Condition met for line 38: Lenders offering labelled products",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.38",
+"sheet": "Policies",
+"cell": "M44",
+"label": "Override for line 38",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.38",
+"sheet": "Policies",
+"cell": "O44",
+"label": "In place – line 38",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.39",
+"sheet": "Policies",
+"cell": "M45",
+"label": "Override for line 39",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.39",
+"sheet": "Policies",
+"cell": "O45",
+"label": "In place – line 39",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.40",
+"sheet": "Policies",
+"cell": "K46",
+"label": "Condition met for line 40: FCs serving non-group clients; PSPs; IIOs: see policyholder protection policy",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.40",
+"sheet": "Policies",
+"cell": "M46",
+"label": "Override for line 40",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.40",
+"sheet": "Policies",
+"cell": "O46",
+"label": "In place – line 40",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.41",
+"sheet": "Policies",
+"cell": "K47",
+"label": "Condition met for line 41: IBUs accepting deposits or offering safe custody / lockers",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.41",
+"sheet": "Policies",
+"cell": "M47",
+"label": "Override for line 41",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.41",
+"sheet": "Policies",
+"cell": "O47",
+"label": "In place – line 41",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.42",
+"sheet": "Policies",
+"cell": "K48",
+"label": "Condition met for line 42: IBUs offering liability products online",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.42",
+"sheet": "Policies",
+"cell": "M48",
+"label": "Override for line 42",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.42",
+"sheet": "Policies",
+"cell": "O48",
+"label": "In place – line 42",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.43",
+"sheet": "Policies",
+"cell": "K49",
+"label": "Condition met for line 43: Authorised payment service providers",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.43",
+"sheet": "Policies",
+"cell": "M49",
+"label": "Override for line 43",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.43",
+"sheet": "Policies",
+"cell": "O49",
+"label": "In place – line 43",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.44",
+"sheet": "Policies",
+"cell": "K50",
+"label": "Condition met for line 44: PSPs and IBUs joining the Rupee Drawing Arrangement or international payment systems",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.44",
+"sheet": "Policies",
+"cell": "M50",
+"label": "Override for line 44",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.44",
+"sheet": "Policies",
+"cell": "O50",
+"label": "In place – line 44",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.45",
+"sheet": "Policies",
+"cell": "M51",
+"label": "Override for line 45",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.45",
+"sheet": "Policies",
+"cell": "O51",
+"label": "In place – line 45",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.46",
+"sheet": "Policies",
+"cell": "M52",
+"label": "Override for line 46",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.46",
+"sheet": "Policies",
+"cell": "O52",
+"label": "In place – line 46",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.47",
+"sheet": "Policies",
+"cell": "M53",
+"label": "Override for line 47",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.47",
+"sheet": "Policies",
+"cell": "O53",
+"label": "In place – line 47",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.48",
+"sheet": "Policies",
+"cell": "M54",
+"label": "Override for line 48",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.48",
+"sheet": "Policies",
+"cell": "O54",
+"label": "In place – line 48",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.49",
+"sheet": "Policies",
+"cell": "M55",
+"label": "Override for line 49",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.49",
+"sheet": "Policies",
+"cell": "O55",
+"label": "In place – line 49",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.50",
+"sheet": "Policies",
+"cell": "M56",
+"label": "Override for line 50",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.50",
+"sheet": "Policies",
+"cell": "O56",
+"label": "In place – line 50",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.51",
+"sheet": "Policies",
+"cell": "K57",
+"label": "Condition met for line 51: IIOs sourcing business through foreign intermediaries",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.51",
+"sheet": "Policies",
+"cell": "M57",
+"label": "Override for line 51",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.51",
+"sheet": "Policies",
+"cell": "O57",
+"label": "In place – line 51",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.52",
+"sheet": "Policies",
+"cell": "K58",
+"label": "Condition met for line 52: Reinsurance IIOs",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.52",
+"sheet": "Policies",
+"cell": "M58",
+"label": "Override for line 52",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.52",
+"sheet": "Policies",
+"cell": "O58",
+"label": "In place – line 52",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.53",
+"sheet": "Policies",
+"cell": "K59",
+"label": "Condition met for line 53: IFSC insurance intermediary offices",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.53",
+"sheet": "Policies",
+"cell": "M59",
+"label": "Override for line 53",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.53",
+"sheet": "Policies",
+"cell": "O59",
+"label": "In place – line 53",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.54",
+"sheet": "Policies",
+"cell": "M60",
+"label": "Override for line 54",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.54",
+"sheet": "Policies",
+"cell": "O60",
+"label": "In place – line 54",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.55",
+"sheet": "Policies",
+"cell": "M61",
+"label": "Override for line 55",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.55",
+"sheet": "Policies",
+"cell": "O61",
+"label": "In place – line 55",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.56",
+"sheet": "Policies",
+"cell": "M62",
+"label": "Override for line 56",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.56",
+"sheet": "Policies",
+"cell": "O62",
+"label": "In place – line 56",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.57",
+"sheet": "Policies",
+"cell": "M63",
+"label": "Override for line 57",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.57",
+"sheet": "Policies",
+"cell": "O63",
+"label": "In place – line 57",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.58",
+"sheet": "Policies",
+"cell": "M64",
+"label": "Override for line 58",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.58",
+"sheet": "Policies",
+"cell": "O64",
+"label": "In place – line 58",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.59",
+"sheet": "Policies",
+"cell": "M65",
+"label": "Override for line 59",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.59",
+"sheet": "Policies",
+"cell": "O65",
+"label": "In place – line 59",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.60",
+"sheet": "Policies",
+"cell": "M66",
+"label": "Override for line 60",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.60",
+"sheet": "Policies",
+"cell": "O66",
+"label": "In place – line 60",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.61",
+"sheet": "Policies",
+"cell": "M67",
+"label": "Override for line 61",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.61",
+"sheet": "Policies",
+"cell": "O67",
+"label": "In place – line 61",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.62",
+"sheet": "Policies",
+"cell": "K68",
+"label": "Condition met for line 62: Venture capital and restricted schemes offering co-investment",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.62",
+"sheet": "Policies",
+"cell": "M68",
+"label": "Override for line 62",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.62",
+"sheet": "Policies",
+"cell": "O68",
+"label": "In place – line 62",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.63",
+"sheet": "Policies",
+"cell": "K69",
+"label": "Condition met for line 63: FMEs with AUM above USD 3 bn; ESG-labelled schemes",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.63",
+"sheet": "Policies",
+"cell": "M69",
+"label": "Override for line 63",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.63",
+"sheet": "Policies",
+"cell": "O69",
+"label": "In place – line 63",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.64",
+"sheet": "Policies",
+"cell": "K70",
+"label": "Condition met for line 64: FMEs offering portfolio management services",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.64",
+"sheet": "Policies",
+"cell": "M70",
+"label": "Override for line 64",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.64",
+"sheet": "Policies",
+"cell": "O70",
+"label": "In place – line 64",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.65",
+"sheet": "Policies",
+"cell": "K71",
+"label": "Condition met for line 65: Broker-dealers, clearing members, GAPs and custodians",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.65",
+"sheet": "Policies",
+"cell": "M71",
+"label": "Override for line 65",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.65",
+"sheet": "Policies",
+"cell": "O71",
+"label": "In place – line 65",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.66",
+"sheet": "Policies",
+"cell": "K72",
+"label": "Condition met for line 66: Research entities, CRAs and ESG ratings / data product providers",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.66",
+"sheet": "Policies",
+"cell": "M72",
+"label": "Override for line 66",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.66",
+"sheet": "Policies",
+"cell": "O72",
+"label": "In place – line 66",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.67",
+"sheet": "Policies",
+"cell": "M73",
+"label": "Override for line 67",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.67",
+"sheet": "Policies",
+"cell": "O73",
+"label": "In place – line 67",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.68",
+"sheet": "Policies",
+"cell": "K74",
+"label": "Condition met for line 68: FMEs holding listed equity",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.68",
+"sheet": "Policies",
+"cell": "M74",
+"label": "Override for line 68",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.68",
+"sheet": "Policies",
+"cell": "O74",
+"label": "In place – line 68",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.69",
+"sheet": "Policies",
+"cell": "M75",
+"label": "Override for line 69",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.69",
+"sheet": "Policies",
+"cell": "O75",
+"label": "In place – line 69",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.70",
+"sheet": "Policies",
+"cell": "M76",
+"label": "Override for line 70",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.70",
+"sheet": "Policies",
+"cell": "O76",
+"label": "In place – line 70",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.71",
+"sheet": "Policies",
+"cell": "M77",
+"label": "Override for line 71",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.71",
+"sheet": "Policies",
+"cell": "O77",
+"label": "In place – line 71",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.72",
+"sheet": "Policies",
+"cell": "M78",
+"label": "Override for line 72",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.72",
+"sheet": "Policies",
+"cell": "O78",
+"label": "In place – line 72",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.73",
+"sheet": "Policies",
+"cell": "M79",
+"label": "Override for line 73",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.73",
+"sheet": "Policies",
+"cell": "O79",
+"label": "In place – line 73",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.74",
+"sheet": "Policies",
+"cell": "M80",
+"label": "Override for line 74",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.74",
+"sheet": "Policies",
+"cell": "O80",
+"label": "In place – line 74",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.75",
+"sheet": "Policies",
+"cell": "M81",
+"label": "Override for line 75",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.75",
+"sheet": "Policies",
+"cell": "O81",
+"label": "In place – line 75",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.76",
+"sheet": "Policies",
+"cell": "M82",
+"label": "Override for line 76",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.76",
+"sheet": "Policies",
+"cell": "O82",
+"label": "In place – line 76",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.77",
+"sheet": "Policies",
+"cell": "M83",
+"label": "Override for line 77",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.77",
+"sheet": "Policies",
+"cell": "O83",
+"label": "In place – line 77",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.78",
+"sheet": "Policies",
+"cell": "M84",
+"label": "Override for line 78",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.78",
+"sheet": "Policies",
+"cell": "O84",
+"label": "In place – line 78",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.79",
+"sheet": "Policies",
+"cell": "K85",
+"label": "Condition met for line 79: IFSC companies meeting s. 135 thresholds after the initial exemption period",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.79",
+"sheet": "Policies",
+"cell": "M85",
+"label": "Override for line 79",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.79",
+"sheet": "Policies",
+"cell": "O85",
+"label": "In place – line 79",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.80",
+"sheet": "Policies",
+"cell": "M86",
+"label": "Override for line 80",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.80",
+"sheet": "Policies",
+"cell": "O86",
+"label": "In place – line 80",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.condition.81",
+"sheet": "Policies",
+"cell": "K87",
+"label": "Condition met for line 81: Units claiming the s. 147 deduction",
+"source": "Confirmed with the entity",
+"default": null
+},
+{
+"key": "policy.override.81",
+"sheet": "Policies",
+"cell": "M87",
+"label": "Override for line 81",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.81",
+"sheet": "Policies",
+"cell": "O87",
+"label": "In place – line 81",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.82",
+"sheet": "Policies",
+"cell": "M88",
+"label": "Override for line 82",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.82",
+"sheet": "Policies",
+"cell": "O88",
+"label": "In place – line 82",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.83",
+"sheet": "Policies",
+"cell": "M89",
+"label": "Override for line 83",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.83",
+"sheet": "Policies",
+"cell": "O89",
+"label": "In place – line 83",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.84",
+"sheet": "Policies",
+"cell": "M90",
+"label": "Override for line 84",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.84",
+"sheet": "Policies",
+"cell": "O90",
+"label": "In place – line 84",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.85",
+"sheet": "Policies",
+"cell": "M91",
+"label": "Override for line 85",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.85",
+"sheet": "Policies",
+"cell": "O91",
+"label": "In place – line 85",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.86",
+"sheet": "Policies",
+"cell": "M92",
+"label": "Override for line 86",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.86",
+"sheet": "Policies",
+"cell": "O92",
+"label": "In place – line 86",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.87",
+"sheet": "Policies",
+"cell": "M93",
+"label": "Override for line 87",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.87",
+"sheet": "Policies",
+"cell": "O93",
+"label": "In place – line 87",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "policy.override.88",
+"sheet": "Policies",
+"cell": "M94",
+"label": "Override for line 88",
+"source": "Recorded decision",
+"default": null
+},
+{
+"key": "policy.inplace.88",
+"sheet": "Policies",
+"cell": "O94",
+"label": "In place – line 88",
+"source": "Policy library of the entity",
+"default": null
+},
+{
+"key": "committee.inplace.1",
+"sheet": "Committees and Roles",
+"cell": "E7",
+"label": "In place – Board of directors / governing body",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.2",
+"sheet": "Committees and Roles",
+"cell": "E8",
+"label": "In place – Principal Officer",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.3",
+"sheet": "Committees and Roles",
+"cell": "E9",
+"label": "In place – Compliance Officer",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.4",
+"sheet": "Committees and Roles",
+"cell": "E10",
+"label": "In place – Additional fund-management KMP",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.5",
+"sheet": "Committees and Roles",
+"cell": "E11",
+"label": "In place – Designated Director and Principal Officer (AML)",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.6",
+"sheet": "Committees and Roles",
+"cell": "E12",
+"label": "In place – CISO / designated cyber security officer",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.7",
+"sheet": "Committees and Roles",
+"cell": "E13",
+"label": "In place – Asset-Liability Committee (ALCO)",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.8",
+"sheet": "Committees and Roles",
+"cell": "E14",
+"label": "In place – Audit, NRC, Risk Management and Stakeholder committees",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.9",
+"sheet": "Committees and Roles",
+"cell": "E15",
+"label": "In place – Outsourcing Committee",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.10",
+"sheet": "Committees and Roles",
+"cell": "E16",
+"label": "In place – Appointed Actuary",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.11",
+"sheet": "Committees and Roles",
+"cell": "E17",
+"label": "In place – Grievance redressal officer / unit",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.12",
+"sheet": "Committees and Roles",
+"cell": "E18",
+"label": "In place – Internal Committee (POSH)",
+"source": "Board records",
+"default": null
+},
+{
+"key": "committee.inplace.13",
+"sheet": "Committees and Roles",
+"cell": "E19",
+"label": "In place – CSR Committee",
+"source": "Board records",
+"default": null
+}
+]

@@ -1,0 +1,202 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Date of transfer of the pool to the special purpose entity",
+"source": "Deal documents",
+"default": null
+},
+{
+"key": "setup.rmbs",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Notes are residential mortgage backed securities",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 11",
+"default": "No"
+},
+{
+"key": "setup.basis",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Pool with both short and long loans: basis of the retention rate",
+"source": "Reading of para 10; confirm with the arranger and the auditor",
+"default": "Loan by loan"
+},
+{
+"key": "th.mrr1",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Retention rate: original maturity up to the limit below",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 10(1)",
+"default": 0.05
+},
+{
+"key": "th.mat",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Original maturity limit for the lower rate (months)",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 10(1)",
+"default": 24
+},
+{
+"key": "th.mrr2",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Retention rate: original maturity above the limit, and loans with bullet repayment",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 10(2)",
+"default": 0.1
+},
+{
+"key": "th.mrr3",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Retention rate: residential mortgage backed securities",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 11",
+"default": 0.05
+},
+{
+"key": "th.order",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Part of the retention that follows the order first loss facility, equity tranche, other tranches",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 12(1)",
+"default": 0.05
+},
+{
+"key": "th.mhp1",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Holding period: loans with tenor up to the limit below (months)",
+"source": "RBI (NBFCs – Transfer and Distribution of Credit Risk) Directions, 2025, para 43(1)",
+"default": 3
+},
+{
+"key": "th.tenor",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Tenor limit for the shorter holding period (months)",
+"source": "RBI (NBFCs – Transfer and Distribution of Credit Risk) Directions, 2025, para 43(1): up to 2 years",
+"default": 24
+},
+{
+"key": "th.mhp2",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Holding period: loans with longer tenor (months)",
+"source": "RBI (NBFCs – Transfer and Distribution of Credit Risk) Directions, 2025, para 43(2)",
+"default": 6
+},
+{
+"key": "th.mhp3",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Holding period: loans acquired from another entity, from the date taken into the books (months)",
+"source": "RBI (NBFCs – Transfer and Distribution of Credit Risk) Directions, 2025, para 43, third proviso",
+"default": 6
+},
+{
+"key": "th.resid",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Least residual maturity of a loan on the date of transfer (days)",
+"source": "RBI (NBFCs – Securitisation Transactions) Directions, 2025, para 5(4)(vi)",
+"default": 365
+},
+{
+"key": "pool",
+"sheet": "Pool Input",
+"cell": "A7:R506",
+"label": "Pool Input: Loan ID *; Borrower; Book value on the date of transfer *; Original maturity (months) *; Residual maturity (days) *; Asset classification *; Ineligible type; Principal and interest both due only at maturity; Bullet loan allowed by the proviso (farm loan up to 24 months or trade receivable up to 12 months, with repayment record); Acquired from another entity; Date taken into the books (acquired loans); Project loan; Date of commencement of commercial operations (project loans); Commercial or residential real estate mortgage; Date of full disbursement (mortgages); Security registered with CERSAI; Date of registration with CERSAI; Date of first repayment",
+"source": "Loan system export; CERSAI registration record",
+"default": null
+},
+{
+"key": "ret.flf",
+"sheet": "Retention",
+"cell": "B12",
+"label": "First loss facility retained (do not count over-collateralisation)",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.flfall",
+"sheet": "Retention",
+"cell": "B13",
+"label": "Whole of the first loss facility is retained, or none is available",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.eq",
+"sheet": "Retention",
+"cell": "B14",
+"label": "Equity tranche retained",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.eqall",
+"sheet": "Retention",
+"cell": "B15",
+"label": "Whole of the equity tranche is retained, or there is none",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.other",
+"sheet": "Retention",
+"cell": "B16",
+"label": "Other tranches sold to investors, retained pari passu",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.io",
+"sheet": "Retention",
+"cell": "B17",
+"label": "Interest-only strip (excess interest spread) held – not counted",
+"source": "Deal structure; information memorandum",
+"default": null
+},
+{
+"key": "ret.own",
+"sheet": "Retention",
+"cell": "B24",
+"label": "Retention is held by the company itself and not by a group entity",
+"source": "Deal documents",
+"default": null
+},
+{
+"key": "ret.free",
+"sheet": "Retention",
+"cell": "B25",
+"label": "Retained interest is not hedged, sold or encumbered",
+"source": "Deal documents",
+"default": null
+},
+{
+"key": "ret.form",
+"sheet": "Retention",
+"cell": "B26",
+"label": "The form of retention will stay the same for the life of the securitisation",
+"source": "Deal documents",
+"default": null
+},
+{
+"key": "ret.disc",
+"sheet": "Retention",
+"cell": "B27",
+"label": "Weighted average holding period and the level of retention are disclosed to investors, and the fulfilment of both requirements is public",
+"source": "Deal documents",
+"default": null
+}
+]

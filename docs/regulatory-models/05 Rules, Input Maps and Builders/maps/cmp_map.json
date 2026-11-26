@@ -1,0 +1,762 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.fystart.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "First day of the financial year",
+"source": "Financial year of the company",
+"default": null
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Report date (position as on)",
+"source": "Date of the report",
+"default": null
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 3 (Middle and Upper Layer)",
+"default": "Middle Layer"
+},
+{
+"key": "setup.review",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Review of compliance risk placed before the Board or Audit Committee",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 6 (periodicity is prescribed by the Board or Audit Committee)",
+"default": "Quarterly"
+},
+{
+"key": "th.low",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Low: score up to",
+"source": "SOP – Compliance Function, Step B2",
+"default": 4
+},
+{
+"key": "th.med",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Medium: score up to",
+"source": "SOP – Compliance Function, Step B2",
+"default": 9
+},
+{
+"key": "th.high",
+"sheet": "Setup",
+"cell": "B14",
+"label": "High: score up to (a higher score is Critical)",
+"source": "SOP – Compliance Function, Step B2",
+"default": 16
+},
+{
+"key": "th.ctl.1",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Control rated \"Strong\"",
+"source": "Management choice",
+"default": 0.25
+},
+{
+"key": "th.ctl.2",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Control rated \"Adequate\"",
+"source": "Management choice",
+"default": 0.5
+},
+{
+"key": "th.ctl.3",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Control rated \"Needs improvement\"",
+"source": "Management choice",
+"default": 0.75
+},
+{
+"key": "th.ctl.4",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Control rated \"Weak or none\"",
+"source": "Management choice",
+"default": 1.0
+},
+{
+"key": "th.freq.c",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Critical residual risk",
+"source": "Compliance Policy, clause on testing methodology",
+"default": 4
+},
+{
+"key": "th.freq.h",
+"sheet": "Setup",
+"cell": "B24",
+"label": "High residual risk",
+"source": "Compliance Policy, clause on testing methodology",
+"default": 4
+},
+{
+"key": "th.freq.m",
+"sheet": "Setup",
+"cell": "B25",
+"label": "Medium residual risk",
+"source": "Compliance Policy, clause on testing methodology",
+"default": 2
+},
+{
+"key": "th.freq.l",
+"sheet": "Setup",
+"cell": "B26",
+"label": "Low residual risk",
+"source": "Compliance Policy, clause on testing methodology",
+"default": 1
+},
+{
+"key": "th.freq.flag",
+"sheet": "Setup",
+"cell": "B27",
+"label": "Least number of tests where the regulation is new or amended, or a failure was found, in the last 12 months (the first test falls in the first quarter)",
+"source": "Compliance Policy (such areas are tested within three months)",
+"default": 2
+},
+{
+"key": "th.pop.1",
+"sheet": "Setup",
+"cell": "A31",
+"label": "Sample table: items in the period from (row 1)",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.smp.1.1",
+"sheet": "Setup",
+"cell": "B31",
+"label": "Sample table: row 1, Low",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.smp.1.2",
+"sheet": "Setup",
+"cell": "C31",
+"label": "Sample table: row 1, Medium",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.smp.1.3",
+"sheet": "Setup",
+"cell": "D31",
+"label": "Sample table: row 1, High",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.smp.1.4",
+"sheet": "Setup",
+"cell": "E31",
+"label": "Sample table: row 1, Critical",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.pop.2",
+"sheet": "Setup",
+"cell": "A32",
+"label": "Sample table: items in the period from (row 2)",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.smp.2.1",
+"sheet": "Setup",
+"cell": "B32",
+"label": "Sample table: row 2, Low",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "th.smp.2.2",
+"sheet": "Setup",
+"cell": "C32",
+"label": "Sample table: row 2, Medium",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.smp.2.3",
+"sheet": "Setup",
+"cell": "D32",
+"label": "Sample table: row 2, High",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.smp.2.4",
+"sheet": "Setup",
+"cell": "E32",
+"label": "Sample table: row 2, Critical",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.pop.3",
+"sheet": "Setup",
+"cell": "A33",
+"label": "Sample table: items in the period from (row 3)",
+"source": "Management choice",
+"default": 5
+},
+{
+"key": "th.smp.3.1",
+"sheet": "Setup",
+"cell": "B33",
+"label": "Sample table: row 3, Low",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.smp.3.2",
+"sheet": "Setup",
+"cell": "C33",
+"label": "Sample table: row 3, Medium",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "th.smp.3.3",
+"sheet": "Setup",
+"cell": "D33",
+"label": "Sample table: row 3, High",
+"source": "Management choice",
+"default": 3
+},
+{
+"key": "th.smp.3.4",
+"sheet": "Setup",
+"cell": "E33",
+"label": "Sample table: row 3, Critical",
+"source": "Management choice",
+"default": 4
+},
+{
+"key": "th.pop.4",
+"sheet": "Setup",
+"cell": "A34",
+"label": "Sample table: items in the period from (row 4)",
+"source": "Management choice",
+"default": 13
+},
+{
+"key": "th.smp.4.1",
+"sheet": "Setup",
+"cell": "B34",
+"label": "Sample table: row 4, Low",
+"source": "Management choice",
+"default": 5
+},
+{
+"key": "th.smp.4.2",
+"sheet": "Setup",
+"cell": "C34",
+"label": "Sample table: row 4, Medium",
+"source": "Management choice",
+"default": 5
+},
+{
+"key": "th.smp.4.3",
+"sheet": "Setup",
+"cell": "D34",
+"label": "Sample table: row 4, High",
+"source": "Management choice",
+"default": 8
+},
+{
+"key": "th.smp.4.4",
+"sheet": "Setup",
+"cell": "E34",
+"label": "Sample table: row 4, Critical",
+"source": "Management choice",
+"default": 10
+},
+{
+"key": "th.pop.5",
+"sheet": "Setup",
+"cell": "A35",
+"label": "Sample table: items in the period from (row 5)",
+"source": "Management choice",
+"default": 53
+},
+{
+"key": "th.smp.5.1",
+"sheet": "Setup",
+"cell": "B35",
+"label": "Sample table: row 5, Low",
+"source": "Management choice",
+"default": 10
+},
+{
+"key": "th.smp.5.2",
+"sheet": "Setup",
+"cell": "C35",
+"label": "Sample table: row 5, Medium",
+"source": "Management choice",
+"default": 15
+},
+{
+"key": "th.smp.5.3",
+"sheet": "Setup",
+"cell": "D35",
+"label": "Sample table: row 5, High",
+"source": "Management choice",
+"default": 25
+},
+{
+"key": "th.smp.5.4",
+"sheet": "Setup",
+"cell": "E35",
+"label": "Sample table: row 5, Critical",
+"source": "Management choice",
+"default": 30
+},
+{
+"key": "th.pop.6",
+"sheet": "Setup",
+"cell": "A36",
+"label": "Sample table: items in the period from (row 6)",
+"source": "Management choice",
+"default": 251
+},
+{
+"key": "th.smp.6.1",
+"sheet": "Setup",
+"cell": "B36",
+"label": "Sample table: row 6, Low",
+"source": "Management choice",
+"default": 22
+},
+{
+"key": "th.smp.6.2",
+"sheet": "Setup",
+"cell": "C36",
+"label": "Sample table: row 6, Medium",
+"source": "Management choice",
+"default": 29
+},
+{
+"key": "th.smp.6.3",
+"sheet": "Setup",
+"cell": "D36",
+"label": "Sample table: row 6, High",
+"source": "Management choice",
+"default": 45
+},
+{
+"key": "th.smp.6.4",
+"sheet": "Setup",
+"cell": "E36",
+"label": "Sample table: row 6, Critical",
+"source": "Management choice",
+"default": 59
+},
+{
+"key": "th.exc.amber",
+"sheet": "Setup",
+"cell": "B39",
+"label": "Amber when the exception rate is above",
+"source": "Management choice",
+"default": 0.05
+},
+{
+"key": "th.exc.red",
+"sheet": "Setup",
+"cell": "B40",
+"label": "Red when the exception rate is above",
+"source": "Management choice",
+"default": 0.1
+},
+{
+"key": "th.exc.high",
+"sheet": "Setup",
+"cell": "B41",
+"label": "A high-severity exception makes the test Red whatever the rate",
+"source": "Management choice",
+"default": "Yes"
+},
+{
+"key": "th.days.h",
+"sheet": "Setup",
+"cell": "B44",
+"label": "Days allowed to close an issue of High severity (used where no target date is entered)",
+"source": "Management choice",
+"default": 30
+},
+{
+"key": "th.days.m",
+"sheet": "Setup",
+"cell": "B45",
+"label": "Days allowed to close an issue of Medium severity (used where no target date is entered)",
+"source": "Management choice",
+"default": 60
+},
+{
+"key": "th.days.l",
+"sheet": "Setup",
+"cell": "B46",
+"label": "Days allowed to close an issue of Low severity (used where no target date is entered)",
+"source": "Management choice",
+"default": 90
+},
+{
+"key": "th.due.amber",
+"sheet": "Setup",
+"cell": "B47",
+"label": "An open issue turns Amber when its due date is within (days)",
+"source": "Management choice",
+"default": 7
+},
+{
+"key": "th.over.red",
+"sheet": "Setup",
+"cell": "B48",
+"label": "An overdue issue of Medium or Low severity turns Red when overdue by more than (days)",
+"source": "Management choice",
+"default": 30
+},
+{
+"key": "th.age.1",
+"sheet": "Setup",
+"cell": "B49",
+"label": "Ageing of open issues: bucket 1 ends at (days since raised)",
+"source": "Management choice",
+"default": 30
+},
+{
+"key": "th.age.2",
+"sheet": "Setup",
+"cell": "B50",
+"label": "Ageing of open issues: bucket 2 ends at (days since raised)",
+"source": "Management choice",
+"default": 90
+},
+{
+"key": "th.age.3",
+"sheet": "Setup",
+"cell": "B51",
+"label": "Ageing of open issues: bucket 3 ends at (days since raised)",
+"source": "Management choice",
+"default": 180
+},
+{
+"key": "th.plan.amber",
+"sheet": "Setup",
+"cell": "B54",
+"label": "Amber when tests completed are below this share of the tests due to date",
+"source": "Management choice",
+"default": 0.9
+},
+{
+"key": "th.plan.red",
+"sheet": "Setup",
+"cell": "B55",
+"label": "Red when below this share",
+"source": "Management choice",
+"default": 0.75
+},
+{
+"key": "rev.penalty",
+"sheet": "Setup",
+"cell": "B58",
+"label": "Regulatory penalties and losses from compliance failures in the year (rupees)",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 7(1)",
+"default": null
+},
+{
+"key": "rev.actions",
+"sheet": "Setup",
+"cell": "B59",
+"label": "Regulatory actions in the year (penalty orders, show cause notices, supervisory letters)",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 7(1)",
+"default": null
+},
+{
+"key": "setup.fpc",
+"sheet": "Setup",
+"cell": "B60",
+"label": "Domain that covers fair practices codes and conduct",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 7(3)",
+"default": "Customer conduct and fair practices"
+},
+{
+"key": "prev.c",
+"sheet": "Setup",
+"cell": "B63",
+"label": "Critical",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 9(4)",
+"default": null
+},
+{
+"key": "prev.h",
+"sheet": "Setup",
+"cell": "B64",
+"label": "High",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 9(4)",
+"default": null
+},
+{
+"key": "prev.m",
+"sheet": "Setup",
+"cell": "B65",
+"label": "Medium",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 9(4)",
+"default": null
+},
+{
+"key": "prev.l",
+"sheet": "Setup",
+"cell": "B66",
+"label": "Low",
+"source": "RBI (NBFCs – Compliance Function) Directions, 2026, para 9(4)",
+"default": null
+},
+{
+"key": "dom.1",
+"sheet": "Setup",
+"cell": "H5",
+"label": "Compliance domain 1",
+"source": "Company",
+"default": "Governance and capital"
+},
+{
+"key": "fn.1",
+"sheet": "Setup",
+"cell": "I5",
+"label": "Owner function 1",
+"source": "Organisation chart",
+"default": "Compliance"
+},
+{
+"key": "dom.2",
+"sheet": "Setup",
+"cell": "H6",
+"label": "Compliance domain 2",
+"source": "Company",
+"default": "Credit and lending"
+},
+{
+"key": "fn.2",
+"sheet": "Setup",
+"cell": "I6",
+"label": "Owner function 2",
+"source": "Organisation chart",
+"default": "Credit"
+},
+{
+"key": "dom.3",
+"sheet": "Setup",
+"cell": "H7",
+"label": "Compliance domain 3",
+"source": "Company",
+"default": "Customer conduct and fair practices"
+},
+{
+"key": "fn.3",
+"sheet": "Setup",
+"cell": "I7",
+"label": "Owner function 3",
+"source": "Organisation chart",
+"default": "Operations"
+},
+{
+"key": "dom.4",
+"sheet": "Setup",
+"cell": "H8",
+"label": "Compliance domain 4",
+"source": "Company",
+"default": "Know your customer and anti-money laundering"
+},
+{
+"key": "fn.4",
+"sheet": "Setup",
+"cell": "I8",
+"label": "Owner function 4",
+"source": "Organisation chart",
+"default": "Collections"
+},
+{
+"key": "dom.5",
+"sheet": "Setup",
+"cell": "H9",
+"label": "Compliance domain 5",
+"source": "Company",
+"default": "Fraud risk"
+},
+{
+"key": "fn.5",
+"sheet": "Setup",
+"cell": "I9",
+"label": "Owner function 5",
+"source": "Organisation chart",
+"default": "Finance and Accounts"
+},
+{
+"key": "dom.6",
+"sheet": "Setup",
+"cell": "H10",
+"label": "Compliance domain 6",
+"source": "Company",
+"default": "Outsourcing and technology"
+},
+{
+"key": "fn.6",
+"sheet": "Setup",
+"cell": "I10",
+"label": "Owner function 6",
+"source": "Organisation chart",
+"default": "Treasury"
+},
+{
+"key": "dom.7",
+"sheet": "Setup",
+"cell": "H11",
+"label": "Compliance domain 7",
+"source": "Company",
+"default": "Liquidity and asset liability management"
+},
+{
+"key": "fn.7",
+"sheet": "Setup",
+"cell": "I11",
+"label": "Owner function 7",
+"source": "Organisation chart",
+"default": "Risk Management"
+},
+{
+"key": "dom.8",
+"sheet": "Setup",
+"cell": "H12",
+"label": "Compliance domain 8",
+"source": "Company",
+"default": "Regulatory reporting and returns"
+},
+{
+"key": "fn.8",
+"sheet": "Setup",
+"cell": "I12",
+"label": "Owner function 8",
+"source": "Organisation chart",
+"default": "Information Technology"
+},
+{
+"key": "dom.9",
+"sheet": "Setup",
+"cell": "H13",
+"label": "Compliance domain 9",
+"source": "Company",
+"default": "Compliance function"
+},
+{
+"key": "fn.9",
+"sheet": "Setup",
+"cell": "I13",
+"label": "Owner function 9",
+"source": "Organisation chart",
+"default": "Customer Service"
+},
+{
+"key": "dom.10",
+"sheet": "Setup",
+"cell": "H14",
+"label": "Compliance domain 10",
+"source": "Company",
+"default": "Other laws and regulators"
+},
+{
+"key": "fn.10",
+"sheet": "Setup",
+"cell": "I14",
+"label": "Owner function 10",
+"source": "Organisation chart",
+"default": "Secretarial and Legal"
+},
+{
+"key": "dom.11",
+"sheet": "Setup",
+"cell": "H15",
+"label": "Compliance domain 11",
+"source": "Company",
+"default": null
+},
+{
+"key": "fn.11",
+"sheet": "Setup",
+"cell": "I15",
+"label": "Owner function 11",
+"source": "Organisation chart",
+"default": "Internal Audit"
+},
+{
+"key": "dom.12",
+"sheet": "Setup",
+"cell": "H16",
+"label": "Compliance domain 12",
+"source": "Company",
+"default": null
+},
+{
+"key": "fn.12",
+"sheet": "Setup",
+"cell": "I16",
+"label": "Owner function 12",
+"source": "Organisation chart",
+"default": "Human Resources"
+},
+{
+"key": "universe",
+"sheet": "Universe Input",
+"cell": "A7:N306",
+"label": "Universe Input: Obligation ID *; Direction, Act or circular *; Paragraph or section *; What must be complied with *; Compliance domain *; Owner function *; Key control in place; Likelihood of non-compliance (1 to 5) *; Impact of non-compliance (1 to 5) *; Control rating *; New or amended in the last 12 months; Failure, penalty or adverse finding in the last 12 months; Applicable to the company (blank = Yes); Tests this year fixed by Compliance (blank = as per Setup)",
+"source": "Applicability Engine result; Policy Register; regulatory update register; risk assessment workshop",
+"default": null
+},
+{
+"key": "tests",
+"sheet": "Test Programme Input",
+"cell": "A7:P206",
+"label": "Test Programme Input: Test ID *; Obligation ID *; What is tested and how; Method *; Quarter *; Items in the period tested *; Planned completion date *; Tester *; Reviewer (second officer); Status *; Completed on; Sample tested; Exceptions found; Of which high severity; Work-paper reference; Results reported to senior management on",
+"source": "Annual Plan; test work-papers (CMP-A04)",
+"default": null
+},
+{
+"key": "issues",
+"sheet": "Issue Tracker Input",
+"cell": "A7:Q206",
+"label": "Issue Tracker Input: Issue ID *; Source *; Obligation ID; Test ID; Issue *; Root cause; Severity *; Owner function *; Date raised *; Agreed target date; Revised target date; Extension approved by; Status *; Closed on; Closure verified by Compliance; Staff accountability examined; Circulated to staff with preventive instructions",
+"source": "Test work-papers; internal audit reports; RBI inspection report and Risk Mitigation Plan; breach register",
+"default": null
+},
+{
+"key": "products",
+"sheet": "New Products",
+"cell": "A7:F36",
+"label": "New Products: product or process; date of launch; evaluated before launch; monthly reviews completed; compliance issues found; remarks",
+"source": "New product approval records; monthly monitoring notes",
+"default": null
+}
+]
