@@ -1,0 +1,82 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Reporting date",
+"source": "Date of the account data",
+"default": null
+},
+{
+"key": "th.amber",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Score from which an account is Amber",
+"source": "Management choice",
+"default": 10
+},
+{
+"key": "th.red",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Score from which an account is Red",
+"source": "Management choice",
+"default": 25
+},
+{
+"key": "th.crit",
+"sheet": "Setup",
+"cell": "B8",
+"label": "A critical indicator makes the account Red whatever the score",
+"source": "Management choice",
+"default": "Yes"
+},
+{
+"key": "th.exam",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Days allowed to complete the examination of an alert",
+"source": "Management choice; para 17(2) asks for timely action",
+"default": 30
+},
+{
+"key": "th.fmr",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Days allowed to furnish the Fraud Monitoring Return after classification as fraud",
+"source": "RBI (NBFCs – Fraud Risk Management) Directions, 2026, para 43",
+"default": 14
+},
+{
+"key": "th.capture",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Share of fraud cases the indicators should have caught (target)",
+"source": "Management choice; used in the validation of the framework (para 16)",
+"default": 0.8
+},
+{
+"key": "ind",
+"sheet": "Indicators Input",
+"cell": "B7:G36",
+"label": "Indicator library: indicator; family; type; weight; critical; active",
+"source": "Fraud risk management policy; Board level committee",
+"default": "Illustrative library of 30 indicators"
+},
+{
+"key": "acc",
+"sheet": "Accounts Input",
+"cell": "A8:AM307",
+"label": "Accounts: account ID; borrower; segment; exposure; Yes under each of the 30 indicators; date of the alert; examination status; date closed; date classified as fraud; date the return was furnished",
+"source": "Loan system; transaction monitoring; credit monitoring; fraud register",
+"default": null
+}
+]
