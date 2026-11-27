@@ -301,3 +301,9 @@ The owner's order (3 Nov 2026): log each product request in the register (`docs/
 Owner answers of 4 Nov 2026 (R1-D-65): PR-LDC-01 needs no change (#102: KYC and KYB through Digio and IDfy, DigiLocker through Digio); the MCA adapter is not built until the owner chooses a data source (M46 stays the interface, fake and contract cases). #95's purge sweep ships with PR-LDC-14 in M41. PR-040 is approved for Ecosystem Spec v1.3; its text is drafted in `PR-040-ecosystem-v1.3-draft.md` for sign-off (#105), after which M38 gains its request half and failure path. #100's gap (the approvals engine consumes each mandate approval, R1-D-66) ships with wave 1. PR-LDC-05 needs no change. PR-FBX-32 shipped in `audit` 1.6.0.
 
 **Release gates (R1-D-64).** Each wave is one PR on the session's branch with one commit per item; pull-request CI runs only when `ci:run` is added, once at the wave's gate, then once on its version PR.
+
+## Maintenance: the owner's order of 27 Nov 2026 (R1-D-295)
+
+1. **LDC-68 (security, first):** refuse zstd content codings while the runtime's zstd is affected (CVE-2026-124851). Plan `docs/phases/R1-ldc-68-zstd-plan.md`; R1-D-294.
+2. **PR-UDF-088:** NOTIFY `smsMessage` refuses, never cuts.
+3. Then PR-FBX-57, LDC-65, LDC-67, the owner's regulatory templates and models (merged as specifications), and two plans that stop for the owner: the regulated calculations package (LDC-66 + PR-FBX-58) and `docs/phases/regulatory-templates-platform-plan.md`.

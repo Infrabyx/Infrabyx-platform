@@ -15,6 +15,7 @@ const SRC = fileURLToPath(new URL(".", import.meta.url));
 const NOT_PORTS = new Set([
   "__tests__",
   "ai",
+  "content-coding",
   "core",
   "messaging",
   "provisioning",
