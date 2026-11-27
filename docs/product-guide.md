@@ -2392,6 +2392,30 @@ const secrets = LOCAL_SECRETS_ENVS.includes(env.APP_ENV)
   2. Add `.infrabyx/` to your `.gitignore` and `local-secrets.json` to your pre-commit guard (the scaffold's copies have both).
   3. Never put a real credential in it.
 
+## 7ff. Bureau reports and AA payloads are scanned before they are ready (PR-FBX-57; R1-D-304)
+
+From the next `@infrabyx/connectors`, `contracts` and `testing` minors and the `fakes` patch (no migration, setting or dependency). **Why:** files from bureaus, account aggregators and the Connector Agent are untrusted input like any upload (IPB-02-44).
+
+```ts
+import { ClamavFileScan } from "@infrabyx/connectors/av";
+import { CibilBureau } from "@infrabyx/connectors/bureau";
+import { SetuAccountAggregator } from "@infrabyx/connectors/aa-fiu";
+import { assertScannedClean } from "@infrabyx/contracts/ports";
+
+const scan = new ClamavFileScan({ host: "clamav", storage }); // your FILE_SCAN adapter
+const bureau = new CibilBureau({ storage, scan, appEnv: env.APP_ENV /* … */ });
+const aa = new SetuAccountAggregator({ storage, scan, appEnv: env.APP_ENV /* … */ });
+
+// Before parsing a stored report or FI payload:
+assertScannedClean(report.scan!, report.sha256, "BUREAU");
+```
+
+- **Pass `scan`, or pulls refuse.** Without it the adapters still construct (1.x), but every completed pull and every fetch with a payload refuses `IPB-SEC-015` (`scan_required`) and stores nothing. Outside `local` and `test` they warn once at start-up (`warn` routes it to your logger). `scan` is required in 2.0.0.
+- **What changes:** each file is quarantined, scanned and promoted to REGULATED only when CLEAN. EICAR is refused `IPB-SEC-011` (kept in quarantine for the AV owner); a scanner outage `IPB-SEC-015` (retry the pull or fetch later).
+- **The ref carries the scan** (`report.scan`, `payload.scan`, optional in the type in 1.x, always set by the platform's adapters), and the object carries it as `ipb-scan-*` tags. Whole-object assertions in your tests now see `scan`.
+- **Your QUARANTINE class** now receives these files too: grant your AV adapter read there, and keep the same named key references in QUARANTINE as in REGULATED (R1-D-240).
+- **Tests:** run `bureauScannedWriteContractCases` / `aaScannedWriteContractCases` against your own adapters and stubs; the fakes attach a CLEAN scan.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

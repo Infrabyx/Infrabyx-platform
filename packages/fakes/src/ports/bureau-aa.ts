@@ -25,6 +25,7 @@ import {
   type BureauReport,
   type CreditBureauPort,
   type FiPayload,
+  type ScanRecord,
   type FiType,
   type PortHealth,
   type StoragePort,
@@ -162,13 +163,13 @@ export class FakeCreditBureau implements CreditBureauPort {
   }
 
   private ready(base: Omit<BureauReport, "state">, prefix: string, hard: number): BureauReport {
+    const storageKey = `${prefix}${base.pullId}.json`;
+    const sha256 = sha256Hex(`report:${base.pullId}`);
     return {
       ...base,
       state: "ready",
-      report: {
-        storageKey: `${prefix}${base.pullId}.json`,
-        sha256: sha256Hex(`report:${base.pullId}`),
-      },
+      // PR-FBX-57: the report carries a CLEAN scan of its bytes, as the platform's adapters do.
+      report: { storageKey, sha256, scan: fakeCleanScan(storageKey, sha256, this.now()) },
       summary: {
         score: 761,
         scoreVersion: "fake-score-2",
@@ -208,6 +209,17 @@ export class FakeCreditBureau implements CreditBureauPort {
     // Only the CIC's own read-back is trusted, never the event body.
     return this.status(pullId);
   }
+}
+
+/** PR-FBX-57 (R1-D-304): the CLEAN scan record a fake attaches to a file it returns. */
+export function fakeCleanScan(storageKey: string, sha256: string, at: Date): ScanRecord {
+  return {
+    verdict: "CLEAN",
+    file: { storageKey, sha256 },
+    engine: "fake-av 1",
+    scannedAt: at.toISOString(),
+    adapter: "fake-av",
+  };
 }
 
 // -------------------------------------------------------------------------- account aggregator
@@ -489,6 +501,8 @@ export class FakeAccountAggregator implements AccountAggregatorPort {
         storageKey,
         sha256,
         schemaVersion: FI_SCHEMA_VERSION,
+        // PR-FBX-57: a CLEAN scan of the stored bytes, as the platform's adapters return.
+        scan: fakeCleanScan(storageKey, sha256, this.now()),
       });
     }
     return {
