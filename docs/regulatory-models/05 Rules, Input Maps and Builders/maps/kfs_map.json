@@ -1,0 +1,298 @@
+[
+{
+"key": "setup.company",
+"sheet": "Loan Input",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "loan.product",
+"sheet": "Loan Input",
+"cell": "B5",
+"label": "Product",
+"source": "Product note",
+"default": null
+},
+{
+"key": "loan.amount",
+"sheet": "Loan Input",
+"cell": "B6",
+"label": "Loan amount sanctioned and disbursed (₹)",
+"source": "Sanction letter",
+"default": null
+},
+{
+"key": "loan.rate",
+"sheet": "Loan Input",
+"cell": "B7",
+"label": "Rate of interest (per cent per annum, reducing balance)",
+"source": "Sanction letter; interest rate policy",
+"default": null
+},
+{
+"key": "loan.ratetype",
+"sheet": "Loan Input",
+"cell": "B8",
+"label": "Type of rate",
+"source": "Company",
+"default": "Fixed"
+},
+{
+"key": "loan.freq",
+"sheet": "Loan Input",
+"cell": "B9",
+"label": "Frequency of instalments",
+"source": "Company",
+"default": "Monthly"
+},
+{
+"key": "loan.n",
+"sheet": "Loan Input",
+"cell": "B10",
+"label": "Number of instalments (up to 120)",
+"source": "Sanction letter",
+"default": null
+},
+{
+"key": "loan.date",
+"sheet": "Loan Input",
+"cell": "B11",
+"label": "Date of disbursement",
+"source": "Company",
+"default": null
+},
+{
+"key": "loan.digital",
+"sheet": "Loan Input",
+"cell": "B12",
+"label": "Digital loan",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, Chapter III",
+"default": "No"
+},
+{
+"key": "loan.cool",
+"sheet": "Loan Input",
+"cell": "B13",
+"label": "Cooling-off period under the credit policy (days)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 11: fixed by the company; not less than one day",
+"default": 3
+},
+{
+"key": "fee.proc",
+"sheet": "Loan Input",
+"cell": "B16",
+"label": "Processing fee",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.other",
+"sheet": "Loan Input",
+"cell": "B17",
+"label": "Other one-time charges of the Company",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.gst",
+"sheet": "Loan Input",
+"cell": "B18",
+"label": "Goods and services tax on the Company's charges",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.ins",
+"sheet": "Loan Input",
+"cell": "B19",
+"label": "Insurance charges",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.legal",
+"sheet": "Loan Input",
+"cell": "B20",
+"label": "Legal and valuation charges",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.third",
+"sheet": "Loan Input",
+"cell": "B21",
+"label": "Other charges recovered for third parties",
+"source": "Schedule of charges; Key Facts Statement",
+"default": null
+},
+{
+"key": "fee.rec",
+"sheet": "Loan Input",
+"cell": "B23",
+"label": "Recurring charge per instalment",
+"source": "Schedule of charges",
+"default": null
+},
+{
+"key": "kfs.account",
+"sheet": "Key Facts Statement",
+"cell": "C5",
+"label": "Loan proposal or account number",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.disbursal",
+"sheet": "Key Facts Statement",
+"cell": "C8",
+"label": "Disbursal schedule (stages or 100 per cent upfront)",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.floating",
+"sheet": "Key Facts Statement",
+"cell": "C13",
+"label": "For a floating rate: reference benchmark, spread and reset periodicity",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.penal",
+"sheet": "Key Facts Statement",
+"cell": "C23",
+"label": "Penal charges in case of delayed payment",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.otherpenal",
+"sheet": "Key Facts Statement",
+"cell": "C24",
+"label": "Other penal charges",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.foreclosure",
+"sheet": "Key Facts Statement",
+"cell": "C25",
+"label": "Foreclosure charges",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.switch",
+"sheet": "Key Facts Statement",
+"cell": "C26",
+"label": "Charges for switching from floating to fixed rate and back",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.othercharge",
+"sheet": "Key Facts Statement",
+"cell": "C27",
+"label": "Any other contingent charge",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.recovery",
+"sheet": "Key Facts Statement",
+"cell": "C28",
+"label": "Clause of the loan agreement on engagement of recovery agents",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.grievance",
+"sheet": "Key Facts Statement",
+"cell": "C29",
+"label": "Clause of the loan agreement on grievance redressal",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.nodal",
+"sheet": "Key Facts Statement",
+"cell": "C30",
+"label": "Phone number and e-mail of the nodal grievance redressal officer",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.transfer",
+"sheet": "Key Facts Statement",
+"cell": "C31",
+"label": "Whether the loan may be transferred to other lenders or securitised",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.colending",
+"sheet": "Key Facts Statement",
+"cell": "C32",
+"label": "Co-lending or other collaborative arrangement: names of the lenders and funding shares",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "kfs.lsp",
+"sheet": "Key Facts Statement",
+"cell": "C34",
+"label": "Digital loan: lending service provider acting as recovery agent and authorised to approach the borrower",
+"source": "Sanction letter; loan agreement; schedule of charges",
+"default": null
+},
+{
+"key": "cool.day",
+"sheet": "Cooling Off",
+"cell": "B4",
+"label": "Day of exit in the cooling-off period",
+"source": "Case data",
+"default": null
+},
+{
+"key": "cool.retain",
+"sheet": "Cooling Off",
+"cell": "B5",
+"label": "Processing fee retained on exit",
+"source": "Credit policy; Key Facts Statement",
+"default": "No"
+},
+{
+"key": "pen.amount",
+"sheet": "Penal Charges",
+"cell": "B4",
+"label": "Amount overdue (₹)",
+"source": "Case data; policy on penal charges",
+"default": null
+},
+{
+"key": "pen.days",
+"sheet": "Penal Charges",
+"cell": "B5",
+"label": "Days overdue",
+"source": "Case data; policy on penal charges",
+"default": null
+},
+{
+"key": "pen.rate",
+"sheet": "Penal Charges",
+"cell": "B6",
+"label": "Penal charge under the Board-approved policy (per cent per annum on the amount overdue)",
+"source": "Case data; policy on penal charges",
+"default": null
+},
+{
+"key": "pen.gst",
+"sheet": "Penal Charges",
+"cell": "B7",
+"label": "Goods and services tax on the penal charge",
+"source": "Case data; policy on penal charges",
+"default": 0.18
+}
+]

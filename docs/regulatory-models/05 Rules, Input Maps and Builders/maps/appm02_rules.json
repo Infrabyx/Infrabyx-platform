@@ -1,0 +1,1367 @@
+[
+{
+"no": 1,
+"group": "Board & Governance",
+"policy": "Nomination and remuneration policy (directors, KMP, senior management)",
+"type": "Mandatory",
+"condition": "Debt-only: if r. 6 thresholds met (paid-up ≥ Rs 10 cr, turnover ≥ Rs 100 cr or borrowings > Rs 50 cr)",
+"question": "BIG",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 2,
+"group": "Board & Governance",
+"policy": "Board diversity policy",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr); HVDLEs: good practice for the Reg 62G NRC",
+"question": "X152",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Conditional"
+}
+},
+{
+"no": 3,
+"group": "Board & Governance",
+"policy": "Performance evaluation framework for the board, committees and directors",
+"type": "Mandatory",
+"condition": "Debt-only: public companies with paid-up capital ≥ Rs 25 cr (r. 8(4))",
+"question": "PU25",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 4,
+"group": "Board & Governance",
+"policy": "Familiarisation programme for independent directors",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr)",
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Yes"
+}
+},
+{
+"no": 5,
+"group": "Board & Governance",
+"policy": "Terms and conditions of appointment of independent directors",
+"type": "Mandatory",
+"condition": "Debt-only: where IDs are required under s. 149(4) and r. 4 of the Appointment of Directors Rules",
+"question": "PU25",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 6,
+"group": "Board & Governance",
+"policy": "Succession plan for board and senior management",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr); HVDLEs: recommended",
+"question": "X152",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Conditional"
+}
+},
+{
+"no": 7,
+"group": "Board & Governance",
+"policy": "Code of conduct for board members and senior management",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr); SME and debt-only: IDs remain bound by Sch IV",
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Yes"
+}
+},
+{
+"no": 8,
+"group": "Board & Governance",
+"policy": "Criteria for making payments to non-executive directors",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr)",
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 9,
+"group": "Board & Governance",
+"policy": "Directors' and officers' insurance for independent directors",
+"type": "Mandatory",
+"condition": "Mandatory for top 1,000; recommended for other main-board entities",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 10,
+"group": "Board & Governance",
+"policy": "Compliance management framework and quarterly compliance reporting",
+"type": "Mandatory",
+"condition": "SME and debt-only: Reg 6 compliance officer applies; board review framework recommended",
+"question": "VOL",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 11,
+"group": "Board & Governance",
+"policy": "Audit Committee charter",
+"type": "Mandatory",
+"condition": "Debt-only: if r. 6 thresholds of the Meetings of Board Rules met",
+"question": "BIG",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 12,
+"group": "Board & Governance",
+"policy": "Nomination and Remuneration Committee charter",
+"type": "Mandatory",
+"condition": "Debt-only: if r. 6 thresholds of the Meetings of Board Rules met",
+"question": "BIG",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 13,
+"group": "Board & Governance",
+"policy": "Stakeholders' Relationship Committee charter",
+"type": "Mandatory",
+"condition": "SME and debt-only: Companies Act committee where more than 1,000 security holders",
+"question": "H1000",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 14,
+"group": "Board & Governance",
+"policy": "Risk Management Committee charter",
+"type": "Mandatory",
+"condition": "Main board: top 1,000 only",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Yes"
+}
+},
+{
+"no": 15,
+"group": "Board & Governance",
+"policy": "Delegation of authority and matters reserved for the board",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 16,
+"group": "Board & Governance",
+"policy": "Secretarial standards and meeting procedures manual",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 17,
+"group": "Board & Governance",
+"policy": "Secretarial auditor appointment and permitted-services policy",
+"type": "Recommended",
+"condition": "SME and debt-only: s. 204 secretarial audit where applicable",
+"question": "VOL",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 18,
+"group": "Board & Governance",
+"policy": "Statutory auditor independence and non-audit services pre-approval policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 19,
+"group": "Disclosure & Listing Compliance",
+"policy": "Policy for determination of materiality of events or information",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 20,
+"group": "Disclosure & Listing Compliance",
+"policy": "Archival policy for website disclosures",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 21,
+"group": "Disclosure & Listing Compliance",
+"policy": "Policy for preservation of documents",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 22,
+"group": "Disclosure & Listing Compliance",
+"policy": "Authorisation of KMP to determine materiality and Reg 30 disclosure SOP",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 23,
+"group": "Disclosure & Listing Compliance",
+"policy": "Market rumour verification procedure",
+"type": "Mandatory",
+"condition": "Mandatory for top 250 by market capitalisation; recommended for other main-board entities",
+"question": "T250",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "No",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 24,
+"group": "Disclosure & Listing Compliance",
+"policy": "Procedure for disclosure of agreements binding the listed entity",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 25,
+"group": "Disclosure & Listing Compliance",
+"policy": "Continuous disclosure procedure for listed non-convertible securities",
+"type": "Recommended",
+"condition": "Main board: where NCDs or NCRPS are also listed",
+"question": "NCD",
+"answers": {
+"MB": "Conditional",
+"T1000": "No",
+"SME": "No",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 26,
+"group": "Disclosure & Listing Compliance",
+"policy": "Website content and disclosure management policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 27,
+"group": "Disclosure & Listing Compliance",
+"policy": "Financial results and integrated filing process",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 28,
+"group": "Disclosure & Listing Compliance",
+"policy": "Investor relations and analyst / institutional investor meet policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 29,
+"group": "Disclosure & Listing Compliance",
+"policy": "Media, social media and spokesperson policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 30,
+"group": "Related Parties & Subsidiaries",
+"policy": "Related party transactions policy (materiality and dealing)",
+"type": "Mandatory",
+"condition": "SME: if paid-up > Rs 10 cr or net worth > Rs 25 cr on the last day of the previous FY",
+"question": "SME10",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "No",
+"HV": "Yes"
+}
+},
+{
+"no": 31,
+"group": "Related Parties & Subsidiaries",
+"policy": "Policy for determining material subsidiaries",
+"type": "Mandatory",
+"condition": "Main board: not mandatory for Reg 15(2)-exempt entities (paid-up ≤ Rs 10 cr and net worth ≤ Rs 25 cr); HVDLEs: Reg 62L material-subsidiary obligations",
+"question": "X152",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "No",
+"DL": "No",
+"HV": "Conditional"
+}
+},
+{
+"no": 32,
+"group": "Related Parties & Subsidiaries",
+"policy": "Subsidiary governance and group oversight framework",
+"type": "Recommended",
+"condition": "Where the entity has subsidiaries",
+"question": "SUBS",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 33,
+"group": "Related Parties & Subsidiaries",
+"policy": "Loans, guarantees, security and investments policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 34,
+"group": "Related Parties & Subsidiaries",
+"policy": "Related-party identification and arm's-length pricing procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 35,
+"group": "Insider Trading & UPSI",
+"policy": "Code of practices and procedures for fair disclosure of UPSI",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 36,
+"group": "Insider Trading & UPSI",
+"policy": "Policy for determination of legitimate purposes",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 37,
+"group": "Insider Trading & UPSI",
+"policy": "Code of conduct to regulate, monitor and report trading by designated persons",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 38,
+"group": "Insider Trading & UPSI",
+"policy": "Internal controls for prevention of insider trading",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 39,
+"group": "Insider Trading & UPSI",
+"policy": "Policy and procedure for inquiry in case of leak of UPSI",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 40,
+"group": "Insider Trading & UPSI",
+"policy": "Structured digital database maintenance procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 41,
+"group": "Insider Trading & UPSI",
+"policy": "Trading plan review and approval procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "Where insiders submit trading plans",
+"question": "TP",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 42,
+"group": "Shareholders & Investor Services",
+"policy": "Dividend distribution policy",
+"type": "Mandatory",
+"condition": "Other equity-listed entities may adopt voluntarily (Reg 43A(2))",
+"question": "VOL",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 43,
+"group": "Shareholders & Investor Services",
+"policy": "Investor grievance redressal policy with SCORES 2.0 and ODR procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 44,
+"group": "Shareholders & Investor Services",
+"policy": "Unclaimed securities, unpaid dividend and IEPF procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 45,
+"group": "Shareholders & Investor Services",
+"policy": "Investor service requests SOP",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 46,
+"group": "Shareholders & Investor Services",
+"policy": "General meeting, e-voting and shareholder communication policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 47,
+"group": "Shareholders & Investor Services",
+"policy": "Shareholder engagement and special rights policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 48,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Share-based employee benefit schemes",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities with ESOP, RSU, SAR or sweat-equity schemes",
+"question": "ESOP",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 49,
+"group": "Capital Raising & Corporate Actions",
+"policy": "ICDR materiality policy for group companies, outstanding litigation and material creditors",
+"type": "Mandatory if activity undertaken",
+"condition": "When filing an offer document (IPO, FPO, SME IPO)",
+"question": "ISSUE",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 50,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Monitoring of issue proceeds and deviation reporting procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "Where proceeds of public, rights, preferential, QIP or NCD issues remain unutilised",
+"question": "ISSUE",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 51,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Minimum public shareholding compliance plan",
+"type": "Mandatory if activity undertaken",
+"condition": "Where public shareholding is below 25%",
+"question": "MPS",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 52,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Listed debt servicing, asset cover and covenant monitoring procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "Main board: where NCDs or NCRPS are listed",
+"question": "NCD",
+"answers": {
+"MB": "Conditional",
+"T1000": "No",
+"SME": "No",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 53,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Capital allocation, buy-back and treasury policy",
+"type": "Recommended",
+"condition": "Debt-only and HVDLEs: treasury elements only",
+"question": "VOL",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 54,
+"group": "Capital Raising & Corporate Actions",
+"policy": "Takeover and promoter disclosure monitoring procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 55,
+"group": "Risk, Audit & Internal Control",
+"policy": "Risk management policy and framework",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 56,
+"group": "Risk, Audit & Internal Control",
+"policy": "Internal financial controls framework",
+"type": "Mandatory",
+"condition": "Debt-only: s. 134(5)(e) applies to listed companies; auditor reporting under s. 143(3)(i) applies",
+"question": "VOL",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 57,
+"group": "Risk, Audit & Internal Control",
+"policy": "Internal audit charter and annual audit plan",
+"type": "Mandatory",
+"condition": "Debt-only: if r. 13 thresholds met",
+"question": "IA13",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 58,
+"group": "Risk, Audit & Internal Control",
+"policy": "Fraud risk management and reporting policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 59,
+"group": "Risk, Audit & Internal Control",
+"policy": "Business continuity and crisis management plan",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 60,
+"group": "Risk, Audit & Internal Control",
+"policy": "Outsourcing and third-party risk management policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 61,
+"group": "Risk, Audit & Internal Control",
+"policy": "Tax governance and risk policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 62,
+"group": "Risk, Audit & Internal Control",
+"policy": "Treasury, foreign exchange and hedging policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 63,
+"group": "ESG, BRSR & CSR",
+"policy": "BRSR and BRSR Core reporting and assurance procedure",
+"type": "Mandatory",
+"condition": "Other equity-listed entities: voluntary BRSR",
+"question": "VOL",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "No",
+"HV": "No"
+}
+},
+{
+"no": 64,
+"group": "ESG, BRSR & CSR",
+"policy": "CSR policy and annual action plan",
+"type": "Mandatory if activity undertaken",
+"condition": "Net worth ≥ Rs 500 cr, turnover ≥ Rs 1,000 cr or net profit ≥ Rs 5 cr in the preceding FY",
+"question": "CSR",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 65,
+"group": "ESG, BRSR & CSR",
+"policy": "Business responsibility policies under NGRBC Principles 1–9",
+"type": "Recommended",
+"condition": "Top 1,000 disclose policy coverage in BRSR Section B; voluntary for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 66,
+"group": "ESG, BRSR & CSR",
+"policy": "Human rights policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 67,
+"group": "ESG, BRSR & CSR",
+"policy": "Environment policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 68,
+"group": "ESG, BRSR & CSR",
+"policy": "Climate change and energy transition policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 69,
+"group": "ESG, BRSR & CSR",
+"policy": "Stakeholder engagement policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 70,
+"group": "ESG, BRSR & CSR",
+"policy": "Responsible public policy advocacy policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 71,
+"group": "ESG, BRSR & CSR",
+"policy": "Supplier and value-chain code of conduct",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); value-chain disclosures voluntary",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 72,
+"group": "ESG, BRSR & CSR",
+"policy": "Consumer responsibility and product stewardship policy",
+"type": "Recommended",
+"condition": "Top 1,000 (BRSR); recommended for others",
+"question": "T1000",
+"answers": {
+"MB": "Conditional",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 73,
+"group": "ESG, BRSR & CSR",
+"policy": "Occupational health, safety and well-being policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Ethics, HR & Workplace",
+"policy": "Vigil mechanism / whistle-blower policy",
+"type": "Mandatory",
+"condition": "Debt-only: companies accepting deposits or borrowing > Rs 50 cr from banks or PFIs (r. 7)",
+"question": "VIG",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 75,
+"group": "Ethics, HR & Workplace",
+"policy": "Prevention of sexual harassment (POSH) policy",
+"type": "Mandatory",
+"condition": "Internal Committee where 10 or more employees",
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 76,
+"group": "Ethics, HR & Workplace",
+"policy": "Equal opportunity policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 77,
+"group": "Ethics, HR & Workplace",
+"policy": "Standing orders",
+"type": "Mandatory if activity undertaken",
+"condition": "Industrial establishments with 300 or more workers",
+"question": "W300",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 78,
+"group": "Ethics, HR & Workplace",
+"policy": "Grievance Redressal Committee for workers",
+"type": "Mandatory if activity undertaken",
+"condition": "Establishments with 20 or more workers",
+"question": "W20",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 79,
+"group": "Ethics, HR & Workplace",
+"policy": "Anti-bribery and anti-corruption policy (gifts and hospitality)",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 80,
+"group": "Ethics, HR & Workplace",
+"policy": "Code of business conduct and ethics for employees",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 81,
+"group": "Ethics, HR & Workplace",
+"policy": "Conflict of interest and outside interests policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 82,
+"group": "Ethics, HR & Workplace",
+"policy": "Malus and clawback policy",
+"type": "Recommended",
+"condition": "SME and debt-only: recommended where variable pay is material",
+"question": "VPAY",
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Yes"
+}
+},
+{
+"no": 83,
+"group": "Ethics, HR & Workplace",
+"policy": "HR policy manual aligned to the Labour Codes",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 84,
+"group": "Ethics, HR & Workplace",
+"policy": "Employee social media and public communication policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 85,
+"group": "Technology, Cyber & Data",
+"policy": "Information security policy and programme",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 86,
+"group": "Technology, Cyber & Data",
+"policy": "Cyber security incident response and CERT-In reporting plan",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 87,
+"group": "Technology, Cyber & Data",
+"policy": "Website privacy policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 88,
+"group": "Technology, Cyber & Data",
+"policy": "DPDP privacy notice, consent and retention framework",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 89,
+"group": "Technology, Cyber & Data",
+"policy": "Personal data breach response procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+},
+{
+"no": 90,
+"group": "Technology, Cyber & Data",
+"policy": "Significant data fiduciary compliance programme",
+"type": "Mandatory if activity undertaken",
+"condition": "If notified as a significant data fiduciary",
+"question": "SDF",
+"answers": {
+"MB": "Conditional",
+"T1000": "Conditional",
+"SME": "Conditional",
+"DL": "Conditional",
+"HV": "Conditional"
+}
+},
+{
+"no": 91,
+"group": "Technology, Cyber & Data",
+"policy": "AI and emerging technology use policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MB": "Yes",
+"T1000": "Yes",
+"SME": "Yes",
+"DL": "Yes",
+"HV": "Yes"
+}
+}
+]

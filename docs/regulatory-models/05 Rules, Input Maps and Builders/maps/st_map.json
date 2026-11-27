@@ -1,0 +1,3562 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Reporting date",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "₹ crore"
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "Middle Layer"
+},
+{
+"key": "setup.mincrar",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Minimum CRAR",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": 0.15
+},
+{
+"key": "setup.mint1",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Minimum Tier 1 ratio",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": 0.1
+},
+{
+"key": "setup.maxlev",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Maximum leverage (outside liabilities / owned fund)",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": 7
+},
+{
+"key": "setup.tax",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Tax rate",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": 0.2517
+},
+{
+"key": "setup.agg",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Combination of risks",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "Simple sum"
+},
+{
+"key": "setup.plan",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Scenario passed to ICAAP",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "Severe"
+},
+{
+"key": "setup.profit",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Count stressed-year profit as capital",
+"source": "RBI Capital Adequacy Directions / company policy",
+"default": "No"
+},
+{
+"key": "thr.crar.amber",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Post-stress CRAR: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 0.17
+},
+{
+"key": "thr.crar.red",
+"sheet": "Setup",
+"cell": "C17",
+"label": "Post-stress CRAR: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "thr.t1.amber",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Post-stress Tier 1 ratio: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 0.115
+},
+{
+"key": "thr.t1.red",
+"sheet": "Setup",
+"cell": "C18",
+"label": "Post-stress Tier 1 ratio: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.surv.amber",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Liquidity survival horizon in days: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 90
+},
+{
+"key": "thr.surv.red",
+"sheet": "Setup",
+"cell": "C19",
+"label": "Liquidity survival horizon in days: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 30
+},
+{
+"key": "thr.loss.amber",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Stress loss / operating profit: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "thr.loss.red",
+"sheet": "Setup",
+"cell": "C20",
+"label": "Stress loss / operating profit: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "thr.eve.amber",
+"sheet": "Setup",
+"cell": "B21",
+"label": "Fall in EVE / Tier 1: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.eve.red",
+"sheet": "Setup",
+"cell": "C21",
+"label": "Fall in EVE / Tier 1: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "thr.lev.amber",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Post-stress leverage: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 6
+},
+{
+"key": "thr.lev.red",
+"sheet": "Setup",
+"cell": "C22",
+"label": "Post-stress leverage: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 7
+},
+{
+"key": "risk.active.1",
+"sheet": "Setup",
+"cell": "B26",
+"label": "Credit risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.2",
+"sheet": "Setup",
+"cell": "B27",
+"label": "Credit concentration risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.3",
+"sheet": "Setup",
+"cell": "B28",
+"label": "Interest rate risk (earnings) – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.4",
+"sheet": "Setup",
+"cell": "B29",
+"label": "Market risk (investments and FX) – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.5",
+"sheet": "Setup",
+"cell": "B30",
+"label": "Liquidity and funding cost risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.6",
+"sheet": "Setup",
+"cell": "B31",
+"label": "Operational risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.7",
+"sheet": "Setup",
+"cell": "B32",
+"label": "Cyber and IT risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.8",
+"sheet": "Setup",
+"cell": "B33",
+"label": "Compliance and legal risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.9",
+"sheet": "Setup",
+"cell": "B34",
+"label": "Reputation risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.10",
+"sheet": "Setup",
+"cell": "B35",
+"label": "Strategic and business risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.11",
+"sheet": "Setup",
+"cell": "B36",
+"label": "Climate and ESG risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.12",
+"sheet": "Setup",
+"cell": "B37",
+"label": "Model risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "risk.active.13",
+"sheet": "Setup",
+"cell": "B38",
+"label": "Group and contagion risk – active",
+"source": "Risk materiality assessment",
+"default": "Yes"
+},
+{
+"key": "base.t1",
+"sheet": "Base Data Input",
+"cell": "B6",
+"label": "Tier 1 capital",
+"source": "DNBS03 capital funds; capital adequacy note",
+"default": null
+},
+{
+"key": "base.t2",
+"sheet": "Base Data Input",
+"cell": "B7",
+"label": "Tier 2 capital",
+"source": "DNBS03 Part 2 (Tier II)",
+"default": null
+},
+{
+"key": "base.rwa",
+"sheet": "Base Data Input",
+"cell": "B8",
+"label": "Risk-weighted assets",
+"source": "DNBS03 Parts 3-5",
+"default": null
+},
+{
+"key": "base.assets",
+"sheet": "Base Data Input",
+"cell": "B9",
+"label": "Total assets",
+"source": "Balance sheet; DNBS01 Part 2",
+"default": null
+},
+{
+"key": "base.osl",
+"sheet": "Base Data Input",
+"cell": "B10",
+"label": "Total outside liabilities",
+"source": "Balance sheet (total liabilities less owned fund)",
+"default": null
+},
+{
+"key": "base.of",
+"sheet": "Base Data Input",
+"cell": "B11",
+"label": "Owned fund",
+"source": "DNBS03; capital adequacy working",
+"default": null
+},
+{
+"key": "base.ppop",
+"sheet": "Base Data Input",
+"cell": "B12",
+"label": "Pre-provision operating profit – next 12 months (budget)",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "base.ccost",
+"sheet": "Base Data Input",
+"cell": "B13",
+"label": "Budgeted credit cost – next 12 months",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "base.nii",
+"sheet": "Base Data Input",
+"cell": "B14",
+"label": "Net interest income – annual",
+"source": "P&L; DNBS01 Part 3",
+"default": null
+},
+{
+"key": "base.opex",
+"sheet": "Base Data Input",
+"cell": "B15",
+"label": "Operating expenses – annual",
+"source": "P&L",
+"default": null
+},
+{
+"key": "base.borr",
+"sheet": "Base Data Input",
+"cell": "B16",
+"label": "Total borrowings",
+"source": "Balance sheet; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "base.reprice",
+"sheet": "Base Data Input",
+"cell": "B17",
+"label": "Share of borrowings repricing or maturing within 1 year",
+"source": "ALM statement; DNBS04B",
+"default": null
+},
+{
+"key": "base.gross",
+"sheet": "Base Data Input",
+"cell": "B18",
+"label": "Gross loans",
+"source": "ECL Handover: ecl.gross",
+"default": null
+},
+{
+"key": "base.s3",
+"sheet": "Base Data Input",
+"cell": "B19",
+"label": "Stage 3 / gross NPA",
+"source": "ECL Handover: ecl.s3",
+"default": null
+},
+{
+"key": "base.ecl",
+"sheet": "Base Data Input",
+"cell": "B20",
+"label": "ECL allowance held",
+"source": "ECL Handover: ecl.total",
+"default": null
+},
+{
+"key": "base.pd",
+"sheet": "Base Data Input",
+"cell": "B21",
+"label": "Exposure-weighted 12-month PD",
+"source": "ECL Handover: ecl.pd",
+"default": null
+},
+{
+"key": "base.lgd",
+"sheet": "Base Data Input",
+"cell": "B22",
+"label": "Exposure-weighted LGD",
+"source": "ECL Handover: ecl.lgd",
+"default": null
+},
+{
+"key": "base.hqla",
+"sheet": "Base Data Input",
+"cell": "B23",
+"label": "Unencumbered liquid assets (cash, bank balances, liquid investments)",
+"source": "Balance sheet; DNBS04A",
+"default": null
+},
+{
+"key": "base.lines",
+"sheet": "Base Data Input",
+"cell": "B24",
+"label": "Undrawn committed bank lines available to the company",
+"source": "Treasury MIS",
+"default": null
+},
+{
+"key": "base.undrawn",
+"sheet": "Base Data Input",
+"cell": "B25",
+"label": "Undrawn sanctioned limits to customers",
+"source": "Sanction register",
+"default": null
+},
+{
+"key": "base.eq",
+"sheet": "Base Data Input",
+"cell": "B26",
+"label": "Equity and mutual fund investments (market value)",
+"source": "Investments note; DNBS01 Annex 10",
+"default": null
+},
+{
+"key": "base.bond",
+"sheet": "Base Data Input",
+"cell": "B27",
+"label": "Bond and debt investments (market value)",
+"source": "Investments note",
+"default": null
+},
+{
+"key": "base.dur",
+"sheet": "Base Data Input",
+"cell": "B28",
+"label": "Modified duration of bond investments (years)",
+"source": "Treasury MIS",
+"default": null
+},
+{
+"key": "base.fx",
+"sheet": "Base Data Input",
+"cell": "B29",
+"label": "Net open foreign currency position (unhedged)",
+"source": "Treasury MIS; DNBS01 Part 7",
+"default": null
+},
+{
+"key": "base.ginc",
+"sheet": "Base Data Input",
+"cell": "B30",
+"label": "Gross income – average of last 3 years",
+"source": "P&L (total income less interest expense is NOT deducted)",
+"default": null
+},
+{
+"key": "base.grp",
+"sheet": "Base Data Input",
+"cell": "B31",
+"label": "Exposure to group companies",
+"source": "DNBS01 Part 5; related party note",
+"default": null
+},
+{
+"key": "seg.name.1",
+"sheet": "Base Data Input",
+"cell": "A36",
+"label": "Segment 1 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.1",
+"sheet": "Base Data Input",
+"cell": "B36",
+"label": "Segment 1 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.1",
+"sheet": "Base Data Input",
+"cell": "C36",
+"label": "Segment 1 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.1",
+"sheet": "Base Data Input",
+"cell": "D36",
+"label": "Segment 1 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.1",
+"sheet": "Base Data Input",
+"cell": "E36",
+"label": "Segment 1 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.1",
+"sheet": "Base Data Input",
+"cell": "F36",
+"label": "Segment 1 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.1",
+"sheet": "Base Data Input",
+"cell": "G36",
+"label": "Segment 1 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.2",
+"sheet": "Base Data Input",
+"cell": "A37",
+"label": "Segment 2 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.2",
+"sheet": "Base Data Input",
+"cell": "B37",
+"label": "Segment 2 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.2",
+"sheet": "Base Data Input",
+"cell": "C37",
+"label": "Segment 2 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.2",
+"sheet": "Base Data Input",
+"cell": "D37",
+"label": "Segment 2 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.2",
+"sheet": "Base Data Input",
+"cell": "E37",
+"label": "Segment 2 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.2",
+"sheet": "Base Data Input",
+"cell": "F37",
+"label": "Segment 2 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.2",
+"sheet": "Base Data Input",
+"cell": "G37",
+"label": "Segment 2 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.3",
+"sheet": "Base Data Input",
+"cell": "A38",
+"label": "Segment 3 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.3",
+"sheet": "Base Data Input",
+"cell": "B38",
+"label": "Segment 3 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.3",
+"sheet": "Base Data Input",
+"cell": "C38",
+"label": "Segment 3 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.3",
+"sheet": "Base Data Input",
+"cell": "D38",
+"label": "Segment 3 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.3",
+"sheet": "Base Data Input",
+"cell": "E38",
+"label": "Segment 3 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.3",
+"sheet": "Base Data Input",
+"cell": "F38",
+"label": "Segment 3 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.3",
+"sheet": "Base Data Input",
+"cell": "G38",
+"label": "Segment 3 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.4",
+"sheet": "Base Data Input",
+"cell": "A39",
+"label": "Segment 4 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.4",
+"sheet": "Base Data Input",
+"cell": "B39",
+"label": "Segment 4 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.4",
+"sheet": "Base Data Input",
+"cell": "C39",
+"label": "Segment 4 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.4",
+"sheet": "Base Data Input",
+"cell": "D39",
+"label": "Segment 4 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.4",
+"sheet": "Base Data Input",
+"cell": "E39",
+"label": "Segment 4 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.4",
+"sheet": "Base Data Input",
+"cell": "F39",
+"label": "Segment 4 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.4",
+"sheet": "Base Data Input",
+"cell": "G39",
+"label": "Segment 4 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.5",
+"sheet": "Base Data Input",
+"cell": "A40",
+"label": "Segment 5 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.5",
+"sheet": "Base Data Input",
+"cell": "B40",
+"label": "Segment 5 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.5",
+"sheet": "Base Data Input",
+"cell": "C40",
+"label": "Segment 5 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.5",
+"sheet": "Base Data Input",
+"cell": "D40",
+"label": "Segment 5 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.5",
+"sheet": "Base Data Input",
+"cell": "E40",
+"label": "Segment 5 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.5",
+"sheet": "Base Data Input",
+"cell": "F40",
+"label": "Segment 5 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.5",
+"sheet": "Base Data Input",
+"cell": "G40",
+"label": "Segment 5 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.6",
+"sheet": "Base Data Input",
+"cell": "A41",
+"label": "Segment 6 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.6",
+"sheet": "Base Data Input",
+"cell": "B41",
+"label": "Segment 6 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.6",
+"sheet": "Base Data Input",
+"cell": "C41",
+"label": "Segment 6 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.6",
+"sheet": "Base Data Input",
+"cell": "D41",
+"label": "Segment 6 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.6",
+"sheet": "Base Data Input",
+"cell": "E41",
+"label": "Segment 6 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.6",
+"sheet": "Base Data Input",
+"cell": "F41",
+"label": "Segment 6 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.6",
+"sheet": "Base Data Input",
+"cell": "G41",
+"label": "Segment 6 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.7",
+"sheet": "Base Data Input",
+"cell": "A42",
+"label": "Segment 7 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.7",
+"sheet": "Base Data Input",
+"cell": "B42",
+"label": "Segment 7 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.7",
+"sheet": "Base Data Input",
+"cell": "C42",
+"label": "Segment 7 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.7",
+"sheet": "Base Data Input",
+"cell": "D42",
+"label": "Segment 7 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.7",
+"sheet": "Base Data Input",
+"cell": "E42",
+"label": "Segment 7 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.7",
+"sheet": "Base Data Input",
+"cell": "F42",
+"label": "Segment 7 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.7",
+"sheet": "Base Data Input",
+"cell": "G42",
+"label": "Segment 7 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.8",
+"sheet": "Base Data Input",
+"cell": "A43",
+"label": "Segment 8 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.8",
+"sheet": "Base Data Input",
+"cell": "B43",
+"label": "Segment 8 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.8",
+"sheet": "Base Data Input",
+"cell": "C43",
+"label": "Segment 8 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.8",
+"sheet": "Base Data Input",
+"cell": "D43",
+"label": "Segment 8 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.8",
+"sheet": "Base Data Input",
+"cell": "E43",
+"label": "Segment 8 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.8",
+"sheet": "Base Data Input",
+"cell": "F43",
+"label": "Segment 8 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.8",
+"sheet": "Base Data Input",
+"cell": "G43",
+"label": "Segment 8 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.9",
+"sheet": "Base Data Input",
+"cell": "A44",
+"label": "Segment 9 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.9",
+"sheet": "Base Data Input",
+"cell": "B44",
+"label": "Segment 9 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.9",
+"sheet": "Base Data Input",
+"cell": "C44",
+"label": "Segment 9 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.9",
+"sheet": "Base Data Input",
+"cell": "D44",
+"label": "Segment 9 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.9",
+"sheet": "Base Data Input",
+"cell": "E44",
+"label": "Segment 9 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.9",
+"sheet": "Base Data Input",
+"cell": "F44",
+"label": "Segment 9 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.9",
+"sheet": "Base Data Input",
+"cell": "G44",
+"label": "Segment 9 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.10",
+"sheet": "Base Data Input",
+"cell": "A45",
+"label": "Segment 10 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.10",
+"sheet": "Base Data Input",
+"cell": "B45",
+"label": "Segment 10 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.10",
+"sheet": "Base Data Input",
+"cell": "C45",
+"label": "Segment 10 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.10",
+"sheet": "Base Data Input",
+"cell": "D45",
+"label": "Segment 10 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.10",
+"sheet": "Base Data Input",
+"cell": "E45",
+"label": "Segment 10 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.10",
+"sheet": "Base Data Input",
+"cell": "F45",
+"label": "Segment 10 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.10",
+"sheet": "Base Data Input",
+"cell": "G45",
+"label": "Segment 10 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.11",
+"sheet": "Base Data Input",
+"cell": "A46",
+"label": "Segment 11 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.11",
+"sheet": "Base Data Input",
+"cell": "B46",
+"label": "Segment 11 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.11",
+"sheet": "Base Data Input",
+"cell": "C46",
+"label": "Segment 11 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.11",
+"sheet": "Base Data Input",
+"cell": "D46",
+"label": "Segment 11 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.11",
+"sheet": "Base Data Input",
+"cell": "E46",
+"label": "Segment 11 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.11",
+"sheet": "Base Data Input",
+"cell": "F46",
+"label": "Segment 11 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.11",
+"sheet": "Base Data Input",
+"cell": "G46",
+"label": "Segment 11 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.12",
+"sheet": "Base Data Input",
+"cell": "A47",
+"label": "Segment 12 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.12",
+"sheet": "Base Data Input",
+"cell": "B47",
+"label": "Segment 12 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.12",
+"sheet": "Base Data Input",
+"cell": "C47",
+"label": "Segment 12 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.12",
+"sheet": "Base Data Input",
+"cell": "D47",
+"label": "Segment 12 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.12",
+"sheet": "Base Data Input",
+"cell": "E47",
+"label": "Segment 12 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.12",
+"sheet": "Base Data Input",
+"cell": "F47",
+"label": "Segment 12 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.12",
+"sheet": "Base Data Input",
+"cell": "G47",
+"label": "Segment 12 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.13",
+"sheet": "Base Data Input",
+"cell": "A48",
+"label": "Segment 13 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.13",
+"sheet": "Base Data Input",
+"cell": "B48",
+"label": "Segment 13 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.13",
+"sheet": "Base Data Input",
+"cell": "C48",
+"label": "Segment 13 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.13",
+"sheet": "Base Data Input",
+"cell": "D48",
+"label": "Segment 13 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.13",
+"sheet": "Base Data Input",
+"cell": "E48",
+"label": "Segment 13 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.13",
+"sheet": "Base Data Input",
+"cell": "F48",
+"label": "Segment 13 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.13",
+"sheet": "Base Data Input",
+"cell": "G48",
+"label": "Segment 13 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.14",
+"sheet": "Base Data Input",
+"cell": "A49",
+"label": "Segment 14 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.14",
+"sheet": "Base Data Input",
+"cell": "B49",
+"label": "Segment 14 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.14",
+"sheet": "Base Data Input",
+"cell": "C49",
+"label": "Segment 14 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.14",
+"sheet": "Base Data Input",
+"cell": "D49",
+"label": "Segment 14 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.14",
+"sheet": "Base Data Input",
+"cell": "E49",
+"label": "Segment 14 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.14",
+"sheet": "Base Data Input",
+"cell": "F49",
+"label": "Segment 14 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.14",
+"sheet": "Base Data Input",
+"cell": "G49",
+"label": "Segment 14 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "seg.name.15",
+"sheet": "Base Data Input",
+"cell": "A50",
+"label": "Segment 15 name",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.15",
+"sheet": "Base Data Input",
+"cell": "B50",
+"label": "Segment 15 gross",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.15",
+"sheet": "Base Data Input",
+"cell": "C50",
+"label": "Segment 15 s3",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.15",
+"sheet": "Base Data Input",
+"cell": "D50",
+"label": "Segment 15 pd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.15",
+"sheet": "Base Data Input",
+"cell": "E50",
+"label": "Segment 15 lgd",
+"source": "ECL Handover segment table",
+"default": null
+},
+{
+"key": "seg.stressed.15",
+"sheet": "Base Data Input",
+"cell": "F50",
+"label": "Segment 15 stressed sector",
+"source": "Risk view of the sector",
+"default": "No"
+},
+{
+"key": "seg.climate.15",
+"sheet": "Base Data Input",
+"cell": "G50",
+"label": "Segment 15 climate-exposed share",
+"source": "District-wise exposure mapped to flood / drought / cyclone zones",
+"default": 0
+},
+{
+"key": "top.name.1",
+"sheet": "Base Data Input",
+"cell": "A56",
+"label": "Top borrower 1",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.1",
+"sheet": "Base Data Input",
+"cell": "B56",
+"label": "Top borrower 1 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.2",
+"sheet": "Base Data Input",
+"cell": "A57",
+"label": "Top borrower 2",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.2",
+"sheet": "Base Data Input",
+"cell": "B57",
+"label": "Top borrower 2 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.3",
+"sheet": "Base Data Input",
+"cell": "A58",
+"label": "Top borrower 3",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.3",
+"sheet": "Base Data Input",
+"cell": "B58",
+"label": "Top borrower 3 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.4",
+"sheet": "Base Data Input",
+"cell": "A59",
+"label": "Top borrower 4",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.4",
+"sheet": "Base Data Input",
+"cell": "B59",
+"label": "Top borrower 4 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.5",
+"sheet": "Base Data Input",
+"cell": "A60",
+"label": "Top borrower 5",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.5",
+"sheet": "Base Data Input",
+"cell": "B60",
+"label": "Top borrower 5 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.6",
+"sheet": "Base Data Input",
+"cell": "A61",
+"label": "Top borrower 6",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.6",
+"sheet": "Base Data Input",
+"cell": "B61",
+"label": "Top borrower 6 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.7",
+"sheet": "Base Data Input",
+"cell": "A62",
+"label": "Top borrower 7",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.7",
+"sheet": "Base Data Input",
+"cell": "B62",
+"label": "Top borrower 7 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.8",
+"sheet": "Base Data Input",
+"cell": "A63",
+"label": "Top borrower 8",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.8",
+"sheet": "Base Data Input",
+"cell": "B63",
+"label": "Top borrower 8 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.9",
+"sheet": "Base Data Input",
+"cell": "A64",
+"label": "Top borrower 9",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.9",
+"sheet": "Base Data Input",
+"cell": "B64",
+"label": "Top borrower 9 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.10",
+"sheet": "Base Data Input",
+"cell": "A65",
+"label": "Top borrower 10",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.10",
+"sheet": "Base Data Input",
+"cell": "B65",
+"label": "Top borrower 10 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.11",
+"sheet": "Base Data Input",
+"cell": "A66",
+"label": "Top borrower 11",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.11",
+"sheet": "Base Data Input",
+"cell": "B66",
+"label": "Top borrower 11 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.12",
+"sheet": "Base Data Input",
+"cell": "A67",
+"label": "Top borrower 12",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.12",
+"sheet": "Base Data Input",
+"cell": "B67",
+"label": "Top borrower 12 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.13",
+"sheet": "Base Data Input",
+"cell": "A68",
+"label": "Top borrower 13",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.13",
+"sheet": "Base Data Input",
+"cell": "B68",
+"label": "Top borrower 13 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.14",
+"sheet": "Base Data Input",
+"cell": "A69",
+"label": "Top borrower 14",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.14",
+"sheet": "Base Data Input",
+"cell": "B69",
+"label": "Top borrower 14 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.15",
+"sheet": "Base Data Input",
+"cell": "A70",
+"label": "Top borrower 15",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.15",
+"sheet": "Base Data Input",
+"cell": "B70",
+"label": "Top borrower 15 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.16",
+"sheet": "Base Data Input",
+"cell": "A71",
+"label": "Top borrower 16",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.16",
+"sheet": "Base Data Input",
+"cell": "B71",
+"label": "Top borrower 16 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.17",
+"sheet": "Base Data Input",
+"cell": "A72",
+"label": "Top borrower 17",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.17",
+"sheet": "Base Data Input",
+"cell": "B72",
+"label": "Top borrower 17 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.18",
+"sheet": "Base Data Input",
+"cell": "A73",
+"label": "Top borrower 18",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.18",
+"sheet": "Base Data Input",
+"cell": "B73",
+"label": "Top borrower 18 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.19",
+"sheet": "Base Data Input",
+"cell": "A74",
+"label": "Top borrower 19",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.19",
+"sheet": "Base Data Input",
+"cell": "B74",
+"label": "Top borrower 19 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.20",
+"sheet": "Base Data Input",
+"cell": "A75",
+"label": "Top borrower 20",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.20",
+"sheet": "Base Data Input",
+"cell": "B75",
+"label": "Top borrower 20 exposure",
+"source": "DNBS01 Annex 9 (top 25 borrowers); DNBS03 Part 7",
+"default": null
+},
+{
+"key": "sector.name.1",
+"sheet": "Base Data Input",
+"cell": "A80",
+"label": "Sector 1",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.1",
+"sheet": "Base Data Input",
+"cell": "B80",
+"label": "Sector 1 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.1",
+"sheet": "Base Data Input",
+"cell": "A94",
+"label": "State 1",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.1",
+"sheet": "Base Data Input",
+"cell": "B94",
+"label": "State 1 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.2",
+"sheet": "Base Data Input",
+"cell": "A81",
+"label": "Sector 2",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.2",
+"sheet": "Base Data Input",
+"cell": "B81",
+"label": "Sector 2 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.2",
+"sheet": "Base Data Input",
+"cell": "A95",
+"label": "State 2",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.2",
+"sheet": "Base Data Input",
+"cell": "B95",
+"label": "State 2 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.3",
+"sheet": "Base Data Input",
+"cell": "A82",
+"label": "Sector 3",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.3",
+"sheet": "Base Data Input",
+"cell": "B82",
+"label": "Sector 3 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.3",
+"sheet": "Base Data Input",
+"cell": "A96",
+"label": "State 3",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.3",
+"sheet": "Base Data Input",
+"cell": "B96",
+"label": "State 3 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.4",
+"sheet": "Base Data Input",
+"cell": "A83",
+"label": "Sector 4",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.4",
+"sheet": "Base Data Input",
+"cell": "B83",
+"label": "Sector 4 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.4",
+"sheet": "Base Data Input",
+"cell": "A97",
+"label": "State 4",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.4",
+"sheet": "Base Data Input",
+"cell": "B97",
+"label": "State 4 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.5",
+"sheet": "Base Data Input",
+"cell": "A84",
+"label": "Sector 5",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.5",
+"sheet": "Base Data Input",
+"cell": "B84",
+"label": "Sector 5 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.5",
+"sheet": "Base Data Input",
+"cell": "A98",
+"label": "State 5",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.5",
+"sheet": "Base Data Input",
+"cell": "B98",
+"label": "State 5 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.6",
+"sheet": "Base Data Input",
+"cell": "A85",
+"label": "Sector 6",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.6",
+"sheet": "Base Data Input",
+"cell": "B85",
+"label": "Sector 6 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.6",
+"sheet": "Base Data Input",
+"cell": "A99",
+"label": "State 6",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.6",
+"sheet": "Base Data Input",
+"cell": "B99",
+"label": "State 6 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.7",
+"sheet": "Base Data Input",
+"cell": "A86",
+"label": "Sector 7",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.7",
+"sheet": "Base Data Input",
+"cell": "B86",
+"label": "Sector 7 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.7",
+"sheet": "Base Data Input",
+"cell": "A100",
+"label": "State 7",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.7",
+"sheet": "Base Data Input",
+"cell": "B100",
+"label": "State 7 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.8",
+"sheet": "Base Data Input",
+"cell": "A87",
+"label": "Sector 8",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.8",
+"sheet": "Base Data Input",
+"cell": "B87",
+"label": "Sector 8 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.8",
+"sheet": "Base Data Input",
+"cell": "A101",
+"label": "State 8",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.8",
+"sheet": "Base Data Input",
+"cell": "B101",
+"label": "State 8 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.9",
+"sheet": "Base Data Input",
+"cell": "A88",
+"label": "Sector 9",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.9",
+"sheet": "Base Data Input",
+"cell": "B88",
+"label": "Sector 9 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.9",
+"sheet": "Base Data Input",
+"cell": "A102",
+"label": "State 9",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.9",
+"sheet": "Base Data Input",
+"cell": "B102",
+"label": "State 9 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.10",
+"sheet": "Base Data Input",
+"cell": "A89",
+"label": "Sector 10",
+"source": "DNBS01 Parts 9A-9B (sectoral / industry credit)",
+"default": null
+},
+{
+"key": "sector.exp.10",
+"sheet": "Base Data Input",
+"cell": "B89",
+"label": "Sector 10 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.10",
+"sheet": "Base Data Input",
+"cell": "A103",
+"label": "State 10",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.10",
+"sheet": "Base Data Input",
+"cell": "B103",
+"label": "State 10 exposure",
+"source": "Branch-wise / state-wise AUM report",
+"default": null
+},
+{
+"key": "alm.in.coll.1",
+"sheet": "Base Data Input",
+"cell": "B108",
+"label": "Inflows from loan collections – 1-7 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.1",
+"sheet": "Base Data Input",
+"cell": "C108",
+"label": "Other inflows – 1-7 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.1",
+"sheet": "Base Data Input",
+"cell": "D108",
+"label": "Outflows on borrowings and interest – 1-7 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.1",
+"sheet": "Base Data Input",
+"cell": "E108",
+"label": "Other outflows – 1-7 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.1",
+"sheet": "Base Data Input",
+"cell": "F108",
+"label": "Rate-sensitive assets – 1-7 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.1",
+"sheet": "Base Data Input",
+"cell": "G108",
+"label": "Rate-sensitive liabilities – 1-7 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.2",
+"sheet": "Base Data Input",
+"cell": "B109",
+"label": "Inflows from loan collections – 8-14 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.2",
+"sheet": "Base Data Input",
+"cell": "C109",
+"label": "Other inflows – 8-14 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.2",
+"sheet": "Base Data Input",
+"cell": "D109",
+"label": "Outflows on borrowings and interest – 8-14 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.2",
+"sheet": "Base Data Input",
+"cell": "E109",
+"label": "Other outflows – 8-14 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.2",
+"sheet": "Base Data Input",
+"cell": "F109",
+"label": "Rate-sensitive assets – 8-14 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.2",
+"sheet": "Base Data Input",
+"cell": "G109",
+"label": "Rate-sensitive liabilities – 8-14 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.3",
+"sheet": "Base Data Input",
+"cell": "B110",
+"label": "Inflows from loan collections – 15-30/31 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.3",
+"sheet": "Base Data Input",
+"cell": "C110",
+"label": "Other inflows – 15-30/31 days",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.3",
+"sheet": "Base Data Input",
+"cell": "D110",
+"label": "Outflows on borrowings and interest – 15-30/31 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.3",
+"sheet": "Base Data Input",
+"cell": "E110",
+"label": "Other outflows – 15-30/31 days",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.3",
+"sheet": "Base Data Input",
+"cell": "F110",
+"label": "Rate-sensitive assets – 15-30/31 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.3",
+"sheet": "Base Data Input",
+"cell": "G110",
+"label": "Rate-sensitive liabilities – 15-30/31 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.4",
+"sheet": "Base Data Input",
+"cell": "B111",
+"label": "Inflows from loan collections – Over 1 to 2 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.4",
+"sheet": "Base Data Input",
+"cell": "C111",
+"label": "Other inflows – Over 1 to 2 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.4",
+"sheet": "Base Data Input",
+"cell": "D111",
+"label": "Outflows on borrowings and interest – Over 1 to 2 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.4",
+"sheet": "Base Data Input",
+"cell": "E111",
+"label": "Other outflows – Over 1 to 2 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.4",
+"sheet": "Base Data Input",
+"cell": "F111",
+"label": "Rate-sensitive assets – Over 1 to 2 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.4",
+"sheet": "Base Data Input",
+"cell": "G111",
+"label": "Rate-sensitive liabilities – Over 1 to 2 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.5",
+"sheet": "Base Data Input",
+"cell": "B112",
+"label": "Inflows from loan collections – Over 2 to 3 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.5",
+"sheet": "Base Data Input",
+"cell": "C112",
+"label": "Other inflows – Over 2 to 3 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.5",
+"sheet": "Base Data Input",
+"cell": "D112",
+"label": "Outflows on borrowings and interest – Over 2 to 3 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.5",
+"sheet": "Base Data Input",
+"cell": "E112",
+"label": "Other outflows – Over 2 to 3 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.5",
+"sheet": "Base Data Input",
+"cell": "F112",
+"label": "Rate-sensitive assets – Over 2 to 3 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.5",
+"sheet": "Base Data Input",
+"cell": "G112",
+"label": "Rate-sensitive liabilities – Over 2 to 3 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.6",
+"sheet": "Base Data Input",
+"cell": "B113",
+"label": "Inflows from loan collections – Over 3 to 6 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.6",
+"sheet": "Base Data Input",
+"cell": "C113",
+"label": "Other inflows – Over 3 to 6 months",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.6",
+"sheet": "Base Data Input",
+"cell": "D113",
+"label": "Outflows on borrowings and interest – Over 3 to 6 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.6",
+"sheet": "Base Data Input",
+"cell": "E113",
+"label": "Other outflows – Over 3 to 6 months",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.6",
+"sheet": "Base Data Input",
+"cell": "F113",
+"label": "Rate-sensitive assets – Over 3 to 6 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.6",
+"sheet": "Base Data Input",
+"cell": "G113",
+"label": "Rate-sensitive liabilities – Over 3 to 6 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.7",
+"sheet": "Base Data Input",
+"cell": "B114",
+"label": "Inflows from loan collections – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.7",
+"sheet": "Base Data Input",
+"cell": "C114",
+"label": "Other inflows – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.7",
+"sheet": "Base Data Input",
+"cell": "D114",
+"label": "Outflows on borrowings and interest – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.7",
+"sheet": "Base Data Input",
+"cell": "E114",
+"label": "Other outflows – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.7",
+"sheet": "Base Data Input",
+"cell": "F114",
+"label": "Rate-sensitive assets – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.7",
+"sheet": "Base Data Input",
+"cell": "G114",
+"label": "Rate-sensitive liabilities – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.8",
+"sheet": "Base Data Input",
+"cell": "B115",
+"label": "Inflows from loan collections – Over 1 to 3 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.8",
+"sheet": "Base Data Input",
+"cell": "C115",
+"label": "Other inflows – Over 1 to 3 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.8",
+"sheet": "Base Data Input",
+"cell": "D115",
+"label": "Outflows on borrowings and interest – Over 1 to 3 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.8",
+"sheet": "Base Data Input",
+"cell": "E115",
+"label": "Other outflows – Over 1 to 3 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.8",
+"sheet": "Base Data Input",
+"cell": "F115",
+"label": "Rate-sensitive assets – Over 1 to 3 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.8",
+"sheet": "Base Data Input",
+"cell": "G115",
+"label": "Rate-sensitive liabilities – Over 1 to 3 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.9",
+"sheet": "Base Data Input",
+"cell": "B116",
+"label": "Inflows from loan collections – Over 3 to 5 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.9",
+"sheet": "Base Data Input",
+"cell": "C116",
+"label": "Other inflows – Over 3 to 5 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.9",
+"sheet": "Base Data Input",
+"cell": "D116",
+"label": "Outflows on borrowings and interest – Over 3 to 5 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.9",
+"sheet": "Base Data Input",
+"cell": "E116",
+"label": "Other outflows – Over 3 to 5 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.9",
+"sheet": "Base Data Input",
+"cell": "F116",
+"label": "Rate-sensitive assets – Over 3 to 5 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.9",
+"sheet": "Base Data Input",
+"cell": "G116",
+"label": "Rate-sensitive liabilities – Over 3 to 5 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.in.coll.10",
+"sheet": "Base Data Input",
+"cell": "B117",
+"label": "Inflows from loan collections – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.in.oth.10",
+"sheet": "Base Data Input",
+"cell": "C117",
+"label": "Other inflows – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows",
+"default": null
+},
+{
+"key": "alm.out.borr.10",
+"sheet": "Base Data Input",
+"cell": "D117",
+"label": "Outflows on borrowings and interest – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.out.oth.10",
+"sheet": "Base Data Input",
+"cell": "E117",
+"label": "Other outflows – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows",
+"default": null
+},
+{
+"key": "alm.rsa.10",
+"sheet": "Base Data Input",
+"cell": "F117",
+"label": "Rate-sensitive assets – Over 5 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.10",
+"sheet": "Base Data Input",
+"cell": "G117",
+"label": "Rate-sensitive liabilities – Over 5 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "story.1",
+"sheet": "Scenarios",
+"cell": "B5",
+"label": "Baseline scenario story",
+"source": "Risk Management Committee",
+"default": "The business plan is achieved. GDP growth, inflation and interest rates follow the central forecast. Collections, funding lines and asset quality stay as budgeted."
+},
+{
+"key": "story.2",
+"sheet": "Scenarios",
+"cell": "B6",
+"label": "Adverse scenario story",
+"source": "Risk Management Committee",
+"default": "A weak monsoon and a slowdown in MSME cash flows raise delinquencies. The policy rate rises by 200 basis points, two lenders do not renew their lines, one of the largest borrowers defaults and a mid-sized fraud is detected."
+},
+{
+"key": "story.3",
+"sheet": "Scenarios",
+"cell": "B7",
+"label": "Severe scenario story",
+"source": "Risk Management Committee",
+"default": "A large default in the NBFC sector closes wholesale funding markets for three months. Rates rise by 300 basis points, collections fall sharply after a flood in the company's main state, the three largest borrowers default, the stressed sector collapses and a cyber attack interrupts operations for a week."
+},
+{
+"key": "par.c.pdm.baseline",
+"sheet": "Scenarios",
+"cell": "B10",
+"label": "Credit: PD multiplier on the performing book – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.c.pdm.adverse",
+"sheet": "Scenarios",
+"cell": "C10",
+"label": "Credit: PD multiplier on the performing book – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.5
+},
+{
+"key": "par.c.pdm.severe",
+"sheet": "Scenarios",
+"cell": "D10",
+"label": "Credit: PD multiplier on the performing book – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 2.5
+},
+{
+"key": "par.c.lgda.baseline",
+"sheet": "Scenarios",
+"cell": "B11",
+"label": "Credit: LGD add-on (percentage points) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.c.lgda.adverse",
+"sheet": "Scenarios",
+"cell": "C11",
+"label": "Credit: LGD add-on (percentage points) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.c.lgda.severe",
+"sheet": "Scenarios",
+"cell": "D11",
+"label": "Credit: LGD add-on (percentage points) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.08
+},
+{
+"key": "par.c.slip.baseline",
+"sheet": "Scenarios",
+"cell": "B12",
+"label": "Credit: additional slippage of performing loans to Stage 3 – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.c.slip.adverse",
+"sheet": "Scenarios",
+"cell": "C12",
+"label": "Credit: additional slippage of performing loans to Stage 3 – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.01
+},
+{
+"key": "par.c.slip.severe",
+"sheet": "Scenarios",
+"cell": "D12",
+"label": "Credit: additional slippage of performing loans to Stage 3 – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.025
+},
+{
+"key": "par.c.sslip.baseline",
+"sheet": "Scenarios",
+"cell": "B13",
+"label": "Credit: extra slippage in segments marked as stressed sectors – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.c.sslip.adverse",
+"sheet": "Scenarios",
+"cell": "C13",
+"label": "Credit: extra slippage in segments marked as stressed sectors – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.02
+},
+{
+"key": "par.c.sslip.severe",
+"sheet": "Scenarios",
+"cell": "D13",
+"label": "Credit: extra slippage in segments marked as stressed sectors – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.c.inc.baseline",
+"sheet": "Scenarios",
+"cell": "B14",
+"label": "Credit: income lost on new NPAs (% of new NPA amount) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.c.inc.adverse",
+"sheet": "Scenarios",
+"cell": "C14",
+"label": "Credit: income lost on new NPAs (% of new NPA amount) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.08
+},
+{
+"key": "par.c.inc.severe",
+"sheet": "Scenarios",
+"cell": "D14",
+"label": "Credit: income lost on new NPAs (% of new NPA amount) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.08
+},
+{
+"key": "par.k.n.baseline",
+"sheet": "Scenarios",
+"cell": "B15",
+"label": "Concentration: number of largest borrowers that default – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.k.n.adverse",
+"sheet": "Scenarios",
+"cell": "C15",
+"label": "Concentration: number of largest borrowers that default – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1
+},
+{
+"key": "par.k.n.severe",
+"sheet": "Scenarios",
+"cell": "D15",
+"label": "Concentration: number of largest borrowers that default – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 3
+},
+{
+"key": "par.k.lgd.baseline",
+"sheet": "Scenarios",
+"cell": "B16",
+"label": "Concentration: LGD on defaulting large borrowers – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.45
+},
+{
+"key": "par.k.lgd.adverse",
+"sheet": "Scenarios",
+"cell": "C16",
+"label": "Concentration: LGD on defaulting large borrowers – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.45
+},
+{
+"key": "par.k.lgd.severe",
+"sheet": "Scenarios",
+"cell": "D16",
+"label": "Concentration: LGD on defaulting large borrowers – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.5
+},
+{
+"key": "par.k.sec.baseline",
+"sheet": "Scenarios",
+"cell": "B17",
+"label": "Concentration: slippage in the largest sector – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.k.sec.adverse",
+"sheet": "Scenarios",
+"cell": "C17",
+"label": "Concentration: slippage in the largest sector – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.03
+},
+{
+"key": "par.k.sec.severe",
+"sheet": "Scenarios",
+"cell": "D17",
+"label": "Concentration: slippage in the largest sector – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.06
+},
+{
+"key": "par.k.sta.baseline",
+"sheet": "Scenarios",
+"cell": "B18",
+"label": "Concentration: slippage in the largest state – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.k.sta.adverse",
+"sheet": "Scenarios",
+"cell": "C18",
+"label": "Concentration: slippage in the largest state – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.02
+},
+{
+"key": "par.k.sta.severe",
+"sheet": "Scenarios",
+"cell": "D18",
+"label": "Concentration: slippage in the largest state – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.i.bps.baseline",
+"sheet": "Scenarios",
+"cell": "B19",
+"label": "Interest rate: parallel rise in rates (basis points) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.i.bps.adverse",
+"sheet": "Scenarios",
+"cell": "C19",
+"label": "Interest rate: parallel rise in rates (basis points) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 200
+},
+{
+"key": "par.i.bps.severe",
+"sheet": "Scenarios",
+"cell": "D19",
+"label": "Interest rate: parallel rise in rates (basis points) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 300
+},
+{
+"key": "par.i.pa.baseline",
+"sheet": "Scenarios",
+"cell": "B20",
+"label": "Interest rate: pass-through to assets – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.i.pa.adverse",
+"sheet": "Scenarios",
+"cell": "C20",
+"label": "Interest rate: pass-through to assets – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.5
+},
+{
+"key": "par.i.pa.severe",
+"sheet": "Scenarios",
+"cell": "D20",
+"label": "Interest rate: pass-through to assets – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.25
+},
+{
+"key": "par.i.pl.baseline",
+"sheet": "Scenarios",
+"cell": "B21",
+"label": "Interest rate: pass-through to liabilities – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.i.pl.adverse",
+"sheet": "Scenarios",
+"cell": "C21",
+"label": "Interest rate: pass-through to liabilities – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.i.pl.severe",
+"sheet": "Scenarios",
+"cell": "D21",
+"label": "Interest rate: pass-through to liabilities – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.i.eq.baseline",
+"sheet": "Scenarios",
+"cell": "B22",
+"label": "Market: fall in equity and mutual fund prices – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.i.eq.adverse",
+"sheet": "Scenarios",
+"cell": "C22",
+"label": "Market: fall in equity and mutual fund prices – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.i.eq.severe",
+"sheet": "Scenarios",
+"cell": "D22",
+"label": "Market: fall in equity and mutual fund prices – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.3
+},
+{
+"key": "par.i.yld.baseline",
+"sheet": "Scenarios",
+"cell": "B23",
+"label": "Market: rise in bond yields (basis points) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.i.yld.adverse",
+"sheet": "Scenarios",
+"cell": "C23",
+"label": "Market: rise in bond yields (basis points) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 100
+},
+{
+"key": "par.i.yld.severe",
+"sheet": "Scenarios",
+"cell": "D23",
+"label": "Market: rise in bond yields (basis points) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 200
+},
+{
+"key": "par.i.fx.baseline",
+"sheet": "Scenarios",
+"cell": "B24",
+"label": "Market: adverse currency move – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.i.fx.adverse",
+"sheet": "Scenarios",
+"cell": "C24",
+"label": "Market: adverse currency move – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.05
+},
+{
+"key": "par.i.fx.severe",
+"sheet": "Scenarios",
+"cell": "D24",
+"label": "Market: adverse currency move – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.1
+},
+{
+"key": "par.l.coll.baseline",
+"sheet": "Scenarios",
+"cell": "B25",
+"label": "Liquidity: shortfall in loan collections – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.l.coll.adverse",
+"sheet": "Scenarios",
+"cell": "C25",
+"label": "Liquidity: shortfall in loan collections – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.l.coll.severe",
+"sheet": "Scenarios",
+"cell": "D25",
+"label": "Liquidity: shortfall in loan collections – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.35
+},
+{
+"key": "par.l.draw.baseline",
+"sheet": "Scenarios",
+"cell": "B26",
+"label": "Liquidity: drawdown of customers' undrawn limits – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.05
+},
+{
+"key": "par.l.draw.adverse",
+"sheet": "Scenarios",
+"cell": "C26",
+"label": "Liquidity: drawdown of customers' undrawn limits – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.l.draw.severe",
+"sheet": "Scenarios",
+"cell": "D26",
+"label": "Liquidity: drawdown of customers' undrawn limits – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.3
+},
+{
+"key": "par.l.lines.baseline",
+"sheet": "Scenarios",
+"cell": "B27",
+"label": "Liquidity: share of undrawn bank lines withdrawn by lenders – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.l.lines.adverse",
+"sheet": "Scenarios",
+"cell": "C27",
+"label": "Liquidity: share of undrawn bank lines withdrawn by lenders – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.5
+},
+{
+"key": "par.l.lines.severe",
+"sheet": "Scenarios",
+"cell": "D27",
+"label": "Liquidity: share of undrawn bank lines withdrawn by lenders – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 1.0
+},
+{
+"key": "par.l.hair.baseline",
+"sheet": "Scenarios",
+"cell": "B28",
+"label": "Liquidity: haircut on liquid assets – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.l.hair.adverse",
+"sheet": "Scenarios",
+"cell": "C28",
+"label": "Liquidity: haircut on liquid assets – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.05
+},
+{
+"key": "par.l.hair.severe",
+"sheet": "Scenarios",
+"cell": "D28",
+"label": "Liquidity: haircut on liquid assets – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.l.cost.baseline",
+"sheet": "Scenarios",
+"cell": "B29",
+"label": "Liquidity: rise in cost of borrowings repricing within a year (basis points) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.l.cost.adverse",
+"sheet": "Scenarios",
+"cell": "C29",
+"label": "Liquidity: rise in cost of borrowings repricing within a year (basis points) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 100
+},
+{
+"key": "par.l.cost.severe",
+"sheet": "Scenarios",
+"cell": "D29",
+"label": "Liquidity: rise in cost of borrowings repricing within a year (basis points) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 200
+},
+{
+"key": "par.o.op.baseline",
+"sheet": "Scenarios",
+"cell": "B30",
+"label": "Operational: loss events (% of gross income) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.005
+},
+{
+"key": "par.o.op.adverse",
+"sheet": "Scenarios",
+"cell": "C30",
+"label": "Operational: loss events (% of gross income) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.02
+},
+{
+"key": "par.o.op.severe",
+"sheet": "Scenarios",
+"cell": "D30",
+"label": "Operational: loss events (% of gross income) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.o.cyb.baseline",
+"sheet": "Scenarios",
+"cell": "B31",
+"label": "Cyber and IT: incident loss (% of gross income) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.cyb.adverse",
+"sheet": "Scenarios",
+"cell": "C31",
+"label": "Cyber and IT: incident loss (% of gross income) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.01
+},
+{
+"key": "par.o.cyb.severe",
+"sheet": "Scenarios",
+"cell": "D31",
+"label": "Cyber and IT: incident loss (% of gross income) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.03
+},
+{
+"key": "par.o.comp.baseline",
+"sheet": "Scenarios",
+"cell": "B32",
+"label": "Compliance and legal: penalties and claims (% of operating profit) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.comp.adverse",
+"sheet": "Scenarios",
+"cell": "C32",
+"label": "Compliance and legal: penalties and claims (% of operating profit) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.02
+},
+{
+"key": "par.o.comp.severe",
+"sheet": "Scenarios",
+"cell": "D32",
+"label": "Compliance and legal: penalties and claims (% of operating profit) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.o.rep.baseline",
+"sheet": "Scenarios",
+"cell": "B33",
+"label": "Reputation: loss of business (% of net interest income) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.rep.adverse",
+"sheet": "Scenarios",
+"cell": "C33",
+"label": "Reputation: loss of business (% of net interest income) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.o.rep.severe",
+"sheet": "Scenarios",
+"cell": "D33",
+"label": "Reputation: loss of business (% of net interest income) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.08
+},
+{
+"key": "par.o.str.baseline",
+"sheet": "Scenarios",
+"cell": "B34",
+"label": "Strategic: shortfall in operating profit against plan – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.str.adverse",
+"sheet": "Scenarios",
+"cell": "C34",
+"label": "Strategic: shortfall in operating profit against plan – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.08
+},
+{
+"key": "par.o.str.severe",
+"sheet": "Scenarios",
+"cell": "D34",
+"label": "Strategic: shortfall in operating profit against plan – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.o.opex.baseline",
+"sheet": "Scenarios",
+"cell": "B35",
+"label": "Strategic: overrun in operating expenses – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.opex.adverse",
+"sheet": "Scenarios",
+"cell": "C35",
+"label": "Strategic: overrun in operating expenses – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.03
+},
+{
+"key": "par.o.opex.severe",
+"sheet": "Scenarios",
+"cell": "D35",
+"label": "Strategic: overrun in operating expenses – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.07
+},
+{
+"key": "par.o.clim.baseline",
+"sheet": "Scenarios",
+"cell": "B36",
+"label": "Climate: slippage in the climate-exposed part of the book – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.clim.adverse",
+"sheet": "Scenarios",
+"cell": "C36",
+"label": "Climate: slippage in the climate-exposed part of the book – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.02
+},
+{
+"key": "par.o.clim.severe",
+"sheet": "Scenarios",
+"cell": "D36",
+"label": "Climate: slippage in the climate-exposed part of the book – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.04
+},
+{
+"key": "par.o.model.baseline",
+"sheet": "Scenarios",
+"cell": "B37",
+"label": "Model: understatement of ECL (% of ECL held) – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.model.adverse",
+"sheet": "Scenarios",
+"cell": "C37",
+"label": "Model: understatement of ECL (% of ECL held) – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.1
+},
+{
+"key": "par.o.model.severe",
+"sheet": "Scenarios",
+"cell": "D37",
+"label": "Model: understatement of ECL (% of ECL held) – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.15
+},
+{
+"key": "par.o.grp.baseline",
+"sheet": "Scenarios",
+"cell": "B38",
+"label": "Group: loss on exposure to group companies – Baseline",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0
+},
+{
+"key": "par.o.grp.adverse",
+"sheet": "Scenarios",
+"cell": "C38",
+"label": "Group: loss on exposure to group companies – Adverse",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.1
+},
+{
+"key": "par.o.grp.severe",
+"sheet": "Scenarios",
+"cell": "D38",
+"label": "Group: loss on exposure to group companies – Severe",
+"source": "Stress testing policy; approved by the Risk Management Committee",
+"default": 0.2
+},
+{
+"key": "act.name.1",
+"sheet": "Management Actions",
+"cell": "B7",
+"label": "Action 1",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Equity infusion by promoters / investors"
+},
+{
+"key": "act.cap.1",
+"sheet": "Management Actions",
+"cell": "C7",
+"label": "Action 1 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.1",
+"sheet": "Management Actions",
+"cell": "D7",
+"label": "Action 1 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.1",
+"sheet": "Management Actions",
+"cell": "E7",
+"label": "Action 1 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.1",
+"sheet": "Management Actions",
+"cell": "F7",
+"label": "Action 1 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.1",
+"sheet": "Management Actions",
+"cell": "G7",
+"label": "Action 1 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.2",
+"sheet": "Management Actions",
+"cell": "B8",
+"label": "Action 2",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Suspend dividend"
+},
+{
+"key": "act.cap.2",
+"sheet": "Management Actions",
+"cell": "C8",
+"label": "Action 2 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.2",
+"sheet": "Management Actions",
+"cell": "D8",
+"label": "Action 2 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.2",
+"sheet": "Management Actions",
+"cell": "E8",
+"label": "Action 2 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.2",
+"sheet": "Management Actions",
+"cell": "F8",
+"label": "Action 2 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.2",
+"sheet": "Management Actions",
+"cell": "G8",
+"label": "Action 2 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.3",
+"sheet": "Management Actions",
+"cell": "B9",
+"label": "Action 3",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Slow disbursements in higher-risk segments"
+},
+{
+"key": "act.cap.3",
+"sheet": "Management Actions",
+"cell": "C9",
+"label": "Action 3 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.3",
+"sheet": "Management Actions",
+"cell": "D9",
+"label": "Action 3 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.3",
+"sheet": "Management Actions",
+"cell": "E9",
+"label": "Action 3 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.3",
+"sheet": "Management Actions",
+"cell": "F9",
+"label": "Action 3 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.3",
+"sheet": "Management Actions",
+"cell": "G9",
+"label": "Action 3 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.4",
+"sheet": "Management Actions",
+"cell": "B10",
+"label": "Action 4",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Sell down or assign loan pools"
+},
+{
+"key": "act.cap.4",
+"sheet": "Management Actions",
+"cell": "C10",
+"label": "Action 4 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.4",
+"sheet": "Management Actions",
+"cell": "D10",
+"label": "Action 4 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.4",
+"sheet": "Management Actions",
+"cell": "E10",
+"label": "Action 4 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.4",
+"sheet": "Management Actions",
+"cell": "F10",
+"label": "Action 4 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.4",
+"sheet": "Management Actions",
+"cell": "G10",
+"label": "Action 4 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.5",
+"sheet": "Management Actions",
+"cell": "B11",
+"label": "Action 5",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Raise Tier 2 (subordinated debt)"
+},
+{
+"key": "act.cap.5",
+"sheet": "Management Actions",
+"cell": "C11",
+"label": "Action 5 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.5",
+"sheet": "Management Actions",
+"cell": "D11",
+"label": "Action 5 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.5",
+"sheet": "Management Actions",
+"cell": "E11",
+"label": "Action 5 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.5",
+"sheet": "Management Actions",
+"cell": "F11",
+"label": "Action 5 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.5",
+"sheet": "Management Actions",
+"cell": "G11",
+"label": "Action 5 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.6",
+"sheet": "Management Actions",
+"cell": "B12",
+"label": "Action 6",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Draw contingency funding lines"
+},
+{
+"key": "act.cap.6",
+"sheet": "Management Actions",
+"cell": "C12",
+"label": "Action 6 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.6",
+"sheet": "Management Actions",
+"cell": "D12",
+"label": "Action 6 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.6",
+"sheet": "Management Actions",
+"cell": "E12",
+"label": "Action 6 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.6",
+"sheet": "Management Actions",
+"cell": "F12",
+"label": "Action 6 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.6",
+"sheet": "Management Actions",
+"cell": "G12",
+"label": "Action 6 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.7",
+"sheet": "Management Actions",
+"cell": "B13",
+"label": "Action 7",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Cut discretionary costs"
+},
+{
+"key": "act.cap.7",
+"sheet": "Management Actions",
+"cell": "C13",
+"label": "Action 7 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.7",
+"sheet": "Management Actions",
+"cell": "D13",
+"label": "Action 7 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.7",
+"sheet": "Management Actions",
+"cell": "E13",
+"label": "Action 7 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.7",
+"sheet": "Management Actions",
+"cell": "F13",
+"label": "Action 7 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.7",
+"sheet": "Management Actions",
+"cell": "G13",
+"label": "Action 7 owner",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.name.8",
+"sheet": "Management Actions",
+"cell": "B14",
+"label": "Action 8",
+"source": "Capital contingency plan / contingency funding plan",
+"default": "Other"
+},
+{
+"key": "act.cap.8",
+"sheet": "Management Actions",
+"cell": "C14",
+"label": "Action 8 cap effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.rwa.8",
+"sheet": "Management Actions",
+"cell": "D14",
+"label": "Action 8 rwa effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.liq.8",
+"sheet": "Management Actions",
+"cell": "E14",
+"label": "Action 8 liq effect",
+"source": "Capital contingency plan / contingency funding plan",
+"default": null
+},
+{
+"key": "act.time.8",
+"sheet": "Management Actions",
+"cell": "F14",
+"label": "Action 8 time",
+"source": "Manual input",
+"default": null
+},
+{
+"key": "act.owner.8",
+"sheet": "Management Actions",
+"cell": "G14",
+"label": "Action 8 owner",
+"source": "Manual input",
+"default": null
+}
+]
