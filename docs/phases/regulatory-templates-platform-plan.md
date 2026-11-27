@@ -1,6 +1,6 @@
 # Regulatory templates: what the platform must provide (gap analysis)
 
-**Status: plan only (docs). Stops for the owner's approval before any code (owner, 27 Nov 2026 07:45 IST, C.2; R1-D-295).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f).**
 
 Finbyx, Udofin and LawDocsComply will build the owner's 492 regulatory templates (`docs/regulatory-templates/`, merged as specifications, R1-D-297) into registers, documents, checklists, obligation tasks and calculators. This plan says, for each generic the three need, whether a published package already provides it, so that no product builds a generic itself.
 
@@ -59,6 +59,16 @@ The 23 **calculators** are (g) plus product-specific monitors (ALM, ICAAP, provi
 5. **ODT:** confirm documents export ODT as the index says (the order named xlsx, csv, pdf and ods).
 6. **DOCGEN tags:** plain `{field}` and loops only, no conditions or expressions in templates (the safe subset), with conditions decided in data?
 7. **Order:** (b) and (c) first (every product needs export and documents), then (a), (d), (f), (e). Each its own PR and minor, each with its own plan section when it starts.
+
+## 5a. The owner's answers (27 Nov 2026 15:45 IST; R1-D-301)
+
+1. A new `@infrabyx/registers` package (its own schema), with an ADR and the platform request for IPB-14 §14.2.
+2. A trigger refuses deleting a register row before its retention date. Corrections are new versions. No purge job ever exists. Shortening retention stays maker-checker and is on the owner's locked list.
+3. A fixed vocabulary: once, daily, weekly, fortnightly, monthly, quarterly, half-yearly, annual, and event-driven with an offset in days (before or after). A reviewed mapping table covers each filed `Frequency / timeline` value; anything unmapped is refused for a person to map, never guessed.
+4. (e) is in the platform: Udofin waits for a platform calendar (its #234 (a)), and Finbyx has filing calendars too.
+5. ODT for documents, as the index says, beside PDF and DOCX; ODS for registers and calculators.
+6. `{field}` and loops only, no conditions or expressions; conditions are decided in data. Values are escaped, there are no external references or includes, and a missing binding is refused with the field names.
+7. Order: (b), (c), (a), (d), (e), (f). Each is its own PR and minor, with its plan section when it starts.
 
 ## 6. Exit checklist (for each item when built)
 

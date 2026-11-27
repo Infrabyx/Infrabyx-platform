@@ -1,6 +1,6 @@
 # R1 — Regulated calculations for the lending products (LDC-66 + PR-FBX-58)
 
-**Status: plan only. Stops for the owner's approval before any code (owner, 27 Nov 2026 07:45 IST, B.5; R1-D-295).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#211, R1-D-301), with the answers in §4a. Built next, in the order of §5.**
 
 One combined request: LawDocsComply LDC-66 and Finbyx PR-FBX-58. Finbyx (LMS) and Udofin (DLA) compute these figures for borrowers; LawDocsComply (CT) tests them. One implementation and one set of oracles mean the three agree by construction.
 
@@ -49,6 +49,24 @@ Product-side checks exported for LawDocsComply: `testing` gains `regcalcContract
 5. **Default parameter packs:** ship the packs built from the owner's models (with citations and effective dates) in the package, or have each product load them from `docs/regulatory-models` data? Shipping them makes a rule change a package release.
 6. **Applicability rule content:** the evaluator and schema in the package, the owner's rule tables (`app*_rules.json`) as the default pack, versioned?
 7. **The RBC Annex APR illustration:** the filed KFS-M01 files (worked example, master and `build_pricing.py`) hold no sheet for it, although the models' README lists an "RBI illustration test". This repository does not hold the Directions' text. May the fixture be the Annex's inputs and stated APR, typed into a test with the paragraph cited (figures only, no Annex text), from figures the owner or LawDocsComply supplies?
+
+## 4a. The owner's answers (27 Nov 2026 15:45 IST; R1-D-301)
+
+1. **Publish** `@infrabyx/regcalc` at **1.0.0**, with ADR-0015 and the platform request for IPB-14 §14.2, once this plan's exit is met.
+2. **The KFS APR** is by equal periods (the periodic IRR × periods a year, as the Annex), to two decimals of a percent, half-up.
+   - It is computed on the cash flows the borrower actually pays: the rounded instalments and every charge, net of upfront charges.
+   - A second test reproduces RBI's own figure on the unrounded instalment, to prove the method. RBI states 17.07 %, the IRR × 12 of the unrounded ₹969.73 monthly instalment; on the ₹970 actually charged it is 17.10 %. The lower figure is never shown.
+   - Actual dates are available and named on the result. The result carries the method and the basis. **[VERIFY: counsel]** on this choice.
+3. **Rounding:** the product passes its rule; the default is half-up to the rupee, the last instalment absorbing the difference.
+4. **Errors:** no new code area. The existing validation problem (422) with `reason` labels; an `IPB-CALC-*` area only if a product later needs codes.
+5. **Packs:** the defaults ship in the package, built from the owner's models, with citations and effective dates, versioned; a rule change is a package release. A product may load a stricter tenant pack (a Board-approved internal limit) through maker-checker. A pack looser than the regulatory floor is refused by the package.
+6. **Applicability:** the evaluator and schema in the package; the owner's `app*_rules.json` tables are the default pack, versioned. An unanswered question gives `needs_answer`, never a guess.
+7. **The RBC Annex illustration** is a typed fixture of figures only, citing RBI/DOR/2025-26/362 (NBFC Responsible Business Conduct Directions, 28 Nov 2025), para 29(3)(i) and (ii). No Annex text. The figures:
+   - sanctioned amount ₹20,000; 24 monthly EPIs of ₹970 (₹969.73 before rounding); first repayment 30 days after sanction; fixed rate 15 %;
+   - total interest ₹3,274; fees ₹400 (₹240 to the NBFC, ₹160 to third parties through it); net disbursed ₹19,600;
+   - total to be paid ₹23,274 (₹23,280 at the rounded ₹970);
+   - APR 17.07 % (IRR on the net disbursed amount, reducing balance);
+   - the 24-row schedule of para 29(3)(ii): instalment 1 opens at 20,000 with principal 720 and interest 250; instalment 24 opens at 958 with principal 958 and interest 12; every instalment 970. The remaining rows are typed into the fixture from the products' filed copy of the Directions (pages 11 to 13), figures only; the document is not copied.
 
 ## 5. Order, releases and exit
 
