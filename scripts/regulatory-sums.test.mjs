@@ -1,11 +1,12 @@
 // The owner's regulatory templates and models are specifications (R1-D-297): every file matches its
 // folder's SHA256SUMS, and every file is listed, so nothing is added, changed or dropped unnoticed.
-import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const ROOT = join(import.meta.dirname, "..");
+// `sha256Hex` from @infrabyx/crypto, as `bom.mjs` (no direct crypto in repository tooling, IPB-12-05).
+const { sha256Hex } = await import(join(ROOT, "packages/crypto/dist/index.js"));
 
 function files(dir) {
   return readdirSync(dir).flatMap((f) => {
@@ -36,12 +37,7 @@ describe.each(["docs/regulatory-templates", "docs/regulatory-models"])("%s", (fo
   });
 
   it("every file matches its SHA-256", () => {
-    const bad = [...sums].filter(
-      ([p, h]) =>
-        createHash("sha256")
-          .update(readFileSync(join(dir, p)))
-          .digest("hex") !== h,
-    );
+    const bad = [...sums].filter(([p, h]) => sha256Hex(readFileSync(join(dir, p))) !== h);
     expect(bad.map(([p]) => p)).toEqual([]);
   });
 });
