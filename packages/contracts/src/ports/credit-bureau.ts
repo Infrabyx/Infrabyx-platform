@@ -11,6 +11,7 @@
 import { z } from "zod";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { ConsentArtefact } from "./consent-ref.js";
+import { ScanRecord } from "./file-scan.js";
 import { PAN } from "./kyc.js";
 import { classed } from "./payload-class.js";
 
@@ -31,11 +32,17 @@ export const BUREAU_PURPOSES = [
   "co_applicant",
 ] as const;
 
-/** A file in STORAGE: its key and SHA-256 (the CIC's raw report). */
+/**
+ * A file in STORAGE: its key and SHA-256 (the CIC's raw report), and the AV scan that released it
+ * (PR-FBX-57, R1-D-304): `assertScannedClean(ref.scan, ref.sha256, "BUREAU")` before a byte is
+ * parsed. `scan` is optional in 1.x so a stored ref from before it still parses; the platform's
+ * adapters always set it, and it becomes required in 2.0.0.
+ */
 export const BureauFileRef = z
   .object({
     storageKey: regulated(z.string().min(1).max(1024)),
     sha256: regulated(z.string().regex(/^[0-9a-f]{64}$/)),
+    scan: ScanRecord.optional(),
   })
   .strict();
 export type BureauFileRef = z.infer<typeof BureauFileRef>;

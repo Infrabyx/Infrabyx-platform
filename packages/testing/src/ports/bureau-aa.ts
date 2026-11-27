@@ -31,6 +31,7 @@ export {
   type AccountAggregatorFixtures,
   ACCOUNT_AGGREGATOR_FAKE_FIXTURES,
   FakeAccountAggregator,
+  fakeCleanScan,
   fakeFiPayload,
 } from "@infrabyx/fakes";
 

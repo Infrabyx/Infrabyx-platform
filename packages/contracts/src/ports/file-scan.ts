@@ -95,6 +95,47 @@ export interface ScanProof {
 }
 
 /**
+ * PR-FBX-57 (R1-D-304): the scan a connector records with a file it wrote itself (a credit
+ * bureau's report, an account aggregator's FI payload). `file` is the quarantined object that was
+ * scanned; its SHA-256 equals the clean copy's, so `assertScannedClean(record, ref.sha256, port)`
+ * verifies the record anywhere. Optional on the refs in 1.x (a stored ref from before PR-FBX-57
+ * still parses); the platform's adapters always set it.
+ */
+export const ScanRecord = z
+  .object({
+    verdict: classed(z.string().max(32), "INTERNAL"),
+    file: DocFileRef,
+    engine: classed(z.string().max(128).nullable(), "INTERNAL"),
+    scannedAt: classed(z.iso.datetime({ offset: true }), "INTERNAL"),
+    adapter: classed(z.string().max(64), "INTERNAL"),
+  })
+  .strict();
+export type ScanRecord = z.infer<typeof ScanRecord>;
+
+/** The record of `r`, as a connector returns it beside the file it wrote. */
+export function scanRecordOf(r: FileScanResult): ScanRecord {
+  return {
+    verdict: r.verdict,
+    file: { storageKey: r.file.storageKey, sha256: r.file.sha256 },
+    engine: r.engine,
+    scannedAt: r.scannedAt,
+    adapter: r.adapter,
+  };
+}
+
+/**
+ * PR-FBX-57: the STORAGE tags a connector writes on the clean copy of a scanned file, so the
+ * object itself carries its scan. Hyphenated like `ipb-key-ref` (S3 metadata names are HTTP
+ * header names).
+ */
+export const SCAN_TAGS = {
+  verdict: "ipb-scan-verdict",
+  engine: "ipb-scan-engine",
+  scannedAt: "ipb-scanned-at",
+  sha256: "ipb-scan-sha256",
+} as const;
+
+/**
  * Throws unless `scan` is a `CLEAN` scan of exactly the bytes with SHA-256 `sha256` (IPB-02-44):
  * every reader of an untrusted upload calls it before it parses a byte (PR-LDC-39). `INFECTED` is
  * `IPB-SEC-011`; `ERROR`, an unknown verdict, or a scan of other bytes is `IPB-SEC-015` (the bytes

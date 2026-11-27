@@ -17,6 +17,11 @@ export interface CibilStub extends VendorStub {
   };
   /** Test hook: CIBIL finishes a pending report. */
   complete(requestId: string): void;
+  /**
+   * Test hook (PR-FBX-57): every report from now on carries `text` in a `remarks` field (undefined:
+   * none). The contract cases put the EICAR test string there.
+   */
+  reportRemarks(text: string | undefined): void;
 }
 
 interface Pull {
@@ -34,8 +39,10 @@ export async function startCibilStub(): Promise<CibilStub> {
   const ref: { s?: CibilStub } = {};
   const pulls = new Map<string, Pull>();
   const enquiries = new Map<string, Date[]>();
+  let remarks: string | undefined;
   const report = (pan: string) => ({
     formatVersion: "CIR-4.0",
+    ...(remarks !== undefined ? { remarks } : {}),
     consumer: { ids: [{ type: "PAN", value: pan }] },
     scores: [{ scoreName: "CIBILTUSC3", score: "761" }],
     accounts: [
@@ -128,6 +135,9 @@ export async function startCibilStub(): Promise<CibilStub> {
       const p = pulls.get(requestId);
       if (!p || p.status !== "PENDING") throw new Error(`no pending request ${requestId}`);
       p.status = "COMPLETED";
+    },
+    reportRemarks(text: string | undefined) {
+      remarks = text;
     },
   });
   return ref.s;

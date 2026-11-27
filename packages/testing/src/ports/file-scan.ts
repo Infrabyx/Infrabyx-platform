@@ -17,7 +17,7 @@ import {
 import { sha256Hex, ulid } from "@infrabyx/crypto";
 import type { ContractCase } from "../contract.js";
 import { EICAR } from "@infrabyx/fakes";
-export { EICAR, FakeFileScan } from "@infrabyx/fakes";
+export { EICAR, EICAR_IN_JSON, FakeFileScan } from "@infrabyx/fakes";
 
 const PREFIX = "tenant/tnt_contract/uploads";
 
