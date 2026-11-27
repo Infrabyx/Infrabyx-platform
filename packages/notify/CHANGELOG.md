@@ -1,5 +1,20 @@
 # @infrabyx/notify
 
+## 1.7.0
+
+### Minor Changes
+
+- 4e319d1: PR-UDF-088 (R1-D-296; guide §7fc). **Behaviour change, fixing a defect:** NOTIFY no longer cuts an SMS variable to 30 characters or the list to 10 variables. It refuses with the new `IPB-NTF-008` (422; `meta.reason` `sms_var_too_long` or `sms_too_many_vars`, naming the variable and its length, never the value) at `send`, `enqueue` and `notifyStaff` when an SMS delivery is planned, in `previewTemplate`, and at delivery. `contracts` exports the limits `SMS_VAR_MAX_LENGTH` (30) and `SMS_MAX_VARS` (10), which the `SmsMessage` schema uses; `notify` re-exports them with `smsVars`. A product whose SMS values can pass 30 characters must split them across DLT variables or use another channel.
+
+### Patch Changes
+
+- Updated dependencies [c45aaa0]
+- Updated dependencies [4e319d1]
+  - @infrabyx/config@1.24.8
+  - @infrabyx/contracts@1.54.0
+  - @infrabyx/tenancy@1.30.2
+  - @infrabyx/crypto@1.15.6
+
 ## 1.6.16
 
 ### Patch Changes
