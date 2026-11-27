@@ -12,6 +12,7 @@ import { z } from "zod";
 import { findAadhaarLike } from "../aadhaar.js";
 import type { Port, PortCall, WebhookRequestMeta } from "./common.js";
 import { ConsentArtefact } from "./consent-ref.js";
+import type { ScanRecord } from "./file-scan.js";
 import { digilockerReturnUrlAllowed } from "./kyc.js";
 import { classed } from "./payload-class.js";
 
@@ -187,6 +188,12 @@ export interface FiPayload {
   sha256: string;
   /** The ReBIT FI schema version of this payload, e.g. `1.1.3`. */
   schemaVersion: string;
+  /**
+   * The AV scan that released the payload (PR-FBX-57, R1-D-304): check it with
+   * `assertScannedClean(p.scan, p.sha256, "AA_FIU")` before parsing. Optional in 1.x; the
+   * platform's adapters always set it; required in 2.0.0.
+   */
+  scan?: ScanRecord;
 }
 
 export interface AaFetchResult extends AaEvidence {

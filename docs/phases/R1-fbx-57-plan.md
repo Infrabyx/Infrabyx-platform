@@ -1,6 +1,6 @@
 # R1 — PR-FBX-57: connectors scan what they write before it is `ready`
 
-**Status: approved by the owner, 27 Nov 2026 16:10 IST, with one change to Design 3 (R1-D-302); built in the next session.** Finbyx PR-FBX-57, accepted by the owner (27 Nov 2026 07:45 IST, B.1; R1-D-295). No owner stop is needed: it applies the existing IPB-02-44 rules (`IPB-SEC-011`, `IPB-SEC-015`) to files the connectors write themselves.
+**Status: approved by the owner, 27 Nov 2026 16:10 IST, with one change to Design 3 (R1-D-302). Built 27 Nov 2026 (R1-D-304): the tags are hyphenated (`ipb-scan-verdict`, as `ipb-key-ref`), the quarantined copy has its own key, and the Connector Agent [VERIFY] closed (it stores no file).** Finbyx PR-FBX-57, accepted by the owner (27 Nov 2026 07:45 IST, B.1; R1-D-295). No owner stop is needed: it applies the existing IPB-02-44 rules (`IPB-SEC-011`, `IPB-SEC-015`) to files the connectors write themselves.
 
 ## Today
 
