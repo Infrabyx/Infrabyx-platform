@@ -2363,6 +2363,16 @@ await notify.send(ctx, { class: "udf.recovery_notice", to, vars, deepLink, idemp
   3. Handle `IPB-NTF-008` where you send: it is definite; retrying the same values fails again.
   4. Drop any truncation or length check of your own in front of NOTIFY.
 
+## 7fd. Integration databases from a template (LDC-67; R1-D-298)
+
+From the next `@infrabyx/testing` minor (no migration, no setting). **Why:** each `startPostgres` call migrated a new database from scratch, about 3.4 s with the full platform set; a copy of a migrated template takes about 0.47 s.
+
+- **Nothing to change:** on a shared server (`IPB_TEST_PG_URL`, as CI's service container) the first call for a migration set builds `tpl_<hash>` once; every call copies it. The copy is the suite's own, as before.
+- **The set** is every migration file's content (platform and yours). Change, add or remove a file and a new template is built.
+- **`template: false`** migrates the database itself: use it in a test of a migration's own behaviour (locks, `no-transaction` files).
+- **`TestDatabase.template`** names the template used, or is undefined when the database was migrated itself.
+- **Local servers** keep one template per set they have seen. Drop them whenever you like: `alter database tpl_… is_template false;` then `drop database tpl_…;`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
