@@ -55,3 +55,31 @@ export {
   type OneTimeCharge,
   type PenalCharge,
 } from "./kfs.js";
+export {
+  CFD,
+  DEFAULT_LENDING_LIMITS,
+  LENDING_LIMITS_FLOOR,
+  LendingLimitsPack,
+  RAG,
+  lendingLimits,
+  overall,
+  rag,
+  type Rag,
+} from "./limits.js";
+export {
+  dlgMonitor,
+  goldLtv,
+  microfinance,
+  networkDays,
+  shareLtv,
+  summarise,
+  type DlgPortfolio,
+  type DlgResult,
+  type GoldLoan,
+  type GoldLtvResult,
+  type Household,
+  type LimitsSummaryLine,
+  type MicrofinanceResult,
+  type ShareLoan,
+  type ShareLtvResult,
+} from "./lending.js";
