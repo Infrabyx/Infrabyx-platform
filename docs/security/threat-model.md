@@ -1773,6 +1773,15 @@ A credit bureau's report and an account aggregator's FI payloads are vendor byte
 - **R:** the clean object carries its scan as tags, and the ref carries the scan record.
 - **The Connector Agent** stores no file today (JSON bodies only); a test fails if a STORAGE write appears in the accounting connector without `writeScanned`.
 
+### 3.197 The regulated calculations package (`@infrabyx/regcalc`; LDC-66, PR-FBX-58, R1-D-305)
+
+A pure package: no I/O, no clock, no randomness, no settings, no logging, and no `@infrabyx/*` runtime dependency (a test enforces it). It has no data flow of its own; products pass loan terms and receive figures.
+
+- **T (a wrong regulated figure: an APR, an instalment, a limit):** every amount is a decimal (a JavaScript number is refused at every input), and every module reproduces every output cell of the owner's worked examples. The harness opens a workbook only at its filed SHA-256, so a changed stored result fails before it can move an oracle, and it fails on any formula cell no test reached.
+- **T (parameter packs):** limits and thresholds ship in the package as versioned data with citations and effective dates. A product's stricter pack is checked against the regulatory floor and a looser one is refused (`rule_pack_invalid`). A pack change is a package release, reviewed like code.
+- **D:** iterative solvers (the APR's rate) have a bounded number of steps and refuse `no_solution` rather than loop or return `NaN`.
+- **Supply chain:** one new runtime dependency, `decimal.js` 10.6.0 (MIT, past the 7-day rule), pinned exactly.
+
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
 - **E (a tenant licensing itself, or one person licensing a tenant):** a version is written only on the platform's approved path: the insert policy needs a platform context and the action `tenancy.entitlement.change`, the service checks two different platform people (requester PLT_SUPER_ADMIN or PLT_FINANCE; approver a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER), refuses services, support roles, tenant users and impersonations, and the table refuses a row whose approver is its requester. R4 (60-minute delay) in production. **R:** versions and notices are insert-only; both steps are ledgered in the tenant. **D (a licence lapsing mid-work):** a lapse or revocation refuses writes only; every record stays readable until the product's detach workflow, and the tenant is told of each grant, revocation and lapse. **I:** the tenant reads only its own licences and notices (forced RLS); of the two SECURITY DEFINER functions, `entitlement_status` reads only the transaction's own tenant and `entitlement_lapses_due` (the sweep's cross-tenant list) returns nothing outside a platform context; both are on the RLS lint's reviewed list.
