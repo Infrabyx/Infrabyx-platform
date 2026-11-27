@@ -1,0 +1,1378 @@
+[
+{
+"no": 1,
+"group": "Governance & Compliance",
+"policy": "Compliance function charter and compliance manual",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 2,
+"group": "Governance & Compliance",
+"policy": "Record retention and archival policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 3,
+"group": "Governance & Compliance",
+"policy": "SBU segregation, ring-fencing and Chinese-wall policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Where the entity also carries on other regulated or non-regulated activities",
+"question": "OTHACT",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 4,
+"group": "Governance & Compliance",
+"policy": "Qualified Stock Broker enhanced governance framework",
+"type": "Mandatory if activity undertaken",
+"condition": "Stock brokers designated as QSBs by the exchanges",
+"question": "QSB",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 5,
+"group": "Governance & Compliance",
+"policy": "Fit-and-proper monitoring and disclosure policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 6,
+"group": "Governance & Compliance",
+"policy": "Change in control and material-change intimation procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 7,
+"group": "Governance & Compliance",
+"policy": "Net worth, capital and deposit monitoring policy",
+"type": "Recommended",
+"condition": "AIF: sponsor / manager continuing-interest requirement",
+"question": "AIFEQ",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Conditional",
+"OTH": "Yes"
+}
+},
+{
+"no": 8,
+"group": "Governance & Compliance",
+"policy": "Related party transactions and group-dealings policy",
+"type": "Recommended",
+"condition": "Company-form intermediaries and multi-licence groups",
+"question": "SUBS",
+"answers": {
+"SB": "Conditional",
+"DP": "Conditional",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 9,
+"group": "Governance & Compliance",
+"policy": "Delegation of authority policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 10,
+"group": "Governance & Compliance",
+"policy": "Wind-down, business exit and client-portability plan",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 11,
+"group": "AML / CFT & KYC",
+"policy": "PMLA / AML-CFT policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 12,
+"group": "AML / CFT & KYC",
+"policy": "Enterprise-wide ML/TF risk assessment",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 13,
+"group": "AML / CFT & KYC",
+"policy": "Client identification, KYC, KRA and CKYCR procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 14,
+"group": "AML / CFT & KYC",
+"policy": "Sanctions and targeted financial sanctions screening procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 15,
+"group": "AML / CFT & KYC",
+"policy": "Transaction monitoring and FIU-IND reporting procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 16,
+"group": "AML / CFT & KYC",
+"policy": "Third-party funds, validated UPI handle and mule-account prevention SOP",
+"type": "Mandatory",
+"condition": "Intermediaries collecting funds from investors",
+"question": "FUNDS",
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "Yes",
+"PMS": "Conditional",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 17,
+"group": "Client Onboarding & Suitability",
+"policy": "Client onboarding, account opening and MITC policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 18,
+"group": "Client Onboarding & Suitability",
+"policy": "Policies and procedures for clients (running account, inactive accounts, square-off)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 19,
+"group": "Client Onboarding & Suitability",
+"policy": "Risk profiling and suitability policy",
+"type": "Mandatory",
+"condition": "IAs (not RAs); good practice for portfolio managers and brokers giving incidental advice",
+"question": "VOL",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 20,
+"group": "Client Onboarding & Suitability",
+"policy": "Client agreement, fee, billing and refund policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 21,
+"group": "Client Onboarding & Suitability",
+"policy": "Dormant and inactive account policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 22,
+"group": "Client Onboarding & Suitability",
+"policy": "Direct onboarding and distributor engagement policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 23,
+"group": "Client Onboarding & Suitability",
+"policy": "Margin trading facility policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers offering MTF",
+"question": "MTF",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 24,
+"group": "Client Onboarding & Suitability",
+"policy": "Client-level segregation of advisory and distribution",
+"type": "Mandatory if activity undertaken",
+"condition": "IAs whose group or family undertakes distribution",
+"question": "DIST",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "Conditional",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 25,
+"group": "Client Onboarding & Suitability",
+"policy": "Demat debit and pledge instruction (DDPI) and pledge handling policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers obtaining DDPI or POA from clients",
+"question": "DDPI",
+"answers": {
+"SB": "Conditional",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 26,
+"group": "Client Onboarding & Suitability",
+"policy": "Accredited investor and investor eligibility verification procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "PMS: accredited-investor clients",
+"question": "ACC",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Conditional",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 27,
+"group": "Client Onboarding & Suitability",
+"policy": "Nomination, transmission and account closure procedure",
+"type": "Recommended",
+"condition": "AIFs and RTAs: investor transmission requests",
+"question": "CATX",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 28,
+"group": "Client Onboarding & Suitability",
+"policy": "Senior citizen and vulnerable investor policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 29,
+"group": "Market Conduct & Insider Trading",
+"policy": "Code of conduct for designated persons under PIT Regulations",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 30,
+"group": "Market Conduct & Insider Trading",
+"policy": "Conflict of interest policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 31,
+"group": "Market Conduct & Insider Trading",
+"policy": "Surveillance policy (alerts, processing and reporting)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 32,
+"group": "Market Conduct & Insider Trading",
+"policy": "Fraud and market-abuse prevention mechanism",
+"type": "Mandatory",
+"condition": "RTAs",
+"question": "CATX",
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 33,
+"group": "Market Conduct & Insider Trading",
+"policy": "Chinese wall, restricted list and UPSI handling procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries receiving UPSI (MBs, RTAs, research and advisory teams)",
+"question": "UPSI",
+"answers": {
+"SB": "Conditional",
+"DP": "Conditional",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 34,
+"group": "Market Conduct & Insider Trading",
+"policy": "Research report preparation and independence policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Registered RAs and research desks of brokers or MBs",
+"question": "CATX",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "Conditional",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 35,
+"group": "Market Conduct & Insider Trading",
+"policy": "Retail algo and API trading governance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers offering API or algo access",
+"question": "API",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 36,
+"group": "Market Conduct & Insider Trading",
+"policy": "Proprietary trading disclosure policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers undertaking proprietary trading",
+"question": "PROP",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 37,
+"group": "Market Conduct & Insider Trading",
+"policy": "Employee personal dealing and front-running prevention policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 38,
+"group": "Market Conduct & Insider Trading",
+"policy": "Client code modification and error account policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 39,
+"group": "Risk Management & Operations",
+"policy": "Risk management (RMS) policy: margins, exposure and square-off",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 40,
+"group": "Risk Management & Operations",
+"policy": "Client funds and securities segregation and upstreaming procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 41,
+"group": "Risk Management & Operations",
+"policy": "Business continuity and disaster recovery policy",
+"type": "Mandatory",
+"condition": "Standalone IAs and RAs: recommended (outside CSCRF)",
+"question": "VOL",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Conditional",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 42,
+"group": "Risk Management & Operations",
+"policy": "Internal audit and annual compliance audit framework",
+"type": "Mandatory",
+"condition": "MBs, RTAs and KRAs: audits under their regulations",
+"question": "CATX",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 43,
+"group": "Risk Management & Operations",
+"policy": "Technical glitch, capacity planning and software testing policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers above the client-count threshold",
+"question": "CLIENTS",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 44,
+"group": "Risk Management & Operations",
+"policy": "Authorised person onboarding and monitoring policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers with authorised persons",
+"question": "AP",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 45,
+"group": "Risk Management & Operations",
+"policy": "Due diligence policy for merchant banking assignments",
+"type": "Mandatory if activity undertaken",
+"condition": "Merchant bankers",
+"question": "CATX",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 46,
+"group": "Risk Management & Operations",
+"policy": "Underwriting and exposure limits policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Merchant bankers undertaking underwriting",
+"question": "UW",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 47,
+"group": "Risk Management & Operations",
+"policy": "Investor service request and document custody policy",
+"type": "Mandatory if activity undertaken",
+"condition": "RTAs",
+"question": "CATX",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 48,
+"group": "Risk Management & Operations",
+"policy": "KYC record validation, access and confidentiality policy",
+"type": "Mandatory if activity undertaken",
+"condition": "KRAs",
+"question": "CATX",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 49,
+"group": "Investment Management",
+"policy": "Valuation policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 50,
+"group": "Investment Management",
+"policy": "Investment in associates and related parties policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 51,
+"group": "Investment Management",
+"policy": "Investor and investment due diligence policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 52,
+"group": "Investment Management",
+"policy": "Dematerialisation and custody of investments policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 53,
+"group": "Investment Management",
+"policy": "Performance benchmarking and reporting procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 54,
+"group": "Investment Management",
+"policy": "Disclosure document and PPM governance policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 55,
+"group": "Investment Management",
+"policy": "Investment Committee terms of reference",
+"type": "Mandatory if activity undertaken",
+"condition": "Where an investment committee is constituted",
+"question": "AIFEQ",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 56,
+"group": "Investment Management",
+"policy": "Stewardship code and voting policy",
+"type": "Mandatory if activity undertaken",
+"condition": "AIFs holding listed equity",
+"question": "AIFEQ",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 57,
+"group": "Investment Management",
+"policy": "Co-investment policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Managers offering co-investment",
+"question": "AIFEQ",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 58,
+"group": "Investment Management",
+"policy": "Winding up and liquidation procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "AIF schemes approaching maturity or winding up",
+"question": "AIFEQ",
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "No",
+"AIF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 59,
+"group": "Investment Management",
+"policy": "Investment allocation and fair-treatment policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 60,
+"group": "Investment Management",
+"policy": "ESG and responsible investment policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 61,
+"group": "Investment Management",
+"policy": "PMS Regulations 2026 transition plan",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "No",
+"DP": "No",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 62,
+"group": "Investment Management",
+"policy": "Client reporting and statement policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 63,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Investor grievance redressal policy with SCORES 2.0 and ODR",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 64,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Investor charter",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 65,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Advertisement policy under the Common Advertisement Code",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 66,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Past risk-return claims and PaRRVA verification procedure",
+"type": "Mandatory",
+"condition": "Brokers acting as or for empanelled algo providers",
+"question": "API",
+"answers": {
+"SB": "Conditional",
+"DP": "No",
+"IARA": "Yes",
+"PMS": "No",
+"AIF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 67,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Policy on association with unregistered persons and finfluencers",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 68,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Website and public disclosure policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 69,
+"group": "Investor Protection, Disclosure & Advertising",
+"policy": "Employee and agent social media policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 70,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cyber security and cyber resilience policy (CSCRF)",
+"type": "Mandatory",
+"condition": "IAs and RAs only if also registered in a CSCRF category",
+"question": "CSCRF",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Conditional",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 71,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cyber crisis management plan and incident reporting procedure",
+"type": "Mandatory",
+"condition": "CSCRF elements for CSCRF REs; CERT-In reporting for all",
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 72,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cyber audit, VAPT and security monitoring plan",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "No",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 73,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Information security and access control policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Privacy notice and DPDP compliance framework",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 75,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Personal data breach response procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 76,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Outsourcing policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 77,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Third-party and vendor risk management policy",
+"type": "Mandatory",
+"condition": "IAs and RAs: recommended (outside CSCRF)",
+"question": "VOL",
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Conditional",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 78,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cloud adoption policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries using cloud services",
+"question": "CLOUD",
+"answers": {
+"SB": "Conditional",
+"DP": "Conditional",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 79,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "AI / ML tools governance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries using AI / ML tools (client disclosure mandatory for IAs and RAs)",
+"question": "AI",
+"answers": {
+"SB": "Conditional",
+"DP": "Conditional",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 80,
+"group": "HR, Ethics & Workplace",
+"policy": "Code of conduct for employees (Intermediaries Regulations Sch III)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 81,
+"group": "HR, Ethics & Workplace",
+"policy": "NISM certification and continuing professional education policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 82,
+"group": "HR, Ethics & Workplace",
+"policy": "Vigil mechanism / whistle-blower policy",
+"type": "Mandatory",
+"condition": "RTAs; others where s. 177(9) applies (good practice otherwise)",
+"question": "BIG",
+"answers": {
+"SB": "Yes",
+"DP": "Conditional",
+"IARA": "Conditional",
+"PMS": "Conditional",
+"AIF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 83,
+"group": "HR, Ethics & Workplace",
+"policy": "POSH policy",
+"type": "Mandatory",
+"condition": "Internal Committee where 10 or more employees",
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 84,
+"group": "HR, Ethics & Workplace",
+"policy": "Equal opportunity policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 85,
+"group": "HR, Ethics & Workplace",
+"policy": "Gifts, entertainment and anti-bribery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 86,
+"group": "HR, Ethics & Workplace",
+"policy": "HR policies and employee handbook",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"SB": "Yes",
+"DP": "Yes",
+"IARA": "Yes",
+"PMS": "Yes",
+"AIF": "Yes",
+"OTH": "Yes"
+}
+}
+]

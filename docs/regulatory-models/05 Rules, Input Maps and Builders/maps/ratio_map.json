@@ -1,0 +1,4130 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Certificate of Registration; company decision",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Reporting date",
+"source": "Certificate of Registration; company decision",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "Certificate of Registration; company decision",
+"default": "₹ lakh"
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "Certificate of Registration; company decision",
+"default": "Base Layer"
+},
+{
+"key": "setup.cat",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Category of NBFC",
+"source": "Certificate of Registration; company decision",
+"default": "Investment and Credit Company"
+},
+{
+"key": "setup.dep",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Accepts public deposits",
+"source": "Certificate of Registration; company decision",
+"default": "No"
+},
+{
+"key": "setup.gold",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Primarily lends against gold jewellery (50 per cent or more of financial assets)",
+"source": "Certificate of Registration; company decision",
+"default": "No"
+},
+{
+"key": "setup.lcr",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Liquidity Coverage Ratio applies",
+"source": "Certificate of Registration; company decision",
+"default": "No"
+},
+{
+"key": "setup.pca",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Prompt Corrective Action framework applies",
+"source": "Certificate of Registration; company decision",
+"default": "No"
+},
+{
+"key": "setup.basis",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Accounting basis",
+"source": "Certificate of Registration; company decision",
+"default": "IGAAP"
+},
+{
+"key": "setup.m0",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Months covered by the profit and loss figures – current period",
+"source": "Certificate of Registration; company decision",
+"default": 12
+},
+{
+"key": "setup.m1",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Months covered – previous period",
+"source": "Certificate of Registration; company decision",
+"default": 12
+},
+{
+"key": "setup.m2",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Months covered – same period last year",
+"source": "Certificate of Registration; company decision",
+"default": 12
+},
+{
+"key": "setup.margin",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Early-warning margin for internal triggers set by default",
+"source": "Certificate of Registration; company decision",
+"default": 0.1
+},
+{
+"key": "data.eq.cur",
+"sheet": "Data Input",
+"cell": "E8",
+"label": "Paid-up equity share capital – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.eq.prev",
+"sheet": "Data Input",
+"cell": "F8",
+"label": "Paid-up equity share capital – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.eq.ly",
+"sheet": "Data Input",
+"cell": "G8",
+"label": "Paid-up equity share capital – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ccps.cur",
+"sheet": "Data Input",
+"cell": "E9",
+"label": "Compulsorily convertible preference shares – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ccps.prev",
+"sheet": "Data Input",
+"cell": "F9",
+"label": "Compulsorily convertible preference shares – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ccps.ly",
+"sheet": "Data Input",
+"cell": "G9",
+"label": "Compulsorily convertible preference shares – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.res.cur",
+"sheet": "Data Input",
+"cell": "E10",
+"label": "Reserves and surplus (total) – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.res.prev",
+"sheet": "Data Input",
+"cell": "F10",
+"label": "Reserves and surplus (total) – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.res.ly",
+"sheet": "Data Input",
+"cell": "G10",
+"label": "Reserves and surplus (total) – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.reval.cur",
+"sheet": "Data Input",
+"cell": "E11",
+"label": "Of which revaluation reserve – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.reval.prev",
+"sheet": "Data Input",
+"cell": "F11",
+"label": "Of which revaluation reserve – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.reval.ly",
+"sheet": "Data Input",
+"cell": "G11",
+"label": "Of which revaluation reserve – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.nw.cur",
+"sheet": "Data Input",
+"cell": "E12",
+"label": "Net worth as per financial statements – current period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.nw.prev",
+"sheet": "Data Input",
+"cell": "F12",
+"label": "Net worth as per financial statements – previous period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.nw.ly",
+"sheet": "Data Input",
+"cell": "G12",
+"label": "Net worth as per financial statements – same period last year",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.borr.cur",
+"sheet": "Data Input",
+"cell": "E13",
+"label": "Total borrowings (secured and unsecured) – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.borr.prev",
+"sheet": "Data Input",
+"cell": "F13",
+"label": "Total borrowings (secured and unsecured) – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.borr.ly",
+"sheet": "Data Input",
+"cell": "G13",
+"label": "Total borrowings (secured and unsecured) – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.bank.cur",
+"sheet": "Data Input",
+"cell": "E14",
+"label": "Of which borrowings from banks – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.bank.prev",
+"sheet": "Data Input",
+"cell": "F14",
+"label": "Of which borrowings from banks – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.bank.ly",
+"sheet": "Data Input",
+"cell": "G14",
+"label": "Of which borrowings from banks – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cp.cur",
+"sheet": "Data Input",
+"cell": "E15",
+"label": "Of which commercial paper – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cp.prev",
+"sheet": "Data Input",
+"cell": "F15",
+"label": "Of which commercial paper – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cp.ly",
+"sheet": "Data Input",
+"cell": "G15",
+"label": "Of which commercial paper – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sub.cur",
+"sheet": "Data Input",
+"cell": "E16",
+"label": "Of which subordinated debt – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sub.prev",
+"sheet": "Data Input",
+"cell": "F16",
+"label": "Of which subordinated debt – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sub.ly",
+"sheet": "Data Input",
+"cell": "G16",
+"label": "Of which subordinated debt – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b3.cur",
+"sheet": "Data Input",
+"cell": "E17",
+"label": "Borrowings payable within 3 months – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b3.prev",
+"sheet": "Data Input",
+"cell": "F17",
+"label": "Borrowings payable within 3 months – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b3.ly",
+"sheet": "Data Input",
+"cell": "G17",
+"label": "Borrowings payable within 3 months – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b12.cur",
+"sheet": "Data Input",
+"cell": "E18",
+"label": "Borrowings payable in more than 3 and up to 12 months – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b12.prev",
+"sheet": "Data Input",
+"cell": "F18",
+"label": "Borrowings payable in more than 3 and up to 12 months – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.b12.ly",
+"sheet": "Data Input",
+"cell": "G18",
+"label": "Borrowings payable in more than 3 and up to 12 months – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.pd.cur",
+"sheet": "Data Input",
+"cell": "E19",
+"label": "Public deposits outstanding – current period",
+"source": "DNBS01; deposit register",
+"default": null
+},
+{
+"key": "data.pd.prev",
+"sheet": "Data Input",
+"cell": "F19",
+"label": "Public deposits outstanding – previous period",
+"source": "DNBS01; deposit register",
+"default": null
+},
+{
+"key": "data.pd.ly",
+"sheet": "Data Input",
+"cell": "G19",
+"label": "Public deposits outstanding – same period last year",
+"source": "DNBS01; deposit register",
+"default": null
+},
+{
+"key": "data.osl.cur",
+"sheet": "Data Input",
+"cell": "E20",
+"label": "Total outside liabilities – current period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.osl.prev",
+"sheet": "Data Input",
+"cell": "F20",
+"label": "Total outside liabilities – previous period",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.osl.ly",
+"sheet": "Data Input",
+"cell": "G20",
+"label": "Total outside liabilities – same period last year",
+"source": "DNBS01 Part 1 / DNBS02 Part 1 (sources of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ta.cur",
+"sheet": "Data Input",
+"cell": "E22",
+"label": "Total assets – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ta.prev",
+"sheet": "Data Input",
+"cell": "F22",
+"label": "Total assets – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.ta.ly",
+"sheet": "Data Input",
+"cell": "G22",
+"label": "Total assets – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.intang.cur",
+"sheet": "Data Input",
+"cell": "E23",
+"label": "Intangible assets – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.intang.prev",
+"sheet": "Data Input",
+"cell": "F23",
+"label": "Intangible assets – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.intang.ly",
+"sheet": "Data Input",
+"cell": "G23",
+"label": "Intangible assets – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.fa.cur",
+"sheet": "Data Input",
+"cell": "E24",
+"label": "Financial assets – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet; auditor's working for principal business",
+"default": null
+},
+{
+"key": "data.fa.prev",
+"sheet": "Data Input",
+"cell": "F24",
+"label": "Financial assets – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet; auditor's working for principal business",
+"default": null
+},
+{
+"key": "data.fa.ly",
+"sheet": "Data Input",
+"cell": "G24",
+"label": "Financial assets – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet; auditor's working for principal business",
+"default": null
+},
+{
+"key": "data.loans.cur",
+"sheet": "Data Input",
+"cell": "E25",
+"label": "Gross loans and advances – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.loans.prev",
+"sheet": "Data Input",
+"cell": "F25",
+"label": "Gross loans and advances – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.loans.ly",
+"sheet": "Data Input",
+"cell": "G25",
+"label": "Gross loans and advances – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sec.cur",
+"sheet": "Data Input",
+"cell": "E26",
+"label": "Of which secured loans – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sec.prev",
+"sheet": "Data Input",
+"cell": "F26",
+"label": "Of which secured loans – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.sec.ly",
+"sheet": "Data Input",
+"cell": "G26",
+"label": "Of which secured loans – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.unsec.cur",
+"sheet": "Data Input",
+"cell": "E27",
+"label": "Of which unsecured loans – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.unsec.prev",
+"sheet": "Data Input",
+"cell": "F27",
+"label": "Of which unsecured loans – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.unsec.ly",
+"sheet": "Data Input",
+"cell": "G27",
+"label": "Of which unsecured loans – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.inv.cur",
+"sheet": "Data Input",
+"cell": "E28",
+"label": "Total investments – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.inv.prev",
+"sheet": "Data Input",
+"cell": "F28",
+"label": "Total investments – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.inv.ly",
+"sheet": "Data Input",
+"cell": "G28",
+"label": "Total investments – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cash.cur",
+"sheet": "Data Input",
+"cell": "E29",
+"label": "Cash and bank balances – current period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cash.prev",
+"sheet": "Data Input",
+"cell": "F29",
+"label": "Cash and bank balances – previous period",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.cash.ly",
+"sheet": "Data Input",
+"cell": "G29",
+"label": "Cash and bank balances – same period last year",
+"source": "DNBS01 Part 2 / DNBS02 Part 2 (application of funds); balance sheet",
+"default": null
+},
+{
+"key": "data.liq.cur",
+"sheet": "Data Input",
+"cell": "E30",
+"label": "Unencumbered liquid assets – current period",
+"source": "Treasury MIS; DNBS04A",
+"default": null
+},
+{
+"key": "data.liq.prev",
+"sheet": "Data Input",
+"cell": "F30",
+"label": "Unencumbered liquid assets – previous period",
+"source": "Treasury MIS; DNBS04A",
+"default": null
+},
+{
+"key": "data.liq.ly",
+"sheet": "Data Input",
+"cell": "G30",
+"label": "Unencumbered liquid assets – same period last year",
+"source": "Treasury MIS; DNBS04A",
+"default": null
+},
+{
+"key": "data.avgta.cur",
+"sheet": "Data Input",
+"cell": "E31",
+"label": "Average total assets for the period – current period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgta.prev",
+"sheet": "Data Input",
+"cell": "F31",
+"label": "Average total assets for the period – previous period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgta.ly",
+"sheet": "Data Input",
+"cell": "G31",
+"label": "Average total assets for the period – same period last year",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgloan.cur",
+"sheet": "Data Input",
+"cell": "E32",
+"label": "Average gross loans for the period – current period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgloan.prev",
+"sheet": "Data Input",
+"cell": "F32",
+"label": "Average gross loans for the period – previous period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgloan.ly",
+"sheet": "Data Input",
+"cell": "G32",
+"label": "Average gross loans for the period – same period last year",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgborr.cur",
+"sheet": "Data Input",
+"cell": "E33",
+"label": "Average borrowings for the period – current period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgborr.prev",
+"sheet": "Data Input",
+"cell": "F33",
+"label": "Average borrowings for the period – previous period",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.avgborr.ly",
+"sheet": "Data Input",
+"cell": "G33",
+"label": "Average borrowings for the period – same period last year",
+"source": "Balance sheet and notes",
+"default": null
+},
+{
+"key": "data.inc.cur",
+"sheet": "Data Input",
+"cell": "E35",
+"label": "Total income (gross income) – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.inc.prev",
+"sheet": "Data Input",
+"cell": "F35",
+"label": "Total income (gross income) – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.inc.ly",
+"sheet": "Data Input",
+"cell": "G35",
+"label": "Total income (gross income) – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.finc.cur",
+"sheet": "Data Input",
+"cell": "E36",
+"label": "Income from financial assets – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.finc.prev",
+"sheet": "Data Input",
+"cell": "F36",
+"label": "Income from financial assets – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.finc.ly",
+"sheet": "Data Input",
+"cell": "G36",
+"label": "Income from financial assets – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ii.cur",
+"sheet": "Data Input",
+"cell": "E37",
+"label": "Interest income – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ii.prev",
+"sheet": "Data Input",
+"cell": "F37",
+"label": "Interest income – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ii.ly",
+"sheet": "Data Input",
+"cell": "G37",
+"label": "Interest income – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.fee.cur",
+"sheet": "Data Input",
+"cell": "E38",
+"label": "Fee and other operating income – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.fee.prev",
+"sheet": "Data Input",
+"cell": "F38",
+"label": "Fee and other operating income – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.fee.ly",
+"sheet": "Data Input",
+"cell": "G38",
+"label": "Fee and other operating income – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ie.cur",
+"sheet": "Data Input",
+"cell": "E39",
+"label": "Interest expense and other financing cost – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ie.prev",
+"sheet": "Data Input",
+"cell": "F39",
+"label": "Interest expense and other financing cost – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.ie.ly",
+"sheet": "Data Input",
+"cell": "G39",
+"label": "Interest expense and other financing cost – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.opex.cur",
+"sheet": "Data Input",
+"cell": "E40",
+"label": "Operating expenses – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.opex.prev",
+"sheet": "Data Input",
+"cell": "F40",
+"label": "Operating expenses – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.opex.ly",
+"sheet": "Data Input",
+"cell": "G40",
+"label": "Operating expenses – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.prov.cur",
+"sheet": "Data Input",
+"cell": "E41",
+"label": "Provisions and write-offs – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.prov.prev",
+"sheet": "Data Input",
+"cell": "F41",
+"label": "Provisions and write-offs – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.prov.ly",
+"sheet": "Data Input",
+"cell": "G41",
+"label": "Provisions and write-offs – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.pat.cur",
+"sheet": "Data Input",
+"cell": "E42",
+"label": "Profit after tax – current period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.pat.prev",
+"sheet": "Data Input",
+"cell": "F42",
+"label": "Profit after tax – previous period",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.pat.ly",
+"sheet": "Data Input",
+"cell": "G42",
+"label": "Profit after tax – same period last year",
+"source": "DNBS01 / DNBS02 Part 3 (profit and loss); statement of profit and loss",
+"default": null
+},
+{
+"key": "data.divd.cur",
+"sheet": "Data Input",
+"cell": "E43",
+"label": "Dividend proposed for the year (equity and compulsorily convertible preference shares) – current period",
+"source": "Board resolution; DNBS10",
+"default": null
+},
+{
+"key": "data.divd.prev",
+"sheet": "Data Input",
+"cell": "F43",
+"label": "Dividend proposed for the year (equity and compulsorily convertible preference shares) – previous period",
+"source": "Board resolution; DNBS10",
+"default": null
+},
+{
+"key": "data.divd.ly",
+"sheet": "Data Input",
+"cell": "G43",
+"label": "Dividend proposed for the year (equity and compulsorily convertible preference shares) – same period last year",
+"source": "Board resolution; DNBS10",
+"default": null
+},
+{
+"key": "data.excp.cur",
+"sheet": "Data Input",
+"cell": "E44",
+"label": "Exceptional or extraordinary profit included in profit after tax – current period",
+"source": "Financial statements; auditor's report",
+"default": null
+},
+{
+"key": "data.excp.prev",
+"sheet": "Data Input",
+"cell": "F44",
+"label": "Exceptional or extraordinary profit included in profit after tax – previous period",
+"source": "Financial statements; auditor's report",
+"default": null
+},
+{
+"key": "data.excp.ly",
+"sheet": "Data Input",
+"cell": "G44",
+"label": "Exceptional or extraordinary profit included in profit after tax – same period last year",
+"source": "Financial statements; auditor's report",
+"default": null
+},
+{
+"key": "data.of.cur",
+"sheet": "Data Input",
+"cell": "E46",
+"label": "Owned fund – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.of.prev",
+"sheet": "Data Input",
+"cell": "F46",
+"label": "Owned fund – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.of.ly",
+"sheet": "Data Input",
+"cell": "G46",
+"label": "Owned fund – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.nof.cur",
+"sheet": "Data Input",
+"cell": "E47",
+"label": "Net owned fund – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.nof.prev",
+"sheet": "Data Input",
+"cell": "F47",
+"label": "Net owned fund – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.nof.ly",
+"sheet": "Data Input",
+"cell": "G47",
+"label": "Net owned fund – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t1.cur",
+"sheet": "Data Input",
+"cell": "E48",
+"label": "Tier 1 capital – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t1.prev",
+"sheet": "Data Input",
+"cell": "F48",
+"label": "Tier 1 capital – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t1.ly",
+"sheet": "Data Input",
+"cell": "G48",
+"label": "Tier 1 capital – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t2.cur",
+"sheet": "Data Input",
+"cell": "E49",
+"label": "Tier 2 capital – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t2.prev",
+"sheet": "Data Input",
+"cell": "F49",
+"label": "Tier 2 capital – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.t2.ly",
+"sheet": "Data Input",
+"cell": "G49",
+"label": "Tier 2 capital – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.cet1.cur",
+"sheet": "Data Input",
+"cell": "E50",
+"label": "Common Equity Tier 1 capital (Upper Layer) – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.cet1.prev",
+"sheet": "Data Input",
+"cell": "F50",
+"label": "Common Equity Tier 1 capital (Upper Layer) – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.cet1.ly",
+"sheet": "Data Input",
+"cell": "G50",
+"label": "Common Equity Tier 1 capital (Upper Layer) – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.rwa.cur",
+"sheet": "Data Input",
+"cell": "E51",
+"label": "Total risk-weighted assets – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.rwa.prev",
+"sheet": "Data Input",
+"cell": "F51",
+"label": "Total risk-weighted assets – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.rwa.ly",
+"sheet": "Data Input",
+"cell": "G51",
+"label": "Total risk-weighted assets – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.anw.cur",
+"sheet": "Data Input",
+"cell": "E52",
+"label": "Adjusted net worth (Core Investment Company) – current period",
+"source": "DNBS12",
+"default": null
+},
+{
+"key": "data.anw.prev",
+"sheet": "Data Input",
+"cell": "F52",
+"label": "Adjusted net worth (Core Investment Company) – previous period",
+"source": "DNBS12",
+"default": null
+},
+{
+"key": "data.anw.ly",
+"sheet": "Data Input",
+"cell": "G52",
+"label": "Adjusted net worth (Core Investment Company) – same period last year",
+"source": "DNBS12",
+"default": null
+},
+{
+"key": "data.std.cur",
+"sheet": "Data Input",
+"cell": "E54",
+"label": "Standard assets – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.std.prev",
+"sheet": "Data Input",
+"cell": "F54",
+"label": "Standard assets – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.std.ly",
+"sheet": "Data Input",
+"cell": "G54",
+"label": "Standard assets – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.gnpa.cur",
+"sheet": "Data Input",
+"cell": "E55",
+"label": "Gross non-performing assets – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.gnpa.prev",
+"sheet": "Data Input",
+"cell": "F55",
+"label": "Gross non-performing assets – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.gnpa.ly",
+"sheet": "Data Input",
+"cell": "G55",
+"label": "Gross non-performing assets – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.npaprov.cur",
+"sheet": "Data Input",
+"cell": "E56",
+"label": "Provisions held for non-performing assets – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.npaprov.prev",
+"sheet": "Data Input",
+"cell": "F56",
+"label": "Provisions held for non-performing assets – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.npaprov.ly",
+"sheet": "Data Input",
+"cell": "G56",
+"label": "Provisions held for non-performing assets – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.stdprov.cur",
+"sheet": "Data Input",
+"cell": "E57",
+"label": "Provision held for standard assets – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.stdprov.prev",
+"sheet": "Data Input",
+"cell": "F57",
+"label": "Provision held for standard assets – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.stdprov.ly",
+"sheet": "Data Input",
+"cell": "G57",
+"label": "Provision held for standard assets – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.restr.cur",
+"sheet": "Data Input",
+"cell": "E58",
+"label": "Restructured standard assets – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.restr.prev",
+"sheet": "Data Input",
+"cell": "F58",
+"label": "Restructured standard assets – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.restr.ly",
+"sheet": "Data Input",
+"cell": "G58",
+"label": "Restructured standard assets – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.slip.cur",
+"sheet": "Data Input",
+"cell": "E59",
+"label": "Fresh slippages to NPA during the period – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.slip.prev",
+"sheet": "Data Input",
+"cell": "F59",
+"label": "Fresh slippages to NPA during the period – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.slip.ly",
+"sheet": "Data Input",
+"cell": "G59",
+"label": "Fresh slippages to NPA during the period – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.wo.cur",
+"sheet": "Data Input",
+"cell": "E60",
+"label": "Write-offs during the period – current period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.wo.prev",
+"sheet": "Data Input",
+"cell": "F60",
+"label": "Write-offs during the period – previous period",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.wo.ly",
+"sheet": "Data Input",
+"cell": "G60",
+"label": "Write-offs during the period – same period last year",
+"source": "DNBS01 asset classification and NPA movement parts; NPA statement",
+"default": null
+},
+{
+"key": "data.sma2.cur",
+"sheet": "Data Input",
+"cell": "E61",
+"label": "Special mention accounts – SMA-2 – current period",
+"source": "CRILC / DNBS08; MIS",
+"default": null
+},
+{
+"key": "data.sma2.prev",
+"sheet": "Data Input",
+"cell": "F61",
+"label": "Special mention accounts – SMA-2 – previous period",
+"source": "CRILC / DNBS08; MIS",
+"default": null
+},
+{
+"key": "data.sma2.ly",
+"sheet": "Data Input",
+"cell": "G61",
+"label": "Special mention accounts – SMA-2 – same period last year",
+"source": "CRILC / DNBS08; MIS",
+"default": null
+},
+{
+"key": "data.dpd30.cur",
+"sheet": "Data Input",
+"cell": "E62",
+"label": "Loans overdue more than 30 days (including NPAs) – current period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.dpd30.prev",
+"sheet": "Data Input",
+"cell": "F62",
+"label": "Loans overdue more than 30 days (including NPAs) – previous period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.dpd30.ly",
+"sheet": "Data Input",
+"cell": "G62",
+"label": "Loans overdue more than 30 days (including NPAs) – same period last year",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.s2.cur",
+"sheet": "Data Input",
+"cell": "E63",
+"label": "Stage 2 exposure (Ind AS) – current period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.s2.prev",
+"sheet": "Data Input",
+"cell": "F63",
+"label": "Stage 2 exposure (Ind AS) – previous period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.s2.ly",
+"sheet": "Data Input",
+"cell": "G63",
+"label": "Stage 2 exposure (Ind AS) – same period last year",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.s3.cur",
+"sheet": "Data Input",
+"cell": "E64",
+"label": "Stage 3 exposure (Ind AS) – current period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.s3.prev",
+"sheet": "Data Input",
+"cell": "F64",
+"label": "Stage 3 exposure (Ind AS) – previous period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.s3.ly",
+"sheet": "Data Input",
+"cell": "G64",
+"label": "Stage 3 exposure (Ind AS) – same period last year",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.ecl.cur",
+"sheet": "Data Input",
+"cell": "E65",
+"label": "Total expected credit loss allowance (Ind AS) – current period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.ecl.prev",
+"sheet": "Data Input",
+"cell": "F65",
+"label": "Total expected credit loss allowance (Ind AS) – previous period",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.ecl.ly",
+"sheet": "Data Input",
+"cell": "G65",
+"label": "Total expected credit loss allowance (Ind AS) – same period last year",
+"source": "ECL note",
+"default": null
+},
+{
+"key": "data.nn1.cur",
+"sheet": "Data Input",
+"cell": "E66",
+"label": "Net NPA ratio – previous year end – current period",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.nn1.prev",
+"sheet": "Data Input",
+"cell": "F66",
+"label": "Net NPA ratio – previous year end – previous period",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.nn1.ly",
+"sheet": "Data Input",
+"cell": "G66",
+"label": "Net NPA ratio – previous year end – same period last year",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.nn2.cur",
+"sheet": "Data Input",
+"cell": "E67",
+"label": "Net NPA ratio – year end before that – current period",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.nn2.prev",
+"sheet": "Data Input",
+"cell": "F67",
+"label": "Net NPA ratio – year end before that – previous period",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.nn2.ly",
+"sheet": "Data Input",
+"cell": "G67",
+"label": "Net NPA ratio – year end before that – same period last year",
+"source": "Previous financial statements",
+"default": null
+},
+{
+"key": "data.hqla.cur",
+"sheet": "Data Input",
+"cell": "E69",
+"label": "High quality liquid assets (after haircuts) – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.hqla.prev",
+"sheet": "Data Input",
+"cell": "F69",
+"label": "High quality liquid assets (after haircuts) – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.hqla.ly",
+"sheet": "Data Input",
+"cell": "G69",
+"label": "High quality liquid assets (after haircuts) – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.nco.cur",
+"sheet": "Data Input",
+"cell": "E70",
+"label": "Total net cash outflows over the next 30 days (stressed) – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.nco.prev",
+"sheet": "Data Input",
+"cell": "F70",
+"label": "Total net cash outflows over the next 30 days (stressed) – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.nco.ly",
+"sheet": "Data Input",
+"cell": "G70",
+"label": "Total net cash outflows over the next 30 days (stressed) – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in1.cur",
+"sheet": "Data Input",
+"cell": "E71",
+"label": "Cash inflows – 1 to 7 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in1.prev",
+"sheet": "Data Input",
+"cell": "F71",
+"label": "Cash inflows – 1 to 7 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in1.ly",
+"sheet": "Data Input",
+"cell": "G71",
+"label": "Cash inflows – 1 to 7 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out1.cur",
+"sheet": "Data Input",
+"cell": "E72",
+"label": "Cash outflows – 1 to 7 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out1.prev",
+"sheet": "Data Input",
+"cell": "F72",
+"label": "Cash outflows – 1 to 7 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out1.ly",
+"sheet": "Data Input",
+"cell": "G72",
+"label": "Cash outflows – 1 to 7 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in2.cur",
+"sheet": "Data Input",
+"cell": "E73",
+"label": "Cash inflows – 8 to 14 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in2.prev",
+"sheet": "Data Input",
+"cell": "F73",
+"label": "Cash inflows – 8 to 14 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in2.ly",
+"sheet": "Data Input",
+"cell": "G73",
+"label": "Cash inflows – 8 to 14 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out2.cur",
+"sheet": "Data Input",
+"cell": "E74",
+"label": "Cash outflows – 8 to 14 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out2.prev",
+"sheet": "Data Input",
+"cell": "F74",
+"label": "Cash outflows – 8 to 14 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out2.ly",
+"sheet": "Data Input",
+"cell": "G74",
+"label": "Cash outflows – 8 to 14 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in3.cur",
+"sheet": "Data Input",
+"cell": "E75",
+"label": "Cash inflows – 15 to 30/31 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in3.prev",
+"sheet": "Data Input",
+"cell": "F75",
+"label": "Cash inflows – 15 to 30/31 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.in3.ly",
+"sheet": "Data Input",
+"cell": "G75",
+"label": "Cash inflows – 15 to 30/31 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out3.cur",
+"sheet": "Data Input",
+"cell": "E76",
+"label": "Cash outflows – 15 to 30/31 days – current period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out3.prev",
+"sheet": "Data Input",
+"cell": "F76",
+"label": "Cash outflows – 15 to 30/31 days – previous period",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.out3.ly",
+"sheet": "Data Input",
+"cell": "G76",
+"label": "Cash outflows – 15 to 30/31 days – same period last year",
+"source": "DNBS04A / DNBS04B; ALM statements",
+"default": null
+},
+{
+"key": "data.appsec.cur",
+"sheet": "Data Input",
+"cell": "E77",
+"label": "Unencumbered approved securities held against public deposits – current period",
+"source": "Deposit-taking NBFC: liquid assets return",
+"default": null
+},
+{
+"key": "data.appsec.prev",
+"sheet": "Data Input",
+"cell": "F77",
+"label": "Unencumbered approved securities held against public deposits – previous period",
+"source": "Deposit-taking NBFC: liquid assets return",
+"default": null
+},
+{
+"key": "data.appsec.ly",
+"sheet": "Data Input",
+"cell": "G77",
+"label": "Unencumbered approved securities held against public deposits – same period last year",
+"source": "Deposit-taking NBFC: liquid assets return",
+"default": null
+},
+{
+"key": "data.single.cur",
+"sheet": "Data Input",
+"cell": "E79",
+"label": "Largest exposure to a single party (credit and investment) – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.single.prev",
+"sheet": "Data Input",
+"cell": "F79",
+"label": "Largest exposure to a single party (credit and investment) – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.single.ly",
+"sheet": "Data Input",
+"cell": "G79",
+"label": "Largest exposure to a single party (credit and investment) – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.group.cur",
+"sheet": "Data Input",
+"cell": "E80",
+"label": "Largest exposure to a single group of parties – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.group.prev",
+"sheet": "Data Input",
+"cell": "F80",
+"label": "Largest exposure to a single group of parties – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.group.ly",
+"sheet": "Data Input",
+"cell": "G80",
+"label": "Largest exposure to a single group of parties – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.top20.cur",
+"sheet": "Data Input",
+"cell": "E81",
+"label": "Exposure to the twenty largest borrowers – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.top20.prev",
+"sheet": "Data Input",
+"cell": "F81",
+"label": "Exposure to the twenty largest borrowers – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.top20.ly",
+"sheet": "Data Input",
+"cell": "G81",
+"label": "Exposure to the twenty largest borrowers – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.ipo.cur",
+"sheet": "Data Input",
+"cell": "E82",
+"label": "Largest loan to one borrower for subscribing to an initial public offer – current period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.ipo.prev",
+"sheet": "Data Input",
+"cell": "F82",
+"label": "Largest loan to one borrower for subscribing to an initial public offer – previous period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.ipo.ly",
+"sheet": "Data Input",
+"cell": "G82",
+"label": "Largest loan to one borrower for subscribing to an initial public offer – same period last year",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.cme.cur",
+"sheet": "Data Input",
+"cell": "E83",
+"label": "Total capital market exposure – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.cme.prev",
+"sheet": "Data Input",
+"cell": "F83",
+"label": "Total capital market exposure – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.cme.ly",
+"sheet": "Data Input",
+"cell": "G83",
+"label": "Total capital market exposure – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.cre.cur",
+"sheet": "Data Input",
+"cell": "E84",
+"label": "Commercial real estate exposure – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.cre.prev",
+"sheet": "Data Input",
+"cell": "F84",
+"label": "Commercial real estate exposure – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.cre.ly",
+"sheet": "Data Input",
+"cell": "G84",
+"label": "Commercial real estate exposure – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.grpx.cur",
+"sheet": "Data Input",
+"cell": "E85",
+"label": "Exposure to subsidiaries and group companies (loans and investments) – current period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.grpx.prev",
+"sheet": "Data Input",
+"cell": "F85",
+"label": "Exposure to subsidiaries and group companies (loans and investments) – previous period",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.grpx.ly",
+"sheet": "Data Input",
+"cell": "G85",
+"label": "Exposure to subsidiaries and group companies (loans and investments) – same period last year",
+"source": "DNBS03 (capital funds and risk assets); DNBS02 Part 4 and Part 9",
+"default": null
+},
+{
+"key": "data.gold.cur",
+"sheet": "Data Input",
+"cell": "E86",
+"label": "Loans against gold jewellery – current period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.gold.prev",
+"sheet": "Data Input",
+"cell": "F86",
+"label": "Loans against gold jewellery – previous period",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.gold.ly",
+"sheet": "Data Input",
+"cell": "G86",
+"label": "Loans against gold jewellery – same period last year",
+"source": "DNBS01 / DNBS02 exposure parts; DNBS03 concentration part; MIS",
+"default": null
+},
+{
+"key": "data.mfi.cur",
+"sheet": "Data Input",
+"cell": "E87",
+"label": "Microfinance loans (qualifying assets) – current period",
+"source": "MIS; DNBS01",
+"default": null
+},
+{
+"key": "data.mfi.prev",
+"sheet": "Data Input",
+"cell": "F87",
+"label": "Microfinance loans (qualifying assets) – previous period",
+"source": "MIS; DNBS01",
+"default": null
+},
+{
+"key": "data.mfi.ly",
+"sheet": "Data Input",
+"cell": "G87",
+"label": "Microfinance loans (qualifying assets) – same period last year",
+"source": "MIS; DNBS01",
+"default": null
+},
+{
+"key": "data.infra.cur",
+"sheet": "Data Input",
+"cell": "E88",
+"label": "Infrastructure loans – current period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.infra.prev",
+"sheet": "Data Input",
+"cell": "F88",
+"label": "Infrastructure loans – previous period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.infra.ly",
+"sheet": "Data Input",
+"cell": "G88",
+"label": "Infrastructure loans – same period last year",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.hf.cur",
+"sheet": "Data Input",
+"cell": "E89",
+"label": "Housing finance assets (Housing Finance Company) – current period",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.hf.prev",
+"sheet": "Data Input",
+"cell": "F89",
+"label": "Housing finance assets (Housing Finance Company) – previous period",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.hf.ly",
+"sheet": "Data Input",
+"cell": "G89",
+"label": "Housing finance assets (Housing Finance Company) – same period last year",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.hfi.cur",
+"sheet": "Data Input",
+"cell": "E90",
+"label": "Of which housing finance to individuals – current period",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.hfi.prev",
+"sheet": "Data Input",
+"cell": "F90",
+"label": "Of which housing finance to individuals – previous period",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.hfi.ly",
+"sheet": "Data Input",
+"cell": "G90",
+"label": "Of which housing finance to individuals – same period last year",
+"source": "HFC returns",
+"default": null
+},
+{
+"key": "data.fct.cur",
+"sheet": "Data Input",
+"cell": "E91",
+"label": "Factoring assets – current period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.fct.prev",
+"sheet": "Data Input",
+"cell": "F91",
+"label": "Factoring assets – previous period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.fct.ly",
+"sheet": "Data Input",
+"cell": "G91",
+"label": "Factoring assets – same period last year",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.fcti.cur",
+"sheet": "Data Input",
+"cell": "E92",
+"label": "Income from factoring business – current period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.fcti.prev",
+"sheet": "Data Input",
+"cell": "F92",
+"label": "Income from factoring business – previous period",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.fcti.ly",
+"sheet": "Data Input",
+"cell": "G92",
+"label": "Income from factoring business – same period last year",
+"source": "MIS",
+"default": null
+},
+{
+"key": "data.cicg.cur",
+"sheet": "Data Input",
+"cell": "E93",
+"label": "Investments and loans in group companies (Core Investment Company) – current period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.cicg.prev",
+"sheet": "Data Input",
+"cell": "F93",
+"label": "Investments and loans in group companies (Core Investment Company) – previous period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.cicg.ly",
+"sheet": "Data Input",
+"cell": "G93",
+"label": "Investments and loans in group companies (Core Investment Company) – same period last year",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.cice.cur",
+"sheet": "Data Input",
+"cell": "E94",
+"label": "Of which equity investments in group companies – current period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.cice.prev",
+"sheet": "Data Input",
+"cell": "F94",
+"label": "Of which equity investments in group companies – previous period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.cice.ly",
+"sheet": "Data Input",
+"cell": "G94",
+"label": "Of which equity investments in group companies – same period last year",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.netassets.cur",
+"sheet": "Data Input",
+"cell": "E95",
+"label": "Net assets (Core Investment Company) – current period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.netassets.prev",
+"sheet": "Data Input",
+"cell": "F95",
+"label": "Net assets (Core Investment Company) – previous period",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.netassets.ly",
+"sheet": "Data Input",
+"cell": "G95",
+"label": "Net assets (Core Investment Company) – same period last year",
+"source": "DNBS11 / DNBS12",
+"default": null
+},
+{
+"key": "data.land.cur",
+"sheet": "Data Input",
+"cell": "E96",
+"label": "Land and buildings not for own use – current period",
+"source": "Fixed assets and investments notes",
+"default": null
+},
+{
+"key": "data.land.prev",
+"sheet": "Data Input",
+"cell": "F96",
+"label": "Land and buildings not for own use – previous period",
+"source": "Fixed assets and investments notes",
+"default": null
+},
+{
+"key": "data.land.ly",
+"sheet": "Data Input",
+"cell": "G96",
+"label": "Land and buildings not for own use – same period last year",
+"source": "Fixed assets and investments notes",
+"default": null
+},
+{
+"key": "data.dlg.cur",
+"sheet": "Data Input",
+"cell": "E97",
+"label": "Default loss guarantee cover outstanding on the portfolio – current period",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "data.dlg.prev",
+"sheet": "Data Input",
+"cell": "F97",
+"label": "Default loss guarantee cover outstanding on the portfolio – previous period",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "data.dlg.ly",
+"sheet": "Data Input",
+"cell": "G97",
+"label": "Default loss guarantee cover outstanding on the portfolio – same period last year",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "data.dlgp.cur",
+"sheet": "Data Input",
+"cell": "E98",
+"label": "Loan portfolio covered by default loss guarantee – current period",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "data.dlgp.prev",
+"sheet": "Data Input",
+"cell": "F98",
+"label": "Loan portfolio covered by default loss guarantee – previous period",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "data.dlgp.ly",
+"sheet": "Data Input",
+"cell": "G98",
+"label": "Loan portfolio covered by default loss guarantee – same period last year",
+"source": "DLG register",
+"default": null
+},
+{
+"key": "rule.type.C01",
+"sheet": "Ratios",
+"cell": "H7",
+"label": "Capital to risk-weighted assets ratio (CRAR) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.C01",
+"sheet": "Ratios",
+"cell": "I7",
+"label": "Capital to risk-weighted assets ratio (CRAR) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.15
+},
+{
+"key": "rule.trigger.C01",
+"sheet": "Ratios",
+"cell": "J7",
+"label": "Capital to risk-weighted assets ratio (CRAR) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.165
+},
+{
+"key": "rule.override.C01",
+"sheet": "Ratios",
+"cell": "K7",
+"label": "Capital to risk-weighted assets ratio (CRAR) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C02",
+"sheet": "Ratios",
+"cell": "H8",
+"label": "Tier 1 capital ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.trigger.C02",
+"sheet": "Ratios",
+"cell": "J8",
+"label": "Tier 1 capital ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.C02",
+"sheet": "Ratios",
+"cell": "K8",
+"label": "Tier 1 capital ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C03",
+"sheet": "Ratios",
+"cell": "H9",
+"label": "Common Equity Tier 1 ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.C03",
+"sheet": "Ratios",
+"cell": "I9",
+"label": "Common Equity Tier 1 ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.09
+},
+{
+"key": "rule.trigger.C03",
+"sheet": "Ratios",
+"cell": "J9",
+"label": "Common Equity Tier 1 ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.099
+},
+{
+"key": "rule.override.C03",
+"sheet": "Ratios",
+"cell": "K9",
+"label": "Common Equity Tier 1 ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C04",
+"sheet": "Ratios",
+"cell": "H10",
+"label": "Tier 2 capital to Tier 1 capital – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.C04",
+"sheet": "Ratios",
+"cell": "I10",
+"label": "Tier 2 capital to Tier 1 capital – limit",
+"source": "Direction cited in the Reference column",
+"default": 1.0
+},
+{
+"key": "rule.trigger.C04",
+"sheet": "Ratios",
+"cell": "J10",
+"label": "Tier 2 capital to Tier 1 capital – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.9
+},
+{
+"key": "rule.override.C04",
+"sheet": "Ratios",
+"cell": "K10",
+"label": "Tier 2 capital to Tier 1 capital – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C05",
+"sheet": "Ratios",
+"cell": "H11",
+"label": "Leverage ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.C05",
+"sheet": "Ratios",
+"cell": "I11",
+"label": "Leverage ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": 7
+},
+{
+"key": "rule.trigger.C05",
+"sheet": "Ratios",
+"cell": "J11",
+"label": "Leverage ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 6.3
+},
+{
+"key": "rule.override.C05",
+"sheet": "Ratios",
+"cell": "K11",
+"label": "Leverage ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C06",
+"sheet": "Ratios",
+"cell": "H12",
+"label": "Net owned fund (₹ crore) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.C06",
+"sheet": "Ratios",
+"cell": "I12",
+"label": "Net owned fund (₹ crore) – limit",
+"source": "Direction cited in the Reference column",
+"default": 10
+},
+{
+"key": "rule.trigger.C06",
+"sheet": "Ratios",
+"cell": "J12",
+"label": "Net owned fund (₹ crore) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 11.0
+},
+{
+"key": "rule.override.C06",
+"sheet": "Ratios",
+"cell": "K12",
+"label": "Net owned fund (₹ crore) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C07",
+"sheet": "Ratios",
+"cell": "H13",
+"label": "Outside liabilities to adjusted net worth (Core Investment Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.C07",
+"sheet": "Ratios",
+"cell": "I13",
+"label": "Outside liabilities to adjusted net worth (Core Investment Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 2.5
+},
+{
+"key": "rule.trigger.C07",
+"sheet": "Ratios",
+"cell": "J13",
+"label": "Outside liabilities to adjusted net worth (Core Investment Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 2.25
+},
+{
+"key": "rule.override.C07",
+"sheet": "Ratios",
+"cell": "K13",
+"label": "Outside liabilities to adjusted net worth (Core Investment Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C08",
+"sheet": "Ratios",
+"cell": "H14",
+"label": "Adjusted net worth to risk-weighted assets (Core Investment Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.C08",
+"sheet": "Ratios",
+"cell": "I14",
+"label": "Adjusted net worth to risk-weighted assets (Core Investment Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.3
+},
+{
+"key": "rule.trigger.C08",
+"sheet": "Ratios",
+"cell": "J14",
+"label": "Adjusted net worth to risk-weighted assets (Core Investment Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.33
+},
+{
+"key": "rule.override.C08",
+"sheet": "Ratios",
+"cell": "K14",
+"label": "Adjusted net worth to risk-weighted assets (Core Investment Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.C09",
+"sheet": "Ratios",
+"cell": "H15",
+"label": "Debt to equity – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.C09",
+"sheet": "Ratios",
+"cell": "I15",
+"label": "Debt to equity – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.C09",
+"sheet": "Ratios",
+"cell": "J15",
+"label": "Debt to equity – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.C09",
+"sheet": "Ratios",
+"cell": "K15",
+"label": "Debt to equity – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P01",
+"sheet": "Ratios",
+"cell": "H16",
+"label": "Financial assets to total assets – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P01",
+"sheet": "Ratios",
+"cell": "I16",
+"label": "Financial assets to total assets – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.5
+},
+{
+"key": "rule.trigger.P01",
+"sheet": "Ratios",
+"cell": "J16",
+"label": "Financial assets to total assets – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.55
+},
+{
+"key": "rule.override.P01",
+"sheet": "Ratios",
+"cell": "K16",
+"label": "Financial assets to total assets – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P02",
+"sheet": "Ratios",
+"cell": "H17",
+"label": "Income from financial assets to gross income – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P02",
+"sheet": "Ratios",
+"cell": "I17",
+"label": "Income from financial assets to gross income – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.5
+},
+{
+"key": "rule.trigger.P02",
+"sheet": "Ratios",
+"cell": "J17",
+"label": "Income from financial assets to gross income – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.55
+},
+{
+"key": "rule.override.P02",
+"sheet": "Ratios",
+"cell": "K17",
+"label": "Income from financial assets to gross income – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P03",
+"sheet": "Ratios",
+"cell": "H18",
+"label": "Qualifying assets to total assets (Microfinance Institution) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P03",
+"sheet": "Ratios",
+"cell": "I18",
+"label": "Qualifying assets to total assets (Microfinance Institution) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.6
+},
+{
+"key": "rule.trigger.P03",
+"sheet": "Ratios",
+"cell": "J18",
+"label": "Qualifying assets to total assets (Microfinance Institution) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.66
+},
+{
+"key": "rule.override.P03",
+"sheet": "Ratios",
+"cell": "K18",
+"label": "Qualifying assets to total assets (Microfinance Institution) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P04",
+"sheet": "Ratios",
+"cell": "H19",
+"label": "Infrastructure loans to total assets (Infrastructure Finance Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P04",
+"sheet": "Ratios",
+"cell": "I19",
+"label": "Infrastructure loans to total assets (Infrastructure Finance Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.75
+},
+{
+"key": "rule.trigger.P04",
+"sheet": "Ratios",
+"cell": "J19",
+"label": "Infrastructure loans to total assets (Infrastructure Finance Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.825
+},
+{
+"key": "rule.override.P04",
+"sheet": "Ratios",
+"cell": "K19",
+"label": "Infrastructure loans to total assets (Infrastructure Finance Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P05",
+"sheet": "Ratios",
+"cell": "H20",
+"label": "Gold loans to financial assets – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.P05",
+"sheet": "Ratios",
+"cell": "I20",
+"label": "Gold loans to financial assets – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.P05",
+"sheet": "Ratios",
+"cell": "J20",
+"label": "Gold loans to financial assets – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.P05",
+"sheet": "Ratios",
+"cell": "K20",
+"label": "Gold loans to financial assets – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P06",
+"sheet": "Ratios",
+"cell": "H21",
+"label": "Housing finance to total assets (Housing Finance Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P06",
+"sheet": "Ratios",
+"cell": "I21",
+"label": "Housing finance to total assets (Housing Finance Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.6
+},
+{
+"key": "rule.trigger.P06",
+"sheet": "Ratios",
+"cell": "J21",
+"label": "Housing finance to total assets (Housing Finance Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.66
+},
+{
+"key": "rule.override.P06",
+"sheet": "Ratios",
+"cell": "K21",
+"label": "Housing finance to total assets (Housing Finance Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P07",
+"sheet": "Ratios",
+"cell": "H22",
+"label": "Individual housing finance to total assets (Housing Finance Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P07",
+"sheet": "Ratios",
+"cell": "I22",
+"label": "Individual housing finance to total assets (Housing Finance Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.5
+},
+{
+"key": "rule.trigger.P07",
+"sheet": "Ratios",
+"cell": "J22",
+"label": "Individual housing finance to total assets (Housing Finance Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.55
+},
+{
+"key": "rule.override.P07",
+"sheet": "Ratios",
+"cell": "K22",
+"label": "Individual housing finance to total assets (Housing Finance Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P08",
+"sheet": "Ratios",
+"cell": "H23",
+"label": "Factoring assets to total assets (Factor) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P08",
+"sheet": "Ratios",
+"cell": "I23",
+"label": "Factoring assets to total assets (Factor) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.5
+},
+{
+"key": "rule.trigger.P08",
+"sheet": "Ratios",
+"cell": "J23",
+"label": "Factoring assets to total assets (Factor) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.55
+},
+{
+"key": "rule.override.P08",
+"sheet": "Ratios",
+"cell": "K23",
+"label": "Factoring assets to total assets (Factor) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P09",
+"sheet": "Ratios",
+"cell": "H24",
+"label": "Factoring income to gross income (Factor) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P09",
+"sheet": "Ratios",
+"cell": "I24",
+"label": "Factoring income to gross income (Factor) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.5
+},
+{
+"key": "rule.trigger.P09",
+"sheet": "Ratios",
+"cell": "J24",
+"label": "Factoring income to gross income (Factor) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.55
+},
+{
+"key": "rule.override.P09",
+"sheet": "Ratios",
+"cell": "K24",
+"label": "Factoring income to gross income (Factor) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P10",
+"sheet": "Ratios",
+"cell": "H25",
+"label": "Group investments and loans to net assets (Core Investment Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P10",
+"sheet": "Ratios",
+"cell": "I25",
+"label": "Group investments and loans to net assets (Core Investment Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.9
+},
+{
+"key": "rule.trigger.P10",
+"sheet": "Ratios",
+"cell": "J25",
+"label": "Group investments and loans to net assets (Core Investment Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.99
+},
+{
+"key": "rule.override.P10",
+"sheet": "Ratios",
+"cell": "K25",
+"label": "Group investments and loans to net assets (Core Investment Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.P11",
+"sheet": "Ratios",
+"cell": "H26",
+"label": "Group equity investments to net assets (Core Investment Company) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.P11",
+"sheet": "Ratios",
+"cell": "I26",
+"label": "Group equity investments to net assets (Core Investment Company) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.6
+},
+{
+"key": "rule.trigger.P11",
+"sheet": "Ratios",
+"cell": "J26",
+"label": "Group equity investments to net assets (Core Investment Company) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.66
+},
+{
+"key": "rule.override.P11",
+"sheet": "Ratios",
+"cell": "K26",
+"label": "Group equity investments to net assets (Core Investment Company) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A01",
+"sheet": "Ratios",
+"cell": "H27",
+"label": "Gross NPA ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A01",
+"sheet": "Ratios",
+"cell": "I27",
+"label": "Gross NPA ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A01",
+"sheet": "Ratios",
+"cell": "J27",
+"label": "Gross NPA ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A01",
+"sheet": "Ratios",
+"cell": "K27",
+"label": "Gross NPA ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A02",
+"sheet": "Ratios",
+"cell": "H28",
+"label": "Net NPA ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.A02",
+"sheet": "Ratios",
+"cell": "I28",
+"label": "Net NPA ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.06
+},
+{
+"key": "rule.trigger.A02",
+"sheet": "Ratios",
+"cell": "J28",
+"label": "Net NPA ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.054
+},
+{
+"key": "rule.override.A02",
+"sheet": "Ratios",
+"cell": "K28",
+"label": "Net NPA ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A03",
+"sheet": "Ratios",
+"cell": "H29",
+"label": "Provision coverage ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A03",
+"sheet": "Ratios",
+"cell": "I29",
+"label": "Provision coverage ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A03",
+"sheet": "Ratios",
+"cell": "J29",
+"label": "Provision coverage ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A03",
+"sheet": "Ratios",
+"cell": "K29",
+"label": "Provision coverage ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A04",
+"sheet": "Ratios",
+"cell": "H30",
+"label": "Provision on standard assets – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.trigger.A04",
+"sheet": "Ratios",
+"cell": "J30",
+"label": "Provision on standard assets – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A04",
+"sheet": "Ratios",
+"cell": "K30",
+"label": "Provision on standard assets – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A05",
+"sheet": "Ratios",
+"cell": "H31",
+"label": "Slippage ratio (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A05",
+"sheet": "Ratios",
+"cell": "I31",
+"label": "Slippage ratio (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A05",
+"sheet": "Ratios",
+"cell": "J31",
+"label": "Slippage ratio (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A05",
+"sheet": "Ratios",
+"cell": "K31",
+"label": "Slippage ratio (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A06",
+"sheet": "Ratios",
+"cell": "H32",
+"label": "Credit cost (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A06",
+"sheet": "Ratios",
+"cell": "I32",
+"label": "Credit cost (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A06",
+"sheet": "Ratios",
+"cell": "J32",
+"label": "Credit cost (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A06",
+"sheet": "Ratios",
+"cell": "K32",
+"label": "Credit cost (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A07",
+"sheet": "Ratios",
+"cell": "H33",
+"label": "Restructured standard assets to gross loans – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A07",
+"sheet": "Ratios",
+"cell": "I33",
+"label": "Restructured standard assets to gross loans – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A07",
+"sheet": "Ratios",
+"cell": "J33",
+"label": "Restructured standard assets to gross loans – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A07",
+"sheet": "Ratios",
+"cell": "K33",
+"label": "Restructured standard assets to gross loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A08",
+"sheet": "Ratios",
+"cell": "H34",
+"label": "SMA-2 to gross loans – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A08",
+"sheet": "Ratios",
+"cell": "I34",
+"label": "SMA-2 to gross loans – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A08",
+"sheet": "Ratios",
+"cell": "J34",
+"label": "SMA-2 to gross loans – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A08",
+"sheet": "Ratios",
+"cell": "K34",
+"label": "SMA-2 to gross loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A09",
+"sheet": "Ratios",
+"cell": "H35",
+"label": "Portfolio overdue more than 30 days – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A09",
+"sheet": "Ratios",
+"cell": "I35",
+"label": "Portfolio overdue more than 30 days – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A09",
+"sheet": "Ratios",
+"cell": "J35",
+"label": "Portfolio overdue more than 30 days – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A09",
+"sheet": "Ratios",
+"cell": "K35",
+"label": "Portfolio overdue more than 30 days – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A10",
+"sheet": "Ratios",
+"cell": "H36",
+"label": "Stage 3 ratio (Ind AS) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A10",
+"sheet": "Ratios",
+"cell": "I36",
+"label": "Stage 3 ratio (Ind AS) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A10",
+"sheet": "Ratios",
+"cell": "J36",
+"label": "Stage 3 ratio (Ind AS) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A10",
+"sheet": "Ratios",
+"cell": "K36",
+"label": "Stage 3 ratio (Ind AS) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A11",
+"sheet": "Ratios",
+"cell": "H37",
+"label": "Stage 2 ratio (Ind AS) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A11",
+"sheet": "Ratios",
+"cell": "I37",
+"label": "Stage 2 ratio (Ind AS) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A11",
+"sheet": "Ratios",
+"cell": "J37",
+"label": "Stage 2 ratio (Ind AS) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A11",
+"sheet": "Ratios",
+"cell": "K37",
+"label": "Stage 2 ratio (Ind AS) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.A12",
+"sheet": "Ratios",
+"cell": "H38",
+"label": "Expected credit loss to gross loans (Ind AS) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.A12",
+"sheet": "Ratios",
+"cell": "I38",
+"label": "Expected credit loss to gross loans (Ind AS) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.A12",
+"sheet": "Ratios",
+"cell": "J38",
+"label": "Expected credit loss to gross loans (Ind AS) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.A12",
+"sheet": "Ratios",
+"cell": "K38",
+"label": "Expected credit loss to gross loans (Ind AS) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L01",
+"sheet": "Ratios",
+"cell": "H39",
+"label": "Liquidity Coverage Ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.L01",
+"sheet": "Ratios",
+"cell": "I39",
+"label": "Liquidity Coverage Ratio – limit",
+"source": "Direction cited in the Reference column",
+"default": 1.0
+},
+{
+"key": "rule.trigger.L01",
+"sheet": "Ratios",
+"cell": "J39",
+"label": "Liquidity Coverage Ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 1.1
+},
+{
+"key": "rule.override.L01",
+"sheet": "Ratios",
+"cell": "K39",
+"label": "Liquidity Coverage Ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L02",
+"sheet": "Ratios",
+"cell": "H40",
+"label": "Cumulative mismatch – 1 to 7 days – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.L02",
+"sheet": "Ratios",
+"cell": "I40",
+"label": "Cumulative mismatch – 1 to 7 days – limit",
+"source": "Direction cited in the Reference column",
+"default": -0.1
+},
+{
+"key": "rule.trigger.L02",
+"sheet": "Ratios",
+"cell": "J40",
+"label": "Cumulative mismatch – 1 to 7 days – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": -0.09
+},
+{
+"key": "rule.override.L02",
+"sheet": "Ratios",
+"cell": "K40",
+"label": "Cumulative mismatch – 1 to 7 days – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L03",
+"sheet": "Ratios",
+"cell": "H41",
+"label": "Cumulative mismatch – up to 14 days – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.L03",
+"sheet": "Ratios",
+"cell": "I41",
+"label": "Cumulative mismatch – up to 14 days – limit",
+"source": "Direction cited in the Reference column",
+"default": -0.1
+},
+{
+"key": "rule.trigger.L03",
+"sheet": "Ratios",
+"cell": "J41",
+"label": "Cumulative mismatch – up to 14 days – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": -0.09
+},
+{
+"key": "rule.override.L03",
+"sheet": "Ratios",
+"cell": "K41",
+"label": "Cumulative mismatch – up to 14 days – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L04",
+"sheet": "Ratios",
+"cell": "H42",
+"label": "Cumulative mismatch – up to 30/31 days – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.L04",
+"sheet": "Ratios",
+"cell": "I42",
+"label": "Cumulative mismatch – up to 30/31 days – limit",
+"source": "Direction cited in the Reference column",
+"default": -0.2
+},
+{
+"key": "rule.trigger.L04",
+"sheet": "Ratios",
+"cell": "J42",
+"label": "Cumulative mismatch – up to 30/31 days – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": -0.18
+},
+{
+"key": "rule.override.L04",
+"sheet": "Ratios",
+"cell": "K42",
+"label": "Cumulative mismatch – up to 30/31 days – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L05",
+"sheet": "Ratios",
+"cell": "H43",
+"label": "Liquid assets to public deposits – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Minimum"
+},
+{
+"key": "rule.limit.L05",
+"sheet": "Ratios",
+"cell": "I43",
+"label": "Liquid assets to public deposits – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.15
+},
+{
+"key": "rule.trigger.L05",
+"sheet": "Ratios",
+"cell": "J43",
+"label": "Liquid assets to public deposits – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.165
+},
+{
+"key": "rule.override.L05",
+"sheet": "Ratios",
+"cell": "K43",
+"label": "Liquid assets to public deposits – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L06",
+"sheet": "Ratios",
+"cell": "H44",
+"label": "Public deposits to net owned fund – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.L06",
+"sheet": "Ratios",
+"cell": "I44",
+"label": "Public deposits to net owned fund – limit",
+"source": "Direction cited in the Reference column",
+"default": 1.5
+},
+{
+"key": "rule.trigger.L06",
+"sheet": "Ratios",
+"cell": "J44",
+"label": "Public deposits to net owned fund – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 1.35
+},
+{
+"key": "rule.override.L06",
+"sheet": "Ratios",
+"cell": "K44",
+"label": "Public deposits to net owned fund – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L07",
+"sheet": "Ratios",
+"cell": "H45",
+"label": "Borrowings due within 12 months to total borrowings – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.L07",
+"sheet": "Ratios",
+"cell": "I45",
+"label": "Borrowings due within 12 months to total borrowings – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.L07",
+"sheet": "Ratios",
+"cell": "J45",
+"label": "Borrowings due within 12 months to total borrowings – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.L07",
+"sheet": "Ratios",
+"cell": "K45",
+"label": "Borrowings due within 12 months to total borrowings – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L08",
+"sheet": "Ratios",
+"cell": "H46",
+"label": "Commercial paper to total borrowings – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.L08",
+"sheet": "Ratios",
+"cell": "I46",
+"label": "Commercial paper to total borrowings – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.L08",
+"sheet": "Ratios",
+"cell": "J46",
+"label": "Commercial paper to total borrowings – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.L08",
+"sheet": "Ratios",
+"cell": "K46",
+"label": "Commercial paper to total borrowings – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L09",
+"sheet": "Ratios",
+"cell": "H47",
+"label": "Bank borrowings to total borrowings – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.L09",
+"sheet": "Ratios",
+"cell": "I47",
+"label": "Bank borrowings to total borrowings – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.L09",
+"sheet": "Ratios",
+"cell": "J47",
+"label": "Bank borrowings to total borrowings – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.L09",
+"sheet": "Ratios",
+"cell": "K47",
+"label": "Bank borrowings to total borrowings – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.L10",
+"sheet": "Ratios",
+"cell": "H48",
+"label": "Liquid assets to total assets – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.L10",
+"sheet": "Ratios",
+"cell": "I48",
+"label": "Liquid assets to total assets – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.L10",
+"sheet": "Ratios",
+"cell": "J48",
+"label": "Liquid assets to total assets – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.L10",
+"sheet": "Ratios",
+"cell": "K48",
+"label": "Liquid assets to total assets – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E01",
+"sheet": "Ratios",
+"cell": "H49",
+"label": "Largest single-party exposure to Tier 1 capital – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.trigger.E01",
+"sheet": "Ratios",
+"cell": "J49",
+"label": "Largest single-party exposure to Tier 1 capital – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E01",
+"sheet": "Ratios",
+"cell": "K49",
+"label": "Largest single-party exposure to Tier 1 capital – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E02",
+"sheet": "Ratios",
+"cell": "H50",
+"label": "Largest group exposure to Tier 1 capital – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.trigger.E02",
+"sheet": "Ratios",
+"cell": "J50",
+"label": "Largest group exposure to Tier 1 capital – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E02",
+"sheet": "Ratios",
+"cell": "K50",
+"label": "Largest group exposure to Tier 1 capital – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E03",
+"sheet": "Ratios",
+"cell": "H51",
+"label": "Largest single counterparty exposure to eligible capital base (Upper Layer) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.E03",
+"sheet": "Ratios",
+"cell": "I51",
+"label": "Largest single counterparty exposure to eligible capital base (Upper Layer) – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.2
+},
+{
+"key": "rule.trigger.E03",
+"sheet": "Ratios",
+"cell": "J51",
+"label": "Largest single counterparty exposure to eligible capital base (Upper Layer) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.18
+},
+{
+"key": "rule.override.E03",
+"sheet": "Ratios",
+"cell": "K51",
+"label": "Largest single counterparty exposure to eligible capital base (Upper Layer) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E04",
+"sheet": "Ratios",
+"cell": "H52",
+"label": "Largest loan per borrower for an initial public offer (₹ crore) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.E04",
+"sheet": "Ratios",
+"cell": "I52",
+"label": "Largest loan per borrower for an initial public offer (₹ crore) – limit",
+"source": "Direction cited in the Reference column",
+"default": 1
+},
+{
+"key": "rule.trigger.E04",
+"sheet": "Ratios",
+"cell": "J52",
+"label": "Largest loan per borrower for an initial public offer (₹ crore) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.9
+},
+{
+"key": "rule.override.E04",
+"sheet": "Ratios",
+"cell": "K52",
+"label": "Largest loan per borrower for an initial public offer (₹ crore) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E05",
+"sheet": "Ratios",
+"cell": "H53",
+"label": "Twenty largest borrowers to gross loans – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.E05",
+"sheet": "Ratios",
+"cell": "I53",
+"label": "Twenty largest borrowers to gross loans – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.E05",
+"sheet": "Ratios",
+"cell": "J53",
+"label": "Twenty largest borrowers to gross loans – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E05",
+"sheet": "Ratios",
+"cell": "K53",
+"label": "Twenty largest borrowers to gross loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E06",
+"sheet": "Ratios",
+"cell": "H54",
+"label": "Unsecured loans to gross loans – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.E06",
+"sheet": "Ratios",
+"cell": "I54",
+"label": "Unsecured loans to gross loans – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.E06",
+"sheet": "Ratios",
+"cell": "J54",
+"label": "Unsecured loans to gross loans – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E06",
+"sheet": "Ratios",
+"cell": "K54",
+"label": "Unsecured loans to gross loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E07",
+"sheet": "Ratios",
+"cell": "H55",
+"label": "Capital market exposure to net worth – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.E07",
+"sheet": "Ratios",
+"cell": "I55",
+"label": "Capital market exposure to net worth – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.E07",
+"sheet": "Ratios",
+"cell": "J55",
+"label": "Capital market exposure to net worth – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E07",
+"sheet": "Ratios",
+"cell": "K55",
+"label": "Capital market exposure to net worth – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E08",
+"sheet": "Ratios",
+"cell": "H56",
+"label": "Commercial real estate exposure to gross loans – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.E08",
+"sheet": "Ratios",
+"cell": "I56",
+"label": "Commercial real estate exposure to gross loans – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.E08",
+"sheet": "Ratios",
+"cell": "J56",
+"label": "Commercial real estate exposure to gross loans – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E08",
+"sheet": "Ratios",
+"cell": "K56",
+"label": "Commercial real estate exposure to gross loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E09",
+"sheet": "Ratios",
+"cell": "H57",
+"label": "Group exposure to owned fund – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.E09",
+"sheet": "Ratios",
+"cell": "I57",
+"label": "Group exposure to owned fund – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.E09",
+"sheet": "Ratios",
+"cell": "J57",
+"label": "Group exposure to owned fund – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.E09",
+"sheet": "Ratios",
+"cell": "K57",
+"label": "Group exposure to owned fund – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E10",
+"sheet": "Ratios",
+"cell": "H58",
+"label": "Land and buildings not for own use to owned fund – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.E10",
+"sheet": "Ratios",
+"cell": "I58",
+"label": "Land and buildings not for own use to owned fund – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.1
+},
+{
+"key": "rule.trigger.E10",
+"sheet": "Ratios",
+"cell": "J58",
+"label": "Land and buildings not for own use to owned fund – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.09
+},
+{
+"key": "rule.override.E10",
+"sheet": "Ratios",
+"cell": "K58",
+"label": "Land and buildings not for own use to owned fund – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.E11",
+"sheet": "Ratios",
+"cell": "H59",
+"label": "Default loss guarantee cover to amount disbursed out of the covered portfolio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.E11",
+"sheet": "Ratios",
+"cell": "I59",
+"label": "Default loss guarantee cover to amount disbursed out of the covered portfolio – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.05
+},
+{
+"key": "rule.trigger.E11",
+"sheet": "Ratios",
+"cell": "J59",
+"label": "Default loss guarantee cover to amount disbursed out of the covered portfolio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.045
+},
+{
+"key": "rule.override.E11",
+"sheet": "Ratios",
+"cell": "K59",
+"label": "Default loss guarantee cover to amount disbursed out of the covered portfolio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.V01",
+"sheet": "Ratios",
+"cell": "H60",
+"label": "Dividend payout ratio – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.trigger.V01",
+"sheet": "Ratios",
+"cell": "J60",
+"label": "Dividend payout ratio – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.V01",
+"sheet": "Ratios",
+"cell": "K60",
+"label": "Dividend payout ratio – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.V02",
+"sheet": "Ratios",
+"cell": "H61",
+"label": "Highest net NPA ratio in the last three years – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Maximum"
+},
+{
+"key": "rule.limit.V02",
+"sheet": "Ratios",
+"cell": "I61",
+"label": "Highest net NPA ratio in the last three years – limit",
+"source": "Direction cited in the Reference column",
+"default": 0.06
+},
+{
+"key": "rule.trigger.V02",
+"sheet": "Ratios",
+"cell": "J61",
+"label": "Highest net NPA ratio in the last three years – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": 0.054
+},
+{
+"key": "rule.override.V02",
+"sheet": "Ratios",
+"cell": "K61",
+"label": "Highest net NPA ratio in the last three years – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F01",
+"sheet": "Ratios",
+"cell": "H62",
+"label": "Net interest margin (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F01",
+"sheet": "Ratios",
+"cell": "I62",
+"label": "Net interest margin (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F01",
+"sheet": "Ratios",
+"cell": "J62",
+"label": "Net interest margin (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F01",
+"sheet": "Ratios",
+"cell": "K62",
+"label": "Net interest margin (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F02",
+"sheet": "Ratios",
+"cell": "H63",
+"label": "Return on assets (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F02",
+"sheet": "Ratios",
+"cell": "I63",
+"label": "Return on assets (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F02",
+"sheet": "Ratios",
+"cell": "J63",
+"label": "Return on assets (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F02",
+"sheet": "Ratios",
+"cell": "K63",
+"label": "Return on assets (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F03",
+"sheet": "Ratios",
+"cell": "H64",
+"label": "Return on equity (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F03",
+"sheet": "Ratios",
+"cell": "I64",
+"label": "Return on equity (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F03",
+"sheet": "Ratios",
+"cell": "J64",
+"label": "Return on equity (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F03",
+"sheet": "Ratios",
+"cell": "K64",
+"label": "Return on equity (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F04",
+"sheet": "Ratios",
+"cell": "H65",
+"label": "Cost to income – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F04",
+"sheet": "Ratios",
+"cell": "I65",
+"label": "Cost to income – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F04",
+"sheet": "Ratios",
+"cell": "J65",
+"label": "Cost to income – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F04",
+"sheet": "Ratios",
+"cell": "K65",
+"label": "Cost to income – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F05",
+"sheet": "Ratios",
+"cell": "H66",
+"label": "Yield on loans (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F05",
+"sheet": "Ratios",
+"cell": "I66",
+"label": "Yield on loans (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F05",
+"sheet": "Ratios",
+"cell": "J66",
+"label": "Yield on loans (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F05",
+"sheet": "Ratios",
+"cell": "K66",
+"label": "Yield on loans (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F06",
+"sheet": "Ratios",
+"cell": "H67",
+"label": "Cost of borrowings (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F06",
+"sheet": "Ratios",
+"cell": "I67",
+"label": "Cost of borrowings (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F06",
+"sheet": "Ratios",
+"cell": "J67",
+"label": "Cost of borrowings (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F06",
+"sheet": "Ratios",
+"cell": "K67",
+"label": "Cost of borrowings (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F07",
+"sheet": "Ratios",
+"cell": "H68",
+"label": "Operating expenses to average assets (annualised) – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F07",
+"sheet": "Ratios",
+"cell": "I68",
+"label": "Operating expenses to average assets (annualised) – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F07",
+"sheet": "Ratios",
+"cell": "J68",
+"label": "Operating expenses to average assets (annualised) – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F07",
+"sheet": "Ratios",
+"cell": "K68",
+"label": "Operating expenses to average assets (annualised) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "rule.type.F08",
+"sheet": "Ratios",
+"cell": "H69",
+"label": "Fee income to total income – limit type",
+"source": "Direction cited in the Reference column; internal limit policy",
+"default": "Information"
+},
+{
+"key": "rule.limit.F08",
+"sheet": "Ratios",
+"cell": "I69",
+"label": "Fee income to total income – limit",
+"source": "Direction cited in the Reference column",
+"default": null
+},
+{
+"key": "rule.trigger.F08",
+"sheet": "Ratios",
+"cell": "J69",
+"label": "Fee income to total income – internal trigger",
+"source": "Risk appetite statement; Board-approved internal limits",
+"default": null
+},
+{
+"key": "rule.override.F08",
+"sheet": "Ratios",
+"cell": "K69",
+"label": "Fee income to total income – override",
+"source": "Company decision with reason recorded",
+"default": null
+}
+]

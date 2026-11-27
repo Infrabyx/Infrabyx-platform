@@ -1,0 +1,2290 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Statement date",
+"source": "Company",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "Company",
+"default": "₹ crore"
+},
+{
+"key": "setup.lcr",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Liquidity Coverage Ratio applies",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": "No"
+},
+{
+"key": "setup.lcrmin",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Minimum Liquidity Coverage Ratio",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": 1.0
+},
+{
+"key": "setup.outf",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Stress factor on outflows for the coverage ratio",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": 1.15
+},
+{
+"key": "setup.inf",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Stress factor on inflows for the coverage ratio",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": 0.75
+},
+{
+"key": "setup.incap",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Cap on inflows as a share of stressed outflows",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": 0.75
+},
+{
+"key": "setup.bps",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Interest rate shock (basis points)",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": 200
+},
+{
+"key": "setup.t1",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Tier 1 capital (for the economic value test)",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": null
+},
+{
+"key": "setup.nii",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Net interest income of the last 12 months",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": null
+},
+{
+"key": "setup.ta",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Total assets",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025; ALM policy",
+"default": null
+},
+{
+"key": "limit.reg.1",
+"sheet": "Setup",
+"cell": "B18",
+"label": "1 to 7 days – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": 0.1
+},
+{
+"key": "limit.int.1",
+"sheet": "Setup",
+"cell": "C18",
+"label": "1 to 7 days – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.07
+},
+{
+"key": "limit.reg.2",
+"sheet": "Setup",
+"cell": "B19",
+"label": "8 to 14 days – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": 0.1
+},
+{
+"key": "limit.int.2",
+"sheet": "Setup",
+"cell": "C19",
+"label": "8 to 14 days – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.07
+},
+{
+"key": "limit.reg.3",
+"sheet": "Setup",
+"cell": "B20",
+"label": "15 to 30/31 days – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": 0.2
+},
+{
+"key": "limit.int.3",
+"sheet": "Setup",
+"cell": "C20",
+"label": "15 to 30/31 days – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.15
+},
+{
+"key": "limit.reg.4",
+"sheet": "Setup",
+"cell": "B21",
+"label": "Over 1 month to 2 months – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.4",
+"sheet": "Setup",
+"cell": "C21",
+"label": "Over 1 month to 2 months – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.2
+},
+{
+"key": "limit.reg.5",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Over 2 months to 3 months – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.5",
+"sheet": "Setup",
+"cell": "C22",
+"label": "Over 2 months to 3 months – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.2
+},
+{
+"key": "limit.reg.6",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Over 3 months to 6 months – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.6",
+"sheet": "Setup",
+"cell": "C23",
+"label": "Over 3 months to 6 months – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.2
+},
+{
+"key": "limit.reg.7",
+"sheet": "Setup",
+"cell": "B24",
+"label": "Over 6 months to 1 year – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.7",
+"sheet": "Setup",
+"cell": "C24",
+"label": "Over 6 months to 1 year – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": 0.25
+},
+{
+"key": "limit.reg.8",
+"sheet": "Setup",
+"cell": "B25",
+"label": "Over 1 year to 3 years – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.8",
+"sheet": "Setup",
+"cell": "C25",
+"label": "Over 1 year to 3 years – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": null
+},
+{
+"key": "limit.reg.9",
+"sheet": "Setup",
+"cell": "B26",
+"label": "Over 3 years to 5 years – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.9",
+"sheet": "Setup",
+"cell": "C26",
+"label": "Over 3 years to 5 years – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": null
+},
+{
+"key": "limit.reg.10",
+"sheet": "Setup",
+"cell": "B27",
+"label": "Over 5 years – regulatory limit",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 39",
+"default": null
+},
+{
+"key": "limit.int.10",
+"sheet": "Setup",
+"cell": "C27",
+"label": "Over 5 years – internal trigger",
+"source": "ALM policy; Board-approved limits",
+"default": null
+},
+{
+"key": "thr.eve.amber",
+"sheet": "Setup",
+"cell": "B31",
+"label": "Fall in economic value / Tier 1: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.eve.red",
+"sheet": "Setup",
+"cell": "C31",
+"label": "Fall in economic value / Tier 1: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "thr.ear.amber",
+"sheet": "Setup",
+"cell": "B32",
+"label": "Earnings at risk / net interest income: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.ear.red",
+"sheet": "Setup",
+"cell": "C32",
+"label": "Earnings at risk / net interest income: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "thr.top10.amber",
+"sheet": "Setup",
+"cell": "B33",
+"label": "Share of the ten largest lenders: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.6
+},
+{
+"key": "thr.top10.red",
+"sheet": "Setup",
+"cell": "C33",
+"label": "Share of the ten largest lenders: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.8
+},
+{
+"key": "thr.st.amber",
+"sheet": "Setup",
+"cell": "B34",
+"label": "Borrowings due within 12 months: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "thr.st.red",
+"sheet": "Setup",
+"cell": "C34",
+"label": "Borrowings due within 12 months: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.55
+},
+{
+"key": "thr.liq.amber",
+"sheet": "Setup",
+"cell": "B35",
+"label": "Liquid assets to total assets: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "thr.liq.red",
+"sheet": "Setup",
+"cell": "C35",
+"label": "Liquid assets to total assets: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "thr.lcr.amber",
+"sheet": "Setup",
+"cell": "B36",
+"label": "Liquidity Coverage Ratio: amber below (red below the minimum) – amber",
+"source": "Risk appetite statement",
+"default": 1.1
+},
+{
+"key": "thr.lcr.red",
+"sheet": "Setup",
+"cell": "C36",
+"label": "Liquidity Coverage Ratio: amber below (red below the minimum) – red",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "liq.out.1.1",
+"sheet": "Liquidity Input",
+"cell": "B6",
+"label": "Equity and reserves – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.2",
+"sheet": "Liquidity Input",
+"cell": "C6",
+"label": "Equity and reserves – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.3",
+"sheet": "Liquidity Input",
+"cell": "D6",
+"label": "Equity and reserves – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.4",
+"sheet": "Liquidity Input",
+"cell": "E6",
+"label": "Equity and reserves – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.5",
+"sheet": "Liquidity Input",
+"cell": "F6",
+"label": "Equity and reserves – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.6",
+"sheet": "Liquidity Input",
+"cell": "G6",
+"label": "Equity and reserves – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.7",
+"sheet": "Liquidity Input",
+"cell": "H6",
+"label": "Equity and reserves – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.8",
+"sheet": "Liquidity Input",
+"cell": "I6",
+"label": "Equity and reserves – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.9",
+"sheet": "Liquidity Input",
+"cell": "J6",
+"label": "Equity and reserves – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.1.10",
+"sheet": "Liquidity Input",
+"cell": "K6",
+"label": "Equity and reserves – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.1",
+"sheet": "Liquidity Input",
+"cell": "B7",
+"label": "Borrowings from banks – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.2",
+"sheet": "Liquidity Input",
+"cell": "C7",
+"label": "Borrowings from banks – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.3",
+"sheet": "Liquidity Input",
+"cell": "D7",
+"label": "Borrowings from banks – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.4",
+"sheet": "Liquidity Input",
+"cell": "E7",
+"label": "Borrowings from banks – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.5",
+"sheet": "Liquidity Input",
+"cell": "F7",
+"label": "Borrowings from banks – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.6",
+"sheet": "Liquidity Input",
+"cell": "G7",
+"label": "Borrowings from banks – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.7",
+"sheet": "Liquidity Input",
+"cell": "H7",
+"label": "Borrowings from banks – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.8",
+"sheet": "Liquidity Input",
+"cell": "I7",
+"label": "Borrowings from banks – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.9",
+"sheet": "Liquidity Input",
+"cell": "J7",
+"label": "Borrowings from banks – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.2.10",
+"sheet": "Liquidity Input",
+"cell": "K7",
+"label": "Borrowings from banks – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.1",
+"sheet": "Liquidity Input",
+"cell": "B8",
+"label": "Debentures and bonds – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.2",
+"sheet": "Liquidity Input",
+"cell": "C8",
+"label": "Debentures and bonds – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.3",
+"sheet": "Liquidity Input",
+"cell": "D8",
+"label": "Debentures and bonds – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.4",
+"sheet": "Liquidity Input",
+"cell": "E8",
+"label": "Debentures and bonds – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.5",
+"sheet": "Liquidity Input",
+"cell": "F8",
+"label": "Debentures and bonds – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.6",
+"sheet": "Liquidity Input",
+"cell": "G8",
+"label": "Debentures and bonds – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.7",
+"sheet": "Liquidity Input",
+"cell": "H8",
+"label": "Debentures and bonds – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.8",
+"sheet": "Liquidity Input",
+"cell": "I8",
+"label": "Debentures and bonds – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.9",
+"sheet": "Liquidity Input",
+"cell": "J8",
+"label": "Debentures and bonds – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.3.10",
+"sheet": "Liquidity Input",
+"cell": "K8",
+"label": "Debentures and bonds – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.1",
+"sheet": "Liquidity Input",
+"cell": "B9",
+"label": "Commercial paper – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.2",
+"sheet": "Liquidity Input",
+"cell": "C9",
+"label": "Commercial paper – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.3",
+"sheet": "Liquidity Input",
+"cell": "D9",
+"label": "Commercial paper – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.4",
+"sheet": "Liquidity Input",
+"cell": "E9",
+"label": "Commercial paper – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.5",
+"sheet": "Liquidity Input",
+"cell": "F9",
+"label": "Commercial paper – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.6",
+"sheet": "Liquidity Input",
+"cell": "G9",
+"label": "Commercial paper – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.7",
+"sheet": "Liquidity Input",
+"cell": "H9",
+"label": "Commercial paper – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.8",
+"sheet": "Liquidity Input",
+"cell": "I9",
+"label": "Commercial paper – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.9",
+"sheet": "Liquidity Input",
+"cell": "J9",
+"label": "Commercial paper – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.4.10",
+"sheet": "Liquidity Input",
+"cell": "K9",
+"label": "Commercial paper – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.1",
+"sheet": "Liquidity Input",
+"cell": "B10",
+"label": "Inter-corporate deposits – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.2",
+"sheet": "Liquidity Input",
+"cell": "C10",
+"label": "Inter-corporate deposits – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.3",
+"sheet": "Liquidity Input",
+"cell": "D10",
+"label": "Inter-corporate deposits – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.4",
+"sheet": "Liquidity Input",
+"cell": "E10",
+"label": "Inter-corporate deposits – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.5",
+"sheet": "Liquidity Input",
+"cell": "F10",
+"label": "Inter-corporate deposits – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.6",
+"sheet": "Liquidity Input",
+"cell": "G10",
+"label": "Inter-corporate deposits – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.7",
+"sheet": "Liquidity Input",
+"cell": "H10",
+"label": "Inter-corporate deposits – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.8",
+"sheet": "Liquidity Input",
+"cell": "I10",
+"label": "Inter-corporate deposits – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.9",
+"sheet": "Liquidity Input",
+"cell": "J10",
+"label": "Inter-corporate deposits – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.5.10",
+"sheet": "Liquidity Input",
+"cell": "K10",
+"label": "Inter-corporate deposits – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.1",
+"sheet": "Liquidity Input",
+"cell": "B11",
+"label": "Public deposits – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.2",
+"sheet": "Liquidity Input",
+"cell": "C11",
+"label": "Public deposits – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.3",
+"sheet": "Liquidity Input",
+"cell": "D11",
+"label": "Public deposits – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.4",
+"sheet": "Liquidity Input",
+"cell": "E11",
+"label": "Public deposits – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.5",
+"sheet": "Liquidity Input",
+"cell": "F11",
+"label": "Public deposits – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.6",
+"sheet": "Liquidity Input",
+"cell": "G11",
+"label": "Public deposits – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.7",
+"sheet": "Liquidity Input",
+"cell": "H11",
+"label": "Public deposits – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.8",
+"sheet": "Liquidity Input",
+"cell": "I11",
+"label": "Public deposits – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.9",
+"sheet": "Liquidity Input",
+"cell": "J11",
+"label": "Public deposits – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.6.10",
+"sheet": "Liquidity Input",
+"cell": "K11",
+"label": "Public deposits – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.1",
+"sheet": "Liquidity Input",
+"cell": "B12",
+"label": "Subordinated debt – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.2",
+"sheet": "Liquidity Input",
+"cell": "C12",
+"label": "Subordinated debt – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.3",
+"sheet": "Liquidity Input",
+"cell": "D12",
+"label": "Subordinated debt – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.4",
+"sheet": "Liquidity Input",
+"cell": "E12",
+"label": "Subordinated debt – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.5",
+"sheet": "Liquidity Input",
+"cell": "F12",
+"label": "Subordinated debt – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.6",
+"sheet": "Liquidity Input",
+"cell": "G12",
+"label": "Subordinated debt – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.7",
+"sheet": "Liquidity Input",
+"cell": "H12",
+"label": "Subordinated debt – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.8",
+"sheet": "Liquidity Input",
+"cell": "I12",
+"label": "Subordinated debt – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.9",
+"sheet": "Liquidity Input",
+"cell": "J12",
+"label": "Subordinated debt – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.7.10",
+"sheet": "Liquidity Input",
+"cell": "K12",
+"label": "Subordinated debt – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.1",
+"sheet": "Liquidity Input",
+"cell": "B13",
+"label": "Interest payable – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.2",
+"sheet": "Liquidity Input",
+"cell": "C13",
+"label": "Interest payable – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.3",
+"sheet": "Liquidity Input",
+"cell": "D13",
+"label": "Interest payable – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.4",
+"sheet": "Liquidity Input",
+"cell": "E13",
+"label": "Interest payable – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.5",
+"sheet": "Liquidity Input",
+"cell": "F13",
+"label": "Interest payable – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.6",
+"sheet": "Liquidity Input",
+"cell": "G13",
+"label": "Interest payable – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.7",
+"sheet": "Liquidity Input",
+"cell": "H13",
+"label": "Interest payable – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.8",
+"sheet": "Liquidity Input",
+"cell": "I13",
+"label": "Interest payable – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.9",
+"sheet": "Liquidity Input",
+"cell": "J13",
+"label": "Interest payable – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.8.10",
+"sheet": "Liquidity Input",
+"cell": "K13",
+"label": "Interest payable – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.1",
+"sheet": "Liquidity Input",
+"cell": "B14",
+"label": "Statutory dues and provisions – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.2",
+"sheet": "Liquidity Input",
+"cell": "C14",
+"label": "Statutory dues and provisions – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.3",
+"sheet": "Liquidity Input",
+"cell": "D14",
+"label": "Statutory dues and provisions – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.4",
+"sheet": "Liquidity Input",
+"cell": "E14",
+"label": "Statutory dues and provisions – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.5",
+"sheet": "Liquidity Input",
+"cell": "F14",
+"label": "Statutory dues and provisions – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.6",
+"sheet": "Liquidity Input",
+"cell": "G14",
+"label": "Statutory dues and provisions – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.7",
+"sheet": "Liquidity Input",
+"cell": "H14",
+"label": "Statutory dues and provisions – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.8",
+"sheet": "Liquidity Input",
+"cell": "I14",
+"label": "Statutory dues and provisions – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.9",
+"sheet": "Liquidity Input",
+"cell": "J14",
+"label": "Statutory dues and provisions – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.9.10",
+"sheet": "Liquidity Input",
+"cell": "K14",
+"label": "Statutory dues and provisions – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.1",
+"sheet": "Liquidity Input",
+"cell": "B15",
+"label": "Undrawn commitments to customers expected to be drawn – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.2",
+"sheet": "Liquidity Input",
+"cell": "C15",
+"label": "Undrawn commitments to customers expected to be drawn – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.3",
+"sheet": "Liquidity Input",
+"cell": "D15",
+"label": "Undrawn commitments to customers expected to be drawn – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.4",
+"sheet": "Liquidity Input",
+"cell": "E15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.5",
+"sheet": "Liquidity Input",
+"cell": "F15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.6",
+"sheet": "Liquidity Input",
+"cell": "G15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.7",
+"sheet": "Liquidity Input",
+"cell": "H15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.8",
+"sheet": "Liquidity Input",
+"cell": "I15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.9",
+"sheet": "Liquidity Input",
+"cell": "J15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.10.10",
+"sheet": "Liquidity Input",
+"cell": "K15",
+"label": "Undrawn commitments to customers expected to be drawn – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.1",
+"sheet": "Liquidity Input",
+"cell": "B16",
+"label": "Other outflows – 1 to 7 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.2",
+"sheet": "Liquidity Input",
+"cell": "C16",
+"label": "Other outflows – 8 to 14 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.3",
+"sheet": "Liquidity Input",
+"cell": "D16",
+"label": "Other outflows – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.4",
+"sheet": "Liquidity Input",
+"cell": "E16",
+"label": "Other outflows – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.5",
+"sheet": "Liquidity Input",
+"cell": "F16",
+"label": "Other outflows – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.6",
+"sheet": "Liquidity Input",
+"cell": "G16",
+"label": "Other outflows – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.7",
+"sheet": "Liquidity Input",
+"cell": "H16",
+"label": "Other outflows – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.8",
+"sheet": "Liquidity Input",
+"cell": "I16",
+"label": "Other outflows – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.9",
+"sheet": "Liquidity Input",
+"cell": "J16",
+"label": "Other outflows – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.out.11.10",
+"sheet": "Liquidity Input",
+"cell": "K16",
+"label": "Other outflows – Over 5 years",
+"source": "DNBS04B structural liquidity – outflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.1",
+"sheet": "Liquidity Input",
+"cell": "B20",
+"label": "Cash and bank balances – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.2",
+"sheet": "Liquidity Input",
+"cell": "C20",
+"label": "Cash and bank balances – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.3",
+"sheet": "Liquidity Input",
+"cell": "D20",
+"label": "Cash and bank balances – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.4",
+"sheet": "Liquidity Input",
+"cell": "E20",
+"label": "Cash and bank balances – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.5",
+"sheet": "Liquidity Input",
+"cell": "F20",
+"label": "Cash and bank balances – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.6",
+"sheet": "Liquidity Input",
+"cell": "G20",
+"label": "Cash and bank balances – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.7",
+"sheet": "Liquidity Input",
+"cell": "H20",
+"label": "Cash and bank balances – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.8",
+"sheet": "Liquidity Input",
+"cell": "I20",
+"label": "Cash and bank balances – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.9",
+"sheet": "Liquidity Input",
+"cell": "J20",
+"label": "Cash and bank balances – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.1.10",
+"sheet": "Liquidity Input",
+"cell": "K20",
+"label": "Cash and bank balances – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.1",
+"sheet": "Liquidity Input",
+"cell": "B21",
+"label": "Liquid investments – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.2",
+"sheet": "Liquidity Input",
+"cell": "C21",
+"label": "Liquid investments – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.3",
+"sheet": "Liquidity Input",
+"cell": "D21",
+"label": "Liquid investments – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.4",
+"sheet": "Liquidity Input",
+"cell": "E21",
+"label": "Liquid investments – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.5",
+"sheet": "Liquidity Input",
+"cell": "F21",
+"label": "Liquid investments – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.6",
+"sheet": "Liquidity Input",
+"cell": "G21",
+"label": "Liquid investments – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.7",
+"sheet": "Liquidity Input",
+"cell": "H21",
+"label": "Liquid investments – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.8",
+"sheet": "Liquidity Input",
+"cell": "I21",
+"label": "Liquid investments – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.9",
+"sheet": "Liquidity Input",
+"cell": "J21",
+"label": "Liquid investments – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.2.10",
+"sheet": "Liquidity Input",
+"cell": "K21",
+"label": "Liquid investments – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.1",
+"sheet": "Liquidity Input",
+"cell": "B22",
+"label": "Loan collections – principal (performing) – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.2",
+"sheet": "Liquidity Input",
+"cell": "C22",
+"label": "Loan collections – principal (performing) – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.3",
+"sheet": "Liquidity Input",
+"cell": "D22",
+"label": "Loan collections – principal (performing) – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.4",
+"sheet": "Liquidity Input",
+"cell": "E22",
+"label": "Loan collections – principal (performing) – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.5",
+"sheet": "Liquidity Input",
+"cell": "F22",
+"label": "Loan collections – principal (performing) – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.6",
+"sheet": "Liquidity Input",
+"cell": "G22",
+"label": "Loan collections – principal (performing) – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.7",
+"sheet": "Liquidity Input",
+"cell": "H22",
+"label": "Loan collections – principal (performing) – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.8",
+"sheet": "Liquidity Input",
+"cell": "I22",
+"label": "Loan collections – principal (performing) – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.9",
+"sheet": "Liquidity Input",
+"cell": "J22",
+"label": "Loan collections – principal (performing) – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.3.10",
+"sheet": "Liquidity Input",
+"cell": "K22",
+"label": "Loan collections – principal (performing) – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.1",
+"sheet": "Liquidity Input",
+"cell": "B23",
+"label": "Loan collections – interest (performing) – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.2",
+"sheet": "Liquidity Input",
+"cell": "C23",
+"label": "Loan collections – interest (performing) – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.3",
+"sheet": "Liquidity Input",
+"cell": "D23",
+"label": "Loan collections – interest (performing) – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.4",
+"sheet": "Liquidity Input",
+"cell": "E23",
+"label": "Loan collections – interest (performing) – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.5",
+"sheet": "Liquidity Input",
+"cell": "F23",
+"label": "Loan collections – interest (performing) – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.6",
+"sheet": "Liquidity Input",
+"cell": "G23",
+"label": "Loan collections – interest (performing) – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.7",
+"sheet": "Liquidity Input",
+"cell": "H23",
+"label": "Loan collections – interest (performing) – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.8",
+"sheet": "Liquidity Input",
+"cell": "I23",
+"label": "Loan collections – interest (performing) – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.9",
+"sheet": "Liquidity Input",
+"cell": "J23",
+"label": "Loan collections – interest (performing) – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.4.10",
+"sheet": "Liquidity Input",
+"cell": "K23",
+"label": "Loan collections – interest (performing) – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.1",
+"sheet": "Liquidity Input",
+"cell": "B24",
+"label": "Non-performing loans (net of provisions) – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.2",
+"sheet": "Liquidity Input",
+"cell": "C24",
+"label": "Non-performing loans (net of provisions) – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.3",
+"sheet": "Liquidity Input",
+"cell": "D24",
+"label": "Non-performing loans (net of provisions) – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.4",
+"sheet": "Liquidity Input",
+"cell": "E24",
+"label": "Non-performing loans (net of provisions) – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.5",
+"sheet": "Liquidity Input",
+"cell": "F24",
+"label": "Non-performing loans (net of provisions) – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.6",
+"sheet": "Liquidity Input",
+"cell": "G24",
+"label": "Non-performing loans (net of provisions) – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.7",
+"sheet": "Liquidity Input",
+"cell": "H24",
+"label": "Non-performing loans (net of provisions) – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.8",
+"sheet": "Liquidity Input",
+"cell": "I24",
+"label": "Non-performing loans (net of provisions) – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.9",
+"sheet": "Liquidity Input",
+"cell": "J24",
+"label": "Non-performing loans (net of provisions) – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.5.10",
+"sheet": "Liquidity Input",
+"cell": "K24",
+"label": "Non-performing loans (net of provisions) – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.1",
+"sheet": "Liquidity Input",
+"cell": "B25",
+"label": "Other investments – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.2",
+"sheet": "Liquidity Input",
+"cell": "C25",
+"label": "Other investments – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.3",
+"sheet": "Liquidity Input",
+"cell": "D25",
+"label": "Other investments – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.4",
+"sheet": "Liquidity Input",
+"cell": "E25",
+"label": "Other investments – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.5",
+"sheet": "Liquidity Input",
+"cell": "F25",
+"label": "Other investments – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.6",
+"sheet": "Liquidity Input",
+"cell": "G25",
+"label": "Other investments – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.7",
+"sheet": "Liquidity Input",
+"cell": "H25",
+"label": "Other investments – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.8",
+"sheet": "Liquidity Input",
+"cell": "I25",
+"label": "Other investments – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.9",
+"sheet": "Liquidity Input",
+"cell": "J25",
+"label": "Other investments – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.6.10",
+"sheet": "Liquidity Input",
+"cell": "K25",
+"label": "Other investments – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.1",
+"sheet": "Liquidity Input",
+"cell": "B26",
+"label": "Committed lines of credit available – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.2",
+"sheet": "Liquidity Input",
+"cell": "C26",
+"label": "Committed lines of credit available – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.3",
+"sheet": "Liquidity Input",
+"cell": "D26",
+"label": "Committed lines of credit available – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.4",
+"sheet": "Liquidity Input",
+"cell": "E26",
+"label": "Committed lines of credit available – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.5",
+"sheet": "Liquidity Input",
+"cell": "F26",
+"label": "Committed lines of credit available – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.6",
+"sheet": "Liquidity Input",
+"cell": "G26",
+"label": "Committed lines of credit available – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.7",
+"sheet": "Liquidity Input",
+"cell": "H26",
+"label": "Committed lines of credit available – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.8",
+"sheet": "Liquidity Input",
+"cell": "I26",
+"label": "Committed lines of credit available – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.9",
+"sheet": "Liquidity Input",
+"cell": "J26",
+"label": "Committed lines of credit available – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.7.10",
+"sheet": "Liquidity Input",
+"cell": "K26",
+"label": "Committed lines of credit available – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.1",
+"sheet": "Liquidity Input",
+"cell": "B27",
+"label": "Fixed assets and other assets – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.2",
+"sheet": "Liquidity Input",
+"cell": "C27",
+"label": "Fixed assets and other assets – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.3",
+"sheet": "Liquidity Input",
+"cell": "D27",
+"label": "Fixed assets and other assets – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.4",
+"sheet": "Liquidity Input",
+"cell": "E27",
+"label": "Fixed assets and other assets – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.5",
+"sheet": "Liquidity Input",
+"cell": "F27",
+"label": "Fixed assets and other assets – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.6",
+"sheet": "Liquidity Input",
+"cell": "G27",
+"label": "Fixed assets and other assets – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.7",
+"sheet": "Liquidity Input",
+"cell": "H27",
+"label": "Fixed assets and other assets – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.8",
+"sheet": "Liquidity Input",
+"cell": "I27",
+"label": "Fixed assets and other assets – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.9",
+"sheet": "Liquidity Input",
+"cell": "J27",
+"label": "Fixed assets and other assets – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.8.10",
+"sheet": "Liquidity Input",
+"cell": "K27",
+"label": "Fixed assets and other assets – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.1",
+"sheet": "Liquidity Input",
+"cell": "B28",
+"label": "Other inflows – 1 to 7 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.2",
+"sheet": "Liquidity Input",
+"cell": "C28",
+"label": "Other inflows – 8 to 14 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.3",
+"sheet": "Liquidity Input",
+"cell": "D28",
+"label": "Other inflows – 15 to 30/31 days",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.4",
+"sheet": "Liquidity Input",
+"cell": "E28",
+"label": "Other inflows – Over 1 month to 2 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.5",
+"sheet": "Liquidity Input",
+"cell": "F28",
+"label": "Other inflows – Over 2 months to 3 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.6",
+"sheet": "Liquidity Input",
+"cell": "G28",
+"label": "Other inflows – Over 3 months to 6 months",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.7",
+"sheet": "Liquidity Input",
+"cell": "H28",
+"label": "Other inflows – Over 6 months to 1 year",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.8",
+"sheet": "Liquidity Input",
+"cell": "I28",
+"label": "Other inflows – Over 1 year to 3 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.9",
+"sheet": "Liquidity Input",
+"cell": "J28",
+"label": "Other inflows – Over 3 years to 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "liq.in.9.10",
+"sheet": "Liquidity Input",
+"cell": "K28",
+"label": "Other inflows – Over 5 years",
+"source": "DNBS04B structural liquidity – inflows; ALM statement",
+"default": null
+},
+{
+"key": "rate.rsa.1",
+"sheet": "Rate Input",
+"cell": "B6",
+"label": "Rate-sensitive assets – 1 to 7 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.2",
+"sheet": "Rate Input",
+"cell": "C6",
+"label": "Rate-sensitive assets – 8 to 14 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.3",
+"sheet": "Rate Input",
+"cell": "D6",
+"label": "Rate-sensitive assets – 15 to 30/31 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.4",
+"sheet": "Rate Input",
+"cell": "E6",
+"label": "Rate-sensitive assets – Over 1 month to 2 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.5",
+"sheet": "Rate Input",
+"cell": "F6",
+"label": "Rate-sensitive assets – Over 2 months to 3 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.6",
+"sheet": "Rate Input",
+"cell": "G6",
+"label": "Rate-sensitive assets – Over 3 months to 6 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.7",
+"sheet": "Rate Input",
+"cell": "H6",
+"label": "Rate-sensitive assets – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.8",
+"sheet": "Rate Input",
+"cell": "I6",
+"label": "Rate-sensitive assets – Over 1 year to 3 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.9",
+"sheet": "Rate Input",
+"cell": "J6",
+"label": "Rate-sensitive assets – Over 3 years to 5 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsa.10",
+"sheet": "Rate Input",
+"cell": "K6",
+"label": "Rate-sensitive assets – Over 5 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.1",
+"sheet": "Rate Input",
+"cell": "B7",
+"label": "Rate-sensitive liabilities – 1 to 7 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.2",
+"sheet": "Rate Input",
+"cell": "C7",
+"label": "Rate-sensitive liabilities – 8 to 14 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.3",
+"sheet": "Rate Input",
+"cell": "D7",
+"label": "Rate-sensitive liabilities – 15 to 30/31 days",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.4",
+"sheet": "Rate Input",
+"cell": "E7",
+"label": "Rate-sensitive liabilities – Over 1 month to 2 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.5",
+"sheet": "Rate Input",
+"cell": "F7",
+"label": "Rate-sensitive liabilities – Over 2 months to 3 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.6",
+"sheet": "Rate Input",
+"cell": "G7",
+"label": "Rate-sensitive liabilities – Over 3 months to 6 months",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.7",
+"sheet": "Rate Input",
+"cell": "H7",
+"label": "Rate-sensitive liabilities – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.8",
+"sheet": "Rate Input",
+"cell": "I7",
+"label": "Rate-sensitive liabilities – Over 1 year to 3 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.9",
+"sheet": "Rate Input",
+"cell": "J7",
+"label": "Rate-sensitive liabilities – Over 3 years to 5 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "rate.rsl.10",
+"sheet": "Rate Input",
+"cell": "K7",
+"label": "Rate-sensitive liabilities – Over 5 years",
+"source": "DNBS04B interest rate sensitivity statement",
+"default": null
+},
+{
+"key": "hqla.amt.1",
+"sheet": "Coverage Input",
+"cell": "B6",
+"label": "Cash on hand and demand deposits with scheduled commercial banks (para 68(1))",
+"source": "Liquidity Coverage Ratio statement; treasury MIS",
+"default": null
+},
+{
+"key": "hqla.cut.1",
+"sheet": "Coverage Input",
+"cell": "C6",
+"label": "Cash on hand and demand deposits with scheduled commercial banks (para 68(1)) – haircut",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, Chapter III (classification of assets for HQLA)",
+"default": 0
+},
+{
+"key": "hqla.amt.2",
+"sheet": "Coverage Input",
+"cell": "B7",
+"label": "Government securities (para 68(2))",
+"source": "Liquidity Coverage Ratio statement; treasury MIS",
+"default": null
+},
+{
+"key": "hqla.cut.2",
+"sheet": "Coverage Input",
+"cell": "C7",
+"label": "Government securities (para 68(2)) – haircut",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, Chapter III (classification of assets for HQLA)",
+"default": 0
+},
+{
+"key": "hqla.amt.3",
+"sheet": "Coverage Input",
+"cell": "B8",
+"label": "Marketable securities of foreign sovereigns with a zero risk weight (para 68(3))",
+"source": "Liquidity Coverage Ratio statement; treasury MIS",
+"default": null
+},
+{
+"key": "hqla.cut.3",
+"sheet": "Coverage Input",
+"cell": "C8",
+"label": "Marketable securities of foreign sovereigns with a zero risk weight (para 68(3)) – haircut",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, Chapter III (classification of assets for HQLA)",
+"default": 0
+},
+{
+"key": "hqla.amt.4",
+"sheet": "Coverage Input",
+"cell": "B9",
+"label": "Securities of sovereigns, PSEs and MDBs with a 20 per cent risk weight, and bonds and CP rated AA- or above (para 69)",
+"source": "Liquidity Coverage Ratio statement; treasury MIS",
+"default": null
+},
+{
+"key": "hqla.cut.4",
+"sheet": "Coverage Input",
+"cell": "C9",
+"label": "Securities of sovereigns, PSEs and MDBs with a 20 per cent risk weight, and bonds and CP rated AA- or above (para 69) – haircut",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, Chapter III (classification of assets for HQLA)",
+"default": 0.15
+},
+{
+"key": "hqla.amt.5",
+"sheet": "Coverage Input",
+"cell": "B10",
+"label": "Sovereign securities rated BBB- or above, Nifty or Sensex shares, and debt rated A+ to BBB- (para 70)",
+"source": "Liquidity Coverage Ratio statement; treasury MIS",
+"default": null
+},
+{
+"key": "hqla.cut.5",
+"sheet": "Coverage Input",
+"cell": "C10",
+"label": "Sovereign securities rated BBB- or above, Nifty or Sensex shares, and debt rated A+ to BBB- (para 70) – haircut",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, Chapter III (classification of assets for HQLA)",
+"default": 0.5
+},
+{
+"key": "hqla.ib.held",
+"sheet": "Coverage Input",
+"cell": "B11",
+"label": "Approved securities held under section 45-IB and included in the classes above",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 71",
+"default": null
+},
+{
+"key": "hqla.ib.req",
+"sheet": "Coverage Input",
+"cell": "C11",
+"label": "Approved securities required to be held under section 45-IB",
+"source": "RBI (NBFCs – Asset Liability Management) Directions, 2025, para 71",
+"default": null
+},
+{
+"key": "lcr.out",
+"sheet": "Coverage Input",
+"cell": "B14",
+"label": "Contractual and expected cash outflows in the next 30 days",
+"source": "Liquidity Coverage Ratio statement",
+"default": null
+},
+{
+"key": "lcr.in",
+"sheet": "Coverage Input",
+"cell": "B15",
+"label": "Contractual and expected cash inflows in the next 30 days",
+"source": "Liquidity Coverage Ratio statement",
+"default": null
+},
+{
+"key": "fund.total",
+"sheet": "Coverage Input",
+"cell": "B19",
+"label": "Total borrowings",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.top10",
+"sheet": "Coverage Input",
+"cell": "B20",
+"label": "Borrowings from the ten largest lenders",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.st",
+"sheet": "Coverage Input",
+"cell": "B21",
+"label": "Borrowings due within 12 months",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.cp",
+"sheet": "Coverage Input",
+"cell": "B22",
+"label": "Commercial paper outstanding",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.bank",
+"sheet": "Coverage Input",
+"cell": "B23",
+"label": "Borrowings from banks",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.liq",
+"sheet": "Coverage Input",
+"cell": "B24",
+"label": "Unencumbered liquid assets",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.lines",
+"sheet": "Coverage Input",
+"cell": "B25",
+"label": "Undrawn committed lines available",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+},
+{
+"key": "fund.rep3",
+"sheet": "Coverage Input",
+"cell": "B26",
+"label": "Repayments due in the next 3 months",
+"source": "Borrowing register; treasury MIS; DNBS01 Part 1",
+"default": null
+}
+]

@@ -1,0 +1,394 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Amounts are in",
+"source": "Company",
+"default": "₹ crore"
+},
+{
+"key": "setup.type",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Type of company for the ceiling on dividend",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9, Table 2",
+"default": "Other NBFC"
+},
+{
+"key": "setup.years",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Years to be tested (3; fewer only if registered for less than three financial years)",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 8, proviso",
+"default": 3
+},
+{
+"key": "th.nnpa",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Net NPA ratio below which dividend may be declared",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 8",
+"default": 0.06
+},
+{
+"key": "th.nnpa2",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Net NPA ratio below which the reduced payout is allowed",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 11",
+"default": 0.04
+},
+{
+"key": "th.cap",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Payout ceiling where only the current-year conditions are met",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 11",
+"default": 0.1
+},
+{
+"key": "th.cic",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Payout ceiling – Core Investment Company",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9, Table 2",
+"default": 0.6
+},
+{
+"key": "th.other",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Payout ceiling – other NBFC",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9, Table 2",
+"default": 0.5
+},
+{
+"key": "pca.applies",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Prompt Corrective Action framework applies to the company",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, para 3, proviso on Chapter V: deposit-taking NBFCs and non-deposit taking NBFCs in the Middle and Upper Layers; not NBFCs without public funds, Primary Dealers or HFCs",
+"default": "Yes"
+},
+{
+"key": "pca.crar",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Minimum CRAR",
+"source": "Capital Adequacy Directions, para 6; for a CIC enter the minimum ANW / RWA of 30 per cent (CIC Directions, para 20)",
+"default": 0.15
+},
+{
+"key": "pca.t1",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Minimum Tier 1 ratio",
+"source": "Capital Adequacy Directions, para 6 (12 per cent for an NBFC lending mainly against gold)",
+"default": 0.1
+},
+{
+"key": "pca.step",
+"sheet": "Setup",
+"cell": "B18",
+"label": "CRAR shortfall that moves the company to risk threshold 2 (percentage points; 0.06 for a CIC)",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, paras 16 and 17",
+"default": 0.03
+},
+{
+"key": "pca.step1",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Tier 1 shortfall that moves the company to risk threshold 2 (percentage points)",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, paras 16 and 17",
+"default": 0.02
+},
+{
+"key": "pca.n1",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Net NPA ratio: risk threshold 1 above",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, paras 16 and 17",
+"default": 0.06
+},
+{
+"key": "pca.n2",
+"sheet": "Setup",
+"cell": "B21",
+"label": "Net NPA ratio: risk threshold 2 above",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, paras 16 and 17",
+"default": 0.09
+},
+{
+"key": "pca.n3",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Net NPA ratio: risk threshold 3 above",
+"source": "RBI (NBFCs – Miscellaneous) Supervisory Directions, 2026, paras 16 and 17",
+"default": 0.12
+},
+{
+"key": "pca.margin",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Internal early-warning margin (percentage points from a threshold)",
+"source": "Board-approved risk appetite",
+"default": 0.01
+},
+{
+"key": "yr.label.1",
+"sheet": "Yearly Input",
+"cell": "B7",
+"label": "Financial year – year 1 of 3",
+"source": "Company",
+"default": null
+},
+{
+"key": "yr.label.2",
+"sheet": "Yearly Input",
+"cell": "C7",
+"label": "Financial year – year 2 of 3",
+"source": "Company",
+"default": null
+},
+{
+"key": "yr.label.3",
+"sheet": "Yearly Input",
+"cell": "D7",
+"label": "Financial year – year 3 of 3",
+"source": "Company",
+"default": null
+},
+{
+"key": "yr.cap.1",
+"sheet": "Yearly Input",
+"cell": "B8",
+"label": "Applicable regulatory capital requirement met throughout – year 1 of 3",
+"source": "DNBS03; capital computation",
+"default": null
+},
+{
+"key": "yr.cap.2",
+"sheet": "Yearly Input",
+"cell": "C8",
+"label": "Applicable regulatory capital requirement met throughout – year 2 of 3",
+"source": "DNBS03; capital computation",
+"default": null
+},
+{
+"key": "yr.cap.3",
+"sheet": "Yearly Input",
+"cell": "D8",
+"label": "Applicable regulatory capital requirement met throughout – year 3 of 3",
+"source": "DNBS03; capital computation",
+"default": null
+},
+{
+"key": "yr.nnpa.1",
+"sheet": "Yearly Input",
+"cell": "B9",
+"label": "Net NPA at year end – year 1 of 3",
+"source": "Audited financial statements; DNBS01",
+"default": null
+},
+{
+"key": "yr.nnpa.2",
+"sheet": "Yearly Input",
+"cell": "C9",
+"label": "Net NPA at year end – year 2 of 3",
+"source": "Audited financial statements; DNBS01",
+"default": null
+},
+{
+"key": "yr.nnpa.3",
+"sheet": "Yearly Input",
+"cell": "D9",
+"label": "Net NPA at year end – year 3 of 3",
+"source": "Audited financial statements; DNBS01",
+"default": null
+},
+{
+"key": "yr.adv.1",
+"sheet": "Yearly Input",
+"cell": "B10",
+"label": "Net advances at year end – year 1 of 3",
+"source": "Audited financial statements",
+"default": null
+},
+{
+"key": "yr.adv.2",
+"sheet": "Yearly Input",
+"cell": "C10",
+"label": "Net advances at year end – year 2 of 3",
+"source": "Audited financial statements",
+"default": null
+},
+{
+"key": "yr.adv.3",
+"sheet": "Yearly Input",
+"cell": "D10",
+"label": "Net advances at year end – year 3 of 3",
+"source": "Audited financial statements",
+"default": null
+},
+{
+"key": "yr.crar.1",
+"sheet": "Yearly Input",
+"cell": "B12",
+"label": "CRAR at year end – year 1 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "yr.crar.2",
+"sheet": "Yearly Input",
+"cell": "C12",
+"label": "CRAR at year end – year 2 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "yr.crar.3",
+"sheet": "Yearly Input",
+"cell": "D12",
+"label": "CRAR at year end – year 3 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "yr.t1.1",
+"sheet": "Yearly Input",
+"cell": "B13",
+"label": "Tier 1 ratio at year end – year 1 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "yr.t1.2",
+"sheet": "Yearly Input",
+"cell": "C13",
+"label": "Tier 1 ratio at year end – year 2 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "yr.t1.3",
+"sheet": "Yearly Input",
+"cell": "D13",
+"label": "Tier 1 ratio at year end – year 3 of 3",
+"source": "DNBS03",
+"default": null
+},
+{
+"key": "div.reserve",
+"sheet": "Yearly Input",
+"cell": "B16",
+"label": "Transfer to the reserve fund under section 45-IC of the RBI Act made",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 8",
+"default": null
+},
+{
+"key": "div.reg",
+"sheet": "Yearly Input",
+"cell": "B17",
+"label": "Compliant with the regulations and guidelines of the Reserve Bank",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 8",
+"default": null
+},
+{
+"key": "div.free",
+"sheet": "Yearly Input",
+"cell": "B18",
+"label": "The Reserve Bank has placed no explicit restriction on declaring dividend",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 8",
+"default": null
+},
+{
+"key": "div.pat",
+"sheet": "Yearly Input",
+"cell": "B19",
+"label": "Net profit after tax as per the audited financial statements",
+"source": "Audited financial statements",
+"default": null
+},
+{
+"key": "div.except",
+"sheet": "Yearly Input",
+"cell": "B20",
+"label": "Exceptional or extraordinary profit or income included in net profit",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9",
+"default": null
+},
+{
+"key": "div.overstate",
+"sheet": "Yearly Input",
+"cell": "B21",
+"label": "Overstatement of net profit indicated by an audit qualification or emphasis of matter",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9; auditor's report",
+"default": null
+},
+{
+"key": "div.interim",
+"sheet": "Yearly Input",
+"cell": "B22",
+"label": "Interim dividend on equity shares declared for the year",
+"source": "Board minutes",
+"default": null
+},
+{
+"key": "div.final",
+"sheet": "Yearly Input",
+"cell": "B23",
+"label": "Final dividend on equity shares proposed",
+"source": "Board note",
+"default": null
+},
+{
+"key": "div.ccps",
+"sheet": "Yearly Input",
+"cell": "B24",
+"label": "Dividend on compulsorily convertible preference shares eligible for Tier 1",
+"source": "RBI (NBFCs – Prudential Norms on Declaration of Dividends) Directions, 2025, para 9",
+"default": null
+},
+{
+"key": "board.divergence",
+"sheet": "Board Note",
+"cell": "B4",
+"label": "Supervisory findings on divergence in classification and provisioning for NPAs – considered as follows",
+"source": "Board note and minutes",
+"default": null
+},
+{
+"key": "board.qualification",
+"sheet": "Board Note",
+"cell": "B5",
+"label": "Qualifications in the auditor's report – considered as follows",
+"source": "Board note and minutes",
+"default": null
+},
+{
+"key": "board.growth",
+"sheet": "Board Note",
+"cell": "B6",
+"label": "Long-term growth plans – considered as follows",
+"source": "Board note and minutes",
+"default": null
+},
+{
+"key": "board.date",
+"sheet": "Board Note",
+"cell": "B7",
+"label": "Date of declaration of the dividend",
+"source": "Board note and minutes",
+"default": null
+}
+]

@@ -1,0 +1,426 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "First day of the plan year",
+"source": "Audit plan year",
+"default": null
+},
+{
+"key": "cap.staff",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Internal auditors available (number)",
+"source": "Internal Audit",
+"default": null
+},
+{
+"key": "cap.days",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Audit days available per auditor in the year",
+"source": "After leave, training and administration",
+"default": 180
+},
+{
+"key": "th.low",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Scores up to this figure are Low",
+"source": "Management choice (para 29: the basis of each level is spelt out)",
+"default": 2.0
+},
+{
+"key": "th.med",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Scores up to this figure are Medium (higher is High)",
+"source": "Management choice (para 29)",
+"default": 3.5
+},
+{
+"key": "w.inh.1",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Weight: Volume of business and complexity of activities",
+"source": "Audit Committee",
+"default": 3
+},
+{
+"key": "w.inh.2",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Weight: Change in business lines or change in focus",
+"source": "Audit Committee",
+"default": 2
+},
+{
+"key": "w.inh.3",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Weight: Change in management or key personnel",
+"source": "Audit Committee",
+"default": 1
+},
+{
+"key": "w.inh.4",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Weight: Industry trends and other environmental factors",
+"source": "Audit Committee",
+"default": 1
+},
+{
+"key": "w.inh.5",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Weight: Performance variation from the budget",
+"source": "Audit Committee",
+"default": 1
+},
+{
+"key": "w.inh.6",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Weight: Compliance risk (residual score from the Compliance Testing Model)",
+"source": "Audit Committee",
+"default": 2
+},
+{
+"key": "w.ctl.1",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Weight: Previous internal audit reports and compliance",
+"source": "Audit Committee",
+"default": 3
+},
+{
+"key": "w.ctl.2",
+"sheet": "Setup",
+"cell": "B21",
+"label": "Weight: Results of regulatory examination",
+"source": "Audit Committee",
+"default": 2
+},
+{
+"key": "w.ctl.3",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Weight: Reports of external auditors",
+"source": "Audit Committee",
+"default": 1
+},
+{
+"key": "w.ctl.4",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Weight: Adequacy of control against strategy and risk appetite",
+"source": "Audit Committee",
+"default": 2
+},
+{
+"key": "w.ctl.5",
+"sheet": "Setup",
+"cell": "B24",
+"label": "Weight: Time elapsed since the last audit (calculated)",
+"source": "Audit Committee",
+"default": 2
+},
+{
+"key": "time.from.1",
+"sheet": "Setup",
+"cell": "A28",
+"label": "Time score: months from (row 1)",
+"source": "Management choice",
+"default": 0
+},
+{
+"key": "time.score.1",
+"sheet": "Setup",
+"cell": "B28",
+"label": "Time score (row 1)",
+"source": "Management choice",
+"default": 1
+},
+{
+"key": "time.from.2",
+"sheet": "Setup",
+"cell": "A29",
+"label": "Time score: months from (row 2)",
+"source": "Management choice",
+"default": 13
+},
+{
+"key": "time.score.2",
+"sheet": "Setup",
+"cell": "B29",
+"label": "Time score (row 2)",
+"source": "Management choice",
+"default": 2
+},
+{
+"key": "time.from.3",
+"sheet": "Setup",
+"cell": "A30",
+"label": "Time score: months from (row 3)",
+"source": "Management choice",
+"default": 19
+},
+{
+"key": "time.score.3",
+"sheet": "Setup",
+"cell": "B30",
+"label": "Time score (row 3)",
+"source": "Management choice",
+"default": 3
+},
+{
+"key": "time.from.4",
+"sheet": "Setup",
+"cell": "A31",
+"label": "Time score: months from (row 4)",
+"source": "Management choice",
+"default": 25
+},
+{
+"key": "time.score.4",
+"sheet": "Setup",
+"cell": "B31",
+"label": "Time score (row 4)",
+"source": "Management choice",
+"default": 4
+},
+{
+"key": "time.from.5",
+"sheet": "Setup",
+"cell": "A32",
+"label": "Time score: months from (row 5)",
+"source": "Management choice",
+"default": 37
+},
+{
+"key": "time.score.5",
+"sheet": "Setup",
+"cell": "B32",
+"label": "Time score (row 5)",
+"source": "Management choice",
+"default": 5
+},
+{
+"key": "mx.1.1",
+"sheet": "Setup",
+"cell": "B36",
+"label": "Matrix: inherent High, control High",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Extremely high"
+},
+{
+"key": "mx.1.2",
+"sheet": "Setup",
+"cell": "C36",
+"label": "Matrix: inherent High, control Medium",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Very high"
+},
+{
+"key": "mx.1.3",
+"sheet": "Setup",
+"cell": "D36",
+"label": "Matrix: inherent High, control Low",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "High"
+},
+{
+"key": "mx.2.1",
+"sheet": "Setup",
+"cell": "B37",
+"label": "Matrix: inherent Medium, control High",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Very high"
+},
+{
+"key": "mx.2.2",
+"sheet": "Setup",
+"cell": "C37",
+"label": "Matrix: inherent Medium, control Medium",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "High"
+},
+{
+"key": "mx.2.3",
+"sheet": "Setup",
+"cell": "D37",
+"label": "Matrix: inherent Medium, control Low",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Medium"
+},
+{
+"key": "mx.3.1",
+"sheet": "Setup",
+"cell": "B38",
+"label": "Matrix: inherent Low, control High",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "High"
+},
+{
+"key": "mx.3.2",
+"sheet": "Setup",
+"cell": "C38",
+"label": "Matrix: inherent Low, control Medium",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Medium"
+},
+{
+"key": "mx.3.3",
+"sheet": "Setup",
+"cell": "D38",
+"label": "Matrix: inherent Low, control Low",
+"source": "RBI (NBFCs – Internal Audit Function) Directions, 2026, paras 28 and 34",
+"default": "Low"
+},
+{
+"key": "freq.1",
+"sheet": "Setup",
+"cell": "B42",
+"label": "Audit frequency in months: Extremely high",
+"source": "Audit Committee",
+"default": 6
+},
+{
+"key": "mult.1",
+"sheet": "Setup",
+"cell": "C42",
+"label": "Effort multiplier: Extremely high",
+"source": "Audit Committee",
+"default": 1.5
+},
+{
+"key": "freq.2",
+"sheet": "Setup",
+"cell": "B43",
+"label": "Audit frequency in months: Very high",
+"source": "Audit Committee",
+"default": 12
+},
+{
+"key": "mult.2",
+"sheet": "Setup",
+"cell": "C43",
+"label": "Effort multiplier: Very high",
+"source": "Audit Committee",
+"default": 1.25
+},
+{
+"key": "freq.3",
+"sheet": "Setup",
+"cell": "B44",
+"label": "Audit frequency in months: High",
+"source": "Audit Committee",
+"default": 12
+},
+{
+"key": "mult.3",
+"sheet": "Setup",
+"cell": "C44",
+"label": "Effort multiplier: High",
+"source": "Audit Committee",
+"default": 1.0
+},
+{
+"key": "freq.4",
+"sheet": "Setup",
+"cell": "B45",
+"label": "Audit frequency in months: Medium",
+"source": "Audit Committee",
+"default": 18
+},
+{
+"key": "mult.4",
+"sheet": "Setup",
+"cell": "C45",
+"label": "Effort multiplier: Medium",
+"source": "Audit Committee",
+"default": 0.75
+},
+{
+"key": "freq.5",
+"sheet": "Setup",
+"cell": "B46",
+"label": "Audit frequency in months: Low",
+"source": "Audit Committee",
+"default": 24
+},
+{
+"key": "mult.5",
+"sheet": "Setup",
+"cell": "C46",
+"label": "Effort multiplier: Low",
+"source": "Audit Committee",
+"default": 0.5
+},
+{
+"key": "days.1",
+"sheet": "Setup",
+"cell": "B50",
+"label": "Standard auditor-days: Branch or location",
+"source": "Internal Audit",
+"default": 6
+},
+{
+"key": "days.2",
+"sheet": "Setup",
+"cell": "B51",
+"label": "Standard auditor-days: Business line",
+"source": "Internal Audit",
+"default": 25
+},
+{
+"key": "days.3",
+"sheet": "Setup",
+"cell": "B52",
+"label": "Standard auditor-days: Support function",
+"source": "Internal Audit",
+"default": 12
+},
+{
+"key": "days.4",
+"sheet": "Setup",
+"cell": "B53",
+"label": "Standard auditor-days: Process",
+"source": "Internal Audit",
+"default": 10
+},
+{
+"key": "days.5",
+"sheet": "Setup",
+"cell": "B54",
+"label": "Standard auditor-days: Information system",
+"source": "Internal Audit",
+"default": 15
+},
+{
+"key": "days.6",
+"sheet": "Setup",
+"cell": "B55",
+"label": "Standard auditor-days: Outsourced activity",
+"source": "Internal Audit",
+"default": 8
+},
+{
+"key": "units",
+"sheet": "Units Input",
+"cell": "A7:Q156",
+"label": "Units Input: Unit ID *; Auditable unit *; Type *; Volume of business and complexity of activities (1 to 5); Change in business lines or change in focus (1 to 5); Change in management or key personnel (1 to 5); Industry trends and other environmental factors (1 to 5); Performance variation from the budget (1 to 5); Compliance risk (residual score from the Compliance Testing Model) (1 to 5); Previous internal audit reports and compliance (1 to 5); Results of regulatory examination (1 to 5); Reports of external auditors (1 to 5); Adequacy of control against strategy and risk appetite (1 to 5); Date of the last audit; Trend of inherent business risk; Trend of control risk; Audit this year whatever the risk (Yes)",
+"source": "Audit universe; previous audit reports; inspection reports; CMP-M01 (compliance risk); budget review",
+"default": null
+}
+]
