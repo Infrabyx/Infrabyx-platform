@@ -23,6 +23,7 @@ export async function ready(): Promise<Response> {
   const up = await webEnv()
     .then((env) =>
       fetch(`${env.APP_API_URL.replace(/\/$/, "")}/health/live`, {
+        headers: { "accept-encoding": "gzip, deflate, br" },
         cache: "no-store",
         signal: AbortSignal.timeout(TIMEOUT_MS),
       }),

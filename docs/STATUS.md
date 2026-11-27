@@ -26,7 +26,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-76844                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-05                                                         | 1 Dec                                     | R1-D-106, R1-D-108 |
 | CVE-2026-85091                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-07                                                         | 1 Dec                                     | R1-D-111           |
 | CVE-2025-6020                                                      | Debian 12 base (linux-pam)                                                    | 2026-12-16                                                         | 1 Dec                                     | R1-D-162           |
-| CVE-2026-124851                                                    | Debian 12 base (libzstd1)                                                     | 2026-12-25                                                         | 1 Dec                                     | R1-D-291           |
+| CVE-2026-124851                                                    | Debian 12 base (libzstd1); Node.js's bundled zstd 1.5.7 closed in code        | 2026-12-07 (all four repositories)                                 | 1 Dec; 5 Dec → owner if no fixed image    | R1-D-291, R1-D-294 |
 
 ## Wave 13 gate (16 Nov, #252)
 

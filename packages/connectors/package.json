@@ -156,6 +156,10 @@
       "types": "./dist/egress/index.d.ts",
       "default": "./dist/egress/index.js"
     },
+    "./content-coding": {
+      "types": "./dist/content-coding/index.d.ts",
+      "default": "./dist/content-coding/index.js"
+    },
     "./web-snapshot": {
       "types": "./dist/web-snapshot/index.d.ts",
       "default": "./dist/web-snapshot/index.js"

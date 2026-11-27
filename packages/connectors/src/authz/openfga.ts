@@ -16,6 +16,10 @@ import type {
   ResourcePlan,
 } from "@infrabyx/contracts/ports";
 import { AllowCache, agentGuard, isAgent, pdpDown } from "./common.js";
+import { refuseZstdFetch } from "../content-coding/index.js";
+
+/** OpenFGA is reached with zstd never offered and a zstd answer refused unread (R1-D-294). */
+const fgaFetch = refuseZstdFetch();
 
 export interface OpenFgaOptions {
   apiUrl: string;
@@ -63,7 +67,7 @@ async function post<T>(
   body: unknown,
   presharedKey?: string,
 ): Promise<T> {
-  const r = await fetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
+  const r = await fgaFetch(`${apiUrl.replace(/\/+$/, "")}${path}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -240,7 +244,7 @@ export class OpenFgaAuthz implements AuthzPort {
   async health(): Promise<PortHealth> {
     const t = Date.now();
     try {
-      const r = await fetch(new URL("/healthz", this.o.apiUrl), {
+      const r = await fgaFetch(new URL("/healthz", this.o.apiUrl), {
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
       return {
