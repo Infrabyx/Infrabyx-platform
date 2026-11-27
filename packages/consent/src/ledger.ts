@@ -230,7 +230,8 @@ export class PgConsentLedger implements ConsentPort {
 
 /**
  * The Operations Hub ledger (Ecosystem §6.14) over HTTP. Built against a stub; unproven until OH
- * exposes the ledger. `fetch` is injected (the product's EGRESS-guarded fetch in production).
+ * exposes the ledger. `fetch` is injected (the product's EGRESS-guarded fetch in production, wrapped
+ * in `refuseZstdFetch` from `@infrabyx/connectors/content-coding`; R1-D-294).
  */
 export class OhConsentLedger implements ConsentPort {
   readonly descriptor: AdapterDescriptor = {
@@ -256,7 +257,8 @@ export class OhConsentLedger implements ConsentPort {
     const t0 = Date.now();
     const r = await this.o.fetch(new URL("/v1/health", this.o.baseUrl).toString(), {
       method: "GET",
-      headers: {},
+      // zstd is never offered (CVE-2026-124851; R1-D-294): inject `refuseZstdFetch` as well.
+      headers: { "accept-encoding": "gzip, deflate, br" },
     });
     return {
       status: r.status === 200 ? "up" : "down",
@@ -272,6 +274,7 @@ export class OhConsentLedger implements ConsentPort {
       headers: {
         authorization: `Bearer ${await this.o.token()}`,
         "content-type": "application/json",
+        "accept-encoding": "gzip, deflate, br",
         ...(call?.idempotencyKey ? { "idempotency-key": call.idempotencyKey } : {}),
       },
       body: JSON.stringify(v),
@@ -290,7 +293,10 @@ export class OhConsentLedger implements ConsentPort {
       ).toString(),
       {
         method: "GET",
-        headers: { authorization: `Bearer ${await this.o.token()}` },
+        headers: {
+          authorization: `Bearer ${await this.o.token()}`,
+          "accept-encoding": "gzip, deflate, br",
+        },
       },
     );
     if (r.status === 404) return null;

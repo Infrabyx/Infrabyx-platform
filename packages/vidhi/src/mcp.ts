@@ -411,7 +411,10 @@ export const McpServerEntry = z
   .strict();
 export type McpServerEntry = z.infer<typeof McpServerEntry>;
 
-/** The egress fetch the client uses (`connectors` egress rules; injected by the product). */
+/**
+ * The egress fetch the client uses (`connectors` egress rules; injected by the product, wrapped in
+ * `refuseZstdFetch` from `@infrabyx/connectors/content-coding`; R1-D-294).
+ */
 export type McpFetch = (
   url: string,
   init: { method: "POST"; headers: Record<string, string>; body: string },
@@ -537,6 +540,8 @@ export class McpClient {
         headers: {
           "content-type": "application/json",
           accept: "application/json",
+          // zstd is never offered (CVE-2026-124851; R1-D-294).
+          "accept-encoding": "gzip, deflate, br",
           "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
           "Mcp-Method": "tools/call",
           "Mcp-Name": tool,
