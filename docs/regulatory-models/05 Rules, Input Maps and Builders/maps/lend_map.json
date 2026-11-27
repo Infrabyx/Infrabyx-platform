@@ -1,0 +1,162 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Position as on",
+"source": "Company",
+"default": null
+},
+{
+"key": "th.trigger",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Internal trigger as a share of a limit (amber from here)",
+"source": "Board-approved",
+"default": 0.95
+},
+{
+"key": "th.dlg",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Cap on default loss guarantee cover (share of the amount disbursed out of the portfolio)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 24",
+"default": 0.05
+},
+{
+"key": "th.dlgdays",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Guarantee to be invoked within (days overdue)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 27",
+"default": 120
+},
+{
+"key": "th.gold1",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Gold and silver, consumption loans: first slab up to (₹, total per borrower)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 43",
+"default": 250000
+},
+{
+"key": "th.goldltv1",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Maximum loan-to-value in the first slab",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 43",
+"default": 0.85
+},
+{
+"key": "th.gold2",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Second slab up to (₹, total per borrower)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 43",
+"default": 500000
+},
+{
+"key": "th.goldltv2",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Maximum loan-to-value in the second slab",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 43",
+"default": 0.8
+},
+{
+"key": "th.goldltv3",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Maximum loan-to-value above the second slab",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 43",
+"default": 0.75
+},
+{
+"key": "th.goldbiz",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Internal loan-to-value limit for income-generating loans against gold and silver (blank = none set)",
+"source": "Board-approved policy (para 32)",
+"default": null
+},
+{
+"key": "setup.las",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Asset size of ₹100 crore and above (conditions on loans against shares apply)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 106",
+"default": "Yes"
+},
+{
+"key": "th.share",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Loan-to-value to be maintained on loans against listed shares",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 106",
+"default": 0.5
+},
+{
+"key": "th.sharedays",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Shortfall to be made good within (working days)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 106",
+"default": 7
+},
+{
+"key": "th.mfincome",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Microfinance: annual household income up to (₹)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 51",
+"default": 300000
+},
+{
+"key": "th.mfrepay",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Microfinance: limit on monthly repayment obligations as a share of monthly household income (Board policy; not above 50 per cent)",
+"source": "RBI (NBFCs – Credit Facilities) Directions, 2025, para 55",
+"default": 0.5
+},
+{
+"key": "guarantees",
+"sheet": "Guarantee Input",
+"cell": "A7:I56",
+"label": "Guarantee Input: Portfolio *; Guarantee provider; Amount of the portfolio covered (sanctioned); Amount disbursed out of the portfolio *; Cover: cash deposited; Cover: fixed deposit with lien; Cover: bank guarantee; Guarantee invoked to date; Oldest overdue on a loan not yet invoked (days)",
+"source": "Default loss guarantee agreements; register of guarantees; loan system",
+"default": null
+},
+{
+"key": "gold",
+"sheet": "Gold Input",
+"cell": "A7:H506",
+"label": "Gold Input: Loan ID *; Borrower ID *; Purpose *; Bullet repayment; Loan amount sanctioned *; Outstanding *; Total repayable at maturity (bullet loans); Value of collateral *",
+"source": "Loan system export; valuation record",
+"default": null
+},
+{
+"key": "shares",
+"sheet": "Share Input",
+"cell": "A7:E206",
+"label": "Share Input: Loan ID *; Borrower; Outstanding *; Market value of shares pledged *; Date the shortfall arose",
+"source": "Loan system export; daily mark-to-market of pledged shares",
+"default": null
+},
+{
+"key": "households",
+"sheet": "Microfinance Input",
+"cell": "A7:F506",
+"label": "Microfinance Input: Household or borrower ID *; Member or centre; Annual household income as assessed *; Existing monthly repayment obligations (all lenders); Monthly instalment of the proposed or existing loan of the company; Collateral-free",
+"source": "Household income assessment; credit information report",
+"default": null
+}
+]

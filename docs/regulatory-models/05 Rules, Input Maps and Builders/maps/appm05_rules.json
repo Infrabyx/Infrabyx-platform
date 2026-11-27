@@ -1,0 +1,1378 @@
+[
+{
+"no": 1,
+"group": "Governance & Registration",
+"policy": "Open architecture policy (insurer tie-ups and customer choice)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 2,
+"group": "Governance & Registration",
+"policy": "Policy for comparison and distribution of insurance products (brokers)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "Yes",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 3,
+"group": "Governance & Registration",
+"policy": "Registration, annual-fee and fresh-certificate compliance procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 4,
+"group": "Governance & Registration",
+"policy": "Principal officer and certified-person training policy (three-yearly refresher)",
+"type": "Mandatory",
+"condition": "Brokers: BQP qualification and CPD under the Brokers Regulations; refresher recommended",
+"question": "VOL",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Conditional",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 5,
+"group": "Governance & Registration",
+"policy": "Policy tagging and sales-attribution SOP",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 6,
+"group": "Governance & Registration",
+"policy": "Branch and specified-person deployment policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Corporate agents soliciting through branches",
+"question": "BRANCH",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 7,
+"group": "Governance & Registration",
+"policy": "Annual disclosure of commission, related-party transactions, profits and dividends",
+"type": "Mandatory if activity undertaken",
+"condition": "Commission above ₹10 crore in a financial year, or majority foreign-owned",
+"question": "COM10",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 8,
+"group": "Governance & Registration",
+"policy": "Related-party transactions policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Companies with RPTs; majority foreign-owned intermediaries; TPAs (related-party disclosures)",
+"question": "RPT",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 9,
+"group": "Governance & Registration",
+"policy": "Change in control, shareholding and key-personnel approval procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "On proposed change in shareholding, control, directors, principal officer or KMP",
+"question": "CHG",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 10,
+"group": "Governance & Registration",
+"policy": "Fit-and-proper policy for directors, KMP and principal officer",
+"type": "Mandatory if activity undertaken",
+"condition": "Mandatory for bank/NBFC agents under RBI directions; others evidence IRDAI fit-and-proper criteria",
+"question": "BANK",
+"answers": {
+"CAF": "Yes",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 11,
+"group": "Governance & Registration",
+"policy": "Capital, net-worth and dividend management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "TPAs (minimum capital under TPA Regulations)",
+"question": "TPA",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 12,
+"group": "Governance & Registration",
+"policy": "Compliance policy and compliance-officer charter",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers with remuneration above ₹5 crore and all reinsurance/composite brokers; bank/NBFC agents; recommended for others",
+"question": "BANK",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 13,
+"group": "Governance & Registration",
+"policy": "Nomination and remuneration policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Listed and prescribed public companies",
+"question": "BIG",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 14,
+"group": "Governance & Registration",
+"policy": "CSR policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Companies meeting s. 135(1) thresholds",
+"question": "CSR",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 15,
+"group": "Governance & Registration",
+"policy": "Policy on policies (policy governance framework)",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 16,
+"group": "Governance & Registration",
+"policy": "Delegation of authority and authority matrix",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 17,
+"group": "Governance & Registration",
+"policy": "Regulatory returns and reporting calendar procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 18,
+"group": "Governance & Registration",
+"policy": "Insurance Distribution Entity transition readiness plan",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 19,
+"group": "Governance & Registration",
+"policy": "Surrender, exit and run-off servicing policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 20,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Code of conduct for the intermediary, principal officer and sales personnel",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 21,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Third-party product (insurance) sales policy for bank / NBFC agents",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "No",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 22,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Single-client concentration and promoter-group business policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "Yes",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 23,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Sales incentive, remuneration and consequence-management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Mandatory for bank/NBFC agents from 1 Jan 2027; recommended for others",
+"question": "BANK",
+"answers": {
+"CAF": "Yes",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 24,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Distance marketing and telemarketing policy (incl. 1600-series calling)",
+"type": "Mandatory if activity undertaken",
+"condition": "Where tele-calling, online or other distance modes are used",
+"question": "TELE",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 25,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "POSP and insurance sales person engagement and monitoring policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers engaging POSPs",
+"question": "POSP",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "Conditional",
+"WA": "No",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 26,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Premium collection and client-money handling policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Where premium is collected; reinsurance premium segregated under Brokers reg. 33",
+"question": "PREM",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "No",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 27,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Reinsurance placement and foreign reinsurer due-diligence policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Reinsurance and composite brokers",
+"question": "COM10",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "Conditional",
+"WA": "No",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 28,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Needs-analysis and suitability policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 29,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Remuneration, commission receipt and anti-rebating policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 30,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Persistency, renewal and post-sale servicing policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 31,
+"group": "Distribution Conduct & Sales Practices",
+"policy": "Free-look, cancellation and refund facilitation SOP",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 32,
+"group": "Digital Distribution & Marketing",
+"policy": "Digital interface, e-commerce and dark-pattern compliance policy",
+"type": "Mandatory",
+"condition": "Corporate agents and IMFs with websites, apps or online journeys",
+"question": "DIGI",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 33,
+"group": "Digital Distribution & Marketing",
+"policy": "Product display, comparison and lead-management policy (web aggregators)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "No",
+"WA": "Yes",
+"IMF": "No",
+"OTH": "No"
+}
+},
+{
+"no": 34,
+"group": "Digital Distribution & Marketing",
+"policy": "Advertisement and marketing-communication approval policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries issuing advertisements or product communications",
+"question": "DIGI",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 35,
+"group": "Digital Distribution & Marketing",
+"policy": "Social media, influencer and endorsement policy",
+"type": "Recommended",
+"condition": "TPAs and surveyors using social media",
+"question": "DIGI",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 36,
+"group": "Digital Distribution & Marketing",
+"policy": "Website and app disclosure policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 37,
+"group": "Policyholder Protection & Grievance",
+"policy": "Grievance redressal policy and grievance officer",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 38,
+"group": "Policyholder Protection & Grievance",
+"policy": "Complaint root-cause analysis and conduct MIS policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 39,
+"group": "Policyholder Protection & Grievance",
+"policy": "Senior citizen, vulnerable customer and accessibility policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 40,
+"group": "Policyholder Protection & Grievance",
+"policy": "Ombudsman, consumer commission and litigation-handling SOP",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 41,
+"group": "Claims, Servicing & Specialist Operations",
+"policy": "Claims assistance, claim consultancy and risk-management services policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers offering claim consultancy or commercial-lines risk management; others assisting claims",
+"question": "CLAIM",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 42,
+"group": "Claims, Servicing & Specialist Operations",
+"policy": "TPA cashless authorisation and claims-processing policy",
+"type": "Mandatory if activity undertaken",
+"condition": "TPAs",
+"question": "CLAIM",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 43,
+"group": "Claims, Servicing & Specialist Operations",
+"policy": "TPA hospital network and service-level management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "TPAs",
+"question": "TPA",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 44,
+"group": "Claims, Servicing & Specialist Operations",
+"policy": "Surveyor independence, conflict and survey-report SOP",
+"type": "Mandatory if activity undertaken",
+"condition": "Surveyors and loss assessors",
+"question": "TPA",
+"answers": {
+"CAF": "No",
+"CAO": "No",
+"BRK": "No",
+"WA": "No",
+"IMF": "No",
+"OTH": "Conditional"
+}
+},
+{
+"no": 45,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Anti-fraud policy and fraud risk management framework",
+"type": "Mandatory",
+"condition": "TPAs and surveyors: as required by insurers' fraud frameworks and contracts",
+"question": "TPA",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 46,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Risk management policy",
+"type": "Mandatory",
+"condition": "Companies (statement in Board's report); recommended for LLPs, co-operatives and firms",
+"question": "VOL",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 47,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Professional indemnity insurance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Corporate agents per reg. 19 (as amended); WAs, IMFs, TPAs and surveyors where their regulations or insurer contracts require",
+"question": "TPA",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Yes",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 48,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Internal financial controls and internal audit charter",
+"type": "Mandatory if activity undertaken",
+"condition": "Companies meeting r. 13 thresholds; reinsurance and composite brokers (internal audit mandatory)",
+"question": "IA13",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 49,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Vigil mechanism and whistle-blower policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Listed companies; companies with public deposits or bank/PFI borrowings above ₹50 crore; others as part of anti-fraud framework",
+"question": "BIG",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 50,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Conflict of interest policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 51,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Inspection readiness and regulatory-correspondence SOP",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 52,
+"group": "Risk, Fraud & Internal Control",
+"policy": "Legal-risk, litigation and advocate-panel policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 53,
+"group": "AML/KYC & Sanctions",
+"policy": "KYC / AML / CFT policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Bank/NBFC agents as PMLA reporting entities; other intermediaries performing KYC under insurers' AML programmes",
+"question": "KYC",
+"answers": {
+"CAF": "Yes",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 54,
+"group": "AML/KYC & Sanctions",
+"policy": "Sanctions and UAPA designated-list screening procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries performing KYC or onboarding customers",
+"question": "KYC",
+"answers": {
+"CAF": "Yes",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "No"
+}
+},
+{
+"no": 55,
+"group": "Cyber Security & IT",
+"policy": "Information and cyber security policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 56,
+"group": "Cyber Security & IT",
+"policy": "Cyber crisis management and incident response plan",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 57,
+"group": "Cyber Security & IT",
+"policy": "Business continuity and disaster recovery plan",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 58,
+"group": "Cyber Security & IT",
+"policy": "Data classification and information asset management policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 59,
+"group": "Cyber Security & IT",
+"policy": "Access control and privileged access management policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 60,
+"group": "Cyber Security & IT",
+"policy": "Security testing, cyber audit and exception management procedure",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 61,
+"group": "Cyber Security & IT",
+"policy": "Remote working, endpoint and BYOD security policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 62,
+"group": "Cyber Security & IT",
+"policy": "Cryptography and key management policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 63,
+"group": "Cyber Security & IT",
+"policy": "Network, email and perimeter security standard",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 64,
+"group": "Cyber Security & IT",
+"policy": "ICT log management and retention policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 65,
+"group": "Cyber Security & IT",
+"policy": "Cloud security and cloud service provider policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities using cloud services",
+"question": "CLOUD",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 66,
+"group": "Cyber Security & IT",
+"policy": "AI governance and responsible-use policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 67,
+"group": "Cyber Security & IT",
+"policy": "IT change and patch management policy",
+"type": "Recommended",
+"condition": "Corporate surveyors and TPAs with in-house systems",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 68,
+"group": "Data Protection & Records",
+"policy": "Data protection policy and privacy notice (DPDP)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 69,
+"group": "Data Protection & Records",
+"policy": "Consent management and data-principal rights procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 70,
+"group": "Data Protection & Records",
+"policy": "Personal data breach notification procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 71,
+"group": "Data Protection & Records",
+"policy": "Record maintenance, retention and destruction policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 72,
+"group": "Data Protection & Records",
+"policy": "Significant data fiduciary compliance programme",
+"type": "Mandatory if activity undertaken",
+"condition": "If notified as a significant data fiduciary",
+"question": "SDF",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 73,
+"group": "Data Protection & Records",
+"policy": "Policyholder data confidentiality and data-sharing policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Outsourcing & Third Parties",
+"policy": "Vendor and third-party cyber risk policy",
+"type": "Mandatory",
+"condition": "IMFs: confirm scope (else insurer's minimum framework); TPAs in scope; individual surveyors, agents and POSPs outside direct scope",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 75,
+"group": "Outsourcing & Third Parties",
+"policy": "Outsourcing policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Brokers (core broking, risk management and claim consultancy cannot be outsourced); recommended for others that outsource",
+"question": "OUT",
+"answers": {
+"CAF": "Yes",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 76,
+"group": "Outsourcing & Third Parties",
+"policy": "Referral, lead-generation and co-marketing partner policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "No"
+}
+},
+{
+"no": 77,
+"group": "HR, Ethics & Training",
+"policy": "POSH policy and Internal Committee",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 78,
+"group": "HR, Ethics & Training",
+"policy": "Equal opportunity policy (persons with disabilities and transgender persons)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 79,
+"group": "HR, Ethics & Training",
+"policy": "Compliance, fraud and cyber awareness training plan",
+"type": "Mandatory",
+"condition": "TPAs and corporate surveyors",
+"question": "ITSYS",
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Conditional"
+}
+},
+{
+"no": 80,
+"group": "HR, Ethics & Training",
+"policy": "HR policies and standing orders under the Labour Codes",
+"type": "Mandatory if activity undertaken",
+"condition": "Standing orders: 300 or more workers; Grievance Redressal Committee: 20 or more workers",
+"question": "W20",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 81,
+"group": "HR, Ethics & Training",
+"policy": "Employee and sales-force code of conduct and disciplinary policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 82,
+"group": "HR, Ethics & Training",
+"policy": "Gifts, entertainment and anti-bribery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 83,
+"group": "HR, Ethics & Training",
+"policy": "Pre-employment screening and background verification policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 84,
+"group": "Corporate, FEMA & Tax",
+"policy": "Foreign investment and FEMA compliance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Intermediaries with foreign investment",
+"question": "FDI",
+"answers": {
+"CAF": "Conditional",
+"CAO": "Conditional",
+"BRK": "Conditional",
+"WA": "Conditional",
+"IMF": "Conditional",
+"OTH": "Conditional"
+}
+},
+{
+"no": 85,
+"group": "Corporate, FEMA & Tax",
+"policy": "Tax and GST compliance policy (commission and fees)",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+},
+{
+"no": 86,
+"group": "Corporate, FEMA & Tax",
+"policy": "Treasury and surplus-funds investment policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"CAF": "Yes",
+"CAO": "Yes",
+"BRK": "Yes",
+"WA": "Yes",
+"IMF": "Yes",
+"OTH": "Yes"
+}
+}
+]

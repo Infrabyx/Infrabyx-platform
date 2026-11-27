@@ -22,3 +22,7 @@ packages/vidhi/persona/
 packages/vidhi/evals/
 # Helm templates are Go templates, not YAML
 infra/helm/*/templates/
+# The owner's regulatory templates and models, filed as specifications and hash-checked against
+# their SHA256SUMS (R1-D-297): never reformatted
+docs/regulatory-templates/
+docs/regulatory-models/

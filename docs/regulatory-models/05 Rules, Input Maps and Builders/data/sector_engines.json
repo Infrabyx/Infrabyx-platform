@@ -1,0 +1,134 @@
+{
+ "sebi listed": {
+  "code": "APP-M02",
+  "engine": "Policies Framework/SEBI Policies/Applicability Engine/APP-M02 Applicability Engine for SEBI Listed Entities.xlsx",
+  "map": "appm02_map.json",
+  "categories": [
+   "Main-board equity listed (incl. Reg 15(2)-exempt small entities where noted)",
+   "Top 1,000 by market capitalisation (extra LODR duties)",
+   "SME-listed (BSE SME / NSE Emerge)",
+   "Debt-only listed (NCDs / NCRPS / CP), below HVDLE threshold",
+   "High value debt listed entity (listed NCDs of Rs 5,000 crore or more; LODR Chapter VA)"
+  ],
+  "codes": [
+   "MB",
+   "T1000",
+   "SME",
+   "DL",
+   "HV"
+  ],
+  "policies": 91,
+  "committees": 13
+ },
+ "sebi intermediaries": {
+  "code": "APP-M03",
+  "engine": "Policies Framework/SEBI Policies/Applicability Engine/APP-M03 Applicability Engine for SEBI Market Intermediaries.xlsx",
+  "map": "appm03_map.json",
+  "categories": [
+   "Stock brokers and clearing members, incl. QSBs (SEBI (Stock Brokers) Regulations, 2026)",
+   "Depository participants",
+   "Investment advisers and research analysts",
+   "Portfolio managers",
+   "AIF managers / sponsors",
+   "Merchant bankers, RTAs and KRAs"
+  ],
+  "codes": [
+   "SB",
+   "DP",
+   "IARA",
+   "PMS",
+   "AIF",
+   "OTH"
+  ],
+  "policies": 86,
+  "committees": 10
+ },
+ "ifsca": {
+  "code": "APP-M04",
+  "engine": "Policies Framework/IFSCA Policies/Applicability Engine/APP-M04 Applicability Engine for IFSCA Entities.xlsx",
+  "map": "appm04_map.json",
+  "categories": [
+   "Finance companies / units (lending, leasing, GRCTC, factoring, ITFS)",
+   "Fund management entities and their schemes (FM Regulations, 2025)",
+   "Capital market intermediaries (CMI Regulations, 2025)",
+   "IFSC Banking Units / IFSC banking companies",
+   "IFSC insurance offices and insurance intermediary offices",
+   "Service and ancillary units (GIC, BATF, TechFin / ancillary, payment service providers)"
+  ],
+  "codes": [
+   "FC",
+   "FM",
+   "CMI",
+   "BU",
+   "INS",
+   "SVC"
+  ],
+  "policies": 88,
+  "committees": 13
+ },
+ "irdai": {
+  "code": "APP-M05",
+  "engine": "Policies Framework/IRDA Policies/Applicability Engine/APP-M05 Applicability Engine for Insurance Intermediaries.xlsx",
+  "map": "appm05_map.json",
+  "categories": [
+   "Corporate agents – banks, NBFCs, HFCs and other financial companies",
+   "Corporate agents – other entities (non-financial companies, LLPs, co-operatives)",
+   "Insurance brokers (direct, reinsurance, composite)",
+   "Insurance web aggregators and digital distribution platforms",
+   "Insurance marketing firms (IMFs)",
+   "TPAs (health services) and surveyors / loss assessors"
+  ],
+  "codes": [
+   "CAF",
+   "CAO",
+   "BRK",
+   "WA",
+   "IMF",
+   "OTH"
+  ],
+  "policies": 86,
+  "committees": 14
+ },
+ "cooperative": {
+  "code": "APP-M06",
+  "engine": "Scope of Work/07 Co-operative Societies/Applicability Engine/APP-M06 Applicability Engine for Co-operative Societies.xlsx",
+  "map": "appm06_map.json",
+  "categories": [
+   "Multi-State co-operative societies – non-credit (dairy, marketing, federations, other multi-purpose)",
+   "Multi-State credit co-operative societies (incl. multi-purpose societies with credit activities)",
+   "State-registered credit / thrift / salary-earners' societies and PACS",
+   "State-registered non-credit societies (housing, dairy, agro-processing, consumer)",
+   "Urban co-operative banks (RBI-licensed; light-touch)"
+  ],
+  "codes": [
+   "MSCS",
+   "MSCCS",
+   "SCS",
+   "OTH",
+   "UCB"
+  ],
+  "policies": 81,
+  "committees": 13
+ },
+ "payments": {
+  "code": "APP-M07",
+  "engine": "Policies Framework/PPI Policies/Applicability Engine/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities.xlsx",
+  "map": "appm07_map.json",
+  "categories": [
+   "Payment aggregators (PA-O, PA-P, PA-CB)",
+   "Non-bank PPI issuers",
+   "Non-bank Bharat Bill Payment Operating Units (BOU / COU)",
+   "Lending service providers / digital lending fintechs",
+   "UPI TPAPs and other non-bank PSOs"
+  ],
+  "codes": [
+   "PA",
+   "PPI",
+   "BBPOU",
+   "LSP",
+   "TPAP"
+  ],
+  "policies": 89,
+  "committees": 16
+ }
+}

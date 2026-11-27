@@ -1,0 +1,1337 @@
+[
+{
+"no": 1,
+"group": "Governance & Authorisation",
+"policy": "Fit-and-proper policy for promoters, directors and KMP",
+"type": "Mandatory",
+"condition": "Other authorised PSOs; TPAPs as NPCI/PSP bank require",
+"question": "OTHPSO",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 2,
+"group": "Governance & Authorisation",
+"policy": "Net-worth monitoring and capital planning policy",
+"type": "Mandatory",
+"condition": "Non-bank BBPOUs and other PSOs per their authorisation",
+"question": "OTHPSO",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 3,
+"group": "Governance & Authorisation",
+"policy": "Regulatory reporting and returns calendar",
+"type": "Mandatory",
+"condition": "LSPs: data support for lender CIMS reporting (Credit Facilities Directions, para 18); TPAPs per NPCI",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 4,
+"group": "Governance & Authorisation",
+"policy": "Enterprise risk management policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 5,
+"group": "Governance & Authorisation",
+"policy": "New product and change approval policy (incl. cyber risk assessment)",
+"type": "Mandatory",
+"condition": "LSPs: lender product approval; TPAPs and other PSOs as in scope",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 6,
+"group": "Governance & Authorisation",
+"policy": "Change in control and management approval procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "On takeover, acquisition of control or change in management",
+"question": "CHG",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 7,
+"group": "Governance & Authorisation",
+"policy": "Foreign investment and FATF-jurisdiction compliance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities with foreign investment",
+"question": "FDI",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 8,
+"group": "Governance & Authorisation",
+"policy": "Voluntary surrender, exit and wind-down plan",
+"type": "Mandatory if activity undertaken",
+"condition": "Authorised PSOs exiting a business",
+"question": "EXIT",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 9,
+"group": "Governance & Authorisation",
+"policy": "Internal financial controls and internal audit charter",
+"type": "Mandatory if activity undertaken",
+"condition": "Companies meeting r. 13 thresholds; PAs place quarterly internal audit reports before the IT Committee",
+"question": "IA13",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 10,
+"group": "Governance & Authorisation",
+"policy": "Nomination and remuneration policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Listed and prescribed public companies",
+"question": "BIG",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 11,
+"group": "Governance & Authorisation",
+"policy": "CSR policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Companies meeting s. 135(1) thresholds",
+"question": "CSR",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 12,
+"group": "Governance & Authorisation",
+"policy": "Vigil mechanism and whistle-blower policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Listed companies; companies with public deposits or bank/PFI borrowings above ₹50 crore",
+"question": "BIG",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 13,
+"group": "Governance & Authorisation",
+"policy": "Compliance policy and compliance-function charter",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 14,
+"group": "Governance & Authorisation",
+"policy": "SRO-FT membership and code adherence policy",
+"type": "Recommended",
+"condition": "Non-bank BBPOUs that are fintechs",
+"question": "SRO",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 15,
+"group": "Governance & Authorisation",
+"policy": "Related-party transactions policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 16,
+"group": "Governance & Authorisation",
+"policy": "Policy on policies",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 17,
+"group": "Merchant & Biller Management",
+"policy": "Merchant onboarding and due-diligence policy",
+"type": "Mandatory",
+"condition": "PPI issuers onboarding merchants; other PSOs acquiring merchants",
+"question": "MERCH",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 18,
+"group": "Merchant & Biller Management",
+"policy": "Merchant risk categorisation and transaction-monitoring framework",
+"type": "Mandatory",
+"condition": "PPI issuers and BOUs with merchant/biller exposure; other PSOs acquiring merchants",
+"question": "MERCH",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 19,
+"group": "Merchant & Biller Management",
+"policy": "Merchant agreement and policy disclosure standard",
+"type": "Mandatory",
+"condition": "BOUs: biller agreements",
+"question": "MERCH",
+"answers": {
+"PA": "Yes",
+"PPI": "No",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 20,
+"group": "Merchant & Biller Management",
+"policy": "Biller onboarding and due-diligence policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "No",
+"PPI": "No",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 21,
+"group": "Merchant & Biller Management",
+"policy": "Card-data storage prohibition and tokenisation policy",
+"type": "Mandatory",
+"condition": "PSOs and issuers handling card data",
+"question": "CARD",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 22,
+"group": "Merchant & Biller Management",
+"policy": "Agent and agent-institution engagement policy",
+"type": "Mandatory if activity undertaken",
+"condition": "PPI issuers using agents; COUs using agent institutions; PAs using agents for due diligence",
+"question": "AGENT",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 23,
+"group": "Merchant & Biller Management",
+"policy": "Merchant suspension, off-boarding and legacy-remediation policy",
+"type": "Recommended",
+"condition": "PPI issuers, BOUs and other PSOs with merchants",
+"question": "MERCH",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 24,
+"group": "Funds Flow, Escrow & Settlement",
+"policy": "Escrow account management policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 25,
+"group": "Funds Flow, Escrow & Settlement",
+"policy": "Settlement and reconciliation policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 26,
+"group": "Funds Flow, Escrow & Settlement",
+"policy": "Refund and reversal policy",
+"type": "Mandatory",
+"condition": "BBPOUs: failed/disputed transactions via escrow; TPAPs via PSP bank and NPCI",
+"question": "FAIL",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 27,
+"group": "Funds Flow, Escrow & Settlement",
+"policy": "PPI expiry, inactivity and residual-balance policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "No",
+"PPI": "Yes",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 28,
+"group": "Funds Flow, Escrow & Settlement",
+"policy": "Cross-border payment aggregation (PA-CB) policy",
+"type": "Mandatory if activity undertaken",
+"condition": "PA-CB entities; other PSOs offering cross-border services",
+"question": "XB",
+"answers": {
+"PA": "Conditional",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 29,
+"group": "Product & Payment Operations",
+"policy": "PPI issuance policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "No",
+"PPI": "Yes",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 30,
+"group": "Product & Payment Operations",
+"policy": "Authentication and additional-factor policy",
+"type": "Mandatory",
+"condition": "PAs and PSOs participating in authentication flows",
+"question": "AUTH",
+"answers": {
+"PA": "Conditional",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 31,
+"group": "Product & Payment Operations",
+"policy": "Failed-transaction TAT and compensation policy",
+"type": "Mandatory",
+"condition": "TPAPs and other PSOs via participating banks",
+"question": "FAIL",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 32,
+"group": "Product & Payment Operations",
+"policy": "Gift PPI risk-based limits policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Issuers of gift PPIs",
+"question": "PPIX",
+"answers": {
+"PA": "No",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 33,
+"group": "Product & Payment Operations",
+"policy": "PPI interoperability policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Issuers of full-KYC PPIs",
+"question": "PPIX",
+"answers": {
+"PA": "No",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 34,
+"group": "Product & Payment Operations",
+"policy": "Co-branding policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Issuers of co-branded PPIs",
+"question": "PPIX",
+"answers": {
+"PA": "No",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 35,
+"group": "Product & Payment Operations",
+"policy": "Recurring payments and e-mandate policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities processing recurring transactions (incl. UPI AutoPay)",
+"question": "RECUR",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 36,
+"group": "Product & Payment Operations",
+"policy": "Mobile application security standard",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities offering mobile apps, per cyber MD timeline; LSP lending apps",
+"question": "APP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 37,
+"group": "Product & Payment Operations",
+"policy": "UPI TPAP operations compliance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "UPI TPAPs",
+"question": "TPAP",
+"answers": {
+"PA": "No",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 38,
+"group": "Customer Protection & Grievance",
+"policy": "Customer grievance redressal policy and nodal officer",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 39,
+"group": "Customer Protection & Grievance",
+"policy": "Dispute resolution, chargeback and ODR policy",
+"type": "Mandatory",
+"condition": "TPAPs and other PSOs via NPCI/UDIR and participating banks",
+"question": "FAIL",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 40,
+"group": "Customer Protection & Grievance",
+"policy": "Merchant grievance officer and escalation matrix",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 41,
+"group": "Customer Protection & Grievance",
+"policy": "Customer protection and limited-liability policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "No",
+"PPI": "Yes",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 42,
+"group": "Customer Protection & Grievance",
+"policy": "Integrated Ombudsman Scheme compliance procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "No",
+"PPI": "Yes",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 43,
+"group": "Customer Protection & Grievance",
+"policy": "Customer disclosure, charges and transaction-alert policy",
+"type": "Mandatory",
+"condition": "PAs, BBPOUs and TPAPs with customer-facing interfaces",
+"question": "APP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 44,
+"group": "Customer Protection & Grievance",
+"policy": "Marketing, communications and dark-pattern avoidance policy",
+"type": "Mandatory",
+"condition": "PAs and BBPOUs with consumer-facing interfaces",
+"question": "APP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 45,
+"group": "Customer Protection & Grievance",
+"policy": "Internal Ombudsman framework",
+"type": "Mandatory if activity undertaken",
+"condition": "More than one crore PPIs outstanding (on or after 31 Mar 2025)",
+"question": "PPIX",
+"answers": {
+"PA": "No",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "No",
+"TPAP": "No"
+}
+},
+{
+"no": 46,
+"group": "Customer Protection & Grievance",
+"policy": "Accessibility and vulnerable-customer policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 47,
+"group": "Digital Lending Conduct",
+"policy": "LSP engagement, due-diligence and compliance-attestation policy",
+"type": "Mandatory",
+"condition": "PAs, PPI issuers or TPAPs acting as LSPs for regulated lenders",
+"question": "LSP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "Yes",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 48,
+"group": "Digital Lending Conduct",
+"policy": "Loan disclosure, KFS and cooling-off facilitation policy",
+"type": "Mandatory",
+"condition": "PAs, PPI issuers or TPAPs acting as LSPs for regulated lenders",
+"question": "LSP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "Yes",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 49,
+"group": "Digital Lending Conduct",
+"policy": "Lending fund-flow policy (direct disbursal and repayment)",
+"type": "Mandatory",
+"condition": "PAs, PPI issuers or TPAPs acting as LSPs for regulated lenders",
+"question": "LSP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "Yes",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 50,
+"group": "Digital Lending Conduct",
+"policy": "DLA data consent, storage and privacy policy",
+"type": "Mandatory",
+"condition": "PAs, PPI issuers or TPAPs acting as LSPs for regulated lenders",
+"question": "LSP",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "No",
+"LSP": "Yes",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 51,
+"group": "Digital Lending Conduct",
+"policy": "Multi-lender matchmaking and unbiased display policy",
+"type": "Mandatory if activity undertaken",
+"condition": "LSPs with arrangements with more than one lender",
+"question": "LSP",
+"answers": {
+"PA": "No",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "Conditional",
+"TPAP": "No"
+}
+},
+{
+"no": 52,
+"group": "Digital Lending Conduct",
+"policy": "Recovery and collection conduct policy (LSP as recovery agent)",
+"type": "Mandatory if activity undertaken",
+"condition": "LSPs engaged as recovery agents",
+"question": "LSP",
+"answers": {
+"PA": "No",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "Conditional",
+"TPAP": "No"
+}
+},
+{
+"no": 53,
+"group": "Digital Lending Conduct",
+"policy": "Default loss guarantee (DLG) arrangements policy",
+"type": "Mandatory if activity undertaken",
+"condition": "LSPs providing DLG to lenders",
+"question": "LSP",
+"answers": {
+"PA": "No",
+"PPI": "No",
+"BBPOU": "No",
+"LSP": "Conditional",
+"TPAP": "No"
+}
+},
+{
+"no": 54,
+"group": "AML/KYC & Fraud",
+"policy": "KYC / AML / CFT policy",
+"type": "Mandatory",
+"condition": "LSPs performing KYC for lenders; TPAPs via PSP bank; authorised PSOs are PMLA reporting entities",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 55,
+"group": "AML/KYC & Fraud",
+"policy": "Sanctions and UAPA designated-list screening procedure",
+"type": "Mandatory",
+"condition": "LSPs and TPAPs as required by partner REs / PSP banks",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 56,
+"group": "AML/KYC & Fraud",
+"policy": "Fraud risk management and real-time monitoring framework",
+"type": "Mandatory",
+"condition": "LSPs and TPAPs as partner REs / NPCI require",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 57,
+"group": "AML/KYC & Fraud",
+"policy": "Law-enforcement requests, freeze and mule-account SOP",
+"type": "Mandatory",
+"condition": "LSPs receiving law-enforcement requests",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Yes"
+}
+},
+{
+"no": 58,
+"group": "Cyber Security & IT",
+"policy": "Information security policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 59,
+"group": "Cyber Security & IT",
+"policy": "Cyber crisis management plan",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 60,
+"group": "Cyber Security & IT",
+"policy": "Incident response and 6-hour reporting procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 61,
+"group": "Cyber Security & IT",
+"policy": "Business continuity and disaster recovery policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 62,
+"group": "Cyber Security & IT",
+"policy": "IT policy, IT strategy and IT governance framework",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 63,
+"group": "Cyber Security & IT",
+"policy": "Access control and privileged access management policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 64,
+"group": "Cyber Security & IT",
+"policy": "Data leak prevention policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 65,
+"group": "Cyber Security & IT",
+"policy": "Patch, change and asset (EoLS) management policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 66,
+"group": "Cyber Security & IT",
+"policy": "Secure software development and application security policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 67,
+"group": "Cyber Security & IT",
+"policy": "Security testing, VAPT and system audit policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 68,
+"group": "Cyber Security & IT",
+"policy": "Security operations, logging and monitoring policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 69,
+"group": "Cyber Security & IT",
+"policy": "Cloud operations policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities using cloud services (part of IS policy)",
+"question": "CLOUD",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 70,
+"group": "Cyber Security & IT",
+"policy": "PCI-DSS compliance programme",
+"type": "Mandatory if activity undertaken",
+"condition": "PSOs storing or processing card data",
+"question": "CARD",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "No",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 71,
+"group": "Cyber Security & IT",
+"policy": "AI and model risk governance policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 72,
+"group": "Data Protection & Localisation",
+"policy": "Payment data storage and localisation policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 73,
+"group": "Data Protection & Localisation",
+"policy": "Data protection policy and privacy notice (DPDP)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Data Protection & Localisation",
+"policy": "Consent management and data-principal rights procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 75,
+"group": "Data Protection & Localisation",
+"policy": "Personal data breach notification procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 76,
+"group": "Data Protection & Localisation",
+"policy": "Record retention and erasure policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 77,
+"group": "Data Protection & Localisation",
+"policy": "Significant data fiduciary compliance programme",
+"type": "Mandatory if activity undertaken",
+"condition": "If notified as a significant data fiduciary",
+"question": "SDF",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 78,
+"group": "Outsourcing & Third Parties",
+"policy": "Outsourcing policy",
+"type": "Mandatory",
+"condition": "LSPs as outsourcees comply with lenders' outsourcing directions; TPAPs and other PSOs as applicable",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 79,
+"group": "Outsourcing & Third Parties",
+"policy": "Ecosystem entities and third-party risk policy",
+"type": "Mandatory",
+"condition": "PPI issuers, BBPOUs and other PSOs per cyber MD size timeline (large 1 Apr 2025, medium 1 Apr 2026, small 1 Apr 2028); LSPs and TPAPs as partner REs / NPCI require",
+"question": "SIZE",
+"answers": {
+"PA": "Yes",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 80,
+"group": "Outsourcing & Third Parties",
+"policy": "Partner bank and sponsor-bank relationship policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 81,
+"group": "HR, Ethics & Corporate",
+"policy": "POSH policy and Internal Committee",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 82,
+"group": "HR, Ethics & Corporate",
+"policy": "Equal opportunity policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 83,
+"group": "HR, Ethics & Corporate",
+"policy": "Training and awareness policy (Board, staff, AML, cyber)",
+"type": "Mandatory",
+"condition": "LSPs and TPAPs as partner REs / NPCI require",
+"question": "LSP",
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 84,
+"group": "HR, Ethics & Corporate",
+"policy": "HR policies and standing orders under the Labour Codes",
+"type": "Mandatory if activity undertaken",
+"condition": "Standing orders: 300 or more workers; Grievance Redressal Committee: 20 or more workers",
+"question": "W20",
+"answers": {
+"PA": "Conditional",
+"PPI": "Conditional",
+"BBPOU": "Conditional",
+"LSP": "Conditional",
+"TPAP": "Conditional"
+}
+},
+{
+"no": 85,
+"group": "HR, Ethics & Corporate",
+"policy": "Code of conduct and ethics",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 86,
+"group": "HR, Ethics & Corporate",
+"policy": "Gifts, entertainment and anti-bribery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 87,
+"group": "HR, Ethics & Corporate",
+"policy": "Conflict of interest policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 88,
+"group": "HR, Ethics & Corporate",
+"policy": "Pre-employment screening and background verification policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+},
+{
+"no": 89,
+"group": "HR, Ethics & Corporate",
+"policy": "Website and app terms of use and cookie policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"PA": "Yes",
+"PPI": "Yes",
+"BBPOU": "Yes",
+"LSP": "Yes",
+"TPAP": "Yes"
+}
+}
+]

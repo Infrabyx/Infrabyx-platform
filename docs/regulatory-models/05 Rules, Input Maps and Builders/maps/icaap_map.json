@@ -1,0 +1,7834 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Reporting date",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": "₹ crore"
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": "Middle Layer"
+},
+{
+"key": "setup.mincrar",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Minimum CRAR",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.15
+},
+{
+"key": "setup.mint1",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Minimum Tier 1 ratio",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.1
+},
+{
+"key": "setup.mincet1",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Minimum CET1 ratio (Upper Layer; enter 0 if not applicable)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0
+},
+{
+"key": "setup.maxlev",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Maximum leverage (Base Layer; outside liabilities / owned fund)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 7
+},
+{
+"key": "setup.mbuf",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Management buffer over the internal requirement (% of RWA)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.02
+},
+{
+"key": "setup.agg",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Combination of Pillar 2 add-ons",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": "Simple sum"
+},
+{
+"key": "setup.stress",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Stress buffer treatment",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": "Excess over Pillar 2 add-ons"
+},
+{
+"key": "setup.conf",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Confidence level for credit economic capital",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.999
+},
+{
+"key": "setup.bps",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Interest rate shock for IRRBB (basis points)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 200
+},
+{
+"key": "setup.alpha",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Operational risk alpha (% of gross income)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.15
+},
+{
+"key": "setup.gpcap",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Cap on general provisions in Tier 2 (% of RWA)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.0125
+},
+{
+"key": "setup.sdcap",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Cap on subordinated debt in Tier 2 (% of Tier 1)",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.5
+},
+{
+"key": "setup.tax",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Tax rate",
+"source": "RBI Capital Adequacy Directions / ICAAP policy",
+"default": 0.2517
+},
+{
+"key": "thr.crar.amber",
+"sheet": "Setup",
+"cell": "B23",
+"label": "CRAR: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 0.17
+},
+{
+"key": "thr.crar.red",
+"sheet": "Setup",
+"cell": "C23",
+"label": "CRAR: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "thr.t1.amber",
+"sheet": "Setup",
+"cell": "B24",
+"label": "Tier 1 ratio: amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 0.115
+},
+{
+"key": "thr.t1.red",
+"sheet": "Setup",
+"cell": "C24",
+"label": "Tier 1 ratio: amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.icar.amber",
+"sheet": "Setup",
+"cell": "B25",
+"label": "Internal capital adequacy ratio (available / required): amber below / red below – amber",
+"source": "Risk appetite statement",
+"default": 1.15
+},
+{
+"key": "thr.icar.red",
+"sheet": "Setup",
+"cell": "C25",
+"label": "Internal capital adequacy ratio (available / required): amber below / red below – red",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "thr.eve.amber",
+"sheet": "Setup",
+"cell": "B26",
+"label": "Fall in EVE / Tier 1: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "thr.eve.red",
+"sheet": "Setup",
+"cell": "C26",
+"label": "Fall in EVE / Tier 1: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "thr.sbl.amber",
+"sheet": "Setup",
+"cell": "B27",
+"label": "Largest borrower / Tier 1: amber from / red from – amber",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "thr.sbl.red",
+"sheet": "Setup",
+"cell": "C27",
+"label": "Largest borrower / Tier 1: amber from / red from – red",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "score.bound.1",
+"sheet": "Setup",
+"cell": "B31",
+"label": "Score band 1 upper bound",
+"source": "ICAAP policy",
+"default": 1.5
+},
+{
+"key": "score.addon.1",
+"sheet": "Setup",
+"cell": "C31",
+"label": "Score band 1 add-on",
+"source": "ICAAP policy",
+"default": 0
+},
+{
+"key": "score.bound.2",
+"sheet": "Setup",
+"cell": "B32",
+"label": "Score band 2 upper bound",
+"source": "ICAAP policy",
+"default": 2.5
+},
+{
+"key": "score.addon.2",
+"sheet": "Setup",
+"cell": "C32",
+"label": "Score band 2 add-on",
+"source": "ICAAP policy",
+"default": 0.001
+},
+{
+"key": "score.bound.3",
+"sheet": "Setup",
+"cell": "B33",
+"label": "Score band 3 upper bound",
+"source": "ICAAP policy",
+"default": 3.5
+},
+{
+"key": "score.addon.3",
+"sheet": "Setup",
+"cell": "C33",
+"label": "Score band 3 add-on",
+"source": "ICAAP policy",
+"default": 0.0025
+},
+{
+"key": "score.bound.4",
+"sheet": "Setup",
+"cell": "B34",
+"label": "Score band 4 upper bound",
+"source": "ICAAP policy",
+"default": 4.5
+},
+{
+"key": "score.addon.4",
+"sheet": "Setup",
+"cell": "C34",
+"label": "Score band 4 add-on",
+"source": "ICAAP policy",
+"default": 0.005
+},
+{
+"key": "score.bound.5",
+"sheet": "Setup",
+"cell": "B35",
+"label": "Score band 5 upper bound",
+"source": "ICAAP policy",
+"default": 5.01
+},
+{
+"key": "score.addon.5",
+"sheet": "Setup",
+"cell": "C35",
+"label": "Score band 5 add-on",
+"source": "ICAAP policy",
+"default": 0.01
+},
+{
+"key": "slab.name.1",
+"sheet": "Setup",
+"cell": "B38",
+"label": "Concentration slab 1 name",
+"source": "ICAAP policy",
+"default": 0.001
+},
+{
+"key": "slab.sector.1",
+"sheet": "Setup",
+"cell": "C38",
+"label": "Concentration slab 1 sector",
+"source": "ICAAP policy",
+"default": 0.12
+},
+{
+"key": "slab.state.1",
+"sheet": "Setup",
+"cell": "D38",
+"label": "Concentration slab 1 state",
+"source": "ICAAP policy",
+"default": 0.2
+},
+{
+"key": "slab.addon.1",
+"sheet": "Setup",
+"cell": "E38",
+"label": "Concentration slab 1 addon",
+"source": "ICAAP policy",
+"default": 0
+},
+{
+"key": "slab.name.2",
+"sheet": "Setup",
+"cell": "B39",
+"label": "Concentration slab 2 name",
+"source": "ICAAP policy",
+"default": 0.003
+},
+{
+"key": "slab.sector.2",
+"sheet": "Setup",
+"cell": "C39",
+"label": "Concentration slab 2 sector",
+"source": "ICAAP policy",
+"default": 0.18
+},
+{
+"key": "slab.state.2",
+"sheet": "Setup",
+"cell": "D39",
+"label": "Concentration slab 2 state",
+"source": "ICAAP policy",
+"default": 0.3
+},
+{
+"key": "slab.addon.2",
+"sheet": "Setup",
+"cell": "E39",
+"label": "Concentration slab 2 addon",
+"source": "ICAAP policy",
+"default": 0.02
+},
+{
+"key": "slab.name.3",
+"sheet": "Setup",
+"cell": "B40",
+"label": "Concentration slab 3 name",
+"source": "ICAAP policy",
+"default": 0.01
+},
+{
+"key": "slab.sector.3",
+"sheet": "Setup",
+"cell": "C40",
+"label": "Concentration slab 3 sector",
+"source": "ICAAP policy",
+"default": 0.25
+},
+{
+"key": "slab.state.3",
+"sheet": "Setup",
+"cell": "D40",
+"label": "Concentration slab 3 state",
+"source": "ICAAP policy",
+"default": 0.4
+},
+{
+"key": "slab.addon.3",
+"sheet": "Setup",
+"cell": "E40",
+"label": "Concentration slab 3 addon",
+"source": "ICAAP policy",
+"default": 0.04
+},
+{
+"key": "slab.name.4",
+"sheet": "Setup",
+"cell": "B41",
+"label": "Concentration slab 4 name",
+"source": "ICAAP policy",
+"default": 9
+},
+{
+"key": "slab.sector.4",
+"sheet": "Setup",
+"cell": "C41",
+"label": "Concentration slab 4 sector",
+"source": "ICAAP policy",
+"default": 9
+},
+{
+"key": "slab.state.4",
+"sheet": "Setup",
+"cell": "D41",
+"label": "Concentration slab 4 state",
+"source": "ICAAP policy",
+"default": 9
+},
+{
+"key": "slab.addon.4",
+"sheet": "Setup",
+"cell": "E41",
+"label": "Concentration slab 4 addon",
+"source": "ICAAP policy",
+"default": 0.08
+},
+{
+"key": "fin.ii.y2",
+"sheet": "Financials Input",
+"cell": "B7",
+"label": "Interest income – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.ii.y1",
+"sheet": "Financials Input",
+"cell": "C7",
+"label": "Interest income – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.ii.y0",
+"sheet": "Financials Input",
+"cell": "D7",
+"label": "Interest income – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.oi.y2",
+"sheet": "Financials Input",
+"cell": "B8",
+"label": "Other operating income (fees, commission, gains) – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.oi.y1",
+"sheet": "Financials Input",
+"cell": "C8",
+"label": "Other operating income (fees, commission, gains) – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.oi.y0",
+"sheet": "Financials Input",
+"cell": "D8",
+"label": "Other operating income (fees, commission, gains) – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.ie.y2",
+"sheet": "Financials Input",
+"cell": "B9",
+"label": "Interest expense (finance cost) – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.ie.y1",
+"sheet": "Financials Input",
+"cell": "C9",
+"label": "Interest expense (finance cost) – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.ie.y0",
+"sheet": "Financials Input",
+"cell": "D9",
+"label": "Interest expense (finance cost) – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.opex.y2",
+"sheet": "Financials Input",
+"cell": "B10",
+"label": "Operating expenses (employee, depreciation, other) – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.opex.y1",
+"sheet": "Financials Input",
+"cell": "C10",
+"label": "Operating expenses (employee, depreciation, other) – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.opex.y0",
+"sheet": "Financials Input",
+"cell": "D10",
+"label": "Operating expenses (employee, depreciation, other) – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.prov.y2",
+"sheet": "Financials Input",
+"cell": "B11",
+"label": "Impairment on financial instruments / provisions – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.prov.y1",
+"sheet": "Financials Input",
+"cell": "C11",
+"label": "Impairment on financial instruments / provisions – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.prov.y0",
+"sheet": "Financials Input",
+"cell": "D11",
+"label": "Impairment on financial instruments / provisions – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.tax.y2",
+"sheet": "Financials Input",
+"cell": "B12",
+"label": "Tax expense – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.tax.y1",
+"sheet": "Financials Input",
+"cell": "C12",
+"label": "Tax expense – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.tax.y0",
+"sheet": "Financials Input",
+"cell": "D12",
+"label": "Tax expense – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.div.y2",
+"sheet": "Financials Input",
+"cell": "B13",
+"label": "Dividend paid – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.div.y1",
+"sheet": "Financials Input",
+"cell": "C13",
+"label": "Dividend paid – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.div.y0",
+"sheet": "Financials Input",
+"cell": "D13",
+"label": "Dividend paid – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.assets.y2",
+"sheet": "Financials Input",
+"cell": "B14",
+"label": "Total assets – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.assets.y1",
+"sheet": "Financials Input",
+"cell": "C14",
+"label": "Total assets – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.assets.y0",
+"sheet": "Financials Input",
+"cell": "D14",
+"label": "Total assets – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.loans.y2",
+"sheet": "Financials Input",
+"cell": "B15",
+"label": "Gross loans – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.loans.y1",
+"sheet": "Financials Input",
+"cell": "C15",
+"label": "Gross loans – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.loans.y0",
+"sheet": "Financials Input",
+"cell": "D15",
+"label": "Gross loans – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.borr.y2",
+"sheet": "Financials Input",
+"cell": "B16",
+"label": "Borrowings – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.borr.y1",
+"sheet": "Financials Input",
+"cell": "C16",
+"label": "Borrowings – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.borr.y0",
+"sheet": "Financials Input",
+"cell": "D16",
+"label": "Borrowings – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nw.y2",
+"sheet": "Financials Input",
+"cell": "B17",
+"label": "Net worth – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nw.y1",
+"sheet": "Financials Input",
+"cell": "C17",
+"label": "Net worth – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nw.y0",
+"sheet": "Financials Input",
+"cell": "D17",
+"label": "Net worth – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.gnpa.y2",
+"sheet": "Financials Input",
+"cell": "B18",
+"label": "Gross NPA / Stage 3 – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.gnpa.y1",
+"sheet": "Financials Input",
+"cell": "C18",
+"label": "Gross NPA / Stage 3 – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.gnpa.y0",
+"sheet": "Financials Input",
+"cell": "D18",
+"label": "Gross NPA / Stage 3 – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nnpa.y2",
+"sheet": "Financials Input",
+"cell": "B19",
+"label": "Net NPA – Y2",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nnpa.y1",
+"sheet": "Financials Input",
+"cell": "C19",
+"label": "Net NPA – Y1",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "fin.nnpa.y0",
+"sheet": "Financials Input",
+"cell": "D19",
+"label": "Net NPA – Y0",
+"source": "Audited financial statements; DNBS01 Parts 1-3",
+"default": null
+},
+{
+"key": "cap.eq",
+"sheet": "Capital Input",
+"cell": "B7",
+"label": "Paid-up equity capital",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.ccps",
+"sheet": "Capital Input",
+"cell": "B8",
+"label": "Compulsorily convertible preference shares",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.res",
+"sheet": "Capital Input",
+"cell": "B9",
+"label": "Free reserves (statutory reserve, general reserve, retained earnings)",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.prem",
+"sheet": "Capital Input",
+"cell": "B10",
+"label": "Securities premium",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.capres",
+"sheet": "Capital Input",
+"cell": "B11",
+"label": "Capital reserve representing surplus on sale of assets",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.pdi",
+"sheet": "Capital Input",
+"cell": "B12",
+"label": "Perpetual debt instruments eligible as Tier 1",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.loss",
+"sheet": "Capital Input",
+"cell": "B14",
+"label": "Less: accumulated losses",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.dre",
+"sheet": "Capital Input",
+"cell": "B15",
+"label": "Less: deferred revenue expenditure",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.intang",
+"sheet": "Capital Input",
+"cell": "B16",
+"label": "Less: intangible assets",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.unreal",
+"sheet": "Capital Input",
+"cell": "B17",
+"label": "Less: unrealised fair value gains included in reserves (Ind AS)",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.secur",
+"sheet": "Capital Input",
+"cell": "B18",
+"label": "Less: securitisation and credit-enhancement deductions from Tier 1",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.othded",
+"sheet": "Capital Input",
+"cell": "B19",
+"label": "Less: other regulatory deductions",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.grp",
+"sheet": "Capital Input",
+"cell": "B21",
+"label": "Investments in shares of other NBFCs and investments in / loans to subsidiaries and group companies",
+"source": "DNBS03 capital funds; capital adequacy working",
+"default": null
+},
+{
+"key": "cap.pref",
+"sheet": "Capital Input",
+"cell": "B26",
+"label": "Preference shares other than compulsorily convertible",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.reval",
+"sheet": "Capital Input",
+"cell": "B27",
+"label": "Revaluation reserves (gross; counted at 45%)",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.gp",
+"sheet": "Capital Input",
+"cell": "B28",
+"label": "General provisions and loss reserves (including provision on standard assets / 12-month ECL as permitted)",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.hybrid",
+"sheet": "Capital Input",
+"cell": "B29",
+"label": "Hybrid debt capital instruments",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.sub",
+"sheet": "Capital Input",
+"cell": "B30",
+"label": "Subordinated debt (after discount for residual maturity)",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.pdix",
+"sheet": "Capital Input",
+"cell": "B31",
+"label": "Perpetual debt instruments in excess of the Tier 1 limit",
+"source": "DNBS03 Part 2 (Tier II capital)",
+"default": null
+},
+{
+"key": "cap.osl",
+"sheet": "Capital Input",
+"cell": "B40",
+"label": "Total outside liabilities",
+"source": "Balance sheet (total liabilities less owned fund)",
+"default": null
+},
+{
+"key": "rwa.on.name.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A7",
+"label": "On-balance item 1",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Cash and bank balances, including fixed deposits and certificates of deposit with banks"
+},
+{
+"key": "rwa.on.amt.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B7",
+"label": "Cash and bank balances, including fixed deposits and certificates of deposit with banks – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C7",
+"label": "Cash and bank balances, including fixed deposits and certificates of deposit with banks – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E7",
+"label": "Cash and bank balances, including fixed deposits and certificates of deposit with banks – type",
+"source": "Classification",
+"default": "Other"
+},
+{
+"key": "rwa.on.name.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A8",
+"label": "On-balance item 2",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Investments: approved securities (government)"
+},
+{
+"key": "rwa.on.amt.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B8",
+"label": "Investments: approved securities (government) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C8",
+"label": "Investments: approved securities (government) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E8",
+"label": "Investments: approved securities (government) – type",
+"source": "Classification",
+"default": "Investments"
+},
+{
+"key": "rwa.on.name.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A9",
+"label": "On-balance item 3",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Investments: bonds of public sector banks"
+},
+{
+"key": "rwa.on.amt.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B9",
+"label": "Investments: bonds of public sector banks – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C9",
+"label": "Investments: bonds of public sector banks – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0.2
+},
+{
+"key": "rwa.on.type.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E9",
+"label": "Investments: bonds of public sector banks – type",
+"source": "Classification",
+"default": "Investments"
+},
+{
+"key": "rwa.on.name.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A10",
+"label": "On-balance item 4",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Investments: fixed deposits / bonds of public financial institutions"
+},
+{
+"key": "rwa.on.amt.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B10",
+"label": "Investments: fixed deposits / bonds of public financial institutions – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C10",
+"label": "Investments: fixed deposits / bonds of public financial institutions – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E10",
+"label": "Investments: fixed deposits / bonds of public financial institutions – type",
+"source": "Classification",
+"default": "Investments"
+},
+{
+"key": "rwa.on.name.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A11",
+"label": "On-balance item 5",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Investments: shares, debentures, commercial paper and mutual fund units"
+},
+{
+"key": "rwa.on.amt.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B11",
+"label": "Investments: shares, debentures, commercial paper and mutual fund units – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C11",
+"label": "Investments: shares, debentures, commercial paper and mutual fund units – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E11",
+"label": "Investments: shares, debentures, commercial paper and mutual fund units – type",
+"source": "Classification",
+"default": "Investments"
+},
+{
+"key": "rwa.on.name.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A12",
+"label": "On-balance item 6",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: secured retail and MSME loans"
+},
+{
+"key": "rwa.on.amt.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B12",
+"label": "Loans: secured retail and MSME loans – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C12",
+"label": "Loans: secured retail and MSME loans – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E12",
+"label": "Loans: secured retail and MSME loans – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A13",
+"label": "On-balance item 7",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: unsecured business loans"
+},
+{
+"key": "rwa.on.amt.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B13",
+"label": "Loans: unsecured business loans – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C13",
+"label": "Loans: unsecured business loans – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E13",
+"label": "Loans: unsecured business loans – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A14",
+"label": "On-balance item 8",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: consumer credit (personal loans and similar)"
+},
+{
+"key": "rwa.on.amt.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B14",
+"label": "Loans: consumer credit (personal loans and similar) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C14",
+"label": "Loans: consumer credit (personal loans and similar) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1.25
+},
+{
+"key": "rwa.on.type.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E14",
+"label": "Loans: consumer credit (personal loans and similar) – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.9",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A15",
+"label": "On-balance item 9",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: commercial real estate"
+},
+{
+"key": "rwa.on.amt.9",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B15",
+"label": "Loans: commercial real estate – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.9",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C15",
+"label": "Loans: commercial real estate – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.9",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E15",
+"label": "Loans: commercial real estate – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.10",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A16",
+"label": "On-balance item 10",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: guaranteed by the Central Government"
+},
+{
+"key": "rwa.on.amt.10",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B16",
+"label": "Loans: guaranteed by the Central Government – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.10",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C16",
+"label": "Loans: guaranteed by the Central Government – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.10",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E16",
+"label": "Loans: guaranteed by the Central Government – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.11",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A17",
+"label": "On-balance item 11",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: guaranteed by a State Government"
+},
+{
+"key": "rwa.on.amt.11",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B17",
+"label": "Loans: guaranteed by a State Government – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.11",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C17",
+"label": "Loans: guaranteed by a State Government – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0.2
+},
+{
+"key": "rwa.on.type.11",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E17",
+"label": "Loans: guaranteed by a State Government – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.12",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A18",
+"label": "On-balance item 12",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: covered by credit guarantee schemes (guaranteed portion)"
+},
+{
+"key": "rwa.on.amt.12",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B18",
+"label": "Loans: covered by credit guarantee schemes (guaranteed portion) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.12",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C18",
+"label": "Loans: covered by credit guarantee schemes (guaranteed portion) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.12",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E18",
+"label": "Loans: covered by credit guarantee schemes (guaranteed portion) – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.13",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A19",
+"label": "On-balance item 13",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: other loans and advances"
+},
+{
+"key": "rwa.on.amt.13",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B19",
+"label": "Loans: other loans and advances – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.13",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C19",
+"label": "Loans: other loans and advances – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.13",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E19",
+"label": "Loans: other loans and advances – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.14",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A20",
+"label": "On-balance item 14",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Loans: to subsidiaries and group companies (not deducted)"
+},
+{
+"key": "rwa.on.amt.14",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B20",
+"label": "Loans: to subsidiaries and group companies (not deducted) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.14",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C20",
+"label": "Loans: to subsidiaries and group companies (not deducted) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.14",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E20",
+"label": "Loans: to subsidiaries and group companies (not deducted) – type",
+"source": "Classification",
+"default": "Loans"
+},
+{
+"key": "rwa.on.name.15",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A21",
+"label": "On-balance item 15",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Fixed assets (net of depreciation)"
+},
+{
+"key": "rwa.on.amt.15",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B21",
+"label": "Fixed assets (net of depreciation) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.15",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C21",
+"label": "Fixed assets (net of depreciation) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.15",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E21",
+"label": "Fixed assets (net of depreciation) – type",
+"source": "Classification",
+"default": "Other"
+},
+{
+"key": "rwa.on.name.16",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A22",
+"label": "On-balance item 16",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Advance tax and tax deducted at source (net of provision)"
+},
+{
+"key": "rwa.on.amt.16",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B22",
+"label": "Advance tax and tax deducted at source (net of provision) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.16",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C22",
+"label": "Advance tax and tax deducted at source (net of provision) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.16",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E22",
+"label": "Advance tax and tax deducted at source (net of provision) – type",
+"source": "Classification",
+"default": "Other"
+},
+{
+"key": "rwa.on.name.17",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A23",
+"label": "On-balance item 17",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Other assets"
+},
+{
+"key": "rwa.on.amt.17",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B23",
+"label": "Other assets – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.17",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C23",
+"label": "Other assets – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 1
+},
+{
+"key": "rwa.on.type.17",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E23",
+"label": "Other assets – type",
+"source": "Classification",
+"default": "Other"
+},
+{
+"key": "rwa.on.name.18",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A24",
+"label": "On-balance item 18",
+"source": "DNBS03 Part 3 (weighted assets – on-balance sheet)",
+"default": "Items deducted from capital (intangibles, excess group exposure)"
+},
+{
+"key": "rwa.on.amt.18",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B24",
+"label": "Items deducted from capital (intangibles, excess group exposure) – amount",
+"source": "DNBS03 Part 3; balance sheet",
+"default": null
+},
+{
+"key": "rwa.on.rw.18",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C24",
+"label": "Items deducted from capital (intangibles, excess group exposure) – risk weight",
+"source": "Capital Adequacy Directions – risk weights",
+"default": 0
+},
+{
+"key": "rwa.on.type.18",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E24",
+"label": "Items deducted from capital (intangibles, excess group exposure) – type",
+"source": "Classification",
+"default": "Other"
+},
+{
+"key": "rwa.off.name.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A29",
+"label": "Off-balance item 1",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Financial guarantees"
+},
+{
+"key": "rwa.off.amt.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B29",
+"label": "Financial guarantees – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C29",
+"label": "Financial guarantees – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 1
+},
+{
+"key": "rwa.off.rw.1",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E29",
+"label": "Financial guarantees – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A30",
+"label": "Off-balance item 2",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Performance guarantees"
+},
+{
+"key": "rwa.off.amt.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B30",
+"label": "Performance guarantees – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C30",
+"label": "Performance guarantees – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 0.5
+},
+{
+"key": "rwa.off.rw.2",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E30",
+"label": "Performance guarantees – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A31",
+"label": "Off-balance item 3",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Undrawn commitments – original maturity up to 1 year"
+},
+{
+"key": "rwa.off.amt.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B31",
+"label": "Undrawn commitments – original maturity up to 1 year – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C31",
+"label": "Undrawn commitments – original maturity up to 1 year – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 0.2
+},
+{
+"key": "rwa.off.rw.3",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E31",
+"label": "Undrawn commitments – original maturity up to 1 year – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A32",
+"label": "Off-balance item 4",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Undrawn commitments – original maturity over 1 year"
+},
+{
+"key": "rwa.off.amt.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B32",
+"label": "Undrawn commitments – original maturity over 1 year – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C32",
+"label": "Undrawn commitments – original maturity over 1 year – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 0.5
+},
+{
+"key": "rwa.off.rw.4",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E32",
+"label": "Undrawn commitments – original maturity over 1 year – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A33",
+"label": "Off-balance item 5",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Unconditionally cancellable commitments"
+},
+{
+"key": "rwa.off.amt.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B33",
+"label": "Unconditionally cancellable commitments – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C33",
+"label": "Unconditionally cancellable commitments – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 0
+},
+{
+"key": "rwa.off.rw.5",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E33",
+"label": "Unconditionally cancellable commitments – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A34",
+"label": "Off-balance item 6",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Credit enhancement for securitisation / co-lending not deducted"
+},
+{
+"key": "rwa.off.amt.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B34",
+"label": "Credit enhancement for securitisation / co-lending not deducted – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C34",
+"label": "Credit enhancement for securitisation / co-lending not deducted – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 1
+},
+{
+"key": "rwa.off.rw.6",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E34",
+"label": "Credit enhancement for securitisation / co-lending not deducted – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A35",
+"label": "Off-balance item 7",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Partly paid shares and other commitments"
+},
+{
+"key": "rwa.off.amt.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B35",
+"label": "Partly paid shares and other commitments – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C35",
+"label": "Partly paid shares and other commitments – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 1
+},
+{
+"key": "rwa.off.rw.7",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E35",
+"label": "Partly paid shares and other commitments – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "rwa.off.name.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "A36",
+"label": "Off-balance item 8",
+"source": "DNBS03 Part 4 (off-balance sheet items)",
+"default": "Other off-balance sheet items"
+},
+{
+"key": "rwa.off.amt.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "B36",
+"label": "Other off-balance sheet items – notional",
+"source": "DNBS03 Part 4; contingent liabilities note",
+"default": null
+},
+{
+"key": "rwa.off.ccf.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "C36",
+"label": "Other off-balance sheet items – CCF",
+"source": "Capital Adequacy Directions – credit conversion factors",
+"default": 1
+},
+{
+"key": "rwa.off.rw.8",
+"sheet": "Risk Weighted Assets Input",
+"cell": "E36",
+"label": "Other off-balance sheet items – risk weight",
+"source": "Capital Adequacy Directions",
+"default": 1
+},
+{
+"key": "ecl.gross",
+"sheet": "Handover Input",
+"cell": "C6",
+"label": "Gross loans",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.s1",
+"sheet": "Handover Input",
+"cell": "C7",
+"label": "Stage 1 exposure",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.s2",
+"sheet": "Handover Input",
+"cell": "C8",
+"label": "Stage 2 exposure",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.s3",
+"sheet": "Handover Input",
+"cell": "C9",
+"label": "Stage 3 exposure",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.offbal",
+"sheet": "Handover Input",
+"cell": "C10",
+"label": "Off-balance EAD",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.ecl1",
+"sheet": "Handover Input",
+"cell": "C11",
+"label": "ECL – Stage 1",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.ecl2",
+"sheet": "Handover Input",
+"cell": "C12",
+"label": "ECL – Stage 2",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.ecl3",
+"sheet": "Handover Input",
+"cell": "C13",
+"label": "ECL – Stage 3",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.total",
+"sheet": "Handover Input",
+"cell": "C14",
+"label": "ECL – total",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.pd",
+"sheet": "Handover Input",
+"cell": "C15",
+"label": "Exposure-weighted 12-month PD",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.lgd",
+"sheet": "Handover Input",
+"cell": "C16",
+"label": "Exposure-weighted LGD",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.floor",
+"sheet": "Handover Input",
+"cell": "C17",
+"label": "IRACP prudential floor",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.impres",
+"sheet": "Handover Input",
+"cell": "C18",
+"label": "Impairment Reserve required",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "ecl.down",
+"sheet": "Handover Input",
+"cell": "C19",
+"label": "Downside-scenario ECL",
+"source": "ECL model – Handover sheet",
+"default": null
+},
+{
+"key": "st.scenario",
+"sheet": "Handover Input",
+"cell": "C20",
+"label": "Stress: planning scenario",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.crar.pre",
+"sheet": "Handover Input",
+"cell": "C21",
+"label": "Stress: pre-stress CRAR",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.crar.base",
+"sheet": "Handover Input",
+"cell": "C22",
+"label": "Stress: post-stress CRAR – Baseline",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.crar.adv",
+"sheet": "Handover Input",
+"cell": "C23",
+"label": "Stress: post-stress CRAR – Adverse",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.crar.sev",
+"sheet": "Handover Input",
+"cell": "C24",
+"label": "Stress: post-stress CRAR – Severe",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.loss",
+"sheet": "Handover Input",
+"cell": "C25",
+"label": "Stress: total stress loss – planning scenario",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.buffer",
+"sheet": "Handover Input",
+"cell": "C26",
+"label": "Stress: fall in capital – planning scenario (stress capital buffer)",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.shortfall",
+"sheet": "Handover Input",
+"cell": "C27",
+"label": "Stress: capital shortfall against minimum – planning scenario",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.t1",
+"sheet": "Handover Input",
+"cell": "C28",
+"label": "Stress: post-stress Tier 1 ratio – planning scenario",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.survival",
+"sheet": "Handover Input",
+"cell": "C29",
+"label": "Stress: liquidity survival horizon – Severe (days)",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.eve",
+"sheet": "Handover Input",
+"cell": "C30",
+"label": "Stress: fall in EVE – Adverse",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.nii",
+"sheet": "Handover Input",
+"cell": "C31",
+"label": "Stress: earnings loss from rate shock – Adverse",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.reverse",
+"sheet": "Handover Input",
+"cell": "C32",
+"label": "Stress: reverse stress loss that breaks the minimum",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.crar.actions",
+"sheet": "Handover Input",
+"cell": "C33",
+"label": "Stress: CRAR after management actions – Severe",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.1",
+"sheet": "Handover Input",
+"cell": "C37",
+"label": "Stress loss – Credit risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.2",
+"sheet": "Handover Input",
+"cell": "C38",
+"label": "Stress loss – Credit concentration risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.3",
+"sheet": "Handover Input",
+"cell": "C39",
+"label": "Stress loss – Interest rate risk (earnings)",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.4",
+"sheet": "Handover Input",
+"cell": "C40",
+"label": "Stress loss – Market risk (investments and FX)",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.5",
+"sheet": "Handover Input",
+"cell": "C41",
+"label": "Stress loss – Liquidity and funding cost risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.6",
+"sheet": "Handover Input",
+"cell": "C42",
+"label": "Stress loss – Operational risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.7",
+"sheet": "Handover Input",
+"cell": "C43",
+"label": "Stress loss – Cyber and IT risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.8",
+"sheet": "Handover Input",
+"cell": "C44",
+"label": "Stress loss – Compliance and legal risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.9",
+"sheet": "Handover Input",
+"cell": "C45",
+"label": "Stress loss – Reputation risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.10",
+"sheet": "Handover Input",
+"cell": "C46",
+"label": "Stress loss – Strategic and business risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.11",
+"sheet": "Handover Input",
+"cell": "C47",
+"label": "Stress loss – Climate and ESG risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.12",
+"sheet": "Handover Input",
+"cell": "C48",
+"label": "Stress loss – Model risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "st.risk.13",
+"sheet": "Handover Input",
+"cell": "C49",
+"label": "Stress loss – Group and contagion risk",
+"source": "Stress Testing model – Handover sheet",
+"default": null
+},
+{
+"key": "seg.name.1",
+"sheet": "Handover Input",
+"cell": "B53",
+"label": "Segment 1 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.1",
+"sheet": "Handover Input",
+"cell": "C53",
+"label": "Segment 1 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.1",
+"sheet": "Handover Input",
+"cell": "D53",
+"label": "Segment 1 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.1",
+"sheet": "Handover Input",
+"cell": "E53",
+"label": "Segment 1 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.1",
+"sheet": "Handover Input",
+"cell": "F53",
+"label": "Segment 1 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.1",
+"sheet": "Handover Input",
+"cell": "G53",
+"label": "Segment 1 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.2",
+"sheet": "Handover Input",
+"cell": "B54",
+"label": "Segment 2 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.2",
+"sheet": "Handover Input",
+"cell": "C54",
+"label": "Segment 2 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.2",
+"sheet": "Handover Input",
+"cell": "D54",
+"label": "Segment 2 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.2",
+"sheet": "Handover Input",
+"cell": "E54",
+"label": "Segment 2 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.2",
+"sheet": "Handover Input",
+"cell": "F54",
+"label": "Segment 2 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.2",
+"sheet": "Handover Input",
+"cell": "G54",
+"label": "Segment 2 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.3",
+"sheet": "Handover Input",
+"cell": "B55",
+"label": "Segment 3 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.3",
+"sheet": "Handover Input",
+"cell": "C55",
+"label": "Segment 3 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.3",
+"sheet": "Handover Input",
+"cell": "D55",
+"label": "Segment 3 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.3",
+"sheet": "Handover Input",
+"cell": "E55",
+"label": "Segment 3 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.3",
+"sheet": "Handover Input",
+"cell": "F55",
+"label": "Segment 3 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.3",
+"sheet": "Handover Input",
+"cell": "G55",
+"label": "Segment 3 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.4",
+"sheet": "Handover Input",
+"cell": "B56",
+"label": "Segment 4 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.4",
+"sheet": "Handover Input",
+"cell": "C56",
+"label": "Segment 4 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.4",
+"sheet": "Handover Input",
+"cell": "D56",
+"label": "Segment 4 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.4",
+"sheet": "Handover Input",
+"cell": "E56",
+"label": "Segment 4 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.4",
+"sheet": "Handover Input",
+"cell": "F56",
+"label": "Segment 4 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.4",
+"sheet": "Handover Input",
+"cell": "G56",
+"label": "Segment 4 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.5",
+"sheet": "Handover Input",
+"cell": "B57",
+"label": "Segment 5 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.5",
+"sheet": "Handover Input",
+"cell": "C57",
+"label": "Segment 5 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.5",
+"sheet": "Handover Input",
+"cell": "D57",
+"label": "Segment 5 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.5",
+"sheet": "Handover Input",
+"cell": "E57",
+"label": "Segment 5 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.5",
+"sheet": "Handover Input",
+"cell": "F57",
+"label": "Segment 5 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.5",
+"sheet": "Handover Input",
+"cell": "G57",
+"label": "Segment 5 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.6",
+"sheet": "Handover Input",
+"cell": "B58",
+"label": "Segment 6 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.6",
+"sheet": "Handover Input",
+"cell": "C58",
+"label": "Segment 6 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.6",
+"sheet": "Handover Input",
+"cell": "D58",
+"label": "Segment 6 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.6",
+"sheet": "Handover Input",
+"cell": "E58",
+"label": "Segment 6 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.6",
+"sheet": "Handover Input",
+"cell": "F58",
+"label": "Segment 6 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.6",
+"sheet": "Handover Input",
+"cell": "G58",
+"label": "Segment 6 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.7",
+"sheet": "Handover Input",
+"cell": "B59",
+"label": "Segment 7 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.7",
+"sheet": "Handover Input",
+"cell": "C59",
+"label": "Segment 7 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.7",
+"sheet": "Handover Input",
+"cell": "D59",
+"label": "Segment 7 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.7",
+"sheet": "Handover Input",
+"cell": "E59",
+"label": "Segment 7 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.7",
+"sheet": "Handover Input",
+"cell": "F59",
+"label": "Segment 7 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.7",
+"sheet": "Handover Input",
+"cell": "G59",
+"label": "Segment 7 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.8",
+"sheet": "Handover Input",
+"cell": "B60",
+"label": "Segment 8 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.8",
+"sheet": "Handover Input",
+"cell": "C60",
+"label": "Segment 8 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.8",
+"sheet": "Handover Input",
+"cell": "D60",
+"label": "Segment 8 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.8",
+"sheet": "Handover Input",
+"cell": "E60",
+"label": "Segment 8 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.8",
+"sheet": "Handover Input",
+"cell": "F60",
+"label": "Segment 8 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.8",
+"sheet": "Handover Input",
+"cell": "G60",
+"label": "Segment 8 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.9",
+"sheet": "Handover Input",
+"cell": "B61",
+"label": "Segment 9 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.9",
+"sheet": "Handover Input",
+"cell": "C61",
+"label": "Segment 9 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.9",
+"sheet": "Handover Input",
+"cell": "D61",
+"label": "Segment 9 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.9",
+"sheet": "Handover Input",
+"cell": "E61",
+"label": "Segment 9 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.9",
+"sheet": "Handover Input",
+"cell": "F61",
+"label": "Segment 9 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.9",
+"sheet": "Handover Input",
+"cell": "G61",
+"label": "Segment 9 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.10",
+"sheet": "Handover Input",
+"cell": "B62",
+"label": "Segment 10 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.10",
+"sheet": "Handover Input",
+"cell": "C62",
+"label": "Segment 10 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.10",
+"sheet": "Handover Input",
+"cell": "D62",
+"label": "Segment 10 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.10",
+"sheet": "Handover Input",
+"cell": "E62",
+"label": "Segment 10 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.10",
+"sheet": "Handover Input",
+"cell": "F62",
+"label": "Segment 10 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.10",
+"sheet": "Handover Input",
+"cell": "G62",
+"label": "Segment 10 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.11",
+"sheet": "Handover Input",
+"cell": "B63",
+"label": "Segment 11 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.11",
+"sheet": "Handover Input",
+"cell": "C63",
+"label": "Segment 11 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.11",
+"sheet": "Handover Input",
+"cell": "D63",
+"label": "Segment 11 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.11",
+"sheet": "Handover Input",
+"cell": "E63",
+"label": "Segment 11 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.11",
+"sheet": "Handover Input",
+"cell": "F63",
+"label": "Segment 11 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.11",
+"sheet": "Handover Input",
+"cell": "G63",
+"label": "Segment 11 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.12",
+"sheet": "Handover Input",
+"cell": "B64",
+"label": "Segment 12 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.12",
+"sheet": "Handover Input",
+"cell": "C64",
+"label": "Segment 12 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.12",
+"sheet": "Handover Input",
+"cell": "D64",
+"label": "Segment 12 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.12",
+"sheet": "Handover Input",
+"cell": "E64",
+"label": "Segment 12 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.12",
+"sheet": "Handover Input",
+"cell": "F64",
+"label": "Segment 12 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.12",
+"sheet": "Handover Input",
+"cell": "G64",
+"label": "Segment 12 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.13",
+"sheet": "Handover Input",
+"cell": "B65",
+"label": "Segment 13 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.13",
+"sheet": "Handover Input",
+"cell": "C65",
+"label": "Segment 13 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.13",
+"sheet": "Handover Input",
+"cell": "D65",
+"label": "Segment 13 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.13",
+"sheet": "Handover Input",
+"cell": "E65",
+"label": "Segment 13 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.13",
+"sheet": "Handover Input",
+"cell": "F65",
+"label": "Segment 13 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.13",
+"sheet": "Handover Input",
+"cell": "G65",
+"label": "Segment 13 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.14",
+"sheet": "Handover Input",
+"cell": "B66",
+"label": "Segment 14 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.14",
+"sheet": "Handover Input",
+"cell": "C66",
+"label": "Segment 14 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.14",
+"sheet": "Handover Input",
+"cell": "D66",
+"label": "Segment 14 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.14",
+"sheet": "Handover Input",
+"cell": "E66",
+"label": "Segment 14 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.14",
+"sheet": "Handover Input",
+"cell": "F66",
+"label": "Segment 14 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.14",
+"sheet": "Handover Input",
+"cell": "G66",
+"label": "Segment 14 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.name.15",
+"sheet": "Handover Input",
+"cell": "B67",
+"label": "Segment 15 name",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.gross.15",
+"sheet": "Handover Input",
+"cell": "C67",
+"label": "Segment 15 gross",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.s3.15",
+"sheet": "Handover Input",
+"cell": "D67",
+"label": "Segment 15 s3",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.pd.15",
+"sheet": "Handover Input",
+"cell": "E67",
+"label": "Segment 15 pd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.lgd.15",
+"sheet": "Handover Input",
+"cell": "F67",
+"label": "Segment 15 lgd",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "seg.ecl.15",
+"sheet": "Handover Input",
+"cell": "G67",
+"label": "Segment 15 ecl",
+"source": "ECL model – Handover segment table",
+"default": null
+},
+{
+"key": "ec.rho.1",
+"sheet": "Credit Economic Capital",
+"cell": "E7",
+"label": "Segment 1 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.2",
+"sheet": "Credit Economic Capital",
+"cell": "E8",
+"label": "Segment 2 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.3",
+"sheet": "Credit Economic Capital",
+"cell": "E9",
+"label": "Segment 3 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.4",
+"sheet": "Credit Economic Capital",
+"cell": "E10",
+"label": "Segment 4 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.5",
+"sheet": "Credit Economic Capital",
+"cell": "E11",
+"label": "Segment 5 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.6",
+"sheet": "Credit Economic Capital",
+"cell": "E12",
+"label": "Segment 6 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.7",
+"sheet": "Credit Economic Capital",
+"cell": "E13",
+"label": "Segment 7 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.8",
+"sheet": "Credit Economic Capital",
+"cell": "E14",
+"label": "Segment 8 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.9",
+"sheet": "Credit Economic Capital",
+"cell": "E15",
+"label": "Segment 9 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.10",
+"sheet": "Credit Economic Capital",
+"cell": "E16",
+"label": "Segment 10 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.11",
+"sheet": "Credit Economic Capital",
+"cell": "E17",
+"label": "Segment 11 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.12",
+"sheet": "Credit Economic Capital",
+"cell": "E18",
+"label": "Segment 12 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.13",
+"sheet": "Credit Economic Capital",
+"cell": "E19",
+"label": "Segment 13 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.14",
+"sheet": "Credit Economic Capital",
+"cell": "E20",
+"label": "Segment 14 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "ec.rho.15",
+"sheet": "Credit Economic Capital",
+"cell": "E21",
+"label": "Segment 15 asset correlation",
+"source": "ICAAP policy; Basel IRB correlations",
+"default": 0.12
+},
+{
+"key": "top.name.1",
+"sheet": "Concentration Risk",
+"cell": "A7",
+"label": "Top borrower 1",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.1",
+"sheet": "Concentration Risk",
+"cell": "B7",
+"label": "Top borrower 1 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.2",
+"sheet": "Concentration Risk",
+"cell": "A8",
+"label": "Top borrower 2",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.2",
+"sheet": "Concentration Risk",
+"cell": "B8",
+"label": "Top borrower 2 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.3",
+"sheet": "Concentration Risk",
+"cell": "A9",
+"label": "Top borrower 3",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.3",
+"sheet": "Concentration Risk",
+"cell": "B9",
+"label": "Top borrower 3 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.4",
+"sheet": "Concentration Risk",
+"cell": "A10",
+"label": "Top borrower 4",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.4",
+"sheet": "Concentration Risk",
+"cell": "B10",
+"label": "Top borrower 4 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.5",
+"sheet": "Concentration Risk",
+"cell": "A11",
+"label": "Top borrower 5",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.5",
+"sheet": "Concentration Risk",
+"cell": "B11",
+"label": "Top borrower 5 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.6",
+"sheet": "Concentration Risk",
+"cell": "A12",
+"label": "Top borrower 6",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.6",
+"sheet": "Concentration Risk",
+"cell": "B12",
+"label": "Top borrower 6 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.7",
+"sheet": "Concentration Risk",
+"cell": "A13",
+"label": "Top borrower 7",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.7",
+"sheet": "Concentration Risk",
+"cell": "B13",
+"label": "Top borrower 7 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.8",
+"sheet": "Concentration Risk",
+"cell": "A14",
+"label": "Top borrower 8",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.8",
+"sheet": "Concentration Risk",
+"cell": "B14",
+"label": "Top borrower 8 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.9",
+"sheet": "Concentration Risk",
+"cell": "A15",
+"label": "Top borrower 9",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.9",
+"sheet": "Concentration Risk",
+"cell": "B15",
+"label": "Top borrower 9 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.10",
+"sheet": "Concentration Risk",
+"cell": "A16",
+"label": "Top borrower 10",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.10",
+"sheet": "Concentration Risk",
+"cell": "B16",
+"label": "Top borrower 10 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.11",
+"sheet": "Concentration Risk",
+"cell": "A17",
+"label": "Top borrower 11",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.11",
+"sheet": "Concentration Risk",
+"cell": "B17",
+"label": "Top borrower 11 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.12",
+"sheet": "Concentration Risk",
+"cell": "A18",
+"label": "Top borrower 12",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.12",
+"sheet": "Concentration Risk",
+"cell": "B18",
+"label": "Top borrower 12 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.13",
+"sheet": "Concentration Risk",
+"cell": "A19",
+"label": "Top borrower 13",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.13",
+"sheet": "Concentration Risk",
+"cell": "B19",
+"label": "Top borrower 13 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.14",
+"sheet": "Concentration Risk",
+"cell": "A20",
+"label": "Top borrower 14",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.14",
+"sheet": "Concentration Risk",
+"cell": "B20",
+"label": "Top borrower 14 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.15",
+"sheet": "Concentration Risk",
+"cell": "A21",
+"label": "Top borrower 15",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.15",
+"sheet": "Concentration Risk",
+"cell": "B21",
+"label": "Top borrower 15 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.16",
+"sheet": "Concentration Risk",
+"cell": "A22",
+"label": "Top borrower 16",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.16",
+"sheet": "Concentration Risk",
+"cell": "B22",
+"label": "Top borrower 16 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.17",
+"sheet": "Concentration Risk",
+"cell": "A23",
+"label": "Top borrower 17",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.17",
+"sheet": "Concentration Risk",
+"cell": "B23",
+"label": "Top borrower 17 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.18",
+"sheet": "Concentration Risk",
+"cell": "A24",
+"label": "Top borrower 18",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.18",
+"sheet": "Concentration Risk",
+"cell": "B24",
+"label": "Top borrower 18 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.19",
+"sheet": "Concentration Risk",
+"cell": "A25",
+"label": "Top borrower 19",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.19",
+"sheet": "Concentration Risk",
+"cell": "B25",
+"label": "Top borrower 19 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.name.20",
+"sheet": "Concentration Risk",
+"cell": "A26",
+"label": "Top borrower 20",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "top.exp.20",
+"sheet": "Concentration Risk",
+"cell": "B26",
+"label": "Top borrower 20 exposure",
+"source": "DNBS01 Annex 9; DNBS03 Part 7",
+"default": null
+},
+{
+"key": "sector.name.1",
+"sheet": "Concentration Risk",
+"cell": "D7",
+"label": "Sector 1",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.1",
+"sheet": "Concentration Risk",
+"cell": "E7",
+"label": "Sector 1 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.1",
+"sheet": "Concentration Risk",
+"cell": "G7",
+"label": "State 1",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.1",
+"sheet": "Concentration Risk",
+"cell": "H7",
+"label": "State 1 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.2",
+"sheet": "Concentration Risk",
+"cell": "D8",
+"label": "Sector 2",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.2",
+"sheet": "Concentration Risk",
+"cell": "E8",
+"label": "Sector 2 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.2",
+"sheet": "Concentration Risk",
+"cell": "G8",
+"label": "State 2",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.2",
+"sheet": "Concentration Risk",
+"cell": "H8",
+"label": "State 2 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.3",
+"sheet": "Concentration Risk",
+"cell": "D9",
+"label": "Sector 3",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.3",
+"sheet": "Concentration Risk",
+"cell": "E9",
+"label": "Sector 3 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.3",
+"sheet": "Concentration Risk",
+"cell": "G9",
+"label": "State 3",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.3",
+"sheet": "Concentration Risk",
+"cell": "H9",
+"label": "State 3 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.4",
+"sheet": "Concentration Risk",
+"cell": "D10",
+"label": "Sector 4",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.4",
+"sheet": "Concentration Risk",
+"cell": "E10",
+"label": "Sector 4 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.4",
+"sheet": "Concentration Risk",
+"cell": "G10",
+"label": "State 4",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.4",
+"sheet": "Concentration Risk",
+"cell": "H10",
+"label": "State 4 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.5",
+"sheet": "Concentration Risk",
+"cell": "D11",
+"label": "Sector 5",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.5",
+"sheet": "Concentration Risk",
+"cell": "E11",
+"label": "Sector 5 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.5",
+"sheet": "Concentration Risk",
+"cell": "G11",
+"label": "State 5",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.5",
+"sheet": "Concentration Risk",
+"cell": "H11",
+"label": "State 5 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.6",
+"sheet": "Concentration Risk",
+"cell": "D12",
+"label": "Sector 6",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.6",
+"sheet": "Concentration Risk",
+"cell": "E12",
+"label": "Sector 6 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.6",
+"sheet": "Concentration Risk",
+"cell": "G12",
+"label": "State 6",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.6",
+"sheet": "Concentration Risk",
+"cell": "H12",
+"label": "State 6 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.7",
+"sheet": "Concentration Risk",
+"cell": "D13",
+"label": "Sector 7",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.7",
+"sheet": "Concentration Risk",
+"cell": "E13",
+"label": "Sector 7 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.7",
+"sheet": "Concentration Risk",
+"cell": "G13",
+"label": "State 7",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.7",
+"sheet": "Concentration Risk",
+"cell": "H13",
+"label": "State 7 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.8",
+"sheet": "Concentration Risk",
+"cell": "D14",
+"label": "Sector 8",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.8",
+"sheet": "Concentration Risk",
+"cell": "E14",
+"label": "Sector 8 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.8",
+"sheet": "Concentration Risk",
+"cell": "G14",
+"label": "State 8",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.8",
+"sheet": "Concentration Risk",
+"cell": "H14",
+"label": "State 8 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.9",
+"sheet": "Concentration Risk",
+"cell": "D15",
+"label": "Sector 9",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.9",
+"sheet": "Concentration Risk",
+"cell": "E15",
+"label": "Sector 9 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.9",
+"sheet": "Concentration Risk",
+"cell": "G15",
+"label": "State 9",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.9",
+"sheet": "Concentration Risk",
+"cell": "H15",
+"label": "State 9 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "sector.name.10",
+"sheet": "Concentration Risk",
+"cell": "D16",
+"label": "Sector 10",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "sector.exp.10",
+"sheet": "Concentration Risk",
+"cell": "E16",
+"label": "Sector 10 exposure",
+"source": "DNBS01 Parts 9A-9B",
+"default": null
+},
+{
+"key": "state.name.10",
+"sheet": "Concentration Risk",
+"cell": "G16",
+"label": "State 10",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "state.exp.10",
+"sheet": "Concentration Risk",
+"cell": "H16",
+"label": "State 10 exposure",
+"source": "State-wise AUM report",
+"default": null
+},
+{
+"key": "alm.rsa.1",
+"sheet": "Interest Rate Risk",
+"cell": "B7",
+"label": "RSA – 1-7 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.1",
+"sheet": "Interest Rate Risk",
+"cell": "C7",
+"label": "RSL – 1-7 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.2",
+"sheet": "Interest Rate Risk",
+"cell": "B8",
+"label": "RSA – 8-14 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.2",
+"sheet": "Interest Rate Risk",
+"cell": "C8",
+"label": "RSL – 8-14 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.3",
+"sheet": "Interest Rate Risk",
+"cell": "B9",
+"label": "RSA – 15-30/31 days",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.3",
+"sheet": "Interest Rate Risk",
+"cell": "C9",
+"label": "RSL – 15-30/31 days",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.4",
+"sheet": "Interest Rate Risk",
+"cell": "B10",
+"label": "RSA – Over 1 to 2 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.4",
+"sheet": "Interest Rate Risk",
+"cell": "C10",
+"label": "RSL – Over 1 to 2 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.5",
+"sheet": "Interest Rate Risk",
+"cell": "B11",
+"label": "RSA – Over 2 to 3 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.5",
+"sheet": "Interest Rate Risk",
+"cell": "C11",
+"label": "RSL – Over 2 to 3 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.6",
+"sheet": "Interest Rate Risk",
+"cell": "B12",
+"label": "RSA – Over 3 to 6 months",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.6",
+"sheet": "Interest Rate Risk",
+"cell": "C12",
+"label": "RSL – Over 3 to 6 months",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.7",
+"sheet": "Interest Rate Risk",
+"cell": "B13",
+"label": "RSA – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.7",
+"sheet": "Interest Rate Risk",
+"cell": "C13",
+"label": "RSL – Over 6 months to 1 year",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.8",
+"sheet": "Interest Rate Risk",
+"cell": "B14",
+"label": "RSA – Over 1 to 3 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.8",
+"sheet": "Interest Rate Risk",
+"cell": "C14",
+"label": "RSL – Over 1 to 3 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.9",
+"sheet": "Interest Rate Risk",
+"cell": "B15",
+"label": "RSA – Over 3 to 5 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.9",
+"sheet": "Interest Rate Risk",
+"cell": "C15",
+"label": "RSL – Over 3 to 5 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "alm.rsa.10",
+"sheet": "Interest Rate Risk",
+"cell": "B16",
+"label": "RSA – Over 5 years",
+"source": "DNBS04B interest rate sensitivity – RSA",
+"default": null
+},
+{
+"key": "alm.rsl.10",
+"sheet": "Interest Rate Risk",
+"cell": "C16",
+"label": "RSL – Over 5 years",
+"source": "DNBS04B interest rate sensitivity – RSL",
+"default": null
+},
+{
+"key": "irrbb.basis",
+"sheet": "Interest Rate Risk",
+"cell": "B20",
+"label": "IRRBB add-on basis",
+"source": "ICAAP policy",
+"default": "Higher of EVE and earnings"
+},
+{
+"key": "liq.in.1",
+"sheet": "Liquidity Risk",
+"cell": "B7",
+"label": "Inflows bucket 1",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.out.1",
+"sheet": "Liquidity Risk",
+"cell": "B8",
+"label": "Outflows bucket 1",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.limit.1",
+"sheet": "Liquidity Risk",
+"cell": "B11",
+"label": "Mismatch limit bucket 1",
+"source": "RBI liquidity risk management framework; ALM policy",
+"default": 0.1
+},
+{
+"key": "liq.in.2",
+"sheet": "Liquidity Risk",
+"cell": "C7",
+"label": "Inflows bucket 2",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.out.2",
+"sheet": "Liquidity Risk",
+"cell": "C8",
+"label": "Outflows bucket 2",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.limit.2",
+"sheet": "Liquidity Risk",
+"cell": "C11",
+"label": "Mismatch limit bucket 2",
+"source": "RBI liquidity risk management framework; ALM policy",
+"default": 0.1
+},
+{
+"key": "liq.in.3",
+"sheet": "Liquidity Risk",
+"cell": "D7",
+"label": "Inflows bucket 3",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.out.3",
+"sheet": "Liquidity Risk",
+"cell": "D8",
+"label": "Outflows bucket 3",
+"source": "DNBS04B structural liquidity",
+"default": null
+},
+{
+"key": "liq.limit.3",
+"sheet": "Liquidity Risk",
+"cell": "D11",
+"label": "Mismatch limit bucket 3",
+"source": "RBI liquidity risk management framework; ALM policy",
+"default": 0.2
+},
+{
+"key": "liq.lcr",
+"sheet": "Liquidity Risk",
+"cell": "B16",
+"label": "Liquidity coverage ratio (HQLA / net cash outflows over 30 days), where applicable",
+"source": "LCR statement; DNBS04A",
+"default": null
+},
+{
+"key": "liq.lcr.amber",
+"sheet": "Liquidity Risk",
+"cell": "C16",
+"label": "Liquidity coverage ratio (HQLA / net cash outflows over 30 days), where applicable – amber",
+"source": "Risk appetite statement",
+"default": 1.1
+},
+{
+"key": "liq.lcr.red",
+"sheet": "Liquidity Risk",
+"cell": "D16",
+"label": "Liquidity coverage ratio (HQLA / net cash outflows over 30 days), where applicable – red",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "liq.top10",
+"sheet": "Liquidity Risk",
+"cell": "B17",
+"label": "Share of the ten largest lenders in total borrowings",
+"source": "Borrowing register",
+"default": null
+},
+{
+"key": "liq.top10.amber",
+"sheet": "Liquidity Risk",
+"cell": "C17",
+"label": "Share of the ten largest lenders in total borrowings – amber",
+"source": "Risk appetite statement",
+"default": 0.6
+},
+{
+"key": "liq.top10.red",
+"sheet": "Liquidity Risk",
+"cell": "D17",
+"label": "Share of the ten largest lenders in total borrowings – red",
+"source": "Risk appetite statement",
+"default": 0.8
+},
+{
+"key": "liq.st",
+"sheet": "Liquidity Risk",
+"cell": "B18",
+"label": "Share of borrowings maturing within one year",
+"source": "ALM statement",
+"default": null
+},
+{
+"key": "liq.st.amber",
+"sheet": "Liquidity Risk",
+"cell": "C18",
+"label": "Share of borrowings maturing within one year – amber",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "liq.st.red",
+"sheet": "Liquidity Risk",
+"cell": "D18",
+"label": "Share of borrowings maturing within one year – red",
+"source": "Risk appetite statement",
+"default": 0.55
+},
+{
+"key": "liq.cp",
+"sheet": "Liquidity Risk",
+"cell": "B19",
+"label": "Commercial paper as % of total borrowings",
+"source": "Borrowing register",
+"default": null
+},
+{
+"key": "liq.cp.amber",
+"sheet": "Liquidity Risk",
+"cell": "C19",
+"label": "Commercial paper as % of total borrowings – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "liq.cp.red",
+"sheet": "Liquidity Risk",
+"cell": "D19",
+"label": "Commercial paper as % of total borrowings – red",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "liq.liqta",
+"sheet": "Liquidity Risk",
+"cell": "B20",
+"label": "Unencumbered liquid assets / total assets",
+"source": "Balance sheet; treasury MIS",
+"default": null
+},
+{
+"key": "liq.liqta.amber",
+"sheet": "Liquidity Risk",
+"cell": "C20",
+"label": "Unencumbered liquid assets / total assets – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "liq.liqta.red",
+"sheet": "Liquidity Risk",
+"cell": "D20",
+"label": "Unencumbered liquid assets / total assets – red",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "liq.lines",
+"sheet": "Liquidity Risk",
+"cell": "B21",
+"label": "Undrawn committed bank lines / next 3 months' repayments",
+"source": "Treasury MIS",
+"default": null
+},
+{
+"key": "liq.lines.amber",
+"sheet": "Liquidity Risk",
+"cell": "C21",
+"label": "Undrawn committed bank lines / next 3 months' repayments – amber",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "liq.lines.red",
+"sheet": "Liquidity Risk",
+"cell": "D21",
+"label": "Undrawn committed bank lines / next 3 months' repayments – red",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "liq.surv.amber",
+"sheet": "Liquidity Risk",
+"cell": "C22",
+"label": "Survival horizon – amber below",
+"source": "Risk appetite statement",
+"default": 90
+},
+{
+"key": "liq.surv.red",
+"sheet": "Liquidity Risk",
+"cell": "D22",
+"label": "Survival horizon – red below",
+"source": "Risk appetite statement",
+"default": 30
+},
+{
+"key": "liq.manual",
+"sheet": "Liquidity Risk",
+"cell": "B26",
+"label": "Liquidity add-on set by management",
+"source": "ALCO decision",
+"default": null
+},
+{
+"key": "op.n.y2",
+"sheet": "Operational Risk",
+"cell": "B8",
+"label": "Number of operational loss events – Y2",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.n.y1",
+"sheet": "Operational Risk",
+"cell": "C8",
+"label": "Number of operational loss events – Y1",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.n.y0",
+"sheet": "Operational Risk",
+"cell": "D8",
+"label": "Number of operational loss events – Y0",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.gross.y2",
+"sheet": "Operational Risk",
+"cell": "B9",
+"label": "Gross operational losses (frauds, errors, penalties, system failures) – Y2",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.gross.y1",
+"sheet": "Operational Risk",
+"cell": "C9",
+"label": "Gross operational losses (frauds, errors, penalties, system failures) – Y1",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.gross.y0",
+"sheet": "Operational Risk",
+"cell": "D9",
+"label": "Gross operational losses (frauds, errors, penalties, system failures) – Y0",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.rec.y2",
+"sheet": "Operational Risk",
+"cell": "B10",
+"label": "Recoveries – Y2",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.rec.y1",
+"sheet": "Operational Risk",
+"cell": "C10",
+"label": "Recoveries – Y1",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.rec.y0",
+"sheet": "Operational Risk",
+"cell": "D10",
+"label": "Recoveries – Y0",
+"source": "Operational loss register; fraud reports (FMR)",
+"default": null
+},
+{
+"key": "op.scale",
+"sheet": "Operational Risk",
+"cell": "B15",
+"label": "Operational risk scaling factor",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "mkt.eq",
+"sheet": "Market Risk",
+"cell": "B7",
+"label": "Equity and mutual fund investments",
+"source": "Investments note; DNBS01 Annex 10",
+"default": null
+},
+{
+"key": "mkt.eq.shock",
+"sheet": "Market Risk",
+"cell": "C7",
+"label": "Equity price fall",
+"source": "ICAAP policy",
+"default": 0.2
+},
+{
+"key": "mkt.bond",
+"sheet": "Market Risk",
+"cell": "B8",
+"label": "Bond investments",
+"source": "Investments note",
+"default": null
+},
+{
+"key": "mkt.bond.bps",
+"sheet": "Market Risk",
+"cell": "C8",
+"label": "Rise in yields (basis points)",
+"source": "ICAAP policy",
+"default": 200
+},
+{
+"key": "mkt.dur",
+"sheet": "Market Risk",
+"cell": "B9",
+"label": "Bond modified duration",
+"source": "Treasury MIS",
+"default": null
+},
+{
+"key": "mkt.fx",
+"sheet": "Market Risk",
+"cell": "B10",
+"label": "Net open FX position",
+"source": "Treasury MIS; DNBS01 Part 7",
+"default": null
+},
+{
+"key": "mkt.fx.shock",
+"sheet": "Market Risk",
+"cell": "C10",
+"label": "Adverse currency move",
+"source": "ICAAP policy",
+"default": 0.1
+},
+{
+"key": "kri.1.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B7",
+"label": "Cyber and IT risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Critical / high IT audit and VAPT findings open beyond due date (number)"
+},
+{
+"key": "kri.1.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C7",
+"label": "Cyber and IT risk – Critical / high IT audit and VAPT findings open beyond due date (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.1.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D7",
+"label": "Critical / high IT audit and VAPT findings open beyond due date (number) – amber",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.1.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E7",
+"label": "Critical / high IT audit and VAPT findings open beyond due date (number) – red",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.1.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F7",
+"label": "Critical / high IT audit and VAPT findings open beyond due date (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.1.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G7",
+"label": "Critical / high IT audit and VAPT findings open beyond due date (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.1.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B8",
+"label": "Cyber and IT risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Unplanned downtime of core systems in the year (hours)"
+},
+{
+"key": "kri.1.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C8",
+"label": "Cyber and IT risk – Unplanned downtime of core systems in the year (hours)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.1.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D8",
+"label": "Unplanned downtime of core systems in the year (hours) – amber",
+"source": "Risk appetite statement",
+"default": 8
+},
+{
+"key": "kri.1.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E8",
+"label": "Unplanned downtime of core systems in the year (hours) – red",
+"source": "Risk appetite statement",
+"default": 24
+},
+{
+"key": "kri.1.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F8",
+"label": "Unplanned downtime of core systems in the year (hours) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.1.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G8",
+"label": "Unplanned downtime of core systems in the year (hours) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.1.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B9",
+"label": "Cyber and IT risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Cyber incidents reported to RBI / CERT-In in the year (number)"
+},
+{
+"key": "kri.1.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C9",
+"label": "Cyber and IT risk – Cyber incidents reported to RBI / CERT-In in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.1.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D9",
+"label": "Cyber incidents reported to RBI / CERT-In in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.1.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E9",
+"label": "Cyber incidents reported to RBI / CERT-In in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.1.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F9",
+"label": "Cyber incidents reported to RBI / CERT-In in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.1.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G9",
+"label": "Cyber incidents reported to RBI / CERT-In in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.1.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B10",
+"label": "Cyber and IT risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Disaster recovery drill: recovery time achieved / target"
+},
+{
+"key": "kri.1.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C10",
+"label": "Cyber and IT risk – Disaster recovery drill: recovery time achieved / target",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.1.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D10",
+"label": "Disaster recovery drill: recovery time achieved / target – amber",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "kri.1.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E10",
+"label": "Disaster recovery drill: recovery time achieved / target – red",
+"source": "Risk appetite statement",
+"default": 1.5
+},
+{
+"key": "kri.1.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F10",
+"label": "Disaster recovery drill: recovery time achieved / target – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.1.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G10",
+"label": "Disaster recovery drill: recovery time achieved / target – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.1.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B11",
+"label": "Cyber and IT risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Employees who completed security awareness training (%)"
+},
+{
+"key": "kri.1.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C11",
+"label": "Cyber and IT risk – Employees who completed security awareness training (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.1.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D11",
+"label": "Employees who completed security awareness training (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.9
+},
+{
+"key": "kri.1.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E11",
+"label": "Employees who completed security awareness training (%) – red",
+"source": "Risk appetite statement",
+"default": 0.75
+},
+{
+"key": "kri.1.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F11",
+"label": "Employees who completed security awareness training (%) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.1.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G11",
+"label": "Employees who completed security awareness training (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.2.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B12",
+"label": "Compliance and legal risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Penalties imposed by regulators in the last 3 years (number)"
+},
+{
+"key": "kri.2.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C12",
+"label": "Compliance and legal risk – Penalties imposed by regulators in the last 3 years (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.2.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D12",
+"label": "Penalties imposed by regulators in the last 3 years (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.2.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E12",
+"label": "Penalties imposed by regulators in the last 3 years (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.2.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F12",
+"label": "Penalties imposed by regulators in the last 3 years (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.2.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G12",
+"label": "Penalties imposed by regulators in the last 3 years (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.2.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B13",
+"label": "Compliance and legal risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Supervisory observations open beyond the committed date (number)"
+},
+{
+"key": "kri.2.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C13",
+"label": "Compliance and legal risk – Supervisory observations open beyond the committed date (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.2.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D13",
+"label": "Supervisory observations open beyond the committed date (number) – amber",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.2.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E13",
+"label": "Supervisory observations open beyond the committed date (number) – red",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.2.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F13",
+"label": "Supervisory observations open beyond the committed date (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.2.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G13",
+"label": "Supervisory observations open beyond the committed date (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.2.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B14",
+"label": "Compliance and legal risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Regulatory returns filed late in the year (number)"
+},
+{
+"key": "kri.2.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C14",
+"label": "Compliance and legal risk – Regulatory returns filed late in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.2.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D14",
+"label": "Regulatory returns filed late in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.2.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E14",
+"label": "Regulatory returns filed late in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.2.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F14",
+"label": "Regulatory returns filed late in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.2.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G14",
+"label": "Regulatory returns filed late in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.2.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B15",
+"label": "Compliance and legal risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Claims and litigation against the company / net worth"
+},
+{
+"key": "kri.2.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C15",
+"label": "Compliance and legal risk – Claims and litigation against the company / net worth",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.2.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D15",
+"label": "Claims and litigation against the company / net worth – amber",
+"source": "Risk appetite statement",
+"default": 0.01
+},
+{
+"key": "kri.2.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E15",
+"label": "Claims and litigation against the company / net worth – red",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "kri.2.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F15",
+"label": "Claims and litigation against the company / net worth – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.2.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G15",
+"label": "Claims and litigation against the company / net worth – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.2.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B16",
+"label": "Compliance and legal risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Compliance tests with adverse result (%)"
+},
+{
+"key": "kri.2.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C16",
+"label": "Compliance and legal risk – Compliance tests with adverse result (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.2.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D16",
+"label": "Compliance tests with adverse result (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "kri.2.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E16",
+"label": "Compliance tests with adverse result (%) – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "kri.2.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F16",
+"label": "Compliance tests with adverse result (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.2.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G16",
+"label": "Compliance tests with adverse result (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.3.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B17",
+"label": "Reputation risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Customer complaints per 1,000 active loan accounts"
+},
+{
+"key": "kri.3.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C17",
+"label": "Reputation risk – Customer complaints per 1,000 active loan accounts",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.3.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D17",
+"label": "Customer complaints per 1,000 active loan accounts – amber",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.3.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E17",
+"label": "Customer complaints per 1,000 active loan accounts – red",
+"source": "Risk appetite statement",
+"default": 15
+},
+{
+"key": "kri.3.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F17",
+"label": "Customer complaints per 1,000 active loan accounts – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.3.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G17",
+"label": "Customer complaints per 1,000 active loan accounts – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.3.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B18",
+"label": "Reputation risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Complaints escalated to the RBI Ombudsman (number)"
+},
+{
+"key": "kri.3.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C18",
+"label": "Reputation risk – Complaints escalated to the RBI Ombudsman (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.3.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D18",
+"label": "Complaints escalated to the RBI Ombudsman (number) – amber",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.3.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E18",
+"label": "Complaints escalated to the RBI Ombudsman (number) – red",
+"source": "Risk appetite statement",
+"default": 20
+},
+{
+"key": "kri.3.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F18",
+"label": "Complaints escalated to the RBI Ombudsman (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.3.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G18",
+"label": "Complaints escalated to the RBI Ombudsman (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.3.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B19",
+"label": "Reputation risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Complaints resolved beyond 30 days (%)"
+},
+{
+"key": "kri.3.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C19",
+"label": "Reputation risk – Complaints resolved beyond 30 days (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.3.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D19",
+"label": "Complaints resolved beyond 30 days (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "kri.3.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E19",
+"label": "Complaints resolved beyond 30 days (%) – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "kri.3.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F19",
+"label": "Complaints resolved beyond 30 days (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.3.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G19",
+"label": "Complaints resolved beyond 30 days (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.3.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B20",
+"label": "Reputation risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Adverse media reports in the year (number)"
+},
+{
+"key": "kri.3.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C20",
+"label": "Reputation risk – Adverse media reports in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.3.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D20",
+"label": "Adverse media reports in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.3.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E20",
+"label": "Adverse media reports in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.3.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F20",
+"label": "Adverse media reports in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.3.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G20",
+"label": "Adverse media reports in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.3.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B21",
+"label": "Reputation risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Credit rating notches downgraded in the last 2 years (number)"
+},
+{
+"key": "kri.3.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C21",
+"label": "Reputation risk – Credit rating notches downgraded in the last 2 years (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.3.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D21",
+"label": "Credit rating notches downgraded in the last 2 years (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.3.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E21",
+"label": "Credit rating notches downgraded in the last 2 years (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.3.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F21",
+"label": "Credit rating notches downgraded in the last 2 years (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.3.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G21",
+"label": "Credit rating notches downgraded in the last 2 years (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.4.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B22",
+"label": "Strategic and business risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Disbursement achieved against budget (%)"
+},
+{
+"key": "kri.4.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C22",
+"label": "Strategic and business risk – Disbursement achieved against budget (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.4.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D22",
+"label": "Disbursement achieved against budget (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.9
+},
+{
+"key": "kri.4.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E22",
+"label": "Disbursement achieved against budget (%) – red",
+"source": "Risk appetite statement",
+"default": 0.75
+},
+{
+"key": "kri.4.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F22",
+"label": "Disbursement achieved against budget (%) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.4.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G22",
+"label": "Disbursement achieved against budget (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.4.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B23",
+"label": "Strategic and business risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Profit after tax achieved against budget (%)"
+},
+{
+"key": "kri.4.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C23",
+"label": "Strategic and business risk – Profit after tax achieved against budget (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.4.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D23",
+"label": "Profit after tax achieved against budget (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.9
+},
+{
+"key": "kri.4.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E23",
+"label": "Profit after tax achieved against budget (%) – red",
+"source": "Risk appetite statement",
+"default": 0.7
+},
+{
+"key": "kri.4.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F23",
+"label": "Profit after tax achieved against budget (%) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.4.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G23",
+"label": "Profit after tax achieved against budget (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.4.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B24",
+"label": "Strategic and business risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Share of the largest product in the loan book"
+},
+{
+"key": "kri.4.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C24",
+"label": "Strategic and business risk – Share of the largest product in the loan book",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.4.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D24",
+"label": "Share of the largest product in the loan book – amber",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.4.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E24",
+"label": "Share of the largest product in the loan book – red",
+"source": "Risk appetite statement",
+"default": 0.7
+},
+{
+"key": "kri.4.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F24",
+"label": "Share of the largest product in the loan book – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.4.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G24",
+"label": "Share of the largest product in the loan book – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.4.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B25",
+"label": "Strategic and business risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Cost to income ratio"
+},
+{
+"key": "kri.4.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C25",
+"label": "Strategic and business risk – Cost to income ratio",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.4.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D25",
+"label": "Cost to income ratio – amber",
+"source": "Risk appetite statement",
+"default": 0.55
+},
+{
+"key": "kri.4.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E25",
+"label": "Cost to income ratio – red",
+"source": "Risk appetite statement",
+"default": 0.7
+},
+{
+"key": "kri.4.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F25",
+"label": "Cost to income ratio – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.4.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G25",
+"label": "Cost to income ratio – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.4.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B26",
+"label": "Strategic and business risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Return on assets"
+},
+{
+"key": "kri.4.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C26",
+"label": "Strategic and business risk – Return on assets",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.4.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D26",
+"label": "Return on assets – amber",
+"source": "Risk appetite statement",
+"default": 0.015
+},
+{
+"key": "kri.4.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E26",
+"label": "Return on assets – red",
+"source": "Risk appetite statement",
+"default": 0.005
+},
+{
+"key": "kri.4.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F26",
+"label": "Return on assets – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.4.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G26",
+"label": "Return on assets – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.5.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B27",
+"label": "Climate and ESG risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Loan book in districts with high flood, drought or cyclone hazard (%)"
+},
+{
+"key": "kri.5.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C27",
+"label": "Climate and ESG risk – Loan book in districts with high flood, drought or cyclone hazard (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.5.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D27",
+"label": "Loan book in districts with high flood, drought or cyclone hazard (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "kri.5.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E27",
+"label": "Loan book in districts with high flood, drought or cyclone hazard (%) – red",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "kri.5.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F27",
+"label": "Loan book in districts with high flood, drought or cyclone hazard (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.5.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G27",
+"label": "Loan book in districts with high flood, drought or cyclone hazard (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.5.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B28",
+"label": "Climate and ESG risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Loan book in carbon-intensive or environmentally sensitive sectors (%)"
+},
+{
+"key": "kri.5.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C28",
+"label": "Climate and ESG risk – Loan book in carbon-intensive or environmentally sensitive sectors (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.5.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D28",
+"label": "Loan book in carbon-intensive or environmentally sensitive sectors (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "kri.5.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E28",
+"label": "Loan book in carbon-intensive or environmentally sensitive sectors (%) – red",
+"source": "Risk appetite statement",
+"default": 0.3
+},
+{
+"key": "kri.5.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F28",
+"label": "Loan book in carbon-intensive or environmentally sensitive sectors (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.5.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G28",
+"label": "Loan book in carbon-intensive or environmentally sensitive sectors (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.5.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B29",
+"label": "Climate and ESG risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Secured loans with collateral in high-hazard zones (%)"
+},
+{
+"key": "kri.5.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C29",
+"label": "Climate and ESG risk – Secured loans with collateral in high-hazard zones (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.5.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D29",
+"label": "Secured loans with collateral in high-hazard zones (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "kri.5.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E29",
+"label": "Secured loans with collateral in high-hazard zones (%) – red",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "kri.5.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F29",
+"label": "Secured loans with collateral in high-hazard zones (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.5.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G29",
+"label": "Secured loans with collateral in high-hazard zones (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.5.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B30",
+"label": "Climate and ESG risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Board-approved climate risk policy in place (1 = yes, 0 = no)"
+},
+{
+"key": "kri.5.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C30",
+"label": "Climate and ESG risk – Board-approved climate risk policy in place (1 = yes, 0 = no)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.5.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D30",
+"label": "Board-approved climate risk policy in place (1 = yes, 0 = no) – amber",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.5.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E30",
+"label": "Board-approved climate risk policy in place (1 = yes, 0 = no) – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.5.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F30",
+"label": "Board-approved climate risk policy in place (1 = yes, 0 = no) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.5.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G30",
+"label": "Board-approved climate risk policy in place (1 = yes, 0 = no) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.5.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B31",
+"label": "Climate and ESG risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Climate scenario analysis carried out in the year (1 = yes, 0 = no)"
+},
+{
+"key": "kri.5.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C31",
+"label": "Climate and ESG risk – Climate scenario analysis carried out in the year (1 = yes, 0 = no)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.5.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D31",
+"label": "Climate scenario analysis carried out in the year (1 = yes, 0 = no) – amber",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.5.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E31",
+"label": "Climate scenario analysis carried out in the year (1 = yes, 0 = no) – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.5.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F31",
+"label": "Climate scenario analysis carried out in the year (1 = yes, 0 = no) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.5.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G31",
+"label": "Climate scenario analysis carried out in the year (1 = yes, 0 = no) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.6.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B32",
+"label": "Model risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Models in use without independent validation in the last 12 months (number)"
+},
+{
+"key": "kri.6.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C32",
+"label": "Model risk – Models in use without independent validation in the last 12 months (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.6.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D32",
+"label": "Models in use without independent validation in the last 12 months (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.6.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E32",
+"label": "Models in use without independent validation in the last 12 months (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.6.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F32",
+"label": "Models in use without independent validation in the last 12 months (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.6.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G32",
+"label": "Models in use without independent validation in the last 12 months (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.6.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B33",
+"label": "Model risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "ECL backtest ratio (actual / predicted defaults)"
+},
+{
+"key": "kri.6.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C33",
+"label": "Model risk – ECL backtest ratio (actual / predicted defaults)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.6.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D33",
+"label": "ECL backtest ratio (actual / predicted defaults) – amber",
+"source": "Risk appetite statement",
+"default": 1.2
+},
+{
+"key": "kri.6.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E33",
+"label": "ECL backtest ratio (actual / predicted defaults) – red",
+"source": "Risk appetite statement",
+"default": 1.5
+},
+{
+"key": "kri.6.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F33",
+"label": "ECL backtest ratio (actual / predicted defaults) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.6.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G33",
+"label": "ECL backtest ratio (actual / predicted defaults) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.6.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B34",
+"label": "Model risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Management overlay as % of model ECL"
+},
+{
+"key": "kri.6.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C34",
+"label": "Model risk – Management overlay as % of model ECL",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.6.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D34",
+"label": "Management overlay as % of model ECL – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "kri.6.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E34",
+"label": "Management overlay as % of model ECL – red",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.6.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F34",
+"label": "Management overlay as % of model ECL – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.6.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G34",
+"label": "Management overlay as % of model ECL – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.6.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B35",
+"label": "Model risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Credit scorecard Gini / discriminatory power"
+},
+{
+"key": "kri.6.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C35",
+"label": "Model risk – Credit scorecard Gini / discriminatory power",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.6.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D35",
+"label": "Credit scorecard Gini / discriminatory power – amber",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "kri.6.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E35",
+"label": "Credit scorecard Gini / discriminatory power – red",
+"source": "Risk appetite statement",
+"default": 0.3
+},
+{
+"key": "kri.6.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F35",
+"label": "Credit scorecard Gini / discriminatory power – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.6.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G35",
+"label": "Credit scorecard Gini / discriminatory power – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.6.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B36",
+"label": "Model risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Model changes made without committee approval (number)"
+},
+{
+"key": "kri.6.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C36",
+"label": "Model risk – Model changes made without committee approval (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.6.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D36",
+"label": "Model changes made without committee approval (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.6.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E36",
+"label": "Model changes made without committee approval (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.6.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F36",
+"label": "Model changes made without committee approval (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.6.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G36",
+"label": "Model changes made without committee approval (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.7.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B37",
+"label": "Outsourcing and third-party risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Material outsourced activities without a due-diligence review in the last 12 months (number)"
+},
+{
+"key": "kri.7.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C37",
+"label": "Outsourcing and third-party risk – Material outsourced activities without a due-diligence review in the last 12 months (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.7.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D37",
+"label": "Material outsourced activities without a due-diligence review in the last 12 months (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.7.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E37",
+"label": "Material outsourced activities without a due-diligence review in the last 12 months (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.7.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F37",
+"label": "Material outsourced activities without a due-diligence review in the last 12 months (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.7.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G37",
+"label": "Material outsourced activities without a due-diligence review in the last 12 months (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.7.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B38",
+"label": "Outsourcing and third-party risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Share of collections handled by the largest recovery agency"
+},
+{
+"key": "kri.7.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C38",
+"label": "Outsourcing and third-party risk – Share of collections handled by the largest recovery agency",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.7.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D38",
+"label": "Share of collections handled by the largest recovery agency – amber",
+"source": "Risk appetite statement",
+"default": 0.3
+},
+{
+"key": "kri.7.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E38",
+"label": "Share of collections handled by the largest recovery agency – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.7.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F38",
+"label": "Share of collections handled by the largest recovery agency – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.7.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G38",
+"label": "Share of collections handled by the largest recovery agency – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.7.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B39",
+"label": "Outsourcing and third-party risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Share of sourcing from the largest DSA / lending service provider"
+},
+{
+"key": "kri.7.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C39",
+"label": "Outsourcing and third-party risk – Share of sourcing from the largest DSA / lending service provider",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.7.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D39",
+"label": "Share of sourcing from the largest DSA / lending service provider – amber",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.7.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E39",
+"label": "Share of sourcing from the largest DSA / lending service provider – red",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "kri.7.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F39",
+"label": "Share of sourcing from the largest DSA / lending service provider – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.7.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G39",
+"label": "Share of sourcing from the largest DSA / lending service provider – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.7.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B40",
+"label": "Outsourcing and third-party risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Service-level breaches by material vendors in the year (number)"
+},
+{
+"key": "kri.7.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C40",
+"label": "Outsourcing and third-party risk – Service-level breaches by material vendors in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.7.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D40",
+"label": "Service-level breaches by material vendors in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.7.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E40",
+"label": "Service-level breaches by material vendors in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 8
+},
+{
+"key": "kri.7.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F40",
+"label": "Service-level breaches by material vendors in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.7.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G40",
+"label": "Service-level breaches by material vendors in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.7.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B41",
+"label": "Outsourcing and third-party risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Material vendors without a tested exit / continuity plan (number)"
+},
+{
+"key": "kri.7.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C41",
+"label": "Outsourcing and third-party risk – Material vendors without a tested exit / continuity plan (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.7.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D41",
+"label": "Material vendors without a tested exit / continuity plan (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.7.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E41",
+"label": "Material vendors without a tested exit / continuity plan (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.7.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F41",
+"label": "Material vendors without a tested exit / continuity plan (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.7.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G41",
+"label": "Material vendors without a tested exit / continuity plan (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.8.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B42",
+"label": "Conduct and customer protection risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Mis-selling or unfair-practice complaints (number)"
+},
+{
+"key": "kri.8.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C42",
+"label": "Conduct and customer protection risk – Mis-selling or unfair-practice complaints (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.8.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D42",
+"label": "Mis-selling or unfair-practice complaints (number) – amber",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.8.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E42",
+"label": "Mis-selling or unfair-practice complaints (number) – red",
+"source": "Risk appetite statement",
+"default": 10
+},
+{
+"key": "kri.8.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F42",
+"label": "Mis-selling or unfair-practice complaints (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.8.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G42",
+"label": "Mis-selling or unfair-practice complaints (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.8.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B43",
+"label": "Conduct and customer protection risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Refunds of excess interest or charges ordered in the year (number)"
+},
+{
+"key": "kri.8.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C43",
+"label": "Conduct and customer protection risk – Refunds of excess interest or charges ordered in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.8.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D43",
+"label": "Refunds of excess interest or charges ordered in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.8.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E43",
+"label": "Refunds of excess interest or charges ordered in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 20
+},
+{
+"key": "kri.8.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F43",
+"label": "Refunds of excess interest or charges ordered in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.8.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G43",
+"label": "Refunds of excess interest or charges ordered in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.8.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B44",
+"label": "Conduct and customer protection risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Recovery-conduct complaints (number)"
+},
+{
+"key": "kri.8.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C44",
+"label": "Conduct and customer protection risk – Recovery-conduct complaints (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.8.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D44",
+"label": "Recovery-conduct complaints (number) – amber",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.8.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E44",
+"label": "Recovery-conduct complaints (number) – red",
+"source": "Risk appetite statement",
+"default": 6
+},
+{
+"key": "kri.8.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F44",
+"label": "Recovery-conduct complaints (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.8.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G44",
+"label": "Recovery-conduct complaints (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.8.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B45",
+"label": "Conduct and customer protection risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Loans disbursed without a Key Facts Statement found in audit samples (%)"
+},
+{
+"key": "kri.8.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C45",
+"label": "Conduct and customer protection risk – Loans disbursed without a Key Facts Statement found in audit samples (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.8.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D45",
+"label": "Loans disbursed without a Key Facts Statement found in audit samples (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.01
+},
+{
+"key": "kri.8.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E45",
+"label": "Loans disbursed without a Key Facts Statement found in audit samples (%) – red",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "kri.8.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F45",
+"label": "Loans disbursed without a Key Facts Statement found in audit samples (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.8.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G45",
+"label": "Loans disbursed without a Key Facts Statement found in audit samples (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.8.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B46",
+"label": "Conduct and customer protection risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Grievances pending beyond the board-approved turnaround time (%)"
+},
+{
+"key": "kri.8.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C46",
+"label": "Conduct and customer protection risk – Grievances pending beyond the board-approved turnaround time (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.8.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D46",
+"label": "Grievances pending beyond the board-approved turnaround time (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "kri.8.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E46",
+"label": "Grievances pending beyond the board-approved turnaround time (%) – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "kri.8.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F46",
+"label": "Grievances pending beyond the board-approved turnaround time (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.8.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G46",
+"label": "Grievances pending beyond the board-approved turnaround time (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.9.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B47",
+"label": "Group and contagion risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Exposure to group companies / Tier 1 capital"
+},
+{
+"key": "kri.9.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C47",
+"label": "Group and contagion risk – Exposure to group companies / Tier 1 capital",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.9.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D47",
+"label": "Exposure to group companies / Tier 1 capital – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "kri.9.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E47",
+"label": "Exposure to group companies / Tier 1 capital – red",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "kri.9.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F47",
+"label": "Exposure to group companies / Tier 1 capital – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.9.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G47",
+"label": "Exposure to group companies / Tier 1 capital – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.9.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B48",
+"label": "Group and contagion risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Borrowings guaranteed by or dependent on the parent or promoters (%)"
+},
+{
+"key": "kri.9.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C48",
+"label": "Group and contagion risk – Borrowings guaranteed by or dependent on the parent or promoters (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.9.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D48",
+"label": "Borrowings guaranteed by or dependent on the parent or promoters (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.9.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E48",
+"label": "Borrowings guaranteed by or dependent on the parent or promoters (%) – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.9.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F48",
+"label": "Borrowings guaranteed by or dependent on the parent or promoters (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.9.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G48",
+"label": "Borrowings guaranteed by or dependent on the parent or promoters (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.9.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B49",
+"label": "Group and contagion risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Guarantees given on behalf of group companies / net worth"
+},
+{
+"key": "kri.9.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C49",
+"label": "Group and contagion risk – Guarantees given on behalf of group companies / net worth",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.9.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D49",
+"label": "Guarantees given on behalf of group companies / net worth – amber",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "kri.9.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E49",
+"label": "Guarantees given on behalf of group companies / net worth – red",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "kri.9.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F49",
+"label": "Guarantees given on behalf of group companies / net worth – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.9.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G49",
+"label": "Guarantees given on behalf of group companies / net worth – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.9.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B50",
+"label": "Group and contagion risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Related-party transactions not at arm's length found by audit (number)"
+},
+{
+"key": "kri.9.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C50",
+"label": "Group and contagion risk – Related-party transactions not at arm's length found by audit (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.9.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D50",
+"label": "Related-party transactions not at arm's length found by audit (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.9.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E50",
+"label": "Related-party transactions not at arm's length found by audit (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.9.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F50",
+"label": "Related-party transactions not at arm's length found by audit (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.9.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G50",
+"label": "Related-party transactions not at arm's length found by audit (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.9.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B51",
+"label": "Group and contagion risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Shared services without a written agreement (number)"
+},
+{
+"key": "kri.9.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C51",
+"label": "Group and contagion risk – Shared services without a written agreement (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.9.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D51",
+"label": "Shared services without a written agreement (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.9.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E51",
+"label": "Shared services without a written agreement (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.9.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F51",
+"label": "Shared services without a written agreement (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.9.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G51",
+"label": "Shared services without a written agreement (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.10.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B52",
+"label": "Securitisation and co-lending residual risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Securitised and assigned pool outstanding / assets under management"
+},
+{
+"key": "kri.10.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C52",
+"label": "Securitisation and co-lending residual risk – Securitised and assigned pool outstanding / assets under management",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.10.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D52",
+"label": "Securitised and assigned pool outstanding / assets under management – amber",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "kri.10.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E52",
+"label": "Securitised and assigned pool outstanding / assets under management – red",
+"source": "Risk appetite statement",
+"default": 0.35
+},
+{
+"key": "kri.10.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F52",
+"label": "Securitised and assigned pool outstanding / assets under management – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.10.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G52",
+"label": "Securitised and assigned pool outstanding / assets under management – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.10.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B53",
+"label": "Securitisation and co-lending residual risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Credit enhancement provided / Tier 1 capital"
+},
+{
+"key": "kri.10.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C53",
+"label": "Securitisation and co-lending residual risk – Credit enhancement provided / Tier 1 capital",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.10.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D53",
+"label": "Credit enhancement provided / Tier 1 capital – amber",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "kri.10.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E53",
+"label": "Credit enhancement provided / Tier 1 capital – red",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "kri.10.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F53",
+"label": "Credit enhancement provided / Tier 1 capital – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.10.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G53",
+"label": "Credit enhancement provided / Tier 1 capital – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.10.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B54",
+"label": "Securitisation and co-lending residual risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Cumulative collection efficiency of sold pools (%)"
+},
+{
+"key": "kri.10.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C54",
+"label": "Securitisation and co-lending residual risk – Cumulative collection efficiency of sold pools (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.10.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D54",
+"label": "Cumulative collection efficiency of sold pools (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.95
+},
+{
+"key": "kri.10.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E54",
+"label": "Cumulative collection efficiency of sold pools (%) – red",
+"source": "Risk appetite statement",
+"default": 0.9
+},
+{
+"key": "kri.10.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F54",
+"label": "Cumulative collection efficiency of sold pools (%) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.10.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G54",
+"label": "Cumulative collection efficiency of sold pools (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.10.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B55",
+"label": "Securitisation and co-lending residual risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "First-loss default guarantee invoked in the year / guarantee outstanding"
+},
+{
+"key": "kri.10.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C55",
+"label": "Securitisation and co-lending residual risk – First-loss default guarantee invoked in the year / guarantee outstanding",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.10.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D55",
+"label": "First-loss default guarantee invoked in the year / guarantee outstanding – amber",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.10.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E55",
+"label": "First-loss default guarantee invoked in the year / guarantee outstanding – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.10.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F55",
+"label": "First-loss default guarantee invoked in the year / guarantee outstanding – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.10.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G55",
+"label": "First-loss default guarantee invoked in the year / guarantee outstanding – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.10.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B56",
+"label": "Securitisation and co-lending residual risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Pools with rating downgrade or trigger breach (number)"
+},
+{
+"key": "kri.10.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C56",
+"label": "Securitisation and co-lending residual risk – Pools with rating downgrade or trigger breach (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.10.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D56",
+"label": "Pools with rating downgrade or trigger breach (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.10.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E56",
+"label": "Pools with rating downgrade or trigger breach (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.10.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F56",
+"label": "Pools with rating downgrade or trigger breach (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.10.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G56",
+"label": "Pools with rating downgrade or trigger breach (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.11.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B57",
+"label": "Fraud risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Frauds reported in the year (number)"
+},
+{
+"key": "kri.11.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C57",
+"label": "Fraud risk – Frauds reported in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.11.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D57",
+"label": "Frauds reported in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.11.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E57",
+"label": "Frauds reported in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 10
+},
+{
+"key": "kri.11.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F57",
+"label": "Frauds reported in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.11.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G57",
+"label": "Frauds reported in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.11.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B58",
+"label": "Fraud risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Amount involved in frauds / gross loans"
+},
+{
+"key": "kri.11.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C58",
+"label": "Fraud risk – Amount involved in frauds / gross loans",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.11.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D58",
+"label": "Amount involved in frauds / gross loans – amber",
+"source": "Risk appetite statement",
+"default": 0.001
+},
+{
+"key": "kri.11.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E58",
+"label": "Amount involved in frauds / gross loans – red",
+"source": "Risk appetite statement",
+"default": 0.005
+},
+{
+"key": "kri.11.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F58",
+"label": "Amount involved in frauds / gross loans – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.11.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G58",
+"label": "Amount involved in frauds / gross loans – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.11.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B59",
+"label": "Fraud risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Frauds involving staff (number)"
+},
+{
+"key": "kri.11.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C59",
+"label": "Fraud risk – Frauds involving staff (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.11.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D59",
+"label": "Frauds involving staff (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.11.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E59",
+"label": "Frauds involving staff (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.11.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F59",
+"label": "Frauds involving staff (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.11.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G59",
+"label": "Frauds involving staff (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.11.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B60",
+"label": "Fraud risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Frauds detected more than 12 months after occurrence (%)"
+},
+{
+"key": "kri.11.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C60",
+"label": "Fraud risk – Frauds detected more than 12 months after occurrence (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.11.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D60",
+"label": "Frauds detected more than 12 months after occurrence (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.11.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E60",
+"label": "Frauds detected more than 12 months after occurrence (%) – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.11.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F60",
+"label": "Frauds detected more than 12 months after occurrence (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.11.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G60",
+"label": "Frauds detected more than 12 months after occurrence (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.11.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B61",
+"label": "Fraud risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Accounts red-flagged and pending decision beyond 180 days (number)"
+},
+{
+"key": "kri.11.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C61",
+"label": "Fraud risk – Accounts red-flagged and pending decision beyond 180 days (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.11.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D61",
+"label": "Accounts red-flagged and pending decision beyond 180 days (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.11.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E61",
+"label": "Accounts red-flagged and pending decision beyond 180 days (number) – red",
+"source": "Risk appetite statement",
+"default": 5
+},
+{
+"key": "kri.11.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F61",
+"label": "Accounts red-flagged and pending decision beyond 180 days (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.11.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G61",
+"label": "Accounts red-flagged and pending decision beyond 180 days (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.12.1.name",
+"sheet": "Risk Scorecards",
+"cell": "B62",
+"label": "People and key-person risk KRI 1",
+"source": "Risk register / KRI dashboard",
+"default": "Annual attrition – all employees"
+},
+{
+"key": "kri.12.1.val",
+"sheet": "Risk Scorecards",
+"cell": "C62",
+"label": "People and key-person risk – Annual attrition – all employees",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.12.1.amber",
+"sheet": "Risk Scorecards",
+"cell": "D62",
+"label": "Annual attrition – all employees – amber",
+"source": "Risk appetite statement",
+"default": 0.3
+},
+{
+"key": "kri.12.1.red",
+"sheet": "Risk Scorecards",
+"cell": "E62",
+"label": "Annual attrition – all employees – red",
+"source": "Risk appetite statement",
+"default": 0.45
+},
+{
+"key": "kri.12.1.dir",
+"sheet": "Risk Scorecards",
+"cell": "F62",
+"label": "Annual attrition – all employees – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.12.1.wt",
+"sheet": "Risk Scorecards",
+"cell": "G62",
+"label": "Annual attrition – all employees – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.12.2.name",
+"sheet": "Risk Scorecards",
+"cell": "B63",
+"label": "People and key-person risk KRI 2",
+"source": "Risk register / KRI dashboard",
+"default": "Attrition among senior and key managerial personnel in the year (number)"
+},
+{
+"key": "kri.12.2.val",
+"sheet": "Risk Scorecards",
+"cell": "C63",
+"label": "People and key-person risk – Attrition among senior and key managerial personnel in the year (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.12.2.amber",
+"sheet": "Risk Scorecards",
+"cell": "D63",
+"label": "Attrition among senior and key managerial personnel in the year (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.12.2.red",
+"sheet": "Risk Scorecards",
+"cell": "E63",
+"label": "Attrition among senior and key managerial personnel in the year (number) – red",
+"source": "Risk appetite statement",
+"default": 3
+},
+{
+"key": "kri.12.2.dir",
+"sheet": "Risk Scorecards",
+"cell": "F63",
+"label": "Attrition among senior and key managerial personnel in the year (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.12.2.wt",
+"sheet": "Risk Scorecards",
+"cell": "G63",
+"label": "Attrition among senior and key managerial personnel in the year (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.12.3.name",
+"sheet": "Risk Scorecards",
+"cell": "B64",
+"label": "People and key-person risk KRI 3",
+"source": "Risk register / KRI dashboard",
+"default": "Key positions vacant for more than 3 months (number)"
+},
+{
+"key": "kri.12.3.val",
+"sheet": "Risk Scorecards",
+"cell": "C64",
+"label": "People and key-person risk – Key positions vacant for more than 3 months (number)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.12.3.amber",
+"sheet": "Risk Scorecards",
+"cell": "D64",
+"label": "Key positions vacant for more than 3 months (number) – amber",
+"source": "Risk appetite statement",
+"default": 1
+},
+{
+"key": "kri.12.3.red",
+"sheet": "Risk Scorecards",
+"cell": "E64",
+"label": "Key positions vacant for more than 3 months (number) – red",
+"source": "Risk appetite statement",
+"default": 2
+},
+{
+"key": "kri.12.3.dir",
+"sheet": "Risk Scorecards",
+"cell": "F64",
+"label": "Key positions vacant for more than 3 months (number) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.12.3.wt",
+"sheet": "Risk Scorecards",
+"cell": "G64",
+"label": "Key positions vacant for more than 3 months (number) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.12.4.name",
+"sheet": "Risk Scorecards",
+"cell": "B65",
+"label": "People and key-person risk KRI 4",
+"source": "Risk register / KRI dashboard",
+"default": "Critical roles without an identified successor (%)"
+},
+{
+"key": "kri.12.4.val",
+"sheet": "Risk Scorecards",
+"cell": "C65",
+"label": "People and key-person risk – Critical roles without an identified successor (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.12.4.amber",
+"sheet": "Risk Scorecards",
+"cell": "D65",
+"label": "Critical roles without an identified successor (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "kri.12.4.red",
+"sheet": "Risk Scorecards",
+"cell": "E65",
+"label": "Critical roles without an identified successor (%) – red",
+"source": "Risk appetite statement",
+"default": 0.5
+},
+{
+"key": "kri.12.4.dir",
+"sheet": "Risk Scorecards",
+"cell": "F65",
+"label": "Critical roles without an identified successor (%) – direction",
+"source": "ICAAP policy",
+"default": "Higher is worse"
+},
+{
+"key": "kri.12.4.wt",
+"sheet": "Risk Scorecards",
+"cell": "G65",
+"label": "Critical roles without an identified successor (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "kri.12.5.name",
+"sheet": "Risk Scorecards",
+"cell": "B66",
+"label": "People and key-person risk KRI 5",
+"source": "Risk register / KRI dashboard",
+"default": "Mandatory training completion (%)"
+},
+{
+"key": "kri.12.5.val",
+"sheet": "Risk Scorecards",
+"cell": "C66",
+"label": "People and key-person risk – Mandatory training completion (%)",
+"source": "Risk register / KRI dashboard; MIS",
+"default": null
+},
+{
+"key": "kri.12.5.amber",
+"sheet": "Risk Scorecards",
+"cell": "D66",
+"label": "Mandatory training completion (%) – amber",
+"source": "Risk appetite statement",
+"default": 0.9
+},
+{
+"key": "kri.12.5.red",
+"sheet": "Risk Scorecards",
+"cell": "E66",
+"label": "Mandatory training completion (%) – red",
+"source": "Risk appetite statement",
+"default": 0.75
+},
+{
+"key": "kri.12.5.dir",
+"sheet": "Risk Scorecards",
+"cell": "F66",
+"label": "Mandatory training completion (%) – direction",
+"source": "ICAAP policy",
+"default": "Lower is worse"
+},
+{
+"key": "kri.12.5.wt",
+"sheet": "Risk Scorecards",
+"cell": "G66",
+"label": "Mandatory training completion (%) – weight",
+"source": "ICAAP policy",
+"default": 1
+},
+{
+"key": "ru.mat.1",
+"sheet": "Risk Universe",
+"cell": "C7",
+"label": "Credit risk – excess of economic capital over Pillar 1 – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.1",
+"sheet": "Risk Universe",
+"cell": "D7",
+"label": "Credit risk – excess of economic capital over Pillar 1 – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.2",
+"sheet": "Risk Universe",
+"cell": "C8",
+"label": "Borrower concentration risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.2",
+"sheet": "Risk Universe",
+"cell": "D8",
+"label": "Borrower concentration risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.3",
+"sheet": "Risk Universe",
+"cell": "C9",
+"label": "Sector concentration risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.3",
+"sheet": "Risk Universe",
+"cell": "D9",
+"label": "Sector concentration risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.4",
+"sheet": "Risk Universe",
+"cell": "C10",
+"label": "Geographic concentration risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.4",
+"sheet": "Risk Universe",
+"cell": "D10",
+"label": "Geographic concentration risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.5",
+"sheet": "Risk Universe",
+"cell": "C11",
+"label": "Interest rate risk in the banking book – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.5",
+"sheet": "Risk Universe",
+"cell": "D11",
+"label": "Interest rate risk in the banking book – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.6",
+"sheet": "Risk Universe",
+"cell": "C12",
+"label": "Market risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.6",
+"sheet": "Risk Universe",
+"cell": "D12",
+"label": "Market risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.7",
+"sheet": "Risk Universe",
+"cell": "C13",
+"label": "Liquidity and funding risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.7",
+"sheet": "Risk Universe",
+"cell": "D13",
+"label": "Liquidity and funding risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.8",
+"sheet": "Risk Universe",
+"cell": "C14",
+"label": "Operational risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.8",
+"sheet": "Risk Universe",
+"cell": "D14",
+"label": "Operational risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.9",
+"sheet": "Risk Universe",
+"cell": "C15",
+"label": "Cyber and IT risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.9",
+"sheet": "Risk Universe",
+"cell": "D15",
+"label": "Cyber and IT risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.10",
+"sheet": "Risk Universe",
+"cell": "C16",
+"label": "Compliance and legal risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.10",
+"sheet": "Risk Universe",
+"cell": "D16",
+"label": "Compliance and legal risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.11",
+"sheet": "Risk Universe",
+"cell": "C17",
+"label": "Reputation risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.11",
+"sheet": "Risk Universe",
+"cell": "D17",
+"label": "Reputation risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.12",
+"sheet": "Risk Universe",
+"cell": "C18",
+"label": "Strategic and business risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.12",
+"sheet": "Risk Universe",
+"cell": "D18",
+"label": "Strategic and business risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.13",
+"sheet": "Risk Universe",
+"cell": "C19",
+"label": "Climate and ESG risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.13",
+"sheet": "Risk Universe",
+"cell": "D19",
+"label": "Climate and ESG risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.14",
+"sheet": "Risk Universe",
+"cell": "C20",
+"label": "Model risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.14",
+"sheet": "Risk Universe",
+"cell": "D20",
+"label": "Model risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.15",
+"sheet": "Risk Universe",
+"cell": "C21",
+"label": "Outsourcing and third-party risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.15",
+"sheet": "Risk Universe",
+"cell": "D21",
+"label": "Outsourcing and third-party risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.16",
+"sheet": "Risk Universe",
+"cell": "C22",
+"label": "Conduct and customer protection risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.16",
+"sheet": "Risk Universe",
+"cell": "D22",
+"label": "Conduct and customer protection risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.17",
+"sheet": "Risk Universe",
+"cell": "C23",
+"label": "Group and contagion risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.17",
+"sheet": "Risk Universe",
+"cell": "D23",
+"label": "Group and contagion risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.18",
+"sheet": "Risk Universe",
+"cell": "C24",
+"label": "Securitisation and co-lending residual risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.18",
+"sheet": "Risk Universe",
+"cell": "D24",
+"label": "Securitisation and co-lending residual risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.19",
+"sheet": "Risk Universe",
+"cell": "C25",
+"label": "Fraud risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.19",
+"sheet": "Risk Universe",
+"cell": "D25",
+"label": "Fraud risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.20",
+"sheet": "Risk Universe",
+"cell": "C26",
+"label": "People and key-person risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "Yes"
+},
+{
+"key": "ru.why.20",
+"sheet": "Risk Universe",
+"cell": "D26",
+"label": "People and key-person risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.mat.21",
+"sheet": "Risk Universe",
+"cell": "C27",
+"label": "Pension and employee benefit obligation risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "No"
+},
+{
+"key": "ru.why.21",
+"sheet": "Risk Universe",
+"cell": "D27",
+"label": "Pension and employee benefit obligation risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.manual.21",
+"sheet": "Risk Universe",
+"cell": "I27",
+"label": "Pension and employee benefit obligation risk – manual capital estimate",
+"source": "Management estimate with working paper",
+"default": null
+},
+{
+"key": "ru.mat.22",
+"sheet": "Risk Universe",
+"cell": "C28",
+"label": "Settlement and counterparty risk – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "No"
+},
+{
+"key": "ru.why.22",
+"sheet": "Risk Universe",
+"cell": "D28",
+"label": "Settlement and counterparty risk – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.manual.22",
+"sheet": "Risk Universe",
+"cell": "I28",
+"label": "Settlement and counterparty risk – manual capital estimate",
+"source": "Management estimate with working paper",
+"default": null
+},
+{
+"key": "ru.mat.23",
+"sheet": "Risk Universe",
+"cell": "C29",
+"label": "Any other risk identified by the company – material",
+"source": "Risk materiality assessment approved by the Risk Management Committee",
+"default": "No"
+},
+{
+"key": "ru.why.23",
+"sheet": "Risk Universe",
+"cell": "D29",
+"label": "Any other risk identified by the company – reason",
+"source": "Risk materiality assessment",
+"default": null
+},
+{
+"key": "ru.manual.23",
+"sheet": "Risk Universe",
+"cell": "I29",
+"label": "Any other risk identified by the company – manual capital estimate",
+"source": "Management estimate with working paper",
+"default": null
+},
+{
+"key": "plan.g.1",
+"sheet": "Capital Plan",
+"cell": "C7",
+"label": "RWA growth Y1",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.pat.1",
+"sheet": "Capital Plan",
+"cell": "C9",
+"label": "Profit after tax Y1",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.div.1",
+"sheet": "Capital Plan",
+"cell": "C10",
+"label": "Dividend payout Y1",
+"source": "Dividend policy",
+"default": 0
+},
+{
+"key": "plan.eq.1",
+"sheet": "Capital Plan",
+"cell": "C12",
+"label": "Equity raised Y1",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "plan.t2.1",
+"sheet": "Capital Plan",
+"cell": "C13",
+"label": "Tier 2 raised Y1",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "plan.g.2",
+"sheet": "Capital Plan",
+"cell": "D7",
+"label": "RWA growth Y2",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.pat.2",
+"sheet": "Capital Plan",
+"cell": "D9",
+"label": "Profit after tax Y2",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.div.2",
+"sheet": "Capital Plan",
+"cell": "D10",
+"label": "Dividend payout Y2",
+"source": "Dividend policy",
+"default": 0
+},
+{
+"key": "plan.eq.2",
+"sheet": "Capital Plan",
+"cell": "D12",
+"label": "Equity raised Y2",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "plan.t2.2",
+"sheet": "Capital Plan",
+"cell": "D13",
+"label": "Tier 2 raised Y2",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "plan.g.3",
+"sheet": "Capital Plan",
+"cell": "E7",
+"label": "RWA growth Y3",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.pat.3",
+"sheet": "Capital Plan",
+"cell": "E9",
+"label": "Profit after tax Y3",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "plan.div.3",
+"sheet": "Capital Plan",
+"cell": "E10",
+"label": "Dividend payout Y3",
+"source": "Dividend policy",
+"default": 0
+},
+{
+"key": "plan.eq.3",
+"sheet": "Capital Plan",
+"cell": "E12",
+"label": "Equity raised Y3",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "plan.t2.3",
+"sheet": "Capital Plan",
+"cell": "E13",
+"label": "Tier 2 raised Y3",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "ra.amber.1",
+"sheet": "Risk Appetite",
+"cell": "C7",
+"label": "CRAR – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.17
+},
+{
+"key": "ra.red.1",
+"sheet": "Risk Appetite",
+"cell": "D7",
+"label": "CRAR – red limit",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "ra.dir.1",
+"sheet": "Risk Appetite",
+"cell": "E7",
+"label": "CRAR – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.2",
+"sheet": "Risk Appetite",
+"cell": "C8",
+"label": "Tier 1 ratio – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.115
+},
+{
+"key": "ra.red.2",
+"sheet": "Risk Appetite",
+"cell": "D8",
+"label": "Tier 1 ratio – red limit",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "ra.dir.2",
+"sheet": "Risk Appetite",
+"cell": "E8",
+"label": "Tier 1 ratio – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.3",
+"sheet": "Risk Appetite",
+"cell": "C9",
+"label": "Internal capital adequacy ratio – amber trigger",
+"source": "Risk appetite statement",
+"default": 1.15
+},
+{
+"key": "ra.red.3",
+"sheet": "Risk Appetite",
+"cell": "D9",
+"label": "Internal capital adequacy ratio – red limit",
+"source": "Risk appetite statement",
+"default": 1.0
+},
+{
+"key": "ra.dir.3",
+"sheet": "Risk Appetite",
+"cell": "E9",
+"label": "Internal capital adequacy ratio – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.4",
+"sheet": "Risk Appetite",
+"cell": "C10",
+"label": "Leverage (outside liabilities / owned fund) – amber trigger",
+"source": "Risk appetite statement",
+"default": 5.5
+},
+{
+"key": "ra.red.4",
+"sheet": "Risk Appetite",
+"cell": "D10",
+"label": "Leverage (outside liabilities / owned fund) – red limit",
+"source": "Risk appetite statement",
+"default": 7
+},
+{
+"key": "ra.dir.4",
+"sheet": "Risk Appetite",
+"cell": "E10",
+"label": "Leverage (outside liabilities / owned fund) – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.5",
+"sheet": "Risk Appetite",
+"cell": "C11",
+"label": "Gross Stage 3 / gross loans – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "ra.red.5",
+"sheet": "Risk Appetite",
+"cell": "D11",
+"label": "Gross Stage 3 / gross loans – red limit",
+"source": "Risk appetite statement",
+"default": 0.05
+},
+{
+"key": "ra.dir.5",
+"sheet": "Risk Appetite",
+"cell": "E11",
+"label": "Gross Stage 3 / gross loans – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.6",
+"sheet": "Risk Appetite",
+"cell": "C12",
+"label": "Net Stage 3 % – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.015
+},
+{
+"key": "ra.red.6",
+"sheet": "Risk Appetite",
+"cell": "D12",
+"label": "Net Stage 3 % – red limit",
+"source": "Risk appetite statement",
+"default": 0.03
+},
+{
+"key": "ra.dir.6",
+"sheet": "Risk Appetite",
+"cell": "E12",
+"label": "Net Stage 3 % – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.7",
+"sheet": "Risk Appetite",
+"cell": "C13",
+"label": "Largest borrower / Tier 1 – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "ra.red.7",
+"sheet": "Risk Appetite",
+"cell": "D13",
+"label": "Largest borrower / Tier 1 – red limit",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "ra.dir.7",
+"sheet": "Risk Appetite",
+"cell": "E13",
+"label": "Largest borrower / Tier 1 – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.8",
+"sheet": "Risk Appetite",
+"cell": "C14",
+"label": "Top 20 borrowers / gross loans – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.2
+},
+{
+"key": "ra.red.8",
+"sheet": "Risk Appetite",
+"cell": "D14",
+"label": "Top 20 borrowers / gross loans – red limit",
+"source": "Risk appetite statement",
+"default": 0.3
+},
+{
+"key": "ra.dir.8",
+"sheet": "Risk Appetite",
+"cell": "E14",
+"label": "Top 20 borrowers / gross loans – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.9",
+"sheet": "Risk Appetite",
+"cell": "C15",
+"label": "Largest sector share – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.25
+},
+{
+"key": "ra.red.9",
+"sheet": "Risk Appetite",
+"cell": "D15",
+"label": "Largest sector share – red limit",
+"source": "Risk appetite statement",
+"default": 0.35
+},
+{
+"key": "ra.dir.9",
+"sheet": "Risk Appetite",
+"cell": "E15",
+"label": "Largest sector share – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.10",
+"sheet": "Risk Appetite",
+"cell": "C16",
+"label": "Largest state share – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.4
+},
+{
+"key": "ra.red.10",
+"sheet": "Risk Appetite",
+"cell": "D16",
+"label": "Largest state share – red limit",
+"source": "Risk appetite statement",
+"default": 0.55
+},
+{
+"key": "ra.dir.10",
+"sheet": "Risk Appetite",
+"cell": "E16",
+"label": "Largest state share – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.11",
+"sheet": "Risk Appetite",
+"cell": "C17",
+"label": "Fall in EVE / Tier 1 – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.1
+},
+{
+"key": "ra.red.11",
+"sheet": "Risk Appetite",
+"cell": "D17",
+"label": "Fall in EVE / Tier 1 – red limit",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "ra.dir.11",
+"sheet": "Risk Appetite",
+"cell": "E17",
+"label": "Fall in EVE / Tier 1 – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+},
+{
+"key": "ra.amber.12",
+"sheet": "Risk Appetite",
+"cell": "C18",
+"label": "Stressed liquidity survival horizon (days) – amber trigger",
+"source": "Risk appetite statement",
+"default": 90
+},
+{
+"key": "ra.red.12",
+"sheet": "Risk Appetite",
+"cell": "D18",
+"label": "Stressed liquidity survival horizon (days) – red limit",
+"source": "Risk appetite statement",
+"default": 30
+},
+{
+"key": "ra.dir.12",
+"sheet": "Risk Appetite",
+"cell": "E18",
+"label": "Stressed liquidity survival horizon (days) – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.13",
+"sheet": "Risk Appetite",
+"cell": "C19",
+"label": "Post-stress CRAR – Severe – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.15
+},
+{
+"key": "ra.red.13",
+"sheet": "Risk Appetite",
+"cell": "D19",
+"label": "Post-stress CRAR – Severe – red limit",
+"source": "Risk appetite statement",
+"default": 0.12
+},
+{
+"key": "ra.dir.13",
+"sheet": "Risk Appetite",
+"cell": "E19",
+"label": "Post-stress CRAR – Severe – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.14",
+"sheet": "Risk Appetite",
+"cell": "C20",
+"label": "Return on assets – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.015
+},
+{
+"key": "ra.red.14",
+"sheet": "Risk Appetite",
+"cell": "D20",
+"label": "Return on assets – red limit",
+"source": "Risk appetite statement",
+"default": 0.005
+},
+{
+"key": "ra.dir.14",
+"sheet": "Risk Appetite",
+"cell": "E20",
+"label": "Return on assets – direction",
+"source": "Risk appetite statement",
+"default": "Lower is worse"
+},
+{
+"key": "ra.amber.15",
+"sheet": "Risk Appetite",
+"cell": "C21",
+"label": "Cost to income – amber trigger",
+"source": "Risk appetite statement",
+"default": 0.55
+},
+{
+"key": "ra.red.15",
+"sheet": "Risk Appetite",
+"cell": "D21",
+"label": "Cost to income – red limit",
+"source": "Risk appetite statement",
+"default": 0.7
+},
+{
+"key": "ra.dir.15",
+"sheet": "Risk Appetite",
+"cell": "E21",
+"label": "Cost to income – direction",
+"source": "Risk appetite statement",
+"default": "Higher is worse"
+}
+]
