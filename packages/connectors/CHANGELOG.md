@@ -1,5 +1,20 @@
 # @infrabyx/connectors
 
+## 1.37.0
+
+### Minor Changes
+
+- c45aaa0: LDC-65 (R1-D-299; guide §7fe): `LocalFileSecrets` (adapter `local-file`, `@infrabyx/connectors/secrets`), a SECRETS adapter backed by a 0600 JSON file (default `.infrabyx/local-secrets.json`) or by memory, for a product's local stack and tests, so `seed:credentials` runs without Vault. Refused in every `APP_ENV` but `local` and `test`, and listed unproven (off by the new `int.secrets.local_file.enabled`) so the routing check refuses it in staging and above. `config` registers the setting.
+
+### Patch Changes
+
+- Updated dependencies [c45aaa0]
+- Updated dependencies [4e319d1]
+  - @infrabyx/config@1.24.8
+  - @infrabyx/contracts@1.54.0
+  - @infrabyx/tenancy@1.30.2
+  - @infrabyx/crypto@1.15.6
+
 ## 1.36.0
 
 ### Minor Changes

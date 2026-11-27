@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/contracts",
-  "version": "1.53.0",
+  "version": "1.54.0",
   "description": "Port interfaces, Zod schemas, event-catalogue types",
   "license": "UNLICENSED",
   "private": false,

@@ -1,5 +1,23 @@
 # @infrabyx/testing
 
+## 1.36.0
+
+### Minor Changes
+
+- 123b8b0: LDC-67 (R1-D-298; guide §7fd): `startPostgres` migrates once per server and migration set into a template database (`tpl_<hash>`, built under the existing lock, marked a template only once complete) and copies it per call with `CREATE DATABASE … TEMPLATE`: the same schema and isolation, about seven times faster per database. On by default on a shared server (`IPB_TEST_PG_URL`); `template: false` migrates the database itself. New `templateDatabaseName` and `TestDatabase.template`.
+
+### Patch Changes
+
+- Updated dependencies [c45aaa0]
+- Updated dependencies [4e319d1]
+  - @infrabyx/config@1.24.8
+  - @infrabyx/contracts@1.54.0
+  - @infrabyx/audit@1.13.4
+  - @infrabyx/fakes@1.12.2
+  - @infrabyx/seed@1.0.67
+  - @infrabyx/tenancy@1.30.2
+  - @infrabyx/crypto@1.15.6
+
 ## 1.35.0
 
 ### Minor Changes
