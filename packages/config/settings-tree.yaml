@@ -2257,6 +2257,17 @@ keys:
       source: "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)",
     }
 
+  # ---------------------------------------------------------------- R1: SECRETS local-file (LDC-65, R1-D-299)
+  - {
+      key: int.secrets.local_file.enabled,
+      tier: PLATFORM,
+      type: bool,
+      default: false,
+      change: [PLT_SUPER_ADMIN],
+      mc: R4,
+      source: "IPB-01 SECRETS; LDC-65, R1-D-299 (the local-file adapter: local and test only; listed unproven so routing refuses it in staging and above)",
+    }
+
   # ---------------------------------------------------------------- R1: DOCGEN (IPB-01 DOCGEN; #120, R1-D-100)
   - {
       key: int.docgen.gotenberg.enabled,

@@ -2373,6 +2373,25 @@ From the next `@infrabyx/testing` minor (no migration, no setting). **Why:** eac
 - **`TestDatabase.template`** names the template used, or is undefined when the database was migrated itself.
 - **Local servers** keep one template per set they have seen. Drop them whenever you like: `alter database tpl_… is_template false;` then `drop database tpl_…;`.
 
+## 7fe. A local SECRETS store without Vault (LDC-65; R1-D-299)
+
+From the next `@infrabyx/connectors` minor (one new platform setting, `int.secrets.local_file.enabled`, default false; no migration). **Why:** every product's local stack needed Vault for `seed:credentials`, or its own stub.
+
+```ts
+import { LOCAL_SECRETS_ENVS, LocalFileSecrets } from "@infrabyx/connectors/secrets";
+
+const secrets = LOCAL_SECRETS_ENVS.includes(env.APP_ENV)
+  ? new LocalFileSecrets({ appEnv: env.APP_ENV }) // .infrabyx/local-secrets.json
+  : yourVaultOrSecretsManager;
+```
+
+- **Only `local` and `test`.** Any other `APP_ENV` is refused at construction (`IPB-PORT-001`, `local_only`), and the routing check refuses the adapter in staging and above.
+- **The file** is `.infrabyx/local-secrets.json` by default (`file` to move it, `file: null` for memory). It is written 0600 under a lock, so a seed run and your API share it safely.
+- **Adopt:**
+  1. Point your seed adapters' `secrets` at it in local and test, as the reference app now does.
+  2. Add `.infrabyx/` to your `.gitignore` and `local-secrets.json` to your pre-commit guard (the scaffold's copies have both).
+  3. Never put a real credential in it.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
