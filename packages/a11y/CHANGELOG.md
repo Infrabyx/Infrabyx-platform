@@ -1,5 +1,12 @@
 # @infrabyx/a11y
 
+## 1.1.34
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+
 ## 1.1.33
 
 ### Patch Changes

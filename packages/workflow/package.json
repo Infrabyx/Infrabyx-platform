@@ -1,6 +1,6 @@
 {
   "name": "@infrabyx/workflow",
-  "version": "1.5.20",
+  "version": "1.5.21",
   "description": "Maker-checker around the approvals engine: Work Inbox, scheduled actions, durable timers, reminders, escalation, expiry, bulk decide",
   "license": "UNLICENSED",
   "private": false,

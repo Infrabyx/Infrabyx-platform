@@ -1,5 +1,23 @@
 # @infrabyx/testing
 
+## 1.37.0
+
+### Minor Changes
+
+- bdd282a: PR-FBX-57 (R1-D-304): `bureauScannedWriteContractCases` and `aaScannedWriteContractCases`: EICAR in the vendor's answer refused `IPB-SEC-011` with nothing promoted, a scanner outage refused `IPB-SEC-015` and then ready on retry, and the scan record verifiable by `assertScannedClean` and on the object. The CIBIL and Setu stubs gain `reportRemarks` and `payloadRemarks` to put text (the EICAR string) in the vendor's answer.
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+  - @infrabyx/fakes@1.12.3
+  - @infrabyx/audit@1.13.5
+  - @infrabyx/config@1.24.9
+  - @infrabyx/crypto@1.15.7
+  - @infrabyx/seed@1.0.68
+  - @infrabyx/tenancy@1.30.3
+
 ## 1.36.0
 
 ### Minor Changes

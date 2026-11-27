@@ -1,5 +1,17 @@
 # @infrabyx/feedback
 
+## 1.0.68
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+  - @infrabyx/ai@1.2.21
+  - @infrabyx/config@1.24.9
+  - @infrabyx/crypto@1.15.7
+  - @infrabyx/tenancy@1.30.3
+  - @infrabyx/ui@1.3.26
+
 ## 1.0.67
 
 ### Patch Changes

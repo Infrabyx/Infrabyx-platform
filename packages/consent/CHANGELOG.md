@@ -1,5 +1,16 @@
 # @infrabyx/consent
 
+## 1.3.37
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+  - @infrabyx/config@1.24.9
+  - @infrabyx/crypto@1.15.7
+  - @infrabyx/tenancy@1.30.3
+  - @infrabyx/ui@1.3.26
+
 ## 1.3.36
 
 ### Patch Changes
