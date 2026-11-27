@@ -68,18 +68,19 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 - **Done, in the owner's order:**
   - **1. PR-FBX-57, #425 (R1-D-304):** connectors scan what they write before it is `ready` (`writeScanned`: quarantine, FILE_SCAN, promote only when CLEAN). `scan` is optional in 1.x: without it every write refuses `IPB-SEC-015` `scan_required` and the adapter warns at start-up outside local and test. The scan is on the object (`ipb-scan-*` tags) and on the ref (`ScanRecord`). Contract cases on the CIBIL and Setu legs. The Connector Agent [VERIFY] closed: it stores no file (guarded by a test). Owner question #216 (the quarantined copy is kept).
   - **2. regcalc, steps 1 to 4 (part 1):** #426 (ADR-0015, PR-051, skeleton and oracle harness; R1-D-305), #428 (`schedule`, `apr`, KFS-M01 and the RBC Annex; R1-D-306, #217), #429 (`dlg`, `ltv`, `microfinance`, LEND-M01; R1-D-307, #218), #430 (`ews`, EWS-M01; R1-D-308, #219). Every output cell of KFS-M01, LEND-M01 and EWS-M01 is reproduced; the harness proves none is left. The package stays `private` at 0.0.0.
-  - **Release:** version PR #427 merged (`1de92c8`), release run 395 started 22:35 IST: connectors **1.38.0**, contracts **1.55.0**, testing **1.37.0** (minors), fakes 1.12.3 and dependent patches; `regcalc` stays private.
+  - **Release: run 395** (`1de92c8`, version PR #427), concluded success at 22:51 IST: connectors **1.38.0**, contracts **1.55.0**, testing **1.37.0** (minors), fakes 1.12.3 and patches of every other package but `hlp`; tags pushed (`@infrabyx/connectors@1.38.0` at 22:49 IST). The run's own jobs carry the BOM signature, the attestations and the registry checksums, as for run 388; their count was not re-read here. `regcalc` stays private.
 - **Not done:**
   - **regcalc applicability (APP-M01 to M07):** about 3,800 formula cells in seven workbooks (about 340 distinct patterns); next session, in its own PR. Then `regcalcContractCases` in `testing`, and 1.0.0 (owner-approved) once the exit is met.
   - **Templates (b) toOds/toOdt and (c) DOCGEN with `issueDocument`:** not started.
 - **For the owner:**
   - **#217:** under the default rounding (half-up to the rupee, last instalment absorbing) the Annex loan's APR on the flows actually paid is **17.08 %**; 17.10 % is on ₹970 × 24, which overpays by ₹5. The package discloses the higher of the paid and unrounded figures. [VERIFY: counsel].
-  - #216, #218 and #219: defaults taken, nothing blocked.
+  - **Answered at 22:55 IST (R1-D-309):** #216 **changed** (delete the quarantined copy once the promotion is verified, with an audit event; the owner's approval of this deletion); #217 and #218 accepted. #219: default taken, nothing blocked.
 - **Products adopt** (guide §7ff): pass the FILE_SCAN adapter as `scan` (and `appEnv`) to `CibilBureau` and `SetuAccountAggregator`, or completed pulls and fetches refuse.
-- **Next, in order:**
-  1. regcalc applicability (APP-M01 to M07), `regcalcContractCases`, then 1.0.0.
-  2. Templates (b), then (c), each with its plan section, PR, minor, contract cases and threat-model entries.
-  3. **The waiver checks:** the first chat on or after 28 Nov (1 Dec latest). Ask the owner on **5 Dec** if no fixed Node.js or base image exists for CVE-2026-124851 (waiver ends 7 Dec). OWNER-WAIVER-CRIT-01 goes to the OWNER INBOX on 12 Dec if no fixed Keycloak exists.
+- **Next, in order (owner, 27 Nov 22:55 IST; R1-D-309):**
+  1. **The #216 change, as a `connectors` patch:** in `writeScanned`, after a CLEAN promotion, read back the promoted object's SHA-256; only if it equals the scanned one, delete the quarantined copy and write an audit event (key, SHA-256, `promoted_clean_copy_removed`) in the same unit of work; a failed or different read-back keeps both copies and refuses `ready`; INFECTED and ERROR copies are never deleted; contract case (CLEAN leaves no quarantine copy and an audit event; a mismatch keeps both; INFECTED keeps its copy); threat model §3.196 and guide §7ff updated.
+  2. regcalc applicability (APP-M01 to M07), `regcalcContractCases`, then 1.0.0 (approved once the exit is met).
+  3. Templates (b), then (c), each with its plan section, PR, minor, contract cases and threat-model entries.
+  4. **The waiver checks:** the first chat on or after 28 Nov (1 Dec latest). Ask the owner on **5 Dec** if no fixed Node.js or base image exists for CVE-2026-124851 (waiver ends 7 Dec). OWNER-WAIVER-CRIT-01 goes to the OWNER INBOX on 12 Dec if no fixed Keycloak exists.
 - **Slips:**
   - One `gh api` call for check runs that should have been the GitHub tools.
   - The PR bodies first linked only the request plans; `pr-checklist` needs `docs/phases/R1-plan.md` too. Fixed and re-run.
