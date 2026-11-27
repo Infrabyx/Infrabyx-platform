@@ -1,5 +1,14 @@
 # @infrabyx/export
 
+## 1.10.12
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+  - @infrabyx/crypto@1.15.7
+  - @infrabyx/tenancy@1.30.3
+
 ## 1.10.11
 
 ### Patch Changes

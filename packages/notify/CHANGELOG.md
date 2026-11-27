@@ -1,5 +1,15 @@
 # @infrabyx/notify
 
+## 1.7.1
+
+### Patch Changes
+
+- Updated dependencies [bdd282a]
+  - @infrabyx/contracts@1.55.0
+  - @infrabyx/config@1.24.9
+  - @infrabyx/crypto@1.15.7
+  - @infrabyx/tenancy@1.30.3
+
 ## 1.7.0
 
 ### Minor Changes
