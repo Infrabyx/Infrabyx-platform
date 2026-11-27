@@ -1,0 +1,858 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Base date (end of the last audited year)",
+"source": "Audited financial statements",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "Use the unit of the ICAAP model",
+"default": "₹ crore"
+},
+{
+"key": "setup.mincrar",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Minimum CRAR",
+"source": "RBI (NBFCs – Prudential Norms on Capital Adequacy) Directions, 2025, para 6",
+"default": 0.15
+},
+{
+"key": "setup.mint1",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Minimum Tier 1 ratio",
+"source": "RBI (NBFCs – Prudential Norms on Capital Adequacy) Directions, 2025, para 6 (12% for an NBFC primarily lending against gold jewellery)",
+"default": 0.1
+},
+{
+"key": "setup.levon",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Leverage limit applies (Base Layer NBFC)",
+"source": "RBI (NBFCs – Prudential Norms on Capital Adequacy) Directions, 2025, para 17",
+"default": "No"
+},
+{
+"key": "setup.maxlev",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Maximum leverage (times)",
+"source": "RBI (NBFCs – Prudential Norms on Capital Adequacy) Directions, 2025, para 17",
+"default": 7
+},
+{
+"key": "setup.mbuf",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Management buffer over the minimum ratios (% of RWA)",
+"source": "Board approved ICAAP policy",
+"default": 0.02
+},
+{
+"key": "setup.tax",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Tax rate",
+"source": "Income-tax rate applicable to the company",
+"default": 0.2517
+},
+{
+"key": "setup.scen",
+"sheet": "Setup",
+"cell": "B13",
+"label": "Scenario handed over to the ICAAP model",
+"source": "Management choice",
+"default": "Base"
+},
+{
+"key": "bs.loans",
+"sheet": "Base Year Input",
+"cell": "B5",
+"label": "Loan assets (gross)",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "bs.liq",
+"sheet": "Base Year Input",
+"cell": "B6",
+"label": "Liquid assets: cash, bank balances and liquid investments",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "bs.oth",
+"sheet": "Base Year Input",
+"cell": "B7",
+"label": "Other assets",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "bs.borr",
+"sheet": "Base Year Input",
+"cell": "B9",
+"label": "Borrowings (including deposits and debt securities)",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "bs.ol",
+"sheet": "Base Year Input",
+"cell": "B10",
+"label": "Other liabilities and provisions",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "bs.nw",
+"sheet": "Base Year Input",
+"cell": "B11",
+"label": "Net worth",
+"source": "Audited balance sheet",
+"default": null
+},
+{
+"key": "cap.t1",
+"sheet": "Base Year Input",
+"cell": "B15",
+"label": "Tier 1 capital",
+"source": "Capital adequacy computation; ICAAP-M01",
+"default": null
+},
+{
+"key": "cap.t2",
+"sheet": "Base Year Input",
+"cell": "B16",
+"label": "Tier 2 capital",
+"source": "Capital adequacy computation; ICAAP-M01",
+"default": null
+},
+{
+"key": "cap.rwa",
+"sheet": "Base Year Input",
+"cell": "B17",
+"label": "Risk-weighted assets",
+"source": "Capital adequacy computation; ICAAP-M01",
+"default": null
+},
+{
+"key": "pl.ii",
+"sheet": "Base Year Input",
+"cell": "B22",
+"label": "Interest income on loan assets",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.li",
+"sheet": "Base Year Input",
+"cell": "B23",
+"label": "Income on liquid assets",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.oi",
+"sheet": "Base Year Input",
+"cell": "B24",
+"label": "Other income",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.ie",
+"sheet": "Base Year Input",
+"cell": "B25",
+"label": "Interest expense",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.ox",
+"sheet": "Base Year Input",
+"cell": "B26",
+"label": "Operating expenses",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.cc",
+"sheet": "Base Year Input",
+"cell": "B27",
+"label": "Credit cost (impairment and write-offs)",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "pl.tax",
+"sheet": "Base Year Input",
+"cell": "B28",
+"label": "Tax expense",
+"source": "Audited statement of profit and loss",
+"default": null
+},
+{
+"key": "as.g.1",
+"sheet": "Assumptions Input",
+"cell": "C6",
+"label": "Growth in loan assets Y1",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "as.g.2",
+"sheet": "Assumptions Input",
+"cell": "D6",
+"label": "Growth in loan assets Y2",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "as.g.3",
+"sheet": "Assumptions Input",
+"cell": "E6",
+"label": "Growth in loan assets Y3",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "as.g.4",
+"sheet": "Assumptions Input",
+"cell": "F6",
+"label": "Growth in loan assets Y4",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "as.g.5",
+"sheet": "Assumptions Input",
+"cell": "G6",
+"label": "Growth in loan assets Y5",
+"source": "Business plan",
+"default": null
+},
+{
+"key": "as.y.1",
+"sheet": "Assumptions Input",
+"cell": "C7",
+"label": "Yield on average loan assets Y1",
+"source": "Pricing policy",
+"default": null
+},
+{
+"key": "as.y.2",
+"sheet": "Assumptions Input",
+"cell": "D7",
+"label": "Yield on average loan assets Y2",
+"source": "Pricing policy",
+"default": null
+},
+{
+"key": "as.y.3",
+"sheet": "Assumptions Input",
+"cell": "E7",
+"label": "Yield on average loan assets Y3",
+"source": "Pricing policy",
+"default": null
+},
+{
+"key": "as.y.4",
+"sheet": "Assumptions Input",
+"cell": "F7",
+"label": "Yield on average loan assets Y4",
+"source": "Pricing policy",
+"default": null
+},
+{
+"key": "as.y.5",
+"sheet": "Assumptions Input",
+"cell": "G7",
+"label": "Yield on average loan assets Y5",
+"source": "Pricing policy",
+"default": null
+},
+{
+"key": "as.oi.1",
+"sheet": "Assumptions Input",
+"cell": "C8",
+"label": "Other income as a share of average loan assets Y1",
+"source": "Fee and other income",
+"default": null
+},
+{
+"key": "as.oi.2",
+"sheet": "Assumptions Input",
+"cell": "D8",
+"label": "Other income as a share of average loan assets Y2",
+"source": "Fee and other income",
+"default": null
+},
+{
+"key": "as.oi.3",
+"sheet": "Assumptions Input",
+"cell": "E8",
+"label": "Other income as a share of average loan assets Y3",
+"source": "Fee and other income",
+"default": null
+},
+{
+"key": "as.oi.4",
+"sheet": "Assumptions Input",
+"cell": "F8",
+"label": "Other income as a share of average loan assets Y4",
+"source": "Fee and other income",
+"default": null
+},
+{
+"key": "as.oi.5",
+"sheet": "Assumptions Input",
+"cell": "G8",
+"label": "Other income as a share of average loan assets Y5",
+"source": "Fee and other income",
+"default": null
+},
+{
+"key": "as.ly.1",
+"sheet": "Assumptions Input",
+"cell": "C9",
+"label": "Return on average liquid assets Y1",
+"source": "Treasury",
+"default": null
+},
+{
+"key": "as.ly.2",
+"sheet": "Assumptions Input",
+"cell": "D9",
+"label": "Return on average liquid assets Y2",
+"source": "Treasury",
+"default": null
+},
+{
+"key": "as.ly.3",
+"sheet": "Assumptions Input",
+"cell": "E9",
+"label": "Return on average liquid assets Y3",
+"source": "Treasury",
+"default": null
+},
+{
+"key": "as.ly.4",
+"sheet": "Assumptions Input",
+"cell": "F9",
+"label": "Return on average liquid assets Y4",
+"source": "Treasury",
+"default": null
+},
+{
+"key": "as.ly.5",
+"sheet": "Assumptions Input",
+"cell": "G9",
+"label": "Return on average liquid assets Y5",
+"source": "Treasury",
+"default": null
+},
+{
+"key": "as.c.1",
+"sheet": "Assumptions Input",
+"cell": "C10",
+"label": "Cost of borrowings Y1",
+"source": "Funding plan",
+"default": null
+},
+{
+"key": "as.c.2",
+"sheet": "Assumptions Input",
+"cell": "D10",
+"label": "Cost of borrowings Y2",
+"source": "Funding plan",
+"default": null
+},
+{
+"key": "as.c.3",
+"sheet": "Assumptions Input",
+"cell": "E10",
+"label": "Cost of borrowings Y3",
+"source": "Funding plan",
+"default": null
+},
+{
+"key": "as.c.4",
+"sheet": "Assumptions Input",
+"cell": "F10",
+"label": "Cost of borrowings Y4",
+"source": "Funding plan",
+"default": null
+},
+{
+"key": "as.c.5",
+"sheet": "Assumptions Input",
+"cell": "G10",
+"label": "Cost of borrowings Y5",
+"source": "Funding plan",
+"default": null
+},
+{
+"key": "as.ox.1",
+"sheet": "Assumptions Input",
+"cell": "C11",
+"label": "Operating expenses as a share of average loan assets Y1",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ox.2",
+"sheet": "Assumptions Input",
+"cell": "D11",
+"label": "Operating expenses as a share of average loan assets Y2",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ox.3",
+"sheet": "Assumptions Input",
+"cell": "E11",
+"label": "Operating expenses as a share of average loan assets Y3",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ox.4",
+"sheet": "Assumptions Input",
+"cell": "F11",
+"label": "Operating expenses as a share of average loan assets Y4",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ox.5",
+"sheet": "Assumptions Input",
+"cell": "G11",
+"label": "Operating expenses as a share of average loan assets Y5",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.cc.1",
+"sheet": "Assumptions Input",
+"cell": "C12",
+"label": "Credit cost as a share of average loan assets Y1",
+"source": "ECL model; write-off experience",
+"default": null
+},
+{
+"key": "as.cc.2",
+"sheet": "Assumptions Input",
+"cell": "D12",
+"label": "Credit cost as a share of average loan assets Y2",
+"source": "ECL model; write-off experience",
+"default": null
+},
+{
+"key": "as.cc.3",
+"sheet": "Assumptions Input",
+"cell": "E12",
+"label": "Credit cost as a share of average loan assets Y3",
+"source": "ECL model; write-off experience",
+"default": null
+},
+{
+"key": "as.cc.4",
+"sheet": "Assumptions Input",
+"cell": "F12",
+"label": "Credit cost as a share of average loan assets Y4",
+"source": "ECL model; write-off experience",
+"default": null
+},
+{
+"key": "as.cc.5",
+"sheet": "Assumptions Input",
+"cell": "G12",
+"label": "Credit cost as a share of average loan assets Y5",
+"source": "ECL model; write-off experience",
+"default": null
+},
+{
+"key": "as.liq.1",
+"sheet": "Assumptions Input",
+"cell": "C13",
+"label": "Liquid assets as a share of loan assets at year end Y1",
+"source": "Liquidity policy",
+"default": null
+},
+{
+"key": "as.liq.2",
+"sheet": "Assumptions Input",
+"cell": "D13",
+"label": "Liquid assets as a share of loan assets at year end Y2",
+"source": "Liquidity policy",
+"default": null
+},
+{
+"key": "as.liq.3",
+"sheet": "Assumptions Input",
+"cell": "E13",
+"label": "Liquid assets as a share of loan assets at year end Y3",
+"source": "Liquidity policy",
+"default": null
+},
+{
+"key": "as.liq.4",
+"sheet": "Assumptions Input",
+"cell": "F13",
+"label": "Liquid assets as a share of loan assets at year end Y4",
+"source": "Liquidity policy",
+"default": null
+},
+{
+"key": "as.liq.5",
+"sheet": "Assumptions Input",
+"cell": "G13",
+"label": "Liquid assets as a share of loan assets at year end Y5",
+"source": "Liquidity policy",
+"default": null
+},
+{
+"key": "as.oa.1",
+"sheet": "Assumptions Input",
+"cell": "C14",
+"label": "Growth in other assets Y1",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.oa.2",
+"sheet": "Assumptions Input",
+"cell": "D14",
+"label": "Growth in other assets Y2",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.oa.3",
+"sheet": "Assumptions Input",
+"cell": "E14",
+"label": "Growth in other assets Y3",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.oa.4",
+"sheet": "Assumptions Input",
+"cell": "F14",
+"label": "Growth in other assets Y4",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.oa.5",
+"sheet": "Assumptions Input",
+"cell": "G14",
+"label": "Growth in other assets Y5",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ol.1",
+"sheet": "Assumptions Input",
+"cell": "C15",
+"label": "Other liabilities as a share of total assets at year end Y1",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ol.2",
+"sheet": "Assumptions Input",
+"cell": "D15",
+"label": "Other liabilities as a share of total assets at year end Y2",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ol.3",
+"sheet": "Assumptions Input",
+"cell": "E15",
+"label": "Other liabilities as a share of total assets at year end Y3",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ol.4",
+"sheet": "Assumptions Input",
+"cell": "F15",
+"label": "Other liabilities as a share of total assets at year end Y4",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.ol.5",
+"sheet": "Assumptions Input",
+"cell": "G15",
+"label": "Other liabilities as a share of total assets at year end Y5",
+"source": "Budget",
+"default": null
+},
+{
+"key": "as.rw.1",
+"sheet": "Assumptions Input",
+"cell": "C16",
+"label": "RWA as a share of total assets (blank = base year share) Y1",
+"source": "Product mix",
+"default": null
+},
+{
+"key": "as.rw.2",
+"sheet": "Assumptions Input",
+"cell": "D16",
+"label": "RWA as a share of total assets (blank = base year share) Y2",
+"source": "Product mix",
+"default": null
+},
+{
+"key": "as.rw.3",
+"sheet": "Assumptions Input",
+"cell": "E16",
+"label": "RWA as a share of total assets (blank = base year share) Y3",
+"source": "Product mix",
+"default": null
+},
+{
+"key": "as.rw.4",
+"sheet": "Assumptions Input",
+"cell": "F16",
+"label": "RWA as a share of total assets (blank = base year share) Y4",
+"source": "Product mix",
+"default": null
+},
+{
+"key": "as.rw.5",
+"sheet": "Assumptions Input",
+"cell": "G16",
+"label": "RWA as a share of total assets (blank = base year share) Y5",
+"source": "Product mix",
+"default": null
+},
+{
+"key": "as.div.1",
+"sheet": "Assumptions Input",
+"cell": "C17",
+"label": "Dividend payout (share of profit after tax) Y1",
+"source": "Dividend policy",
+"default": null
+},
+{
+"key": "as.div.2",
+"sheet": "Assumptions Input",
+"cell": "D17",
+"label": "Dividend payout (share of profit after tax) Y2",
+"source": "Dividend policy",
+"default": null
+},
+{
+"key": "as.div.3",
+"sheet": "Assumptions Input",
+"cell": "E17",
+"label": "Dividend payout (share of profit after tax) Y3",
+"source": "Dividend policy",
+"default": null
+},
+{
+"key": "as.div.4",
+"sheet": "Assumptions Input",
+"cell": "F17",
+"label": "Dividend payout (share of profit after tax) Y4",
+"source": "Dividend policy",
+"default": null
+},
+{
+"key": "as.div.5",
+"sheet": "Assumptions Input",
+"cell": "G17",
+"label": "Dividend payout (share of profit after tax) Y5",
+"source": "Dividend policy",
+"default": null
+},
+{
+"key": "as.eq.1",
+"sheet": "Assumptions Input",
+"cell": "C18",
+"label": "Equity raised Y1",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.eq.2",
+"sheet": "Assumptions Input",
+"cell": "D18",
+"label": "Equity raised Y2",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.eq.3",
+"sheet": "Assumptions Input",
+"cell": "E18",
+"label": "Equity raised Y3",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.eq.4",
+"sheet": "Assumptions Input",
+"cell": "F18",
+"label": "Equity raised Y4",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.eq.5",
+"sheet": "Assumptions Input",
+"cell": "G18",
+"label": "Equity raised Y5",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2.1",
+"sheet": "Assumptions Input",
+"cell": "C19",
+"label": "Tier 2 capital raised Y1",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2.2",
+"sheet": "Assumptions Input",
+"cell": "D19",
+"label": "Tier 2 capital raised Y2",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2.3",
+"sheet": "Assumptions Input",
+"cell": "E19",
+"label": "Tier 2 capital raised Y3",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2.4",
+"sheet": "Assumptions Input",
+"cell": "F19",
+"label": "Tier 2 capital raised Y4",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2.5",
+"sheet": "Assumptions Input",
+"cell": "G19",
+"label": "Tier 2 capital raised Y5",
+"source": "Capital raising plan",
+"default": null
+},
+{
+"key": "as.t2r.1",
+"sheet": "Assumptions Input",
+"cell": "C20",
+"label": "Tier 2 capital repaid or discounted for residual maturity Y1",
+"source": "Debt schedule",
+"default": null
+},
+{
+"key": "as.t2r.2",
+"sheet": "Assumptions Input",
+"cell": "D20",
+"label": "Tier 2 capital repaid or discounted for residual maturity Y2",
+"source": "Debt schedule",
+"default": null
+},
+{
+"key": "as.t2r.3",
+"sheet": "Assumptions Input",
+"cell": "E20",
+"label": "Tier 2 capital repaid or discounted for residual maturity Y3",
+"source": "Debt schedule",
+"default": null
+},
+{
+"key": "as.t2r.4",
+"sheet": "Assumptions Input",
+"cell": "F20",
+"label": "Tier 2 capital repaid or discounted for residual maturity Y4",
+"source": "Debt schedule",
+"default": null
+},
+{
+"key": "as.t2r.5",
+"sheet": "Assumptions Input",
+"cell": "G20",
+"label": "Tier 2 capital repaid or discounted for residual maturity Y5",
+"source": "Debt schedule",
+"default": null
+},
+{
+"key": "dn.g",
+"sheet": "Assumptions Input",
+"cell": "B24",
+"label": "Downside: Growth in loan assets multiplied by",
+"source": "Stress testing policy; management choice",
+"default": 0.5
+},
+{
+"key": "dn.y",
+"sheet": "Assumptions Input",
+"cell": "B25",
+"label": "Downside: Yield on loan assets changed by (percentage points)",
+"source": "Stress testing policy; management choice",
+"default": -0.005
+},
+{
+"key": "dn.c",
+"sheet": "Assumptions Input",
+"cell": "B26",
+"label": "Downside: Cost of borrowings changed by (percentage points)",
+"source": "Stress testing policy; management choice",
+"default": 0.01
+},
+{
+"key": "dn.cc",
+"sheet": "Assumptions Input",
+"cell": "B27",
+"label": "Downside: Credit cost multiplied by",
+"source": "Stress testing policy; management choice",
+"default": 2.0
+},
+{
+"key": "dn.ox",
+"sheet": "Assumptions Input",
+"cell": "B28",
+"label": "Downside: Operating expense ratio changed by (percentage points)",
+"source": "Stress testing policy; management choice",
+"default": 0.0
+},
+{
+"key": "dn.eq",
+"sheet": "Assumptions Input",
+"cell": "B29",
+"label": "Downside: Equity raised multiplied by",
+"source": "Stress testing policy; management choice",
+"default": 0.0
+}
+]

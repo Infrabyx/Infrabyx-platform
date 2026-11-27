@@ -435,6 +435,41 @@ describe("@PL3-NTF-NEVER-WHATSAPP collections and legal notices never use WhatsA
   });
 });
 
+describe("PR-UDF-088 an SMS value DLT would not take is refused, never cut (R1-D-296)", () => {
+  beforeAll(() => void (now = new Date("2026-10-26T06:00:00Z")));
+  const long = "Grievance officer: A. Rao, 080"; // 30 characters: sent whole
+  it("sends a value of exactly 30 characters unchanged", async () => {
+    expect(long).toHaveLength(30);
+    await svc.send(
+      admin,
+      req("loan.collection_reminder", ["usr_u"], "sms-088-0001", { vars: { id: long } }),
+    );
+    expect(smsVars.at(-1)).toEqual([long]);
+  });
+  it("refuses a longer value at the request: nothing is written or sent", async () => {
+    const before = smsVars.length;
+    await expect(
+      svc.send(
+        admin,
+        req("loan.collection_reminder", ["usr_u"], "sms-088-0002", { vars: { id: `${long}0` } }),
+      ),
+    ).rejects.toMatchObject({
+      code: "IPB-NTF-008",
+      meta: { reason: "sms_var_too_long", variable: "id", length: 31, max: 30 },
+    });
+    expect(smsVars.length).toBe(before);
+    const n = await db.admin.query(
+      "select 1 from notify.notification where idempotency_key = 'sms-088-0002'",
+    );
+    expect(n.rowCount).toBe(0);
+  });
+  it("refuses it in a preview too", async () => {
+    await expect(
+      svc.previewTemplate(admin, "loan.collection_reminder", "sms", null, { id: `${long}0` }),
+    ).rejects.toMatchObject({ code: "IPB-NTF-008" });
+  });
+});
+
 describe("push through NOTIFY with sealed device tokens", () => {
   it("registers a token sealed at rest and delivers title and deep link only", async () => {
     const push = new ExpoPush({

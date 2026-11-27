@@ -2343,6 +2343,36 @@ app.use(refuseZstdBodies); // first: before Nest adds its body parsers at init, 
   3. Wrap injected and direct fetches in `refuseZstdFetch`.
   4. Keep the `CVE-2026-124851` waiver to **2026-12-07** in your own image scan, the date all four repositories share (`infra/docker/trivyignore.yaml`).
 
+## 7fc. SMS values are refused, never cut (PR-UDF-088; R1-D-296)
+
+From the next `@infrabyx/contracts` and `@infrabyx/notify` minors (no migration, no setting). **Why:** NOTIFY cut an SMS value to 30 characters and the list to 10 variables without a word. RBC para 100AA (from 1 Jan 2027) needs the grievance officer's full details in recovery communications, so a cut value would breach it.
+
+```ts
+import { SMS_MAX_VARS, SMS_VAR_MAX_LENGTH, smsVars } from "@infrabyx/notify";
+
+await notify.send(ctx, { class: "udf.recovery_notice", to, vars, deepLink, idempotencyKey });
+// IPB-NTF-008 (422): meta.reason "sms_var_too_long" (class, variable, position, length, max)
+// or "sms_too_many_vars" (count, max); never the value
+```
+
+- **When:** at `send`, `enqueue` and `notifyStaff` when an SMS delivery is planned, so nothing is written or sent; in `previewTemplate`; and at delivery, so a notification queued before you upgrade fails rather than sending a cut text.
+- **Limits:** `SMS_VAR_MAX_LENGTH` (30) and `SMS_MAX_VARS` (10), also in `@infrabyx/contracts/ports`. Length is `String#length`, so an emoji counts two.
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Find every SMS template whose values can pass 30 characters (names, addresses, officer details) and split them across variables in the DLT template, or send that content by email or letter.
+  3. Handle `IPB-NTF-008` where you send: it is definite; retrying the same values fails again.
+  4. Drop any truncation or length check of your own in front of NOTIFY.
+
+## 7fd. Integration databases from a template (LDC-67; R1-D-298)
+
+From the next `@infrabyx/testing` minor (no migration, no setting). **Why:** each `startPostgres` call migrated a new database from scratch, about 3.4 s with the full platform set; a copy of a migrated template takes about 0.47 s.
+
+- **Nothing to change:** on a shared server (`IPB_TEST_PG_URL`, as CI's service container) the first call for a migration set builds `tpl_<hash>` once; every call copies it. The copy is the suite's own, as before.
+- **The set** is every migration file's content (platform and yours). Change, add or remove a file and a new template is built.
+- **`template: false`** migrates the database itself: use it in a test of a migration's own behaviour (locks, `no-transaction` files).
+- **`TestDatabase.template`** names the template used, or is undefined when the database was migrated itself.
+- **Local servers** keep one template per set they have seen. Drop them whenever you like: `alter database tpl_… is_template false;` then `drop database tpl_…;`.
+
 ## 7fe. A local SECRETS store without Vault (LDC-65; R1-D-299)
 
 From the next `@infrabyx/connectors` minor (one new platform setting, `int.secrets.local_file.enabled`, default false; no migration). **Why:** every product's local stack needed Vault for `seed:credentials`, or its own stub.

@@ -1,0 +1,4 @@
+# The owner's regulatory templates and models, filed as specifications and hash-checked against
+# their SHA256SUMS (R1-D-297): never linted or rewritten
+docs/regulatory-templates/
+docs/regulatory-models/

@@ -1,0 +1,1698 @@
+[
+{
+"key": "setup.company",
+"sheet": "Setup",
+"cell": "B4",
+"label": "Company name",
+"source": "Company",
+"default": "Name of the NBFC"
+},
+{
+"key": "setup.date",
+"sheet": "Setup",
+"cell": "B5",
+"label": "Position as on",
+"source": "Company",
+"default": null
+},
+{
+"key": "setup.units",
+"sheet": "Setup",
+"cell": "B6",
+"label": "Amounts are in",
+"source": "Company",
+"default": "₹ crore"
+},
+{
+"key": "setup.layer",
+"sheet": "Setup",
+"cell": "B7",
+"label": "Regulatory layer",
+"source": "Company",
+"default": "Middle Layer"
+},
+{
+"key": "setup.ifc",
+"sheet": "Setup",
+"cell": "B8",
+"label": "Infrastructure Finance Company",
+"source": "Company",
+"default": "No"
+},
+{
+"key": "setup.t1",
+"sheet": "Setup",
+"cell": "B9",
+"label": "Tier 1 capital (eligible capital base for the Upper Layer)",
+"source": "Latest audited balance sheet, as the Directions specify",
+"default": null
+},
+{
+"key": "setup.of",
+"sheet": "Setup",
+"cell": "B10",
+"label": "Owned fund",
+"source": "Company",
+"default": null
+},
+{
+"key": "setup.nw",
+"sheet": "Setup",
+"cell": "B11",
+"label": "Net worth",
+"source": "Company",
+"default": null
+},
+{
+"key": "setup.book",
+"sheet": "Setup",
+"cell": "B12",
+"label": "Gross loans and investments (whole book)",
+"source": "Balance sheet",
+"default": null
+},
+{
+"key": "limit.single",
+"sheet": "Setup",
+"cell": "B14",
+"label": "Single party limit (% of Tier 1) (blank = default for the layer)",
+"source": "RBI (NBFCs – Concentration Risk Management) Directions, 2025, para 13 (25 per cent) and para 14 (Infrastructure Finance Company 30 per cent); Upper Layer para 33 (20 per cent; Board may allow 25 per cent under para 34)",
+"default": null
+},
+{
+"key": "limit.group",
+"sheet": "Setup",
+"cell": "B15",
+"label": "Single group limit (% of Tier 1) (blank = default for the layer)",
+"source": "RBI (NBFCs – Concentration Risk Management) Directions, 2025, para 13 (40 per cent) and para 14 (Infrastructure Finance Company 50 per cent); Upper Layer: confirm the group limit in the large exposures framework",
+"default": null
+},
+{
+"key": "limit.infra1",
+"sheet": "Setup",
+"cell": "B16",
+"label": "Additional room for infrastructure exposure – single party (percentage points)",
+"source": "RBI (NBFCs – Concentration Risk Management) Directions, 2025, proviso to para 13",
+"default": 0.05
+},
+{
+"key": "limit.infrag",
+"sheet": "Setup",
+"cell": "B17",
+"label": "Additional room for infrastructure exposure – group (percentage points)",
+"source": "RBI (NBFCs – Concentration Risk Management) Directions, 2025, proviso to para 13",
+"default": 0.1
+},
+{
+"key": "limit.trigger",
+"sheet": "Setup",
+"cell": "B18",
+"label": "Internal trigger as a share of the limit",
+"source": "Board-approved internal limits",
+"default": 0.85
+},
+{
+"key": "limit.ipo",
+"sheet": "Setup",
+"cell": "B19",
+"label": "Ceiling per borrower for financing an initial public offer (₹ crore)",
+"source": "RBI (NBFCs – Concentration Risk Management) Directions, 2025, para 11",
+"default": 1
+},
+{
+"key": "limit.top20",
+"sheet": "Setup",
+"cell": "B20",
+"label": "Internal limit: twenty largest borrowers (% of the book)",
+"source": "Board-approved internal limits",
+"default": 0.25
+},
+{
+"key": "limit.unsec",
+"sheet": "Setup",
+"cell": "B21",
+"label": "Internal limit: unsecured exposure among large borrowers (% of Tier 1)",
+"source": "Board-approved internal limits",
+"default": 1.0
+},
+{
+"key": "limit.cme",
+"sheet": "Setup",
+"cell": "B22",
+"label": "Internal limit: capital market exposure (% of net worth)",
+"source": "Board-approved internal limit for sensitive sectors",
+"default": 0.4
+},
+{
+"key": "limit.cre",
+"sheet": "Setup",
+"cell": "B23",
+"label": "Internal limit: commercial real estate exposure (% of the book)",
+"source": "Board-approved internal limit for sensitive sectors",
+"default": 0.15
+},
+{
+"key": "limit.grp",
+"sheet": "Setup",
+"cell": "B24",
+"label": "Internal limit: exposure to group companies (% of owned fund)",
+"source": "Excess over 10 per cent of owned fund is deducted in computing net owned fund",
+"default": 0.1
+},
+{
+"key": "borrowers",
+"sheet": "Borrower Input",
+"cell": "A7:J306",
+"label": "Borrower table: Borrower; Group; Sector; State; Funded exposure; Non-funded exposure; Investment exposure; Infrastructure (Yes / No); Loan for an initial public offer; Secured (Yes / No)",
+"source": "Large exposure report; DNBS01 Annex on top borrowers; DNBS03 concentration part; CRILC data",
+"default": null
+},
+{
+"key": "group.name.1",
+"sheet": "Portfolio Input",
+"cell": "A7",
+"label": "Group 1 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.1",
+"sheet": "Portfolio Input",
+"cell": "B7",
+"label": "Group 1 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.2",
+"sheet": "Portfolio Input",
+"cell": "A8",
+"label": "Group 2 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.2",
+"sheet": "Portfolio Input",
+"cell": "B8",
+"label": "Group 2 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.3",
+"sheet": "Portfolio Input",
+"cell": "A9",
+"label": "Group 3 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.3",
+"sheet": "Portfolio Input",
+"cell": "B9",
+"label": "Group 3 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.4",
+"sheet": "Portfolio Input",
+"cell": "A10",
+"label": "Group 4 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.4",
+"sheet": "Portfolio Input",
+"cell": "B10",
+"label": "Group 4 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.5",
+"sheet": "Portfolio Input",
+"cell": "A11",
+"label": "Group 5 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.5",
+"sheet": "Portfolio Input",
+"cell": "B11",
+"label": "Group 5 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.6",
+"sheet": "Portfolio Input",
+"cell": "A12",
+"label": "Group 6 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.6",
+"sheet": "Portfolio Input",
+"cell": "B12",
+"label": "Group 6 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.7",
+"sheet": "Portfolio Input",
+"cell": "A13",
+"label": "Group 7 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.7",
+"sheet": "Portfolio Input",
+"cell": "B13",
+"label": "Group 7 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.8",
+"sheet": "Portfolio Input",
+"cell": "A14",
+"label": "Group 8 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.8",
+"sheet": "Portfolio Input",
+"cell": "B14",
+"label": "Group 8 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.9",
+"sheet": "Portfolio Input",
+"cell": "A15",
+"label": "Group 9 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.9",
+"sheet": "Portfolio Input",
+"cell": "B15",
+"label": "Group 9 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.10",
+"sheet": "Portfolio Input",
+"cell": "A16",
+"label": "Group 10 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.10",
+"sheet": "Portfolio Input",
+"cell": "B16",
+"label": "Group 10 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.11",
+"sheet": "Portfolio Input",
+"cell": "A17",
+"label": "Group 11 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.11",
+"sheet": "Portfolio Input",
+"cell": "B17",
+"label": "Group 11 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.12",
+"sheet": "Portfolio Input",
+"cell": "A18",
+"label": "Group 12 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.12",
+"sheet": "Portfolio Input",
+"cell": "B18",
+"label": "Group 12 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.13",
+"sheet": "Portfolio Input",
+"cell": "A19",
+"label": "Group 13 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.13",
+"sheet": "Portfolio Input",
+"cell": "B19",
+"label": "Group 13 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.14",
+"sheet": "Portfolio Input",
+"cell": "A20",
+"label": "Group 14 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.14",
+"sheet": "Portfolio Input",
+"cell": "B20",
+"label": "Group 14 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.15",
+"sheet": "Portfolio Input",
+"cell": "A21",
+"label": "Group 15 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.15",
+"sheet": "Portfolio Input",
+"cell": "B21",
+"label": "Group 15 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.16",
+"sheet": "Portfolio Input",
+"cell": "A22",
+"label": "Group 16 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.16",
+"sheet": "Portfolio Input",
+"cell": "B22",
+"label": "Group 16 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.17",
+"sheet": "Portfolio Input",
+"cell": "A23",
+"label": "Group 17 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.17",
+"sheet": "Portfolio Input",
+"cell": "B23",
+"label": "Group 17 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.18",
+"sheet": "Portfolio Input",
+"cell": "A24",
+"label": "Group 18 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.18",
+"sheet": "Portfolio Input",
+"cell": "B24",
+"label": "Group 18 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.19",
+"sheet": "Portfolio Input",
+"cell": "A25",
+"label": "Group 19 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.19",
+"sheet": "Portfolio Input",
+"cell": "B25",
+"label": "Group 19 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.20",
+"sheet": "Portfolio Input",
+"cell": "A26",
+"label": "Group 20 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.20",
+"sheet": "Portfolio Input",
+"cell": "B26",
+"label": "Group 20 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.21",
+"sheet": "Portfolio Input",
+"cell": "A27",
+"label": "Group 21 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.21",
+"sheet": "Portfolio Input",
+"cell": "B27",
+"label": "Group 21 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.22",
+"sheet": "Portfolio Input",
+"cell": "A28",
+"label": "Group 22 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.22",
+"sheet": "Portfolio Input",
+"cell": "B28",
+"label": "Group 22 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.23",
+"sheet": "Portfolio Input",
+"cell": "A29",
+"label": "Group 23 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.23",
+"sheet": "Portfolio Input",
+"cell": "B29",
+"label": "Group 23 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.24",
+"sheet": "Portfolio Input",
+"cell": "A30",
+"label": "Group 24 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.24",
+"sheet": "Portfolio Input",
+"cell": "B30",
+"label": "Group 24 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.25",
+"sheet": "Portfolio Input",
+"cell": "A31",
+"label": "Group 25 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.25",
+"sheet": "Portfolio Input",
+"cell": "B31",
+"label": "Group 25 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.26",
+"sheet": "Portfolio Input",
+"cell": "A32",
+"label": "Group 26 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.26",
+"sheet": "Portfolio Input",
+"cell": "B32",
+"label": "Group 26 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.27",
+"sheet": "Portfolio Input",
+"cell": "A33",
+"label": "Group 27 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.27",
+"sheet": "Portfolio Input",
+"cell": "B33",
+"label": "Group 27 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.28",
+"sheet": "Portfolio Input",
+"cell": "A34",
+"label": "Group 28 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.28",
+"sheet": "Portfolio Input",
+"cell": "B34",
+"label": "Group 28 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.29",
+"sheet": "Portfolio Input",
+"cell": "A35",
+"label": "Group 29 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.29",
+"sheet": "Portfolio Input",
+"cell": "B35",
+"label": "Group 29 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.30",
+"sheet": "Portfolio Input",
+"cell": "A36",
+"label": "Group 30 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.30",
+"sheet": "Portfolio Input",
+"cell": "B36",
+"label": "Group 30 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.31",
+"sheet": "Portfolio Input",
+"cell": "A37",
+"label": "Group 31 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.31",
+"sheet": "Portfolio Input",
+"cell": "B37",
+"label": "Group 31 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.32",
+"sheet": "Portfolio Input",
+"cell": "A38",
+"label": "Group 32 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.32",
+"sheet": "Portfolio Input",
+"cell": "B38",
+"label": "Group 32 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.33",
+"sheet": "Portfolio Input",
+"cell": "A39",
+"label": "Group 33 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.33",
+"sheet": "Portfolio Input",
+"cell": "B39",
+"label": "Group 33 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.34",
+"sheet": "Portfolio Input",
+"cell": "A40",
+"label": "Group 34 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.34",
+"sheet": "Portfolio Input",
+"cell": "B40",
+"label": "Group 34 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.35",
+"sheet": "Portfolio Input",
+"cell": "A41",
+"label": "Group 35 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.35",
+"sheet": "Portfolio Input",
+"cell": "B41",
+"label": "Group 35 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.36",
+"sheet": "Portfolio Input",
+"cell": "A42",
+"label": "Group 36 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.36",
+"sheet": "Portfolio Input",
+"cell": "B42",
+"label": "Group 36 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.37",
+"sheet": "Portfolio Input",
+"cell": "A43",
+"label": "Group 37 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.37",
+"sheet": "Portfolio Input",
+"cell": "B43",
+"label": "Group 37 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.38",
+"sheet": "Portfolio Input",
+"cell": "A44",
+"label": "Group 38 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.38",
+"sheet": "Portfolio Input",
+"cell": "B44",
+"label": "Group 38 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.39",
+"sheet": "Portfolio Input",
+"cell": "A45",
+"label": "Group 39 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.39",
+"sheet": "Portfolio Input",
+"cell": "B45",
+"label": "Group 39 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "group.name.40",
+"sheet": "Portfolio Input",
+"cell": "A46",
+"label": "Group 40 name",
+"source": "Group mapping of borrowers",
+"default": null
+},
+{
+"key": "group.infra.40",
+"sheet": "Portfolio Input",
+"cell": "B46",
+"label": "Group 40 infrastructure",
+"source": "Credit files",
+"default": null
+},
+{
+"key": "sector.name.1",
+"sheet": "Portfolio Input",
+"cell": "D7",
+"label": "Sector 1 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.1",
+"sheet": "Portfolio Input",
+"cell": "E7",
+"label": "Sector 1 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.1",
+"sheet": "Portfolio Input",
+"cell": "F7",
+"label": "Sector 1 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.2",
+"sheet": "Portfolio Input",
+"cell": "D8",
+"label": "Sector 2 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.2",
+"sheet": "Portfolio Input",
+"cell": "E8",
+"label": "Sector 2 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.2",
+"sheet": "Portfolio Input",
+"cell": "F8",
+"label": "Sector 2 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.3",
+"sheet": "Portfolio Input",
+"cell": "D9",
+"label": "Sector 3 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.3",
+"sheet": "Portfolio Input",
+"cell": "E9",
+"label": "Sector 3 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.3",
+"sheet": "Portfolio Input",
+"cell": "F9",
+"label": "Sector 3 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.4",
+"sheet": "Portfolio Input",
+"cell": "D10",
+"label": "Sector 4 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.4",
+"sheet": "Portfolio Input",
+"cell": "E10",
+"label": "Sector 4 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.4",
+"sheet": "Portfolio Input",
+"cell": "F10",
+"label": "Sector 4 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.5",
+"sheet": "Portfolio Input",
+"cell": "D11",
+"label": "Sector 5 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.5",
+"sheet": "Portfolio Input",
+"cell": "E11",
+"label": "Sector 5 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.5",
+"sheet": "Portfolio Input",
+"cell": "F11",
+"label": "Sector 5 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.6",
+"sheet": "Portfolio Input",
+"cell": "D12",
+"label": "Sector 6 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.6",
+"sheet": "Portfolio Input",
+"cell": "E12",
+"label": "Sector 6 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.6",
+"sheet": "Portfolio Input",
+"cell": "F12",
+"label": "Sector 6 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.7",
+"sheet": "Portfolio Input",
+"cell": "D13",
+"label": "Sector 7 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.7",
+"sheet": "Portfolio Input",
+"cell": "E13",
+"label": "Sector 7 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.7",
+"sheet": "Portfolio Input",
+"cell": "F13",
+"label": "Sector 7 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.8",
+"sheet": "Portfolio Input",
+"cell": "D14",
+"label": "Sector 8 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.8",
+"sheet": "Portfolio Input",
+"cell": "E14",
+"label": "Sector 8 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.8",
+"sheet": "Portfolio Input",
+"cell": "F14",
+"label": "Sector 8 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.9",
+"sheet": "Portfolio Input",
+"cell": "D15",
+"label": "Sector 9 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.9",
+"sheet": "Portfolio Input",
+"cell": "E15",
+"label": "Sector 9 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.9",
+"sheet": "Portfolio Input",
+"cell": "F15",
+"label": "Sector 9 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.10",
+"sheet": "Portfolio Input",
+"cell": "D16",
+"label": "Sector 10 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.10",
+"sheet": "Portfolio Input",
+"cell": "E16",
+"label": "Sector 10 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.10",
+"sheet": "Portfolio Input",
+"cell": "F16",
+"label": "Sector 10 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.11",
+"sheet": "Portfolio Input",
+"cell": "D17",
+"label": "Sector 11 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.11",
+"sheet": "Portfolio Input",
+"cell": "E17",
+"label": "Sector 11 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.11",
+"sheet": "Portfolio Input",
+"cell": "F17",
+"label": "Sector 11 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.12",
+"sheet": "Portfolio Input",
+"cell": "D18",
+"label": "Sector 12 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.12",
+"sheet": "Portfolio Input",
+"cell": "E18",
+"label": "Sector 12 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.12",
+"sheet": "Portfolio Input",
+"cell": "F18",
+"label": "Sector 12 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.13",
+"sheet": "Portfolio Input",
+"cell": "D19",
+"label": "Sector 13 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.13",
+"sheet": "Portfolio Input",
+"cell": "E19",
+"label": "Sector 13 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.13",
+"sheet": "Portfolio Input",
+"cell": "F19",
+"label": "Sector 13 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.14",
+"sheet": "Portfolio Input",
+"cell": "D20",
+"label": "Sector 14 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.14",
+"sheet": "Portfolio Input",
+"cell": "E20",
+"label": "Sector 14 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.14",
+"sheet": "Portfolio Input",
+"cell": "F20",
+"label": "Sector 14 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.15",
+"sheet": "Portfolio Input",
+"cell": "D21",
+"label": "Sector 15 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.15",
+"sheet": "Portfolio Input",
+"cell": "E21",
+"label": "Sector 15 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.15",
+"sheet": "Portfolio Input",
+"cell": "F21",
+"label": "Sector 15 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.16",
+"sheet": "Portfolio Input",
+"cell": "D22",
+"label": "Sector 16 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.16",
+"sheet": "Portfolio Input",
+"cell": "E22",
+"label": "Sector 16 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.16",
+"sheet": "Portfolio Input",
+"cell": "F22",
+"label": "Sector 16 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.17",
+"sheet": "Portfolio Input",
+"cell": "D23",
+"label": "Sector 17 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.17",
+"sheet": "Portfolio Input",
+"cell": "E23",
+"label": "Sector 17 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.17",
+"sheet": "Portfolio Input",
+"cell": "F23",
+"label": "Sector 17 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.18",
+"sheet": "Portfolio Input",
+"cell": "D24",
+"label": "Sector 18 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.18",
+"sheet": "Portfolio Input",
+"cell": "E24",
+"label": "Sector 18 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.18",
+"sheet": "Portfolio Input",
+"cell": "F24",
+"label": "Sector 18 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.19",
+"sheet": "Portfolio Input",
+"cell": "D25",
+"label": "Sector 19 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.19",
+"sheet": "Portfolio Input",
+"cell": "E25",
+"label": "Sector 19 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.19",
+"sheet": "Portfolio Input",
+"cell": "F25",
+"label": "Sector 19 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "sector.name.20",
+"sheet": "Portfolio Input",
+"cell": "D26",
+"label": "Sector 20 name",
+"source": "Sector classification used in DNBS returns",
+"default": null
+},
+{
+"key": "sector.retail.20",
+"sheet": "Portfolio Input",
+"cell": "E26",
+"label": "Sector 20 retail exposure",
+"source": "Sector-wise portfolio report",
+"default": null
+},
+{
+"key": "sector.limit.20",
+"sheet": "Portfolio Input",
+"cell": "F26",
+"label": "Sector 20 internal limit",
+"source": "Board-approved sector limits",
+"default": null
+},
+{
+"key": "state.name.1",
+"sheet": "Portfolio Input",
+"cell": "H7",
+"label": "State 1 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.1",
+"sheet": "Portfolio Input",
+"cell": "I7",
+"label": "State 1 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.1",
+"sheet": "Portfolio Input",
+"cell": "J7",
+"label": "State 1 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.2",
+"sheet": "Portfolio Input",
+"cell": "H8",
+"label": "State 2 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.2",
+"sheet": "Portfolio Input",
+"cell": "I8",
+"label": "State 2 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.2",
+"sheet": "Portfolio Input",
+"cell": "J8",
+"label": "State 2 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.3",
+"sheet": "Portfolio Input",
+"cell": "H9",
+"label": "State 3 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.3",
+"sheet": "Portfolio Input",
+"cell": "I9",
+"label": "State 3 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.3",
+"sheet": "Portfolio Input",
+"cell": "J9",
+"label": "State 3 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.4",
+"sheet": "Portfolio Input",
+"cell": "H10",
+"label": "State 4 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.4",
+"sheet": "Portfolio Input",
+"cell": "I10",
+"label": "State 4 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.4",
+"sheet": "Portfolio Input",
+"cell": "J10",
+"label": "State 4 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.5",
+"sheet": "Portfolio Input",
+"cell": "H11",
+"label": "State 5 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.5",
+"sheet": "Portfolio Input",
+"cell": "I11",
+"label": "State 5 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.5",
+"sheet": "Portfolio Input",
+"cell": "J11",
+"label": "State 5 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.6",
+"sheet": "Portfolio Input",
+"cell": "H12",
+"label": "State 6 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.6",
+"sheet": "Portfolio Input",
+"cell": "I12",
+"label": "State 6 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.6",
+"sheet": "Portfolio Input",
+"cell": "J12",
+"label": "State 6 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.7",
+"sheet": "Portfolio Input",
+"cell": "H13",
+"label": "State 7 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.7",
+"sheet": "Portfolio Input",
+"cell": "I13",
+"label": "State 7 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.7",
+"sheet": "Portfolio Input",
+"cell": "J13",
+"label": "State 7 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.8",
+"sheet": "Portfolio Input",
+"cell": "H14",
+"label": "State 8 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.8",
+"sheet": "Portfolio Input",
+"cell": "I14",
+"label": "State 8 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.8",
+"sheet": "Portfolio Input",
+"cell": "J14",
+"label": "State 8 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.9",
+"sheet": "Portfolio Input",
+"cell": "H15",
+"label": "State 9 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.9",
+"sheet": "Portfolio Input",
+"cell": "I15",
+"label": "State 9 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.9",
+"sheet": "Portfolio Input",
+"cell": "J15",
+"label": "State 9 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.10",
+"sheet": "Portfolio Input",
+"cell": "H16",
+"label": "State 10 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.10",
+"sheet": "Portfolio Input",
+"cell": "I16",
+"label": "State 10 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.10",
+"sheet": "Portfolio Input",
+"cell": "J16",
+"label": "State 10 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.11",
+"sheet": "Portfolio Input",
+"cell": "H17",
+"label": "State 11 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.11",
+"sheet": "Portfolio Input",
+"cell": "I17",
+"label": "State 11 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.11",
+"sheet": "Portfolio Input",
+"cell": "J17",
+"label": "State 11 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.12",
+"sheet": "Portfolio Input",
+"cell": "H18",
+"label": "State 12 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.12",
+"sheet": "Portfolio Input",
+"cell": "I18",
+"label": "State 12 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.12",
+"sheet": "Portfolio Input",
+"cell": "J18",
+"label": "State 12 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.13",
+"sheet": "Portfolio Input",
+"cell": "H19",
+"label": "State 13 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.13",
+"sheet": "Portfolio Input",
+"cell": "I19",
+"label": "State 13 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.13",
+"sheet": "Portfolio Input",
+"cell": "J19",
+"label": "State 13 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.14",
+"sheet": "Portfolio Input",
+"cell": "H20",
+"label": "State 14 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.14",
+"sheet": "Portfolio Input",
+"cell": "I20",
+"label": "State 14 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.14",
+"sheet": "Portfolio Input",
+"cell": "J20",
+"label": "State 14 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "state.name.15",
+"sheet": "Portfolio Input",
+"cell": "H21",
+"label": "State 15 name",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.retail.15",
+"sheet": "Portfolio Input",
+"cell": "I21",
+"label": "State 15 retail exposure",
+"source": "State-wise portfolio report",
+"default": null
+},
+{
+"key": "state.limit.15",
+"sheet": "Portfolio Input",
+"cell": "J21",
+"label": "State 15 internal limit",
+"source": "Board-approved geographic limits",
+"default": null
+},
+{
+"key": "sens.cme",
+"sheet": "Portfolio Input",
+"cell": "M7",
+"label": "Capital market exposure (advances and investments)",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+},
+{
+"key": "sens.cre",
+"sheet": "Portfolio Input",
+"cell": "M8",
+"label": "Commercial real estate exposure",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+},
+{
+"key": "sens.grp",
+"sheet": "Portfolio Input",
+"cell": "M9",
+"label": "Exposure to subsidiaries and group companies",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+},
+{
+"key": "sens.las",
+"sheet": "Portfolio Input",
+"cell": "M10",
+"label": "Loans against shares",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+},
+{
+"key": "sens.gold",
+"sheet": "Portfolio Input",
+"cell": "M11",
+"label": "Loans against gold",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+},
+{
+"key": "sens.unsec",
+"sheet": "Portfolio Input",
+"cell": "M12",
+"label": "Unsecured retail loans",
+"source": "DNBS01 / DNBS02 exposure to sensitive sectors; MIS",
+"default": null
+}
+]

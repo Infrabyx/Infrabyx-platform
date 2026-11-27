@@ -7,9 +7,14 @@ import { z } from "zod";
 import pg from "pg";
 import { PgAuditSink } from "@infrabyx/audit";
 import { envUrl, envVar, validateEnv } from "@infrabyx/config/env";
-import { randomBytes, toHex } from "@infrabyx/crypto";
+import { randomBytes, sha256, toHex } from "@infrabyx/crypto";
 import { PgKernel } from "@infrabyx/tenancy";
-import { migrate, platformSources, type MigrationSource } from "@infrabyx/tenancy/migrate";
+import {
+  migrate,
+  platformSources,
+  readMigrations,
+  type MigrationSource,
+} from "@infrabyx/tenancy/migrate";
 import { TEST_IMAGES } from "./containers.js";
 
 const testEnv = z.object({
@@ -51,10 +56,19 @@ export interface StartPostgresOptions {
    * still drops the database (and stops the container), then rejects with the hook's error.
    */
   beforeDrop?: (admin: pg.Client) => Promise<void> | void;
+  /**
+   * Copy the database from a template migrated once per server and migration set (LDC-67), instead
+   * of migrating each database. Default `true` on a shared server (`IPB_TEST_PG_URL`); a server
+   * started for this call alone has nothing to share, so it migrates directly. `false` migrates
+   * this database itself, for a test of the migrations' own behaviour.
+   */
+  template?: boolean;
 }
 
 export interface TestDatabase {
   url: string;
+  /** The template this database was copied from (LDC-67), or undefined when it was migrated itself. */
+  template?: string;
   /** Pool for the kernel; transactions assume app_rw through SET LOCAL ROLE. */
   pool: pg.Pool;
   /** Superuser client for fixtures and raw inspection; bypasses RLS. */
@@ -83,6 +97,16 @@ async function serverUrl(image: string): Promise<{ url: string; stop?: () => Pro
   return { url: c.getConnectionUri(), stop: async () => void (await c.stop()) };
 }
 
+/** The template's name: one per migration set, so a changed, added or removed file makes a new one. */
+export async function templateDatabaseName(sources: readonly MigrationSource[]): Promise<string> {
+  const files = await readMigrations(sources);
+  const set = JSON.stringify([TEMPLATE_FORMAT, files.map((f) => [f.source, f.file, f.sha256])]);
+  return `tpl_${toHex(sha256(new TextEncoder().encode(set))).slice(0, 24)}`;
+}
+
+/** Bumped when the way a template is built changes, so old templates are not reused. */
+const TEMPLATE_FORMAT = 1;
+
 export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestDatabase> {
   // Resolved first, so a refusal leaves no database behind.
   const sources = [
@@ -99,22 +123,49 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
   ];
   const server = await serverUrl(o.image ?? PG_TEST_IMAGE);
   const name = `t_${toHex(randomBytes(6))}`;
+  const useTemplate = o.template !== false && server.stop === undefined;
+  const template = useTemplate ? await templateDatabaseName(sources) : undefined;
   const root = new pg.Client({ connectionString: server.url });
   await root.connect();
-  await root.query(`create database ${name}`);
-  const u = new URL(server.url);
-  u.pathname = `/${name}`;
-  const url = u.toString();
-  const admin = new pg.Client({ connectionString: url });
-  await admin.connect();
-  // Roles are cluster-wide, and tenancy/0003 grants app_ro a role that 0004 revokes: fresh databases
-  // on one server migrate one at a time, so no test sees another database's half-applied grants.
+  const dbUrl = (db: string) => {
+    const u = new URL(server.url);
+    u.pathname = `/${db}`;
+    return u.toString();
+  };
+  // Roles are cluster-wide, and tenancy/0003 grants app_ro a role that 0004 revokes: databases on
+  // one server migrate one at a time, so no test sees another database's half-applied grants. The
+  // same lock makes one caller build a missing template while the others wait for it (LDC-67).
   await root.query("select pg_advisory_lock(hashtext('infrabyx:test-migrate'))");
   try {
-    await migrate({ client: admin, sources });
+    if (template) {
+      const found = await root.query<{ datistemplate: boolean }>(
+        "select datistemplate from pg_database where datname = $1",
+        [template],
+      );
+      // Renamed but never marked (a run stopped between the two statements): not complete.
+      if (found.rows[0]?.datistemplate === false)
+        await root.query(`drop database ${template} with (force)`);
+      if (found.rows[0]?.datistemplate !== true)
+        await buildTemplate(root, template, sources, dbUrl);
+      // A copy has the template's schema, roles' grants, data and migration checksums, and is this
+      // test's alone: nothing written here reaches the template or another copy.
+      await root.query(`create database ${name} template ${template}`);
+    } else {
+      await root.query(`create database ${name}`);
+      const c = new pg.Client({ connectionString: dbUrl(name) });
+      await c.connect();
+      try {
+        await migrate({ client: c, sources });
+      } finally {
+        await c.end();
+      }
+    }
   } finally {
     await root.end(); // the session's end releases the lock
   }
+  const url = dbUrl(name);
+  const admin = new pg.Client({ connectionString: url });
+  await admin.connect();
   const pool = new pg.Pool({ connectionString: url, max: 25 });
   // `drop database … with (force)` in `end()` can reach a client whose socket is still closing; the
   // server's "terminating connection due to administrator command" (57P01) is then expected and
@@ -134,6 +185,7 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
   let ended: Promise<void> | undefined;
   return {
     url,
+    ...(template ? { template } : {}),
     pool,
     admin,
     kernel: new PgKernel({ pool }),
@@ -164,5 +216,34 @@ export async function startPostgres(o: StartPostgresOptions = {}): Promise<TestD
       await server.stop?.();
     }
     if (hook) throw hook.error;
+  }
+}
+
+/**
+ * Migrate a database under a building name, then rename it to the template's and close it to
+ * connections, so a template exists only once complete. A failed migration drops the half-built
+ * database and rethrows; nothing is left behind for the next caller to copy.
+ */
+async function buildTemplate(
+  root: pg.Client,
+  template: string,
+  sources: readonly MigrationSource[],
+  dbUrl: (db: string) => string,
+): Promise<void> {
+  const building = `${template}_b${toHex(randomBytes(3))}`;
+  await root.query(`create database ${building}`);
+  try {
+    const c = new pg.Client({ connectionString: dbUrl(building) });
+    await c.connect();
+    try {
+      await migrate({ client: c, sources });
+    } finally {
+      await c.end();
+    }
+    await root.query(`alter database ${building} rename to ${template}`);
+    await root.query(`alter database ${template} with is_template true allow_connections false`);
+  } catch (e) {
+    await root.query(`drop database if exists ${building} with (force)`).catch(() => undefined);
+    throw e;
   }
 }
