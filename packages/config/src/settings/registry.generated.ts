@@ -3266,6 +3266,19 @@ export const SETTING_DEFS: readonly SettingDef[] = [
     "source": "IPB-01 §01.4.4.2 VIDEO_MEET; R1-D-53 (off until a deployment runs its self-hosted LiveKit server in India)"
   },
   {
+    "key": "int.secrets.local_file.enabled",
+    "tier": "PLATFORM",
+    "type": "bool",
+    "default": false,
+    "locked": false,
+    "userOverride": false,
+    "change": [
+      "PLT_SUPER_ADMIN"
+    ],
+    "mc": "R4",
+    "source": "IPB-01 SECRETS; LDC-65, R1-D-299 (the local-file adapter: local and test only; listed unproven so routing refuses it in staging and above)"
+  },
+  {
     "key": "int.docgen.gotenberg.enabled",
     "tier": "PLATFORM",
     "type": "bool",
@@ -7276,6 +7289,7 @@ export type SettingValueMap = {
   "int.file_transfer.sftp.enabled": boolean;
   "int.file_transfer.sftp.allow_hosts": JsonValue;
   "int.video_meet.livekit.enabled": boolean;
+  "int.secrets.local_file.enabled": boolean;
   "int.docgen.gotenberg.enabled": boolean;
   "int.av.clamav.enabled": boolean;
   "int.egress.governed.enabled": boolean;

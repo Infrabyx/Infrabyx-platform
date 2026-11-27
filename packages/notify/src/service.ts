@@ -87,6 +87,8 @@ import {
   type WhatsappEvent,
   type WhatsappPort,
   type WhatsappTemplateMessage,
+  SMS_MAX_VARS,
+  SMS_VAR_MAX_LENGTH,
 } from "@infrabyx/contracts/ports";
 import { internalEvent } from "@infrabyx/config/events";
 import {
@@ -413,7 +415,33 @@ export class NotifyService implements NotifyPort {
       }
     }
     if (plan.length === 0) throw new IpbError("IPB-NTF-003", { meta: { class: cls.id } });
+    if (plan.some((p) => p.channel === "sms" && p.state !== "killed"))
+      await this.refuseOverlongSms(ctx, cls, req);
     return { req, cls, plan };
+  }
+
+  /**
+   * PR-UDF-088 at the door: an SMS whose values DLT would not take is refused before anything is
+   * written, with the template delivery would use. Any other problem with the SMS (no channel, no
+   * template, a missing variable) is left for delivery, as before.
+   */
+  private async refuseOverlongSms(
+    ctx: KernelContext,
+    cls: NotificationClass,
+    req: NotificationRequest,
+  ): Promise<void> {
+    const n: NotificationRow = {
+      id: "request",
+      class_id: cls.id,
+      deep_link: cls.deep_link,
+      vars: { ...(req.vars ?? {}) },
+      locale: req.locale ?? null,
+    };
+    try {
+      await this.smsMessage(ctx, cls, n);
+    } catch (e) {
+      if (e instanceof IpbError && e.code === "IPB-NTF-008") throw e;
+    }
   }
 
   private async write(
@@ -1050,9 +1078,7 @@ export class NotifyService implements NotifyPort {
       source: own ? "tenant" : "catalogue",
       message: {
         templateId: t.id,
-        vars: positional(n.vars ?? {}, t.vars, cls.id)
-          .map((v) => String(v).slice(0, 30))
-          .slice(0, 10),
+        vars: smsVars(n.vars ?? {}, t.vars, cls.id),
         senderId: t.sender,
         dltEntityId: t.entity,
       },
@@ -2426,10 +2452,7 @@ export function positional(
   order: readonly string[] | undefined,
   classId: string,
 ): unknown[] {
-  if (!order)
-    return Object.keys(vars)
-      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))
-      .map((k) => vars[k]);
+  if (!order) return naturalOrder(vars).map((k) => vars[k]);
   return order.map((k) => {
     if (!(k in vars))
       throw new IpbError("IPB-PORT-001", {
@@ -2439,6 +2462,55 @@ export function positional(
     return vars[k];
   });
 }
+
+/**
+ * An SMS's positional values, refused and never cut past DLT's limits (PR-UDF-088; R1-D-296): a
+ * value over `SMS_VAR_MAX_LENGTH` characters or more than `SMS_MAX_VARS` variables is `IPB-NTF-008`.
+ * The problem names the class, the variable and the lengths, never the value (it may be personal).
+ * A cut value would change what a borrower is told (for example the grievance officer's details
+ * that RBC para 100AA requires in recovery communications).
+ */
+export function smsVars(
+  vars: Readonly<Record<string, unknown>>,
+  order: readonly string[] | undefined,
+  classId: string,
+): string[] {
+  const names = order ?? naturalOrder(vars);
+  const values = positional(vars, order, classId).map((v) => String(v));
+  if (values.length > SMS_MAX_VARS)
+    throw new IpbError("IPB-NTF-008", {
+      detail: `notification ${classId} has ${values.length} SMS variables; DLT allows ${SMS_MAX_VARS}`,
+      meta: {
+        reason: "sms_too_many_vars",
+        class: classId,
+        count: values.length,
+        max: SMS_MAX_VARS,
+        definite: true,
+      },
+    });
+  values.forEach((v, i) => {
+    if (v.length > SMS_VAR_MAX_LENGTH)
+      throw new IpbError("IPB-NTF-008", {
+        detail: `notification ${classId}: SMS variable ${names[i]} is ${v.length} characters; DLT allows ${SMS_VAR_MAX_LENGTH}`,
+        meta: {
+          reason: "sms_var_too_long",
+          class: classId,
+          variable: names[i],
+          position: i + 1,
+          length: v.length,
+          max: SMS_VAR_MAX_LENGTH,
+          definite: true,
+        },
+      });
+  });
+  return values;
+}
+
+/** DLT's SMS limits, from `@infrabyx/contracts/ports` (PR-UDF-088). */
+export { SMS_MAX_VARS, SMS_VAR_MAX_LENGTH };
+
+const naturalOrder = (vars: Readonly<Record<string, unknown>>): string[] =>
+  Object.keys(vars).sort((a, b) => a.localeCompare(b, "en", { numeric: true }));
 
 /**
  * The tags NOTIFY puts on every email: the class, under a name outside the adapters' reserved

@@ -8,6 +8,8 @@ coverage/
 !.env.example
 *.local
 SEED_CREDENTIALS.md
+# The local-file SECRETS adapter's store (LDC-65): plain-text local secrets, never committed
+.infrabyx/
 *.pem
 *.key
 *.p12

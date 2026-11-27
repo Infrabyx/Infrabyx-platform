@@ -6,6 +6,11 @@
       "needs": "AWS sandbox account (D-01)",
       "issue": 29
     },
+    "local-file": {
+      "status": "unproven",
+      "needs": "never: local and test only (LDC-65, R1-D-299); the adapter refuses every other APP_ENV itself",
+      "offBy": ["int.secrets.local_file.enabled"]
+    },
     "aws-kms": {
       "status": "unproven",
       "needs": "AWS sandbox account (D-01)",

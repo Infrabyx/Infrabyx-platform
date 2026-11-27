@@ -16,6 +16,10 @@ import {
 import { createScrubber } from "../../observability/scrub.js";
 import { AwsSecretsManager } from "../aws-sm.js";
 import { VaultSecrets } from "../vault.js";
+import { LocalFileSecrets } from "../local-file.js";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const ROOT = toHex(randomBytes(16));
 const VALUE = `sv-${toHex(randomBytes(12))}`;
@@ -181,6 +185,16 @@ const cases = (prefix: string) => [
     },
   },
 ];
+
+describe("@IPB-01-15 SECRETS hermetic leg: local-file (LDC-65, local and test only)", () => {
+  const file = join(mkdtempSync(join(tmpdir(), "ldc65-")), "s.json");
+  defineContractSuite(
+    "SECRETS",
+    () => new LocalFileSecrets({ appEnv: "test", file }),
+    cases("secrets/test/local"),
+    { leg: "hermetic" },
+  );
+});
 
 describe("@IPB-01-15 SECRETS hermetic leg: aws-sm on moto 5.2.4", () => {
   defineContractSuite("SECRETS", aws, cases("secrets/test/aws"), { leg: "hermetic" });

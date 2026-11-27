@@ -1,10 +1,13 @@
 // The adapters `infrabyx-seed credentials --adapters <this file>` uses to provision the seed
 // personas into the real IDENTITY (Keycloak) of a local stack (`pnpm dev:up`; PL6 session 4c).
-// The seed vault is the in-memory SECRETS fake here: the generated passwords go to the credentials
-// file (`SEED_CREDENTIALS.md`, never committed) and into Keycloak; a product points this at its
-// own SECRETS adapter so the vault keeps them and the password hash list persists (PL6-D-10).
+// The seed vault is the local-file SECRETS adapter in local and test (LDC-65; R1-D-299), so the
+// password hash list persists between runs in `.infrabyx/local-secrets.json` (git-ignored), and the
+// in-memory fake elsewhere. The generated passwords go to the credentials file (`SEED_CREDENTIALS.md`,
+// never committed) and into Keycloak; a product points this at its own SECRETS adapter in shared
+// environments so the vault keeps them (PL6-D-10).
 import { validateEnv } from "@infrabyx/config/env";
 import { KeycloakIdentity, MemoryRevocationStore } from "@infrabyx/connectors/identity";
+import { LOCAL_SECRETS_ENVS, LocalFileSecrets } from "@infrabyx/connectors/secrets";
 import { MemorySecrets } from "@infrabyx/fakes";
 import { apiEnvSchema, checkApiEnv, FIXTURE_ENVS } from "../env.js";
 
@@ -18,7 +21,9 @@ if (env.APP_FIXTURE_ADAPTERS || !env.AUTH_BASE_URL)
   );
 
 export const seedAdapters = {
-  secrets: new MemorySecrets(),
+  secrets: LOCAL_SECRETS_ENVS.includes(env.APP_ENV)
+    ? new LocalFileSecrets({ appEnv: env.APP_ENV })
+    : new MemorySecrets(),
   identity: new KeycloakIdentity({
     baseUrl: env.AUTH_BASE_URL,
     realm: env.AUTH_REALM!,

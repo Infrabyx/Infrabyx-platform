@@ -23,3 +23,15 @@ describe("@IPB-11-AT-04 pre-commit guard (IPB-11-09)", () => {
     ]);
   });
 });
+
+describe("the local-file SECRETS store (LDC-65)", () => {
+  it("is refused wherever it is", () => {
+    expect(
+      blockedFiles([
+        ".infrabyx/local-secrets.json",
+        "apps/api/local-secrets.json",
+        "x/secrets.json",
+      ]),
+    ).toEqual([".infrabyx/local-secrets.json", "apps/api/local-secrets.json"]);
+  });
+});
