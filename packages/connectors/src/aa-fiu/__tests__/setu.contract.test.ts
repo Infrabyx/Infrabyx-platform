@@ -5,7 +5,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
+  aaScannedWriteContractCases,
   accountAggregatorContractCases,
+  FakeFileScan,
   contractConsentArtefact,
   defineContractSuite,
   MemoryStorage,
@@ -17,6 +19,8 @@ import { maskAccount, SetuAccountAggregator, setuFiType, type SetuConsentRecord 
 
 let stub: SetuAaStub;
 const storage = new MemoryStorage();
+// PR-FBX-57: every FI payload is quarantined and scanned before it is returned.
+const av = new FakeFileScan(storage);
 let enabled = true;
 const PREFIX = "tenant/tnt_aa/los/";
 
@@ -28,6 +32,8 @@ afterAll(async () => stub?.close());
 const make = (consents = new Map<string, SetuConsentRecord>(), approvalHosts?: string[]) => {
   return new SetuAccountAggregator({
     storage,
+    scan: av,
+    appEnv: "test",
     consents: { get: async (k) => consents.get(k), set: async (k, v) => void consents.set(k, v) },
     ...(approvalHosts ? { approvalHosts } : {}),
     enabled: () => enabled,
@@ -80,6 +86,55 @@ describe("@IPB-01-15 AA_FIU hermetic leg (Setu stub)", () => {
   });
 });
 
+/** One fetch under a new ACTIVE consent. */
+const fetchOnce = async (p: ReturnType<typeof make>) => {
+  const c = await p.requestConsent(ask());
+  stub.approve(c.consentId);
+  return p.fetch({ consentId: c.consentId, range: c.dataRange, dataPrefix: PREFIX });
+};
+
+describe("@IPB-02-AT-16 AA_FIU scanned writes (Setu stub; PR-FBX-57)", () => {
+  defineContractSuite(
+    "AA_FIU",
+    make,
+    aaScannedWriteContractCases({
+      storage,
+      prefix: PREFIX,
+      vendorRemarks: (t) => stub.payloadRemarks(t),
+      scannerMode: (m) => (av.mode = m),
+      fetch: (p) => fetchOnce(p as ReturnType<typeof make>),
+    }),
+    { leg: "hermetic" },
+  );
+
+  it("without FILE_SCAN a fetch with payloads refuses scan_required and stores nothing", async () => {
+    const warnings: string[] = [];
+    const consents = new Map<string, SetuConsentRecord>();
+    const p = new SetuAccountAggregator({
+      storage,
+      appEnv: "staging",
+      warn: (m) => warnings.push(m),
+      consents: { get: async (k) => consents.get(k), set: async (k, v) => void consents.set(k, v) },
+      enabled: () => enabled,
+      clientId: () => stub.clientId,
+      clientSecret: () => stub.clientSecret,
+      productInstanceId: () => stub.productInstanceId,
+      pollAttempts: 3,
+      pollDelayMs: 0,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("AA_FIU adapter setu-aa");
+    const before = (await storage.list(PREFIX)).keys.length;
+    await expect(fetchOnce(p as ReturnType<typeof make>)).rejects.toMatchObject({
+      code: "IPB-SEC-015",
+      meta: { reason: "scan_required" },
+    });
+    expect((await storage.list(PREFIX)).keys.length).toBe(before);
+  });
+});
+
 describe("R1-D-61 the Setu AA adapter", () => {
   it("is off until int.aa_fiu.setu.enabled: nothing reaches Setu and health is down", async () => {
     enabled = false;
@@ -116,6 +171,7 @@ describe("R1-D-61 the Setu AA adapter", () => {
     const stored = await storage.get(x.storageKey);
     expect(sha256Hex(stored.body)).toBe(x.sha256);
     expect(stored.meta.bucketClass).toBe("REGULATED");
+    expect(x.scan?.verdict).toBe("CLEAN");
     expect(x.maskedAccount).toMatch(/^X+[0-9]{4}$/);
   });
 
