@@ -20,7 +20,19 @@ export const EICAR = new TextEncoder().encode(
   "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*",
 );
 
-/** In-memory AV: EICAR anywhere in the bytes is `INFECTED`; `mode` forces an `ERROR` for tests. */
+/**
+ * EICAR as it appears inside a JSON string (its one backslash escaped): what a connector stores when
+ * a vendor's JSON answer carries the test string (PR-FBX-57, R1-D-304). The fake reports it too, so
+ * the contract cases can feed EICAR through an adapter that re-serialises the vendor's JSON.
+ */
+export const EICAR_IN_JSON = new TextEncoder().encode(
+  JSON.stringify(new TextDecoder().decode(EICAR)).slice(1, -1),
+);
+
+/**
+ * In-memory AV: EICAR (or its JSON-string form) anywhere in the bytes is `INFECTED`; `mode`
+ * forces an `ERROR` for tests.
+ */
 export class FakeFileScan implements FileScanPort {
   readonly descriptor: AdapterDescriptor = {
     port: "AV",
@@ -80,7 +92,8 @@ export class FakeFileScan implements FileScanPort {
     }
     if (sha256Hex(body) !== file.sha256) return result("ERROR", { reason: "hash_mismatch" });
     if (body.length > this.maxBytes) return result("ERROR", { reason: "too_large" });
-    if (contains(body, EICAR)) return result("INFECTED", { threat: "Eicar-Test-Signature" });
+    if (contains(body, EICAR) || contains(body, EICAR_IN_JSON))
+      return result("INFECTED", { threat: "Eicar-Test-Signature" });
     return result("CLEAN");
   }
 }

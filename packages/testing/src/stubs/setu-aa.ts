@@ -26,6 +26,11 @@ export interface SetuAaStub extends VendorStub {
   linkBase(base: string | undefined): void;
   /** Test hook: the id of the next consent (once; then random again). */
   nextConsentId(id: string): void;
+  /**
+   * Test hook (PR-FBX-57): every FI payload from now on carries `text` in a `remarks` field
+   * (undefined: none). The contract cases put the EICAR test string there.
+   */
+  payloadRemarks(text: string | undefined): void;
 }
 
 interface Consent {
@@ -66,6 +71,7 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
   let pending = 0;
   let base = DEFAULT_LINK_BASE;
   let forcedId: string | undefined;
+  let remarks: string | undefined;
   const fiuId = "setu-stub-fiu";
   const consentBody = (c: Consent) => ({
     id: c.id,
@@ -164,6 +170,7 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
                     version: "1.1.3",
                     maskedAccNumber: `XXXXXXXX${String(4321 + i)}`,
                     summary: { currentBalance: "1000.00", currency: "INR" },
+                    ...(remarks !== undefined ? { remarks } : {}),
                   },
                 },
               })),
@@ -198,6 +205,9 @@ export async function startSetuAaStub(): Promise<SetuAaStub> {
     },
     nextConsentId(id: string) {
       forcedId = id;
+    },
+    payloadRemarks(text: string | undefined) {
+      remarks = text;
     },
   });
   return ref.s;
