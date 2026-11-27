@@ -2314,6 +2314,26 @@ for (const c of uploadCorpusContractCases())
 3. If you show PDFs inline from a presigned URL, move that to a sandboxed preview origin.
 4. Whole-object test assertions on a presigned URL gain `response-content-disposition=attachment`.
 
+## 7fc. SMS values are refused, never cut (PR-UDF-088; R1-D-296)
+
+From the next `@infrabyx/contracts` and `@infrabyx/notify` minors (no migration, no setting). **Why:** NOTIFY cut an SMS value to 30 characters and the list to 10 variables without a word. RBC para 100AA (from 1 Jan 2027) needs the grievance officer's full details in recovery communications, so a cut value would breach it.
+
+```ts
+import { SMS_MAX_VARS, SMS_VAR_MAX_LENGTH, smsVars } from "@infrabyx/notify";
+
+await notify.send(ctx, { class: "udf.recovery_notice", to, vars, deepLink, idempotencyKey });
+// IPB-NTF-008 (422): meta.reason "sms_var_too_long" (class, variable, position, length, max)
+// or "sms_too_many_vars" (count, max); never the value
+```
+
+- **When:** at `send`, `enqueue` and `notifyStaff` when an SMS delivery is planned, so nothing is written or sent; in `previewTemplate`; and at delivery, so a notification queued before you upgrade fails rather than sending a cut text.
+- **Limits:** `SMS_VAR_MAX_LENGTH` (30) and `SMS_MAX_VARS` (10), also in `@infrabyx/contracts/ports`. Length is `String#length`, so an emoji counts two.
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Find every SMS template whose values can pass 30 characters (names, addresses, officer details) and split them across variables in the DLT template, or send that content by email or letter.
+  3. Handle `IPB-NTF-008` where you send: it is definite; retrying the same values fails again.
+  4. Drop any truncation or length check of your own in front of NOTIFY.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

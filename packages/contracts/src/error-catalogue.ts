@@ -456,6 +456,11 @@ export const ERROR_CATALOGUE = {
     title: "Staff notification refused: class, role, recipients or variables",
     source: "R1-D-222 (PR-UDF-052)",
   },
+  "IPB-NTF-008": {
+    status: 422,
+    title: "SMS variable longer than 30 characters, or more than 10 variables",
+    source: "R1-D-296 (PR-UDF-088)",
+  },
   "IPB-CST-001": {
     status: 403,
     title: "Custom field with PII class created without checker",
