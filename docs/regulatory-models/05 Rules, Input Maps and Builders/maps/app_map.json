@@ -1,0 +1,4682 @@
+[
+{
+"key": "profile.name",
+"sheet": "Profile",
+"cell": "B4",
+"label": "Company name",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Name of the NBFC"
+},
+{
+"key": "profile.date",
+"sheet": "Profile",
+"cell": "B5",
+"label": "Profile as on",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": null
+},
+{
+"key": "profile.layer",
+"sheet": "Profile",
+"cell": "B6",
+"label": "Regulatory layer",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Base Layer"
+},
+{
+"key": "profile.cat",
+"sheet": "Profile",
+"cell": "B7",
+"label": "Category of NBFC",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Investment and Credit Company"
+},
+{
+"key": "profile.assets",
+"sheet": "Profile",
+"cell": "B8",
+"label": "Total assets as per the latest audited balance sheet (₹ crore)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": null
+},
+{
+"key": "profile.dep",
+"sheet": "Profile",
+"cell": "B9",
+"label": "Accepts public deposits",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.pf",
+"sheet": "Profile",
+"cell": "B10",
+"label": "Avails public funds (bank borrowings, debentures, commercial paper, inter-corporate deposits)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Yes"
+},
+{
+"key": "profile.cust",
+"sheet": "Profile",
+"cell": "B11",
+"label": "Has customer interface",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Yes"
+},
+{
+"key": "profile.pub",
+"sheet": "Profile",
+"cell": "B12",
+"label": "Public company within the thresholds for an Audit Committee and Nomination and Remuneration Committee under the Companies Act, 2013",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.leq",
+"sheet": "Profile",
+"cell": "B13",
+"label": "Equity shares listed",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.ldebt",
+"sheet": "Profile",
+"cell": "B14",
+"label": "Non-convertible securities listed",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.top",
+"sheet": "Profile",
+"cell": "B15",
+"label": "Among the top 1,000 listed entities by market capitalisation",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.indas",
+"sheet": "Profile",
+"cell": "B16",
+"label": "Prepares financial statements under Ind AS",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.subs",
+"sheet": "Profile",
+"cell": "B17",
+"label": "Has subsidiaries or group entities",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.br10",
+"sheet": "Profile",
+"cell": "B18",
+"label": "Has ten or more branches",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.e20",
+"sheet": "Profile",
+"cell": "B19",
+"label": "Employs 20 or more workers",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Yes"
+},
+{
+"key": "profile.e300",
+"sheet": "Profile",
+"cell": "B20",
+"label": "Employs 300 or more workers",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.csr",
+"sheet": "Profile",
+"cell": "B21",
+"label": "Meets the thresholds of section 135(1) of the Companies Act, 2013 (corporate social responsibility)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.div",
+"sheet": "Profile",
+"cell": "B22",
+"label": "Declares or proposes to declare dividend",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.secured",
+"sheet": "Profile",
+"cell": "B23",
+"label": "Lends against security (movable or immovable property)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "Yes"
+},
+{
+"key": "profile.dl",
+"sheet": "Profile",
+"cell": "B24",
+"label": "Lends through digital lending apps or lending service providers",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.dlg",
+"sheet": "Profile",
+"cell": "B25",
+"label": "Has default loss guarantee arrangements",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.proj",
+"sheet": "Profile",
+"cell": "B26",
+"label": "Lends to projects or real estate",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.las",
+"sheet": "Profile",
+"cell": "B27",
+"label": "Lends against shares or finances initial public offers",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.gold",
+"sheet": "Profile",
+"cell": "B28",
+"label": "Lends against gold or silver",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.mf",
+"sheet": "Profile",
+"cell": "B29",
+"label": "Extends microfinance loans or loans to self-help groups",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.call",
+"sheet": "Profile",
+"cell": "B30",
+"label": "Grants demand or call loans",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.nfb",
+"sheet": "Profile",
+"cell": "B31",
+"label": "Offers non-fund-based facilities (guarantees, letters of credit)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.pce",
+"sheet": "Profile",
+"cell": "B32",
+"label": "Provides partial credit enhancement",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.card",
+"sheet": "Profile",
+"cell": "B33",
+"label": "Issues credit cards",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.fact",
+"sheet": "Profile",
+"cell": "B34",
+"label": "Undertakes factoring",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.col",
+"sheet": "Profile",
+"cell": "B35",
+"label": "Has co-lending arrangements",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.seco",
+"sheet": "Profile",
+"cell": "B36",
+"label": "Originates securitisation transactions",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.seci",
+"sheet": "Profile",
+"cell": "B37",
+"label": "Invests in securitisation notes",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.lt",
+"sheet": "Profile",
+"cell": "B38",
+"label": "Transfers or acquires loan exposures",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.slt",
+"sheet": "Profile",
+"cell": "B39",
+"label": "Transfers or acquires stressed loans",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.dist",
+"sheet": "Profile",
+"cell": "B40",
+"label": "Distributes insurance, mutual funds or other third-party products",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.fx2",
+"sheet": "Profile",
+"cell": "B41",
+"label": "Holds an Authorised Dealer Category II licence (forex services)",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.fcy",
+"sheet": "Profile",
+"cell": "B42",
+"label": "Has foreign-currency borrowings or assets",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.fema",
+"sheet": "Profile",
+"cell": "B43",
+"label": "Has foreign investment, external commercial borrowings or overseas investments",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.ncd",
+"sheet": "Profile",
+"cell": "B44",
+"label": "Raises funds by private placement of non-convertible debentures",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.igo",
+"sheet": "Profile",
+"cell": "B45",
+"label": "Uses group entities as service providers",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.offsh",
+"sheet": "Profile",
+"cell": "B46",
+"label": "Outsources any activity outside India",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.relief",
+"sheet": "Profile",
+"cell": "B47",
+"label": "Participates in Government debt relief schemes",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.snfa",
+"sheet": "Profile",
+"cell": "B48",
+"label": "Acquires non-financial assets in settlement of dues",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.green",
+"sheet": "Profile",
+"cell": "B49",
+"label": "Raises green deposits",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "profile.api",
+"sheet": "Profile",
+"cell": "B50",
+"label": "Initiates fund transfers from its bank accounts through bank APIs",
+"source": "Entity Profile and Engagement Preferences; Certificate of Registration; audited financial statements",
+"default": "No"
+},
+{
+"key": "policy.override.1",
+"sheet": "Policies",
+"cell": "M7",
+"label": "Fit and proper policy for directors – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.1",
+"sheet": "Policies",
+"cell": "O7",
+"label": "Fit and proper policy for directors – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.1",
+"sheet": "Policies",
+"cell": "R7",
+"label": "Fit and proper policy for directors – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.2",
+"sheet": "Policies",
+"cell": "M8",
+"label": "Compliance policy (role of the Chief Compliance Officer and compliance function) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.2",
+"sheet": "Policies",
+"cell": "O8",
+"label": "Compliance policy (role of the Chief Compliance Officer and compliance function) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.2",
+"sheet": "Policies",
+"cell": "R8",
+"label": "Compliance policy (role of the Chief Compliance Officer and compliance function) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.3",
+"sheet": "Policies",
+"cell": "M9",
+"label": "Compensation policy for KMP and senior management (malus / clawback) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.3",
+"sheet": "Policies",
+"cell": "O9",
+"label": "Compensation policy for KMP and senior management (malus / clawback) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.3",
+"sheet": "Policies",
+"cell": "R9",
+"label": "Compensation policy for KMP and senior management (malus / clawback) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.4",
+"sheet": "Policies",
+"cell": "M10",
+"label": "Internal guidelines on corporate governance – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.4",
+"sheet": "Policies",
+"cell": "O10",
+"label": "Internal guidelines on corporate governance – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.4",
+"sheet": "Policies",
+"cell": "R10",
+"label": "Internal guidelines on corporate governance – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.5",
+"sheet": "Policies",
+"cell": "M11",
+"label": "Nomination and remuneration policy (incl. Board-evaluation criteria) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.5",
+"sheet": "Policies",
+"cell": "O11",
+"label": "Nomination and remuneration policy (incl. Board-evaluation criteria) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.5",
+"sheet": "Policies",
+"cell": "R11",
+"label": "Nomination and remuneration policy (incl. Board-evaluation criteria) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.6",
+"sheet": "Policies",
+"cell": "M12",
+"label": "Vigil mechanism / whistle-blower policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.6",
+"sheet": "Policies",
+"cell": "O12",
+"label": "Vigil mechanism / whistle-blower policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.6",
+"sheet": "Policies",
+"cell": "R12",
+"label": "Vigil mechanism / whistle-blower policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.7",
+"sheet": "Policies",
+"cell": "M13",
+"label": "Policy for adoption of the enhanced regulatory framework and implementation plan – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.7",
+"sheet": "Policies",
+"cell": "O13",
+"label": "Policy for adoption of the enhanced regulatory framework and implementation plan – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.7",
+"sheet": "Policies",
+"cell": "R13",
+"label": "Policy for adoption of the enhanced regulatory framework and implementation plan – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.8",
+"sheet": "Policies",
+"cell": "M14",
+"label": "Disclosure policy for Upper Layer NBFCs (listed-company equivalent) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.8",
+"sheet": "Policies",
+"cell": "O14",
+"label": "Disclosure policy for Upper Layer NBFCs (listed-company equivalent) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.8",
+"sheet": "Policies",
+"cell": "R14",
+"label": "Disclosure policy for Upper Layer NBFCs (listed-company equivalent) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.9",
+"sheet": "Policies",
+"cell": "M15",
+"label": "Compliance manual and regulatory compliance calendar – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.9",
+"sheet": "Policies",
+"cell": "O15",
+"label": "Compliance manual and regulatory compliance calendar – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.9",
+"sheet": "Policies",
+"cell": "R15",
+"label": "Compliance manual and regulatory compliance calendar – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.10",
+"sheet": "Policies",
+"cell": "M16",
+"label": "Delegation of powers (financial, credit and operational authority matrix) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.10",
+"sheet": "Policies",
+"cell": "O16",
+"label": "Delegation of powers (financial, credit and operational authority matrix) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.10",
+"sheet": "Policies",
+"cell": "R16",
+"label": "Delegation of powers (financial, credit and operational authority matrix) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.11",
+"sheet": "Policies",
+"cell": "M17",
+"label": "Related party transactions policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.11",
+"sheet": "Policies",
+"cell": "O17",
+"label": "Related party transactions policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.11",
+"sheet": "Policies",
+"cell": "R17",
+"label": "Related party transactions policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.12",
+"sheet": "Policies",
+"cell": "M18",
+"label": "Policy governance framework (policy on policies) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.12",
+"sheet": "Policies",
+"cell": "O18",
+"label": "Policy governance framework (policy on policies) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.12",
+"sheet": "Policies",
+"cell": "R18",
+"label": "Policy governance framework (policy on policies) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.13",
+"sheet": "Policies",
+"cell": "M19",
+"label": "Subsidiary and group governance policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.13",
+"sheet": "Policies",
+"cell": "O19",
+"label": "Subsidiary and group governance policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.13",
+"sheet": "Policies",
+"cell": "R19",
+"label": "Subsidiary and group governance policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.14",
+"sheet": "Policies",
+"cell": "M20",
+"label": "Change in control, management and directors protocol – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.14",
+"sheet": "Policies",
+"cell": "O20",
+"label": "Change in control, management and directors protocol – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.14",
+"sheet": "Policies",
+"cell": "R20",
+"label": "Change in control, management and directors protocol – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.15",
+"sheet": "Policies",
+"cell": "M21",
+"label": "Credit / loan policy (incl. product programmes) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.15",
+"sheet": "Policies",
+"cell": "O21",
+"label": "Credit / loan policy (incl. product programmes) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.15",
+"sheet": "Policies",
+"cell": "R21",
+"label": "Credit / loan policy (incl. product programmes) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.16",
+"sheet": "Policies",
+"cell": "M22",
+"label": "Fair Practices Code (with vernacular version) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.16",
+"sheet": "Policies",
+"cell": "O22",
+"label": "Fair Practices Code (with vernacular version) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.16",
+"sheet": "Policies",
+"cell": "R22",
+"label": "Fair Practices Code (with vernacular version) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.17",
+"sheet": "Policies",
+"cell": "M23",
+"label": "Interest rate model and charges policy (gradation of risk; processing, pre-payment and other charges) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.17",
+"sheet": "Policies",
+"cell": "O23",
+"label": "Interest rate model and charges policy (gradation of risk; processing, pre-payment and other charges) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.17",
+"sheet": "Policies",
+"cell": "R23",
+"label": "Interest rate model and charges policy (gradation of risk; processing, pre-payment and other charges) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.18",
+"sheet": "Policies",
+"cell": "M24",
+"label": "Policy on penal charges – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.18",
+"sheet": "Policies",
+"cell": "O24",
+"label": "Policy on penal charges – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.18",
+"sheet": "Policies",
+"cell": "R24",
+"label": "Policy on penal charges – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.19",
+"sheet": "Policies",
+"cell": "M25",
+"label": "Key Facts Statement and APR disclosure standard – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.19",
+"sheet": "Policies",
+"cell": "O25",
+"label": "Key Facts Statement and APR disclosure standard – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.19",
+"sheet": "Policies",
+"cell": "R25",
+"label": "Key Facts Statement and APR disclosure standard – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.20",
+"sheet": "Policies",
+"cell": "M26",
+"label": "Related-party lending policy (directors, KMP, specified employees and relatives) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.20",
+"sheet": "Policies",
+"cell": "O26",
+"label": "Related-party lending policy (directors, KMP, specified employees and relatives) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.20",
+"sheet": "Policies",
+"cell": "R26",
+"label": "Related-party lending policy (directors, KMP, specified employees and relatives) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.21",
+"sheet": "Policies",
+"cell": "M27",
+"label": "Credit information reporting and data-quality policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.21",
+"sheet": "Policies",
+"cell": "O27",
+"label": "Credit information reporting and data-quality policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.21",
+"sheet": "Policies",
+"cell": "R27",
+"label": "Credit information reporting and data-quality policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.22",
+"sheet": "Policies",
+"cell": "M28",
+"label": "Digital lending policy (DLA/LSP governance, cooling-off, CIMS reporting) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.22",
+"sheet": "Policies",
+"cell": "O28",
+"label": "Digital lending policy (DLA/LSP governance, cooling-off, CIMS reporting) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.22",
+"sheet": "Policies",
+"cell": "R28",
+"label": "Digital lending policy (DLA/LSP governance, cooling-off, CIMS reporting) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.23",
+"sheet": "Policies",
+"cell": "M29",
+"label": "Default loss guarantee (DLG) policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.23",
+"sheet": "Policies",
+"cell": "O29",
+"label": "Default loss guarantee (DLG) policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.23",
+"sheet": "Policies",
+"cell": "R29",
+"label": "Default loss guarantee (DLG) policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.24",
+"sheet": "Policies",
+"cell": "M30",
+"label": "Project finance and real-estate lending policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.24",
+"sheet": "Policies",
+"cell": "O30",
+"label": "Project finance and real-estate lending policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.24",
+"sheet": "Policies",
+"cell": "R30",
+"label": "Project finance and real-estate lending policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.25",
+"sheet": "Policies",
+"cell": "M31",
+"label": "Loans against shares and IPO financing policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.25",
+"sheet": "Policies",
+"cell": "O31",
+"label": "Loans against shares and IPO financing policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.25",
+"sheet": "Policies",
+"cell": "R31",
+"label": "Loans against shares and IPO financing policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.26",
+"sheet": "Policies",
+"cell": "M32",
+"label": "Partial credit enhancement policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.26",
+"sheet": "Policies",
+"cell": "O32",
+"label": "Partial credit enhancement policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.26",
+"sheet": "Policies",
+"cell": "R32",
+"label": "Partial credit enhancement policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.27",
+"sheet": "Policies",
+"cell": "M33",
+"label": "Policy on non-fund-based credit facilities – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.27",
+"sheet": "Policies",
+"cell": "O33",
+"label": "Policy on non-fund-based credit facilities – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.27",
+"sheet": "Policies",
+"cell": "R33",
+"label": "Policy on non-fund-based credit facilities – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.28",
+"sheet": "Policies",
+"cell": "M34",
+"label": "Security creation, CERSAI filing and LEI procedure – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.28",
+"sheet": "Policies",
+"cell": "O34",
+"label": "Security creation, CERSAI filing and LEI procedure – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.28",
+"sheet": "Policies",
+"cell": "R34",
+"label": "Security creation, CERSAI filing and LEI procedure – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.29",
+"sheet": "Policies",
+"cell": "M35",
+"label": "MSME working-capital and supply-chain finance product programme – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.29",
+"sheet": "Policies",
+"cell": "O35",
+"label": "MSME working-capital and supply-chain finance product programme – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.29",
+"sheet": "Policies",
+"cell": "R35",
+"label": "MSME working-capital and supply-chain finance product programme – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.30",
+"sheet": "Policies",
+"cell": "M36",
+"label": "Grievance redressal policy (GRO, escalation and display) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.30",
+"sheet": "Policies",
+"cell": "O36",
+"label": "Grievance redressal policy (GRO, escalation and display) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.30",
+"sheet": "Policies",
+"cell": "R36",
+"label": "Grievance redressal policy (GRO, escalation and display) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.31",
+"sheet": "Policies",
+"cell": "M37",
+"label": "Customer service and complaint-handling policy (incl. credit-information complaints) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.31",
+"sheet": "Policies",
+"cell": "O37",
+"label": "Customer service and complaint-handling policy (incl. credit-information complaints) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.31",
+"sheet": "Policies",
+"cell": "R37",
+"label": "Customer service and complaint-handling policy (incl. credit-information complaints) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.32",
+"sheet": "Policies",
+"cell": "M38",
+"label": "Internal Ombudsman framework and complaint-flow SOP – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.32",
+"sheet": "Policies",
+"cell": "O38",
+"label": "Internal Ombudsman framework and complaint-flow SOP – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.32",
+"sheet": "Policies",
+"cell": "R38",
+"label": "Internal Ombudsman framework and complaint-flow SOP – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.33",
+"sheet": "Policies",
+"cell": "M39",
+"label": "Policy on release of property documents and compensation for delay – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.33",
+"sheet": "Policies",
+"cell": "O39",
+"label": "Policy on release of property documents and compensation for delay – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.33",
+"sheet": "Policies",
+"cell": "R39",
+"label": "Policy on release of property documents and compensation for delay – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.34",
+"sheet": "Policies",
+"cell": "M40",
+"label": "Statutory website and DLA disclosure register – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.34",
+"sheet": "Policies",
+"cell": "O40",
+"label": "Statutory website and DLA disclosure register – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.34",
+"sheet": "Policies",
+"cell": "R40",
+"label": "Statutory website and DLA disclosure register – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.35",
+"sheet": "Policies",
+"cell": "M41",
+"label": "Website and app terms of use – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.35",
+"sheet": "Policies",
+"cell": "O41",
+"label": "Website and app terms of use – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.35",
+"sheet": "Policies",
+"cell": "R41",
+"label": "Website and app terms of use – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.36",
+"sheet": "Policies",
+"cell": "M42",
+"label": "Cookie and tracking consent policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.36",
+"sheet": "Policies",
+"cell": "O42",
+"label": "Cookie and tracking consent policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.36",
+"sheet": "Policies",
+"cell": "R42",
+"label": "Cookie and tracking consent policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.37",
+"sheet": "Policies",
+"cell": "M43",
+"label": "Risk management policy, risk appetite and RMC charter – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.37",
+"sheet": "Policies",
+"cell": "O43",
+"label": "Risk management policy, risk appetite and RMC charter – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.37",
+"sheet": "Policies",
+"cell": "R43",
+"label": "Risk management policy, risk appetite and RMC charter – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.38",
+"sheet": "Policies",
+"cell": "M44",
+"label": "Concentration risk management policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.38",
+"sheet": "Policies",
+"cell": "O44",
+"label": "Concentration risk management policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.38",
+"sheet": "Policies",
+"cell": "R44",
+"label": "Concentration risk management policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.39",
+"sheet": "Policies",
+"cell": "M45",
+"label": "Policy to determine a group of connected counterparties – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.39",
+"sheet": "Policies",
+"cell": "O45",
+"label": "Policy to determine a group of connected counterparties – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.39",
+"sheet": "Policies",
+"cell": "R45",
+"label": "Policy to determine a group of connected counterparties – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.40",
+"sheet": "Policies",
+"cell": "M46",
+"label": "Investment policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.40",
+"sheet": "Policies",
+"cell": "O46",
+"label": "Investment policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.40",
+"sheet": "Policies",
+"cell": "R46",
+"label": "Investment policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.41",
+"sheet": "Policies",
+"cell": "M47",
+"label": "ALM and liquidity risk management framework (ALCO charter) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.41",
+"sheet": "Policies",
+"cell": "O47",
+"label": "ALM and liquidity risk management framework (ALCO charter) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.41",
+"sheet": "Policies",
+"cell": "R47",
+"label": "ALM and liquidity risk management framework (ALCO charter) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.42",
+"sheet": "Policies",
+"cell": "M48",
+"label": "Contingency funding plan and liquidity stress-testing policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.42",
+"sheet": "Policies",
+"cell": "O48",
+"label": "Contingency funding plan and liquidity stress-testing policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.42",
+"sheet": "Policies",
+"cell": "R48",
+"label": "Contingency funding plan and liquidity stress-testing policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.43",
+"sheet": "Policies",
+"cell": "M49",
+"label": "Internal Capital Adequacy Assessment Process (ICAAP) policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.43",
+"sheet": "Policies",
+"cell": "O49",
+"label": "Internal Capital Adequacy Assessment Process (ICAAP) policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.43",
+"sheet": "Policies",
+"cell": "R49",
+"label": "Internal Capital Adequacy Assessment Process (ICAAP) policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.44",
+"sheet": "Policies",
+"cell": "M50",
+"label": "Stress-testing policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.44",
+"sheet": "Policies",
+"cell": "O50",
+"label": "Stress-testing policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.44",
+"sheet": "Policies",
+"cell": "R50",
+"label": "Stress-testing policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.45",
+"sheet": "Policies",
+"cell": "M51",
+"label": "New product and process approval policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.45",
+"sheet": "Policies",
+"cell": "O51",
+"label": "New product and process approval policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.45",
+"sheet": "Policies",
+"cell": "R51",
+"label": "New product and process approval policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.46",
+"sheet": "Policies",
+"cell": "M52",
+"label": "Resource planning policy (private placement of NCDs) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.46",
+"sheet": "Policies",
+"cell": "O52",
+"label": "Resource planning policy (private placement of NCDs) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.46",
+"sheet": "Policies",
+"cell": "R52",
+"label": "Resource planning policy (private placement of NCDs) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.47",
+"sheet": "Policies",
+"cell": "M53",
+"label": "Currency risk management policy (forex services) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.47",
+"sheet": "Policies",
+"cell": "O53",
+"label": "Currency risk management policy (forex services) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.47",
+"sheet": "Policies",
+"cell": "R53",
+"label": "Currency risk management policy (forex services) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.48",
+"sheet": "Policies",
+"cell": "M54",
+"label": "Foreign-currency exposure and hedging policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.48",
+"sheet": "Policies",
+"cell": "O54",
+"label": "Foreign-currency exposure and hedging policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.48",
+"sheet": "Policies",
+"cell": "R54",
+"label": "Foreign-currency exposure and hedging policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.49",
+"sheet": "Policies",
+"cell": "M55",
+"label": "Capital management and leverage monitoring policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.49",
+"sheet": "Policies",
+"cell": "O55",
+"label": "Capital management and leverage monitoring policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.49",
+"sheet": "Policies",
+"cell": "R55",
+"label": "Capital management and leverage monitoring policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.50",
+"sheet": "Policies",
+"cell": "M56",
+"label": "Treasury, borrowing and funding policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.50",
+"sheet": "Policies",
+"cell": "O56",
+"label": "Treasury, borrowing and funding policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.50",
+"sheet": "Policies",
+"cell": "R56",
+"label": "Treasury, borrowing and funding policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.51",
+"sheet": "Policies",
+"cell": "M57",
+"label": "Operational risk management and operational resilience policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.51",
+"sheet": "Policies",
+"cell": "O57",
+"label": "Operational risk management and operational resilience policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.51",
+"sheet": "Policies",
+"cell": "R57",
+"label": "Operational risk management and operational resilience policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.52",
+"sheet": "Policies",
+"cell": "M58",
+"label": "Climate risk and sustainability policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.52",
+"sheet": "Policies",
+"cell": "O58",
+"label": "Climate risk and sustainability policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.52",
+"sheet": "Policies",
+"cell": "R58",
+"label": "Climate risk and sustainability policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.53",
+"sheet": "Policies",
+"cell": "M59",
+"label": "Income recognition, asset classification and provisioning policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.53",
+"sheet": "Policies",
+"cell": "O59",
+"label": "Income recognition, asset classification and provisioning policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.53",
+"sheet": "Policies",
+"cell": "R59",
+"label": "Income recognition, asset classification and provisioning policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.54",
+"sheet": "Policies",
+"cell": "M60",
+"label": "SMA, early-warning and CRILC reporting procedure – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.54",
+"sheet": "Policies",
+"cell": "O60",
+"label": "SMA, early-warning and CRILC reporting procedure – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.54",
+"sheet": "Policies",
+"cell": "R60",
+"label": "SMA, early-warning and CRILC reporting procedure – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.55",
+"sheet": "Policies",
+"cell": "M61",
+"label": "Stressed asset resolution and restructuring policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.55",
+"sheet": "Policies",
+"cell": "O61",
+"label": "Stressed asset resolution and restructuring policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.55",
+"sheet": "Policies",
+"cell": "R61",
+"label": "Stressed asset resolution and restructuring policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.56",
+"sheet": "Policies",
+"cell": "M62",
+"label": "Compromise settlement and technical write-off policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.56",
+"sheet": "Policies",
+"cell": "O62",
+"label": "Compromise settlement and technical write-off policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.56",
+"sheet": "Policies",
+"cell": "R62",
+"label": "Compromise settlement and technical write-off policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.57",
+"sheet": "Policies",
+"cell": "M63",
+"label": "Calamity relief policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.57",
+"sheet": "Policies",
+"cell": "O63",
+"label": "Calamity relief policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.57",
+"sheet": "Policies",
+"cell": "R63",
+"label": "Calamity relief policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.58",
+"sheet": "Policies",
+"cell": "M64",
+"label": "Collections and recovery policy (incl. SARFAESI and legal action) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.58",
+"sheet": "Policies",
+"cell": "O64",
+"label": "Collections and recovery policy (incl. SARFAESI and legal action) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.58",
+"sheet": "Policies",
+"cell": "R64",
+"label": "Collections and recovery policy (incl. SARFAESI and legal action) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.59",
+"sheet": "Policies",
+"cell": "M65",
+"label": "Policy on engagement of recovery agents – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.59",
+"sheet": "Policies",
+"cell": "O65",
+"label": "Policy on engagement of recovery agents – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.59",
+"sheet": "Policies",
+"cell": "R65",
+"label": "Policy on engagement of recovery agents – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.60",
+"sheet": "Policies",
+"cell": "M66",
+"label": "Wilful defaulter and large defaulter policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.60",
+"sheet": "Policies",
+"cell": "O66",
+"label": "Wilful defaulter and large defaulter policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.60",
+"sheet": "Policies",
+"cell": "R66",
+"label": "Wilful defaulter and large defaulter policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.61",
+"sheet": "Policies",
+"cell": "M67",
+"label": "Expected credit loss (ECL) methodology policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.61",
+"sheet": "Policies",
+"cell": "O67",
+"label": "Expected credit loss (ECL) methodology policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.61",
+"sheet": "Policies",
+"cell": "R67",
+"label": "Expected credit loss (ECL) methodology policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.62",
+"sheet": "Policies",
+"cell": "M68",
+"label": "Government debt relief scheme participation policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.62",
+"sheet": "Policies",
+"cell": "O68",
+"label": "Government debt relief scheme participation policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.62",
+"sheet": "Policies",
+"cell": "R68",
+"label": "Government debt relief scheme participation policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.63",
+"sheet": "Policies",
+"cell": "M69",
+"label": "Specified non-financial assets (SNFA) policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.63",
+"sheet": "Policies",
+"cell": "O69",
+"label": "Specified non-financial assets (SNFA) policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.63",
+"sheet": "Policies",
+"cell": "R69",
+"label": "Specified non-financial assets (SNFA) policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.64",
+"sheet": "Policies",
+"cell": "M70",
+"label": "KYC policy (customer acceptance, identification, risk management, monitoring) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.64",
+"sheet": "Policies",
+"cell": "O70",
+"label": "KYC policy (customer acceptance, identification, risk management, monitoring) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.64",
+"sheet": "Policies",
+"cell": "R70",
+"label": "KYC policy (customer acceptance, identification, risk management, monitoring) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.65",
+"sheet": "Policies",
+"cell": "M71",
+"label": "AML/CFT policy (monitoring, FIU-IND reporting and sanctions screening) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.65",
+"sheet": "Policies",
+"cell": "O71",
+"label": "AML/CFT policy (monitoring, FIU-IND reporting and sanctions screening) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.65",
+"sheet": "Policies",
+"cell": "R71",
+"label": "AML/CFT policy (monitoring, FIU-IND reporting and sanctions screening) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.66",
+"sheet": "Policies",
+"cell": "M72",
+"label": "ML/TF risk assessment methodology – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.66",
+"sheet": "Policies",
+"cell": "O72",
+"label": "ML/TF risk assessment methodology – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.66",
+"sheet": "Policies",
+"cell": "R72",
+"label": "ML/TF risk assessment methodology – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.67",
+"sheet": "Policies",
+"cell": "M73",
+"label": "Digital KYC, V-CIP and CKYCR procedure – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.67",
+"sheet": "Policies",
+"cell": "O73",
+"label": "Digital KYC, V-CIP and CKYCR procedure – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.67",
+"sheet": "Policies",
+"cell": "R73",
+"label": "Digital KYC, V-CIP and CKYCR procedure – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.68",
+"sheet": "Policies",
+"cell": "M74",
+"label": "Know-your-employee and AML training policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.68",
+"sheet": "Policies",
+"cell": "O74",
+"label": "Know-your-employee and AML training policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.68",
+"sheet": "Policies",
+"cell": "R74",
+"label": "Know-your-employee and AML training policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.69",
+"sheet": "Policies",
+"cell": "M75",
+"label": "Fraud risk management policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.69",
+"sheet": "Policies",
+"cell": "O75",
+"label": "Fraud risk management policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.69",
+"sheet": "Policies",
+"cell": "R75",
+"label": "Fraud risk management policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.70",
+"sheet": "Policies",
+"cell": "M76",
+"label": "Early warning signals (EWS) and red-flagging framework – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.70",
+"sheet": "Policies",
+"cell": "O76",
+"label": "Early warning signals (EWS) and red-flagging framework – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.70",
+"sheet": "Policies",
+"cell": "R76",
+"label": "Early warning signals (EWS) and red-flagging framework – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.71",
+"sheet": "Policies",
+"cell": "M77",
+"label": "IT and information security policy (combined IT/IS policy for BL < ₹500 crore) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.71",
+"sheet": "Policies",
+"cell": "O77",
+"label": "IT and information security policy (combined IT/IS policy for BL < ₹500 crore) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.71",
+"sheet": "Policies",
+"cell": "R77",
+"label": "IT and information security policy (combined IT/IS policy for BL < ₹500 crore) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.72",
+"sheet": "Policies",
+"cell": "M78",
+"label": "Cyber security policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.72",
+"sheet": "Policies",
+"cell": "O78",
+"label": "Cyber security policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.72",
+"sheet": "Policies",
+"cell": "R78",
+"label": "Cyber security policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.73",
+"sheet": "Policies",
+"cell": "M79",
+"label": "Cyber crisis management plan (CCMP) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.73",
+"sheet": "Policies",
+"cell": "O79",
+"label": "Cyber crisis management plan (CCMP) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.73",
+"sheet": "Policies",
+"cell": "R79",
+"label": "Cyber crisis management plan (CCMP) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.74",
+"sheet": "Policies",
+"cell": "M80",
+"label": "Cyber incident response and reporting plan – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.74",
+"sheet": "Policies",
+"cell": "O80",
+"label": "Cyber incident response and reporting plan – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.74",
+"sheet": "Policies",
+"cell": "R80",
+"label": "Cyber incident response and reporting plan – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.75",
+"sheet": "Policies",
+"cell": "M81",
+"label": "Business continuity and disaster recovery policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.75",
+"sheet": "Policies",
+"cell": "O81",
+"label": "Business continuity and disaster recovery policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.75",
+"sheet": "Policies",
+"cell": "R81",
+"label": "Business continuity and disaster recovery policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.76",
+"sheet": "Policies",
+"cell": "M82",
+"label": "Data backup and restoration policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.76",
+"sheet": "Policies",
+"cell": "O82",
+"label": "Data backup and restoration policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.76",
+"sheet": "Policies",
+"cell": "R82",
+"label": "Data backup and restoration policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.77",
+"sheet": "Policies",
+"cell": "M83",
+"label": "User access management and password standard – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.77",
+"sheet": "Policies",
+"cell": "O83",
+"label": "User access management and password standard – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.77",
+"sheet": "Policies",
+"cell": "R83",
+"label": "User access management and password standard – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.78",
+"sheet": "Policies",
+"cell": "M84",
+"label": "Digital channel security standard (DSC, mobile app, social media) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.78",
+"sheet": "Policies",
+"cell": "O84",
+"label": "Digital channel security standard (DSC, mobile app, social media) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.78",
+"sheet": "Policies",
+"cell": "R84",
+"label": "Digital channel security standard (DSC, mobile app, social media) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.79",
+"sheet": "Policies",
+"cell": "M85",
+"label": "Change and patch management policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.79",
+"sheet": "Policies",
+"cell": "O85",
+"label": "Change and patch management policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.79",
+"sheet": "Policies",
+"cell": "R85",
+"label": "Change and patch management policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.80",
+"sheet": "Policies",
+"cell": "M86",
+"label": "Data migration policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.80",
+"sheet": "Policies",
+"cell": "O86",
+"label": "Data migration policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.80",
+"sheet": "Policies",
+"cell": "R86",
+"label": "Data migration policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.81",
+"sheet": "Policies",
+"cell": "M87",
+"label": "Information systems (IS) audit policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.81",
+"sheet": "Policies",
+"cell": "O87",
+"label": "Information systems (IS) audit policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.81",
+"sheet": "Policies",
+"cell": "R87",
+"label": "Information systems (IS) audit policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.82",
+"sheet": "Policies",
+"cell": "M88",
+"label": "Vulnerability assessment and penetration testing (VA/PT) policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.82",
+"sheet": "Policies",
+"cell": "O88",
+"label": "Vulnerability assessment and penetration testing (VA/PT) policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.82",
+"sheet": "Policies",
+"cell": "R88",
+"label": "Vulnerability assessment and penetration testing (VA/PT) policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.83",
+"sheet": "Policies",
+"cell": "M89",
+"label": "IT strategy and technology refresh plan – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.83",
+"sheet": "Policies",
+"cell": "O89",
+"label": "IT strategy and technology refresh plan – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.83",
+"sheet": "Policies",
+"cell": "R89",
+"label": "IT strategy and technology refresh plan – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.84",
+"sheet": "Policies",
+"cell": "M90",
+"label": "Privacy policy and personal data protection policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.84",
+"sheet": "Policies",
+"cell": "O90",
+"label": "Privacy policy and personal data protection policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.84",
+"sheet": "Policies",
+"cell": "R90",
+"label": "Privacy policy and personal data protection policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.85",
+"sheet": "Policies",
+"cell": "M91",
+"label": "Record retention and destruction schedule – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.85",
+"sheet": "Policies",
+"cell": "O91",
+"label": "Record retention and destruction schedule – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.85",
+"sheet": "Policies",
+"cell": "R91",
+"label": "Record retention and destruction schedule – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.86",
+"sheet": "Policies",
+"cell": "M92",
+"label": "DLA privacy and data-collection policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.86",
+"sheet": "Policies",
+"cell": "O92",
+"label": "DLA privacy and data-collection policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.86",
+"sheet": "Policies",
+"cell": "R92",
+"label": "DLA privacy and data-collection policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.87",
+"sheet": "Policies",
+"cell": "M93",
+"label": "Data storage and localisation policy (digital lending) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.87",
+"sheet": "Policies",
+"cell": "O93",
+"label": "Data storage and localisation policy (digital lending) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.87",
+"sheet": "Policies",
+"cell": "R93",
+"label": "Data storage and localisation policy (digital lending) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.88",
+"sheet": "Policies",
+"cell": "M94",
+"label": "AI and model risk management policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.88",
+"sheet": "Policies",
+"cell": "O94",
+"label": "AI and model risk management policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.88",
+"sheet": "Policies",
+"cell": "R94",
+"label": "AI and model risk management policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.89",
+"sheet": "Policies",
+"cell": "M95",
+"label": "Outsourcing policy for financial services – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.89",
+"sheet": "Policies",
+"cell": "O95",
+"label": "Outsourcing policy for financial services – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.89",
+"sheet": "Policies",
+"cell": "R95",
+"label": "Outsourcing policy for financial services – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.90",
+"sheet": "Policies",
+"cell": "M96",
+"label": "Code of conduct for DSAs, DMAs and recovery agents – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.90",
+"sheet": "Policies",
+"cell": "O96",
+"label": "Code of conduct for DSAs, DMAs and recovery agents – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.90",
+"sheet": "Policies",
+"cell": "R96",
+"label": "Code of conduct for DSAs, DMAs and recovery agents – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.91",
+"sheet": "Policies",
+"cell": "M97",
+"label": "IT outsourcing and cloud policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.91",
+"sheet": "Policies",
+"cell": "O97",
+"label": "IT outsourcing and cloud policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.91",
+"sheet": "Policies",
+"cell": "R97",
+"label": "IT outsourcing and cloud policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.92",
+"sheet": "Policies",
+"cell": "M98",
+"label": "Intra-group outsourcing policy and service-level agreements – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.92",
+"sheet": "Policies",
+"cell": "O98",
+"label": "Intra-group outsourcing policy and service-level agreements – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.92",
+"sheet": "Policies",
+"cell": "R98",
+"label": "Intra-group outsourcing policy and service-level agreements – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.93",
+"sheet": "Policies",
+"cell": "M99",
+"label": "LSP due diligence, onboarding and contract framework – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.93",
+"sheet": "Policies",
+"cell": "O99",
+"label": "LSP due diligence, onboarding and contract framework – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.93",
+"sheet": "Policies",
+"cell": "R99",
+"label": "LSP due diligence, onboarding and contract framework – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.94",
+"sheet": "Policies",
+"cell": "M100",
+"label": "Offshore outsourcing policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.94",
+"sheet": "Policies",
+"cell": "O100",
+"label": "Offshore outsourcing policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.94",
+"sheet": "Policies",
+"cell": "R100",
+"label": "Offshore outsourcing policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.95",
+"sheet": "Policies",
+"cell": "M101",
+"label": "Third-party (non-outsourcing) vendor risk management policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.95",
+"sheet": "Policies",
+"cell": "O101",
+"label": "Third-party (non-outsourcing) vendor risk management policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.95",
+"sheet": "Policies",
+"cell": "R101",
+"label": "Third-party (non-outsourcing) vendor risk management policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.96",
+"sheet": "Policies",
+"cell": "M102",
+"label": "Significant accounting policies – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.96",
+"sheet": "Policies",
+"cell": "O102",
+"label": "Significant accounting policies – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.96",
+"sheet": "Policies",
+"cell": "R102",
+"label": "Significant accounting policies – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.97",
+"sheet": "Policies",
+"cell": "M103",
+"label": "Financial statement disclosure checklist (RBI schedule and notes) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.97",
+"sheet": "Policies",
+"cell": "O103",
+"label": "Financial statement disclosure checklist (RBI schedule and notes) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.97",
+"sheet": "Policies",
+"cell": "R103",
+"label": "Financial statement disclosure checklist (RBI schedule and notes) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.98",
+"sheet": "Policies",
+"cell": "M104",
+"label": "Internal audit charter and annual audit plan – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.98",
+"sheet": "Policies",
+"cell": "O104",
+"label": "Internal audit charter and annual audit plan – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.98",
+"sheet": "Policies",
+"cell": "R104",
+"label": "Internal audit charter and annual audit plan – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.99",
+"sheet": "Policies",
+"cell": "M105",
+"label": "Policy on appointment of statutory auditors – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.99",
+"sheet": "Policies",
+"cell": "O105",
+"label": "Policy on appointment of statutory auditors – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.99",
+"sheet": "Policies",
+"cell": "R105",
+"label": "Policy on appointment of statutory auditors – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.100",
+"sheet": "Policies",
+"cell": "M106",
+"label": "Regulatory returns and reporting calendar – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.100",
+"sheet": "Policies",
+"cell": "O106",
+"label": "Regulatory returns and reporting calendar – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.100",
+"sheet": "Policies",
+"cell": "R106",
+"label": "Regulatory returns and reporting calendar – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.101",
+"sheet": "Policies",
+"cell": "M107",
+"label": "Business model and portfolio classification policy (Ind AS 109) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.101",
+"sheet": "Policies",
+"cell": "O107",
+"label": "Business model and portfolio classification policy (Ind AS 109) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.101",
+"sheet": "Policies",
+"cell": "R107",
+"label": "Business model and portfolio classification policy (Ind AS 109) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.102",
+"sheet": "Policies",
+"cell": "M108",
+"label": "Internal financial controls framework – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.102",
+"sheet": "Policies",
+"cell": "O108",
+"label": "Internal financial controls framework – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.102",
+"sheet": "Policies",
+"cell": "R108",
+"label": "Internal financial controls framework – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.103",
+"sheet": "Policies",
+"cell": "M109",
+"label": "Policy on acceptance of public deposits – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.103",
+"sheet": "Policies",
+"cell": "O109",
+"label": "Policy on acceptance of public deposits – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.103",
+"sheet": "Policies",
+"cell": "R109",
+"label": "Policy on acceptance of public deposits – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.104",
+"sheet": "Policies",
+"cell": "M110",
+"label": "Policy on payment of interest on deposits – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.104",
+"sheet": "Policies",
+"cell": "O110",
+"label": "Policy on payment of interest on deposits – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.104",
+"sheet": "Policies",
+"cell": "R110",
+"label": "Policy on payment of interest on deposits – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.105",
+"sheet": "Policies",
+"cell": "M111",
+"label": "Green deposits financing framework – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.105",
+"sheet": "Policies",
+"cell": "O111",
+"label": "Green deposits financing framework – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.105",
+"sheet": "Policies",
+"cell": "R111",
+"label": "Green deposits financing framework – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.106",
+"sheet": "Policies",
+"cell": "M112",
+"label": "Fair Practices Code for microfinance borrowers – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.106",
+"sheet": "Policies",
+"cell": "O112",
+"label": "Fair Practices Code for microfinance borrowers – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.106",
+"sheet": "Policies",
+"cell": "R112",
+"label": "Fair Practices Code for microfinance borrowers – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.107",
+"sheet": "Policies",
+"cell": "M113",
+"label": "Microfinance lending policy (household income, repayment cap, repayment flexibility) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.107",
+"sheet": "Policies",
+"cell": "O113",
+"label": "Microfinance lending policy (household income, repayment cap, repayment flexibility) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.107",
+"sheet": "Policies",
+"cell": "R113",
+"label": "Microfinance lending policy (household income, repayment cap, repayment flexibility) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.108",
+"sheet": "Policies",
+"cell": "M114",
+"label": "Pricing of microfinance loans policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.108",
+"sheet": "Policies",
+"cell": "O114",
+"label": "Pricing of microfinance loans policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.108",
+"sheet": "Policies",
+"cell": "R114",
+"label": "Pricing of microfinance loans policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.109",
+"sheet": "Policies",
+"cell": "M115",
+"label": "Policy on credit facilities to SHGs and their members – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.109",
+"sheet": "Policies",
+"cell": "O115",
+"label": "Policy on credit facilities to SHGs and their members – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.109",
+"sheet": "Policies",
+"cell": "R115",
+"label": "Policy on credit facilities to SHGs and their members – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.110",
+"sheet": "Policies",
+"cell": "M116",
+"label": "Policy on lending against gold and silver collateral – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.110",
+"sheet": "Policies",
+"cell": "O116",
+"label": "Policy on lending against gold and silver collateral – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.110",
+"sheet": "Policies",
+"cell": "R116",
+"label": "Policy on lending against gold and silver collateral – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.111",
+"sheet": "Policies",
+"cell": "M117",
+"label": "Gold and silver auction policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.111",
+"sheet": "Policies",
+"cell": "O117",
+"label": "Gold and silver auction policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.111",
+"sheet": "Policies",
+"cell": "R117",
+"label": "Gold and silver auction policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.112",
+"sheet": "Policies",
+"cell": "M118",
+"label": "Credit card issuance and conduct policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.112",
+"sheet": "Policies",
+"cell": "O118",
+"label": "Credit card issuance and conduct policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.112",
+"sheet": "Policies",
+"cell": "R118",
+"label": "Credit card issuance and conduct policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.113",
+"sheet": "Policies",
+"cell": "M119",
+"label": "Credit card co-branding arrangement policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.113",
+"sheet": "Policies",
+"cell": "O119",
+"label": "Credit card co-branding arrangement policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.113",
+"sheet": "Policies",
+"cell": "R119",
+"label": "Credit card co-branding arrangement policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.114",
+"sheet": "Policies",
+"cell": "M120",
+"label": "Credit card blocking, closure and insurance cover policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.114",
+"sheet": "Policies",
+"cell": "O120",
+"label": "Credit card blocking, closure and insurance cover policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.114",
+"sheet": "Policies",
+"cell": "R120",
+"label": "Credit card blocking, closure and insurance cover policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.115",
+"sheet": "Policies",
+"cell": "M121",
+"label": "Credit card grievance redressal policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.115",
+"sheet": "Policies",
+"cell": "O121",
+"label": "Credit card grievance redressal policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.115",
+"sheet": "Policies",
+"cell": "R121",
+"label": "Credit card grievance redressal policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.116",
+"sheet": "Policies",
+"cell": "M122",
+"label": "Credit card terms and conditions (MITC) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.116",
+"sheet": "Policies",
+"cell": "O122",
+"label": "Credit card terms and conditions (MITC) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.116",
+"sheet": "Policies",
+"cell": "R122",
+"label": "Credit card terms and conditions (MITC) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.117",
+"sheet": "Policies",
+"cell": "M123",
+"label": "Digital payment security controls policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.117",
+"sheet": "Policies",
+"cell": "O123",
+"label": "Digital payment security controls policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.117",
+"sheet": "Policies",
+"cell": "R123",
+"label": "Digital payment security controls policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.118",
+"sheet": "Policies",
+"cell": "M124",
+"label": "Account Aggregator customer grievance policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.118",
+"sheet": "Policies",
+"cell": "O124",
+"label": "Account Aggregator customer grievance policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.118",
+"sheet": "Policies",
+"cell": "R124",
+"label": "Account Aggregator customer grievance policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.119",
+"sheet": "Policies",
+"cell": "M125",
+"label": "Account Aggregator pricing of services policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.119",
+"sheet": "Policies",
+"cell": "O125",
+"label": "Account Aggregator pricing of services policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.119",
+"sheet": "Policies",
+"cell": "R125",
+"label": "Account Aggregator pricing of services policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.120",
+"sheet": "Policies",
+"cell": "M126",
+"label": "Account Aggregator fit and proper policy for directors – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.120",
+"sheet": "Policies",
+"cell": "O126",
+"label": "Account Aggregator fit and proper policy for directors – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.120",
+"sheet": "Policies",
+"cell": "R126",
+"label": "Account Aggregator fit and proper policy for directors – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.121",
+"sheet": "Policies",
+"cell": "M127",
+"label": "CIC ICAAP policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.121",
+"sheet": "Policies",
+"cell": "O127",
+"label": "CIC ICAAP policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.121",
+"sheet": "Policies",
+"cell": "R127",
+"label": "CIC ICAAP policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.122",
+"sheet": "Policies",
+"cell": "M128",
+"label": "Policy on demand / call loans – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.122",
+"sheet": "Policies",
+"cell": "O128",
+"label": "Policy on demand / call loans – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.122",
+"sheet": "Policies",
+"cell": "R128",
+"label": "Policy on demand / call loans – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.123",
+"sheet": "Policies",
+"cell": "M129",
+"label": "CIC fit and proper and KMP compensation policies – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.123",
+"sheet": "Policies",
+"cell": "O129",
+"label": "CIC fit and proper and KMP compensation policies – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.123",
+"sheet": "Policies",
+"cell": "R129",
+"label": "CIC fit and proper and KMP compensation policies – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.124",
+"sheet": "Policies",
+"cell": "M130",
+"label": "Securitisation policy (originator: risk management, servicing and valuation) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.124",
+"sheet": "Policies",
+"cell": "O130",
+"label": "Securitisation policy (originator: risk management, servicing and valuation) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.124",
+"sheet": "Policies",
+"cell": "R130",
+"label": "Securitisation policy (originator: risk management, servicing and valuation) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.125",
+"sheet": "Policies",
+"cell": "M131",
+"label": "Policy on securitisation exposures (investor) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.125",
+"sheet": "Policies",
+"cell": "O131",
+"label": "Policy on securitisation exposures (investor) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.125",
+"sheet": "Policies",
+"cell": "R131",
+"label": "Policy on securitisation exposures (investor) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.126",
+"sheet": "Policies",
+"cell": "M132",
+"label": "Loan transfer and acquisition policy (loans not in default) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.126",
+"sheet": "Policies",
+"cell": "O132",
+"label": "Loan transfer and acquisition policy (loans not in default) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.126",
+"sheet": "Policies",
+"cell": "R132",
+"label": "Loan transfer and acquisition policy (loans not in default) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.127",
+"sheet": "Policies",
+"cell": "M133",
+"label": "Stressed loan transfer and valuation policy (incl. transfers to ARCs) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.127",
+"sheet": "Policies",
+"cell": "O133",
+"label": "Stressed loan transfer and valuation policy (incl. transfers to ARCs) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.127",
+"sheet": "Policies",
+"cell": "R133",
+"label": "Stressed loan transfer and valuation policy (incl. transfers to ARCs) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.128",
+"sheet": "Policies",
+"cell": "M134",
+"label": "Co-lending policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.128",
+"sheet": "Policies",
+"cell": "O134",
+"label": "Co-lending policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.128",
+"sheet": "Policies",
+"cell": "R134",
+"label": "Co-lending policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.129",
+"sheet": "Policies",
+"cell": "M135",
+"label": "Factoring and receivables-finance policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.129",
+"sheet": "Policies",
+"cell": "O135",
+"label": "Factoring and receivables-finance policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.129",
+"sheet": "Policies",
+"cell": "R135",
+"label": "Factoring and receivables-finance policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.130",
+"sheet": "Policies",
+"cell": "M136",
+"label": "Policy on distribution of insurance and other third-party financial products – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.130",
+"sheet": "Policies",
+"cell": "O136",
+"label": "Policy on distribution of insurance and other third-party financial products – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.130",
+"sheet": "Policies",
+"cell": "R136",
+"label": "Policy on distribution of insurance and other third-party financial products – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.131",
+"sheet": "Policies",
+"cell": "M137",
+"label": "Forex services customer grievance policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.131",
+"sheet": "Policies",
+"cell": "O137",
+"label": "Forex services customer grievance policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.131",
+"sheet": "Policies",
+"cell": "R137",
+"label": "Forex services customer grievance policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.132",
+"sheet": "Policies",
+"cell": "M138",
+"label": "Housing finance lending policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.132",
+"sheet": "Policies",
+"cell": "O138",
+"label": "Housing finance lending policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.132",
+"sheet": "Policies",
+"cell": "R138",
+"label": "Housing finance lending policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.133",
+"sheet": "Policies",
+"cell": "M139",
+"label": "Prevention of sexual harassment (POSH) policy and Internal Committee – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.133",
+"sheet": "Policies",
+"cell": "O139",
+"label": "Prevention of sexual harassment (POSH) policy and Internal Committee – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.133",
+"sheet": "Policies",
+"cell": "R139",
+"label": "Prevention of sexual harassment (POSH) policy and Internal Committee – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.134",
+"sheet": "Policies",
+"cell": "M140",
+"label": "Employee conduct, recruitment, training and monitoring policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.134",
+"sheet": "Policies",
+"cell": "O140",
+"label": "Employee conduct, recruitment, training and monitoring policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.134",
+"sheet": "Policies",
+"cell": "R140",
+"label": "Employee conduct, recruitment, training and monitoring policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.135",
+"sheet": "Policies",
+"cell": "M141",
+"label": "Equal opportunity and non-discrimination policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.135",
+"sheet": "Policies",
+"cell": "O141",
+"label": "Equal opportunity and non-discrimination policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.135",
+"sheet": "Policies",
+"cell": "R141",
+"label": "Equal opportunity and non-discrimination policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.136",
+"sheet": "Policies",
+"cell": "M142",
+"label": "Leave, maternity and employee benefits policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.136",
+"sheet": "Policies",
+"cell": "O142",
+"label": "Leave, maternity and employee benefits policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.136",
+"sheet": "Policies",
+"cell": "R142",
+"label": "Leave, maternity and employee benefits policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.137",
+"sheet": "Policies",
+"cell": "M143",
+"label": "Employee grievance redressal policy and Grievance Redressal Committee – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.137",
+"sheet": "Policies",
+"cell": "O143",
+"label": "Employee grievance redressal policy and Grievance Redressal Committee – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.137",
+"sheet": "Policies",
+"cell": "R143",
+"label": "Employee grievance redressal policy and Grievance Redressal Committee – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.138",
+"sheet": "Policies",
+"cell": "M144",
+"label": "Standing orders – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.138",
+"sheet": "Policies",
+"cell": "O144",
+"label": "Standing orders – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.138",
+"sheet": "Policies",
+"cell": "R144",
+"label": "Standing orders – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.139",
+"sheet": "Policies",
+"cell": "M145",
+"label": "CSR policy and annual action plan – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.139",
+"sheet": "Policies",
+"cell": "O145",
+"label": "CSR policy and annual action plan – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.139",
+"sheet": "Policies",
+"cell": "R145",
+"label": "CSR policy and annual action plan – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.140",
+"sheet": "Policies",
+"cell": "M146",
+"label": "Code of ethics and conflict-of-interest / gifts policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.140",
+"sheet": "Policies",
+"cell": "O146",
+"label": "Code of ethics and conflict-of-interest / gifts policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.140",
+"sheet": "Policies",
+"cell": "R146",
+"label": "Code of ethics and conflict-of-interest / gifts policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.141",
+"sheet": "Policies",
+"cell": "M147",
+"label": "Anti-bribery and anti-corruption policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.141",
+"sheet": "Policies",
+"cell": "O147",
+"label": "Anti-bribery and anti-corruption policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.141",
+"sheet": "Policies",
+"cell": "R147",
+"label": "Anti-bribery and anti-corruption policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.142",
+"sheet": "Policies",
+"cell": "M148",
+"label": "HR policy manual aligned with the Labour Codes – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.142",
+"sheet": "Policies",
+"cell": "O148",
+"label": "HR policy manual aligned with the Labour Codes – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.142",
+"sheet": "Policies",
+"cell": "R148",
+"label": "HR policy manual aligned with the Labour Codes – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.143",
+"sheet": "Policies",
+"cell": "M149",
+"label": "Disciplinary, separation and termination policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.143",
+"sheet": "Policies",
+"cell": "O149",
+"label": "Disciplinary, separation and termination policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.143",
+"sheet": "Policies",
+"cell": "R149",
+"label": "Disciplinary, separation and termination policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.144",
+"sheet": "Policies",
+"cell": "M150",
+"label": "Workplace health and safety policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.144",
+"sheet": "Policies",
+"cell": "O150",
+"label": "Workplace health and safety policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.144",
+"sheet": "Policies",
+"cell": "R150",
+"label": "Workplace health and safety policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.145",
+"sheet": "Policies",
+"cell": "M151",
+"label": "Confidentiality and employee data protection policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.145",
+"sheet": "Policies",
+"cell": "O151",
+"label": "Confidentiality and employee data protection policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.145",
+"sheet": "Policies",
+"cell": "R151",
+"label": "Confidentiality and employee data protection policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.146",
+"sheet": "Policies",
+"cell": "M152",
+"label": "Social media and online conduct policy (employees) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.146",
+"sheet": "Policies",
+"cell": "O152",
+"label": "Social media and online conduct policy (employees) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.146",
+"sheet": "Policies",
+"cell": "R152",
+"label": "Social media and online conduct policy (employees) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.147",
+"sheet": "Policies",
+"cell": "M153",
+"label": "Environmental and social exclusion list policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.147",
+"sheet": "Policies",
+"cell": "O153",
+"label": "Environmental and social exclusion list policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.147",
+"sheet": "Policies",
+"cell": "R153",
+"label": "Environmental and social exclusion list policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.148",
+"sheet": "Policies",
+"cell": "M154",
+"label": "Policy for determining materiality of events or information – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.148",
+"sheet": "Policies",
+"cell": "O154",
+"label": "Policy for determining materiality of events or information – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.148",
+"sheet": "Policies",
+"cell": "R154",
+"label": "Policy for determining materiality of events or information – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.149",
+"sheet": "Policies",
+"cell": "M155",
+"label": "Policy on preservation and archival of documents – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.149",
+"sheet": "Policies",
+"cell": "O155",
+"label": "Policy on preservation and archival of documents – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.149",
+"sheet": "Policies",
+"cell": "R155",
+"label": "Policy on preservation and archival of documents – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.150",
+"sheet": "Policies",
+"cell": "M156",
+"label": "Policy for determining material subsidiaries – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.150",
+"sheet": "Policies",
+"cell": "O156",
+"label": "Policy for determining material subsidiaries – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.150",
+"sheet": "Policies",
+"cell": "R156",
+"label": "Policy for determining material subsidiaries – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.151",
+"sheet": "Policies",
+"cell": "M157",
+"label": "Board diversity policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.151",
+"sheet": "Policies",
+"cell": "O157",
+"label": "Board diversity policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.151",
+"sheet": "Policies",
+"cell": "R157",
+"label": "Board diversity policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.152",
+"sheet": "Policies",
+"cell": "M158",
+"label": "Familiarisation programme for independent directors – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.152",
+"sheet": "Policies",
+"cell": "O158",
+"label": "Familiarisation programme for independent directors – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.152",
+"sheet": "Policies",
+"cell": "R158",
+"label": "Familiarisation programme for independent directors – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.153",
+"sheet": "Policies",
+"cell": "M159",
+"label": "Succession planning policy for Board and senior management – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.153",
+"sheet": "Policies",
+"cell": "O159",
+"label": "Succession planning policy for Board and senior management – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.153",
+"sheet": "Policies",
+"cell": "R159",
+"label": "Succession planning policy for Board and senior management – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.154",
+"sheet": "Policies",
+"cell": "M160",
+"label": "Code of conduct for Board members and senior management – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.154",
+"sheet": "Policies",
+"cell": "O160",
+"label": "Code of conduct for Board members and senior management – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.154",
+"sheet": "Policies",
+"cell": "R160",
+"label": "Code of conduct for Board members and senior management – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.155",
+"sheet": "Policies",
+"cell": "M161",
+"label": "Dividend distribution policy – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.155",
+"sheet": "Policies",
+"cell": "O161",
+"label": "Dividend distribution policy – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.155",
+"sheet": "Policies",
+"cell": "R161",
+"label": "Dividend distribution policy – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.156",
+"sheet": "Policies",
+"cell": "M162",
+"label": "Code of conduct to regulate, monitor and report trading by designated persons – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.156",
+"sheet": "Policies",
+"cell": "O162",
+"label": "Code of conduct to regulate, monitor and report trading by designated persons – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.156",
+"sheet": "Policies",
+"cell": "R162",
+"label": "Code of conduct to regulate, monitor and report trading by designated persons – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.157",
+"sheet": "Policies",
+"cell": "M163",
+"label": "Code of practices and procedures for fair disclosure of UPSI – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.157",
+"sheet": "Policies",
+"cell": "O163",
+"label": "Code of practices and procedures for fair disclosure of UPSI – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.157",
+"sheet": "Policies",
+"cell": "R163",
+"label": "Code of practices and procedures for fair disclosure of UPSI – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.158",
+"sheet": "Policies",
+"cell": "M164",
+"label": "Investor grievance redressal policy (Stakeholders Relationship Committee) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.158",
+"sheet": "Policies",
+"cell": "O164",
+"label": "Investor grievance redressal policy (Stakeholders Relationship Committee) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.158",
+"sheet": "Policies",
+"cell": "R164",
+"label": "Investor grievance redressal policy (Stakeholders Relationship Committee) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.159",
+"sheet": "Policies",
+"cell": "M165",
+"label": "Business responsibility and sustainability policies (NGRBC) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.159",
+"sheet": "Policies",
+"cell": "O165",
+"label": "Business responsibility and sustainability policies (NGRBC) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.159",
+"sheet": "Policies",
+"cell": "R165",
+"label": "Business responsibility and sustainability policies (NGRBC) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.160",
+"sheet": "Policies",
+"cell": "M166",
+"label": "Debt-listing compliance policy (listed NCDs / CPs) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.160",
+"sheet": "Policies",
+"cell": "O166",
+"label": "Debt-listing compliance policy (listed NCDs / CPs) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.160",
+"sheet": "Policies",
+"cell": "R166",
+"label": "Debt-listing compliance policy (listed NCDs / CPs) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.161",
+"sheet": "Policies",
+"cell": "M167",
+"label": "FEMA compliance policy (foreign investment, downstream investment and external borrowings) – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.161",
+"sheet": "Policies",
+"cell": "O167",
+"label": "FEMA compliance policy (foreign investment, downstream investment and external borrowings) – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.161",
+"sheet": "Policies",
+"cell": "R167",
+"label": "FEMA compliance policy (foreign investment, downstream investment and external borrowings) – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.162",
+"sheet": "Policies",
+"cell": "M168",
+"label": "Procedure for handling RBI advisories and supervisory instructions – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.162",
+"sheet": "Policies",
+"cell": "O168",
+"label": "Procedure for handling RBI advisories and supervisory instructions – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.162",
+"sheet": "Policies",
+"cell": "R168",
+"label": "Procedure for handling RBI advisories and supervisory instructions – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.163",
+"sheet": "Policies",
+"cell": "M169",
+"label": "Security policy for API-based fund transfer arrangements – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.163",
+"sheet": "Policies",
+"cell": "O169",
+"label": "Security policy for API-based fund transfer arrangements – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.163",
+"sheet": "Policies",
+"cell": "R169",
+"label": "Security policy for API-based fund transfer arrangements – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "policy.override.164",
+"sheet": "Policies",
+"cell": "M170",
+"label": "Compliance risk assessment and compliance testing programme – override",
+"source": "Company decision with reason recorded",
+"default": null
+},
+{
+"key": "policy.inplace.164",
+"sheet": "Policies",
+"cell": "O170",
+"label": "Compliance risk assessment and compliance testing programme – in place",
+"source": "Policy register of the company; Board minutes",
+"default": null
+},
+{
+"key": "policy.remarks.164",
+"sheet": "Policies",
+"cell": "R170",
+"label": "Compliance risk assessment and compliance testing programme – remarks",
+"source": "Company",
+"default": null
+},
+{
+"key": "committee.inplace.1",
+"sheet": "Committees and Roles",
+"cell": "E7",
+"label": "Board of Directors (with banking/NBFC experience) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.2",
+"sheet": "Committees and Roles",
+"cell": "E8",
+"label": "Audit Committee of the Board (ACB) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.3",
+"sheet": "Committees and Roles",
+"cell": "E9",
+"label": "Nomination and Remuneration Committee (NRC) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.4",
+"sheet": "Committees and Roles",
+"cell": "E10",
+"label": "Risk Management Committee (RMC) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.5",
+"sheet": "Committees and Roles",
+"cell": "E11",
+"label": "IT Strategy Committee (ITSC) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.6",
+"sheet": "Committees and Roles",
+"cell": "E12",
+"label": "IT Steering Committee – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.7",
+"sheet": "Committees and Roles",
+"cell": "E13",
+"label": "Information Security Committee (ISC) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.8",
+"sheet": "Committees and Roles",
+"cell": "E14",
+"label": "Chief Information Security Officer (CISO) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.9",
+"sheet": "Committees and Roles",
+"cell": "E15",
+"label": "Head of IT / CIO – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.10",
+"sheet": "Committees and Roles",
+"cell": "E16",
+"label": "Asset Liability Management Committee (ALCO) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.11",
+"sheet": "Committees and Roles",
+"cell": "E17",
+"label": "Customer Service / Consumer Protection Committee – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.12",
+"sheet": "Committees and Roles",
+"cell": "E18",
+"label": "Internal Ombudsman and Deputy Internal Ombudsman – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.13",
+"sheet": "Committees and Roles",
+"cell": "E19",
+"label": "Chief Compliance Officer (CCO) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.14",
+"sheet": "Committees and Roles",
+"cell": "E20",
+"label": "Compliance officer (Base Layer) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.15",
+"sheet": "Committees and Roles",
+"cell": "E21",
+"label": "Chief Risk Officer (CRO) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.16",
+"sheet": "Committees and Roles",
+"cell": "E22",
+"label": "Head of Internal Audit – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.17",
+"sheet": "Committees and Roles",
+"cell": "E23",
+"label": "Grievance Redressal Officer / nodal grievance officer (digital lending) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.18",
+"sheet": "Committees and Roles",
+"cell": "E24",
+"label": "Principal Nodal Officer (RB-IOS) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.19",
+"sheet": "Committees and Roles",
+"cell": "E25",
+"label": "Designated Director (PMLA) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.20",
+"sheet": "Committees and Roles",
+"cell": "E26",
+"label": "Principal Officer (PMLA) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.21",
+"sheet": "Committees and Roles",
+"cell": "E27",
+"label": "Nodal officer for credit information companies – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.22",
+"sheet": "Committees and Roles",
+"cell": "E28",
+"label": "Special Committee of the Board for Monitoring and Follow-up of Frauds (SCBMF) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.23",
+"sheet": "Committees and Roles",
+"cell": "E29",
+"label": "Wilful Defaulter Identification and Review Committees – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.24",
+"sheet": "Committees and Roles",
+"cell": "E30",
+"label": "Compromise settlement / write-off approving authority – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.25",
+"sheet": "Committees and Roles",
+"cell": "E31",
+"label": "Committee on lending to related parties – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.26",
+"sheet": "Committees and Roles",
+"cell": "E32",
+"label": "Internal Committee (POSH) – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.27",
+"sheet": "Committees and Roles",
+"cell": "E33",
+"label": "CSR Committee – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.28",
+"sheet": "Committees and Roles",
+"cell": "E34",
+"label": "Stakeholders Relationship Committee – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.29",
+"sheet": "Committees and Roles",
+"cell": "E35",
+"label": "Independent directors – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "committee.inplace.30",
+"sheet": "Committees and Roles",
+"cell": "E36",
+"label": "Data protection grievance contact / DPO – in place",
+"source": "Board minutes; organisation chart",
+"default": null
+},
+{
+"key": "return.ontime.1",
+"sheet": "Returns",
+"cell": "F7",
+"label": "DNBS01 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.2",
+"sheet": "Returns",
+"cell": "F8",
+"label": "DNBS02 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.3",
+"sheet": "Returns",
+"cell": "F9",
+"label": "DNBS03 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.4",
+"sheet": "Returns",
+"cell": "F10",
+"label": "DNBS04A – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.5",
+"sheet": "Returns",
+"cell": "F11",
+"label": "DNBS04B – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.6",
+"sheet": "Returns",
+"cell": "F12",
+"label": "DNBS08 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.7",
+"sheet": "Returns",
+"cell": "F13",
+"label": "DNBS09 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.8",
+"sheet": "Returns",
+"cell": "F14",
+"label": "DNBS10 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.9",
+"sheet": "Returns",
+"cell": "F15",
+"label": "DNBS11 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.10",
+"sheet": "Returns",
+"cell": "F16",
+"label": "DNBS12 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.11",
+"sheet": "Returns",
+"cell": "F17",
+"label": "DNBS13 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.12",
+"sheet": "Returns",
+"cell": "F18",
+"label": "DNBS14 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.13",
+"sheet": "Returns",
+"cell": "F19",
+"label": "FMR – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.14",
+"sheet": "Returns",
+"cell": "F20",
+"label": "FMR-4 – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.15",
+"sheet": "Returns",
+"cell": "F21",
+"label": "Form A – filed on time",
+"source": "Return filing log",
+"default": null
+},
+{
+"key": "return.ontime.16",
+"sheet": "Returns",
+"cell": "F22",
+"label": "DLA list – filed on time",
+"source": "Return filing log",
+"default": null
+}
+]
