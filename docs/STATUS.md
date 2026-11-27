@@ -1,14 +1,14 @@
 # STATUS — infrabyx-platform
 
-Updated: 2026-11-26 (night, thirty-fourth session handover)
+Updated: 2026-11-27 (thirty-fifth session handover)
 
-| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                                                                                                                                                                                                                                                                 |
-| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Packages              | Published to GitHub Packages (release run 378, `9c3311d`, 26 Nov 2026; before it run 376, `147c091`, 25 Nov, and runs 371, 369 and 367 on 24 Nov): **1.53.0** contracts; **1.30.1** tenancy; **1.13.3** audit; **1.35.0** connectors; **1.35.0** testing; **1.24.7** config; **1.10.10** export; **1.5.19** workflow; **1.6.21** rules; **1.6.16** notify; **1.3.24** ui; **1.2.27** brand; **1.15.5** crypto; **1.3.34** consent; **1.1.64** cms; **1.2.19** ai; **1.1.32** a11y; **1.0.66** feedback, seed, trust, vidhi; **1.12.1** fakes; **1.1.0** hlp. Built but not released: none (#413 is scaffold only). Not built: none of the owner's 25 Nov order except the Keycloak move (7-day rule, from 26 Nov 13:12 IST) |
-| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| Item                  | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current phase         | **Maintenance mode** (owner, 28 Oct 2026; R1-D-04; CLAUDE.md "Working mode — maintenance"): only platform requests raised by the product repositories (their `docs/platform-requests.md`) and security updates, each a normal PR merged when green; minor and patch releases merged when green (#81(a)), majors wait for the owner. Nothing else is planned                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Spec of record        | `docs/ipb/` (IPB v1.0 + IPB-14 runbook), `docs/ecosystem/` (Spec v1.2)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Packages              | Published to GitHub Packages (release run 388, `a0ecf1b`, 27 Nov 2026; before it run 382, `23896e7`, 27 Nov, run 378, `9c3311d`, 26 Nov, run 376, `147c091`, 25 Nov, and runs 371, 369 and 367 on 24 Nov): **1.54.0** contracts; **1.30.2** tenancy; **1.13.4** audit; **1.37.0** connectors; **1.36.0** testing; **1.24.8** config; **1.10.11** export; **1.5.20** workflow; **1.6.23** rules; **1.7.0** notify; **1.3.25** ui; **1.2.28** brand; **1.15.6** crypto; **1.3.36** consent; **1.1.65** cms; **1.2.20** ai; **1.1.33** a11y; **1.0.67** feedback; **1.0.67** seed; **1.0.67** trust; **1.0.68** vidhi; **1.12.2** fakes; **1.1.0** hlp. Built but not released: none. Not built: PR-FBX-57, regcalc and the templates items (plans approved); the Keycloak move is parked (#215) |
+| Last exit gate passed | PL6 gate and the platform exit gate (IPB-14 §14.5), 2026-10-28: report `docs/phases/PL6-gate.md`; 1.0.0 published by release run 92 (BOM signed keyless, Rekor 3535355788; 22 packages attested). Before it: PL5 gate (`docs/phases/PL5-gate.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Working branch        | one `claude/<slug>` branch per PR, cut from `main` and pushed normally; never force-push (owner, 28 Oct 2026)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ## Waived image findings products carry (10 Nov; PR-FBX-45)
 
@@ -54,6 +54,65 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 ## Platform backlog (owner-approved, not scheduled)
 
 - **Keycloak group walk in `requireMfaEnrolment` (owner answer #138 (4); R1-D-185):** before any tenant grants a product MFA floor role through a Keycloak group, the sweep must also walk the realm's groups (and their sub-groups) and treat their members as holders. Until it is built the platform assigns realm roles directly and guide §7bt tells products not to grant a floor role through a group. Raise it when a product asks for group grants.
+
+## Thirty-fifth session (27 Nov 12:21 IST to the evening, owner chat) — handover
+
+- **Lock:** SESSION LOCK #262 was FREE at 12:21 IST and taken; heartbeats at every push.
+  - Two heartbeats (13:27 and 13:24) were written before the clock was read, and corrected within the minute to 13:09 and 13:21.
+  - The worker restarted once and the usage limit paused the session, so the heartbeat reached 92 minutes. The lock was read again at 14:53 IST (still this session's, nobody else had taken it) and renewed from the clock.
+  - The lock is set FREE at this handover.
+- **Checks at session start:** no fixed Keycloak (newest release still `26.8.2-3`, 19 Nov; only `nightly` since); no Node.js 24 release after 24.22.3 (10 Nov).
+- **Owner's orders of 27 Nov (07:45, 15:45 and 16:10 IST; R1-D-295, R1-D-301, R1-D-302), done in his order:**
+  - **0. LDC-68 (zstd, CVE-2026-124851), #416 (R1-D-294).**
+    - R1-D-291's reasoning is corrected: Node.js 24.22.1 bundles zstd 1.5.7, which body-parser and `fetch` decode with.
+    - `@infrabyx/connectors/content-coding`: `refuseZstdBodies` (415 `IPB-SEC-010` before any body parser) and `refuseZstdFetch`. The reference API registers it first; `createEgress`, OpenFGA, Cerbos, consent, Vidhi and the reference web app never offer zstd.
+    - The waiver ends **2026-12-07**.
+    - **Released in run 382** (`23896e7`, version PR #421): connectors **1.36.0**, consent 1.3.35, vidhi 1.0.67, rules 1.6.22. 36 of 36 jobs green: the contract matrix, the BOM signed keyless, the attestations, the registry checksums.
+    - #209's defaults were accepted (R1-D-301). The owner tells FinbyxCl, UdofinCl and ComplyCl to adopt it.
+  - **B.2 PR-UDF-088, #417 (R1-D-296):** NOTIFY refuses, never cuts, an SMS value over 30 characters or more than 10 variables (`IPB-NTF-008`). Refused at the request, in previews and at delivery; `SMS_VAR_MAX_LENGTH` and `SMS_MAX_VARS` exported.
+  - **C.1, #418 (R1-D-297):** the owner's 492 templates and 160 model files merged as specifications with a merge commit, so `388f586` stays as filed.
+    - Hash-checked: `scripts/regulatory-sums.test.mjs` re-checks both `SHA256SUMS` in CI.
+    - Excluded from prettier and markdownlint. The 236 gitleaks false positives are allowed by exact fingerprint only.
+    - **Main's red CI (run 1161):** push-mode gitleaks scans the owner branch too. It was fixed by merging #418 first, after a local push-mode scan of the merge (457 commits, no leaks); `main` run 1163 was green.
+  - **LDC-67, #420 (R1-D-298):** `startPostgres` copies a template migrated once per server and migration set: 3.4 s down to 0.47 s per database.
+  - **LDC-65, #422 (R1-D-299):** `LocalFileSecrets` (`local-file`), local and test only, refused elsewhere twice.
+  - **Plans, #419 (owner approved, R1-D-301):**
+    - `docs/phases/R1-regcalc-plan.md` (LDC-66 + PR-FBX-58), answers in §4a, including the Annex APR figures;
+    - `docs/phases/regulatory-templates-platform-plan.md`, answers in §5a;
+    - `docs/phases/R1-fbx-57-plan.md`, approved 16:10 IST with `scan` optional in 1.x and required only in 2.0.0 (R1-D-302).
+  - **The second release (#417, #420, #422): run 388** (`a0ecf1b`, version PR #423): contracts **1.54.0**, notify **1.7.0**, testing **1.36.0**, connectors **1.37.0** (minors), config 1.24.8, and patches of every other package but `hlp`. 36 of 36 jobs green: the contract matrix, the BOM signed keyless, the attestations, the registry checksums.
+- **Parked, not done:**
+  - **The Keycloak `26.8.2-3` move** (#215, R1-D-300). The customer-otp base must equal the test image, and the new OpenJDK build falls outside the owner's purl-scoped CRITICAL waiver. The owner confirmed: stay on `26.8.2-0` until a fixed build.
+  - **PR-FBX-57:** planned and approved; built next session.
+- **Owner tasks:**
+  - Delete `owner/regulatory-templates-and-models`. This session's git access is refused (HTTP 403) for branches outside `claude/*`; its commit is in `main`, so nothing depends on it.
+  - Unchanged: CCA's out-of-band thumbprint confirmation; deleting `owner/cca-india-roots` and `claude/cca-india-roots`; PR-049 and PR-050 into `docs/ipb`.
+- **Products adopt** by moving every `@infrabyx/*` pin together:
+  - §7fb: `refuseZstdBodies` first in each API, `refuseZstdFetch` on injected fetches; keep the zstd waiver to 2026-12-07.
+  - §7fc: SMS values over 30 characters must be split across DLT variables.
+  - §7fd: template databases, nothing to change.
+  - §7fe: `LocalFileSecrets` in local and test seed adapters.
+- **Open owner questions:** #210, #213 and #214 (defaults taken, nothing blocked), and the older #184 to #167.
+- **Next, in order:**
+  1. **PR-FBX-57** on its approved plan (R1-D-302).
+  2. **regcalc** in its §5 order: ADR-0015 and the skeleton with the oracle harness, then `schedule` and `apr`, `dlg` and `ltv`, `ews` and `applicability`. Publish 1.0.0 once the exit is met.
+  3. **Templates** (b) ODS/ODT, then (c) DOCGEN, (a), (d), (e), (f), each its own PR and minor.
+  4. **The waiver check** in the first chat on or after 28 Nov (1 Dec latest).
+     - Ask the owner on 5 Dec if no fixed Node.js or base image exists for CVE-2026-124851, whose waiver ends 7 Dec.
+     - OWNER-WAIVER-CRIT-01 goes to the OWNER INBOX on 12 Dec if no fixed Keycloak exists.
+- **Slips, repaired:**
+  - Two heartbeats written ahead of the clock.
+  - One `gh api` call that should have been the GitHub tools.
+  - A merge commit and a plans commit that failed prettier or commitlint in the hooks and had to be redone.
+  - #418's hash test first imported `node:crypto` (IPB-12-05).
+  - #419 first lacked the original decision IDs on answered questions (`ipb-check`).
+- **Environment notes:**
+  - Node 24.22.1 from nodejs.org with its checksum, in `/opt`.
+  - PostgreSQL 16 with pgvector from apt on port 55440 (`/var/tmp/ipbpg`).
+  - gitleaks 8.30.1 with the CI checksum in the scratchpad.
+  - PR CI runs only on the `ci:run` label event: after a push, remove `ci:run` and add it back.
+
+HANDOVER READY
 
 ## Thirty-fourth session (25 Nov 22:28 IST to 26 Nov about 01:00 IST, owner chat) — handover
 
