@@ -1,6 +1,6 @@
 # R1 — PR-FBX-57: connectors scan what they write before it is `ready`
 
-**Status: plan, written 27 Nov 2026 (thirty-fifth session); built in the next session.** Finbyx PR-FBX-57, accepted by the owner (27 Nov 2026 07:45 IST, B.1; R1-D-295). No owner stop is needed: it applies the existing IPB-02-44 rules (`IPB-SEC-011`, `IPB-SEC-015`) to files the connectors write themselves.
+**Status: approved by the owner, 27 Nov 2026 16:10 IST, with one change to Design 3 (R1-D-302); built in the next session.** Finbyx PR-FBX-57, accepted by the owner (27 Nov 2026 07:45 IST, B.1; R1-D-295). No owner stop is needed: it applies the existing IPB-02-44 rules (`IPB-SEC-011`, `IPB-SEC-015`) to files the connectors write themselves.
 
 ## Today
 
@@ -20,7 +20,11 @@
    4. `INFECTED`: refuse `IPB-SEC-011` (reason `infected`), leave the quarantined object for the AV owner, nothing `ready`;
    5. `ERROR` or an outage: refuse `IPB-SEC-015` (reason `not_clean`), nothing `ready`; the pull or fetch can be retried and scans again.
 2. **The ref carries the scan:** `BureauFileRef` and `FiPayload` gain `scan: ScanProof` (verdict, file, engine, scanned at), so `assertScannedClean(ref.scan, ref.sha256, port)` verifies it anywhere. `contracts` minor (an added field; whole-object assertions gain `scan`).
-3. **Adapters take `scan: FileScanPort`** (required). An adapter built without one refuses at construction (`IPB-PORT-001`, `scan_required`), so no product can forget it.
+3. **Adapters take `scan?: FileScanPort`, optional in 1.x** (owner, 27 Nov 2026 16:10 IST; R1-D-302). A required argument would break every product that builds these adapters today, so:
+   - without `scan`, construction does not fail, but every write refuses `IPB-SEC-015` (reason `scan_required`) and nothing becomes `ready`: fail closed at run time, in every environment;
+   - outside local and test, the adapter logs one warning at start-up naming itself and the missing FILE_SCAN port, so a product notices before the first pull;
+   - the changeset says plainly that a product must pass its FILE_SCAN adapter to the bureau and account aggregator adapters, or their pulls refuse;
+   - `scan` becomes required at construction in **2.0.0**, a major that needs the owner's approval.
 4. **Fakes:** `FakeBureau` and the AA fake attach a CLEAN scan from the in-memory scanner; `fakes` patch.
 
 ## Contract cases (`testing`, `@IPB-02-AT-16` style)
