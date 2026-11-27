@@ -21,6 +21,9 @@
 // The pull id is ours and is sent as the member reference, so the CIC's event names it. The raw
 // report goes to STORAGE as received with its SHA-256; the result carries only the normalised
 // summary, never a PAN. An event is never trusted: the pull is read back from CIBIL.
+// PR-FBX-57 (R1-D-304): the raw report is quarantined, scanned through FILE_SCAN (`scan`) and
+// promoted to REGULATED only when CLEAN; the ref carries the scan. Without `scan` no report is
+// stored and a completed pull refuses `IPB-SEC-015` (`scan_required`).
 import { PortError } from "@infrabyx/contracts/errors";
 import {
   BureauPullRequest,
@@ -33,13 +36,16 @@ import {
   type CreditBureauPort,
   type DpdBucket,
   type EnquiryType,
+  type FileScanPort,
   type PortCall,
   type PortHealth,
   type StoragePort,
   type Tradeline,
 } from "@infrabyx/contracts/ports";
-import { newId, sha256Hex } from "@infrabyx/crypto";
+import { newId } from "@infrabyx/crypto";
+import type { AppEnv } from "@infrabyx/contracts/env";
 import { createEgress } from "../core/http.js";
+import { warnWithoutScanner, writeScanned } from "../core/scanned.js";
 import { vendorError } from "../messaging/common.js";
 
 const PORT = "BUREAU";
@@ -59,6 +65,15 @@ export interface CibilPullRecord {
 
 export interface CibilBureauOptions {
   storage: StoragePort;
+  /**
+   * FILE_SCAN (PR-FBX-57, R1-D-302): every report is scanned before it is `ready`. Optional in 1.x;
+   * without it every completed pull refuses `IPB-SEC-015` (`scan_required`); required in 2.0.0.
+   */
+  scan?: FileScanPort;
+  /** `APP_ENV`: outside `local` and `test`, a missing `scan` is warned about at construction. */
+  appEnv?: AppEnv;
+  /** Where that warning goes (default `process.emitWarning`). */
+  warn?: (message: string) => void;
   /** The product's pull records (a table in its bureau schema); keyed by our pull id. */
   pulls: {
     get(pullId: string): Promise<CibilPullRecord | undefined>;
@@ -236,6 +251,7 @@ export class CibilBureau implements CreditBureauPort {
   constructor(private readonly o: CibilBureauOptions) {
     this.base = (o.baseUrl ?? `https://${HOST}`).replace(/\/$/, "");
     this.now = o.now ?? (() => new Date());
+    warnWithoutScanner({ port: PORT, adapter: ADAPTER, ...o });
     this.egress = createEgress({
       port: PORT,
       adapter: ADAPTER,
@@ -288,15 +304,18 @@ export class CibilBureau implements CreditBureauPort {
     if (PAN_LIKE.test(JSON.stringify(summary)))
       throw vendorError(PORT, ADAPTER, 502, "the summary carried a PAN-like value");
     const body = new TextEncoder().encode(JSON.stringify(a.report));
-    const sha256 = sha256Hex(body);
-    // The key is the pull's ULID (IPB-01-27), so a re-read writes the same object.
-    const storageKey = `${rec.reportPrefix}${pullId.slice(4)}.json`;
-    await this.o.storage.put(storageKey, body, {
-      bucketClass: "REGULATED",
-      contentType: "application/json",
-      sha256,
-    });
-    return { ...base, state: "ready", report: { storageKey, sha256 }, summary };
+    // The key is the pull's ULID (IPB-01-27), so a re-read writes the same object; it is written
+    // only once the report scans CLEAN (PR-FBX-57).
+    const report = await writeScanned(
+      { port: PORT, adapter: ADAPTER, storage: this.o.storage, scan: this.o.scan },
+      {
+        key: `${rec.reportPrefix}${pullId.slice(4)}.json`,
+        bytes: body,
+        contentType: "application/json",
+        bucketClass: "REGULATED",
+      },
+    );
+    return { ...base, state: "ready", report, summary };
   }
 
   async pull(

@@ -50,10 +50,13 @@ import {
   type FiType,
   type PortCall,
   type PortHealth,
+  type FileScanPort,
   type StoragePort,
 } from "@infrabyx/contracts/ports";
-import { sha256Hex, ulid } from "@infrabyx/crypto";
+import type { AppEnv } from "@infrabyx/contracts/env";
+import { ulid } from "@infrabyx/crypto";
 import { createEgress } from "../core/http.js";
+import { warnWithoutScanner, writeScanned } from "../core/scanned.js";
 import { vendorError } from "../messaging/common.js";
 
 const PORT = "AA_FIU";
@@ -73,6 +76,16 @@ export interface SetuConsentRecord {
 
 export interface SetuAccountAggregatorOptions {
   storage: StoragePort;
+  /**
+   * FILE_SCAN (PR-FBX-57, R1-D-302): every FI payload is scanned before it is returned. Optional in
+   * 1.x; without it every fetch that has a payload refuses `IPB-SEC-015` (`scan_required`);
+   * required in 2.0.0.
+   */
+  scan?: FileScanPort;
+  /** `APP_ENV`: outside `local` and `test`, a missing `scan` is warned about at construction. */
+  appEnv?: AppEnv;
+  /** Where that warning goes (default `process.emitWarning`). */
+  warn?: (message: string) => void;
   /** The product's consent records (a table in its AA schema); keyed by Setu's consent id. */
   consents: {
     get(consentId: string): Promise<SetuConsentRecord | undefined>;
@@ -233,6 +246,7 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
     this.base = (o.baseUrl ?? `https://${o.sandbox ? HOSTS[1] : HOSTS[0]}`).replace(/\/$/, "");
     this.approvalHosts = o.approvalHosts ?? HOSTS;
     this.now = o.now ?? (() => new Date());
+    warnWithoutScanner({ port: PORT, adapter: ADAPTER, ...o });
     this.egress = createEgress({
       port: PORT,
       adapter: ADAPTER,
@@ -428,19 +442,23 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
         if (typeof version !== "string" || !/^\d+\.\d+(\.\d+)?$/.test(version))
           throw vendorError(PORT, ADAPTER, 502, "FI payload without its ReBIT schema version");
         const body = new TextEncoder().encode(JSON.stringify(a.data));
-        const sha256 = sha256Hex(body);
-        const storageKey = `${r.dataPrefix}${ulid()}.json`;
-        await this.o.storage.put(storageKey, body, {
-          bucketClass: "REGULATED",
-          contentType: "application/json",
-          sha256,
-        });
+        // Quarantined, scanned and promoted only when CLEAN (PR-FBX-57); one refusal fails the fetch.
+        const file = await writeScanned(
+          { port: PORT, adapter: ADAPTER, storage: this.o.storage, scan: this.o.scan },
+          {
+            key: `${r.dataPrefix}${ulid()}.json`,
+            bytes: body,
+            contentType: "application/json",
+            bucketClass: "REGULATED",
+          },
+        );
         payloads.push({
           fiType,
           maskedAccount: maskAccount(a.maskedAccNumber),
-          storageKey,
-          sha256,
+          storageKey: file.storageKey,
+          sha256: file.sha256,
           schemaVersion: version,
+          scan: file.scan,
         });
       }
     return { ...this.ev(sessionId), sessionId, consentId: c.consentId, state: s.state, payloads };

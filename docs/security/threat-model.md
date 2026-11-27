@@ -1762,6 +1762,17 @@ A new SECRETS adapter whose store is a file on a developer's machine or a test r
 - **T/D (two writers):** writes take a lock file and replace the file whole by rename, so a seed run and a service never interleave or leave a half-written store (tested with concurrent writers). A stale lock is taken over after 30 s.
 - **R:** every operation, reads included, is in the store's audit list (the last 10,000).
 
+### 3.196 Files a connector writes itself (`writeScanned`; BUREAU `cibil`, AA_FIU `setu-aa`; PR-FBX-57, R1-D-304)
+
+A credit bureau's report and an account aggregator's FI payloads are vendor bytes the platform stores and products later parse: untrusted input like an upload (IPB-02-44).
+
+- **T/E (malware or a parser exploit through a vendor's answer):** each file is written to QUARANTINE, scanned through FILE_SCAN, and promoted to REGULATED only when CLEAN. EICAR in the answer is refused `IPB-SEC-011` with nothing at the clean key and nothing `ready` (contract case, both legs). A reader checks `assertScannedClean(ref.scan, ref.sha256)` before parsing (guide §7ff).
+- **D/T (the scanner down or wrong):** `ERROR`, a scanner that throws, or a scan of other bytes is `IPB-SEC-015`; nothing is promoted, and a retry scans again (contract case). The promoted bytes are the ones read back from quarantine, checked against the scanned hash.
+- **E (an adapter built without a scanner):** in 1.x `scan` is optional, but every write then refuses `scan_required` and stores nothing, in every environment (tested), and the constructor warns outside local and test. Required in 2.0.0.
+- **I:** the quarantined copy stays under the same named key reference as the clean one (R1-D-240); it is kept after promotion (#216). The refusal names the quarantine key, never the content; the scan record holds the verdict, engine, time and hash only.
+- **R:** the clean object carries its scan as tags, and the ref carries the scan record.
+- **The Connector Agent** stores no file today (JSON bodies only); a test fails if a STORAGE write appears in the accounting connector without `writeScanned`.
+
 ### 3.197 The regulated calculations package (`@infrabyx/regcalc`; LDC-66, PR-FBX-58, R1-D-305)
 
 A pure package: no I/O, no clock, no randomness, no settings, no logging, and no `@infrabyx/*` runtime dependency (a test enforces it). It has no data flow of its own; products pass loan terms and receive figures.

@@ -7,7 +7,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { newId, sha256Hex } from "@infrabyx/crypto";
 import {
   contractConsentArtefact,
+  bureauScannedWriteContractCases,
   creditBureauContractCases,
+  FakeFileScan,
   CREDIT_BUREAU_FAKE_FIXTURES,
   malformedConsentArtefacts,
   defineContractSuite,
@@ -27,6 +29,8 @@ import {
 
 let stub: CibilStub;
 const storage = new MemoryStorage();
+// PR-FBX-57: every report is quarantined and scanned before it is ready.
+const av = new FakeFileScan(storage);
 let enabled = true;
 const PREFIX = "tenant/tnt_bureau/los/";
 
@@ -39,6 +43,8 @@ const make = () => {
   const pulls = new Map<string, CibilPullRecord>();
   return new CibilBureau({
     storage,
+    scan: av,
+    appEnv: "test",
     pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
     enabled: () => enabled,
     memberId: () => stub.memberId,
@@ -70,6 +76,77 @@ describe("@IPB-01-15 BUREAU hermetic leg (CIBIL stub)", () => {
     },
   };
   defineContractSuite("BUREAU", make, creditBureauContractCases(fixtures), { leg: "hermetic" });
+});
+
+describe("@IPB-02-AT-16 BUREAU scanned writes (CIBIL stub; PR-FBX-57)", () => {
+  defineContractSuite(
+    "BUREAU",
+    make,
+    bureauScannedWriteContractCases({
+      storage,
+      prefix: PREFIX,
+      vendorRemarks: (t) => stub.reportRemarks(t),
+      scannerMode: (m) => (av.mode = m),
+      pull: (p) => p.pull(req(stub.subjects.known.pan, stub.subjects.known.name)),
+    }),
+    { leg: "hermetic" },
+  );
+
+  it("without FILE_SCAN a completed pull refuses scan_required and stores nothing; a pending one still answers", async () => {
+    const warnings: string[] = [];
+    const pulls = new Map<string, CibilPullRecord>();
+    const p = new CibilBureau({
+      storage,
+      appEnv: "prod",
+      warn: (m) => warnings.push(m),
+      pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
+      enabled: () => enabled,
+      memberId: () => stub.memberId,
+      apiKey: () => stub.apiKey,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+    // One start-up warning outside local and test, naming the adapter and the missing port.
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("BUREAU adapter cibil");
+    expect(warnings[0]).toContain("FILE_SCAN");
+    const before = (await storage.list(PREFIX)).keys.length;
+    await expect(
+      p.pull(req(stub.subjects.known.pan, stub.subjects.known.name)),
+    ).rejects.toMatchObject({ code: "IPB-SEC-015", meta: { reason: "scan_required" } });
+    expect((await storage.list(PREFIX)).keys.length).toBe(before);
+    expect((await p.pull(req(stub.subjects.pending.pan, stub.subjects.pending.name))).state).toBe(
+      "pending",
+    );
+  });
+
+  it("warns only outside local and test", () => {
+    for (const appEnv of ["local", "test"] as const) {
+      const warnings: string[] = [];
+      new CibilBureau({
+        storage,
+        appEnv,
+        warn: (m) => warnings.push(m),
+        pulls: { get: async () => undefined, set: async () => undefined },
+        enabled: () => false,
+        memberId: () => "m",
+        apiKey: () => "k",
+      });
+      expect(warnings).toEqual([]);
+    }
+    const warnings: string[] = [];
+    new CibilBureau({
+      storage,
+      scan: av,
+      appEnv: "prod",
+      warn: (m) => warnings.push(m),
+      pulls: { get: async () => undefined, set: async () => undefined },
+      enabled: () => false,
+      memberId: () => "m",
+      apiKey: () => "k",
+    });
+    expect(warnings).toEqual([]);
+  });
 });
 
 describe("R1-D-61 the CIBIL adapter", () => {
@@ -116,6 +193,7 @@ describe("R1-D-61 the CIBIL adapter", () => {
     const stored = await storage.get(done.report!.storageKey);
     expect(sha256Hex(stored.body)).toBe(done.report!.sha256);
     expect(stored.meta.bucketClass).toBe("REGULATED");
+    expect(done.report!.scan?.verdict).toBe("CLEAN");
     // The raw report keeps the CIC's identifiers; the result never carries them.
     expect(new TextDecoder().decode(stored.body)).toContain(stub.subjects.pending.pan);
     expect(JSON.stringify(done)).not.toContain(stub.subjects.pending.pan);
@@ -150,6 +228,7 @@ describe("R1-D-61 the CIBIL adapter", () => {
     const pulls = new Map<string, CibilPullRecord>();
     const p = new CibilBureau({
       storage,
+      scan: av,
       pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
       enabled: () => enabled,
       memberId: () => stub.memberId,
