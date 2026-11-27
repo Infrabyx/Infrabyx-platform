@@ -2314,6 +2314,35 @@ for (const c of uploadCorpusContractCases())
 3. If you show PDFs inline from a presigned URL, move that to a sandboxed preview origin.
 4. Whole-object test assertions on a presigned URL gain `response-content-disposition=attachment`.
 
+## 7fb. Refuse zstd request bodies; never decode a zstd response (LDC-68, CVE-2026-124851; R1-D-294)
+
+From the next `@infrabyx/connectors` minor (no migration, no setting, no environment variable). **Why:** Node.js 24.22.1 and 24.22.3 bundle zstd 1.5.7, which CVE-2026-124851 affects. body-parser 2.x (under `@nestjs/platform-express`) decodes a `Content-Encoding: zstd` request body with it before any guard, and a client that reads back what it sent may recover process memory. Node's `fetch` decodes a zstd response the same way.
+
+```ts
+// apps/api/src/app.ts (the reference app has this from now on)
+import { refuseZstdBodies } from "@infrabyx/connectors/content-coding";
+
+const app = await NestFactory.create(AppModule, { bodyParser: true });
+app.use(refuseZstdBodies); // first: before Nest adds its body parsers at init, and before any guard
+```
+
+- **What it does:** a request whose `Content-Encoding` names `zstd` (any case, in a list or a repeated header; `x-zstd` too) gets 415 `IPB-SEC-010` with `reason: content_encoding`, `Accept-Encoding: gzip, deflate, br` and `Connection: close`. The body is never read. gzip, deflate, br and identity pass as before.
+- **A product prefix:** `refuseZstdBodiesWith({ productPrefix: "LDC" })` answers `LDC-SEC-010`; `typeBase` sets your help base.
+- **Plain Express or another Node server:** register it as the first middleware.
+- **Outbound:** every adapter built on `createEgress` (every REST adapter in `connectors`) now refuses a zstd answer with `IPB-SEC-010` and never offers zstd. Wrap any fetch you inject into a platform package, or call yourself, in `refuseZstdFetch`:
+
+  ```ts
+  import { refuseZstdFetch } from "@infrabyx/connectors/content-coding";
+  const ledger = new OhConsentLedger({ baseUrl, token, fetch: refuseZstdFetch(egressFetch) });
+  ```
+
+- **Test assertions:** a whole-object assertion on the headers an injected fetch received gains `accept-encoding: gzip, deflate, br`.
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Register `refuseZstdBodies` first in each API, and delete your own copy (ComplyCl's `refuseZstdBodies`, or any other).
+  3. Wrap injected and direct fetches in `refuseZstdFetch`.
+  4. Keep the `CVE-2026-124851` waiver to **2026-12-07** in your own image scan, the date all four repositories share (`infra/docker/trivyignore.yaml`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

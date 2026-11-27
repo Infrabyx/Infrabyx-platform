@@ -1,7 +1,9 @@
 // Outbound HTTP for REST adapters (plan §3.7; IPB-02-43 SSRF guard). HTTPS only, hosts on the
 // adapter's allow-list, redirects never followed (refused unless read), response size capped, timeouts and Retry-After honoured.
-// A host outside the list is IPB-SEC-018; transport failures and 5xx are IPB-PORT-002.
+// A host outside the list is IPB-SEC-018; transport failures and 5xx are IPB-PORT-002. zstd is never
+// offered, and a zstd response is refused unread with IPB-SEC-010 (CVE-2026-124851; R1-D-294).
 import { PortError } from "@infrabyx/contracts/errors";
+import { RefusedContentCodingError, refuseZstdFetch } from "../content-coding/index.js";
 
 export interface EgressOptions {
   port: string;
@@ -40,10 +42,10 @@ export function hostAllowed(host: string, allow: readonly string[]): boolean {
 }
 
 export function createEgress(o: EgressOptions) {
-  const doFetch = o.fetchImpl ?? fetch;
+  const doFetch = refuseZstdFetch(o.fetchImpl ?? fetch);
   const sleep = o.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const err = (
-    code: "IPB-PORT-002" | "IPB-SEC-018" | "IPB-PORT-001",
+    code: "IPB-PORT-002" | "IPB-SEC-018" | "IPB-PORT-001" | "IPB-SEC-010",
     detail: string,
     meta?: Record<string, unknown>,
   ) => new PortError(code, o.port, { adapter: o.adapter, detail, ...(meta ? { meta } : {}) });
@@ -68,6 +70,11 @@ export function createEgress(o: EgressOptions) {
           signal: AbortSignal.timeout(o.timeoutMs ?? 8000),
         });
       } catch (e) {
+        // Not retried: the same sender would answer the same way.
+        if (e instanceof RefusedContentCodingError)
+          throw err("IPB-SEC-010", `${o.adapter} answered with a refused Content-Encoding`, {
+            reason: "content_encoding",
+          });
         last = err("IPB-PORT-002", `${o.adapter} unreachable or timed out`, {
           cause: (e as Error).name,
         });

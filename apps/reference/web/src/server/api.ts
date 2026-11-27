@@ -41,6 +41,8 @@ export async function api<T>(
       method: o.method ?? "GET",
       headers: {
         accept: "application/json",
+        // zstd is never offered (CVE-2026-124851; R1-D-294).
+        "accept-encoding": "gzip, deflate, br",
         ...(cookie ? { cookie } : {}),
         ...(o.body === undefined ? {} : { "content-type": "application/json" }),
       },
@@ -83,6 +85,7 @@ export async function proxyAuth(req: Request, route: "login" | "callback" | "log
   const r = await fetch(`${env.APP_API_URL.replace(/\/$/, "")}/auth/${route}${url.search}`, {
     method: req.method,
     headers: {
+      "accept-encoding": "gzip, deflate, br",
       ...(req.headers.get("cookie") ? { cookie: req.headers.get("cookie")! } : {}),
     },
     redirect: "manual",

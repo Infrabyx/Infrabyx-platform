@@ -1744,6 +1744,15 @@ A new step in the upload data flow: after the AV scan and before the bytes are s
 - **R:** the result names every step taken and both hashes, for the product's ledger entry.
 - **S (supply):** no new dependency (`node:zlib`, the existing optional `sharp`). No reference PDF flattener yet. Owner question #208.
 
+### 3.194 Content codings the runtime would decode with an affected zstd (`refuseZstdBodies`, `refuseZstdFetch`; LDC-68, CVE-2026-124851, R1-D-294)
+
+Two existing data flows decoded attacker-chosen zstd with the zstd 1.5.7 that Node.js 24.22.1 bundles: request bodies (body-parser, before any guard) and outbound responses (Node's `fetch`).
+
+- **I (process memory read back):** a zstd request body gets 415 before any parser or guard, and its body is never read (tested: no zstd decoder is built, and a broken zstd body gets 415, not body-parser's 400, so a change of middleware order fails the test). Outbound, zstd is never offered, and a zstd answer is refused with its body cancelled unread (tested for `createEgress`, injected fetches and the wrapper). Residual: a sender that ignores `Accept-Encoding` can make undici's decoder start on the first bytes, but that output reaches no caller, store, log or sender. The governed egress and partner mTLS clients already refused every coding but identity, gzip, deflate and br.
+- **D:** the 415 closes the connection rather than drain an unread body.
+- **T/S:** the problem carries a fixed label and the path only (no query string); no coding the client sent is echoed.
+- **Products:** they register the same middleware first in their own Nest apps (guide §7fb) and wrap injected fetches. The Debian `libzstd1` waiver ends 2026-12-07; owner question #209.
+
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
 - **E (a tenant licensing itself, or one person licensing a tenant):** a version is written only on the platform's approved path: the insert policy needs a platform context and the action `tenancy.entitlement.change`, the service checks two different platform people (requester PLT_SUPER_ADMIN or PLT_FINANCE; approver a different PLT_SUPER_ADMIN or PLT_SECURITY_OFFICER), refuses services, support roles, tenant users and impersonations, and the table refuses a row whose approver is its requester. R4 (60-minute delay) in production. **R:** versions and notices are insert-only; both steps are ledgered in the tenant. **D (a licence lapsing mid-work):** a lapse or revocation refuses writes only; every record stays readable until the product's detach workflow, and the tenant is told of each grant, revocation and lapse. **I:** the tenant reads only its own licences and notices (forced RLS); of the two SECURITY DEFINER functions, `entitlement_status` reads only the transaction's own tenant and `entitlement_lapses_due` (the sweep's cross-tenant list) returns nothing outside a platform context; both are on the RLS lint's reviewed list.
