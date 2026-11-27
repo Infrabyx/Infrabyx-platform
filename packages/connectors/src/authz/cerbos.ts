@@ -14,6 +14,7 @@ import type {
   ResourcePlan,
 } from "@infrabyx/contracts/ports";
 import { AllowCache, agentGuard, pdpDown } from "./common.js";
+import { OUTBOUND_ACCEPT_ENCODING } from "../content-coding/index.js";
 
 export interface CerbosOptions {
   /** PDP HTTP address, e.g. https://cerbos:3592 (plain HTTP only to loopback in tests). */
@@ -55,7 +56,11 @@ export class CerbosAuthz implements AuthzPort {
         adapter: "cerbos",
         detail: "Cerbos URL must be https",
       });
-    this.client = new HTTP(o.url, o.admin ? { adminCredentials: o.admin } : {});
+    // `@cerbos/http` calls the global fetch: zstd is never offered to the PDP (R1-D-294).
+    this.client = new HTTP(o.url, {
+      headers: { "accept-encoding": OUTBOUND_ACCEPT_ENCODING },
+      ...(o.admin ? { adminCredentials: o.admin } : {}),
+    });
     this.cache = new AllowCache((o.decisionCacheSeconds ?? 5) * 1000, o.now);
   }
 
