@@ -1,0 +1,1410 @@
+[
+{
+"no": 1,
+"group": "Governance & Board",
+"policy": "Corporate governance and disclosure framework",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 2,
+"group": "Governance & Board",
+"policy": "Fit-and-proper due-diligence policy (directors, shareholders, KMP)",
+"type": "Mandatory",
+"condition": "IBU branches: parent bank's fit-and-proper process",
+"question": "FORM",
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Conditional",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 3,
+"group": "Governance & Board",
+"policy": "Related party transactions policy",
+"type": "Mandatory",
+"condition": "Company-form entities (s. 188); IBUs: arm's-length related-party credit; IIOs: RPT disclosure",
+"question": "RPT",
+"answers": {
+"FC": "Yes",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 4,
+"group": "Governance & Board",
+"policy": "Policy governance framework (approval and periodic review of significant policies)",
+"type": "Mandatory",
+"condition": "Good practice for every other RE (policy register)",
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 5,
+"group": "Governance & Board",
+"policy": "Conflict of interest policy",
+"type": "Mandatory",
+"condition": "Recommended for FCs, IBUs, IIOs and service units",
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 6,
+"group": "Governance & Board",
+"policy": "Board and committee structure, nomination and evaluation policy",
+"type": "Recommended",
+"condition": "Company-form entities meeting Companies Act thresholds",
+"question": "BIG",
+"answers": {
+"FC": "Yes",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 7,
+"group": "Governance & Board",
+"policy": "Branch–parent governance and home-regulator reliance framework",
+"type": "Recommended",
+"condition": "Branch-form entities",
+"question": "FORM",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Conditional"
+}
+},
+{
+"no": 8,
+"group": "Governance & Board",
+"policy": "Delegation of authority matrix",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 9,
+"group": "Authorisation, SEZ & Reporting",
+"policy": "Website disclosure policy",
+"type": "Mandatory",
+"condition": "FCs / FUs serving non-group clients",
+"question": "NONGRP",
+"answers": {
+"FC": "Conditional",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 10,
+"group": "Authorisation, SEZ & Reporting",
+"policy": "SEZ LoA, Regulatory Instrument and permitted-activity management procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 11,
+"group": "Authorisation, SEZ & Reporting",
+"policy": "Regulatory reporting and returns calendar",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 12,
+"group": "Authorisation, SEZ & Reporting",
+"policy": "Change in control and material-change approval procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 13,
+"group": "Authorisation, SEZ & Reporting",
+"policy": "Consumer charter",
+"type": "Recommended",
+"condition": "REs dealing with retail consumers",
+"question": "RETAIL",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 14,
+"group": "Compliance & Key Personnel",
+"policy": "Compliance function charter and compliance manual",
+"type": "Mandatory",
+"condition": "IIOs: Principal Officer with home-office compliance function",
+"question": "SUBTYPE",
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Conditional",
+"SVC": "Yes"
+}
+},
+{
+"no": 15,
+"group": "Compliance & Key Personnel",
+"policy": "KMP appointment, eligibility and certification policy",
+"type": "Mandatory",
+"condition": "Others: Principal Officer and Designated Director NISM-IFSCA-01; IIO KMP approval in Form A",
+"question": "SUBTYPE",
+"answers": {
+"FC": "Conditional",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 16,
+"group": "Compliance & Key Personnel",
+"policy": "Annual compliance audit and compliance reporting procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 17,
+"group": "Compliance & Key Personnel",
+"policy": "Capital adequacy and net worth monitoring policy",
+"type": "Mandatory",
+"condition": "IBUs: capital per IFSCA (Banking) Regulations, 2020 and home regulator",
+"question": "SUBTYPE",
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 18,
+"group": "Compliance & Key Personnel",
+"policy": "Internal audit policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 19,
+"group": "AML / CFT & Sanctions",
+"policy": "AML / CFT / KYC policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 20,
+"group": "AML / CFT & Sanctions",
+"policy": "Enterprise-wide ML / TF / PF risk assessment",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 21,
+"group": "AML / CFT & Sanctions",
+"policy": "Sanctions and targeted financial sanctions screening policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 22,
+"group": "AML / CFT & Sanctions",
+"policy": "FIU-IND reporting procedure through FINGate 2.0",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 23,
+"group": "AML / CFT & Sanctions",
+"policy": "AML record retention policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 24,
+"group": "AML / CFT & Sanctions",
+"policy": "Wire transfer, correspondent relationship and high-risk jurisdiction EDD procedure",
+"type": "Mandatory",
+"condition": "Entities making cross-border transfers or correspondent services; FATF-list EDD applies to all",
+"question": "XB",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Yes",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 25,
+"group": "AML / CFT & Sanctions",
+"policy": "V-CIP policy and SOP",
+"type": "Mandatory if activity undertaken",
+"condition": "Entities onboarding customers through V-CIP",
+"question": "VCIP",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 26,
+"group": "Credit, Prudential & Treasury",
+"policy": "Credit / lending policy",
+"type": "Mandatory",
+"condition": "FCs / FUs undertaking lending or factoring",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 27,
+"group": "Credit, Prudential & Treasury",
+"policy": "Exposure and concentration limits policy",
+"type": "Mandatory",
+"condition": "FCs / FUs with credit exposures",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 28,
+"group": "Credit, Prudential & Treasury",
+"policy": "Liquidity risk management policy and contingency funding plan",
+"type": "Mandatory",
+"condition": "Lending, leasing, treasury and factoring FCs / FUs",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 29,
+"group": "Credit, Prudential & Treasury",
+"policy": "Asset classification, provisioning and problem-asset policy",
+"type": "Mandatory",
+"condition": "Lending and factoring FCs / FUs",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 30,
+"group": "Credit, Prudential & Treasury",
+"policy": "Interest rate risk in the banking book policy",
+"type": "Mandatory",
+"condition": "Recommended for lending FCs",
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 31,
+"group": "Credit, Prudential & Treasury",
+"policy": "Market risk management policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 32,
+"group": "Credit, Prudential & Treasury",
+"policy": "Operational risk management policy (incl. new product approval)",
+"type": "Mandatory",
+"condition": "Recommended for all other REs",
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 33,
+"group": "Credit, Prudential & Treasury",
+"policy": "Factoring underwriting and without-recourse limits policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Factors / forfaiting units",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 34,
+"group": "Credit, Prudential & Treasury",
+"policy": "Treasury, hedging and cash-pooling policy (GRCTC)",
+"type": "Mandatory if activity undertaken",
+"condition": "Global / Regional Corporate Treasury Centres",
+"question": "GRCTC",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 35,
+"group": "Credit, Prudential & Treasury",
+"policy": "Lease asset and lessee eligibility policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Aircraft and ship lessors, incl. leasing SPVs",
+"question": "LEASE",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 36,
+"group": "Credit, Prudential & Treasury",
+"policy": "Credit information reporting policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Lending / factoring FCs and IBUs that are credit institutions",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 37,
+"group": "Credit, Prudential & Treasury",
+"policy": "ITFS platform operating rules and participant onboarding policy",
+"type": "Mandatory if activity undertaken",
+"condition": "ITFS platform operators",
+"question": "ITFS",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 38,
+"group": "Credit, Prudential & Treasury",
+"policy": "Sustainable and sustainability-linked lending policy",
+"type": "Recommended",
+"condition": "Lenders offering labelled products",
+"question": "LEND",
+"answers": {
+"FC": "Conditional",
+"FM": "No",
+"CMI": "No",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 39,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Conduct of business and customer disclosure policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Yes",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 40,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Customer / investor grievance redressal policy",
+"type": "Mandatory",
+"condition": "FCs serving non-group clients; PSPs; IIOs: see policyholder protection policy",
+"question": "NONGRP",
+"answers": {
+"FC": "Conditional",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "No",
+"SVC": "Conditional"
+}
+},
+{
+"no": 41,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Deposit, nomination and safe-custody policy",
+"type": "Mandatory if activity undertaken",
+"condition": "IBUs accepting deposits or offering safe custody / lockers",
+"question": "IBUDEP",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 42,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Internet banking and customer consent policy",
+"type": "Mandatory if activity undertaken",
+"condition": "IBUs offering liability products online",
+"question": "IBUDEP",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 43,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Payment services safeguarding and settlement policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Authorised payment service providers",
+"question": "PSP",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "Conditional"
+}
+},
+{
+"no": 44,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Payment system participation approval procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "PSPs and IBUs joining the Rupee Drawing Arrangement or international payment systems",
+"question": "PSP",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "Conditional",
+"INS": "No",
+"SVC": "Conditional"
+}
+},
+{
+"no": 45,
+"group": "Customer Protection, Banking & Payments",
+"policy": "Communications, marketing and advertisement policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 46,
+"group": "Insurance Operations",
+"policy": "Underwriting, policy servicing and claims settlement SOP",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Yes",
+"SVC": "No"
+}
+},
+{
+"no": 47,
+"group": "Insurance Operations",
+"policy": "Policyholder protection and grievance policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Yes",
+"SVC": "No"
+}
+},
+{
+"no": 48,
+"group": "Insurance Operations",
+"policy": "Assigned capital, investment and solvency monitoring policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Yes",
+"SVC": "No"
+}
+},
+{
+"no": 49,
+"group": "Insurance Operations",
+"policy": "Books, records and data-location policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Yes",
+"SVC": "No"
+}
+},
+{
+"no": 50,
+"group": "Insurance Operations",
+"policy": "Insurance product approval and filing policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Yes",
+"SVC": "No"
+}
+},
+{
+"no": 51,
+"group": "Insurance Operations",
+"policy": "Foreign intermediary engagement policy",
+"type": "Mandatory if activity undertaken",
+"condition": "IIOs sourcing business through foreign intermediaries",
+"question": "IIO",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Conditional",
+"SVC": "No"
+}
+},
+{
+"no": 52,
+"group": "Insurance Operations",
+"policy": "Reinsurance and retrocession policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Reinsurance IIOs",
+"question": "IIO",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Conditional",
+"SVC": "No"
+}
+},
+{
+"no": 53,
+"group": "Insurance Operations",
+"policy": "Insurance intermediary conduct and client money policy",
+"type": "Mandatory if activity undertaken",
+"condition": "IFSC insurance intermediary offices",
+"question": "IIO",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "Conditional",
+"SVC": "No"
+}
+},
+{
+"no": 54,
+"group": "Funds & Capital Market Conduct",
+"policy": "Valuation policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 55,
+"group": "Funds & Capital Market Conduct",
+"policy": "Dealings with associates and related-party investments policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 56,
+"group": "Funds & Capital Market Conduct",
+"policy": "Fiduciary segregation and service-provider appointment policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 57,
+"group": "Funds & Capital Market Conduct",
+"policy": "Scheme PPM governance, filing and annual reporting policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 58,
+"group": "Funds & Capital Market Conduct",
+"policy": "Code of conduct for the FME and its KMP",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 59,
+"group": "Funds & Capital Market Conduct",
+"policy": "Investor due diligence and eligibility policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 60,
+"group": "Funds & Capital Market Conduct",
+"policy": "Code of conduct for capital market intermediaries",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "Yes",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 61,
+"group": "Funds & Capital Market Conduct",
+"policy": "Client onboarding, suitability and risk disclosure policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "Yes",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 62,
+"group": "Funds & Capital Market Conduct",
+"policy": "Investment allocation and co-investment policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Venture capital and restricted schemes offering co-investment",
+"question": "FMESG",
+"answers": {
+"FC": "No",
+"FM": "Conditional",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 63,
+"group": "Funds & Capital Market Conduct",
+"policy": "Sustainability (ESG) disclosure policy",
+"type": "Mandatory if activity undertaken",
+"condition": "FMEs with AUM above USD 3 bn; ESG-labelled schemes",
+"question": "FMESG",
+"answers": {
+"FC": "No",
+"FM": "Conditional",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 64,
+"group": "Funds & Capital Market Conduct",
+"policy": "Portfolio management agreement, disclosure document and custody policy",
+"type": "Mandatory if activity undertaken",
+"condition": "FMEs offering portfolio management services",
+"question": "FMESG",
+"answers": {
+"FC": "No",
+"FM": "Conditional",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 65,
+"group": "Funds & Capital Market Conduct",
+"policy": "Client money and asset segregation policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Broker-dealers, clearing members, GAPs and custodians",
+"question": "CUST",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "Conditional",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 66,
+"group": "Funds & Capital Market Conduct",
+"policy": "Research, credit rating and ESG rating independence and methodology policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Research entities, CRAs and ESG ratings / data product providers",
+"question": "CUST",
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "Conditional",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 67,
+"group": "Funds & Capital Market Conduct",
+"policy": "Employee personal dealing policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 68,
+"group": "Funds & Capital Market Conduct",
+"policy": "Stewardship and proxy voting policy",
+"type": "Recommended",
+"condition": "FMEs holding listed equity",
+"question": "FMESG",
+"answers": {
+"FC": "No",
+"FM": "Conditional",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "No"
+}
+},
+{
+"no": 69,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cyber security and cyber resilience policy",
+"type": "Mandatory",
+"condition": "Three-year implementation relief for branches, group-only, sub-10-employee and newly incorporated entities, subject to conditions",
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 70,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Cyber incident response and crisis communication plan",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 71,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Annual cyber security audit and certification procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 72,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Information security and acceptable use policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 73,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Business continuity and disaster recovery policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Outsourcing and third-party risk management policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 75,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Privacy policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 76,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "DPDP notice, consent, retention and breach framework",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 77,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "Permitted-recipient and service-scope policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "No",
+"FM": "No",
+"CMI": "No",
+"BU": "No",
+"INS": "No",
+"SVC": "Yes"
+}
+},
+{
+"no": 78,
+"group": "Cyber, Technology & Outsourcing",
+"policy": "AI and model governance policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 79,
+"group": "Tax, FEMA & Corporate Law",
+"policy": "CSR policy",
+"type": "Mandatory if activity undertaken",
+"condition": "IFSC companies meeting s. 135 thresholds after the initial exemption period",
+"question": "CSR",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 80,
+"group": "Tax, FEMA & Corporate Law",
+"policy": "FEMA and foreign-currency operations compliance procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 81,
+"group": "Tax, FEMA & Corporate Law",
+"policy": "Tax-holiday and substance documentation policy",
+"type": "Recommended",
+"condition": "Units claiming the s. 147 deduction",
+"question": "S147",
+"answers": {
+"FC": "Conditional",
+"FM": "Conditional",
+"CMI": "Conditional",
+"BU": "Conditional",
+"INS": "Conditional",
+"SVC": "Conditional"
+}
+},
+{
+"no": 82,
+"group": "Tax, FEMA & Corporate Law",
+"policy": "Transfer pricing and intra-group pricing policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 83,
+"group": "Tax, FEMA & Corporate Law",
+"policy": "Statutory registers and corporate filings procedure",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 84,
+"group": "HR, Ethics & Workplace",
+"policy": "POSH policy",
+"type": "Mandatory",
+"condition": "Internal Committee where 10 or more employees",
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 85,
+"group": "HR, Ethics & Workplace",
+"policy": "Equal opportunity policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 86,
+"group": "HR, Ethics & Workplace",
+"policy": "Whistle-blower / vigil mechanism policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 87,
+"group": "HR, Ethics & Workplace",
+"policy": "Code of conduct and anti-bribery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+},
+{
+"no": 88,
+"group": "HR, Ethics & Workplace",
+"policy": "HR policy and employee handbook",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"FC": "Yes",
+"FM": "Yes",
+"CMI": "Yes",
+"BU": "Yes",
+"INS": "Yes",
+"SVC": "Yes"
+}
+}
+]

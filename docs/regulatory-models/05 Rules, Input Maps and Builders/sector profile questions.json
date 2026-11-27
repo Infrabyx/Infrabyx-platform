@@ -1,0 +1,1033 @@
+{
+ "SEBI Listed": {
+  "questions": [
+   {
+    "key": "CSR",
+    "question": "Does the company meet a CSR threshold of section 135(1) of the Companies Act in the preceding year (net worth ₹500 crore, turnover ₹1,000 crore or net profit ₹5 crore)?",
+    "register lines": [
+     64
+    ]
+   },
+   {
+    "key": "W20",
+    "question": "Does any establishment employ 20 or more workers?",
+    "register lines": [
+     78
+    ]
+   },
+   {
+    "key": "W300",
+    "question": "Does any industrial establishment employ 300 or more workers?",
+    "register lines": [
+     77
+    ]
+   },
+   {
+    "key": "BIG",
+    "question": "Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (paid-up capital ₹10 crore, turnover ₹100 crore or borrowings above ₹50 crore)?",
+    "register lines": [
+     1,
+     11,
+     12
+    ]
+   },
+   {
+    "key": "VIG",
+    "question": "Does the company accept public deposits or have bank or financial-institution borrowings above ₹50 crore?",
+    "register lines": [
+     74
+    ]
+   },
+   {
+    "key": "IA13",
+    "question": "Does the company meet a threshold of rule 13 of the Companies (Accounts) Rules for internal audit (turnover ₹200 crore, borrowings ₹100 crore or deposits ₹25 crore; listed companies always)?",
+    "register lines": [
+     57
+    ]
+   },
+   {
+    "key": "SDF",
+    "question": "Has the entity been notified as a significant data fiduciary under the DPDP Act?",
+    "register lines": [
+     90
+    ]
+   },
+   {
+    "key": "SUBS",
+    "question": "Does the entity have subsidiaries or group entities?",
+    "register lines": [
+     32
+    ]
+   },
+   {
+    "key": "X152",
+    "question": "Main board: is the entity exempt under regulation 15(2) of the LODR Regulations (paid-up capital not above ₹10 crore and net worth not above ₹25 crore)?",
+    "register lines": [
+     2,
+     6,
+     31
+    ]
+   },
+   {
+    "key": "T1000",
+    "question": "Is the entity among the top 1,000 listed entities by market capitalisation?",
+    "register lines": [
+     9,
+     14,
+     65,
+     66,
+     67,
+     68,
+     69,
+     70,
+     71,
+     72
+    ]
+   },
+   {
+    "key": "T250",
+    "question": "Is the entity among the top 250 listed entities by market capitalisation?",
+    "register lines": [
+     23
+    ]
+   },
+   {
+    "key": "NCD",
+    "question": "Equity-listed entity: are non-convertible debt securities or NCRPS also listed?",
+    "register lines": [
+     25,
+     52
+    ]
+   },
+   {
+    "key": "SME10",
+    "question": "SME-listed: was paid-up capital above ₹10 crore or net worth above ₹25 crore on the last day of the previous year?",
+    "register lines": [
+     30
+    ]
+   },
+   {
+    "key": "PU25",
+    "question": "Debt-listed: is paid-up capital ₹25 crore or more, or are independent directors required under section 149(4)?",
+    "register lines": [
+     3,
+     5
+    ]
+   },
+   {
+    "key": "H1000",
+    "question": "Does the entity have more than 1,000 security holders?",
+    "register lines": [
+     13
+    ]
+   },
+   {
+    "key": "TP",
+    "question": "Do insiders submit trading plans under regulation 5 of the PIT Regulations?",
+    "register lines": [
+     41
+    ]
+   },
+   {
+    "key": "ESOP",
+    "question": "Does the entity have ESOP, RSU, SAR or sweat-equity schemes?",
+    "register lines": [
+     48
+    ]
+   },
+   {
+    "key": "ISSUE",
+    "question": "Is the entity filing an offer document, or are proceeds of an issue still unutilised?",
+    "register lines": [
+     49,
+     50
+    ]
+   },
+   {
+    "key": "MPS",
+    "question": "Is public shareholding below 25 per cent?",
+    "register lines": [
+     51
+    ]
+   },
+   {
+    "key": "VPAY",
+    "question": "Is variable pay of directors or senior management material?",
+    "register lines": [
+     82
+    ]
+   },
+   {
+    "key": "VOL",
+    "question": "Will the entity adopt voluntary disclosures recommended for others (BRSR, dividend policy, D&O insurance, risk committee and similar)?",
+    "register lines": [
+     10,
+     17,
+     42,
+     53,
+     56,
+     63
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 42
+ },
+ "SEBI Intermediaries": {
+  "questions": [
+   {
+    "key": "BIG",
+    "question": "Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (paid-up capital ₹10 crore, turnover ₹100 crore or borrowings above ₹50 crore)?",
+    "register lines": [
+     82
+    ]
+   },
+   {
+    "key": "CLOUD",
+    "question": "Does the entity use cloud services for any regulated activity or data?",
+    "register lines": [
+     78
+    ]
+   },
+   {
+    "key": "SUBS",
+    "question": "Does the entity have subsidiaries or group entities?",
+    "register lines": [
+     8
+    ]
+   },
+   {
+    "key": "OTHACT",
+    "question": "Does the entity also carry on other regulated or non-regulated activities?",
+    "register lines": [
+     3
+    ]
+   },
+   {
+    "key": "QSB",
+    "question": "Is the stock broker designated a Qualified Stock Broker?",
+    "register lines": [
+     4
+    ]
+   },
+   {
+    "key": "FUNDS",
+    "question": "Does the entity collect funds from investors?",
+    "register lines": [
+     16
+    ]
+   },
+   {
+    "key": "MTF",
+    "question": "Does the broker offer the margin trading facility?",
+    "register lines": [
+     23
+    ]
+   },
+   {
+    "key": "DDPI",
+    "question": "Does the broker obtain DDPI or a power of attorney from clients?",
+    "register lines": [
+     25
+    ]
+   },
+   {
+    "key": "API",
+    "question": "Does the broker offer API or algo access, or act as or for an empanelled algo provider?",
+    "register lines": [
+     35,
+     66
+    ]
+   },
+   {
+    "key": "PROP",
+    "question": "Does the broker undertake proprietary trading?",
+    "register lines": [
+     36
+    ]
+   },
+   {
+    "key": "CLIENTS",
+    "question": "Is the broker above the client-count threshold for the technical-glitch framework?",
+    "register lines": [
+     43
+    ]
+   },
+   {
+    "key": "AP",
+    "question": "Does the broker work through authorised persons?",
+    "register lines": [
+     44
+    ]
+   },
+   {
+    "key": "UW",
+    "question": "Does the merchant banker undertake underwriting?",
+    "register lines": [
+     46
+    ]
+   },
+   {
+    "key": "AI",
+    "question": "Does the entity use AI or ML tools in its services?",
+    "register lines": [
+     79
+    ]
+   },
+   {
+    "key": "UPSI",
+    "question": "Does the entity receive unpublished price-sensitive information?",
+    "register lines": [
+     33
+    ]
+   },
+   {
+    "key": "DIST",
+    "question": "IA: does the adviser's group or family undertake distribution?",
+    "register lines": [
+     24
+    ]
+   },
+   {
+    "key": "ACC",
+    "question": "PMS: does the manager serve accredited investors?",
+    "register lines": [
+     26
+    ]
+   },
+   {
+    "key": "AIFEQ",
+    "question": "AIF: does the fund hold listed equity, offer co-investment, have an investment committee, a scheme approaching winding up, or a sponsor or manager continuing-interest requirement?",
+    "register lines": [
+     7,
+     55,
+     56,
+     57,
+     58
+    ]
+   },
+   {
+    "key": "CSCRF",
+    "question": "IA or RA: is the entity also registered in a CSCRF category?",
+    "register lines": [
+     70
+    ]
+   },
+   {
+    "key": "CATX",
+    "question": "Is the entity a merchant banker, RTA or KRA, or does it run a research desk?",
+    "register lines": [
+     27,
+     32,
+     34,
+     42,
+     45,
+     47,
+     48
+    ]
+   },
+   {
+    "key": "VOL",
+    "question": "Will the entity adopt practices recommended for its category (suitability, BCP, vendor risk, vigil mechanism)?",
+    "register lines": [
+     19,
+     41,
+     77
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 34
+ },
+ "IFSCA": {
+  "questions": [
+   {
+    "key": "CSR",
+    "question": "Does the company meet a CSR threshold of section 135(1) of the Companies Act in the preceding year (net worth ₹500 crore, turnover ₹1,000 crore or net profit ₹5 crore)?",
+    "register lines": [
+     79
+    ]
+   },
+   {
+    "key": "BIG",
+    "question": "Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (paid-up capital ₹10 crore, turnover ₹100 crore or borrowings above ₹50 crore)?",
+    "register lines": [
+     6
+    ]
+   },
+   {
+    "key": "RPT",
+    "question": "Does the entity enter into related-party transactions?",
+    "register lines": [
+     3
+    ]
+   },
+   {
+    "key": "FORM",
+    "question": "Is the entity a company (as opposed to a branch of a foreign or Indian entity)?",
+    "register lines": [
+     2,
+     7
+    ]
+   },
+   {
+    "key": "NONGRP",
+    "question": "Does the entity serve clients outside its group?",
+    "register lines": [
+     9,
+     40
+    ]
+   },
+   {
+    "key": "RETAIL",
+    "question": "Does the entity deal with retail consumers?",
+    "register lines": [
+     13
+    ]
+   },
+   {
+    "key": "LEND",
+    "question": "Does the finance company or unit undertake lending or factoring?",
+    "register lines": [
+     26,
+     27,
+     28,
+     29,
+     33,
+     36,
+     38
+    ]
+   },
+   {
+    "key": "LEASE",
+    "question": "Is the entity an aircraft or ship lessor, or a leasing SPV?",
+    "register lines": [
+     35
+    ]
+   },
+   {
+    "key": "GRCTC",
+    "question": "Is the entity a global or regional corporate treasury centre?",
+    "register lines": [
+     34
+    ]
+   },
+   {
+    "key": "ITFS",
+    "question": "Is the entity an ITFS platform operator?",
+    "register lines": [
+     37
+    ]
+   },
+   {
+    "key": "IBUDEP",
+    "question": "IBU: does it accept deposits, offer safe custody or offer liability products online?",
+    "register lines": [
+     41,
+     42
+    ]
+   },
+   {
+    "key": "PSP",
+    "question": "Is the entity an authorised payment service provider, or joining a payment system?",
+    "register lines": [
+     43,
+     44
+    ]
+   },
+   {
+    "key": "VCIP",
+    "question": "Does the entity onboard customers through V-CIP?",
+    "register lines": [
+     25
+    ]
+   },
+   {
+    "key": "XB",
+    "question": "Does the entity make cross-border transfers or offer correspondent services?",
+    "register lines": [
+     24
+    ]
+   },
+   {
+    "key": "IIO",
+    "question": "IIO: does it source through foreign intermediaries, write reinsurance or act as an insurance intermediary office?",
+    "register lines": [
+     51,
+     52,
+     53
+    ]
+   },
+   {
+    "key": "FMESG",
+    "question": "FME: is AUM above USD 3 billion, or are ESG-labelled schemes, PMS, co-investment or listed equity holdings offered?",
+    "register lines": [
+     62,
+     63,
+     64,
+     68
+    ]
+   },
+   {
+    "key": "CUST",
+    "question": "Is the entity a broker-dealer, clearing member, GAP, custodian, research entity or rating provider?",
+    "register lines": [
+     65,
+     66
+    ]
+   },
+   {
+    "key": "S147",
+    "question": "Does the unit claim the deduction under section 147 of the Income-tax Act, 2025?",
+    "register lines": [
+     81
+    ]
+   },
+   {
+    "key": "SUBTYPE",
+    "question": "Is the entity an IFSC Banking Unit (IBU) or IFSC insurance office (IIO) set up as a branch of its parent bank or insurer?",
+    "register lines": [
+     14,
+     15,
+     17
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 37
+ },
+ "IRDAI": {
+  "questions": [
+   {
+    "key": "CSR",
+    "question": "Does the company meet a CSR threshold of section 135(1) of the Companies Act in the preceding year (net worth ₹500 crore, turnover ₹1,000 crore or net profit ₹5 crore)?",
+    "register lines": [
+     14
+    ]
+   },
+   {
+    "key": "W20",
+    "question": "Does any establishment employ 20 or more workers?",
+    "register lines": [
+     80
+    ]
+   },
+   {
+    "key": "BIG",
+    "question": "Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (paid-up capital ₹10 crore, turnover ₹100 crore or borrowings above ₹50 crore)?",
+    "register lines": [
+     13,
+     49
+    ]
+   },
+   {
+    "key": "IA13",
+    "question": "Does the company meet a threshold of rule 13 of the Companies (Accounts) Rules for internal audit (turnover ₹200 crore, borrowings ₹100 crore or deposits ₹25 crore; listed companies always)?",
+    "register lines": [
+     48
+    ]
+   },
+   {
+    "key": "FDI",
+    "question": "Does the entity have foreign investment, or is it majority foreign-owned?",
+    "register lines": [
+     84
+    ]
+   },
+   {
+    "key": "CLOUD",
+    "question": "Does the entity use cloud services for any regulated activity or data?",
+    "register lines": [
+     65
+    ]
+   },
+   {
+    "key": "SDF",
+    "question": "Has the entity been notified as a significant data fiduciary under the DPDP Act?",
+    "register lines": [
+     72
+    ]
+   },
+   {
+    "key": "RPT",
+    "question": "Does the entity enter into related-party transactions?",
+    "register lines": [
+     8
+    ]
+   },
+   {
+    "key": "CHG",
+    "question": "Is a change in shareholding, control, directors or key personnel proposed?",
+    "register lines": [
+     9
+    ]
+   },
+   {
+    "key": "BANK",
+    "question": "Is the corporate agent a bank or an NBFC?",
+    "register lines": [
+     10,
+     12,
+     23
+    ]
+   },
+   {
+    "key": "COM10",
+    "question": "Did commission or remuneration exceed ₹10 crore in the year (or ₹5 crore for a broker), or is the broker a reinsurance or composite broker?",
+    "register lines": [
+     7,
+     27
+    ]
+   },
+   {
+    "key": "BRANCH",
+    "question": "Does the corporate agent solicit through branches?",
+    "register lines": [
+     6
+    ]
+   },
+   {
+    "key": "TELE",
+    "question": "Does the intermediary use tele-calling, online or other distance modes?",
+    "register lines": [
+     24
+    ]
+   },
+   {
+    "key": "POSP",
+    "question": "Does the broker engage POSPs?",
+    "register lines": [
+     25
+    ]
+   },
+   {
+    "key": "PREM",
+    "question": "Does the intermediary collect premium?",
+    "register lines": [
+     26
+    ]
+   },
+   {
+    "key": "CLAIM",
+    "question": "Does the intermediary offer claim consultancy, risk management or claims assistance?",
+    "register lines": [
+     41,
+     42
+    ]
+   },
+   {
+    "key": "DIGI",
+    "question": "Does the intermediary have websites, apps or online journeys, issue advertisements or use social media?",
+    "register lines": [
+     32,
+     34,
+     35
+    ]
+   },
+   {
+    "key": "KYC",
+    "question": "Does the intermediary perform KYC or onboard customers?",
+    "register lines": [
+     53,
+     54
+    ]
+   },
+   {
+    "key": "ITSYS",
+    "question": "Does the intermediary run its own IT systems (IMF, TPA or corporate surveyor in scope of the cyber guidelines)?",
+    "register lines": [
+     55,
+     56,
+     57,
+     58,
+     59,
+     60,
+     61,
+     62,
+     63,
+     67,
+     74,
+     79
+    ]
+   },
+   {
+    "key": "OUT",
+    "question": "Does the intermediary outsource any activity?",
+    "register lines": [
+     75
+    ]
+   },
+   {
+    "key": "TPA",
+    "question": "Is the entity a TPA or a surveyor?",
+    "register lines": [
+     11,
+     43,
+     44,
+     45,
+     47
+    ]
+   },
+   {
+    "key": "VOL",
+    "question": "Will the entity adopt practices recommended for its category?",
+    "register lines": [
+     4,
+     46
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 46
+ },
+ "Cooperative": {
+  "questions": [
+   {
+    "key": "W20",
+    "question": "Does any establishment employ 20 or more workers?",
+    "register lines": [
+     69
+    ]
+   },
+   {
+    "key": "BRANCH",
+    "question": "Is the society opening branches or extending its area of operation?",
+    "register lines": [
+     4
+    ]
+   },
+   {
+    "key": "RESTR",
+    "question": "Is an amalgamation, division or conversion proposed?",
+    "register lines": [
+     5
+    ]
+   },
+   {
+    "key": "T500",
+    "question": "Do turnover or deposits exceed ₹500 crore?",
+    "register lines": [
+     19
+    ]
+   },
+   {
+    "key": "T250",
+    "question": "Do assets exceed ₹250 crore (Form X auditor's report from FY 2028–29; ₹1,000 crore from FY 2027–28)?",
+    "register lines": [
+     20
+    ]
+   },
+   {
+    "key": "CIC",
+    "question": "Is the society a member of a credit information company?",
+    "register lines": [
+     23
+    ]
+   },
+   {
+    "key": "LEND",
+    "question": "Does the society lend to members (including board members), or offer housing or gold loans?",
+    "register lines": [
+     25,
+     27,
+     28,
+     29,
+     33
+    ]
+   },
+   {
+    "key": "PRUD",
+    "question": "Do Registrar prudential norms or State Act investment rules apply to the State society?",
+    "register lines": [
+     2,
+     3,
+     9,
+     11,
+     14,
+     26,
+     37,
+     38,
+     39,
+     42,
+     43,
+     47,
+     48,
+     58,
+     67
+    ]
+   },
+   {
+    "key": "DEP",
+    "question": "Does the society accept deposits from members?",
+    "register lines": [
+     36
+    ]
+   },
+   {
+    "key": "UCB",
+    "question": "Is the entity an urban co-operative bank (answer In part if it is a Tier 1 bank or is registered in one State only)?",
+    "register lines": [
+     6,
+     12,
+     30,
+     31,
+     32,
+     40,
+     41,
+     46,
+     50,
+     63
+    ]
+   },
+   {
+    "key": "GST",
+    "question": "Are taxable supplies above the GST registration threshold?",
+    "register lines": [
+     52
+    ]
+   },
+   {
+    "key": "RECOV",
+    "question": "Does the society recover dues from members (non-credit and housing societies)?",
+    "register lines": [
+     34
+    ]
+   },
+   {
+    "key": "ACT",
+    "question": "Does the society carry on dairy, food, agri-input, retail packing, housing or redevelopment, godown or PACS activities?",
+    "register lines": [
+     74,
+     75,
+     76,
+     77,
+     78,
+     79,
+     80,
+     81
+    ]
+   },
+   {
+    "key": "VOL",
+    "question": "Will the society adopt practices recommended for it (fair practices, fraud, KYC, outsourcing)?",
+    "register lines": [
+     44,
+     62
+    ]
+   },
+   {
+    "key": "EMP",
+    "question": "Do the gratuity, EPF, ESI or maternity-benefit thresholds apply?",
+    "register lines": [
+     70
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 50
+ },
+ "Payments Fintech": {
+  "questions": [
+   {
+    "key": "CSR",
+    "question": "Does the company meet a CSR threshold of section 135(1) of the Companies Act in the preceding year (net worth ₹500 crore, turnover ₹1,000 crore or net profit ₹5 crore)?",
+    "register lines": [
+     11
+    ]
+   },
+   {
+    "key": "W20",
+    "question": "Does any establishment employ 20 or more workers?",
+    "register lines": [
+     84
+    ]
+   },
+   {
+    "key": "BIG",
+    "question": "Is the company listed, or a public company meeting the thresholds of rule 6 of the Meetings of Board Rules (paid-up capital ₹10 crore, turnover ₹100 crore or borrowings above ₹50 crore)?",
+    "register lines": [
+     10,
+     12
+    ]
+   },
+   {
+    "key": "IA13",
+    "question": "Does the company meet a threshold of rule 13 of the Companies (Accounts) Rules for internal audit (turnover ₹200 crore, borrowings ₹100 crore or deposits ₹25 crore; listed companies always)?",
+    "register lines": [
+     9
+    ]
+   },
+   {
+    "key": "FDI",
+    "question": "Does the entity have foreign investment, or is it majority foreign-owned?",
+    "register lines": [
+     7
+    ]
+   },
+   {
+    "key": "CLOUD",
+    "question": "Does the entity use cloud services for any regulated activity or data?",
+    "register lines": [
+     69
+    ]
+   },
+   {
+    "key": "SDF",
+    "question": "Has the entity been notified as a significant data fiduciary under the DPDP Act?",
+    "register lines": [
+     77
+    ]
+   },
+   {
+    "key": "CHG",
+    "question": "Is a change in shareholding, control, directors or key personnel proposed?",
+    "register lines": [
+     6
+    ]
+   },
+   {
+    "key": "SIZE",
+    "question": "Is the entity a large or medium non-bank PSO under the RBI Master Directions on Cyber Resilience and Digital Payment Security Controls for non-bank PSOs (answer No if small)?",
+    "register lines": [
+     58,
+     59,
+     61,
+     62,
+     63,
+     64,
+     65,
+     66,
+     67,
+     68,
+     79
+    ]
+   },
+   {
+    "key": "LSP",
+    "question": "Does the entity act as a lending service provider for a regulated lender (and, if so, for more than one lender, as a recovery agent, or providing DLG)?",
+    "register lines": [
+     3,
+     5,
+     47,
+     48,
+     49,
+     50,
+     51,
+     52,
+     53,
+     54,
+     55,
+     56,
+     57,
+     78,
+     83
+    ]
+   },
+   {
+    "key": "MERCH",
+    "question": "Does the entity onboard or acquire merchants or billers?",
+    "register lines": [
+     17,
+     18,
+     19,
+     23
+    ]
+   },
+   {
+    "key": "CARD",
+    "question": "Does the entity store, process or handle card data?",
+    "register lines": [
+     21,
+     70
+    ]
+   },
+   {
+    "key": "AGENT",
+    "question": "Does the entity use agents or agent institutions?",
+    "register lines": [
+     22
+    ]
+   },
+   {
+    "key": "XB",
+    "question": "Does the entity offer cross-border payment services (PA-CB)?",
+    "register lines": [
+     28
+    ]
+   },
+   {
+    "key": "AUTH",
+    "question": "Does the entity participate in authentication flows?",
+    "register lines": [
+     30
+    ]
+   },
+   {
+    "key": "PPIX",
+    "question": "PPI issuer: does it issue gift, full-KYC or co-branded PPIs, and are more than one crore PPIs outstanding?",
+    "register lines": [
+     32,
+     33,
+     34,
+     45
+    ]
+   },
+   {
+    "key": "RECUR",
+    "question": "Does the entity process recurring transactions or e-mandates?",
+    "register lines": [
+     35
+    ]
+   },
+   {
+    "key": "APP",
+    "question": "Does the entity offer mobile apps or customer-facing interfaces?",
+    "register lines": [
+     36,
+     43,
+     44
+    ]
+   },
+   {
+    "key": "EXIT",
+    "question": "Is the entity exiting a payment business?",
+    "register lines": [
+     8
+    ]
+   },
+   {
+    "key": "SRO",
+    "question": "Is the non-bank BBPOU a fintech (SRO-FT membership)?",
+    "register lines": [
+     14
+    ]
+   },
+   {
+    "key": "FAIL",
+    "question": "Does the entity handle failed transactions, refunds or disputes through banks, NPCI or escrow?",
+    "register lines": [
+     26,
+     31,
+     39
+    ]
+   },
+   {
+    "key": "TPAP",
+    "question": "Does the entity also operate as a UPI third-party application provider?",
+    "register lines": [
+     37
+    ]
+   },
+   {
+    "key": "OTHPSO",
+    "question": "Is the entity another authorised PSO or a BBPOU?",
+    "register lines": [
+     1,
+     2
+    ]
+   }
+  ],
+  "unmatched": [],
+  "conditional lines": 60
+ }
+}

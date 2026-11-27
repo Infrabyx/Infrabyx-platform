@@ -1,0 +1,1217 @@
+[
+{
+"no": 1,
+"group": "Governance & Bye-laws",
+"policy": "Registered bye-laws aligned to the 2023 amendments",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 2,
+"group": "Governance & Bye-laws",
+"policy": "Conflict-of-interest and relatives policy for directors and staff",
+"type": "Mandatory",
+"condition": "State societies and UCBs: equivalent State Act / BR Act provisions",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 3,
+"group": "Governance & Bye-laws",
+"policy": "Chief Executive appointment, eligibility and fit-and-proper policy",
+"type": "Mandatory",
+"condition": "State societies: as the State Act requires",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 4,
+"group": "Governance & Bye-laws",
+"policy": "Area of operation and branch expansion policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies opening branches or extending area; UCBs under RBI branch authorisation",
+"question": "BRANCH",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 5,
+"group": "Governance & Bye-laws",
+"policy": "Amalgamation, division and conversion procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "On proposed restructuring",
+"question": "RESTR",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 6,
+"group": "Governance & Bye-laws",
+"policy": "Membership admission, active-membership and share-capital policy",
+"type": "Recommended",
+"condition": "UCBs: subject to RBI share-capital norms",
+"question": "UCB",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Conditional"
+}
+},
+{
+"no": 7,
+"group": "Governance & Bye-laws",
+"policy": "Delegation of financial and administrative powers",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 8,
+"group": "Governance & Bye-laws",
+"policy": "Policy on policies (policy register and review cycle)",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 9,
+"group": "Board, Elections & General Body",
+"policy": "Election management procedure and Co-operative Election Authority engagement",
+"type": "Mandatory",
+"condition": "State societies and State-registered UCBs: State election authority and rules",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 10,
+"group": "Board, Elections & General Body",
+"policy": "Board charter and meeting procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 11,
+"group": "Board, Elections & General Body",
+"policy": "Board composition, reserved seats and co-option policy",
+"type": "Mandatory",
+"condition": "State societies: State Act composition rules",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 12,
+"group": "Board, Elections & General Body",
+"policy": "Audit and Ethics Committee terms of reference",
+"type": "Mandatory",
+"condition": "UCBs: Audit Committee of the Board under RBI directions",
+"question": "UCB",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 13,
+"group": "Board, Elections & General Body",
+"policy": "General body and AGM procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 14,
+"group": "Board, Elections & General Body",
+"policy": "Board disqualification-risk monitoring procedure",
+"type": "Recommended",
+"condition": "State societies and UCBs: equivalent State Act / RBI triggers",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 15,
+"group": "Board, Elections & General Body",
+"policy": "Directors' induction, training and sitting-fee policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 16,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Statutory audit management policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 17,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Statutory returns and filing calendar procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 18,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Net-profit appropriation, reserves and dividend policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 19,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Concurrent audit policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Turnover or deposits above the notified limit (₹500 crore); UCBs as per RBI instructions",
+"question": "T500",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 20,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Auditor's Report Order (Form X) readiness framework",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies above ₹1,000 crore from FY 2027–28; above ₹250 crore from FY 2028–29",
+"question": "T250",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "No",
+"OTH": "No",
+"UCB": "No"
+}
+},
+{
+"no": 21,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Internal audit and internal control charter",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 22,
+"group": "Audit, Returns & Statutory Funds",
+"policy": "Registrar inquiry, inspection and special-audit response SOP",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 23,
+"group": "Credit & Recovery",
+"policy": "Credit information reporting policy",
+"type": "Mandatory",
+"condition": "Credit societies that are members of credit information companies",
+"question": "CIC",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 24,
+"group": "Credit & Recovery",
+"policy": "Wilful defaulter identification policy (UCBs)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 25,
+"group": "Credit & Recovery",
+"policy": "Loan / credit policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Non-credit multi-State societies lending to members",
+"question": "LEND",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 26,
+"group": "Credit & Recovery",
+"policy": "Exposure and concentration limits policy",
+"type": "Mandatory if activity undertaken",
+"condition": "State credit societies where Registrar prudential norms apply",
+"question": "PRUD",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 27,
+"group": "Credit & Recovery",
+"policy": "Loans to directors and relatives policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies lending to members incl. board members; State societies per State Act",
+"question": "LEND",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 28,
+"group": "Credit & Recovery",
+"policy": "Housing-loan policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Medium and Large credit societies only; UCBs within RBI housing-finance limits",
+"question": "LEND",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Conditional",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 29,
+"group": "Credit & Recovery",
+"policy": "Asset classification, provisioning and NPA management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Lending societies; State societies per Registrar norms",
+"question": "LEND",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 30,
+"group": "Credit & Recovery",
+"policy": "Interest rate policy (loans and deposits)",
+"type": "Mandatory if activity undertaken",
+"condition": "Mandatory for UCBs; recommended for credit societies",
+"question": "UCB",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 31,
+"group": "Credit & Recovery",
+"policy": "Fair practices and responsible lending code",
+"type": "Mandatory if activity undertaken",
+"condition": "Mandatory for UCBs; recommended for credit societies",
+"question": "UCB",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 32,
+"group": "Credit & Recovery",
+"policy": "Compromise settlement and write-off policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Board-approved policy mandatory for UCBs; recommended for societies",
+"question": "UCB",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 33,
+"group": "Credit & Recovery",
+"policy": "Gold-loan policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Lenders offering gold loans",
+"question": "LEND",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 34,
+"group": "Credit & Recovery",
+"policy": "Recovery and collection policy",
+"type": "Recommended",
+"condition": "Non-credit and housing societies recovering member dues",
+"question": "RECOV",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 35,
+"group": "Credit & Recovery",
+"policy": "Staff accountability policy for problem loans",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "No",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 36,
+"group": "Deposits, Investments & Prudential Norms",
+"policy": "Deposit policy (members only; BUDS compliance)",
+"type": "Mandatory",
+"condition": "Societies accepting member deposits (incl. housing societies)",
+"question": "DEP",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 37,
+"group": "Deposits, Investments & Prudential Norms",
+"policy": "Investment of funds policy",
+"type": "Mandatory",
+"condition": "State societies per State Act investment rules",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 38,
+"group": "Deposits, Investments & Prudential Norms",
+"policy": "Capital adequacy (CRAR) and capital planning policy",
+"type": "Mandatory if activity undertaken",
+"condition": "State societies where Registrar norms apply",
+"question": "PRUD",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 39,
+"group": "Deposits, Investments & Prudential Norms",
+"policy": "Liquidity and asset-liability management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "State societies where Registrar norms apply",
+"question": "PRUD",
+"answers": {
+"MSCS": "No",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "Yes"
+}
+},
+{
+"no": 40,
+"group": "Deposits, Investments & Prudential Norms",
+"policy": "Prompt Corrective Action monitoring and recovery plan",
+"type": "Mandatory if activity undertaken",
+"condition": "Tier 2–4 UCBs",
+"question": "UCB",
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 41,
+"group": "AML/KYC & Financial Crime",
+"policy": "Cash transaction control policy",
+"type": "Mandatory",
+"condition": "Co-operative banks are outside ss. 185–186 restrictions; apply PMLA cash reporting",
+"question": "UCB",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Conditional"
+}
+},
+{
+"no": 42,
+"group": "AML/KYC & Financial Crime",
+"policy": "KYC / AML / CFT policy",
+"type": "Mandatory if activity undertaken",
+"condition": "State societies (not notified reporting entities): proportionate KYC recommended",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 43,
+"group": "AML/KYC & Financial Crime",
+"policy": "Sanctions and UAPA designated-list screening procedure",
+"type": "Mandatory if activity undertaken",
+"condition": "State societies: recommended",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 44,
+"group": "AML/KYC & Financial Crime",
+"policy": "Fraud risk management and reporting policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Recommended for societies",
+"question": "VOL",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 45,
+"group": "AML/KYC & Financial Crime",
+"policy": "Whistle-blower and vigil mechanism policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 46,
+"group": "Members, Information & Grievance",
+"policy": "Co-operative Information Officer and information-request procedure",
+"type": "Mandatory",
+"condition": "Multi-State UCBs",
+"question": "UCB",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 47,
+"group": "Members, Information & Grievance",
+"policy": "Member grievance redressal and Co-operative Ombudsman compliance policy",
+"type": "Mandatory",
+"condition": "State societies: State Act remedies (recommended)",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 48,
+"group": "Members, Information & Grievance",
+"policy": "Member disclosure and transparency policy",
+"type": "Mandatory",
+"condition": "State societies per State Act",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 49,
+"group": "Members, Information & Grievance",
+"policy": "Member education and communication policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 50,
+"group": "Members, Information & Grievance",
+"policy": "Nomination, share transfer and share-refund policy",
+"type": "Recommended",
+"condition": "UCBs: subject to RBI share-capital norms",
+"question": "UCB",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Conditional"
+}
+},
+{
+"no": 51,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "TDS compliance procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 52,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "GST compliance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies making taxable supplies above the registration threshold",
+"question": "GST",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 53,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "Tax position and s. 149 deduction policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "No"
+}
+},
+{
+"no": 54,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "Accounting policies and financial statements policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 55,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "Budget, expenditure and procurement policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 56,
+"group": "Tax, Accounts & Cash Controls",
+"policy": "Bank account operations and cash-handling policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 57,
+"group": "Technology, Data & Outsourcing",
+"policy": "Information security and cyber incident response policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 58,
+"group": "Technology, Data & Outsourcing",
+"policy": "Computerisation, audit-trail and electronic records policy",
+"type": "Mandatory",
+"condition": "State societies as Registrar prescribes; UCBs under RBI IT norms",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 59,
+"group": "Technology, Data & Outsourcing",
+"policy": "Data protection policy and privacy notice (DPDP)",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 60,
+"group": "Technology, Data & Outsourcing",
+"policy": "Personal data breach notification procedure",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 61,
+"group": "Technology, Data & Outsourcing",
+"policy": "Record retention and destruction policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 62,
+"group": "Technology, Data & Outsourcing",
+"policy": "Outsourcing and vendor management policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Recommended for societies using vendors",
+"question": "VOL",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Yes"
+}
+},
+{
+"no": 63,
+"group": "Technology, Data & Outsourcing",
+"policy": "Digital banking channels policy (UCBs)",
+"type": "Mandatory if activity undertaken",
+"condition": "UCBs offering internet or mobile banking",
+"question": "UCB",
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "No",
+"UCB": "Conditional"
+}
+},
+{
+"no": 64,
+"group": "Technology, Data & Outsourcing",
+"policy": "Business continuity, backup and disaster recovery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 65,
+"group": "Technology, Data & Outsourcing",
+"policy": "IT acceptable use, email and device policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 66,
+"group": "HR & Ethics",
+"policy": "POSH policy, Internal Committee and board committee",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 67,
+"group": "HR & Ethics",
+"policy": "Recruitment and service rules (incl. bar on relatives of directors)",
+"type": "Mandatory",
+"condition": "State societies and UCBs: State Act service rules",
+"question": "PRUD",
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 68,
+"group": "HR & Ethics",
+"policy": "Equal opportunity policy",
+"type": "Mandatory",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 69,
+"group": "HR & Ethics",
+"policy": "Standing orders and HR policies under the Labour Codes",
+"type": "Mandatory if activity undertaken",
+"condition": "Standing orders: 300 or more workers; Grievance Redressal Committee: 20 or more workers",
+"question": "W20",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 70,
+"group": "HR & Ethics",
+"policy": "Gratuity, leave and employee benefits policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Per applicability thresholds (gratuity, EPF, ESI, maternity benefit)",
+"question": "EMP",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "Conditional",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "Conditional"
+}
+},
+{
+"no": 71,
+"group": "HR & Ethics",
+"policy": "Code of conduct for directors and employees",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 72,
+"group": "HR & Ethics",
+"policy": "Gifts, hospitality and anti-bribery policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 73,
+"group": "HR & Ethics",
+"policy": "Staff accountability and disciplinary policy",
+"type": "Recommended",
+"condition": null,
+"question": null,
+"answers": {
+"MSCS": "Yes",
+"MSCCS": "Yes",
+"SCS": "Yes",
+"OTH": "Yes",
+"UCB": "Yes"
+}
+},
+{
+"no": 74,
+"group": "Sectoral Operations",
+"policy": "Food safety management system (FSMS) plan",
+"type": "Mandatory if activity undertaken",
+"condition": "Dairy, food-processing and consumer societies handling food",
+"question": "ACT",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 75,
+"group": "Sectoral Operations",
+"policy": "Agri-input licensing and quality-control SOP",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies and PACS selling fertilisers, seeds or pesticides",
+"question": "ACT",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "No",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 76,
+"group": "Sectoral Operations",
+"policy": "Weights, measures and packaged-commodity compliance SOP",
+"type": "Mandatory if activity undertaken",
+"condition": "Societies weighing, packing or retailing goods",
+"question": "ACT",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "No",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 77,
+"group": "Sectoral Operations",
+"policy": "Housing society maintenance, repairs and sinking-fund policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Housing societies",
+"question": "ACT",
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 78,
+"group": "Sectoral Operations",
+"policy": "Housing society redevelopment and conveyance policy",
+"type": "Mandatory if activity undertaken",
+"condition": "Housing societies undertaking redevelopment or conveyance",
+"question": "ACT",
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 79,
+"group": "Sectoral Operations",
+"policy": "Milk procurement, quality testing and pricing policy",
+"type": "Recommended",
+"condition": "Dairy societies and unions",
+"question": "ACT",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "No",
+"SCS": "No",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 80,
+"group": "Sectoral Operations",
+"policy": "Warehousing, stock and inventory management policy",
+"type": "Recommended",
+"condition": "Societies holding stock or operating godowns",
+"question": "ACT",
+"answers": {
+"MSCS": "Conditional",
+"MSCCS": "No",
+"SCS": "Conditional",
+"OTH": "Conditional",
+"UCB": "No"
+}
+},
+{
+"no": 81,
+"group": "Sectoral Operations",
+"policy": "PACS model bye-laws and multi-service activity policy",
+"type": "Recommended",
+"condition": "PACS",
+"question": "ACT",
+"answers": {
+"MSCS": "No",
+"MSCCS": "No",
+"SCS": "Conditional",
+"OTH": "No",
+"UCB": "No"
+}
+}
+]
