@@ -110,3 +110,40 @@ The 23 **calculators** are (g) plus product-specific monitors (ALM, ICAAP, provi
 **Threat model:** one entry for the ODF writers (no active content, escaping, neutralised formula triggers, the byte cap).
 
 **Exit:** the cases above; `export` lint, typecheck and unit tests; guide section; a DECISIONS row.
+
+## 8. Item (c): the DOCGEN template adapter and `issueDocument` (plan section, 28 Nov 2026; R1-D-314, R1-D-315)
+
+Two PRs, each a minor: first the adapter (`connectors`, with its contract cases in `testing`), then `workflow` `issueDocument`.
+
+**1. `connectors` `DocxtemplaterDocgen` (adapter `docxtemplater`; IPB-01 DOCGEN's named reference).** It runs in-process, so there is no external account and no flag. A product supplies its template store, and the adapter fills its tagged `.docx` templates (owner answer 6):
+
+- **Tags:** only `{field}` and loops `{#items}…{/items}` are allowed. A field or loop name is `[A-Za-z_][A-Za-z0-9_]*`, with no dots, expressions or filters.
+- **Refused in a template:** a raw-XML tag `{@…}`, an inverted section `{^…}`, any other syntax, and a syntax error.
+- **Data:** a loop's value must be an array of objects (a boolean or an object would make it a condition, and conditions are decided in data). A field's value must be text, a number or a boolean.
+- **Missing bindings:** every field must be bound; a missing one is refused `binding_missing` with the field names (loop fields as `items[].field`), never rendered as an empty string. Extra data keys are ignored.
+- **Escaping:** values are XML-escaped (docxtemplater's default), so a value can never add a paragraph, a field or a link. Line breaks in a value become breaks.
+- **Template safety, checked by `validateTemplate` and again before every render** (a template that fails is refused `template_unsafe` with its problems):
+  - no macros (`vbaProject.bin`, macro-enabled content types);
+  - no ActiveX, OLE embeddings or `altChunk`;
+  - no external relationship except an https hyperlink;
+  - no `INCLUDETEXT`, `INCLUDEPICTURE`, `DDE`, `DDEAUTO`, `LINK`, `IMPORT` or `DATABASE` field;
+  - a size cap.
+- **Templates and files:** the template is read from STORAGE by reference and its SHA-256 checked. The output goes to STORAGE under the request's prefix with its SHA-256 and the template version.
+- **Formats:**
+  - `docx` in-process.
+  - `pdf` and `pdfa` through Gotenberg's LibreOffice route (`GotenbergDocgen.convertDocx`, a new method), A4, PDF/A-2b for `pdfa`.
+  - `html` is unsupported, and so is `previewHtml`.
+  - `renderHtml` is delegated to Gotenberg when one is configured.
+- **Dependencies** (pinned exactly, past the 7-day rule): `docxtemplater` 3.71.1 (MIT, 15 Oct 2026; its `@xmldom/xmldom` 0.9.12, MIT) and `pizzip` 3.3.0 (MIT OR GPL-3.0, taken as MIT; its `pako`, MIT AND Zlib).
+- **Contract cases** (`testing` `docgenTemplateContractCases`, on a test copy of PD-A02, the Deposit Receipt, with merge fields added):
+  - it renders, a tag split across Word runs included, with values escaped;
+  - a missing binding is refused, naming it;
+  - an extra key is ignored;
+  - a raw tag, an inverted section, a dotted name, an `INCLUDETEXT` field, an external image and a macro part are each refused;
+  - a loop given a boolean is refused;
+  - the output's SHA-256 is the stored bytes' own.
+  - The Gotenberg leg renders PDF and PDF/A (hermetic, CI).
+
+**2. `workflow` `issueDocument(render → approve → esign → archive)`** (next PR): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
+
+**Threat model:** template rendering (no code in templates, escaping, no external references, no includes) and the two new dependencies.

@@ -2478,6 +2478,39 @@ const odt = toOdt({ title: "Deposit receipt", blocks }, { created }); // the sam
 - **`ods_unsupported`:** a sheet using an XLSX-only feature (validations, protection, frozen columns, AutoFilter, fills, row layout, page set-up, conditional formats, formula cells, named ranges) is refused with the feature's name. Offer that register in XLSX only, or drop the feature for ODS.
 - **Content types:** `application/vnd.oasis.opendocument.spreadsheet` (`.ods`) and `application/vnd.oasis.opendocument.text` (`.odt`).
 
+## 7fi. Documents from your own `.docx` templates: DOCGEN `docxtemplater` (templates item (c); R1-D-314)
+
+From the next `@infrabyx/connectors` and `testing` minors (no migration or setting). You tag your own `.docx` templates and keep them in your store; the adapter fills them.
+
+```ts
+import { DocxtemplaterDocgen, GotenbergDocgen } from "@infrabyx/connectors/docgen";
+
+const gotenberg = new GotenbergDocgen({ baseUrl, storage, enabled: () => flags.gotenberg });
+const docgen = new DocxtemplaterDocgen({
+  storage,
+  templates: { list: (t) => myStore.list(t), get: (t, id) => myStore.get(t, id) }, // id, version, { storageKey, sha256 }
+  converter: {
+    convertDocx: (d, f) => gotenberg.convertDocx(d, f),
+    renderHtml: (r, c) => gotenberg.renderHtml(r, c),
+  },
+});
+const r = await docgen.render({
+  templateId: "deposit_receipt",
+  data,
+  format: "pdfa",
+  outputPrefix: "tenant/tnt_x/deposits",
+});
+```
+
+- **Tagging:** `{field}` and `{#rows}…{/rows}` only, with names of letters, digits and `_`. Decide conditions in your data, not in the template. Run `validateTemplate(file)` when you upload a template: it lists the problems, or `valid: true`.
+- **Refusals** (`IPB-PORT-001` with `meta.reason`):
+  - `binding_missing`: `meta.fields` names every unbound field;
+  - `data_invalid`: a loop that is not an array of objects, or a field that is not text, a number or a boolean;
+  - `template_unsafe`, `template_invalid`, `template_changed`;
+  - `unsupported`: `html`, or `pdf` without a converter.
+- **What is refused in a template:** macros, ActiveX, embedded objects, imported chunks, external links other than https hyperlinks, and INCLUDETEXT, INCLUDEPICTURE, DDE, LINK, IMPORT and DATABASE fields.
+- **Tests:** run `docgenTemplateContractCases` over your adapter with your own tagged template and the six hostile kinds (`DOCGEN_HOSTILE_TEMPLATES`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

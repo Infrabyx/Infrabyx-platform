@@ -19,6 +19,7 @@ export * from "./aa-statement-analysis.js";
 export * from "./grc.js";
 export * from "./file-transfer.js";
 export * from "./documents-money.js";
+export * from "./docgen-templates.js";
 export * from "./estamp-record.js";
 export * from "./captcha.js";
 export * from "./device-attestation.js";

@@ -1775,6 +1775,18 @@ A credit bureau's report and an account aggregator's FI payloads are vendor byte
 - **R:** the clean object carries its scan as tags, and the ref carries the scan record.
 - **The Connector Agent** stores no file today (JSON bodies only); a test fails if a STORAGE write appears in the accounting connector without `writeScanned`.
 
+### 3.199 The DOCGEN template adapter (`docxtemplater`; regulatory templates item (c), R1-D-314)
+
+A product's tagged `.docx` template is filled with its data, often personal.
+
+- **T/E (code in a template):** `{field}` and loops only. A raw-XML tag (`{@…}`) is refused, because it would insert caller-controlled markup. So are inverted sections and any name outside `[A-Za-z_][A-Za-z0-9_]*`, so there are no expressions, filters or conditions (owner answer 6). Lookups read own properties only, so `{constructor}` cannot reach a prototype (tested).
+- **T (a value as markup):** values are XML-escaped; a value holding `<w:p>` reads back as text (contract case).
+- **I/E (a template that reaches out):** macros, ActiveX, OLE embeddings, `altChunk` and external relationships other than https hyperlinks are refused, and so are INCLUDETEXT, INCLUDEPICTURE, DDE, DDEAUTO, LINK, IMPORT and DATABASE fields (one contract case each), before every render as well as in `validateTemplate`.
+- **T (a template swapped in STORAGE):** it is read by reference and refused unless its bytes have the referenced SHA-256.
+- **I (an empty field mistaken for a value):** a missing binding is refused, naming the field; nothing is rendered or stored. Errors carry tag names, never data values.
+- **D:** a 10 MiB template cap; Gotenberg's egress caps the PDF (50 MiB).
+- **Supply chain:** `docxtemplater` 3.71.1 and `pizzip` 3.3.0 (MIT), past the 7-day rule, pinned exactly, imported only in `connectors/src/docgen`.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
