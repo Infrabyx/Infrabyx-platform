@@ -116,6 +116,7 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
   - A commit was made before a failing contract test was read; that was the stub flake, fixed in a second commit.
   - A long heredoc edit was blocked by the shell safety check and redone as a file write; nothing had run.
   - #435 and #436 sat in conflict after #433 and #437 merged until `main` was merged in.
+  - The first handover PR (#439) failed `commitlint`: one commit header was over 100 characters and one subject began with a capital. It was closed and replaced by a single commit on a fresh branch, since branches are never force-pushed.
 - **Environment notes:** as the thirty-sixth session's, plus:
   - LibreOffice 24.2.7 is installed here; `packages/regcalc/scripts/app-fixtures.py` and the export LibreOffice legs use it.
   - `dockerd --registry-mirror https://mirror.gcr.io` runs the hermetic Gotenberg leg.
