@@ -281,6 +281,10 @@
       "port": "DOCGEN",
       "kind": "self-hosted"
     },
+    "docxtemplater": {
+      "port": "DOCGEN",
+      "kind": "in-process"
+    },
     "pdf-text": {
       "port": "PDF",
       "kind": "in-process"

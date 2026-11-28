@@ -161,6 +161,46 @@ export class GotenbergDocgen implements DocgenPort {
     };
   }
 
+  /**
+   * A filled `.docx` to PDF or PDF/A-2b through Gotenberg's LibreOffice route (regulatory
+   * templates item (c), R1-D-314): the `docxtemplater` adapter's converter. Only the one file goes,
+   * and only a PDF comes back; nothing is stored here (the caller stores what it renders).
+   */
+  async convertDocx(docx: Uint8Array, format: "pdf" | "pdfa"): Promise<Uint8Array> {
+    if (!(await this.o.enabled()))
+      throw new PortError("IPB-PORT-001", PORT, {
+        adapter: ADAPTER,
+        detail: "int.docgen.gotenberg.enabled is off",
+      });
+    const form = new FormData();
+    form.append(
+      "files",
+      new Blob([new Uint8Array(docx)], {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
+      "document.docx",
+    );
+    if (format === "pdfa") {
+      form.append("pdfa", "PDF/A-2b");
+      form.append("pdfua", "true");
+    }
+    const r = await this.egress(
+      `${this.base}/forms/libreoffice/convert`,
+      await this.init({ method: "POST", body: form }),
+    );
+    if (r.status !== 200)
+      throw new PortError(r.status >= 500 ? "IPB-PORT-002" : "IPB-PORT-001", PORT, {
+        adapter: ADAPTER,
+        detail: `Gotenberg answered ${r.status}`,
+      });
+    if (!isPdf(r.body))
+      throw new PortError("IPB-PORT-002", PORT, {
+        adapter: ADAPTER,
+        detail: "Gotenberg did not return a PDF",
+      });
+    return r.body;
+  }
+
   async render(): Promise<RenderedDocument> {
     throw unsupported("render");
   }
