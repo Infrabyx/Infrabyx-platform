@@ -146,4 +146,35 @@ Two PRs, each a minor: first the adapter (`connectors`, with its contract cases 
 
 **2. `workflow` `issueDocument(render → approve → esign → archive)`** (next PR): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
 
+**2a. `workflow` `issueDocument`: the detailed plan** (written 28 Nov 2026 for the next session; R1-D-315)
+
+One `workflow` minor with one migration (`workflow/0006_document_issue.sql`). It builds on the `docxtemplater` adapter (item 1), the approvals engine (`tenancy`), ESIGN and STORAGE.
+
+- **Record, `workflow.document_issue`** (tenant-scoped, RLS enabled and forced, each column with its data class):
+  - `id` (`dis_` ULID);
+  - `template_id` and `template_version`, both INTERNAL;
+  - `format`;
+  - `data_sha256` (the SHA-256 of the canonical JSON of the data, never the data itself), CONFIDENTIAL;
+  - `rendered_key` and `rendered_sha256`;
+  - `approval_id`, null when the product's policy needs none;
+  - `envelope_id`;
+  - `signed_key` and `signed_sha256`;
+  - `archived_key`, `archived_sha256` and `retain_until`;
+  - `state`: `rendered`, then `approval_pending`, `approved`, `signing`, `signed`, `archived`; or `rejected`, `expired` or `failed`;
+  - `created_by`, `created_at` and `updated_at`.
+- **Mutations:** each runs through `MutationKernel.mutate` with a ledger entry `workflow.document_issue.<step>`, which names the record and both hashes but never the data.
+- **Steps:**
+  1. **`issue(ctx, { templateId, data, format, outputPrefix, approval?, signers?, retainUntil })`:** renders through DOCGEN, records `rendered` with the template version and the output's SHA-256. If the product asks for approval, it requests one through the `ApprovalsEngine` (R-level from the product; the checker is never the maker, PL3-D-07), which leaves the record at `approval_pending`.
+  2. **Approval:** the `ApprovalWorkflow` observer moves the record to `approved`, or to `rejected` or `expired`. Executing the approval starts signing.
+  3. **Signing:** `ESIGN.createEnvelope(rendered, signers)` and `sendForSignature`, leaving the record at `signing`. On completion (the ESIGN webhook or a poll by a product timer), the signed file is read back. It is checked against the envelope's own record and stored with its SHA-256, and the record moves to `signed`.
+  4. **Archive:** `STORAGE.putWithRetention(signed bytes, retainUntil)` to a REGULATED write-once key; the record moves to `archived` with `archived_sha256`, which must equal `signed_sha256`, else `failed`. Retention is the product's input with a floor of today; shortening it is never possible here (IPB-02-80; the locked list).
+- **Idempotent:** each step keys on the record id, so re-running a step changes nothing.
+- **Open points for the owner** (asked when the plan is posted):
+  - whether a document with no signers skips straight to the archive;
+  - whether the rendered, unsigned copy is kept after archiving. The default is to keep it, since deleting it is on the locked list.
+- **Contract cases** (synthetic, the fakes):
+  - **The happy path:** PD-A02's tagged copy renders, is approved by a checker other than the maker, is signed with `FakeEsign` and is archived. The archived SHA-256 equals the signed bytes, and the template version is on the record.
+  - **Refusals:** the maker cannot approve; a rejected approval never signs; a signed file whose hash changes before the archive is `failed`; and a retry of any step is a no-op.
+- **Threat model:** a new data flow (rendered documents through approval, signing and archive) and the new table (RLS, data classes).
+
 **Threat model:** template rendering (no code in templates, escaping, no external references, no includes) and the two new dependencies.
