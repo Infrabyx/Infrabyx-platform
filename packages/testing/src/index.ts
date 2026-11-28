@@ -19,3 +19,4 @@ export * from "./ai.js";
 export * from "./ai-corpus.js";
 export * from "./web.js";
 export * from "./next-proxy-zstd.js";
+export * from "./seed-persona-roles.js";

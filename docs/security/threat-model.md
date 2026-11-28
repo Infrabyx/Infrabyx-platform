@@ -1834,6 +1834,13 @@ A new package, schema and data flow: register rows a product writes and lists.
 - **E (self-approval):** the approvals engine refuses the maker as checker (tested).
 - **D:** rows are at most 64 KiB of `jsonb`, pages at most 200 rows, and at most 8 filters; the cursor is checked and refused when malformed.
 
+### 3.205 Product roles on seed personas (`seedAdapters.personaRoles`; LDC-69, R1-D-325)
+
+A change to what non-production seeds grant; seeds still never run in prod, dr or pre-prod (`SEED_REFUSED_ENVS`).
+
+- **E (a seed granting more than a product role):** only `<PRODUCT>_<NAME>` roles are accepted, so `ORG_`, `PLT_` and other products' roles are refused (tested). No role is ever added to a platform-tenant persona, and an unknown persona key is refused. All of this is checked before any vault, IdP or file write.
+- **R:** the credentials file lists every role a persona has, and `checkCredentialsFile` fails when the file and the roles disagree.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.

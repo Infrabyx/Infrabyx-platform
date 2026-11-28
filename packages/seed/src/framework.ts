@@ -15,7 +15,7 @@ import type {
 import { internalEvent } from "@infrabyx/config/events";
 import { canonicalize, deterministicId, newId, sha256 } from "@infrabyx/crypto";
 import { assertSeedAllowed, type SeedEnv, type SeedProfile } from "./guard.js";
-import type { SeedTenant } from "./personas/index.js";
+import type { PersonaRoles, SeedTenant } from "./personas/index.js";
 import { findRealIdentifiers } from "./synthetic.js";
 
 export const SEED_TENANT_IDS: Readonly<Record<SeedTenant, string>> = {
@@ -60,6 +60,8 @@ export interface SeedModuleContext {
   tenantIds: Readonly<Record<SeedTenant, string>>;
   /** `AUTH_SUPER_ADMIN_EMAIL`, when set; the persona otherwise uses the placeholder. */
   superAdminEmail?: string;
+  /** The product's own roles per persona key (LDC-69, R1-D-325). */
+  personaRoles?: PersonaRoles;
   /** One kernel transaction (and one ledger entry) in the given seed tenant. */
   write(tenant: SeedTenant, fn: (w: SeedWriter) => Promise<void>): Promise<void>;
   /**
@@ -109,6 +111,8 @@ export interface RunSeedOptions {
   randomSeed: number;
   /** AUTH_SUPER_ADMIN_EMAIL: the one real address a seed may write (IPB-11-32). */
   superAdminEmail?: string;
+  /** The product's own roles per persona key (LDC-69, R1-D-325; `seedAdapters.personaRoles`). */
+  personaRoles?: PersonaRoles;
   runDate?: Date;
   onRefused?: (envelope: Record<string, unknown>) => void;
 }
@@ -299,6 +303,7 @@ export async function runSeed(o: RunSeedOptions): Promise<SeedReport> {
       runDate: o.runDate ?? new Date(),
       tenantIds: SEED_TENANT_IDS,
       ...(o.superAdminEmail ? { superAdminEmail: o.superAdminEmail } : {}),
+      ...(o.personaRoles ? { personaRoles: o.personaRoles } : {}),
       services: {
         kernel: o.kernel,
         audit: o.audit,

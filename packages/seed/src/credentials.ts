@@ -22,7 +22,12 @@ import {
   toHex,
 } from "@infrabyx/crypto";
 import { seedPersonas } from "./platform.js";
-import { serviceAccountsFor, type Persona } from "./personas/index.js";
+import {
+  personaRolesOf,
+  serviceAccountsFor,
+  type Persona,
+  type PersonaRoles,
+} from "./personas/index.js";
 import { SEED_TENANT_IDS } from "./framework.js";
 
 export interface CredentialsOptions {
@@ -30,6 +35,8 @@ export interface CredentialsOptions {
   product: ProductCode;
   /** AUTH_SUPER_ADMIN_EMAIL; the placeholder when unset. */
   superAdminEmail?: string;
+  /** The product's own roles per persona key (LDC-69, R1-D-325; `seedAdapters.personaRoles`). */
+  personaRoles?: PersonaRoles;
   secrets: SecretsPort;
   identity: IdentityProvisioning;
   /** SEED_VAULT_PREFIX, e.g. secret://env/infrabyx/ldc/local/seed */
@@ -91,7 +98,7 @@ function render(
     "|---|---|---|---|---|---|",
     ...rows.map(
       ({ p, password }) =>
-        `| ${p.label} | ${p.role} | ${p.email} | ${password} | ${tenant(p)} | ${envs(p)} |`,
+        `| ${p.label} | ${personaRolesOf(p).join(", ")} | ${p.email} | ${password} | ${tenant(p)} | ${envs(p)} |`,
     ),
     "",
     "## Service accounts (no passwords; client credentials in vault only)",
@@ -179,7 +186,7 @@ export async function generateCredentials(
       email: p.email,
       displayName: p.label,
       tenantId: SEED_TENANT_IDS[p.tenant],
-      roles: [p.role],
+      roles: personaRolesOf(p),
       password: { value: password, temporary: FORCE_CHANGE_ENVS.includes(o.env.APP_ENV) },
       mfaRequired: p.mfaAlways === true || MFA_ENVS.includes(o.env.APP_ENV),
     });
@@ -202,19 +209,23 @@ export async function generateCredentials(
   return { count: rows.length, path: o.filePath };
 }
 
-/** IPB-11-27 / IPB-SEED-003: the credentials file lists exactly the product's personas (email, role, tenant). */
+/**
+ * IPB-11-27 / IPB-SEED-003: the credentials file lists exactly the product's personas (email,
+ * roles, tenant); with `personaRoles`, each persona's product roles after its platform role (LDC-69).
+ */
 export function checkCredentialsFile(
   text: string,
   product: ProductCode,
   superAdminEmail?: string,
+  personaRoles?: PersonaRoles,
 ): string[] {
   const rows = text
     .split("\n")
-    .filter((l) => /^\| [^|]+ \| [A-Z][A-Z0-9_]+ \| [^|]+@[^|]+ \|/.test(l))
+    .filter((l) => /^\| [^|]+ \| [A-Z][A-Z0-9_]+(, [A-Z][A-Z0-9_]+)* \| [^|]+@[^|]+ \|/.test(l))
     .map((l) => l.split("|").map((c) => c.trim()))
     .map((c) => ({ role: c[2], email: c[3], tenant: c[5] }));
-  const want = seedPersonas({ product, superAdminEmail }).map((p) => ({
-    role: p.role,
+  const want = seedPersonas({ product, superAdminEmail, personaRoles }).map((p) => ({
+    role: personaRolesOf(p).join(", "),
     email: p.email,
     tenant: p.tenant,
   }));
