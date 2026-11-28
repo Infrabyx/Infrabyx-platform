@@ -14,10 +14,13 @@ import {
   malformedConsentArtefacts,
   defineContractSuite,
   MemoryStorage,
+  QUARANTINE_REMOVED_ACTION as TESTING_REMOVED_ACTION,
+  quarantineRemovalHarness,
   startCibilStub,
   type CibilStub,
   type CreditBureauFixtures,
 } from "@infrabyx/testing";
+import { QUARANTINE_REMOVED_ACTION } from "../../core/scanned.js";
 import {
   CibilBureau,
   cibilDpdBucket,
@@ -138,6 +141,7 @@ describe("@IPB-02-AT-16 BUREAU scanned writes (CIBIL stub; PR-FBX-57)", () => {
     new CibilBureau({
       storage,
       scan: av,
+      removal: quarantineRemovalHarness(storage).removal,
       appEnv: "prod",
       warn: (m) => warnings.push(m),
       pulls: { get: async () => undefined, set: async () => undefined },
@@ -146,6 +150,84 @@ describe("@IPB-02-AT-16 BUREAU scanned writes (CIBIL stub; PR-FBX-57)", () => {
       apiKey: () => "k",
     });
     expect(warnings).toEqual([]);
+    // A scanner but no removal (#216): one warning that the quarantined copies are kept.
+    new CibilBureau({
+      storage,
+      scan: av,
+      appEnv: "prod",
+      warn: (m) => warnings.push(m),
+      pulls: { get: async () => undefined, set: async () => undefined },
+      enabled: () => false,
+      memberId: () => "m",
+      apiKey: () => "k",
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("BUREAU adapter cibil");
+    expect(warnings[0]).toContain("quarantine removal");
+  });
+});
+
+describe("@IPB-02-AT-16 BUREAU quarantine removal (CIBIL stub; #216, R1-D-309)", () => {
+  // The same CIBIL adapter, built with `removal`: each promoted report's quarantined copy is
+  // deleted with its audit entry once the promoted copy reads back with the scanned hash.
+  const h = quarantineRemovalHarness(new MemoryStorage());
+  const scan = new FakeFileScan(h.storage);
+  const withRemoval = () => {
+    const pulls = new Map<string, CibilPullRecord>();
+    return new CibilBureau({
+      storage: h.storage,
+      scan,
+      removal: h.removal,
+      appEnv: "test",
+      pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
+      enabled: () => enabled,
+      memberId: () => stub.memberId,
+      apiKey: () => stub.apiKey,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+  };
+  defineContractSuite(
+    "BUREAU",
+    withRemoval,
+    bureauScannedWriteContractCases({
+      storage: h.storage,
+      prefix: PREFIX,
+      removal: h,
+      vendorRemarks: (t) => stub.reportRemarks(t),
+      scannerMode: (m) => (scan.mode = m),
+      pull: (p) => p.pull(req(stub.subjects.known.pan, stub.subjects.known.name)),
+    }),
+    { leg: "hermetic" },
+  );
+
+  it("records the action the testing package checks", () => {
+    expect(QUARANTINE_REMOVED_ACTION).toBe(TESTING_REMOVED_ACTION);
+  });
+
+  it("refuses a removal context that names another tenant, and keeps both copies", async () => {
+    const pulls = new Map<string, CibilPullRecord>();
+    const p = new CibilBureau({
+      storage: h.storage,
+      scan,
+      removal: { ...h.removal, context: () => h.removal.context("tnt_other") },
+      appEnv: "test",
+      pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
+      enabled: () => enabled,
+      memberId: () => stub.memberId,
+      apiKey: () => stub.apiKey,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+    const n = h.entries.length;
+    const err: unknown = await p.pull(req(stub.subjects.known.pan, stub.subjects.known.name)).then(
+      () => undefined,
+      (e: unknown) => e,
+    );
+    expect(err).toMatchObject({ code: "IPB-PORT-001", meta: { reason: "tenant_mismatch" } });
+    const q = await h.storage.get((err as { meta: { quarantineKey: string } }).meta.quarantineKey);
+    expect(q.meta.bucketClass).toBe("QUARANTINE");
+    expect(h.entries.length).toBe(n);
   });
 });
 
@@ -229,6 +311,7 @@ describe("R1-D-61 the CIBIL adapter", () => {
     const p = new CibilBureau({
       storage,
       scan: av,
+      appEnv: "test",
       pulls: { get: async (k) => pulls.get(k), set: async (k, v) => void pulls.set(k, v) },
       enabled: () => enabled,
       memberId: () => stub.memberId,

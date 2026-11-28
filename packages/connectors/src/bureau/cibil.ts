@@ -45,7 +45,7 @@ import {
 import { newId } from "@infrabyx/crypto";
 import type { AppEnv } from "@infrabyx/contracts/env";
 import { createEgress } from "../core/http.js";
-import { warnWithoutScanner, writeScanned } from "../core/scanned.js";
+import { warnWithoutScanner, writeScanned, type QuarantineRemoval } from "../core/scanned.js";
 import { vendorError } from "../messaging/common.js";
 
 const PORT = "BUREAU";
@@ -70,6 +70,12 @@ export interface CibilBureauOptions {
    * without it every completed pull refuses `IPB-SEC-015` (`scan_required`); required in 2.0.0.
    */
   scan?: FileScanPort;
+  /**
+   * The unit of work that deletes each promoted file's quarantined copy with its audit entry once
+   * the promoted copy reads back with the scanned SHA-256 (owner answer #216, R1-D-309). Without it
+   * the quarantined copy is kept and the constructor warns outside `local` and `test`.
+   */
+  removal?: QuarantineRemoval;
   /** `APP_ENV`: outside `local` and `test`, a missing `scan` is warned about at construction. */
   appEnv?: AppEnv;
   /** Where that warning goes (default `process.emitWarning`). */
@@ -307,7 +313,13 @@ export class CibilBureau implements CreditBureauPort {
     // The key is the pull's ULID (IPB-01-27), so a re-read writes the same object; it is written
     // only once the report scans CLEAN (PR-FBX-57).
     const report = await writeScanned(
-      { port: PORT, adapter: ADAPTER, storage: this.o.storage, scan: this.o.scan },
+      {
+        port: PORT,
+        adapter: ADAPTER,
+        storage: this.o.storage,
+        scan: this.o.scan,
+        removal: this.o.removal,
+      },
       {
         key: `${rec.reportPrefix}${pullId.slice(4)}.json`,
         bytes: body,
