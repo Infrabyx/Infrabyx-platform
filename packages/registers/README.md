@@ -4,7 +4,7 @@ Regulatory registers (ADR-0016; regulatory templates item (a), part 2). Specifie
 
 - `RegisterStore`: `define(definition)`, `create`, `correct` (a new version), `get`, `versions`, `history` (versions and ledger entries), `list` (filters on column values, keyset cursor) and `refreshApproval`.
 - Maker-checker per change: register `store.approvalPolicy({ checkerRoles })` on `REGISTER_ROW_ACTION`.
-- Migration `registers/0001_init.sql`: `registers.row_version`, RLS enabled and forced. A trigger refuses deleting a version before its retention date and refuses any change of a version's content; truncation is refused. There is no purge.
+- Migration `registers/0001_init.sql` (joins `PLATFORM_MIGRATION_PACKAGES` at 1.0.0): `registers.row_version`, RLS enabled and forced. A trigger refuses deleting a version before its retention date and refuses any change of a version's content; truncation is refused. There is no purge.
 - Values up to CONFIDENTIAL; a definition with a REGULATED column is refused.
 
 Guide §7fn.
