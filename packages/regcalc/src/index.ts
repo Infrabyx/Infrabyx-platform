@@ -103,3 +103,33 @@ export {
   type ExaminationStatus,
   type IndicatorReviewLine,
 } from "./ews.js";
+export {
+  APPLICABILITY_RESULTS,
+  LayeredPack,
+  Rule,
+  SectorPack,
+  applicability,
+  applicabilityPack,
+  parseCondition,
+  type ApplicabilityCheck,
+  type ApplicabilityLines,
+  type ApplicabilityOutcome,
+  type ApplicabilityPack,
+  type ApplicabilityResult,
+  type CommitteeDecision,
+  type GroupCount,
+  type InPlace,
+  type PolicyDecision,
+  type Profile,
+  type ReturnDecision,
+} from "./applicability.js";
+export {
+  APP_M01,
+  APP_M02,
+  APP_M03,
+  APP_M04,
+  APP_M05,
+  APP_M06,
+  APP_M07,
+  DEFAULT_APPLICABILITY_PACKS,
+} from "./packs/index.js";

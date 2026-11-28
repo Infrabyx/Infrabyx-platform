@@ -173,4 +173,46 @@ export const ORACLES = {
   ews: "01 NBFC Models/Fraud Risk Management/Early Warning Model/EWS-M01 Fraud Early Warning Model – Worked Example (fictitious NBFC).xlsx",
   app01:
     "01 NBFC Models/Registration, Exemptions and Framework for Scale Based Regulation/Applicability Engine/APP-M01 Applicability Engine – Worked Example (fictitious NBFC).xlsx",
+  /** The APP-M01 master (no shared formulas): the pack-fidelity check reads its formula text. */
+  app01Master:
+    "01 NBFC Models/Registration, Exemptions and Framework for Scale Based Regulation/Applicability Engine/APP-M01 Applicability Engine Master Model.xlsx",
+  // The sector engines are filed as unfilled masters (no profile): their stored results are the
+  // empty-profile state, and each line's rule is checked against its formula (R1-D-311).
+  app02:
+    "02 Sector Applicability Engines/SEBI/APP-M02 Applicability Engine for SEBI Listed Entities.xlsx",
+  app03:
+    "02 Sector Applicability Engines/SEBI/APP-M03 Applicability Engine for SEBI Market Intermediaries.xlsx",
+  app04:
+    "02 Sector Applicability Engines/IFSCA/APP-M04 Applicability Engine for IFSCA Entities.xlsx",
+  app05:
+    "02 Sector Applicability Engines/IRDAI/APP-M05 Applicability Engine for Insurance Intermediaries.xlsx",
+  app06:
+    "02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies.xlsx",
+  app07:
+    "02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities.xlsx",
 } as const;
+
+/** Each sheet's formula text by cell, from the workbook's XML (shared-formula children absent). */
+export function formulaText(bytes: Uint8Array): Map<string, Map<string, string>> {
+  const z = readZip(bytes);
+  const text = (p: string) => z.get(p)!.toString("utf8");
+  const rels = new Map<string, string>();
+  for (const m of text("xl/_rels/workbook.xml.rels").matchAll(/<Relationship\b[^>]*>/g)) {
+    const id = /\bId="([^"]+)"/.exec(m[0])?.[1];
+    const target = /\bTarget="([^"]+)"/.exec(m[0])?.[1];
+    if (id && target) rels.set(id, target.replace(/^\/?(xl\/)?/, "xl/"));
+  }
+  const out = new Map<string, Map<string, string>>();
+  for (const m of text("xl/workbook.xml").matchAll(/<sheet\b[^>]*>/g)) {
+    const name = xmlText(/\bname="([^"]*)"/.exec(m[0])?.[1] ?? "");
+    const xml = text(rels.get(/\br:id="([^"]+)"/.exec(m[0])?.[1] ?? "") ?? "");
+    const cells = new Map<string, string>();
+    for (const c of xml.matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)) {
+      const ref = /\br="([A-Z]+[0-9]+)"/.exec(c[1] ?? "")?.[1];
+      const f = c[2] ? /<f[^>]*>([^<]*)<\/f>/.exec(c[2]) : null;
+      if (ref && f) cells.set(ref, xmlText(f[1]!));
+    }
+    out.set(name, cells);
+  }
+  return out;
+}
