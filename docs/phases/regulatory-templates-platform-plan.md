@@ -1,6 +1,6 @@
 # Regulatory templates: what the platform must provide (gap analysis)
 
-**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, and (a) part 1 (§6a).**
 
 Finbyx, Udofin and LawDocsComply will build the owner's 492 regulatory templates (`docs/regulatory-templates/`, merged as specifications, R1-D-297) into registers, documents, checklists, obligation tasks and calculators. This plan says, for each generic the three need, whether a published package already provides it, so that no product builds a generic itself.
 
@@ -76,6 +76,40 @@ The 23 **calculators** are (g) plus product-specific monitors (ALM, ICAAP, provi
 - Threat model entries: (a) a generic row store (RLS, data class per column, `jsonb` validation), (c) template rendering (no code in templates), (d) evidence uploads, (f) files going back to tenants.
 - Guide sections and DECISIONS rows; the owner's decisions recorded.
 
+## 6a. Item (a): registers (plan section, 28 Nov 2026; ADR-0016, R1-D-322)
+
+Two PRs: definitions and export first (minors of `contracts` and `export`), then the row store (`@infrabyx/registers`, private until its exit).
+
+**Part 1, built 28 Nov 2026.**
+
+- **`@infrabyx/contracts/registers`:**
+  - `RegisterDefinition`: a `code`, `title` and `version`; 1 to 32 `sheets`, each with 1 to 64 `columns`; `retention.years` of at least 8.
+  - Each column has a `key` (unique in its sheet), a `label` (a filed label may repeat, as OUT-A01's does), a `type` (`text`, `number`, `integer`, `boolean`, `date`, `datetime` or `enum` with its values), `required`, its `order` (1 to n), an optional `source` and a `dataClass` (never SECRET).
+- **The checks:**
+  - `assertLayout(definition, layouts)` refuses `layout_mismatch` with every problem named: `sheet_missing`, `sheet_unknown`, `column_missing` (saying whether it was required), `column_unknown`, and `column_order` (naming both columns of each out-of-place pair).
+  - `definitionFromIndex(record)` gives a first definition from a filed record: text columns, not required, CONFIDENTIAL.
+  - `rowProblems` and `assertRow` check one row: `required`, `type`, `enum` and `unknown_key`.
+- **`@infrabyx/export`:** `registerExport(definition, rows, "xlsx" | "csv" | "pdf" | "ods")`.
+  - Rows are checked first and refused naming sheet, row and column.
+  - The headers are the filed labels in order.
+  - CSV is formula-neutralised. The xlsx has an AutoFilter, which ODS cannot carry.
+  - `pdf` is in-process; Indic text is refused there, and `registerPdfDocument` goes to `renderPdf` (DOCGEN, R1-D-96).
+- **Contract cases** (unit, on the filed index; synthetic rows):
+  - all 114 register layouts parse and pass their own layout;
+  - CA-A01's Calendar validates;
+  - a swapped pair is refused naming both, a missing required column naming it, and an extra column or a renamed sheet each refused;
+  - OUT-A01's repeated label keeps unique keys;
+  - 1,000 synthetic rows round-trip in xlsx (the bounded reader), csv, pdf (pdftotext) and ods (LibreOffice).
+
+**Part 2, next: `@infrabyx/registers`.**
+
+- One migration (`registers/0001_init.sql`). The table `registers.row` is keyed by tenant, register code, definition version, sheet, row id and version. Its data is `jsonb`, validated by the definition before every write. It is RLS enabled and forced, and every column is data-classed.
+- `retain_until` comes from the definition's retention, from the row's first version. A `before delete` trigger refuses a delete before that date, and there is no purge. A correction is a new version.
+- A list with filters on column values and a keyset cursor (IPB-10).
+- `history(rowId)` from the ledger.
+- Maker-checker per row (an R-level from the product) through the approvals engine, the checker never the maker.
+- Contract cases: the row history after an edit and an approval; a delete before the date refused; RLS across tenants; cursor and filters.
+
 ## 7. Item (b): ODS and ODT in `@infrabyx/export` (plan section, 28 Nov 2026; R1-D-313)
 
 **Interfaces** (an `export` minor; no dependency, migration or setting):
@@ -144,7 +178,7 @@ Two PRs, each a minor: first the adapter (`connectors`, with its contract cases 
   - the output's SHA-256 is the stored bytes' own.
   - The Gotenberg leg renders PDF and PDF/A (hermetic, CI).
 
-**2. `workflow` `issueDocument(render → approve → esign → archive)`** (next PR): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
+**2. `workflow` `issueDocument(render → approve → esign → archive)`** (built 28 Nov 2026, 2c): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
 
 **2a. `workflow` `issueDocument`: the detailed plan** (written 28 Nov 2026 for the next session; R1-D-315)
 
@@ -186,5 +220,19 @@ One `workflow` minor with one migration (`workflow/0006_document_issue.sql`). It
 - **The unsigned rendered copy is kept** after archiving, with the signed copy's retention: it is the evidence of exactly what was sent for signature.
   - At the archive step it is written write-once with the same `retain_until` (`rendered_archived_key`, with its SHA-256, which must equal `rendered_sha256`).
   - The record links it to the signed version. Nothing is deleted.
+
+**2c. As built (28 Nov 2026; R1-D-321).** `DocumentIssuer` in `@infrabyx/workflow`, migration `workflow/0006_document_issue.sql`:
+
+- **Registration:** `registerTemplate(templateId, { signing: "required" | "none" })`; an unregistered template is refused (`template_unregistered`).
+- **Steps:** `issue` → `review` (unsigned, no approval) or the approval → `sendForSignature` → `completeSigning` → `archive`. Each step returns the record, and a repeated step changes nothing and writes no ledger entry. A step that loses a race writes a `stale` entry, since every mutation is ledgered.
+- **Approval:** the product registers `issuer.approvalPolicy({ checkerRoles })` on `DOCUMENT_ISSUE_ACTION`. Its executor moves the record to `approved` in the approval's own executing transaction, after checking the request's payload digest against the record. `refreshApproval` brings in a rejection, cancellation or expiry.
+- **Signers:** given at `issue` and again at `sendForSignature`. Only their SHA-256 is kept, and any change is refused (`signers_changed`). A signing template renders as `pdf` or `pdfa` only. Without an approval an agent may issue but not send (IPB-SEC-004).
+- **Review:** by a person (never an agent, IPB-SEC-004) other than the one who issued the document (IPB-SEC-007).
+- **Archive:** REGULATED, write-once with the record's `retain_until`, under `tenant/<tenant>/document_archive/<ULID>.<ext>`.
+  - The keys are recorded before any write, so a retry writes to the same keys.
+  - Every source and every archived copy is read back and hashed; each copy is proved immutable.
+  - A changed source is recorded `failed` (`hash_mismatch`).
+  - The database refuses an archived signing template without a signed hash, and an archived hash that is not the file's.
+- **Tests:** eleven integration cases on PostgreSQL with the platform fakes (synthetic data). No contract-case export: the issuer is not a port with adapters.
 
 **Threat model:** template rendering (no code in templates, escaping, no external references, no includes) and the two new dependencies.

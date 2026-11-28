@@ -68,6 +68,10 @@
       "types": "./dist/export.d.ts",
       "default": "./dist/export.js"
     },
+    "./registers": {
+      "types": "./dist/registers.d.ts",
+      "default": "./dist/registers.js"
+    },
     "./vidhi": {
       "types": "./dist/vidhi.d.ts",
       "default": "./dist/vidhi.js"

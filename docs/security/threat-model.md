@@ -1804,6 +1804,26 @@ The §3.194 refusal for the products' Next 16 proxies; no new data flow.
 - **T/S:** the problem carries a fixed label, the path without its query string and the trace id only; no coding the client sent is echoed.
 - **Residual:** behind Next the 415 carries no `Accept-Encoding` (Next strips it from proxy responses; RFC 9110's "should"), which is a usability gap, not a security one. The platform's own Next apps (public, console, reference web) do not take the helper: they would need `@infrabyx/connectors` and its adapters' dependencies in their images, and nothing in them decodes a request coding.
 
+### 3.202 Issuing documents (`DocumentIssuer`, `workflow.document_issue`; templates item 2, R1-D-321)
+
+A new data flow: a rendered document through review or approval, signing and the archive, and a new table.
+
+- **I (template data or signer details at rest):** the table holds references and SHA-256 hashes only. It keeps the canonical JSON digest of the data and of the signer list, never the values (tested on the raw row). The ledger keeps digests of what each entry names. The table is tenant-scoped with RLS enabled and forced (tested across tenants), and every column is data-classed.
+- **T (a substituted or altered file):** the render is read back and hashed before it is recorded. The signed file is read back and must hash to what ESIGN returned. Before archiving, each source must hash to its recorded value, and each archived copy is read back, hashed and proved immutable. A mismatch is recorded `failed` and nothing more is archived (tested). The database refuses an archived signing template without a signed hash, and an archived hash that is not the file's.
+- **E (a document escaping its rule):** a signing template can never be archived unsigned, in code and in a check constraint (both tested). An unsigned one needs a review by a person other than its issuer, or a checker's approval. The approval's executor checks that the request's payload digest is this record's render, so an approval cannot be replayed onto another document. An agent never reviews, and without an approval it never sends for signature.
+- **R:** every step is a kernel mutation with a ledger entry naming the record; a step that loses a race is ledgered as stale.
+- **D (duplicate envelopes or archive copies):** the envelope is created with the record's idempotency key, and a losing envelope is cancelled. The archive keys are recorded before any write, so a retry cannot leave a second retained copy (tested).
+- **Residual:** the retention date is the product's input (with a floor of now). It is never shortened here, but a wrong long date is the product's to prevent.
+
+### 3.203 Register definitions and their export (`contracts/registers`, `registerExport`; templates item (a) part 1, R1-D-322)
+
+New code over existing data flows: no new store, port or network call.
+
+- **T (a file that does not match its register):** an upload's layout must equal the definition exactly (names, order, sheets); every difference is refused and named, and nothing is guessed or re-mapped. Every row is checked against its typed columns before any file is written.
+- **I (formula injection, wrong class):** CSV is formula-neutralised. The xlsx and ods writers neutralise as before. Every column carries a data class and SECRET is refused, so the row store (part 2) can keep each value's class.
+- **D:** exports are bounded (100,000 rows by default); the reader that checks an upload's layout is the bounded XLSX reader.
+- **Residual:** the definition's column defaults from the filed index (CONFIDENTIAL text) are a starting point; a product that lowers a class owns that choice.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
