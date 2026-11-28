@@ -11,8 +11,9 @@
 //
 // `refuseZstdBodies` answers 415 (an RFC 9457 problem, `IPB-SEC-010`, `reason: content_encoding`)
 // before any body parser reads a byte; gzip, deflate, br and identity pass. `refuseZstdFetch`
-// offers only gzip, deflate and br and refuses a zstd response before its body is read. Products
-// use these instead of their own copies. Both stay until the runtime's zstd is fixed (R1-D-294).
+// offers only gzip, deflate and br and refuses a zstd response before its body is read.
+// `refuseZstdInNextProxy` is the same refusal for a Next.js 16 proxy (PR-UDF-089). Products use
+// these instead of their own copies. Both stay until the runtime's zstd is fixed (R1-D-294).
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { IpbError, toProblem, type Problem } from "@infrabyx/contracts/errors";
 
@@ -119,6 +120,51 @@ function refuse(req: IncomingMessage, res: ServerResponse, o: RefusedCodingProbl
   // The body is not read: close the connection rather than drain what the client sent.
   res.setHeader("connection", "close");
   res.end(body);
+}
+
+/** What `refuseZstdInNextProxy` reads of a request: a Fetch `Request`, or Next's `NextRequest`. */
+export interface ProxyRequestLike {
+  readonly url: string;
+  readonly headers: Headers;
+}
+
+/**
+ * For a Next.js 16 proxy (`proxy.ts`, formerly middleware) or any other Fetch-style handler
+ * (PR-UDF-089; R1-D-320): the 415 problem `Response` when the request's `Content-Encoding` names
+ * zstd, or `undefined` to carry on. Call it first, before any other handling, on every path the
+ * proxy matches, health probes included; it never reads the body.
+ *
+ * The response carries `Accept-Encoding: gzip, deflate, br` (RFC 9110 §15.5.16, a "should"), but
+ * Next 16 strips `Accept-Encoding` from proxy responses, so behind Next the 415 arrives without
+ * it. `Connection: close` is not set: the proxy does not own the connection.
+ */
+export function refuseZstdInNextProxy(
+  request: ProxyRequestLike,
+  o: RefusedCodingProblemOptions = {},
+): Response | undefined {
+  if (!namesRefusedCoding(request.headers.get("content-encoding"))) return undefined;
+  const tp = request.headers.get("traceparent");
+  const traceId = tp ? TRACE.exec(tp.trim())?.[1] : undefined;
+  let instance: string | undefined;
+  try {
+    // The path only: the query string can carry what a log or a problem should not.
+    instance = new URL(request.url).pathname;
+  } catch {
+    instance = undefined;
+  }
+  const p = refusedCodingProblem({
+    ...o,
+    ...(instance ? { instance } : {}),
+    ...(traceId ? { traceId } : {}),
+  });
+  return new Response(JSON.stringify(p), {
+    status: 415,
+    headers: {
+      "content-type": "application/problem+json",
+      "cache-control": "no-store",
+      "accept-encoding": ACCEPTED_REQUEST_CODINGS.join(", "),
+    },
+  });
 }
 
 /** Thrown by `refuseZstdFetch` when a response is zstd-coded; adapters map it to their port error. */

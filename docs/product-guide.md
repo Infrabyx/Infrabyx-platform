@@ -2511,6 +2511,53 @@ const r = await docgen.render({
 - **What is refused in a template:** macros, ActiveX, embedded objects, imported chunks, external links other than https hyperlinks, and INCLUDETEXT, INCLUDEPICTURE, DDE, LINK, IMPORT and DATABASE fields.
 - **Tests:** run `docgenTemplateContractCases` over your adapter with your own tagged template and the six hostile kinds (`DOCGEN_HOSTILE_TEMPLATES`).
 
+## 7fk. Refuse zstd in your Next.js 16 proxy (PR-UDF-089, CVE-2026-124851; R1-D-320)
+
+From the next `@infrabyx/connectors` and `@infrabyx/testing` minors (no migration, no setting, no environment variable). **Why:** FinbyxCl and UdofinCl each built a zstd refusal for their Next 16 proxies from §7fb's helpers. This is the shared one, so both can drop their copies.
+
+```ts
+// src/proxy.ts (Next 16; formerly middleware.ts)
+import { NextResponse, type NextRequest } from "next/server";
+import { refuseZstdInNextProxy } from "@infrabyx/connectors/content-coding";
+
+// Match everything the app serves, health probes included.
+export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
+
+export async function proxy(request: NextRequest) {
+  const refused = refuseZstdInNextProxy(request, { productPrefix: "UDF" });
+  if (refused) return refused; // first, before any other handling
+  // ... your existing handling
+  return NextResponse.next();
+}
+```
+
+- **What it does:** when `Content-Encoding` names `zstd` (any case, in a list; `x-zstd` too) it returns a 415 `application/problem+json` response: `IPB-SEC-010` (or `<prefix>-SEC-010`), `reason: content_encoding`, `instance` the path without its query string, `trace_id` from `traceparent`, and `Cache-Control: no-store`. Otherwise it returns `undefined`. It never reads the body.
+- **Health probes:** call it before anything else, and make sure your `matcher` does not exclude the health paths. If your probes must skip the rest of the proxy, return `NextResponse.next()` for them **after** the refusal.
+- **`Accept-Encoding` on the 415:** the helper sets `Accept-Encoding: gzip, deflate, br` (RFC 9110 §15.5.16 says a 415 for a content coding "should" list the accepted codings). Next 16 strips `Accept-Encoding` from proxy responses, so behind Next the 415 arrives without it; FinbyxCl recorded the same. Nothing to do: the problem's `detail` names the accepted codings.
+- **No `Connection: close`:** unlike `refuseZstdBodies`, the proxy does not own the connection, so it does not set one.
+- **Prove it:** run the contract cases against your own `proxy`:
+
+  ```ts
+  import { NextRequest } from "next/server";
+  import { nextProxyZstdContractCases } from "@infrabyx/testing";
+  import { proxy } from "../src/proxy";
+
+  for (const c of nextProxyZstdContractCases({
+    code: "UDF-SEC-010",
+    healthPaths: ["/health/live", "/health/ready"],
+    toRequest: (r) => new NextRequest(r),
+  }))
+    it(c.name, () => c.run(proxy));
+  ```
+
+  Use requests on synthetic data only. A case for the allowed codings may reach your later handling, so give the test what that handling needs, or let it answer as it would for a signed-out visitor.
+
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Call `refuseZstdInNextProxy` first in each Next proxy, and delete your own copy.
+  3. Add the contract cases.
+  4. Keep `refuseZstdBodies` in your Nest APIs (§7fb): the proxy guards the Next app, not the API process.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

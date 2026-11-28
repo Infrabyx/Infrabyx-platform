@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-27
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-28
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -1786,6 +1786,14 @@ A product's tagged `.docx` template is filled with its data, often personal.
 - **I (an empty field mistaken for a value):** a missing binding is refused, naming the field; nothing is rendered or stored. Errors carry tag names, never data values.
 - **D:** a 10 MiB template cap; Gotenberg's egress caps the PDF (50 MiB).
 - **Supply chain:** `docxtemplater` 3.71.1 and `pizzip` 3.3.0 (MIT), past the 7-day rule, pinned exactly, imported only in `connectors/src/docgen`.
+
+### 3.201 zstd refused in a Next.js 16 proxy (`refuseZstdInNextProxy`, `nextProxyZstdContractCases`; PR-UDF-089, R1-D-320)
+
+The §3.194 refusal for the products' Next 16 proxies; no new data flow.
+
+- **I (process memory read back through a zstd body):** the proxy answers 415 before any other handling, health probes included, and never reads the body (the contract cases check `bodyUsed`). Next 16.4.5 itself decodes no request content coding (checked in its server source: its only decoders are the image optimizer's, for upstream image responses), so the guard protects whatever the product's handlers do with the body.
+- **T/S:** the problem carries a fixed label, the path without its query string and the trace id only; no coding the client sent is echoed.
+- **Residual:** behind Next the 415 carries no `Accept-Encoding` (Next strips it from proxy responses; RFC 9110's "should"), which is a usability gap, not a security one. The platform's own Next apps (public, console, reference web) do not take the helper: they would need `@infrabyx/connectors` and its adapters' dependencies in their images, and nothing in them decodes a request coding.
 
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
