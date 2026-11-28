@@ -2430,6 +2430,54 @@ const aa = new SetuAccountAggregator({ storage, scan, removal, appEnv: env.APP_E
 - **Grant** the adapter's service principal delete on your QUARANTINE class.
 - **Tests:** build the adapter with `quarantineRemovalHarness(storage).removal` and pass `removal: harness` (and `storage: harness.storage`) to the scanned-write cases.
 
+## 7fg. `@infrabyx/regcalc` 1.0.0: the regulated lending figures, and their contract cases (LDC-66, PR-FBX-58; R1-D-312)
+
+From the next release: a new package at **1.0.0** (pin it exactly, like every `@infrabyx/*` package), and a `@infrabyx/testing` minor. No migration, setting or environment variable. Runtime dependencies: `decimal.js` and `zod` only.
+
+```ts
+import { APP_M01, applicability, kfsApr, dlgMonitor, ewsScores } from "@infrabyx/regcalc";
+import { defineRegcalcSuite, regcalcContractCases } from "@infrabyx/testing";
+
+const apr = kfsApr({
+  principal: "20000",
+  annualRate: "0.15",
+  frequency: "monthly",
+  instalments: 24,
+  oneTimeCharges: [
+    { kind: "processing_fee", amount: "240" },
+    { kind: "other_third_party", amount: "160" },
+  ],
+});
+apr.disclosed.aprPercent; // "17.08": the higher of the APR on what is paid and on the unrounded instalment
+
+const nbfc = applicability(APP_M01, {
+  layer: "Middle Layer",
+  cat: "Investment and Credit Company",
+  assets: "2280" /* … */,
+});
+```
+
+- **Numbers are decimal strings** (or `Decimal`s); a JavaScript `number` is refused `input_invalid`. Map a `RegcalcError` (`reason`, `field`, `status: 422`) to your validation problem.
+- **Every result carries its basis** (the provision and the owner's model). Show it beside the figure.
+- **Applicability never guesses:** a question the decision needs and the profile leaves blank gives `needs_answer` (show "Needs an answer"), where the owner's workbooks read a blank as "No".
+- **LawDocsComply:** write a calculator over the figures a lender's system produces (any of `kfsFigures`, `kfsDisclosed`, `dlgMonitor`, `ewsScores`, `applicability`), and run `defineRegcalcSuite("lender", () => calc, regcalcContractCases(calc))`. **Finbyx and Udofin:** run the same cases over the adapter you compute with, so the three products agree by construction.
+- **Packs:** the default parameter and rule packs ship in the package. A stricter tenant pack (a Board-approved internal limit) goes through your maker-checker, and the package refuses a pack looser than the regulatory floor (`rule_pack_invalid`).
+
+## 7fh. ODS and ODT exports (regulatory templates item (b); R1-D-313)
+
+From the next `@infrabyx/export` minor (no migration, setting or dependency). Registers and calculators export as **ODS** beside XLSX, CSV and PDF; documents as **ODT** beside PDF and DOCX (owner answer 5).
+
+```ts
+import { toOds, toOdt } from "@infrabyx/export";
+
+const ods = toOds(sheets, { title: "CA-A01", created }); // the same XlsxSheet[] you pass toXlsx
+const odt = toOdt({ title: "Deposit receipt", blocks }, { created }); // the same blocks as toDocx
+```
+
+- **The same models:** an `XlsxSheet` and a `DocxDocument` give an ODS and an ODT with the same values, the same checks (`cell_invalid` and the other reasons) and formula-neutralised text. Tabs, line breaks and runs of spaces are kept.
+- **`ods_unsupported`:** a sheet using an XLSX-only feature (validations, protection, frozen columns, AutoFilter, fills, row layout, page set-up, conditional formats, formula cells, named ranges) is refused with the feature's name. Offer that register in XLSX only, or drop the feature for ODS.
+- **Content types:** `application/vnd.oasis.opendocument.spreadsheet` (`.ods`) and `application/vnd.oasis.opendocument.text` (`.odt`).
+
 ## 7fi. Documents from your own `.docx` templates: DOCGEN `docxtemplater` (templates item (c); R1-D-314)
 
 From the next `@infrabyx/connectors` and `testing` minors (no migration or setting). You tag your own `.docx` templates and keep them in your store; the adapter fills them.

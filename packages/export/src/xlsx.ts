@@ -21,6 +21,7 @@
 // reach outside the workbook; string cells keep `neutraliseFormula`. A workbook that uses none of
 // these is byte-for-byte what the writer produced before.
 import { cellText, neutraliseFormula } from "./csv.js";
+import { DATE_RE, instant, numberOf } from "./values.js";
 import {
   ByteBudget,
   CT_CORE,
@@ -367,35 +368,6 @@ const EPOCH = Date.UTC(1899, 11, 30);
 const MIN_DATE = Date.UTC(1900, 2, 1);
 const MAX_DATE = Date.UTC(10000, 0, 1) - 1;
 const DAY = 86_400_000;
-const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:\d{2})$/;
-const DECIMAL_RE = /^-?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/;
-
-function instant(v: unknown): number | null {
-  if (v instanceof Date) return v.getTime();
-  if (typeof v !== "string") return null;
-  const m = DATE_RE.exec(v);
-  if (m) {
-    const t = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    // Refuse a day that rolls over (2026-02-30).
-    return new Date(t).toISOString().slice(0, 10) === v ? t : null;
-  }
-  return DATETIME_RE.test(v) ? Date.parse(v) : null;
-}
-
-function numberOf(v: unknown): number | null {
-  if (typeof v === "number") return Number.isFinite(v) ? v : null;
-  if (typeof v === "bigint") {
-    const n = Number(v);
-    return Number.isSafeInteger(n) ? n : null;
-  }
-  if (typeof v === "string" && DECIMAL_RE.test(v)) {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
-
 function inlineStr(ref: string, text: string, style = 0): string {
   const t = neutraliseFormula(dropInvalidXml(text));
   if (t.length > XLSX_MAX_CELL_CHARS)

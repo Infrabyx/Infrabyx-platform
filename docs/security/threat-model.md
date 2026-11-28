@@ -1787,6 +1787,13 @@ A product's tagged `.docx` template is filled with its data, often personal.
 - **D:** a 10 MiB template cap; Gotenberg's egress caps the PDF (50 MiB).
 - **Supply chain:** `docxtemplater` 3.71.1 and `pizzip` 3.3.0 (MIT), past the 7-day rule, pinned exactly, imported only in `connectors/src/docgen`.
 
+### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
+
+- **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
+- **I (a link out):** the only external references are https hyperlinks with no credentials, checked as `toDocx` checks them.
+- **T (a control lost in conversion):** an XLSX-only control (validations, protection and the rest) is refused `ods_unsupported`, never silently dropped (#222).
+- **D:** the same row and column limits as `toXlsx` and the `maxBytes` cap on the uncompressed parts.
+
 ### 3.197 The regulated calculations package (`@infrabyx/regcalc`; LDC-66, PR-FBX-58, R1-D-305)
 
 A pure package: no I/O, no clock, no randomness, no settings, no logging, and no `@infrabyx/*` runtime dependency (a test enforces it). It has no data flow of its own; products pass loan terms and receive figures.
@@ -1796,6 +1803,7 @@ A pure package: no I/O, no clock, no randomness, no settings, no logging, and no
 - **D:** iterative solvers (the APR's rate) have a bounded number of steps and refuse `no_solution` rather than loop or return `NaN`.
 - **Supply chain:** one new runtime dependency, `decimal.js` 10.6.0 (MIT, past the 7-day rule), pinned exactly.
 - **T (`applicability`: a wrong "does not apply"; R1-D-311):** an answer the decision needs and the profile leaves blank gives `needs_answer`, never "No" (the workbooks read a blank as "No"); a condition no rule could express gives `check_condition`. The default packs are generated from the filed models, each source checked against `SHA256SUMS` first, and a test rebuilds every pack line's formula from the pack and compares it with the filed workbook's, so a pack edited by hand or drifting from the model fails. A product's own pack is checked for its schema and for every code a rule names (`rule_pack_invalid`).
+- **The contract cases (`@infrabyx/testing`, R1-D-312):** they carry the worked examples' inputs and stored results (fictitious entities only), generated from the filed workbooks at their SHA-256, never computed by the package they test. A lender's calculator is tested against the owner's figures, not against `regcalc`'s.
 - **T (the oracles of the sector engines):** the filed sector masters hold no stored result, so their oracles are synthetic copies recalculated by LibreOffice Calc. The fixtures are hashed (`src/__tests__/fixtures/SHA256SUMS`) and hold synthetic data only. LibreOffice and openpyxl run only in the script that makes them, never in the package, a build or CI.
 
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)

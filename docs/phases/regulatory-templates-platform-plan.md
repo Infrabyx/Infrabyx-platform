@@ -76,6 +76,41 @@ The 23 **calculators** are (g) plus product-specific monitors (ALM, ICAAP, provi
 - Threat model entries: (a) a generic row store (RLS, data class per column, `jsonb` validation), (c) template rendering (no code in templates), (d) evidence uploads, (f) files going back to tenants.
 - Guide sections and DECISIONS rows; the owner's decisions recorded.
 
+## 7. Item (b): ODS and ODT in `@infrabyx/export` (plan section, 28 Nov 2026; R1-D-313)
+
+**Interfaces** (an `export` minor; no dependency, migration or setting):
+
+- `toOds(sheets: readonly XlsxSheet[], o?: OdsOptions): Buffer`: an OpenDocument 1.3 spreadsheet from the **same** sheet model as `toXlsx`.
+  - **Cells by column type:** `string` as text, `number` and `integer` as floats, `boolean`, and `date` and `datetime` as ISO values in UTC. Every value is checked as `toXlsx` checks it, and a bad one is refused `cell_invalid`, never coerced.
+  - **Strings:** they pass `neutraliseFormula` as in `toCsv` and `toXlsx`, so a cell never starts with a formula trigger. Line breaks, tabs and runs of spaces are kept as ODF elements, and Indic text is kept as written.
+  - **Header and widths:** the header row is bold and frozen, as in `toXlsx`, and the column widths are kept.
+  - **Limits:** the same sheet-name rules and row and column limits as `toXlsx`, and the `maxBytes` cap.
+  - **Refused, not dropped:** any feature `toXlsx` has and an ODS cannot carry the same way is refused `ods_unsupported`, naming the feature. Those are validations, protection, frozen columns, AutoFilter, fills, row layout, page set-up, conditional formats, formula cells and named ranges. A register is never exported with a control silently missing.
+- `toOdt(doc: DocxDocument, o?: OdtOptions): Buffer`: an OpenDocument 1.3 text document from the **same** block model as `toDocx`.
+  - **Blocks:** headings 1 to 6, runs (bold, italic, underline, https hyperlinks), bullet and numbered lists with one nested level, tables with a repeated header row, and page breaks. A4 portrait with 2.54 cm margins.
+  - **Refusals:** the same as `toDocx`, with the same reasons (`block_invalid`, `link_invalid`, `too_many_blocks`, `too_large`).
+- **Both outputs:**
+  - **Package layout:** `mimetype` is the first ZIP entry, stored uncompressed (ODF 1.3 Part 2 §3.3; `writeZip` gains an opt-in `firstStored`, so every existing archive keeps its bytes), followed by `META-INF/manifest.xml`, `content.xml`, `styles.xml` and `meta.xml`.
+  - **Nothing executable or external:** no macros, scripts, embedded objects, images or fields, and no external reference except the https hyperlinks the caller names.
+  - **Deterministic:** the same input and `created` time always give the same bytes, so golden tests hold.
+
+**Contract cases** (synthetic data, filed layouts):
+
+- **A filed register layout (CA-A01's `Calendar`) written as ODS:**
+  - its parts parse, and every cell reads back to its value and type;
+  - formula triggers are neutralised;
+  - Indic text, tabs, line breaks and space runs are kept;
+  - the header is frozen;
+  - the same input gives the same bytes;
+  - `mimetype` is first and stored.
+- **A LibreOffice Calc leg:** `soffice --headless` converts the ODS to XLSX, and `readXlsx` reads it back cell for cell. It runs where `soffice` exists; this session ran it.
+- **A filed document's text blocks as ODT:** headings, lists, a table with its header and a hyperlink read back from `content.xml`, and a LibreOffice Writer leg converts it to DOCX without loss of text.
+- **Refusals:** each `ods_unsupported` feature is refused by name; a bad cell is refused `cell_invalid`; an `http:` link is refused `link_invalid`.
+
+**Threat model:** one entry for the ODF writers (no active content, escaping, neutralised formula triggers, the byte cap).
+
+**Exit:** the cases above; `export` lint, typecheck and unit tests; guide section; a DECISIONS row.
+
 ## 8. Item (c): the DOCGEN template adapter and `issueDocument` (plan section, 28 Nov 2026; R1-D-314, R1-D-315)
 
 Two PRs, each a minor: first the adapter (`connectors`, with its contract cases in `testing`), then `workflow` `issueDocument`.
