@@ -1796,6 +1796,14 @@ A change to the build supply chain: each runtime stage now runs apt once at buil
 - **E:** nothing changes at run time: UID 10001, no capabilities, a read-only root; apt is still never run there.
 - **Residual:** Node.js 24.22.1's bundled zstd 1.5.7 is unchanged, so `refuseZstdBodies` and `refuseZstdFetch` (§3.194) stay. The zlib1g, util-linux and other base findings without a Debian 12 fix stay waived as before.
 
+### 3.201 zstd refused in a Next.js 16 proxy (`refuseZstdInNextProxy`, `nextProxyZstdContractCases`; PR-UDF-089, R1-D-320)
+
+The §3.194 refusal for the products' Next 16 proxies; no new data flow.
+
+- **I (process memory read back through a zstd body):** the proxy answers 415 before any other handling, health probes included, and never reads the body (the contract cases check `bodyUsed`). Next 16.4.5 itself decodes no request content coding (checked in its server source: its only decoders are the image optimizer's, for upstream image responses), so the guard protects whatever the product's handlers do with the body.
+- **T/S:** the problem carries a fixed label, the path without its query string and the trace id only; no coding the client sent is echoed.
+- **Residual:** behind Next the 415 carries no `Accept-Encoding` (Next strips it from proxy responses; RFC 9110's "should"), which is a usability gap, not a security one. The platform's own Next apps (public, console, reference web) do not take the helper: they would need `@infrabyx/connectors` and its adapters' dependencies in their images, and nothing in them decodes a request coding.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
