@@ -1775,6 +1775,13 @@ A credit bureau's report and an account aggregator's FI payloads are vendor byte
 - **R:** the clean object carries its scan as tags, and the ref carries the scan record.
 - **The Connector Agent** stores no file today (JSON bodies only); a test fails if a STORAGE write appears in the accounting connector without `writeScanned`.
 
+### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
+
+- **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
+- **I (a link out):** the only external references are https hyperlinks with no credentials, checked as `toDocx` checks them.
+- **T (a control lost in conversion):** an XLSX-only control (validations, protection and the rest) is refused `ods_unsupported`, never silently dropped (#222).
+- **D:** the same row and column limits as `toXlsx` and the `maxBytes` cap on the uncompressed parts.
+
 ### 3.197 The regulated calculations package (`@infrabyx/regcalc`; LDC-66, PR-FBX-58, R1-D-305)
 
 A pure package: no I/O, no clock, no randomness, no settings, no logging, and no `@infrabyx/*` runtime dependency (a test enforces it). It has no data flow of its own; products pass loan terms and receive figures.

@@ -2463,6 +2463,21 @@ const nbfc = applicability(APP_M01, {
 - **LawDocsComply:** write a calculator over the figures a lender's system produces (any of `kfsFigures`, `kfsDisclosed`, `dlgMonitor`, `ewsScores`, `applicability`), and run `defineRegcalcSuite("lender", () => calc, regcalcContractCases(calc))`. **Finbyx and Udofin:** run the same cases over the adapter you compute with, so the three products agree by construction.
 - **Packs:** the default parameter and rule packs ship in the package. A stricter tenant pack (a Board-approved internal limit) goes through your maker-checker, and the package refuses a pack looser than the regulatory floor (`rule_pack_invalid`).
 
+## 7fh. ODS and ODT exports (regulatory templates item (b); R1-D-313)
+
+From the next `@infrabyx/export` minor (no migration, setting or dependency). Registers and calculators export as **ODS** beside XLSX, CSV and PDF; documents as **ODT** beside PDF and DOCX (owner answer 5).
+
+```ts
+import { toOds, toOdt } from "@infrabyx/export";
+
+const ods = toOds(sheets, { title: "CA-A01", created }); // the same XlsxSheet[] you pass toXlsx
+const odt = toOdt({ title: "Deposit receipt", blocks }, { created }); // the same blocks as toDocx
+```
+
+- **The same models:** an `XlsxSheet` and a `DocxDocument` give an ODS and an ODT with the same values, the same checks (`cell_invalid` and the other reasons) and formula-neutralised text. Tabs, line breaks and runs of spaces are kept.
+- **`ods_unsupported`:** a sheet using an XLSX-only feature (validations, protection, frozen columns, AutoFilter, fills, row layout, page set-up, conditional formats, formula cells, named ranges) is refused with the feature's name. Offer that register in XLSX only, or drop the feature for ODS.
+- **Content types:** `application/vnd.oasis.opendocument.spreadsheet` (`.ods`) and `application/vnd.oasis.opendocument.text` (`.odt`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
