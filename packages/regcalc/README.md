@@ -16,5 +16,13 @@ approved, under the stack of IPB-01 and the supply-chain rules of IPB-09.
   reproduced; each workbook checked against its filed SHA-256 first).
 
 Modules arrive in the plan's order: `schedule` and `apr`, then `dlg` and `ltv`, then `ews` and
-`applicability`. The package is private until its exit is met, then published at 1.0.0 (owner,
+`applicability`.
+
+**`applicability`** (APP-M01 to APP-M07): `applicability(pack, profile, lines?)` gives each
+policy, committee, role and return of the owner's engines as `applies`, `does_not_apply`,
+`good_practice`, `check_condition` or `needs_answer`, with the model's own words (`label`), the
+gaps (GREEN, AMBER, RED), the dashboard counts and the checks. The default packs
+(`DEFAULT_APPLICABILITY_PACKS`, `APP_M01` …) are generated from the filed models by
+`scripts/app-packs.mjs`; a product's own pack is checked by `applicabilityPack`. An unanswered
+question gives `needs_answer`, never a guess: the workbooks read a blank answer as "No". The package is private until its exit is met, then published at 1.0.0 (owner,
 27 Nov 2026; R1-D-301).

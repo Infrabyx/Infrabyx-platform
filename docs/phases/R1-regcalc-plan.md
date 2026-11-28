@@ -76,4 +76,12 @@ Product-side checks exported for LawDocsComply: `testing` gains `regcalcContract
 4. `ews` and `applicability` with EWS-M01 and APP-M01 to M07 (one PR).
 5. Each PR released when green (`regcalc` minor after 1.0.0, `testing` minor). Threat model: a pure package with no data flow; one entry for the parameter packs' integrity.
 
+**As built, step 4 (`applicability`, 28 Nov 2026; R1-D-311).** APP-M01's worked example is an
+oracle like the others. The six sector engines (APP-M02 to M07) are filed as unfilled masters that
+openpyxl wrote and no spreadsheet ever recalculated: every formula cell has an empty cached value,
+so they hold no result to reproduce. Each filed master, filled with a synthetic profile and
+recalculated by LibreOffice Calc (`packages/regcalc/scripts/app-fixtures.py`, hashed fixtures), is
+their oracle instead, as is a second APP-M01 profile; and every pack line is checked against the
+filed workbook's own formula for it (owner question #221).
+
 Exit: every output cell of the five oracle workbooks reproduced; `ipb-check`, lint, typecheck, unit; licence check for `decimal.js`; owner decisions recorded.
