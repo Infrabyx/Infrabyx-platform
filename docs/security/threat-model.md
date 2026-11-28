@@ -1807,6 +1807,16 @@ New code over existing data flows: no new store, port or network call.
 - **D:** exports are bounded (100,000 rows by default); the reader that checks an upload's layout is the bounded XLSX reader.
 - **Residual:** the definition's column defaults from the filed index (CONFIDENTIAL text) are a starting point; a product that lowers a class owns that choice.
 
+### 3.204 The register row store (`@infrabyx/registers`, `registers.row_version`; templates item (a) part 2, R1-D-323)
+
+A new package, schema and data flow: register rows a product writes and lists.
+
+- **I (cross-tenant reads):** the table is tenant-scoped with RLS enabled and forced, which the suite tests across tenants (list and get). Values are kept up to CONFIDENTIAL; a REGULATED column is refused at `define`. The ledger keeps digests and the row id only.
+- **T (rewritten history):** a version's content is immutable and its state moves forward only, enforced by a trigger for every role; a correction is a new version with its own ledger entry. The approval binds the version's data SHA-256, so an approval cannot be replayed onto other data.
+- **R and E (deleted records):** a delete before `retain_until` and any truncate are refused by triggers, whoever runs them. The application role has no delete grant, and there is no purge job.
+- **E (self-approval):** the approvals engine refuses the maker as checker (tested).
+- **D:** rows are at most 64 KiB of `jsonb`, pages at most 200 rows, and at most 8 filters; the cursor is checked and refused when malformed.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.

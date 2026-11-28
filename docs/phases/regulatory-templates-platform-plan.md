@@ -1,6 +1,6 @@
 # Regulatory templates: what the platform must provide (gap analysis)
 
-**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, and (a) part 1 (§6a).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, and (a) parts 1 and 2 (§6a).**
 
 Finbyx, Udofin and LawDocsComply will build the owner's 492 regulatory templates (`docs/regulatory-templates/`, merged as specifications, R1-D-297) into registers, documents, checklists, obligation tasks and calculators. This plan says, for each generic the three need, whether a published package already provides it, so that no product builds a generic itself.
 
@@ -101,7 +101,9 @@ Two PRs: definitions and export first (minors of `contracts` and `export`), then
   - OUT-A01's repeated label keeps unique keys;
   - 1,000 synthetic rows round-trip in xlsx (the bounded reader), csv, pdf (pdftotext) and ods (LibreOffice).
 
-**Part 2, next: `@infrabyx/registers`.**
+**Part 2, built 28 Nov 2026 (R1-D-323), as planned below except:** the table is `registers.row_version`; a version's content is immutable and its state only moves forward (`pending` → `current` or `rejected`, `current` → `superseded`), and truncation is refused; values are kept up to CONFIDENTIAL (a REGULATED column is refused); `retain_until` is version 1's creation plus the definition's years; filters are exact matches on column values. `@infrabyx/registers` stays `"private": true` at 0.0.0.
+
+**Part 2 as planned: `@infrabyx/registers`.**
 
 - One migration (`registers/0001_init.sql`). The table `registers.row` is keyed by tenant, register code, definition version, sheet, row id and version. Its data is `jsonb`, validated by the definition before every write. It is RLS enabled and forced, and every column is data-classed.
 - `retain_until` comes from the definition's retention, from the row's first version. A `before delete` trigger refuses a delete before that date, and there is no purge. A correction is a new version.

@@ -906,6 +906,25 @@ importers:
         specifier: 4.1.12
         version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@24.19.2)(vite@7.3.7(@types/node@24.19.2)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
 
+  packages/registers:
+    dependencies:
+      '@infrabyx/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@infrabyx/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@infrabyx/tenancy':
+        specifier: workspace:*
+        version: link:../tenancy
+    devDependencies:
+      '@infrabyx/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@infrabyx/testing':
+        specifier: workspace:*
+        version: link:../testing
+
   packages/rules:
     dependencies:
       '@infrabyx/config':
