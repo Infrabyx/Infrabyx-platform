@@ -1790,6 +1790,8 @@ A pure package: no I/O, no clock, no randomness, no settings, no logging, and no
 - **T (parameter packs):** limits and thresholds ship in the package as versioned data with citations and effective dates. A product's stricter pack is checked against the regulatory floor and a looser one is refused (`rule_pack_invalid`). A pack change is a package release, reviewed like code.
 - **D:** iterative solvers (the APR's rate) have a bounded number of steps and refuse `no_solution` rather than loop or return `NaN`.
 - **Supply chain:** one new runtime dependency, `decimal.js` 10.6.0 (MIT, past the 7-day rule), pinned exactly.
+- **T (`applicability`: a wrong "does not apply"; R1-D-311):** an answer the decision needs and the profile leaves blank gives `needs_answer`, never "No" (the workbooks read a blank as "No"); a condition no rule could express gives `check_condition`. The default packs are generated from the filed models, each source checked against `SHA256SUMS` first, and a test rebuilds every pack line's formula from the pack and compares it with the filed workbook's, so a pack edited by hand or drifting from the model fails. A product's own pack is checked for its schema and for every code a rule names (`rule_pack_invalid`).
+- **T (the oracles of the sector engines):** the filed sector masters hold no stored result, so their oracles are synthetic copies recalculated by LibreOffice Calc. The fixtures are hashed (`src/__tests__/fixtures/SHA256SUMS`) and hold synthetic data only. LibreOffice and openpyxl run only in the script that makes them, never in the package, a build or CI.
 
 ### 3.109 Tenant entitlements (`tenancy/0020`; PR-FBX-43, #123, R1-D-107)
 
