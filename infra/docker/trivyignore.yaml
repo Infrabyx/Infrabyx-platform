@@ -72,20 +72,11 @@ vulnerabilities:
   - id: CVE-2026-119379
     statement: SQLite session-extension changeset heap overflow in UBI 9 sqlite-libs of the Keycloak 26.8.2-0 base (no fixed build); Keycloak opens no SQLite database and applies no changesets. Waived 2026-11-10 under the standing 30-day rule (R1-D-115); still present in 26.8.2-0 to -2 on 12 Nov (R1-D-134)
     expired_at: 2026-12-10
-  - id: CVE-2026-109518
-    statement: apt and libapt-pkg6.0 2.6.1, an on-path attacker during apt's own downloads (fixed in Debian 12 as 2.6.2, which no node:24.22.1-bookworm-slim digest carries yet; the newest, built 2026-10-28, still has 2.6.1). The runtime never runs apt, fetches no packages, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-99); removed with the first base digest carrying 2.6.2 once it is 7 days old
-    expired_at: 2026-12-05
   - id: CVE-2026-76844
     statement: zlib1g 1:1.2.13.dfsg-1 in the Debian 12 base (Trivy status affected, no fixed version; Trivy's record titles it after webpack-dev-middleware, which looks misattributed and is re-checked when its database updates). Node.js uses its own bundled zlib, not the system library; the runtime decompresses no untrusted archives with system tools, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-05 under the standing 30-day rule (R1-D-106); removed with the first fixed package or corrected advisory
     expired_at: 2026-12-05
   - id: CVE-2026-85091
     statement: zlib1g 1:1.2.13.dfsg-1 in the Debian 12 base, gz_vacate() overflow on non-blocking gzwrite and gzprintf (Trivy status affected, no fixed version; the advisory names zlib 1.3.1.2 to 1.3.2, so its match on 1.2.13 is re-checked when Debian triages it). Node.js uses its own bundled zlib, not the system library; the runtime calls no gz* API of the system zlib, runs as UID 10001 with a read-only root and no capabilities. Waived 2026-11-07 under the standing 30-day rule (R1-D-111); removed with the first fixed package or corrected advisory
-    expired_at: 2026-12-07
-  - id: CVE-2025-6020
-    statement: linux-pam 1.5.2-6+deb12u2 in the Debian 12 base (libpam-modules, libpam-modules-bin, libpam-runtime, libpam0g; Trivy status affected, no fixed version), a directory traversal in pam_namespace. The images run one Node.js process as UID 10001 with a read-only root and no capabilities; nothing logs in, no PAM stack or pam_namespace is used, and no shell or su is reached. Waived 2026-11-16 under the standing 30-day rule (R1-D-162); removed with the first fixed package
-    expired_at: 2026-12-16
-  - id: CVE-2026-124851
-    statement: libzstd1 1.5.4+dfsg2-5 in the Debian 12 base, an information disclosure through an uninitialised buffer (Trivy status affected, no fixed version; first matched 25 Nov 2026). Corrected 27 Nov 2026 (R1-D-294; R1-D-291 was wrong to call it unreachable). Node.js 24.22.1 does not use this library but bundles its own zstd 1.5.7, also in the affected range, which body-parser (zstd request bodies) and fetch (zstd responses) decode with. Both paths are closed in the code. Request bodies naming zstd get a 415 before any parser (refuseZstdBodies in @infrabyx/connectors/content-coding, used by apps/reference). Outbound fetch never offers zstd and refuses a zstd answer unread (refuseZstdFetch, createEgress). The system library itself is used only by apt and dpkg, which never run in the images. The images run one Node.js process as UID 10001 with a read-only root and no capabilities. Waived to 2026-12-07, the date shared with the three product repositories (owner, 27 Nov 2026). Move to a fixed Node.js or base image as soon as one exists; ask the owner on 5 Dec if none does
     expired_at: 2026-12-07
   # Four HIGH findings in the same OpenJDK build of the Keycloak 26.8.2-0 base, from the OpenJDK
   # advisory of 17 Nov 2026 (first matched by the scanner's database of 19 Nov): no fixed build;
