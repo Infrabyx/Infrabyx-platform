@@ -3,5 +3,6 @@
   "0002_owner_answers_pl3.sql": "df7547228ceb1ac22f8766da36e1e65701637edaacfdb2fa180f49842d812a39",
   "0003_product_timer_kinds.sql": "2ff8c916db20b25e684246ea0180b5742a818fa89096d27d79eb9601c16bef5d",
   "0004_register_outbox.sql": "c68a5e19311baa3cfaefdd7c6dc2bb1255b02a48e9f913967fcb311f866cbab1",
-  "0005_inbox_snooze.sql": "11903b5663003e4031bc7f464a9db2b971dd2861efebf5b7af73ea8ace00c2e9"
+  "0005_inbox_snooze.sql": "11903b5663003e4031bc7f464a9db2b971dd2861efebf5b7af73ea8ace00c2e9",
+  "0006_document_issue.sql": "754f0b7cfa9733e4117e38adc5c5b74c0cb54675b04d262bc87e25f77a1a8e2a"
 }

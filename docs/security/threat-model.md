@@ -1,6 +1,6 @@
 # Threat model — infrabyx-platform
 
-**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-27
+**Status:** living document (PL2-D-43). Updated by every PR that adds a port, adapter, package or data flow; the PR checklist points here. **Last updated:** 2026-11-28
 
 **Method:** STRIDE (Spoofing, Tampering, Repudiation, Information disclosure, Denial of service, Elevation of privilege) per package and per IPB-01 port, against the IPB-02 controls. Each control links to where it is specified (plan section, decision ID) and how it is proven (test tag). "Built" means merged on `main`; "planned" means specified in a phase plan and not yet built.
 
@@ -1786,6 +1786,17 @@ A product's tagged `.docx` template is filled with its data, often personal.
 - **I (an empty field mistaken for a value):** a missing binding is refused, naming the field; nothing is rendered or stored. Errors carry tag names, never data values.
 - **D:** a 10 MiB template cap; Gotenberg's egress caps the PDF (50 MiB).
 - **Supply chain:** `docxtemplater` 3.71.1 and `pizzip` 3.3.0 (MIT), past the 7-day rule, pinned exactly, imported only in `connectors/src/docgen`.
+
+### 3.202 Issuing documents (`DocumentIssuer`, `workflow.document_issue`; templates item 2, R1-D-321)
+
+A new data flow: a rendered document through review or approval, signing and the archive, and a new table.
+
+- **I (template data or signer details at rest):** the table holds references and SHA-256 hashes only. It keeps the canonical JSON digest of the data and of the signer list, never the values (tested on the raw row). The ledger keeps digests of what each entry names. The table is tenant-scoped with RLS enabled and forced (tested across tenants), and every column is data-classed.
+- **T (a substituted or altered file):** the render is read back and hashed before it is recorded. The signed file is read back and must hash to what ESIGN returned. Before archiving, each source must hash to its recorded value, and each archived copy is read back, hashed and proved immutable. A mismatch is recorded `failed` and nothing more is archived (tested). The database refuses an archived signing template without a signed hash, and an archived hash that is not the file's.
+- **E (a document escaping its rule):** a signing template can never be archived unsigned, in code and in a check constraint (both tested). An unsigned one needs a review by a person other than its issuer, or a checker's approval. The approval's executor checks that the request's payload digest is this record's render, so an approval cannot be replayed onto another document. An agent never reviews, and without an approval it never sends for signature.
+- **R:** every step is a kernel mutation with a ledger entry naming the record; a step that loses a race is ledgered as stale.
+- **D (duplicate envelopes or archive copies):** the envelope is created with the record's idempotency key, and a losing envelope is cancelled. The archive keys are recorded before any write, so a retry cannot leave a second retained copy (tested).
+- **Residual:** the retention date is the product's input (with a floor of now). It is never shortened here, but a wrong long date is the product's to prevent.
 
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
