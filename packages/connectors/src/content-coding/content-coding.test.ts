@@ -13,7 +13,9 @@ import {
   refuseZstdBodies,
   refuseZstdBodiesWith,
   refuseZstdFetch,
+  refuseZstdInNextProxy,
 } from "./index.js";
+import { nextProxyZstdContractCases } from "@infrabyx/testing";
 
 const servers: Server[] = [];
 afterEach(async () => {
@@ -255,5 +257,42 @@ describe("createEgress", () => {
   it("gzip answers keep working", async () => {
     const { url } = await upstream("gzip");
     expect((await egressFor()(url)).json()).toEqual({ ok: true });
+  });
+});
+
+describe("refuseZstdInNextProxy (PR-UDF-089; R1-D-320)", () => {
+  // The contract cases a product runs against its own proxy, run here against a proxy that calls
+  // the helper first, as guide §7fk shows, and against the helper alone.
+  const proxy = (req: Request) => refuseZstdInNextProxy(req) ?? new Response(null, { status: 200 });
+  for (const c of nextProxyZstdContractCases()) it(`proxy: ${c.name}`, () => c.run(proxy));
+  for (const c of nextProxyZstdContractCases())
+    it(`helper: ${c.name}`, () => c.run(refuseZstdInNextProxy));
+
+  it("a product prefix and the trace id reach the problem; Accept-Encoding names the accepted codings", async () => {
+    const req = new Request("https://app.example.test/v1/x?secret=1", {
+      method: "POST",
+      body: zstdCompressSync(Buffer.from("{}")),
+      headers: {
+        "content-encoding": "zstd",
+        traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+      },
+    });
+    const res = refuseZstdInNextProxy(req, { productPrefix: "UDF" });
+    expect(res?.status).toBe(415);
+    // A non-Next handler keeps the header; Next 16 strips it from proxy responses (guide §7fk).
+    expect(res?.headers.get("accept-encoding")).toBe("gzip, deflate, br");
+    expect(res?.headers.get("connection")).toBeNull();
+    expect(await res?.json()).toMatchObject({
+      code: "UDF-SEC-010",
+      reason: "content_encoding",
+      instance: "/v1/x",
+      trace_id: "4bf92f3577b34da6a3ce929d0e0e4736",
+    });
+    expect(req.bodyUsed).toBe(false);
+  });
+
+  it("the product-prefixed contract cases pass with the prefix", async () => {
+    const p = (req: Request) => refuseZstdInNextProxy(req, { productPrefix: "UDF" });
+    for (const c of nextProxyZstdContractCases({ code: "UDF-SEC-010" })) await c.run(p);
   });
 });

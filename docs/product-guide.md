@@ -2341,7 +2341,7 @@ app.use(refuseZstdBodies); // first: before Nest adds its body parsers at init, 
   1. Move every `@infrabyx/*` pin together.
   2. Register `refuseZstdBodies` first in each API, and delete your own copy (ComplyCl's `refuseZstdBodies`, or any other).
   3. Wrap injected and direct fetches in `refuseZstdFetch`.
-  4. Keep the `CVE-2026-124851` waiver to **2026-12-07** in your own image scan, the date all four repositories share (`infra/docker/trivyignore.yaml`).
+  4. Clear the `CVE-2026-124851` image finding by installing Debian's fixed `libzstd1` (§7fj), and drop its waiver. Keep `refuseZstdBodies` and `refuseZstdFetch`: Node.js 24.22.1's bundled zstd 1.5.7 is still affected.
 
 ## 7fc. SMS values are refused, never cut (PR-UDF-088; R1-D-296)
 
@@ -2510,6 +2510,81 @@ const r = await docgen.render({
   - `unsupported`: `html`, or `pdf` without a converter.
 - **What is refused in a template:** macros, ActiveX, embedded objects, imported chunks, external links other than https hyperlinks, and INCLUDETEXT, INCLUDEPICTURE, DDE, LINK, IMPORT and DATABASE fields.
 - **Tests:** run `docgenTemplateContractCases` over your adapter with your own tagged template and the six hostile kinds (`DOCGEN_HOSTILE_TEMPLATES`).
+
+## 7fj. Debian 12's fixed packages in your runtime images (CVE-2026-124851, CVE-2025-6020, CVE-2026-109518; R1-D-319)
+
+No package release is needed for this: it is an image change. **Why:** Debian 12 now publishes fixes for `libzstd1`, the pam packages and apt, but no `node:24.22.1-bookworm-slim` image carries them yet. Each version below was confirmed in Debian's own archive (the bookworm-security Packages index, amd64 and arm64, 28 Nov 2026), not only in the scanner's database.
+
+| Package                                                              | Fixed version           | Finding         | Waiver it replaces |
+| -------------------------------------------------------------------- | ----------------------- | --------------- | ------------------ |
+| `libzstd1`                                                           | `1.5.4+dfsg2-5+deb12u1` | CVE-2026-124851 | R1-D-291, R1-D-294 |
+| `libpam0g`, `libpam-modules`, `libpam-modules-bin`, `libpam-runtime` | `1.5.2-6+deb12u3`       | CVE-2025-6020   | R1-D-162           |
+| `apt`, `libapt-pkg6.0`                                               | `2.6.2`                 | CVE-2026-109518 | R1-D-99            |
+
+- **Do:**
+  1. Copy `infra/docker/debian-fixes.sh` into your repository (same path). It installs exactly these versions, fails the build if any other version lands, and clears apt's lists.
+  2. In every runtime stage built on the Node base, run it **first**, while apt is still there, through a bind mount, so no layer keeps the script:
+
+     ```dockerfile
+     RUN --mount=type=bind,source=infra/docker/debian-fixes.sh,target=/tmp/debian-fixes.sh \
+         --mount=type=secret,id=ca,required=false \
+         sh /tmp/debian-fixes.sh \
+         && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack ...
+     ```
+
+     A runtime whose build context is not the repository root (the platform's Compose MinIO) names the script's folder as an additional build context instead (`additional_contexts`).
+
+  3. Remove the three waivers from your copy of `infra/docker/trivyignore.yaml`, and run your image scan as CI does: `trivy image --severity HIGH,CRITICAL` with the ignore file must pass with no entry for these three findings.
+- **Behind a TLS-inspecting proxy** (a session container): pass the proxy's CA as the `ca` build secret, plus `--network host --build-arg https_proxy=$HTTPS_PROXY`. The script then reads the same archive over HTTPS, trusting that CA. Without the secret (CI), apt uses the image's own sources unchanged. Either way apt checks the archive's signatures.
+- **Keep** `refuseZstdBodies` and `refuseZstdFetch` (§7fb): they guard the zstd 1.5.7 that Node.js 24.22.1 bundles, which this does not change.
+- **Later:** when a Node base digest carries these versions, the script installs nothing new; it is removed with that base move.
+
+## 7fk. Refuse zstd in your Next.js 16 proxy (PR-UDF-089, CVE-2026-124851; R1-D-320)
+
+From the next `@infrabyx/connectors` and `@infrabyx/testing` minors (no migration, no setting, no environment variable). **Why:** FinbyxCl and UdofinCl each built a zstd refusal for their Next 16 proxies from §7fb's helpers. This is the shared one, so both can drop their copies.
+
+```ts
+// src/proxy.ts (Next 16; formerly middleware.ts)
+import { NextResponse, type NextRequest } from "next/server";
+import { refuseZstdInNextProxy } from "@infrabyx/connectors/content-coding";
+
+// Match everything the app serves, health probes included.
+export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
+
+export async function proxy(request: NextRequest) {
+  const refused = refuseZstdInNextProxy(request, { productPrefix: "UDF" });
+  if (refused) return refused; // first, before any other handling
+  // ... your existing handling
+  return NextResponse.next();
+}
+```
+
+- **What it does:** when `Content-Encoding` names `zstd` (any case, in a list; `x-zstd` too) it returns a 415 `application/problem+json` response: `IPB-SEC-010` (or `<prefix>-SEC-010`), `reason: content_encoding`, `instance` the path without its query string, `trace_id` from `traceparent`, and `Cache-Control: no-store`. Otherwise it returns `undefined`. It never reads the body.
+- **Health probes:** call it before anything else, and make sure your `matcher` does not exclude the health paths. If your probes must skip the rest of the proxy, return `NextResponse.next()` for them **after** the refusal.
+- **`Accept-Encoding` on the 415:** the helper sets `Accept-Encoding: gzip, deflate, br` (RFC 9110 §15.5.16 says a 415 for a content coding "should" list the accepted codings). Next 16 strips `Accept-Encoding` from proxy responses, so behind Next the 415 arrives without it; FinbyxCl recorded the same. Nothing to do: the problem's `detail` names the accepted codings.
+- **No `Connection: close`:** unlike `refuseZstdBodies`, the proxy does not own the connection, so it does not set one.
+- **Prove it:** run the contract cases against your own `proxy`:
+
+  ```ts
+  import { NextRequest } from "next/server";
+  import { nextProxyZstdContractCases } from "@infrabyx/testing";
+  import { proxy } from "../src/proxy";
+
+  for (const c of nextProxyZstdContractCases({
+    code: "UDF-SEC-010",
+    healthPaths: ["/health/live", "/health/ready"],
+    toRequest: (r) => new NextRequest(r),
+  }))
+    it(c.name, () => c.run(proxy));
+  ```
+
+  Use requests on synthetic data only. A case for the allowed codings may reach your later handling, so give the test what that handling needs, or let it answer as it would for a signed-out visitor.
+
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Call `refuseZstdInNextProxy` first in each Next proxy, and delete your own copy.
+  3. Add the contract cases.
+  4. Keep `refuseZstdBodies` in your Nest APIs (§7fb): the proxy guards the Next app, not the API process.
 
 ## 7fl. Issue a document: render, review or approve, sign, archive (`DocumentIssuer`; templates item 2; R1-D-321)
 

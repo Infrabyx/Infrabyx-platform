@@ -6,6 +6,7 @@ The container images of the platform's deployables (IPB-01-31, §01.4.8.1; PL6 p
 | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `next/Dockerfile`    | The image of every Next.js deployable (`apps/public`, `apps/console`): base → deps (`pnpm fetch`) → build (`turbo build`, `pnpm deploy --prod`) → runtime      |
 | `node/Dockerfile`    | The image of every other Node deployable (`apps/reference/api`, `apps/reference/worker`): the same stages, `ENTRYPOINT node --enable-source-maps dist/main.js` |
+| `debian-fixes.sh`    | Debian 12 security fixes the pinned base lacks, installed pinned exactly in every runtime stage before its package managers go (R1-D-319; guide §7fj)          |
 | `healthcheck.mjs`    | The image `HEALTHCHECK`: the app's own `/health/live` on its port                                                                                              |
 | `image.e2e.test.mjs` | `@IPB-01-AT-15` on built images (`IPB_IMAGES="<image> …" pnpm images:test`)                                                                                    |
 | `trivyignore.yaml`   | Trivy waivers, each with a statement, a reason and an expiry                                                                                                   |
