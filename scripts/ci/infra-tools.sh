@@ -57,6 +57,6 @@ build_tag tofu https://github.com/opentofu/opentofu.git "$TOFU_TAG" "$TOFU_COMMI
 
 "$DIR/helm" version --short
 "$DIR/kubeconform" -v
-"$DIR/kyverno" version | head -3
-"$DIR/tofu" version | head -1
+"$DIR/kyverno" version | sed -n 1,3p
+"$DIR/tofu" version | sed -n 1p
 "$DIR/tflint" --version | sed -n 1p

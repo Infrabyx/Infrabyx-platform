@@ -1,10 +1,10 @@
 // APP-M01 to APP-M07, the owner's applicability engines (R1-regcalc plan §2; R1-D-311):
 //   - APP-M01's worked example (fictitious NBFC): every output cell of the Profile thresholds,
 //     Policies, Committees and Roles, Returns, Dashboard and Checks reproduced from its profile;
-//   - APP-M02 to M07 are filed as unfilled masters that were never recalculated (every formula cell
-//     has an empty cached value), so they hold no result to reproduce. Each filed master, filled
-//     with a synthetic profile and recalculated by LibreOffice Calc (scripts/app-fixtures.py), is
-//     the oracle instead: every formula cell asserted. A second APP-M01 profile is made the same way;
+//   - APP-M02 to M07: the owner's worked examples (28 Nov 2026; R1-D-324), ComplyCl's recorded
+//     inputs recalculated in Excel, replace the synthetic LibreOffice oracles: every formula cell
+//     asserted. Their inputs set no condition or override, so sector-paths.test.ts keeps those paths
+//     proved. A second, synthetic APP-M01 profile is made by scripts/app-fixtures.py;
 //   - every pack line checked against the filed workbook's own formula for it, rebuilt from the
 //     pack as the owner's builders write it, so a pack that drifts from the model fails.
 import { readFileSync } from "node:fs";
@@ -225,20 +225,20 @@ const SECTOR_RESULT: Record<ApplicabilityResult, string> = {
   needs_answer: "Confirm the condition",
 };
 
-const SECTOR: Array<[keyof typeof ORACLES, SectorPack]> = [
-  ["app02", APP_M02],
-  ["app03", APP_M03],
-  ["app04", APP_M04],
-  ["app05", APP_M05],
-  ["app06", APP_M06],
-  ["app07", APP_M07],
+const SECTOR: Array<[keyof typeof ORACLES, keyof typeof ORACLES, SectorPack]> = [
+  ["app02", "app02we", APP_M02],
+  ["app03", "app03we", APP_M03],
+  ["app04", "app04we", APP_M04],
+  ["app05", "app05we", APP_M05],
+  ["app06", "app06we", APP_M06],
+  ["app07", "app07we", APP_M07],
 ];
 
-for (const [key, P] of SECTOR) {
+for (const [key, worked, P] of SECTOR) {
   const q0 = Math.max(10, P.categories.length + 6);
 
-  describe(`${P.model}, synthetic profile (the filed master, filled and recalculated)`, () => {
-    const o = openFixture(`${P.model.toLowerCase()}-synthetic.xlsx`);
+  describe(`${P.model}, the owner's worked example (recalculated in Excel; R1-D-324)`, () => {
+    const o = openOracle(ORACLES[worked]);
     const profile: Record<string, string> = {};
     const put = (k: string, ref: string) => {
       const v = str(o, "Profile", ref);
@@ -305,13 +305,6 @@ for (const [key, P] of SECTOR) {
         o.exact("Checks", `C${6 + j}`, c.ok ? "OK" : "CHECK");
       });
       expect(o.uncovered()).toEqual([]);
-    });
-
-    it("the profile reaches a settled condition and an override", () => {
-      expect(out.policies.some((x) => x.conditionMet === "Yes" || x.conditionMet === "No")).toBe(
-        true,
-      );
-      expect(out.policies.some((x) => x.overridden)).toBe(true);
     });
   });
 
