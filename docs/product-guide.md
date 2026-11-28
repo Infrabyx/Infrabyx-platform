@@ -2586,6 +2586,47 @@ export async function proxy(request: NextRequest) {
   3. Add the contract cases.
   4. Keep `refuseZstdBodies` in your Nest APIs (§7fb): the proxy guards the Next app, not the API process.
 
+## 7fl. Issue a document: render, review or approve, sign, archive (`DocumentIssuer`; templates item 2; R1-D-321)
+
+From the next `@infrabyx/workflow` minor, with migration `workflow/0006_document_issue.sql` (applied by `infrabyx-migrate`; expand-only). There is no setting and no environment variable. **Why:** every product issues sanction letters, receipts, notices and register extracts the same way: render, have them checked, sign where needed, and keep them. The owner's rules (R1-D-318) are kept in one place.
+
+```ts
+import { DOCUMENT_ISSUE_ACTION, DocumentIssuer } from "@infrabyx/workflow";
+
+const issuer = new DocumentIssuer({ kernel, audit, docgen, storage, esign, approvals })
+  .registerTemplate("sanction_letter", { signing: "required" })
+  .registerTemplate("board_notice", { signing: "none" }); // a notice, a register extract, an MIS report
+approvals.register(DOCUMENT_ISSUE_ACTION, issuer.approvalPolicy({ checkerRoles: ["ORG_CHECKER"] }));
+
+// A signed document, under maker-checker:
+const d = await issuer.issue(ctx, {
+  templateId: "sanction_letter",
+  data, // CONFIDENTIAL; only its SHA-256 is kept
+  format: "pdf",
+  outputPrefix: `tenant/${ctx.tenantId}/loans`,
+  signers, // required for a signing template; only their SHA-256 is kept
+  approval: { riskClass: "R3" },
+  retainUntil, // your retention rule's date; it must be later than now
+});
+// ...the checker approves in the Work Inbox; the executor marks it approved...
+await issuer.sendForSignature(ctx, d.id, { signers }); // the same signers
+// ...on the ESIGN webhook, or a timer:
+await issuer.completeSigning(ctx, d.id);
+await issuer.archive(ctx, d.id); // the signed file and its unsigned render, write-once
+```
+
+- **The owner's rules:**
+  - A template registered `signing: "required"` is refused without signers and is never archived unsigned.
+  - A template registered `signing: "none"` is refused with signers. It is archived only after a person **other than its issuer** calls `review` (never an agent), or after its approval where your rules ask for maker-checker.
+  - A signed document's unsigned render is archived too, with the same retention.
+- **States:** `rendered`, `reviewed`, `approval_pending`, `approved`, `signing`, `signed`, `archived`, or else `rejected`, `expired` or `failed` (with `failureReason`).
+- **Retries:** call any step again and it changes nothing. A refused step throws `DocumentIssueError` (409) with a `reason`: `template_unregistered`, `signers_required`, `signers_not_expected`, `signers_changed`, `format_not_signable`, `retention_invalid`, `render_unverified`, `approval_unavailable`, `approval_mismatch`, `review_not_applicable`, `not_signable`, `not_archivable`, `hash_mismatch` or `esign_unavailable`.
+- **Signing templates** render as `pdf` or `pdfa`.
+- **Agents:** an agent may issue. It never reviews, and without an approval it never sends for signature.
+- **Archive:** REGULATED under `tenant/<tenant>/document_archive/` (`archiveModule` to change it), write-once with `retainUntil`; the record holds both keys and SHA-256s. Your STORAGE must allow REGULATED writes there.
+- **Not stored:** the data and the signers' details. Keep what you need in your own tables.
+- **Adopt:** move every `@infrabyx/*` pin together, run `infrabyx-migrate`, register your templates and the approval policy, and replace your own render-sign-archive code.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

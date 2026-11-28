@@ -144,7 +144,7 @@ Two PRs, each a minor: first the adapter (`connectors`, with its contract cases 
   - the output's SHA-256 is the stored bytes' own.
   - The Gotenberg leg renders PDF and PDF/A (hermetic, CI).
 
-**2. `workflow` `issueDocument(render → approve → esign → archive)`** (next PR): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
+**2. `workflow` `issueDocument(render → approve → esign → archive)`** (built 28 Nov 2026, 2c): the template version and the output's SHA-256 on the record, and the signed file archived write-once with retention (IPB-01-29).
 
 **2a. `workflow` `issueDocument`: the detailed plan** (written 28 Nov 2026 for the next session; R1-D-315)
 
@@ -186,5 +186,19 @@ One `workflow` minor with one migration (`workflow/0006_document_issue.sql`). It
 - **The unsigned rendered copy is kept** after archiving, with the signed copy's retention: it is the evidence of exactly what was sent for signature.
   - At the archive step it is written write-once with the same `retain_until` (`rendered_archived_key`, with its SHA-256, which must equal `rendered_sha256`).
   - The record links it to the signed version. Nothing is deleted.
+
+**2c. As built (28 Nov 2026; R1-D-321).** `DocumentIssuer` in `@infrabyx/workflow`, migration `workflow/0006_document_issue.sql`:
+
+- **Registration:** `registerTemplate(templateId, { signing: "required" | "none" })`; an unregistered template is refused (`template_unregistered`).
+- **Steps:** `issue` → `review` (unsigned, no approval) or the approval → `sendForSignature` → `completeSigning` → `archive`. Each step returns the record, and a repeated step changes nothing and writes no ledger entry. A step that loses a race writes a `stale` entry, since every mutation is ledgered.
+- **Approval:** the product registers `issuer.approvalPolicy({ checkerRoles })` on `DOCUMENT_ISSUE_ACTION`. Its executor moves the record to `approved` in the approval's own executing transaction, after checking the request's payload digest against the record. `refreshApproval` brings in a rejection, cancellation or expiry.
+- **Signers:** given at `issue` and again at `sendForSignature`. Only their SHA-256 is kept, and any change is refused (`signers_changed`). A signing template renders as `pdf` or `pdfa` only. Without an approval an agent may issue but not send (IPB-SEC-004).
+- **Review:** by a person (never an agent, IPB-SEC-004) other than the one who issued the document (IPB-SEC-007).
+- **Archive:** REGULATED, write-once with the record's `retain_until`, under `tenant/<tenant>/document_archive/<ULID>.<ext>`.
+  - The keys are recorded before any write, so a retry writes to the same keys.
+  - Every source and every archived copy is read back and hashed; each copy is proved immutable.
+  - A changed source is recorded `failed` (`hash_mismatch`).
+  - The database refuses an archived signing template without a signed hash, and an archived hash that is not the file's.
+- **Tests:** eleven integration cases on PostgreSQL with the platform fakes (synthetic data). No contract-case export: the issuer is not a port with adapters.
 
 **Threat model:** template rendering (no code in templates, escaping, no external references, no includes) and the two new dependencies.
