@@ -1,0 +1,50 @@
+{
+  "name": "@infrabyx/registers",
+  "version": "0.0.0",
+  "description": "Regulatory registers: a versioned, tenant-scoped row store with RLS, a retention trigger and maker-checker, driven by contracts RegisterDefinition (ADR-0016)",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "migrations",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json",
+    "test:int": "INFRABYX_TEST_INT=1 vitest run --passWithNoTests"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/infrabyx/infrabyx-platform.git",
+    "directory": "packages/registers"
+  },
+  "engines": {
+    "node": "24.22.1"
+  },
+  "dependencies": {
+    "@infrabyx/contracts": "workspace:*",
+    "@infrabyx/crypto": "workspace:*",
+    "@infrabyx/tenancy": "workspace:*"
+  },
+  "devDependencies": {
+    "@infrabyx/audit": "workspace:*",
+    "@infrabyx/testing": "workspace:*"
+  }
+}
