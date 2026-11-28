@@ -30,11 +30,17 @@ b6262a8e0af750da921a48e29199aca38a140a12889482f7a52c07ba469a4c72  ./01 NBFC Mode
 1dc950a1f8933622974ca272c72e034cdd8da808a8601aa3b291cbdceb086fd9  ./01 NBFC Models/Securitisation Transactions/Retention Calculator/SEC-M01 Securitisation Retention Model – Worked Example (fictitious NBFC).xlsx
 9d22c499ab1e9f6e8821bc866ccb32e92467c7f83716d600bdef805e8336a220  ./01 NBFC Models/Supervisory Returns/Ratio Model/RATIO-M01 Ratio Model – Worked Example (fictitious NBFC).xlsx
 d955bfc78273f8a763b9aac8b3e03d27c0be24b6bb0cb590e9ba836276475c0e  ./01 NBFC Models/Supervisory Returns/Ratio Model/RATIO-M01 Regulatory and Financial Ratio Master Model.xlsx
+d67a5628366ca58d0e3103698bc0fbbedac7b1ba0c0d3b8d86990723790de221  ./02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies – Worked Example (fictitious multi-State credit society).xlsx
 67633f584aa6adf51c68e415066a3528778189bb468514ad5c9e25d3404a34ae  ./02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies.xlsx
+5b8733d52ef9d92c2e270e06ab6839b49e10d8085b16af95674b25fab1d4701d  ./02 Sector Applicability Engines/IFSCA/APP-M04 Applicability Engine for IFSCA Entities – Worked Example (fictitious IFSC finance company).xlsx
 7430e81ad26aca4a36c8a59a3a58b890139651dc86b94c8a059a9c1b4198b8ba  ./02 Sector Applicability Engines/IFSCA/APP-M04 Applicability Engine for IFSCA Entities.xlsx
+c7670b6c443ec16c41f25d4bba461ed2523ed1b787edc54e199dfebab105fec7  ./02 Sector Applicability Engines/IRDAI/APP-M05 Applicability Engine for Insurance Intermediaries – Worked Example (fictitious insurance broker).xlsx
 453a3d268a1e1b3fb83e294f0b91141595a90723197ba69fdd50bcff5b57814f  ./02 Sector Applicability Engines/IRDAI/APP-M05 Applicability Engine for Insurance Intermediaries.xlsx
+bd9fdce01ea215c56b7aa68f4dba15fec563a2c95492976a097bf9691d7cc914  ./02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities – Worked Example (fictitious payment aggregator).xlsx
 5cc8bf353f55ea23a2332a818abd3ed5c94103f95e887178c878934b696c5f0e  ./02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities.xlsx
+663ff716d1e5fe1b5f4483b99d03096d1ca065d48ecd3cc8e40cb9c9e9510461  ./02 Sector Applicability Engines/SEBI/APP-M02 Applicability Engine for SEBI Listed Entities – Worked Example (fictitious listed entity).xlsx
 93748263f5722e6832c6e66247faa9228762e71b95634b601508481376a83cc0  ./02 Sector Applicability Engines/SEBI/APP-M02 Applicability Engine for SEBI Listed Entities.xlsx
+28be7dea22210d0fa38863bfe06cf4202d5f82ece5a13e33be4501ee3e3d0712  ./02 Sector Applicability Engines/SEBI/APP-M03 Applicability Engine for SEBI Market Intermediaries – Worked Example (fictitious stock broker).xlsx
 460dc4163f27e4a5d6fdc1d3107c3099ccb72c58470209b8c2379601268ccdb4  ./02 Sector Applicability Engines/SEBI/APP-M03 Applicability Engine for SEBI Market Intermediaries.xlsx
 d21f49b725cb1d2a58fb6d64fc59be2e1a3fb672f1d0ba46efcb8cda6a377abb  ./03 RBI Return Formats/DNBS01 - Important Financial Parameters (NBFC-UL and NBFC-ML) - Quarterly.xlsx
 6056575cb1e3698531fa75e3da3e414f6f8cfb94dd6c23e6ae4be12f5b70e4e7  ./03 RBI Return Formats/DNBS02 - Important Financial Parameters (NBFC-BL) - Quarterly.xlsx
