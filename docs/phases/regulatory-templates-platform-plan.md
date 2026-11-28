@@ -169,12 +169,22 @@ One `workflow` minor with one migration (`workflow/0006_document_issue.sql`). It
   3. **Signing:** `ESIGN.createEnvelope(rendered, signers)` and `sendForSignature`, leaving the record at `signing`. On completion (the ESIGN webhook or a poll by a product timer), the signed file is read back. It is checked against the envelope's own record and stored with its SHA-256, and the record moves to `signed`.
   4. **Archive:** `STORAGE.putWithRetention(signed bytes, retainUntil)` to a REGULATED write-once key; the record moves to `archived` with `archived_sha256`, which must equal `signed_sha256`, else `failed`. Retention is the product's input with a floor of today; shortening it is never possible here (IPB-02-80; the locked list).
 - **Idempotent:** each step keys on the record id, so re-running a step changes nothing.
-- **Open points for the owner** (asked when the plan is posted):
+- **Open points for the owner** (asked when the plan is posted; **answered 28 Nov 2026, see 2b**):
   - whether a document with no signers skips straight to the archive;
   - whether the rendered, unsigned copy is kept after archiving. The default is to keep it, since deleting it is on the locked list.
 - **Contract cases** (synthetic, the fakes):
   - **The happy path:** PD-A02's tagged copy renders, is approved by a checker other than the maker, is signed with `FakeEsign` and is archived. The archived SHA-256 equals the signed bytes, and the template version is on the record.
   - **Refusals:** the maker cannot approve; a rejected approval never signs; a signed file whose hash changes before the archive is `failed`; and a retry of any step is a no-op.
 - **Threat model:** a new data flow (rendered documents through approval, signing and archive) and the new table (RLS, data classes).
+
+**2b. The owner's answers to the two open points (28 Nov 2026 11:45 IST; R1-D-318).** They replace the open points of 2a.
+
+- **A document with no signers:** it goes from `rendered` straight to the archive only when both of these hold:
+  - its template is registered as **unsigned** (`signing: "none"`; for example a notice, a register extract or an MIS report);
+  - a person has **reviewed** the render. The review is a recorded step (`reviewed_by`, `reviewed_at`), and the reviewer is never the maker. Where the product's rules ask for maker-checker, the review is an approval through the `ApprovalsEngine`.
+  - A template registered as **needing signatures** (`signing: "required"`) can never skip signing: `issueDocument` refuses it without signers (`signers_required`). Signers given for an unsigned template are refused as well (`signers_not_expected`), so the registration decides, never the caller.
+- **The unsigned rendered copy is kept** after archiving, with the signed copy's retention: it is the evidence of exactly what was sent for signature.
+  - At the archive step it is written write-once with the same `retain_until` (`rendered_archived_key`, with its SHA-256, which must equal `rendered_sha256`).
+  - The record links it to the signed version. Nothing is deleted.
 
 **Threat model:** template rendering (no code in templates, escaping, no external references, no includes) and the two new dependencies.
