@@ -2708,6 +2708,29 @@ export const seedAdapters = {
 - **Prove it:** run `seedPersonaRoleContractCases(product, personaRoles)` from `@infrabyx/testing` with your own roles.
 - **Adopt:** move every `@infrabyx/*` pin together, export `personaRoles`, run the cases, regenerate `SEED_CREDENTIALS.md` locally (it is never committed), and update any test that reads its Role column.
 
+## 7fp. Digital checklists with maker-checker sign-off and evidence (`ChecklistService`; templates item (d); R1-D-326)
+
+From the next `@infrabyx/workflow` minor, with migration `workflow/0007_checklist.sql` (expand-only), and the next `@infrabyx/hlp` patch (two help entries).
+
+```ts
+import { ChecklistService } from "@infrabyx/workflow";
+
+const checklists = new ChecklistService({ kernel, audit, inbox, storage }).define({
+  code: "AA-A01",
+  title: "FIP and FIU Onboarding Checklist",
+  version: "1.0.0",
+  items: [{ id: "c1", text: "Regulatory status verified …", evidenceRequired: true } /* … */],
+});
+const run = await checklists.start(ctx, "AA-A01", { subjectRef: fipId });
+await checklists.mark(ctx, run.id, "c1", { state: "met", evidence: [{ storageKey, sha256 }] });
+await checklists.signOff(ctx, run.id, { mfa: claims.mfa, iat: claims.iat }); // maker, then a different checker
+```
+
+- **Refused (`ChecklistError`, 409, `reason`):** `reason_required`, `evidence_required`, `evidence_unverified`, `items_open`, `run_signed`, `item_unknown` and `checklist_unknown`. A signer who is not freshly multi-factor gets `IPB-SEC-001` with `step_up`; answer it with `stepUpChallenge` (RFC 9470). A checker who is the maker gets `IPB-SEC-007`, and an agent gets `IPB-SEC-004`.
+- **Evidence:** pass the STORAGE key and SHA-256 of the file `releaseUpload` released. With `storage` given, each file is read back and hashed.
+- **A `not_met` check** raises one Work Inbox task (`hlp.checklist.item_not_met`) for the checklist's `followUpRole`.
+- **Adopt:** move every `@infrabyx/*` pin together, run `infrabyx-migrate`, define your checklists from the filed templates, guard which roles may sign each one, and pass the signer's verified claims to `signOff`.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

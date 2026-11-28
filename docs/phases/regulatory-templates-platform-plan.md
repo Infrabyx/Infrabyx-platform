@@ -1,6 +1,6 @@
 # Regulatory templates: what the platform must provide (gap analysis)
 
-**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, and (a) parts 1 and 2 (§6a).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, (a) parts 1 and 2 (§6a) and (d) (§6b).**
 
 Finbyx, Udofin and LawDocsComply will build the owner's 492 regulatory templates (`docs/regulatory-templates/`, merged as specifications, R1-D-297) into registers, documents, checklists, obligation tasks and calculators. This plan says, for each generic the three need, whether a published package already provides it, so that no product builds a generic itself.
 
@@ -111,6 +111,25 @@ Two PRs: definitions and export first (minors of `contracts` and `export`), then
 - `history(rowId)` from the ledger.
 - Maker-checker per row (an R-level from the product) through the approvals engine, the checker never the maker.
 - Contract cases: the row history after an edit and an approval; a delete before the date refused; RLS across tenants; cursor and filters.
+
+## 6b. Item (d): checklists (plan section and as built, 28 Nov 2026; R1-D-326)
+
+One `workflow` minor with migration `workflow/0007_checklist.sql`, and help entries in `hlp`.
+
+- **`ChecklistDefinition`:** a `code`, `title` and `version`, and 1 to 500 `items`. Each item has an `id`, its `text`, an optional `basis` and `evidenceRequired`. A definition may also name a `followUpRole`.
+- **`ChecklistService`:**
+  - `define` and `start(code, { subjectRef })`;
+  - `mark(runId, itemId, { state, reason, evidence })`, with the states `met`, `not_met` and `not_applicable`;
+  - `signOff(runId, stepUp)` and `get`.
+- **Rules:**
+  - `not_met` and `not_applicable` need a reason.
+  - `met` on an evidence-required item needs evidence. Evidence is held by STORAGE key and SHA-256, and read back and hashed when STORAGE is given.
+  - A `not_met` item raises one follow-up in the Work Inbox (`hlp.checklist.item_not_met`).
+  - Sign-off is refused while an item is open. The maker signs first, then a checker who is not the maker (IPB-SEC-007, and a check constraint).
+  - Each signer needs a step-up: a multi-factor session at most 300 s old, otherwise `IPB-SEC-001` with `step_up`, for the RFC 9470 answer.
+  - An agent never signs, and a signed run never changes.
+- **Tables:** `workflow.checklist_run` and `workflow.checklist_item`, tenant-scoped with RLS enabled and forced, every column data-classed. Reasons and evidence references are CONFIDENTIAL. There is no delete grant.
+- **Contract cases** (integration, synthetic answers): AA-A01's seven filed checks, read from the filed `.docx`, are the definition. Each of the plan's refusals is tested, plus one inbox follow-up per `not_met` item and RLS.
 
 ## 7. Item (b): ODS and ODT in `@infrabyx/export` (plan section, 28 Nov 2026; R1-D-313)
 

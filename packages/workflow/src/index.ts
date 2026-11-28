@@ -10,3 +10,4 @@ export * from "./approvals.js";
 export * from "./policy.js";
 export * from "./setup.js";
 export * from "./documents.js";
+export * from "./checklist.js";

@@ -1841,6 +1841,15 @@ A change to what non-production seeds grant; seeds still never run in prod, dr o
 - **E (a seed granting more than a product role):** only `<PRODUCT>_<NAME>` roles are accepted, so `ORG_`, `PLT_` and other products' roles are refused (tested). No role is ever added to a platform-tenant persona, and an unknown persona key is refused. All of this is checked before any vault, IdP or file write.
 - **R:** the credentials file lists every role a persona has, and `checkCredentialsFile` fails when the file and the roles disagree.
 
+### 3.206 Checklists with evidence and sign-off (`ChecklistService`; templates item (d), R1-D-326)
+
+A new data flow: checklist answers, reasons and evidence references, and two new tables.
+
+- **E (one person completing both signatures, or an agent signing):** the checker is never the maker, in code and in a check constraint (both tested); an agent never signs; each signature needs a fresh multi-factor session (tested with no MFA and with a stale one).
+- **T (evidence swapped after the fact):** evidence is kept as STORAGE key and SHA-256; with STORAGE given, the file is read and hashed when attached, and a mismatch is refused (tested). A signed run never changes.
+- **I:** reasons and evidence references are CONFIDENTIAL; the tables are tenant-scoped with RLS enabled and forced (tested); inbox follow-ups carry the checklist code and item id only.
+- **R:** every start, mark and signature is ledgered with the run id as a business id.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.
