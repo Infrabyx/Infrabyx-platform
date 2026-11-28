@@ -8,7 +8,7 @@
 # client as below from the first apply (owner answers #71, #72; PL6-D-16; docs/product-guide.md §4).
 
 terraform {
-  required_version = ">= 1.10.0"
+  required_version = "1.17.2"
   required_providers {
     aws = {
       source  = "hashicorp/aws"
