@@ -84,4 +84,6 @@ recalculated by LibreOffice Calc (`packages/regcalc/scripts/app-fixtures.py`, ha
 their oracle instead, as is a second APP-M01 profile; and every pack line is checked against the
 filed workbook's own formula for it (owner question #221).
 
+**Exit met, 28 Nov 2026 (R1-D-312):** `regcalcContractCases` in `testing`; `regcalc` published at 1.0.0 by the next release run.
+
 Exit: every output cell of the five oracle workbooks reproduced; `ipb-check`, lint, typecheck, unit; licence check for `decimal.js`; owner decisions recorded.

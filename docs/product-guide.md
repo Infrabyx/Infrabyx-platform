@@ -2416,6 +2416,39 @@ assertScannedClean(report.scan!, report.sha256, "BUREAU");
 - **Your QUARANTINE class** now receives these files too: grant your AV adapter read there, and keep the same named key references in QUARANTINE as in REGULATED (R1-D-240).
 - **Tests:** run `bureauScannedWriteContractCases` / `aaScannedWriteContractCases` against your own adapters and stubs; the fakes attach a CLEAN scan.
 
+## 7fg. `@infrabyx/regcalc` 1.0.0: the regulated lending figures, and their contract cases (LDC-66, PR-FBX-58; R1-D-312)
+
+From the next release: a new package at **1.0.0** (pin it exactly, like every `@infrabyx/*` package), and a `@infrabyx/testing` minor. No migration, setting or environment variable. Runtime dependencies: `decimal.js` and `zod` only.
+
+```ts
+import { APP_M01, applicability, kfsApr, dlgMonitor, ewsScores } from "@infrabyx/regcalc";
+import { defineRegcalcSuite, regcalcContractCases } from "@infrabyx/testing";
+
+const apr = kfsApr({
+  principal: "20000",
+  annualRate: "0.15",
+  frequency: "monthly",
+  instalments: 24,
+  oneTimeCharges: [
+    { kind: "processing_fee", amount: "240" },
+    { kind: "other_third_party", amount: "160" },
+  ],
+});
+apr.disclosed.aprPercent; // "17.08": the higher of the APR on what is paid and on the unrounded instalment
+
+const nbfc = applicability(APP_M01, {
+  layer: "Middle Layer",
+  cat: "Investment and Credit Company",
+  assets: "2280" /* … */,
+});
+```
+
+- **Numbers are decimal strings** (or `Decimal`s); a JavaScript `number` is refused `input_invalid`. Map a `RegcalcError` (`reason`, `field`, `status: 422`) to your validation problem.
+- **Every result carries its basis** (the provision and the owner's model). Show it beside the figure.
+- **Applicability never guesses:** a question the decision needs and the profile leaves blank gives `needs_answer` (show "Needs an answer"), where the owner's workbooks read a blank as "No".
+- **LawDocsComply:** write a calculator over the figures a lender's system produces (any of `kfsFigures`, `kfsDisclosed`, `dlgMonitor`, `ewsScores`, `applicability`), and run `defineRegcalcSuite("lender", () => calc, regcalcContractCases(calc))`. **Finbyx and Udofin:** run the same cases over the adapter you compute with, so the three products agree by construction.
+- **Packs:** the default parameter and rule packs ship in the package. A stricter tenant pack (a Board-approved internal limit) goes through your maker-checker, and the package refuses a pack looser than the regulatory floor (`rule_pack_invalid`).
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

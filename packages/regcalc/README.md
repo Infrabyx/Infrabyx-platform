@@ -24,5 +24,6 @@ policy, committee, role and return of the owner's engines as `applies`, `does_no
 gaps (GREEN, AMBER, RED), the dashboard counts and the checks. The default packs
 (`DEFAULT_APPLICABILITY_PACKS`, `APP_M01` …) are generated from the filed models by
 `scripts/app-packs.mjs`; a product's own pack is checked by `applicabilityPack`. An unanswered
-question gives `needs_answer`, never a guess: the workbooks read a blank answer as "No". The package is private until its exit is met, then published at 1.0.0 (owner,
-27 Nov 2026; R1-D-301).
+question gives `needs_answer`, never a guess: the workbooks read a blank answer as "No". Published at 1.0.0 once its exit was met (owner approval, 27 Nov 2026; R1-D-301, R1-D-312).
+`@infrabyx/testing` carries the same oracles as contract cases (`regcalcContractCases`) for a
+product or a lender's system.
