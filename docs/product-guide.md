@@ -2416,6 +2416,20 @@ assertScannedClean(report.scan!, report.sha256, "BUREAU");
 - **Your QUARANTINE class** now receives these files too: grant your AV adapter read there, and keep the same named key references in QUARANTINE as in REGULATED (R1-D-240).
 - **Tests:** run `bureauScannedWriteContractCases` / `aaScannedWriteContractCases` against your own adapters and stubs; the fakes attach a CLEAN scan.
 
+**From the next `connectors` and `testing` patches (owner answer #216, R1-D-309, R1-D-310): the quarantined copy is removed once the promotion is verified.** Pass `removal`, the same `{ kernel, audit, context }` you give `PgDigilockerPullStore`:
+
+```ts
+const removal = { kernel, audit, context: (tenantId: string) => serviceContext(tenantId) };
+const bureau = new CibilBureau({ storage, scan, removal, appEnv: env.APP_ENV /* … */ });
+const aa = new SetuAccountAggregator({ storage, scan, removal, appEnv: env.APP_ENV /* … */ });
+```
+
+- **What it does:** after a CLEAN promotion the promoted copy is read back; only an equal SHA-256 is `ready`. Then, in one transaction, the ledger entry `connectors.scanned_write.quarantine_removed` (reason `promoted_clean_copy_removed`, both keys and the SHA-256) is written and the quarantined copy deleted. INFECTED and ERROR copies are never deleted.
+- **New refusals, both `IPB-SEC-015` (retry later; `meta.quarantineKey` names the copy kept):** `promotion_unverified` (the promoted copy read back failed or different; both copies kept) and `quarantine_not_removed` (the delete or the entry failed and rolled back). `IPB-PORT-001` `tenant_mismatch` if `context` returns another tenant.
+- **Without `removal`** the copy is kept as before and the adapter warns once at start-up outside `local` and `test`. `removal` is required with `scan` in 2.0.0.
+- **Grant** the adapter's service principal delete on your QUARANTINE class.
+- **Tests:** build the adapter with `quarantineRemovalHarness(storage).removal` and pass `removal: harness` (and `storage: harness.storage`) to the scanned-write cases.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
