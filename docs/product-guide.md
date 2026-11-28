@@ -2430,6 +2430,39 @@ const aa = new SetuAccountAggregator({ storage, scan, removal, appEnv: env.APP_E
 - **Grant** the adapter's service principal delete on your QUARANTINE class.
 - **Tests:** build the adapter with `quarantineRemovalHarness(storage).removal` and pass `removal: harness` (and `storage: harness.storage`) to the scanned-write cases.
 
+## 7fg. `@infrabyx/regcalc` 1.0.0: the regulated lending figures, and their contract cases (LDC-66, PR-FBX-58; R1-D-312)
+
+From the next release: a new package at **1.0.0** (pin it exactly, like every `@infrabyx/*` package), and a `@infrabyx/testing` minor. No migration, setting or environment variable. Runtime dependencies: `decimal.js` and `zod` only.
+
+```ts
+import { APP_M01, applicability, kfsApr, dlgMonitor, ewsScores } from "@infrabyx/regcalc";
+import { defineRegcalcSuite, regcalcContractCases } from "@infrabyx/testing";
+
+const apr = kfsApr({
+  principal: "20000",
+  annualRate: "0.15",
+  frequency: "monthly",
+  instalments: 24,
+  oneTimeCharges: [
+    { kind: "processing_fee", amount: "240" },
+    { kind: "other_third_party", amount: "160" },
+  ],
+});
+apr.disclosed.aprPercent; // "17.08": the higher of the APR on what is paid and on the unrounded instalment
+
+const nbfc = applicability(APP_M01, {
+  layer: "Middle Layer",
+  cat: "Investment and Credit Company",
+  assets: "2280" /* … */,
+});
+```
+
+- **Numbers are decimal strings** (or `Decimal`s); a JavaScript `number` is refused `input_invalid`. Map a `RegcalcError` (`reason`, `field`, `status: 422`) to your validation problem.
+- **Every result carries its basis** (the provision and the owner's model). Show it beside the figure.
+- **Applicability never guesses:** a question the decision needs and the profile leaves blank gives `needs_answer` (show "Needs an answer"), where the owner's workbooks read a blank as "No".
+- **LawDocsComply:** write a calculator over the figures a lender's system produces (any of `kfsFigures`, `kfsDisclosed`, `dlgMonitor`, `ewsScores`, `applicability`), and run `defineRegcalcSuite("lender", () => calc, regcalcContractCases(calc))`. **Finbyx and Udofin:** run the same cases over the adapter you compute with, so the three products agree by construction.
+- **Packs:** the default parameter and rule packs ship in the package. A stricter tenant pack (a Board-approved internal limit) goes through your maker-checker, and the package refuses a pack looser than the regulatory floor (`rule_pack_invalid`).
+
 ## 7fh. ODS and ODT exports (regulatory templates item (b); R1-D-313)
 
 From the next `@infrabyx/export` minor (no migration, setting or dependency). Registers and calculators export as **ODS** beside XLSX, CSV and PDF; documents as **ODT** beside PDF and DOCX (owner answer 5).
