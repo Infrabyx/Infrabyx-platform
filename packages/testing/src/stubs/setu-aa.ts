@@ -44,12 +44,15 @@ interface Consent {
 }
 
 /**
- * A random UUID, as Setu's ids are (any hex digits: a last group of 12 decimal digits is a valid
- * UUID too, and the adapter accepts it in a link; owner answer #154).
+ * A random UUID, as Setu's ids are. A last group of 12 decimal digits is a valid UUID too, and the
+ * adapter accepts it in a link (owner answer #154); that case is drawn on purpose through
+ * `nextConsentId`, so the random default never draws it: about one id in 280 did, and the approval
+ * link case (no 12-digit run) then failed at random (R1-D-310).
  */
 const randomUUID = (): string => {
   const h = toHex(randomBytes(16));
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+  const last = /^[0-9]{12}$/.test(h.slice(20)) ? `a${h.slice(21)}` : h.slice(20);
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${last}`;
 };
 
 const DEFAULT_LINK_BASE = "https://fiu-sandbox.setu.co/consents/webview/";

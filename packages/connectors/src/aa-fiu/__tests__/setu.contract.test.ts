@@ -11,10 +11,13 @@ import {
   contractConsentArtefact,
   defineContractSuite,
   MemoryStorage,
+  QUARANTINE_REMOVED_ACTION as TESTING_REMOVED_ACTION,
+  quarantineRemovalHarness,
   startSetuAaStub,
   type AccountAggregatorFixtures,
   type SetuAaStub,
 } from "@infrabyx/testing";
+import { QUARANTINE_REMOVED_ACTION } from "../../core/scanned.js";
 import { maskAccount, SetuAccountAggregator, setuFiType, type SetuConsentRecord } from "../setu.js";
 
 let stub: SetuAaStub;
@@ -132,6 +135,70 @@ describe("@IPB-02-AT-16 AA_FIU scanned writes (Setu stub; PR-FBX-57)", () => {
       meta: { reason: "scan_required" },
     });
     expect((await storage.list(PREFIX)).keys.length).toBe(before);
+  });
+});
+
+describe("@IPB-02-AT-16 AA_FIU quarantine removal (Setu stub; #216, R1-D-309)", () => {
+  // The same Setu adapter, built with `removal`: each promoted payload's quarantined copy is
+  // deleted with its audit entry once the promoted copy reads back with the scanned hash.
+  const h = quarantineRemovalHarness(new MemoryStorage());
+  const scan = new FakeFileScan(h.storage);
+  const withRemoval = () =>
+    new SetuAccountAggregator({
+      storage: h.storage,
+      scan,
+      removal: h.removal,
+      appEnv: "test",
+      consents: (() => {
+        const m = new Map<string, SetuConsentRecord>();
+        return {
+          get: async (k: string) => m.get(k),
+          set: async (k: string, v: SetuConsentRecord) => void m.set(k, v),
+        };
+      })(),
+      enabled: () => enabled,
+      clientId: () => stub.clientId,
+      clientSecret: () => stub.clientSecret,
+      productInstanceId: () => stub.productInstanceId,
+      pollAttempts: 3,
+      pollDelayMs: 0,
+      baseUrl: stub.url,
+      allowLoopbackHttp: true,
+    });
+  defineContractSuite(
+    "AA_FIU",
+    withRemoval,
+    aaScannedWriteContractCases({
+      storage: h.storage,
+      prefix: PREFIX,
+      removal: h,
+      vendorRemarks: (t) => stub.payloadRemarks(t),
+      scannerMode: (m) => (scan.mode = m),
+      fetch: (p) => fetchOnce(p as ReturnType<typeof make>),
+    }),
+    { leg: "hermetic" },
+  );
+
+  it("records the action the testing package checks", () => {
+    expect(QUARANTINE_REMOVED_ACTION).toBe(TESTING_REMOVED_ACTION);
+  });
+
+  it("warns at start-up outside local and test when built with a scanner but no removal", () => {
+    const warnings: string[] = [];
+    new SetuAccountAggregator({
+      storage,
+      scan: av,
+      appEnv: "prod",
+      warn: (m) => warnings.push(m),
+      consents: { get: async () => undefined, set: async () => undefined },
+      enabled: () => false,
+      clientId: () => "c",
+      clientSecret: () => "s",
+      productInstanceId: () => "p",
+    });
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("AA_FIU adapter setu-aa");
+    expect(warnings[0]).toContain("quarantine removal");
   });
 });
 

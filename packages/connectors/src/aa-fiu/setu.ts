@@ -56,7 +56,7 @@ import {
 import type { AppEnv } from "@infrabyx/contracts/env";
 import { ulid } from "@infrabyx/crypto";
 import { createEgress } from "../core/http.js";
-import { warnWithoutScanner, writeScanned } from "../core/scanned.js";
+import { warnWithoutScanner, writeScanned, type QuarantineRemoval } from "../core/scanned.js";
 import { vendorError } from "../messaging/common.js";
 
 const PORT = "AA_FIU";
@@ -82,6 +82,12 @@ export interface SetuAccountAggregatorOptions {
    * required in 2.0.0.
    */
   scan?: FileScanPort;
+  /**
+   * The unit of work that deletes each promoted file's quarantined copy with its audit entry once
+   * the promoted copy reads back with the scanned SHA-256 (owner answer #216, R1-D-309). Without it
+   * the quarantined copy is kept and the constructor warns outside `local` and `test`.
+   */
+  removal?: QuarantineRemoval;
   /** `APP_ENV`: outside `local` and `test`, a missing `scan` is warned about at construction. */
   appEnv?: AppEnv;
   /** Where that warning goes (default `process.emitWarning`). */
@@ -444,7 +450,13 @@ export class SetuAccountAggregator implements AccountAggregatorPort {
         const body = new TextEncoder().encode(JSON.stringify(a.data));
         // Quarantined, scanned and promoted only when CLEAN (PR-FBX-57); one refusal fails the fetch.
         const file = await writeScanned(
-          { port: PORT, adapter: ADAPTER, storage: this.o.storage, scan: this.o.scan },
+          {
+            port: PORT,
+            adapter: ADAPTER,
+            storage: this.o.storage,
+            scan: this.o.scan,
+            removal: this.o.removal,
+          },
           {
             key: `${r.dataPrefix}${ulid()}.json`,
             bytes: body,
