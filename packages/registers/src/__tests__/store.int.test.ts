@@ -1,6 +1,7 @@
 // The register row store on PostgreSQL with every platform migration applied (templates item (a),
 // part 2; ADR-0016, R1-D-323). Synthetic rows on CA-A01's filed Calendar layout.
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { KernelContext } from "@infrabyx/contracts/kernel";
 import {
@@ -56,7 +57,16 @@ const code = (p: Promise<unknown>) =>
   );
 
 beforeAll(async () => {
-  db = await startPostgres();
+  // Private until 1.0.0, so not yet in PLATFORM_MIGRATION_PACKAGES (R1-D-323 (4)): its own
+  // migrations are passed here, after the platform's.
+  db = await startPostgres({
+    migrations: [
+      {
+        name: "@infrabyx/registers",
+        dir: fileURLToPath(new URL("../../migrations/", import.meta.url)),
+      },
+    ],
+  });
   await db.admin.query(
     "insert into tenancy.tenant (id, product, name) values ('tnt_a', 'LD', 'A'), ('tnt_b', 'LD', 'B') on conflict do nothing",
   );

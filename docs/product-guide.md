@@ -2663,7 +2663,7 @@ const xlsx = registerExport(def, { Calendar: rows }, "xlsx"); // also "csv", "pd
 
 ## 7fn. The register row store, `@infrabyx/registers` (templates item (a), part 2; R1-D-323)
 
-Not published yet: the package is private until its exit and the owner's 1.0.0 (ADR-0016). This section says what it will ask of you. Its migration `registers/0001_init.sql` is applied by `infrabyx-migrate` once you install it.
+Not published yet: the package is private until its exit and the owner's 1.0.0 (ADR-0016). This section says what it will ask of you. Its migration `registers/0001_init.sql` joins `infrabyx-migrate`'s platform list with that 1.0.0.
 
 ```ts
 import { REGISTER_ROW_ACTION, RegisterStore } from "@infrabyx/registers";
