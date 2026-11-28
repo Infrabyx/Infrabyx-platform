@@ -2731,6 +2731,15 @@ await checklists.signOff(ctx, run.id, { mfa: claims.mfa, iat: claims.iat }); // 
 - **A `not_met` check** raises one Work Inbox task (`hlp.checklist.item_not_met`) for the checklist's `followUpRole`.
 - **Adopt:** move every `@infrabyx/*` pin together, run `infrabyx-migrate`, define your checklists from the filed templates, guard which roles may sign each one, and pass the signer's verified claims to `signOff`.
 
+## 7fq. A clean install without the `@emnapi` peer warning (LDC-70; R1-D-327)
+
+From the next `@infrabyx/connectors` patch. No change on your side.
+
+- **Why:** the rules engine's WASI build (`@gorules/zen-engine-wasm32-wasip1`, installed on every platform) pins `@emnapi/core` and `@emnapi/runtime` 2.0.0-alpha.6. A fresh install picked `@napi-rs/wasm-runtime` 1.2.7, which no longer accepts that version, so pnpm warned "unmet peer `@emnapi/core`".
+- **Fix:** `connectors` now depends on `@napi-rs/wasm-runtime` 1.2.5, whose peer range accepts it, and pnpm resolves the rules engine's copy to the same version.
+- **Adopt:** move every `@infrabyx/*` pin together and run `pnpm install`. The warning goes, and if you added an override or `peerDependencyRules` entry for it, remove it.
+- **What remains:** pnpm 10's "Ignored build scripts" notice is yours to settle with `onlyBuiltDependencies`. The two deprecated subdependencies (`@opentelemetry/sdk-trace-base`, `node-abort-controller`) are upstream.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).

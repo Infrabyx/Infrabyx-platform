@@ -603,6 +603,9 @@ importers:
       '@marcbachmann/cel-js':
         specifier: 8.0.0
         version: 8.0.0
+      '@napi-rs/wasm-runtime':
+        specifier: 1.2.5
+        version: 1.2.5(@emnapi/core@2.0.0-alpha.6)(@emnapi/runtime@2.0.0-alpha.6)
       '@opentelemetry/api':
         specifier: 1.9.1
         version: 1.9.1
@@ -5907,7 +5910,6 @@ snapshots:
     dependencies:
       '@emnapi/wasi-threads': 2.2.0
       tslib: 2.8.1
-    optional: true
 
   '@emnapi/runtime@1.11.3':
     dependencies:
@@ -5917,12 +5919,10 @@ snapshots:
   '@emnapi/runtime@2.0.0-alpha.6':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@emnapi/wasi-threads@2.2.0':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@esbuild/aix-ppc64@0.28.2':
     optional: true
@@ -6452,7 +6452,6 @@ snapshots:
       '@emnapi/core': 2.0.0-alpha.6
       '@emnapi/runtime': 2.0.0-alpha.6
       '@tybys/wasm-util': 0.10.4
-    optional: true
 
   '@nestjs/common@11.2.7(reflect-metadata@0.2.2)(rxjs@7.8.2)':
     dependencies:
@@ -6971,7 +6970,6 @@ snapshots:
   '@tybys/wasm-util@0.10.4':
     dependencies:
       tslib: 2.8.1
-    optional: true
 
   '@types/body-parser@1.19.6':
     dependencies:

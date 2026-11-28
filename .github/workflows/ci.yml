@@ -455,7 +455,13 @@ jobs:
           node scripts/scaffold-product.mjs --product UDF --name "Udofin" \
             --out "$RUNNER_TEMP/product" --registry http://127.0.0.1:4873
           cd "$RUNNER_TEMP/product"
-          pnpm install
+          # A clean install warns nothing about peers (LDC-70): the product's install log is read,
+          # since its pnpm 10 has no `pnpm peers check`.
+          set -o pipefail
+          pnpm install 2>&1 | tee "$RUNNER_TEMP/product-install.log"
+          if grep -q "Issues with peer dependencies" "$RUNNER_TEMP/product-install.log"; then
+            echo "the product's clean install reports peer dependency issues (LDC-70)"; exit 1
+          fi
           pnpm lint
           pnpm format:check
           pnpm typecheck
