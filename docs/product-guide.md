@@ -2661,6 +2661,31 @@ const xlsx = registerExport(def, { Calendar: rows }, "xlsx"); // also "csv", "pd
   - a `pdf` with Indic text is refused in-process: pass `registerPdfDocument(def, rows)` to `renderPdf` (DOCGEN) instead.
 - **Adopt:** move every `@infrabyx/*` pin together, then define your registers from the filed index and use `assertLayout` on uploads. The row store (part 2) will take these definitions unchanged.
 
+## 7fn. The register row store, `@infrabyx/registers` (templates item (a), part 2; R1-D-323)
+
+Not published yet: the package is private until its exit and the owner's 1.0.0 (ADR-0016). This section says what it will ask of you. Its migration `registers/0001_init.sql` joins `infrabyx-migrate`'s platform list with that 1.0.0.
+
+```ts
+import { REGISTER_ROW_ACTION, RegisterStore } from "@infrabyx/registers";
+
+const store = new RegisterStore({ kernel, audit, approvals, ledger: auditService }).define(def);
+approvals.register(REGISTER_ROW_ACTION, store.approvalPolicy({ checkerRoles: ["ORG_CHECKER"] }));
+
+const v1 = await store.create(ctx, "CA-A01", "Calendar", { data });
+await store.correct(ctx, v1.rowId, { data: fixed, approval: { riskClass: "R2" } }); // pending until a checker approves
+const page = await store.list(ctx, {
+  code: "CA-A01",
+  sheet: "Calendar",
+  where: { status: "Open" },
+});
+const { versions, ledger } = await store.history(ctx, v1.rowId);
+```
+
+- **Never deleted, never edited:** a correction is a new version. The database refuses a delete before `retain_until`, any change to a version's content, and a truncate. There is no purge.
+- **Checked on write:** every value is checked against the definition (§7fm). Values are kept up to CONFIDENTIAL, and a REGULATED column is refused for now (owner question #226).
+- **Maker-checker:** with `approval`, the change waits as `pending`, and a checker other than the maker approves it in the Work Inbox. `refreshApproval` records a rejection.
+- **Lists:** exact-match filters on up to 8 columns, 1 to 200 rows per page, and an opaque cursor.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
