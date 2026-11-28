@@ -1,5 +1,24 @@
 # @infrabyx/testing
 
+## 1.40.0
+
+### Minor Changes
+
+- 94a0bce: `seedPersonaRoleContractCases(product, personaRoles)` (LDC-69; R1-D-325): run them with your own persona roles to prove they are accepted, seeded in order, provisioned and listed by a credentials run, and that other prefixes, platform personas and too many roles are refused. Guide §7fo.
+- 30c9dcd: `nextProxyZstdContractCases(fixtures?)` (PR-UDF-089; R1-D-320): run them against your own Next.js 16 `proxy` function to prove the zstd refusal is wired first, health probes included: zstd in any case, in a list or as `x-zstd` gets the 415 problem with the body unread and the path-only `instance`; gzip, deflate, br, identity and no coding are never refused (guide §7fk).
+
+### Patch Changes
+
+- Updated dependencies [fa389d6]
+- Updated dependencies [94a0bce]
+  - @infrabyx/contracts@1.56.0
+  - @infrabyx/seed@1.1.0
+  - @infrabyx/audit@1.13.6
+  - @infrabyx/config@1.24.10
+  - @infrabyx/crypto@1.15.8
+  - @infrabyx/fakes@1.12.4
+  - @infrabyx/tenancy@1.30.4
+
 ## 1.39.0
 
 ### Minor Changes

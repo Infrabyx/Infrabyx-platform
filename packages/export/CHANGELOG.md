@@ -1,5 +1,18 @@
 # @infrabyx/export
 
+## 1.12.0
+
+### Minor Changes
+
+- fa389d6: `registerExport(definition, rows, format)` writes a register as xlsx, csv, pdf or ods from its `RegisterDefinition`, with every row checked first and the filed labels as headers (CSV formula-neutralised; an AutoFilter on xlsx only). `registerPdfDocument` gives the PDF model for `renderPdf` when rows hold Indic text, which the in-process PDF refuses (templates item (a), part 1; R1-D-322; guide §7fm).
+
+### Patch Changes
+
+- Updated dependencies [fa389d6]
+  - @infrabyx/contracts@1.56.0
+  - @infrabyx/crypto@1.15.8
+  - @infrabyx/tenancy@1.30.4
+
 ## 1.11.0
 
 ### Minor Changes

@@ -1,5 +1,20 @@
 # @infrabyx/seed
 
+## 1.1.0
+
+### Minor Changes
+
+- 94a0bce: A product's own roles on its seed personas (LDC-69; R1-D-325): `seedAdapters.personaRoles` (persona key → `<PRODUCT>_…` role names), also taken by `runSeed` and `generateCredentials`, are validated (`personaRoleProblems`; `IPB-SEED-003`) and seeded beside each persona's platform role in the IdP, the tenant membership and the credentials file's Role column, which `checkCredentialsFile` checks with the same roles. Guide §7fo.
+
+### Patch Changes
+
+- Updated dependencies [fa389d6]
+  - @infrabyx/contracts@1.56.0
+  - @infrabyx/audit@1.13.6
+  - @infrabyx/config@1.24.10
+  - @infrabyx/crypto@1.15.8
+  - @infrabyx/tenancy@1.30.4
+
 ## 1.0.68
 
 ### Patch Changes
