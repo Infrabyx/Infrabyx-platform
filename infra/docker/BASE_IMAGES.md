@@ -10,6 +10,8 @@ Every `apps/*/Dockerfile` stage uses the pinned Node image **by tag and digest**
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS base
 ```
 
+**Fixed packages on top of the base (R1-D-319):** until a base digest carries them, every runtime stage installs Debian 12's fixed `libzstd1`, pam and apt packages, pinned exactly, with `debian-fixes.sh` (guide §7fj). Move to the first base digest that carries them (7 days old, PL2-D-32) and remove the script then.
+
 Rules (IPB-01-31): multi-stage, non-root UID 10001, read-only root filesystem, `HEALTHCHECK`; `hadolint`, `trivy config` and `trivy image` gate in the `containers` CI job (PL6, `README.md`).
 
 ## The Keycloak customer image (R1-D-19)

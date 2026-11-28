@@ -50,7 +50,12 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
     NEXT_TELEMETRY_DISABLED=1
-RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+# Debian 12's fixed packages first, pinned exactly (infra/docker/debian-fixes.sh, R1-D-319), while
+# apt is still there; then the package managers go.
+RUN --mount=type=bind,source=infra/docker/debian-fixes.sh,target=/tmp/debian-fixes.sh \
+    --mount=type=secret,id=ca,required=false \
+    sh /tmp/debian-fixes.sh \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
       /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn \
       /usr/local/bin/yarnpkg /opt/yarn-* \
     && groupadd --gid 10001 app \
