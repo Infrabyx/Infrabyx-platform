@@ -1,5 +1,19 @@
 # @infrabyx/connectors
 
+## 1.40.0
+
+### Minor Changes
+
+- 30c9dcd: `refuseZstdInNextProxy(request, options?)` in `@infrabyx/connectors/content-coding` (PR-UDF-089; R1-D-320): for a Next.js 16 proxy (formerly middleware) or any Fetch-style handler, the 415 RFC 9457 problem `Response` (`IPB-SEC-010`, or your prefix's, `reason: content_encoding`) when the request's `Content-Encoding` names zstd, or `undefined` to carry on. Call it first, on every path your proxy matches, health probes included; it never reads the body. Next 16 strips `Accept-Encoding` from proxy responses, so behind Next the 415 arrives without it (guide §7fk).
+
+### Patch Changes
+
+- Updated dependencies [fa389d6]
+  - @infrabyx/contracts@1.56.0
+  - @infrabyx/config@1.24.10
+  - @infrabyx/crypto@1.15.8
+  - @infrabyx/tenancy@1.30.4
+
 ## 1.39.0
 
 ### Minor Changes

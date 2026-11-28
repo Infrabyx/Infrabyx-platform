@@ -1,5 +1,11 @@
 # @infrabyx/contracts
 
+## 1.56.0
+
+### Minor Changes
+
+- fa389d6: `@infrabyx/contracts/registers` (templates item (a), part 1; ADR-0016, R1-D-322): `RegisterDefinition` (typed, ordered, data-classed columns, never SECRET; retention at least eight years), `assertLayout` (exact sheets, labels and order; every problem named, both columns of a swapped pair), `definitionFromIndex` (a first definition from a filed index record), `rowProblems`, `assertRow` and `RegisterError` (422). Guide §7fm.
+
 ## 1.55.0
 
 ### Minor Changes

@@ -1,5 +1,20 @@
 # @infrabyx/workflow
 
+## 1.6.0
+
+### Minor Changes
+
+- 51f612d: `ChecklistService` (templates item (d); R1-D-326), with migration `workflow/0007_checklist.sql` (expand-only): define a checklist, start a run, mark items `met`, `not_met` or `not_applicable` (a reason for the last two; evidence by STORAGE key and SHA-256 where required, verified when STORAGE is given), one Work Inbox follow-up per `not_met` item, and sign-off by the maker then a different checker, each after a fresh multi-factor step-up (`IPB-SEC-001` with `step_up` otherwise). Guide §7fp.
+- cdc958c: `DocumentIssuer` (templates item 2; R1-D-321): render (DOCGEN) → review or approval (maker-checker) → signing (ESIGN) → archive (STORAGE, REGULATED, write-once with retention), with migration `workflow/0006_document_issue.sql` (expand-only; `workflow.document_issue`, RLS enabled and forced). Register each template as `signing: "required"` (refused without signers, never archived unsigned) or `"none"` (archived only after a person other than its issuer reviews it, or after its approval); a signed document's unsigned render is archived beside it with the same retention (R1-D-318). Register `issuer.approvalPolicy({ checkerRoles })` on `DOCUMENT_ISSUE_ACTION`. Only hashes of the data and the signers are kept. Guide §7fl.
+
+### Patch Changes
+
+- Updated dependencies [fa389d6]
+  - @infrabyx/contracts@1.56.0
+  - @infrabyx/config@1.24.10
+  - @infrabyx/crypto@1.15.8
+  - @infrabyx/tenancy@1.30.4
+
 ## 1.5.21
 
 ### Patch Changes
