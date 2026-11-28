@@ -16,7 +16,12 @@ RUN git -c advice.detachedHead=false clone --depth 1 --branch "$TAG" https://git
 FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
 COPY --from=build /out/minio /usr/local/bin/minio
 # The data directory belongs to the runtime user, so a fresh named volume inherits that owner.
-RUN mkdir /data && chown 10001:10001 /data
+# Debian 12's fixed packages, pinned exactly (infra/docker/debian-fixes.sh, R1-D-319; the `docker`
+# build context is infra/docker, set in compose.yaml).
+RUN --mount=type=bind,from=docker,source=debian-fixes.sh,target=/tmp/debian-fixes.sh \
+    --mount=type=secret,id=ca,required=false \
+    sh /tmp/debian-fixes.sh \
+    && mkdir /data && chown 10001:10001 /data
 USER 10001
 EXPOSE 9000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=6 \

@@ -436,9 +436,10 @@ function heavySteps(o, ci) {
         `APPS='${e.APPS}'; NODE_APPS='${e.NODE_APPS}'`,
         'TAG="check-$(git rev-parse --short=12 HEAD)"',
         // Behind a TLS-inspecting proxy (a session container), IPB_BUILD_CA names its CA bundle: it
-        // is passed as the Dockerfiles' optional `ca` build secret and to Trivy. Unset (CI), the
-        // commands are exactly CI's.
-        'CA_SECRET=(); CA_MOUNT=(); if [ -n "${IPB_BUILD_CA:-}" ]; then CA_SECRET=(--secret "id=ca,src=$IPB_BUILD_CA"); CA_MOUNT=(-v "$IPB_BUILD_CA:/etc/ssl/certs/ca-certificates.crt:ro"); fi',
+        // is passed as the Dockerfiles' optional `ca` build secret and to Trivy, and the build runs on
+        // the host network with the proxy, so infra/docker/debian-fixes.sh reaches Debian's archive
+        // over HTTPS (R1-D-319). Unset (CI), the commands are exactly CI's.
+        'CA_SECRET=(); CA_MOUNT=(); if [ -n "${IPB_BUILD_CA:-}" ]; then CA_SECRET=(--secret "id=ca,src=$IPB_BUILD_CA" --network host --build-arg "https_proxy=${HTTPS_PROXY:-${https_proxy:-}}"); CA_MOUNT=(-v "$IPB_BUILD_CA:/etc/ssl/certs/ca-certificates.crt:ro"); fi',
         'for f in $(git ls-files "*Dockerfile"); do echo "== $f"; docker run --rm -i "$HADOLINT_IMAGE" hadolint - < "$f"; done',
         'for dir in infra/docker infra/keycloak; do docker run --rm "${CA_MOUNT[@]}" -v "$PWD:/src:ro" -v "$TMPDIR/trivy:/root/.cache/trivy" "$TRIVY_IMAGE" config --exit-code 1 --severity HIGH,CRITICAL "/src/$dir"; done',
         'for app in $APPS; do docker build "${CA_SECRET[@]}" -f infra/docker/next/Dockerfile --build-arg APP="$app" -t "infrabyx/${app//\\//-}:$TAG" .; done',

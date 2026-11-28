@@ -14,6 +14,8 @@ Updated: 2026-11-28 (thirty-seventh session handover)
 
 Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below expire this quarter and are reviewed on the dates shown; the file holds the longer-standing ones too.
 
+**Cleared on 28 Nov 2026 (R1-D-319; guide §7fj):** CVE-2026-124851 (`libzstd1`), CVE-2025-6020 (pam) and CVE-2026-109518 (apt). Debian 12's fixed packages are installed, pinned exactly, in every runtime stage by `infra/docker/debian-fixes.sh`, and their waivers are gone. Products copy the script and drop the same three waivers. `refuseZstdBodies` and `refuseZstdFetch` stay, because Node.js 24.22.1's bundled zstd 1.5.7 is still affected.
+
 | Finding                                                            | Where                                                                         | Expires                                                            | Review                                    | Decision           |
 | ------------------------------------------------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------------------- | ------------------ |
 | CVE-2026-114938 (**CRITICAL**, mitigated; OWNER-WAIVER-CRIT-01)    | Keycloak base (OpenJDK `java-21-openjdk-headless` 1:21.0.13.0.9-1.2.el9 only) | 2026-12-15, or the day a fixed Keycloak/Red Hat build is published | every session start; 12 Dec → OWNER INBOX | R1-D-192           |
@@ -22,11 +24,8 @@ Copy `infra/docker/trivyignore.yaml` into your own image scan. The entries below
 | CVE-2026-102554                                                    | Keycloak jars (Guava 33.6.0)                                                  | 2026-12-20                                                         | 15 Dec                                    | R1-D-109           |
 | CVE-2026-119373, CVE-2026-119586                                   | Keycloak base (`sqlite-libs`)                                                 | 2026-12-20                                                         | 15 Dec                                    | R1-D-109           |
 | CVE-2026-119374, CVE-2026-119379                                   | Keycloak base (`sqlite-libs`)                                                 | 2026-12-10                                                         | 1 Dec (owner: align with 20 Dec?), 15 Dec | R1-D-115, R1-D-134 |
-| CVE-2026-109518                                                    | Debian 12 base (apt)                                                          | 2026-12-05                                                         | 1 Dec (decision reported to the owner)    | R1-D-99            |
 | CVE-2026-76844                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-05                                                         | 1 Dec                                     | R1-D-106, R1-D-108 |
 | CVE-2026-85091                                                     | Debian 12 base (zlib1g)                                                       | 2026-12-07                                                         | 1 Dec                                     | R1-D-111           |
-| CVE-2025-6020                                                      | Debian 12 base (linux-pam)                                                    | 2026-12-16                                                         | 1 Dec                                     | R1-D-162           |
-| CVE-2026-124851                                                    | Debian 12 base (libzstd1); Node.js's bundled zstd 1.5.7 closed in code        | 2026-12-07 (all four repositories)                                 | 1 Dec; 5 Dec → owner if no fixed image    | R1-D-291, R1-D-294 |
 
 ## Wave 13 gate (16 Nov, #252)
 

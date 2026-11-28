@@ -1076,7 +1076,7 @@ The first vendor adapters for the ports of §3.10's BUREAU and AA_FIU entry. Dat
 
 - **S and T (a missing or substituted proof):** a regulated message without exactly one well-formed header is refused before verification; the header value is verified against the pinned key ring with the `iat` window and `jti` replay check, then kept byte for byte. A substituted JWS for another event fails verification over the JCS of this event.
 
-### 3.103 Base image: apt CVE-2026-109518 (waived 30 days; R1-D-99)
+### 3.103 Base image: apt CVE-2026-109518 (waived 30 days; R1-D-99; **cleared 28 Nov 2026**, §3.200)
 
 - **T (an on-path attacker during apt downloads):** apt is in the Debian 12 base of both platform images but is never run: the runtime fetches no packages, runs as UID 10001 with every capability dropped and a read-only root. Waived until 2026-12-05 (`infra/docker/trivyignore.yaml`) because no `node:24.22.1-bookworm-slim` digest at least 7 days old carries the fixed apt 2.6.2; the waiver goes with the first such digest.
 
@@ -1751,7 +1751,7 @@ Two existing data flows decoded attacker-chosen zstd with the zstd 1.5.7 that No
 - **I (process memory read back):** a zstd request body gets 415 before any parser or guard, and its body is never read (tested: no zstd decoder is built, and a broken zstd body gets 415, not body-parser's 400, so a change of middleware order fails the test). Outbound, zstd is never offered, and a zstd answer is refused with its body cancelled unread (tested for `createEgress`, injected fetches and the wrapper). Residual: a sender that ignores `Accept-Encoding` can make undici's decoder start on the first bytes, but that output reaches no caller, store, log or sender. The governed egress and partner mTLS clients already refused every coding but identity, gzip, deflate and br.
 - **D:** the 415 closes the connection rather than drain an unread body.
 - **T/S:** the problem carries a fixed label and the path only (no query string); no coding the client sent is echoed.
-- **Products:** they register the same middleware first in their own Nest apps (guide §7fb) and wrap injected fetches. The Debian `libzstd1` waiver ends 2026-12-07; owner question #209.
+- **Products:** they register the same middleware first in their own Nest apps (guide §7fb) and wrap injected fetches. The Debian `libzstd1` finding is cleared by Debian's fixed package (28 Nov 2026, §3.200); the bundled zstd 1.5.7 is not, so both guards stay.
 
 ### 3.195 The local-file SECRETS adapter (`LocalFileSecrets`; LDC-65, R1-D-299)
 
@@ -1786,6 +1786,15 @@ A product's tagged `.docx` template is filled with its data, often personal.
 - **I (an empty field mistaken for a value):** a missing binding is refused, naming the field; nothing is rendered or stored. Errors carry tag names, never data values.
 - **D:** a 10 MiB template cap; Gotenberg's egress caps the PDF (50 MiB).
 - **Supply chain:** `docxtemplater` 3.71.1 and `pizzip` 3.3.0 (MIT), past the 7-day rule, pinned exactly, imported only in `connectors/src/docgen`.
+
+### 3.200 Debian 12's fixed packages installed in the runtime images (`infra/docker/debian-fixes.sh`; CVE-2026-124851, CVE-2025-6020, CVE-2026-109518; R1-D-319)
+
+A change to the build supply chain: each runtime stage now runs apt once at build time, before npm, corepack and yarn are removed. No runtime data flow changes.
+
+- **T (a substituted package):** apt verifies the archive's signed `InRelease` with the base image's Debian keyring, over plain HTTP in CI as Debian publishes it, or over HTTPS through a session proxy whose CA is passed as a build secret. Every version is pinned exactly and checked after install; another version fails the build. The versions were confirmed in Debian's own Packages index (amd64 and arm64), not only in the scanner's database.
+- **I (a CA or token left in the image):** the script and the CA are bind or secret mounts, and the script's temporary copy of the CA is removed in the same layer; apt's lists and caches are cleared.
+- **E:** nothing changes at run time: UID 10001, no capabilities, a read-only root; apt is still never run there.
+- **Residual:** Node.js 24.22.1's bundled zstd 1.5.7 is unchanged, so `refuseZstdBodies` and `refuseZstdFetch` (§3.194) stay. The zlib1g, util-linux and other base findings without a Debian 12 fix stay waived as before.
 
 ### 3.201 zstd refused in a Next.js 16 proxy (`refuseZstdInNextProxy`, `nextProxyZstdContractCases`; PR-UDF-089, R1-D-320)
 
