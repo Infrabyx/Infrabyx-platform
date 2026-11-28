@@ -1,5 +1,12 @@
 # @infrabyx/rules
 
+## 1.6.25
+
+### Patch Changes
+
+- Updated dependencies [f01c693]
+  - @infrabyx/connectors@1.38.1
+
 ## 1.6.24
 
 ### Patch Changes
