@@ -1,0 +1,18 @@
+# Platform help entries, module `checklist` (IPB-07 §07.4.3; regulatory templates item (d), R1-D-326).
+# Plain text of at most 40 words; no legal citations, so no reviewer of record is needed (IPB-HLP-003).
+module: checklist
+entries:
+  - key: hlp.checklist.run
+    term: "Checklist"
+    plain: "A list of checks to complete, each marked met, not met or not applicable, with evidence where asked, then signed off by two different people."
+    effective_date: 2026-11-28
+    review_by: 2027-11-28
+    status: published
+    visibility: public
+  - key: hlp.checklist.item_not_met
+    term: "Check not met"
+    plain: "A check on a checklist was marked not met. Follow it up and record what was done."
+    effective_date: 2026-11-28
+    review_by: 2027-11-28
+    status: published
+    visibility: public
