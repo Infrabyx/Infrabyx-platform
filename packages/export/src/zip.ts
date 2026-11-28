@@ -18,10 +18,18 @@ function dosTime(d: Date): { time: number; date: number } {
 export interface ZipOptions {
   /** Entry time for every file (default 1980-01-01T00:00:00Z). */
   entryTime?: Date;
+  /**
+   * An entry written first and stored uncompressed, the others in path order after it: an
+   * OpenDocument package's `mimetype` (ODF 1.3 Part 2 §3.3). Without it the output is unchanged.
+   */
+  firstStored?: string;
 }
 
 export function writeZip(files: ReadonlyMap<string, Uint8Array>, o: ZipOptions = {}): Buffer {
-  const paths = [...files.keys()].sort();
+  const first = o.firstStored;
+  if (first !== undefined && !files.has(first)) throw new Error(`no entry ${first} to write first`);
+  const paths = [...files.keys()].filter((p) => p !== first).sort();
+  if (first !== undefined) paths.unshift(first);
   if (paths.length > 0xffff) throw new Error("too many entries for a ZIP without ZIP64");
   const { time, date } = dosTime(o.entryTime ?? new Date(Date.UTC(1980, 0, 1)));
   const locals: Buffer[] = [];
@@ -31,7 +39,7 @@ export function writeZip(files: ReadonlyMap<string, Uint8Array>, o: ZipOptions =
     const data = Buffer.from(files.get(p) as Uint8Array);
     const name = Buffer.from(p, "utf8");
     const deflated = deflateRawSync(data, { level: 9 });
-    const stored = deflated.length >= data.length;
+    const stored = p === first || deflated.length >= data.length;
     const body = stored ? data : deflated;
     const crc = crc32(data);
     if (data.length > MAX || offset > MAX)
