@@ -2539,6 +2539,153 @@ No package release is needed for this: it is an image change. **Why:** Debian 12
 - **Keep** `refuseZstdBodies` and `refuseZstdFetch` (§7fb): they guard the zstd 1.5.7 that Node.js 24.22.1 bundles, which this does not change.
 - **Later:** when a Node base digest carries these versions, the script installs nothing new; it is removed with that base move.
 
+## 7fk. Refuse zstd in your Next.js 16 proxy (PR-UDF-089, CVE-2026-124851; R1-D-320)
+
+From the next `@infrabyx/connectors` and `@infrabyx/testing` minors (no migration, no setting, no environment variable). **Why:** FinbyxCl and UdofinCl each built a zstd refusal for their Next 16 proxies from §7fb's helpers. This is the shared one, so both can drop their copies.
+
+```ts
+// src/proxy.ts (Next 16; formerly middleware.ts)
+import { NextResponse, type NextRequest } from "next/server";
+import { refuseZstdInNextProxy } from "@infrabyx/connectors/content-coding";
+
+// Match everything the app serves, health probes included.
+export const config = { matcher: ["/((?!_next/static|_next/image).*)"] };
+
+export async function proxy(request: NextRequest) {
+  const refused = refuseZstdInNextProxy(request, { productPrefix: "UDF" });
+  if (refused) return refused; // first, before any other handling
+  // ... your existing handling
+  return NextResponse.next();
+}
+```
+
+- **What it does:** when `Content-Encoding` names `zstd` (any case, in a list; `x-zstd` too) it returns a 415 `application/problem+json` response: `IPB-SEC-010` (or `<prefix>-SEC-010`), `reason: content_encoding`, `instance` the path without its query string, `trace_id` from `traceparent`, and `Cache-Control: no-store`. Otherwise it returns `undefined`. It never reads the body.
+- **Health probes:** call it before anything else, and make sure your `matcher` does not exclude the health paths. If your probes must skip the rest of the proxy, return `NextResponse.next()` for them **after** the refusal.
+- **`Accept-Encoding` on the 415:** the helper sets `Accept-Encoding: gzip, deflate, br` (RFC 9110 §15.5.16 says a 415 for a content coding "should" list the accepted codings). Next 16 strips `Accept-Encoding` from proxy responses, so behind Next the 415 arrives without it; FinbyxCl recorded the same. Nothing to do: the problem's `detail` names the accepted codings.
+- **No `Connection: close`:** unlike `refuseZstdBodies`, the proxy does not own the connection, so it does not set one.
+- **Prove it:** run the contract cases against your own `proxy`:
+
+  ```ts
+  import { NextRequest } from "next/server";
+  import { nextProxyZstdContractCases } from "@infrabyx/testing";
+  import { proxy } from "../src/proxy";
+
+  for (const c of nextProxyZstdContractCases({
+    code: "UDF-SEC-010",
+    healthPaths: ["/health/live", "/health/ready"],
+    toRequest: (r) => new NextRequest(r),
+  }))
+    it(c.name, () => c.run(proxy));
+  ```
+
+  Use requests on synthetic data only. A case for the allowed codings may reach your later handling, so give the test what that handling needs, or let it answer as it would for a signed-out visitor.
+
+- **Adopt:**
+  1. Move every `@infrabyx/*` pin together.
+  2. Call `refuseZstdInNextProxy` first in each Next proxy, and delete your own copy.
+  3. Add the contract cases.
+  4. Keep `refuseZstdBodies` in your Nest APIs (§7fb): the proxy guards the Next app, not the API process.
+
+## 7fl. Issue a document: render, review or approve, sign, archive (`DocumentIssuer`; templates item 2; R1-D-321)
+
+From the next `@infrabyx/workflow` minor, with migration `workflow/0006_document_issue.sql` (applied by `infrabyx-migrate`; expand-only). There is no setting and no environment variable. **Why:** every product issues sanction letters, receipts, notices and register extracts the same way: render, have them checked, sign where needed, and keep them. The owner's rules (R1-D-318) are kept in one place.
+
+```ts
+import { DOCUMENT_ISSUE_ACTION, DocumentIssuer } from "@infrabyx/workflow";
+
+const issuer = new DocumentIssuer({ kernel, audit, docgen, storage, esign, approvals })
+  .registerTemplate("sanction_letter", { signing: "required" })
+  .registerTemplate("board_notice", { signing: "none" }); // a notice, a register extract, an MIS report
+approvals.register(DOCUMENT_ISSUE_ACTION, issuer.approvalPolicy({ checkerRoles: ["ORG_CHECKER"] }));
+
+// A signed document, under maker-checker:
+const d = await issuer.issue(ctx, {
+  templateId: "sanction_letter",
+  data, // CONFIDENTIAL; only its SHA-256 is kept
+  format: "pdf",
+  outputPrefix: `tenant/${ctx.tenantId}/loans`,
+  signers, // required for a signing template; only their SHA-256 is kept
+  approval: { riskClass: "R3" },
+  retainUntil, // your retention rule's date; it must be later than now
+});
+// ...the checker approves in the Work Inbox; the executor marks it approved...
+await issuer.sendForSignature(ctx, d.id, { signers }); // the same signers
+// ...on the ESIGN webhook, or a timer:
+await issuer.completeSigning(ctx, d.id);
+await issuer.archive(ctx, d.id); // the signed file and its unsigned render, write-once
+```
+
+- **The owner's rules:**
+  - A template registered `signing: "required"` is refused without signers and is never archived unsigned.
+  - A template registered `signing: "none"` is refused with signers. It is archived only after a person **other than its issuer** calls `review` (never an agent), or after its approval where your rules ask for maker-checker.
+  - A signed document's unsigned render is archived too, with the same retention.
+- **States:** `rendered`, `reviewed`, `approval_pending`, `approved`, `signing`, `signed`, `archived`, or else `rejected`, `expired` or `failed` (with `failureReason`).
+- **Retries:** call any step again and it changes nothing. A refused step throws `DocumentIssueError` (409) with a `reason`: `template_unregistered`, `signers_required`, `signers_not_expected`, `signers_changed`, `format_not_signable`, `retention_invalid`, `render_unverified`, `approval_unavailable`, `approval_mismatch`, `review_not_applicable`, `not_signable`, `not_archivable`, `hash_mismatch` or `esign_unavailable`.
+- **Signing templates** render as `pdf` or `pdfa`.
+- **Agents:** an agent may issue. It never reviews, and without an approval it never sends for signature.
+- **Archive:** REGULATED under `tenant/<tenant>/document_archive/` (`archiveModule` to change it), write-once with `retainUntil`; the record holds both keys and SHA-256s. Your STORAGE must allow REGULATED writes there.
+- **Not stored:** the data and the signers' details. Keep what you need in your own tables.
+- **Adopt:** move every `@infrabyx/*` pin together, run `infrabyx-migrate`, register your templates and the approval policy, and replace your own render-sign-archive code.
+
+## 7fm. Register definitions, the layout check and the export (templates item (a), part 1; R1-D-322)
+
+From the next `@infrabyx/contracts` and `@infrabyx/export` minors (no migration, no setting, no environment variable). The row store, `@infrabyx/registers`, comes next (ADR-0016). **Why:** one definition per register drives the layout check, row validation and the four export formats, so the filed headers never drift.
+
+```ts
+import {
+  assertLayout,
+  definitionFromIndex,
+  RegisterDefinition,
+} from "@infrabyx/contracts/registers";
+import { readXlsx, registerExport } from "@infrabyx/export";
+
+// Start from the filed record (your copy of CA-A01's entry in `template index.json`):
+const draft = definitionFromIndex(caA01, { version: "1.0.0" });
+// ...set types, `required`, sources and data classes on draft.sheets[0].columns...
+const def = RegisterDefinition.parse(draft);
+// An uploaded workbook must have the filed sheets, labels and order:
+assertLayout(
+  def,
+  readXlsx(upload).map((s) => ({ name: s.name, cols: s.rows[0]!.map(String) })),
+);
+// Export (rows keyed by column key, per sheet):
+const xlsx = registerExport(def, { Calendar: rows }, "xlsx"); // also "csv", "pdf", "ods"
+```
+
+- **Refusals:** `RegisterError` (422) with `reason` `layout_mismatch`, `row_invalid` or `definition_invalid`, and every problem listed. Layout problems are `sheet_missing`, `sheet_unknown`, `column_missing` (with `required`), `column_unknown` and `column_order` (both columns of each pair). Row problems are `required`, `type`, `enum` and `unknown_key`, named `Sheet[row].column` in an export.
+- **Columns:** types `text`, `number`, `integer`, `boolean`, `date` (`YYYY-MM-DD`), `datetime` (ISO 8601) and `enum` with its values. Each column has a data class; SECRET is refused. Retention is at least eight years.
+- **`definitionFromIndex`** gives text columns, not required, CONFIDENTIAL. Narrow the types, `required`, `source` and data classes for your register, and give it a version.
+- **Formats:**
+  - csv is formula-neutralised;
+  - the xlsx has an AutoFilter; ODS cannot carry one;
+  - a `pdf` with Indic text is refused in-process: pass `registerPdfDocument(def, rows)` to `renderPdf` (DOCGEN) instead.
+- **Adopt:** move every `@infrabyx/*` pin together, then define your registers from the filed index and use `assertLayout` on uploads. The row store (part 2) will take these definitions unchanged.
+
+## 7fn. The register row store, `@infrabyx/registers` (templates item (a), part 2; R1-D-323)
+
+Not published yet: the package is private until its exit and the owner's 1.0.0 (ADR-0016). This section says what it will ask of you. Its migration `registers/0001_init.sql` is applied by `infrabyx-migrate` once you install it.
+
+```ts
+import { REGISTER_ROW_ACTION, RegisterStore } from "@infrabyx/registers";
+
+const store = new RegisterStore({ kernel, audit, approvals, ledger: auditService }).define(def);
+approvals.register(REGISTER_ROW_ACTION, store.approvalPolicy({ checkerRoles: ["ORG_CHECKER"] }));
+
+const v1 = await store.create(ctx, "CA-A01", "Calendar", { data });
+await store.correct(ctx, v1.rowId, { data: fixed, approval: { riskClass: "R2" } }); // pending until a checker approves
+const page = await store.list(ctx, {
+  code: "CA-A01",
+  sheet: "Calendar",
+  where: { status: "Open" },
+});
+const { versions, ledger } = await store.history(ctx, v1.rowId);
+```
+
+- **Never deleted, never edited:** a correction is a new version. The database refuses a delete before `retain_until`, any change to a version's content, and a truncate. There is no purge.
+- **Checked on write:** every value is checked against the definition (§7fm). Values are kept up to CONFIDENTIAL, and a REGULATED column is refused for now (owner question #226).
+- **Maker-checker:** with `approval`, the change waits as `pending`, and a checker other than the maker approves it in the Work Inbox. `refreshApproval` records a rejection.
+- **Lists:** exact-match filters on up to 8 columns, 1 to 200 rows per page, and an opaque cursor.
+
 ## 7fo. Your own roles on your seed personas (LDC-69; R1-D-325)
 
 From the next `@infrabyx/seed` and `@infrabyx/testing` minors (no migration, no setting, no environment variable).

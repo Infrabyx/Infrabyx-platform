@@ -1796,6 +1796,44 @@ A change to the build supply chain: each runtime stage now runs apt once at buil
 - **E:** nothing changes at run time: UID 10001, no capabilities, a read-only root; apt is still never run there.
 - **Residual:** Node.js 24.22.1's bundled zstd 1.5.7 is unchanged, so `refuseZstdBodies` and `refuseZstdFetch` (§3.194) stay. The zlib1g, util-linux and other base findings without a Debian 12 fix stay waived as before.
 
+### 3.201 zstd refused in a Next.js 16 proxy (`refuseZstdInNextProxy`, `nextProxyZstdContractCases`; PR-UDF-089, R1-D-320)
+
+The §3.194 refusal for the products' Next 16 proxies; no new data flow.
+
+- **I (process memory read back through a zstd body):** the proxy answers 415 before any other handling, health probes included, and never reads the body (the contract cases check `bodyUsed`). Next 16.4.5 itself decodes no request content coding (checked in its server source: its only decoders are the image optimizer's, for upstream image responses), so the guard protects whatever the product's handlers do with the body.
+- **T/S:** the problem carries a fixed label, the path without its query string and the trace id only; no coding the client sent is echoed.
+- **Residual:** behind Next the 415 carries no `Accept-Encoding` (Next strips it from proxy responses; RFC 9110's "should"), which is a usability gap, not a security one. The platform's own Next apps (public, console, reference web) do not take the helper: they would need `@infrabyx/connectors` and its adapters' dependencies in their images, and nothing in them decodes a request coding.
+
+### 3.202 Issuing documents (`DocumentIssuer`, `workflow.document_issue`; templates item 2, R1-D-321)
+
+A new data flow: a rendered document through review or approval, signing and the archive, and a new table.
+
+- **I (template data or signer details at rest):** the table holds references and SHA-256 hashes only. It keeps the canonical JSON digest of the data and of the signer list, never the values (tested on the raw row). The ledger keeps digests of what each entry names. The table is tenant-scoped with RLS enabled and forced (tested across tenants), and every column is data-classed.
+- **T (a substituted or altered file):** the render is read back and hashed before it is recorded. The signed file is read back and must hash to what ESIGN returned. Before archiving, each source must hash to its recorded value, and each archived copy is read back, hashed and proved immutable. A mismatch is recorded `failed` and nothing more is archived (tested). The database refuses an archived signing template without a signed hash, and an archived hash that is not the file's.
+- **E (a document escaping its rule):** a signing template can never be archived unsigned, in code and in a check constraint (both tested). An unsigned one needs a review by a person other than its issuer, or a checker's approval. The approval's executor checks that the request's payload digest is this record's render, so an approval cannot be replayed onto another document. An agent never reviews, and without an approval it never sends for signature.
+- **R:** every step is a kernel mutation with a ledger entry naming the record; a step that loses a race is ledgered as stale.
+- **D (duplicate envelopes or archive copies):** the envelope is created with the record's idempotency key, and a losing envelope is cancelled. The archive keys are recorded before any write, so a retry cannot leave a second retained copy (tested).
+- **Residual:** the retention date is the product's input (with a floor of now). It is never shortened here, but a wrong long date is the product's to prevent.
+
+### 3.203 Register definitions and their export (`contracts/registers`, `registerExport`; templates item (a) part 1, R1-D-322)
+
+New code over existing data flows: no new store, port or network call.
+
+- **T (a file that does not match its register):** an upload's layout must equal the definition exactly (names, order, sheets); every difference is refused and named, and nothing is guessed or re-mapped. Every row is checked against its typed columns before any file is written.
+- **I (formula injection, wrong class):** CSV is formula-neutralised. The xlsx and ods writers neutralise as before. Every column carries a data class and SECRET is refused, so the row store (part 2) can keep each value's class.
+- **D:** exports are bounded (100,000 rows by default); the reader that checks an upload's layout is the bounded XLSX reader.
+- **Residual:** the definition's column defaults from the filed index (CONFIDENTIAL text) are a starting point; a product that lowers a class owns that choice.
+
+### 3.204 The register row store (`@infrabyx/registers`, `registers.row_version`; templates item (a) part 2, R1-D-323)
+
+A new package, schema and data flow: register rows a product writes and lists.
+
+- **I (cross-tenant reads):** the table is tenant-scoped with RLS enabled and forced, which the suite tests across tenants (list and get). Values are kept up to CONFIDENTIAL; a REGULATED column is refused at `define`. The ledger keeps digests and the row id only.
+- **T (rewritten history):** a version's content is immutable and its state moves forward only, enforced by a trigger for every role; a correction is a new version with its own ledger entry. The approval binds the version's data SHA-256, so an approval cannot be replayed onto other data.
+- **R and E (deleted records):** a delete before `retain_until` and any truncate are refused by triggers, whoever runs them. The application role has no delete grant, and there is no purge job.
+- **E (self-approval):** the approvals engine refuses the maker as checker (tested).
+- **D:** rows are at most 64 KiB of `jsonb`, pages at most 200 rows, and at most 8 filters; the cursor is checked and refused when malformed.
+
 ### 3.205 Product roles on seed personas (`seedAdapters.personaRoles`; LDC-69, R1-D-325)
 
 A change to what non-production seeds grant; seeds still never run in prod, dr or pre-prod (`SEED_REFUSED_ENVS`).
