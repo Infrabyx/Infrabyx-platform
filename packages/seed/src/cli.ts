@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// infrabyx-seed --profile <dev|demo|test|load> [--modules <module>]
+// infrabyx-seed --profile <dev|demo|test|load> [--modules <module>] [--adapters <module>]
 // infrabyx-seed purge --profile <profile> [--db <owner url>]
 // infrabyx-seed credentials --adapters <module> [--rotate] [--no-file]
 // Refusal comes first: in prod/dr/pre-prod, or without SEED_ENABLED=true, the CLI exits 1 with
@@ -30,6 +30,7 @@ import { PgKernel, PgOutbox } from "@infrabyx/tenancy";
 import { generateCredentials } from "./credentials.js";
 import { SEED_PRINCIPAL, SEED_TENANT_IDS, runSeed, type SeedModule } from "./framework.js";
 import { SEED_PROFILES, assertSeedAllowed, type SeedProfile } from "./guard.js";
+import type { PersonaRoles } from "./personas/index.js";
 import { platformSeedModule } from "./platform.js";
 import { purgeSeed } from "./purge.js";
 
@@ -201,6 +202,8 @@ export async function main(
     secrets?: SecretsPort;
     identity?: IdentityProvisioning;
     resolveSecret?: SecretResolver;
+    /** The product's own roles per persona key (LDC-69, R1-D-325). */
+    personaRoles?: PersonaRoles;
   } = {};
   if (values.adapters) adapters = await importNamed(values.adapters, "seedAdapters");
   const env = await loadAndValidate(seedEnvSchema, {
@@ -233,6 +236,7 @@ export async function main(
       env,
       product,
       ...(env.AUTH_SUPER_ADMIN_EMAIL ? { superAdminEmail: env.AUTH_SUPER_ADMIN_EMAIL } : {}),
+      ...(adapters.personaRoles ? { personaRoles: adapters.personaRoles } : {}),
       secrets: adapters.secrets,
       identity: adapters.identity,
       vaultPrefix: env.SEED_VAULT_PREFIX ?? "",
@@ -262,6 +266,7 @@ export async function main(
       modules,
       randomSeed: env.SEED_RANDOM_SEED ?? 0,
       ...(env.AUTH_SUPER_ADMIN_EMAIL ? { superAdminEmail: env.AUTH_SUPER_ADMIN_EMAIL } : {}),
+      ...(adapters.personaRoles ? { personaRoles: adapters.personaRoles } : {}),
     });
     const t = report.totals;
     process.stdout.write(

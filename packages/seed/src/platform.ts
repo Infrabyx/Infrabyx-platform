@@ -9,7 +9,13 @@ import {
   defineSeedModule,
   type SeedModuleContext,
 } from "./framework.js";
-import { personaEmail, personasFor, type Persona } from "./personas/index.js";
+import {
+  personaEmail,
+  personaRolesOf,
+  personasFor,
+  type Persona,
+  type PersonaRoles,
+} from "./personas/index.js";
 
 export const SEED_TENANTS = [
   { tenant: "platform", id: "tnt_platform", product: "PLATFORM", name: "Infrabyx" },
@@ -22,9 +28,12 @@ export const personaUserId = (email: string): string =>
   deterministicId("usr", "tenancy.user", email.toLowerCase(), SEED_EPOCH);
 
 export function seedPersonas(
-  ctx: Pick<SeedModuleContext, "product"> & { superAdminEmail?: string | undefined },
+  ctx: Pick<SeedModuleContext, "product"> & {
+    superAdminEmail?: string | undefined;
+    personaRoles?: PersonaRoles | undefined;
+  },
 ): Array<Persona & { email: string; userId: string }> {
-  return personasFor(ctx.product, ctx.superAdminEmail).map((p) => {
+  return personasFor(ctx.product, ctx.superAdminEmail, ctx.personaRoles).map((p) => {
     const email = personaEmail(p, ctx.product);
     return { ...p, email, userId: personaUserId(email) };
   });
@@ -74,7 +83,7 @@ export const platformSeedModule = defineSeedModule({
           await w.upsert({
             table: "tenancy.membership",
             key: { tenant_id: ctx.tenantIds[tenant], user_id: p.userId },
-            values: { roles: [p.role], product_scope: [...(p.productScope ?? [])] },
+            values: { roles: personaRolesOf(p), product_scope: [...(p.productScope ?? [])] },
           });
         }
       });

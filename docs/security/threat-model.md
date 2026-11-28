@@ -1796,6 +1796,13 @@ A change to the build supply chain: each runtime stage now runs apt once at buil
 - **E:** nothing changes at run time: UID 10001, no capabilities, a read-only root; apt is still never run there.
 - **Residual:** Node.js 24.22.1's bundled zstd 1.5.7 is unchanged, so `refuseZstdBodies` and `refuseZstdFetch` (§3.194) stay. The zlib1g, util-linux and other base findings without a Debian 12 fix stay waived as before.
 
+### 3.205 Product roles on seed personas (`seedAdapters.personaRoles`; LDC-69, R1-D-325)
+
+A change to what non-production seeds grant; seeds still never run in prod, dr or pre-prod (`SEED_REFUSED_ENVS`).
+
+- **E (a seed granting more than a product role):** only `<PRODUCT>_<NAME>` roles are accepted, so `ORG_`, `PLT_` and other products' roles are refused (tested). No role is ever added to a platform-tenant persona, and an unknown persona key is refused. All of this is checked before any vault, IdP or file write.
+- **R:** the credentials file lists every role a persona has, and `checkCredentialsFile` fails when the file and the roles disagree.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.

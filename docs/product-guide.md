@@ -2539,6 +2539,28 @@ No package release is needed for this: it is an image change. **Why:** Debian 12
 - **Keep** `refuseZstdBodies` and `refuseZstdFetch` (§7fb): they guard the zstd 1.5.7 that Node.js 24.22.1 bundles, which this does not change.
 - **Later:** when a Node base digest carries these versions, the script installs nothing new; it is removed with that base move.
 
+## 7fo. Your own roles on your seed personas (LDC-69; R1-D-325)
+
+From the next `@infrabyx/seed` and `@infrabyx/testing` minors (no migration, no setting, no environment variable).
+
+```ts
+// the module you pass to `infrabyx-seed --adapters`
+export const seedAdapters = {
+  secrets,
+  identity,
+  personaRoles: {
+    "test.compliance_head": ["LDC_COMPLIANCE_HEAD"],
+    "test.control_owner": ["LDC_CONTROL_OWNER"],
+  },
+};
+```
+
+- **What happens:** each named persona is seeded with its platform role, then yours. That reaches the IdP, the tenant membership, and the credentials file's Role column (`ORG_OWNER, LDC_COMPLIANCE_HEAD`). `checkCredentialsFile(text, product, superAdminEmail, personaRoles)` checks it.
+- **Refused before anything is written (`IPB-SEED-003`):** a role not named `<PRODUCT>_<NAME>` (so `ORG_`, `PLT_` and other products' roles), an unknown persona key, a platform-tenant persona, more than 8 roles, or a repeat.
+- **`runSeed` and `generateCredentials`** take `personaRoles` too, if you call them yourself.
+- **Prove it:** run `seedPersonaRoleContractCases(product, personaRoles)` from `@infrabyx/testing` with your own roles.
+- **Adopt:** move every `@infrabyx/*` pin together, export `personaRoles`, run the cases, regenerate `SEED_CREDENTIALS.md` locally (it is never committed), and update any test that reads its Role column.
+
 ## 8. Adopting 1.0.0
 
 1.0.0 is the platform baseline (IPB-14 §14.5 item 1; owner answer #67(4)). Every package moved to 1.0.0 together, and the public API is the same as the PL6 0.x set (`docs/phases/PL6-gate.md` §6). From 1.0.0 on, semantic versioning holds: a breaking change to an export, a migration or a setting comes only in a major release with an ADR (IPB-09-34/35).
