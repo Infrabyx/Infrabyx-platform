@@ -190,6 +190,20 @@ export const ORACLES = {
     "02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies.xlsx",
   app07:
     "02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities.xlsx",
+  // The owner's worked examples of the sector engines (28 Nov 2026; R1-D-324): ComplyCl's recorded
+  // inputs (REG-MODELS-05), recalculated in Excel 16.115.2. They replace the synthetic oracles.
+  app02we:
+    "02 Sector Applicability Engines/SEBI/APP-M02 Applicability Engine for SEBI Listed Entities – Worked Example (fictitious listed entity).xlsx",
+  app03we:
+    "02 Sector Applicability Engines/SEBI/APP-M03 Applicability Engine for SEBI Market Intermediaries – Worked Example (fictitious stock broker).xlsx",
+  app04we:
+    "02 Sector Applicability Engines/IFSCA/APP-M04 Applicability Engine for IFSCA Entities – Worked Example (fictitious IFSC finance company).xlsx",
+  app05we:
+    "02 Sector Applicability Engines/IRDAI/APP-M05 Applicability Engine for Insurance Intermediaries – Worked Example (fictitious insurance broker).xlsx",
+  app06we:
+    "02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies – Worked Example (fictitious multi-State credit society).xlsx",
+  app07we:
+    "02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities – Worked Example (fictitious payment aggregator).xlsx",
 } as const;
 
 /** Each sheet's formula text by cell, from the workbook's XML (shared-formula children absent). */

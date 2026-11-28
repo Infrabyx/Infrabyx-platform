@@ -1,11 +1,10 @@
-"""Synthetic oracles for the applicability engines (R1-D-311).
+"""A second, synthetic oracle for the APP-M01 applicability engine (R1-D-311, R1-D-324).
 
-The sector engines APP-M02 to APP-M07 are filed as unfilled masters written by openpyxl and never
-recalculated: every formula cell has an empty cached value, so they hold no result to reproduce.
-This script fills a copy of each filed master (and of the APP-M01 master) with a synthetic profile
-and line answers (no real entity), lets LibreOffice Calc recalculate the owner's formulas, and
-writes the recalculated copies to src/__tests__/fixtures/ with their SHA-256 in SHA256SUMS. The
-oracle test reads them like the owner's worked example: every formula cell is asserted.
+It fills a copy of the filed APP-M01 master with a synthetic profile and line answers (no real
+entity), lets LibreOffice Calc recalculate the owner's formulas, and writes the recalculated copy to
+src/__tests__/fixtures/ with its SHA-256 in SHA256SUMS. The oracle test reads it like the owner's
+worked example: every formula cell is asserted. The sector engines APP-M02 to APP-M07 no longer have
+synthetic oracles: the owner's worked examples, recalculated in Excel, replaced them (R1-D-324).
 
 Run from the repository root (needs openpyxl and LibreOffice's `soffice` on the PATH):
     python3 -I packages/regcalc/scripts/app-fixtures.py
@@ -16,14 +15,6 @@ import openpyxl
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..')
 MODELS = os.path.join(ROOT, 'docs', 'regulatory-models')
 OUT = os.path.join(ROOT, 'packages', 'regcalc', 'src', '__tests__', 'fixtures')
-SECTOR = {
-    'app-m02': '02 Sector Applicability Engines/SEBI/APP-M02 Applicability Engine for SEBI Listed Entities.xlsx',
-    'app-m03': '02 Sector Applicability Engines/SEBI/APP-M03 Applicability Engine for SEBI Market Intermediaries.xlsx',
-    'app-m04': '02 Sector Applicability Engines/IFSCA/APP-M04 Applicability Engine for IFSCA Entities.xlsx',
-    'app-m05': '02 Sector Applicability Engines/IRDAI/APP-M05 Applicability Engine for Insurance Intermediaries.xlsx',
-    'app-m06': '02 Sector Applicability Engines/Co-operative Societies/APP-M06 Applicability Engine for Co-operative Societies.xlsx',
-    'app-m07': '02 Sector Applicability Engines/Payments and Fintech/APP-M07 Applicability Engine for Payment System Operators and Fintech Entities.xlsx',
-}
 M01 = '01 NBFC Models/Registration, Exemptions and Framework for Scale Based Regulation/Applicability Engine/APP-M01 Applicability Engine Master Model.xlsx'
 
 
@@ -35,39 +26,6 @@ def filed(rel):
     if want != [got]:
         sys.exit('%s is not the filed copy' % rel)
     return path
-
-
-def sector(name, rel, k):
-    wb = openpyxl.load_workbook(filed(rel))
-    p = wb['Profile']
-    cats = []
-    while p['D%d' % (4 + len(cats))].value:      # the category list: codes in D, labels in E
-        cats.append(p['E%d' % (4 + len(cats))].value)
-    p['B4'] = 'Synthetic entity %s (test data)' % name.upper()
-    p['B5'] = '2026-03-31'
-    p['B6'] = cats[k % len(cats)]
-    q0 = next(r for r in range(1, 60) if p['A%d' % r].value == 'Key')
-    r = q0 + 1
-    while p['A%d' % r].value:
-        p['C%d' % r] = ['Yes', 'No', 'In part', None][(r + k) % 4]
-        r += 1
-    po = wb['Policies']
-    r, cond = 7, 0
-    while po['A%d' % r].value is not None:
-        if any(c.value and 'Conditional' in str(c.value) for c in [po['J%d' % r]]):
-            cond += 1
-            if cond % 3 == 0:
-                po['K%d' % r] = ['Yes', 'No'][cond % 2]
-        if r % 17 == 0:
-            po['M%d' % r] = ['Applies', 'Good practice', 'Does not apply'][r % 3]
-        po['O%d' % r] = ['Yes', 'Partly', 'No', None][r % 4]
-        r += 1
-    cm = wb['Committees and Roles']
-    r = 7
-    while cm['B%d' % r].value:
-        cm['E%d' % r] = ['Yes', 'No', None][r % 3]
-        r += 1
-    return wb
 
 
 def nbfc():
@@ -107,8 +65,6 @@ def recalc(wb, name, tmp):
 os.makedirs(OUT, exist_ok=True)
 with tempfile.TemporaryDirectory() as tmp:
     made = [recalc(nbfc(), 'app-m01', tmp)]
-    for k, (name, rel) in enumerate(SECTOR.items()):
-        made.append(recalc(sector(name, rel, k), name, tmp))
 with open(os.path.join(OUT, 'SHA256SUMS'), 'w', encoding='utf-8') as f:
     for path in made:
         f.write('%s  %s\n' % (hashlib.sha256(open(path, 'rb').read()).hexdigest(), os.path.basename(path)))
