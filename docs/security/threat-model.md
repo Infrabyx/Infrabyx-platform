@@ -1815,6 +1815,15 @@ A new data flow: a rendered document through review or approval, signing and the
 - **D (duplicate envelopes or archive copies):** the envelope is created with the record's idempotency key, and a losing envelope is cancelled. The archive keys are recorded before any write, so a retry cannot leave a second retained copy (tested).
 - **Residual:** the retention date is the product's input (with a floor of now). It is never shortened here, but a wrong long date is the product's to prevent.
 
+### 3.203 Register definitions and their export (`contracts/registers`, `registerExport`; templates item (a) part 1, R1-D-322)
+
+New code over existing data flows: no new store, port or network call.
+
+- **T (a file that does not match its register):** an upload's layout must equal the definition exactly (names, order, sheets); every difference is refused and named, and nothing is guessed or re-mapped. Every row is checked against its typed columns before any file is written.
+- **I (formula injection, wrong class):** CSV is formula-neutralised. The xlsx and ods writers neutralise as before. Every column carries a data class and SECRET is refused, so the row store (part 2) can keep each value's class.
+- **D:** exports are bounded (100,000 rows by default); the reader that checks an upload's layout is the bounded XLSX reader.
+- **Residual:** the definition's column defaults from the filed index (CONFIDENTIAL text) are a starting point; a product that lowers a class owns that choice.
+
 ### 3.198 The OpenDocument writers (`toOds`, `toOdt`; regulatory templates item (b), R1-D-313)
 
 - **T/E (active content or a formula in an exported file):** no macro, script, field, image or embedded object is written, and ODS writes no formula at all (a formula cell is refused). Every string passes `neutraliseFormula`, so a cell never starts with `=`, `+`, `-` or `@` (contract case). Caller text is XML-escaped and stripped of characters XML 1.0 cannot carry, so it can never add an element or an attribute.

@@ -29,3 +29,4 @@ export * from "./xlsx.js";
 export * from "./xlsx-read.js";
 export * from "./ods.js";
 export * from "./odt.js";
+export * from "./register.js";

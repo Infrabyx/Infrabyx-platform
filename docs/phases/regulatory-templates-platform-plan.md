@@ -1,6 +1,6 @@
 # Regulatory templates: what the platform must provide (gap analysis)
 
-**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f).**
+**Status: approved by the owner, 27 Nov 2026 15:45 IST (#212, R1-D-301), with the answers in §5a. Built item by item in the order (b), (c), (a), (d), (e), (f). Done: (b), (c) with `issueDocument`, and (a) part 1 (§6a).**
 
 Finbyx, Udofin and LawDocsComply will build the owner's 492 regulatory templates (`docs/regulatory-templates/`, merged as specifications, R1-D-297) into registers, documents, checklists, obligation tasks and calculators. This plan says, for each generic the three need, whether a published package already provides it, so that no product builds a generic itself.
 
@@ -75,6 +75,40 @@ The 23 **calculators** are (g) plus product-specific monitors (ALM, ICAAP, provi
 - Contract cases above, on synthetic data, built from the filed layouts.
 - Threat model entries: (a) a generic row store (RLS, data class per column, `jsonb` validation), (c) template rendering (no code in templates), (d) evidence uploads, (f) files going back to tenants.
 - Guide sections and DECISIONS rows; the owner's decisions recorded.
+
+## 6a. Item (a): registers (plan section, 28 Nov 2026; ADR-0016, R1-D-322)
+
+Two PRs: definitions and export first (minors of `contracts` and `export`), then the row store (`@infrabyx/registers`, private until its exit).
+
+**Part 1, built 28 Nov 2026.**
+
+- **`@infrabyx/contracts/registers`:**
+  - `RegisterDefinition`: a `code`, `title` and `version`; 1 to 32 `sheets`, each with 1 to 64 `columns`; `retention.years` of at least 8.
+  - Each column has a `key` (unique in its sheet), a `label` (a filed label may repeat, as OUT-A01's does), a `type` (`text`, `number`, `integer`, `boolean`, `date`, `datetime` or `enum` with its values), `required`, its `order` (1 to n), an optional `source` and a `dataClass` (never SECRET).
+- **The checks:**
+  - `assertLayout(definition, layouts)` refuses `layout_mismatch` with every problem named: `sheet_missing`, `sheet_unknown`, `column_missing` (saying whether it was required), `column_unknown`, and `column_order` (naming both columns of each out-of-place pair).
+  - `definitionFromIndex(record)` gives a first definition from a filed record: text columns, not required, CONFIDENTIAL.
+  - `rowProblems` and `assertRow` check one row: `required`, `type`, `enum` and `unknown_key`.
+- **`@infrabyx/export`:** `registerExport(definition, rows, "xlsx" | "csv" | "pdf" | "ods")`.
+  - Rows are checked first and refused naming sheet, row and column.
+  - The headers are the filed labels in order.
+  - CSV is formula-neutralised. The xlsx has an AutoFilter, which ODS cannot carry.
+  - `pdf` is in-process; Indic text is refused there, and `registerPdfDocument` goes to `renderPdf` (DOCGEN, R1-D-96).
+- **Contract cases** (unit, on the filed index; synthetic rows):
+  - all 114 register layouts parse and pass their own layout;
+  - CA-A01's Calendar validates;
+  - a swapped pair is refused naming both, a missing required column naming it, and an extra column or a renamed sheet each refused;
+  - OUT-A01's repeated label keeps unique keys;
+  - 1,000 synthetic rows round-trip in xlsx (the bounded reader), csv, pdf (pdftotext) and ods (LibreOffice).
+
+**Part 2, next: `@infrabyx/registers`.**
+
+- One migration (`registers/0001_init.sql`). The table `registers.row` is keyed by tenant, register code, definition version, sheet, row id and version. Its data is `jsonb`, validated by the definition before every write. It is RLS enabled and forced, and every column is data-classed.
+- `retain_until` comes from the definition's retention, from the row's first version. A `before delete` trigger refuses a delete before that date, and there is no purge. A correction is a new version.
+- A list with filters on column values and a keyset cursor (IPB-10).
+- `history(rowId)` from the ledger.
+- Maker-checker per row (an R-level from the product) through the approvals engine, the checker never the maker.
+- Contract cases: the row history after an edit and an approval; a delete before the date refused; RLS across tenants; cursor and filters.
 
 ## 7. Item (b): ODS and ODT in `@infrabyx/export` (plan section, 28 Nov 2026; R1-D-313)
 
